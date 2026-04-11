@@ -1,5 +1,7 @@
+const fs = require('fs');
 
-import { Search, Send, Phone, ShoppingCart, Heart } from 'lucide-react';
+const code = `
+import { Search, Send, Phone, Instagram, ShoppingCart, Heart } from 'lucide-react';
 
 export default function Home() {
   const categories = [
@@ -21,7 +23,7 @@ export default function Home() {
     {brand:"Tytan",name:"Монтажна піна ЗИМОВА",volume:"750 мл",stock:"Є з наявності: 12 шт",minOrder:"12 шт",priceUnit:"319 грн",pricePack:"3 828 грн / уп"},
   ];
 
-  const css = `
+  const css = \`
     :root {
       --bg-page: #F6F8FB;
       --bg-card: #FFFFFF;
@@ -44,10 +46,10 @@ export default function Home() {
     button { cursor: pointer; font-family: inherit; }
     .page-container { max-width: 1440px; width: 100%; margin: 0 auto; padding: 0 32px; }
 
-    .site-header { height: 100px; background: var(--bg-page); border-bottom: 1px solid var(--border); overflow: visible; position: relative; z-index: 10; }
+    .site-header { height: 100px; background: var(--bg-page); border-bottom: 1px solid var(--border); }
     .site-header__inner { height: 100%; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-    .logo { display: flex; align-items: flex-end; height: 80px; overflow: visible; }
-   .logo img { height: 130%; width: auto; display: block; mix-blend-mode: multiply; margin-bottom: -20px; }
+    .logo { display: flex; align-items: center; height: 80px; }
+    .logo img { height: 100%; width: auto; display: block; mix-blend-mode: multiply; }
     .header-nav { display: flex; align-items: center; gap: 36px; }
     .header-nav a { font-size: 16px; font-weight: 500; color: var(--text-secondary); }
     .header-nav a:hover { color: var(--text-primary); }
@@ -147,7 +149,7 @@ export default function Home() {
       .catalog-search { width: 100%; }
       .footer-grid { grid-template-columns: 1fr; }
     }
-  `;
+  \`;
 
   return (
     <>
@@ -179,7 +181,7 @@ export default function Home() {
                     <Phone size={16} strokeWidth={2} />
                   </a>
                   <a href="#" className="social-icon social-icon--insta" title="Instagram">
-                    <span style={{fontSize:'13px',fontWeight:'700'}}>in</span>
+                    <Instagram size={16} strokeWidth={2} />
                   </a>
                 </div>
               </div>
@@ -196,7 +198,7 @@ export default function Home() {
         <div className="page-container">
           <div className="subheader__inner">
             <button className="btn-all">Всі товари</button>
-            <button className="btn-cat">Категорії</button>
+            <button className="btn-cat">Категорії &#8964;</button>
             <div className="subheader-tabs">
               <a href="#">Акції</a>
               <a href="#">Хіти</a>
@@ -319,7 +321,7 @@ export default function Home() {
               <div className="footer-social">
                 <a href="#" className="social-icon social-icon--tg"><Send size={15} strokeWidth={2} /></a>
                 <a href="#" className="social-icon social-icon--viber"><Phone size={15} strokeWidth={2} /></a>
-                <a href="#" className="social-icon social-icon--insta"><span style={{fontSize:'13px',fontWeight:'700'}}>in</span></a>
+                <a href="#" className="social-icon social-icon--insta"><Instagram size={15} strokeWidth={2} /></a>
               </div>
             </div>
             <div>
@@ -360,4 +362,7 @@ export default function Home() {
       </footer>
     </>
   );
-}
+}`;
+
+fs.writeFileSync('app/page.tsx', code, 'utf8');
+console.log('Done!');
