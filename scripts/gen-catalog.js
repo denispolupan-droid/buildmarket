@@ -1,7 +1,17 @@
 const fs = require('fs');
 
 const code = `
-export default function Home() {
+export default function Catalog() {
+  const categories = [
+    {name:"Герметики",count:24,active:true},
+    {name:"Монтажні піни",count:18,active:false},
+    {name:"Рідкі цвяхи",count:12,active:false},
+    {name:"Клеї",count:10,active:false},
+    {name:"Ґрунтовки",count:10,active:false},
+    {name:"Стрічки",count:6,active:false},
+  ];
+  const brands = ["MakHUB","KUDO","Tytan","Sila"];
+  const types = ["Акриловий","Силіконовий","Поліуретановий","Монтажний"];
   const products = [
     {brand:"FIXHUB",name:"ТЕРМЕНА 65 ПРО",volume:"650 мл",stock:"Є з наявності",minOrder:"12 шт",priceUnit:"279 грн",pricePack:"3 348 грн / уп"},
     {brand:"FIXHUB",name:"Акриловий герметик",volume:"260 мл",stock:"Є з наявності: 12 шт",minOrder:"12 шт",priceUnit:"119 грн",pricePack:"1 428 грн / уп"},
@@ -9,6 +19,9 @@ export default function Home() {
     {brand:"FIXHUB",name:"ТЕРМЕНА 1600 PRO",volume:"1000 мл",stock:"Є з наявності: 12 шт",minOrder:"12 шт",priceUnit:"399 грн",priceOld:"450 грн",pricePack:"4 788 грн / уп"},
     {brand:"KUDO",name:"Силкон Санітарний",volume:"290 мл",stock:"Є з наявності: 12 шт",minOrder:"12 шт",priceUnit:"109 грн",pricePack:"1 308 грн / уп"},
     {brand:"Tytan",name:"Монтажна піна ЗИМОВА",volume:"750 мл",stock:"Є з наявності: 12 шт",minOrder:"12 шт",priceUnit:"319 грн",pricePack:"3 828 грн / уп"},
+    {brand:"FIXHUB",name:"Герметик Санітарний PRO",volume:"280 мл",stock:"Є з наявності: 6 шт",minOrder:"6 шт",priceUnit:"149 грн",pricePack:"894 грн / уп"},
+    {brand:"Sila",name:"Герметик фасадний",volume:"600 мл",stock:"Є з наявності: 12 шт",minOrder:"12 шт",priceUnit:"189 грн",pricePack:"2 268 грн / уп"},
+    {brand:"KUDO",name:"Герметик термостійкий",volume:"310 мл",stock:"Є з наявності: 24 шт",minOrder:"12 шт",priceUnit:"229 грн",pricePack:"2 748 грн / уп"},
   ];
 
   const css = \`
@@ -33,21 +46,37 @@ export default function Home() {
     button { cursor: pointer; font-family: inherit; }
     .page-container { max-width: 1440px; margin: 0 auto; padding: 0 32px; }
 
-    .catalog-banner { min-height: 280px; border-radius: 24px; background: linear-gradient(90deg, #DCE8F3 0%, #F2E5C9 100%); display: grid; grid-template-columns: 1.1fr 0.9fr; align-items: center; padding: 40px; margin-bottom: 24px; }
-    .catalog-banner__title { font-size: 40px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; line-height: 1.1; }
-    .catalog-banner__text { font-size: 18px; color: var(--text-secondary); margin-bottom: 24px; }
-    .catalog-banner__btn { height: 48px; padding: 0 28px; border-radius: 24px; border: none; background: #6F92BC; color: #fff; font-size: 15px; font-weight: 600; }
-    .catalog-banner__products { display: flex; justify-content: flex-end; align-items: flex-end; gap: 12px; position: relative; }
-    .banner-img { background: rgba(255,255,255,0.5); border-radius: 16px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 12px; }
-    .catalog-banner__discount { position: absolute; left: 0; bottom: 0; background: #D8B14A; color: #fff; border-radius: 14px; padding: 10px 16px; font-weight: 700; font-size: 14px; line-height: 1.4; }
+    .breadcrumb { padding: 16px 0; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-muted); }
+    .breadcrumb a { color: var(--text-muted); }
+    .breadcrumb a:hover { color: var(--text-primary); }
+
+    .catalog-layout { display: grid; grid-template-columns: 280px 1fr; gap: 24px; align-items: start; padding-bottom: 48px; }
+    .sidebar-stack { display: flex; flex-direction: column; gap: 16px; }
+    .sidebar-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; }
+    .sidebar-card__title { margin: 0 0 20px; font-size: 18px; font-weight: 700; color: var(--text-primary); }
+    .category-list { display: flex; flex-direction: column; gap: 4px; }
+    .category-list__item { min-height: 42px; padding: 8px 10px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+    .category-list__item:hover { background: var(--bg-page); }
+    .category-list__item.active { background: var(--bg-soft); font-weight: 600; }
+    .category-list__label { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+    .category-list__count { color: #7A8798; font-size: 13px; }
+    .sidebar-show-all { display: inline-block; margin-top: 12px; color: var(--brand-main); font-weight: 500; font-size: 14px; }
+    .filter-list { display: flex; flex-direction: column; gap: 12px; }
+    .filter-list label { display: flex; align-items: center; gap: 10px; color: var(--text-primary); font-size: 15px; cursor: pointer; }
+    .filter-list input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--brand-main); cursor: pointer; }
 
     .catalog-top-tabs { height: 72px; background: #fff; border: 1px solid var(--border); border-radius: 20px; padding: 0 24px; display: flex; align-items: center; gap: 32px; margin-bottom: 20px; }
     .catalog-top-tabs a { font-size: 16px; font-weight: 500; color: var(--text-secondary); position: relative; padding-bottom: 4px; }
     .catalog-top-tabs a.is-active { color: var(--text-primary); font-weight: 700; }
     .catalog-top-tabs a.is-active::after { content: ""; position: absolute; left: 0; bottom: -22px; width: 100%; height: 2px; background: var(--text-primary); border-radius: 2px; }
 
+    .catalog-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .catalog-title { font-size: 24px; font-weight: 700; color: var(--text-primary); }
+    .catalog-count { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+    .sort-select { height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: #fff; color: var(--text-primary); font-size: 14px; outline: none; cursor: pointer; }
+
     .products-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
-    .product-card { background: #fff; border: 1px solid var(--border); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; min-height: 460px; }
+    .product-card { background: #fff; border: 1px solid var(--border); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; min-height: 460px; transition: box-shadow 0.2s; }
     .product-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
     .product-card__image-wrap { position: relative; height: 200px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; background: var(--bg-soft); border-radius: 14px; }
     .product-card__img-placeholder { color: var(--text-muted); font-size: 13px; }
@@ -80,56 +109,100 @@ export default function Home() {
   return (
     <>
       <style dangerouslySetInnerHTML={{__html: css}} />
-      <div className="page-container" style={{paddingTop:'24px',paddingBottom:'48px'}}>
-
-        <div className="catalog-banner">
-          <div>
-            <h1 className="catalog-banner__title">Акції та<br />новинки!</h1>
-            <p className="catalog-banner__text">Спеціальні пропозиції, знижки,<br />новий асортимент</p>
-            <button className="catalog-banner__btn">Дізнатись більше</button>
-          </div>
-          <div className="catalog-banner__products">
-            <div className="banner-img" style={{width:'100px',height:'140px'}}>фото</div>
-            <div className="banner-img" style={{width:'90px',height:'120px'}}>фото</div>
-            <div className="banner-img" style={{width:'90px',height:'120px'}}>фото</div>
-            <div className="catalog-banner__discount">-20%<br />на термепакі!</div>
-          </div>
+      <div className="page-container">
+        <div className="breadcrumb">
+          <a href="/">Головна</a>
+          <span>›</span>
+          <span>Герметики</span>
         </div>
-
-        <div className="catalog-top-tabs">
-          <a href="#" className="is-active">Всі товари</a>
-          <a href="#">Акції</a>
-          <a href="#">Хіти</a>
-          <a href="#">Новинки</a>
-        </div>
-
-        <div className="products-grid">
-          {products.map((p) => (
-            <div key={p.name} className="product-card">
-              <div className="product-card__image-wrap">
-                <span className="product-card__img-placeholder">фото товару</span>
-                <button className="product-card__fav">&#9825;</button>
+        <div className="catalog-layout">
+          <aside>
+            <div className="sidebar-stack">
+              <div className="sidebar-card">
+                <h3 className="sidebar-card__title">Категорії</h3>
+                <div className="category-list">
+                  {categories.map((cat) => (
+                    <div key={cat.name} className={"category-list__item" + (cat.active ? " active" : "")}>
+                      <div className="category-list__label">
+                        <span>{cat.name}</span>
+                      </div>
+                      <span className="category-list__count">({cat.count})</span>
+                    </div>
+                  ))}
+                </div>
+                <a href="#" className="sidebar-show-all">Показати всі</a>
               </div>
-              <div className="product-card__brand">{p.brand}</div>
-              <div className="product-card__title">{p.name}</div>
-              <div className="product-card__volume">{p.volume}</div>
-              <div className="product-card__stock">
-                <span className="stock-dot"></span>
-                {p.stock}
+              <div className="sidebar-card">
+                <div className="filter-list">
+                  {brands.map((b) => (
+                    <label key={b}>
+                      <input type="checkbox" />
+                      <span>{b}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
-              <div className="product-card__min-order">Мін. замовлення: {p.minOrder}</div>
-              <div className="product-card__price-row">
-                <span className="product-card__price-unit">{p.priceUnit} / шт</span>
-                {p.priceOld && <span className="product-card__price-old">{p.priceOld}</span>}
-                <span className="product-card__price-pack">{p.pricePack}</span>
+              <div className="sidebar-card">
+                <div className="filter-list">
+                  {types.map((t) => (
+                    <label key={t}>
+                      <input type="checkbox" />
+                      <span>{t}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
-              <button className="product-card__button">Замовити</button>
             </div>
-          ))}
+          </aside>
+          <div>
+            <div className="catalog-top-tabs">
+              <a href="#" className="is-active">Всі товари</a>
+              <a href="#">Акції</a>
+              <a href="#">Хіти</a>
+              <a href="#">Новинки</a>
+            </div>
+            <div className="catalog-header">
+              <div>
+                <div className="catalog-title">Герметики</div>
+                <div className="catalog-count">24 товари</div>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+                <span style={{fontSize:'14px',color:'var(--text-secondary)'}}>Сортування:</span>
+                <select className="sort-select">
+                  <option>За популярністю</option>
+                  <option>Від дешевших</option>
+                  <option>Від дорожчих</option>
+                  <option>За новизною</option>
+                </select>
+              </div>
+            </div>
+            <div className="products-grid">
+              {products.map((p) => (
+                <div key={p.name} className="product-card">
+                  <div className="product-card__image-wrap">
+                    <span className="product-card__img-placeholder">фото товару</span>
+                    <button className="product-card__fav">&#9825;</button>
+                  </div>
+                  <div className="product-card__brand">{p.brand}</div>
+                  <div className="product-card__title">{p.name}</div>
+                  <div className="product-card__volume">{p.volume}</div>
+                  <div className="product-card__stock">
+                    <span className="stock-dot"></span>
+                    {p.stock}
+                  </div>
+                  <div className="product-card__min-order">Мін. замовлення: {p.minOrder}</div>
+                  <div className="product-card__price-row">
+                    <span className="product-card__price-unit">{p.priceUnit} / шт</span>
+                    {p.priceOld && <span className="product-card__price-old">{p.priceOld}</span>}
+                    <span className="product-card__price-pack">{p.pricePack}</span>
+                  </div>
+                  <button className="product-card__button">Замовити</button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-
       </div>
-
       <footer className="site-footer">
         <div className="page-container">
           <div className="footer-grid">
@@ -177,5 +250,5 @@ export default function Home() {
   );
 }`;
 
-fs.writeFileSync('app/page.tsx', code, 'utf8');
+fs.writeFileSync('app/catalog/page.tsx', code, 'utf8');
 console.log('Done!');

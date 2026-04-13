@@ -1,0 +1,262 @@
+import ProductImage from '../components/ProductImage'
+
+export default function Catalog() {
+  const categories = [
+    {name:"Герметики",count:24,active:true},
+    {name:"Монтажні піни",count:18,active:false},
+    {name:"Рідкі цвяхи",count:12,active:false},
+    {name:"Клеї",count:10,active:false},
+    {name:"Ґрунтовки",count:10,active:false},
+    {name:"Стрічки",count:6,active:false},
+  ];
+  const brands = ["MakHUB","KUDO","Tytan","Sila"];
+  const types = ["Акриловий","Силіконовий","Поліуретановий","Монтажний"];
+  const products = [
+    {id:"1",brand:"FIXHUB",name:"ТЕРМЕНА 65 ПРО",nl1:"ТЕРМЕНА",nl2:"65 ПРО",volume:"650 мл",bc:"#1E2233",ac:"#8B2020",type:"tube" as const,
+     stock:"Є з наявності",minOrder:"12 шт",priceUnit:"279 грн",pricePack:"3 348 грн / уп"},
+    {id:"2",brand:"FIXHUB",name:"Акриловий герметик",nl1:"Акриловий",nl2:"герметик",volume:"260 мл",bc:"#C4D4E8",ac:"#2A5090",type:"tube" as const,
+     stock:"Є з наявності: 12 шт",minOrder:"12 шт",priceUnit:"119 грн",pricePack:"1 428 грн / уп"},
+    {id:"3",brand:"FIXHUB",name:"ЖИДКІ ЦВЯХИ EXPERT",nl1:"ЖИДКІ ЦВЯХИ",nl2:"EXPERT",volume:"370 мл",bc:"#201C10",ac:"#C09020",type:"tube" as const,
+     stock:"Є з наявності: 24 шт",minOrder:"6 шт",priceUnit:"139 грн",pricePack:"834 грн / уп"},
+    {id:"4",brand:"FIXHUB",name:"ТЕРМЕНА 1600 PRO",nl1:"ТЕРМЕНА",nl2:"1600 PRO",volume:"1000 мл",bc:"#181818",ac:"#907020",type:"tube" as const,
+     stock:"Є з наявності: 12 шт",minOrder:"12 шт",priceUnit:"399 грн",priceOld:"450 грн",pricePack:"4 788 грн / уп"},
+    {id:"5",brand:"KUDO",name:"Силкон Санітарний",nl1:"Силкон",nl2:"Санітарний",volume:"290 мл",bc:"#C8E0D0",ac:"#287850",type:"tube" as const,
+     stock:"Є з наявності: 12 шт",minOrder:"12 шт",priceUnit:"109 грн",pricePack:"1 308 грн / уп"},
+    {id:"6",brand:"Tytan",name:"Монтажна піна ЗИМОВА",nl1:"Монтажна піна",nl2:"ЗИМОВА",volume:"750 мл",bc:"#18305E",ac:"#3A80C8",type:"canister" as const,
+     stock:"Є з наявності: 12 шт",minOrder:"12 шт",priceUnit:"319 грн",pricePack:"3 828 грн / уп"},
+    {id:"7",brand:"FIXHUB",name:"Герметик Санітарний PRO",nl1:"Герметик",nl2:"Санітарний PRO",volume:"280 мл",bc:"#D4E2F0",ac:"#2A5080",type:"tube" as const,
+     stock:"Є з наявності: 6 шт",minOrder:"6 шт",priceUnit:"149 грн",pricePack:"894 грн / уп"},
+    {id:"8",brand:"Sila",name:"Герметик фасадний",nl1:"Герметик",nl2:"фасадний",volume:"600 мл",bc:"#6A7080",ac:"#C05820",type:"tube" as const,
+     stock:"Є з наявності: 12 шт",minOrder:"12 шт",priceUnit:"189 грн",pricePack:"2 268 грн / уп"},
+    {id:"9",brand:"KUDO",name:"Герметик термостійкий",nl1:"Герметик",nl2:"термостійкий",volume:"310 мл",bc:"#6E1818",ac:"#1C1C1C",type:"tube" as const,
+     stock:"Є з наявності: 24 шт",minOrder:"12 шт",priceUnit:"229 грн",pricePack:"2 748 грн / уп"},
+  ];
+
+  const css = `
+    :root {
+      --bg-page: #F6F8FB;
+      --bg-card: #FFFFFF;
+      --bg-soft: #EEF2F6;
+      --border: #D9E0E8;
+      --text-primary: #22324A;
+      --text-secondary: #5E6E84;
+      --text-muted: #8895A7;
+      --brand-main: #4F637A;
+      --brand-accent: #B8962E;
+      --btn-primary-bg: #AFC4DA;
+      --btn-primary-bg-hover: #9EB6CF;
+      --btn-primary-text: #22324A;
+      --status-instock: #6BAE57;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, system-ui, sans-serif; background: var(--bg-page); color: var(--text-primary); }
+    a { text-decoration: none; color: inherit; }
+    button { cursor: pointer; font-family: inherit; }
+    .page-container { max-width: 1440px; margin: 0 auto; padding: 0 32px; }
+
+    .breadcrumb { padding: 16px 0; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-muted); }
+    .breadcrumb a { color: var(--text-muted); }
+    .breadcrumb a:hover { color: var(--text-primary); }
+
+    .catalog-layout { display: grid; grid-template-columns: 280px 1fr; gap: 24px; align-items: start; padding-bottom: 48px; }
+    .sidebar-stack { display: flex; flex-direction: column; gap: 16px; }
+    .sidebar-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; }
+    .sidebar-card__title { margin: 0 0 20px; font-size: 18px; font-weight: 700; color: var(--text-primary); }
+    .category-list { display: flex; flex-direction: column; gap: 4px; }
+    .category-list__item { min-height: 42px; padding: 8px 10px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+    .category-list__item:hover { background: var(--bg-page); }
+    .category-list__item.active { background: var(--bg-soft); font-weight: 600; }
+    .category-list__label { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+    .category-list__count { color: #7A8798; font-size: 13px; }
+    .sidebar-show-all { display: inline-block; margin-top: 12px; color: var(--brand-main); font-weight: 500; font-size: 14px; }
+    .filter-list { display: flex; flex-direction: column; gap: 12px; }
+    .filter-list label { display: flex; align-items: center; gap: 10px; color: var(--text-primary); font-size: 15px; cursor: pointer; }
+    .filter-list input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--brand-main); cursor: pointer; }
+
+    .catalog-top-tabs { height: 72px; background: #fff; border: 1px solid var(--border); border-radius: 20px; padding: 0 24px; display: flex; align-items: center; gap: 32px; margin-bottom: 20px; }
+    .catalog-top-tabs a { font-size: 16px; font-weight: 500; color: var(--text-secondary); position: relative; padding-bottom: 4px; }
+    .catalog-top-tabs a.is-active { color: var(--text-primary); font-weight: 700; }
+    .catalog-top-tabs a.is-active::after { content: ""; position: absolute; left: 0; bottom: -22px; width: 100%; height: 2px; background: var(--text-primary); border-radius: 2px; }
+
+    .catalog-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .catalog-title { font-size: 24px; font-weight: 700; color: var(--text-primary); }
+    .catalog-count { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+    .sort-select { height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: #fff; color: var(--text-primary); font-size: 14px; outline: none; cursor: pointer; }
+
+    .products-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+    .product-card { background: #fff; border: 1px solid var(--border); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; min-height: 460px; transition: box-shadow 0.2s; }
+    .product-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .product-card__image-wrap { position: relative; height: 200px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; background: var(--bg-soft); border-radius: 14px; }
+    .product-card__img-placeholder { color: var(--text-muted); font-size: 13px; }
+    .product-card__fav { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; }
+    .product-card__brand { font-size: 13px; color: #7A8798; margin-bottom: 6px; }
+    .product-card__title { font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; line-height: 1.35; }
+    .product-card__volume { font-size: 14px; color: var(--text-secondary); margin-bottom: 10px; }
+    .product-card__stock { font-size: 14px; color: var(--text-secondary); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .stock-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--status-instock); flex-shrink: 0; }
+    .product-card__min-order { font-size: 14px; color: var(--text-secondary); margin-bottom: 4px; }
+    .product-card__price-row { display: flex; flex-direction: column; gap: 4px; margin: 10px 0 14px; }
+    .product-card__price-unit { font-size: 20px; font-weight: 700; color: var(--text-primary); }
+    .product-card__price-pack { font-size: 15px; font-weight: 600; color: var(--text-secondary); }
+    .product-card__price-old { font-size: 13px; color: #97A3B3; text-decoration: line-through; }
+    .product-card__button { margin-top: auto; width: 156px; height: 44px; border: none; border-radius: 22px; background: var(--btn-primary-bg); color: var(--btn-primary-text); font-size: 15px; font-weight: 600; }
+    .product-card__button:hover { background: var(--btn-primary-bg-hover); }
+
+    .site-footer { margin-top: 48px; padding: 40px 0 0; background: #fff; border-top: 1px solid var(--border); }
+    .footer-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 32px; }
+    .footer-logo { height: 48px; mix-blend-mode: multiply; margin-bottom: 12px; }
+    .footer-slogan { font-size: 14px; color: var(--text-secondary); margin-bottom: 10px; }
+    .footer-phone { font-size: 15px; font-weight: 600; color: var(--text-primary); display: block; margin-bottom: 6px; }
+    .footer-address { font-size: 13px; color: var(--text-muted); }
+    .footer-title { margin-bottom: 14px; font-size: 16px; font-weight: 700; color: var(--text-primary); }
+    .footer-links { display: flex; flex-direction: column; gap: 10px; }
+    .footer-links a { color: var(--text-secondary); font-size: 14px; }
+    .footer-bottom { margin-top: 32px; padding: 18px 0; border-top: 1px solid var(--border); font-size: 14px; color: var(--text-muted); }
+  `;
+
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{__html: css}} />
+      <div className="page-container">
+        <div className="breadcrumb">
+          <a href="/">Головна</a>
+          <span>›</span>
+          <span>Герметики</span>
+        </div>
+        <div className="catalog-layout">
+          <aside>
+            <div className="sidebar-stack">
+              <div className="sidebar-card">
+                <h3 className="sidebar-card__title">Категорії</h3>
+                <div className="category-list">
+                  {categories.map((cat) => (
+                    <div key={cat.name} className={"category-list__item" + (cat.active ? " active" : "")}>
+                      <div className="category-list__label">
+                        <span>{cat.name}</span>
+                      </div>
+                      <span className="category-list__count">({cat.count})</span>
+                    </div>
+                  ))}
+                </div>
+                <a href="#" className="sidebar-show-all">Показати всі</a>
+              </div>
+              <div className="sidebar-card">
+                <div className="filter-list">
+                  {brands.map((b) => (
+                    <label key={b}>
+                      <input type="checkbox" />
+                      <span>{b}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="sidebar-card">
+                <div className="filter-list">
+                  {types.map((t) => (
+                    <label key={t}>
+                      <input type="checkbox" />
+                      <span>{t}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </aside>
+          <div>
+            <div className="catalog-top-tabs">
+              <a href="#" className="is-active">Всі товари</a>
+              <a href="#">Акції</a>
+              <a href="#">Хіти</a>
+              <a href="#">Новинки</a>
+            </div>
+            <div className="catalog-header">
+              <div>
+                <div className="catalog-title">Герметики</div>
+                <div className="catalog-count">24 товари</div>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+                <span style={{fontSize:'14px',color:'var(--text-secondary)'}}>Сортування:</span>
+                <select className="sort-select">
+                  <option>За популярністю</option>
+                  <option>Від дешевших</option>
+                  <option>Від дорожчих</option>
+                  <option>За новизною</option>
+                </select>
+              </div>
+            </div>
+            <div className="products-grid">
+              {products.map((p) => (
+                <a key={p.id} href={`/product/${p.id}`} style={{display:'contents'}}>
+                  <div className="product-card">
+                    <div className="product-card__image-wrap">
+                      <ProductImage brand={p.brand} nl1={p.nl1} nl2={p.nl2} volume={p.volume}
+                                    bc={p.bc} ac={p.ac} type={p.type} />
+                      <button className="product-card__fav">&#9825;</button>
+                    </div>
+                    <div className="product-card__brand">{p.brand}</div>
+                    <div className="product-card__title">{p.name}</div>
+                    <div className="product-card__volume">{p.volume}</div>
+                    <div className="product-card__stock">
+                      <span className="stock-dot"></span>
+                      {p.stock}
+                    </div>
+                    <div className="product-card__min-order">Мін. замовлення: {p.minOrder}</div>
+                    <div className="product-card__price-row">
+                      <span className="product-card__price-unit">{p.priceUnit} / шт</span>
+                      {p.priceOld && <span className="product-card__price-old">{p.priceOld}</span>}
+                      <span className="product-card__price-pack">{p.pricePack}</span>
+                    </div>
+                    <button className="product-card__button">Замовити</button>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer className="site-footer">
+        <div className="page-container">
+          <div className="footer-grid">
+            <div>
+              <img src="/fixhub-logo2.png" alt="FIXHUB" className="footer-logo" />
+              <p className="footer-slogan">Будівельна хімія оптом</p>
+              <a href="tel:+380671234567" className="footer-phone">+38 (067) 123-45-67</a>
+              <p className="footer-address">Україна, м. Харків</p>
+            </div>
+            <div>
+              <p className="footer-title">Каталог</p>
+              <div className="footer-links">
+                <a href="#">Герметики</a>
+                <a href="#">Монтажні піни</a>
+                <a href="#">Клеї</a>
+                <a href="#">Рідкі цвяхи</a>
+                <a href="#">Ґрунтовки</a>
+                <a href="#">Стрічки</a>
+              </div>
+            </div>
+            <div>
+              <p className="footer-title">Інформація</p>
+              <div className="footer-links">
+                <a href="#">Опт</a>
+                <a href="#">Доставка</a>
+                <a href="#">Контакти</a>
+                <a href="#">Про компанію</a>
+                <a href="#">Політика конфіденційності</a>
+              </div>
+            </div>
+            <div>
+              <p className="footer-title">Зв'язок</p>
+              <div className="footer-links">
+                <a href="tel:+380671234567">+38 (067) 123-45-67</a>
+                <a href="#">Telegram</a>
+                <a href="#">Viber</a>
+                <a href="#">Instagram</a>
+              </div>
+            </div>
+          </div>
+          <div className="footer-bottom">© FixHub 2026. Усі права захищені.</div>
+        </div>
+      </footer>
+    </>
+  );
+}
