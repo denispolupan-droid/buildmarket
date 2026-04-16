@@ -1,26 +1,69 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Interactive blue */
+  --brand-blue:        #2563EB;
+  --brand-blue-dark:   #1D4ED8;
+  --brand-blue-light:  #EFF6FF;
+
+  /* Dark navy (hero / footer) */
+  --brand-dark:        #0F172A;
+
+  /* Teal accents */
+  --brand-teal:        #3DBFB8;
+  --brand-teal-dark:   #2EA8A2;
+  --brand-teal-light:  #E6F7F6;
+
+  /* Backward-compat aliases used in product page */
+  --brand-navy:        #2563EB;
+  --brand-navy-dark:   #1D4ED8;
+  --brand-main:        #2563EB;
+  --brand-accent:      #3DBFB8;
+  --btn-primary-bg:    #2563EB;
+  --btn-primary-bg-hover: #1D4ED8;
+  --btn-primary-text:  #FFFFFF;
+
+  /* Surfaces */
+  --bg-page:   #F1F5F9;
+  --bg-card:   #FFFFFF;
+  --bg-soft:   #F8FAFC;
+
+  /* Borders */
+  --border:       #E2E8F0;
+  --border-light: #F1F5F9;
+
+  /* Text */
+  --text-primary:   #0F172A;
+  --text-secondary: #475569;
+  --text-muted:     #94A3B8;
+
+  /* Buttons */
+  --btn-navy-bg:      #2563EB;
+  --btn-navy-hover:   #1D4ED8;
+  --btn-navy-text:    #FFFFFF;
+  --btn-teal-bg:      #3DBFB8;
+  --btn-teal-hover:   #2EA8A2;
+  --btn-teal-text:    #FFFFFF;
+  --btn-ghost-border: #E2E8F0;
+  --btn-ghost-hover:  #F8FAFC;
+
+  /* Status */
+  --status-instock:  #16A34A;
+  --status-outstock: #DC2626;
+  --status-order:    #D97706;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Inter, system-ui, sans-serif;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
 }
+
+a { text-decoration: none; color: inherit; }
+button { cursor: pointer; font-family: inherit; }
+input, select { font-family: inherit; }
+
+.page-container { max-width: 1280px; margin: 0 auto; padding: 0 32px; }

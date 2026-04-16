@@ -93,7 +93,7 @@ function TubeLabel({ brand, nl1, nl2, volume, bc = '#4A6080', ac = '#2A4060' }: 
       {/* label */}
       <rect x="63" y="148" width="74" height="86" rx="6" fill="white" opacity="0.97" />
       <text x="100" y="165" textAnchor="middle" fontFamily="Arial,sans-serif" fontSize="8"
-            fontWeight="bold" fill="#555" letterSpacing="1.5">{brand}</text>
+            fontWeight="bold" fill="#555" letterSpacing="1.5">{brand ?? 'BRAND'}</text>
       <rect x="68" y="169" width="64" height="0.7" fill="#E0E0E0" />
       <text x="100" y="184" textAnchor="middle" fontFamily="Arial,sans-serif" fontSize="10"
             fontWeight="bold" fill="#1A2840">{nl1}</text>

@@ -6,13 +6,21 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:template": "tsx scripts/supabase/generate-template.ts",
+    "db:import": "tsx --env-file=.env.local scripts/supabase/import-from-excel.ts",
+    "db:sync-xml": "tsx --env-file=.env.local scripts/supabase/sync-stock.ts --format=1c_xml",
+    "db:sync-csv": "tsx --env-file=.env.local scripts/supabase/sync-stock.ts --format=1c_csv"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.103.0",
+    "dotenv": "^17.4.2",
+    "fast-xml-parser": "^5.5.12",
     "lucide-react": "^1.8.0",
     "next": "16.2.3",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -22,6 +30,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
