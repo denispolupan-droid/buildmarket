@@ -8,6 +8,7 @@ export type ProductImageProps = {
   ac?: string        // accent/top-band color
   type?: 'tube' | 'canister'
   variant?: 'front' | 'angle' | 'label'
+  imageUrl?: string  // real photo URL — takes priority over SVG
 }
 
 /* ─── Tube front view ─────────────────────────────────────────── */
@@ -175,8 +176,20 @@ function CanisterAngle({ brand, nl1, nl2, volume, bc = '#1A3A6A', ac = '#3A80C0'
 export default function ProductImage({
   type = 'tube',
   variant = 'front',
+  imageUrl,
   ...rest
 }: ProductImageProps) {
+  if (imageUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={imageUrl}
+        alt={rest.nl1}
+        style={{ height: '100%', width: '100%', objectFit: 'contain', display: 'block' }}
+        loading="lazy"
+      />
+    );
+  }
   if (type === 'canister') {
     return variant === 'angle'
       ? <CanisterAngle type={type} variant={variant} {...rest} />

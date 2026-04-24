@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { Mail, Phone, MapPin, Send, Camera, Clock4 } from 'lucide-react';
 
 const socials = [
@@ -15,9 +16,10 @@ export default function Footer() {
 
           {/* Brand */}
           <div>
-            <img
-              src="/fixhub-logo2.png" alt="FIXLINE"
-              style={{ height: '34px', display: 'block', marginBottom: '16px', filter: 'brightness(0) invert(1)' }}
+            <Image
+              src="/fixline-logo.png" alt="FIXLINE"
+              width={136} height={34}
+              style={{ width: 'auto', height: '34px', display: 'block', marginBottom: '16px' }}
             />
             <p style={{ fontSize: '14px', color: '#64748B', lineHeight: '1.7', maxWidth: '300px', marginBottom: '20px' }}>
               Професійний B2B постачальник будівельної хімії: герметиків, клеїв, монтажних пін та супутніх матеріалів.

@@ -134,7 +134,7 @@ export default function Home() {
         <div className="page-container">
           <div className="footer-grid">
             <div>
-              <img src="/fixhub-logo2.png" alt="FIXHUB" className="footer-logo" />
+              <img src="/fixline-logo.png" alt="FIXHUB" className="footer-logo" />
               <p className="footer-slogan">Будівельна хімія оптом</p>
               <a href="tel:+380671234567" className="footer-phone">+38 (067) 123-45-67</a>
               <p className="footer-address">Україна, м. Харків</p>

@@ -1,5 +1,3 @@
-@import "tailwindcss";
-
 :root {
   /* Interactive blue */
   --brand-blue:        #2563EB;
@@ -53,6 +51,23 @@
   --status-order:    #D97706;
 }
 
+/* ── Dark theme ── */
+[data-theme="dark"] {
+  --bg-page:        #0F172A;
+  --bg-card:        #1E293B;
+  --bg-soft:        #162032;
+  --border:         #334155;
+  --border-light:   #1E293B;
+  --text-primary:   #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-muted:     #64748B;
+
+  --btn-ghost-border: #334155;
+  --btn-ghost-hover:  #1E293B;
+  --status-instock:   #22C55E;
+  --status-outstock:  #F87171;
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -66,4 +81,62 @@ a { text-decoration: none; color: inherit; }
 button { cursor: pointer; font-family: inherit; }
 input, select { font-family: inherit; }
 
-.page-container { max-width: 1280px; margin: 0 auto; padding: 0 32px; }
+/* Dark mode global overrides for inline-styled sections */
+[data-theme="dark"] main { background: var(--bg-page); }
+[data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
+  background: var(--bg-card); color: var(--text-primary); border-color: var(--border);
+  color-scheme: dark;
+}
+[data-theme="dark"] hr { border-color: var(--border); }
+
+/* Wishlist page background */
+[data-theme="dark"] .wishlist-page-bg { background: var(--bg-page) !important; }
+
+/* Account / order pages white panels */
+[data-theme="dark"] .white-panel { background: var(--bg-card) !important; border-color: var(--border) !important; }
+
+.page-container { max-width: 1440px; margin: 0 auto; padding: 0 40px; }
+
+/* Contacts grid */
+.contacts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .desktop-nav { display: none !important; }
+  .hamburger-btn { display: flex !important; }
+
+  .header-inner {
+    grid-template-columns: 1fr auto !important;
+    padding: 0 16px !important;
+  }
+
+  /* Cart page */
+  .cart-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Account stats */
+  .account-stats {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Admin panel */
+  .admin-order-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Contacts */
+  .contacts-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* General padding */
+  .mobile-pad {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}

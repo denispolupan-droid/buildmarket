@@ -7,6 +7,7 @@ export type Category = {
   slug: string;
   name: string;
   sort_order: number;
+  parent_slug: string | null;
   created_at: string;
 };
 
@@ -47,6 +48,8 @@ export type ProductStock = {
   sku: string;
   price_unit: number;
   price_old: number | null;
+  price_retail: number | null;
+  price_retail_old: number | null;
   stock_qty: number;
   stock_status: 'in_stock' | 'out_of_stock' | 'on_order';
   supplier_sku: string | null;

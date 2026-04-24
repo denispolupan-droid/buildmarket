@@ -1,137 +1,18 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback, Fragment } from 'react';
+import { Search, Upload, AlertCircle, Heart, Eye, Plus, Check, ChevronDown, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import { Search, Upload, AlertCircle, Heart, Eye, Plus } from 'lucide-react';
-// Search kept for the search-bar icon
 import ProductImage from '../components/ProductImage';
 import type { ProductFull, Category } from '../../lib/supabase';
+import { useCart } from '../../lib/cart';
+import { useWishlist } from '../../lib/wishlist';
 import Footer from '../components/Footer';
+import './catalog.css';
 
-const css = `
-  .catalog-page { display: grid; grid-template-columns: 256px 1fr; gap: 28px; padding: 28px 0 48px; align-items: start; }
+type Props = { products: ProductFull[]; categories: Category[]; initialSearch?: string; initialCategory?: string; initialSaleOnly?: boolean };
 
-  /* ── Sidebar ── */
-  .sidebar { background: #fff; border: 1px solid #E2E8F0; border-radius: 14px; padding: 20px 16px; }
-  .sidebar-section { margin-bottom: 24px; }
-  .sidebar-section:last-child { margin-bottom: 0; }
-  .sidebar-divider { border: none; border-top: 1px solid #F1F5F9; margin: 20px 0; }
-  .sidebar-heading { font-size: 15px; font-weight: 700; color: #0F172A; margin-bottom: 12px; }
-  .cat-list { display: flex; flex-direction: column; gap: 2px; }
-  .cat-item {
-    padding: 8px 12px; border-radius: 8px; cursor: pointer; user-select: none;
-    font-size: 14px; font-weight: 500; color: #374151; transition: all 0.12s;
-  }
-  .cat-item:hover { background: #F8FAFC; color: #0F172A; }
-  .cat-item.active { background: #E8EEF5; color: #1E3A5F; font-weight: 600; }
-  .filter-label { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-  .filter-group { margin-bottom: 14px; }
-  .filter-group:last-of-type { margin-bottom: 0; }
-  .filter-select {
-    width: 100%; height: 36px; padding: 0 10px;
-    border: 1px solid #E2E8F0; border-radius: 8px;
-    background: #fff; color: #475569; font-size: 14px; outline: none;
-    appearance: auto; transition: border-color 0.15s, background 0.15s;
-  }
-  .filter-select:focus { border-color: #1E3A5F; }
-  .filter-select.active { border-color: #1E3A5F; background: #E8EEF5; color: #1E3A5F; font-weight: 600; }
-  .filter-check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #475569; cursor: pointer; margin-top: 14px; }
-  .filter-check input { accent-color: #3DBFB8; width: 15px; height: 15px; }
-
-  /* ── Main content ── */
-  .catalog-main { min-width: 0; }
-  .catalog-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
-  .catalog-title { font-size: 24px; font-weight: 800; color: #0F172A; }
-  .catalog-count { font-size: 14px; color: #94A3B8; margin-top: 4px; }
-  .catalog-actions { display: flex; gap: 8px; flex-shrink: 0; }
-  .action-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    height: 36px; padding: 0 14px; border-radius: 8px;
-    border: 1px solid #E2E8F0; background: #fff;
-    color: #475569; font-size: 13px; font-weight: 600;
-    white-space: nowrap; transition: background 0.15s;
-  }
-  .action-btn:hover { background: #F8FAFC; }
-
-  /* ── Search ── */
-  .search-bar { position: relative; margin-bottom: 12px; }
-  .search-bar input {
-    width: 100%; height: 42px; padding: 0 16px 0 42px;
-    border: 1px solid #E2E8F0; border-radius: 10px; background: #fff;
-    font-size: 14px; color: #0F172A; outline: none; transition: border-color 0.15s;
-  }
-  .search-bar input:focus { border-color: #2563EB; }
-  .search-bar input::placeholder { color: #94A3B8; }
-  .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94A3B8; pointer-events: none; }
-
-  /* ── Login notice ── */
-  .login-notice {
-    display: flex; align-items: flex-start; gap: 10px;
-    background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px;
-    padding: 12px 16px; margin-bottom: 16px;
-  }
-  .login-notice__icon { color: #D97706; flex-shrink: 0; margin-top: 1px; }
-  .login-notice__title { font-size: 14px; font-weight: 600; color: #92400E; margin-bottom: 3px; }
-  .login-notice__text { font-size: 13px; color: #B45309; line-height: 1.5; }
-  .login-notice__link { color: #2563EB; font-weight: 600; }
-
-  /* ── Table ── */
-  .product-table-wrap { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; }
-  .product-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  .product-table th {
-    padding: 10px 10px; background: #1E293B; border-bottom: none;
-    font-size: 11px; font-weight: 700; color: #94A3B8; text-transform: uppercase;
-    letter-spacing: 0.5px; text-align: left; white-space: nowrap; overflow: hidden;
-  }
-  .product-table th:first-child { border-radius: 11px 0 0 0; }
-  .product-table th:last-child { border-radius: 0 11px 0 0; }
-  .product-table td { padding: 8px 10px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; height: 100px; }
-  .product-table tr:last-child td { border-bottom: none; }
-  .product-table tr:hover td { background: #EFF4FA; }
-  .tr-link { position: absolute; inset: 0; }
-
-  .cell-photo { width: 84px; height: 84px; background: #F8FAFC; border-radius: 8px; overflow: visible; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #94A3B8; flex-shrink: 0; position: relative; z-index: 0; cursor: zoom-in; }
-  .cell-photo > * { transition: transform 0.28s ease; border-radius: 8px; }
-  .cell-photo:hover { z-index: 20; }
-  .cell-photo:hover > * { transform: scale(2.2); box-shadow: 0 12px 36px rgba(0,0,0,0.25); }
-  .cell-sku { font-size: 12px; font-weight: 700; color: #475569; white-space: nowrap; }
-  .cell-name { font-size: 14px; font-weight: 700; color: #0F172A; margin-bottom: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-  .badge-sale { background: #FEF3C7; color: #D97706; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; white-space: nowrap; }
-  .badge-type { background: #F1F5F9; color: #475569; font-size: 12px; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
-  .cell-text { font-size: 13px; color: #475569; white-space: nowrap; }
-  .stock-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-  .stock-badge.in { background: #DCFCE7; color: #15803D; }
-  .stock-badge.out { background: #FEE2E2; color: #DC2626; }
-  .price-old { font-size: 12px; color: #EF4444; text-decoration: line-through; white-space: nowrap; font-weight: 600; }
-  .price-new { font-size: 15px; font-weight: 700; color: #16A34A; white-space: nowrap; }
-  .price-only { font-size: 15px; font-weight: 700; color: #0F172A; white-space: nowrap; }
-  .min-qty { font-size: 12px; color: #475569; white-space: nowrap; }
-
-  /* Qty + actions */
-  .qty-input {
-    width: 64px; height: 32px; padding: 0 8px;
-    border: 1px solid #E2E8F0; border-radius: 7px; background: #fff;
-    font-size: 13px; font-weight: 600; color: #0F172A; text-align: center; outline: none;
-  }
-  .qty-input:focus { border-color: #2563EB; }
-  .action-icon-btn {
-    width: 32px; height: 32px; border-radius: 7px; border: 1px solid #E2E8F0;
-    background: #fff; display: flex; align-items: center; justify-content: center;
-    color: #64748B; flex-shrink: 0; transition: all 0.15s;
-  }
-  .action-icon-btn:hover { border-color: #CBD5E1; background: #F8FAFC; }
-  .action-icon-btn.primary { background: #2563EB; border-color: #2563EB; color: #fff; }
-  .action-icon-btn.primary:hover { background: #1D4ED8; }
-
-  /* ── Empty ── */
-  .empty-state { padding: 60px 20px; text-align: center; }
-  .empty-state h3 { font-size: 16px; font-weight: 700; color: #0F172A; margin-bottom: 6px; }
-  .empty-state p { font-size: 14px; color: #94A3B8; }
-`;
-
-type Props = { products: ProductFull[]; categories: Category[]; initialSearch?: string; initialCategory?: string };
-
-export default function CatalogClient({ products, categories, initialSearch = '', initialCategory = '' }: Props) {
+export default function CatalogClient({ products, categories, initialSearch = '', initialCategory = '', initialSaleOnly = false }: Props) {
   const [search,        setSearch]        = useState(initialSearch);
   const [selCat,        setSelCat]        = useState(initialCategory);
   const [filterBrand,   setFilterBrand]   = useState('');
@@ -139,7 +20,29 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const [filterVolume,  setFilterVolume]  = useState('');
   const [filterColor,   setFilterColor]   = useState('');
   const [inStockOnly,   setInStockOnly]   = useState(false);
+  const [saleOnly,      setSaleOnly]      = useState(initialSaleOnly);
+  const [expandedCats, setExpandedCats]  = useState<Set<string>>(new Set());
   const [quantities,    setQuantities]    = useState<Record<string, number>>({});
+  const [inputVals,     setInputVals]     = useState<Record<string, string>>({});
+  const [added,         setAdded]         = useState<Record<string, boolean>>({});
+  const { addItem, items: cartItems } = useCart();
+  const { toggle, isLiked } = useWishlist();
+  const inCartSkus = useMemo(() => new Set(cartItems.map(i => i.sku)), [cartItems]);
+
+  const parentCats = useMemo(() => categories.filter(c => !c.parent_slug), [categories]);
+  const childrenOf = useMemo(() => {
+    const map: Record<string, Category[]> = {};
+    categories.filter(c => c.parent_slug).forEach(c => {
+      (map[c.parent_slug!] ??= []).push(c);
+    });
+    return map;
+  }, [categories]);
+
+  const matchingSlugs = useMemo(() => {
+    if (!selCat) return null;
+    const children = (childrenOf[selCat] ?? []).map(c => c.slug);
+    return new Set([selCat, ...children]);
+  }, [selCat, childrenOf]);
 
   const brands  = useMemo(() => ['', ...[...new Set(products.map(p => p.brand))]], [products]);
   const types   = useMemo(() => ['', ...[...new Set(products.map(p => p.product_type).filter(Boolean))]] as string[], [products]);
@@ -150,25 +53,97 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     const q = search.toLowerCase();
     return products.filter(p => {
       if (q && !p.name.toLowerCase().includes(q) && !p.sku.toLowerCase().includes(q) && !p.brand.toLowerCase().includes(q)) return false;
-      if (selCat        && p.category_slug !== selCat)          return false;
+      if (matchingSlugs && !matchingSlugs.has(p.category_slug ?? '')) return false;
       if (filterBrand   && p.brand          !== filterBrand)    return false;
       if (filterType    && p.product_type   !== filterType)     return false;
       if (filterVolume  && p.volume         !== filterVolume)   return false;
       if (filterColor   && p.color          !== filterColor)    return false;
       if (inStockOnly   && (p.stock?.stock_qty ?? 0) < p.min_order) return false;
+      if (saleOnly) {
+        const pu = p.stock?.price_unit ?? 0;
+        const po = p.stock?.price_old  ?? null;
+        if (!(po != null && pu > 0 && pu < po)) return false;
+      }
       return true;
     });
-  }, [products, search, selCat, filterBrand, filterType, filterVolume, filterColor, inStockOnly]);
+  }, [products, search, matchingSlugs, filterBrand, filterType, filterVolume, filterColor, inStockOnly, saleOnly]);
+
+  const exportToExcel = useCallback(async () => {
+    const XLSX = await import('xlsx');
+    const rows = filtered.map(p => ({
+      'Артикул':         p.sku,
+      'Назва':           p.name,
+      'Бренд':           p.brand,
+      'Обʼєм':           p.volume ?? '',
+      'Мін. замовлення': p.min_order,
+      'Ціна, грн':       p.stock?.price_unit ?? '',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [16, 50, 14, 10, 16, 12].map(w => ({ wch: w }));
+
+    // Bold header
+    const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1');
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
+      if (cell) cell.s = { font: { bold: true } };
+    }
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Каталог');
+    XLSX.writeFile(wb, `fixline-catalog-${new Date().toISOString().slice(0,10)}.xlsx`);
+  }, [filtered]);
+
+  useEffect(() => {
+    if (!selCat) return;
+    const cat = categories.find(c => c.slug === selCat);
+    if (cat?.parent_slug) {
+      setExpandedCats(prev => new Set([...prev, cat.parent_slug!]));
+    } else if ((childrenOf[selCat] ?? []).length > 0) {
+      setExpandedCats(prev => new Set([...prev, selCat]));
+    }
+  }, [selCat, categories, childrenOf]);
+
+  const loggedRef = useRef('');
+  useEffect(() => {
+    if (search.trim().length < 2) return;
+    const timer = setTimeout(() => {
+      if (search === loggedRef.current) return;
+      loggedRef.current = search;
+      fetch('/api/search-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: search, resultsCount: filtered.length }),
+      });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [search, filtered.length]);
 
   function getQty(sku: string, min: number) { return quantities[sku] ?? min; }
+  function getInputVal(sku: string, min: number) { return inputVals[sku] ?? String(quantities[sku] ?? min); }
   function setQty(sku: string, min: number, val: number) {
     setQuantities(prev => ({ ...prev, [sku]: Math.max(min, val) }));
+  }
+  function commitInputVal(sku: string, min: number) {
+    const v = parseInt(inputVals[sku] ?? '', 10);
+    const valid = !isNaN(v) && v >= min ? v : min;
+    setQuantities(prev => ({ ...prev, [sku]: valid }));
+    setInputVals(prev => ({ ...prev, [sku]: String(valid) }));
+  }
+  function handleAddToCart(p: ProductFull, qty: number) {
+    addItem({
+      sku: p.sku, name: p.name, brand: p.brand, volume: p.volume,
+      price: p.stock?.price_unit ?? 0, min_order: p.min_order,
+      nl1: p.nl1 ?? '', nl2: p.nl2 ?? undefined,
+      bc: p.bc, ac: p.ac, img_type: p.img_type,
+    }, qty);
+    setAdded(prev => ({ ...prev, [p.sku]: true }));
+    setTimeout(() => setAdded(prev => ({ ...prev, [p.sku]: false })), 1500);
   }
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: css }} />
-      <div style={{ background: '#fff', minHeight: '100vh' }}>
+      <div style={{ background: 'var(--bg-page)', minHeight: '100vh' }}>
       <div className="page-container">
         <div className="catalog-page">
 
@@ -185,15 +160,44 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 >
                   Всі категорії
                 </div>
-                {categories.map(cat => (
-                  <div
-                    key={cat.slug}
-                    className={'cat-item' + (selCat === cat.slug ? ' active' : '')}
-                    onClick={() => setSelCat(selCat === cat.slug ? '' : cat.slug)}
-                  >
-                    {cat.name}
-                  </div>
-                ))}
+                {parentCats.map(cat => {
+                  const children = childrenOf[cat.slug] ?? [];
+                  const isExpanded = expandedCats.has(cat.slug);
+                  const isActive = selCat === cat.slug || children.some(c => c.slug === selCat);
+                  return (
+                    <Fragment key={cat.slug}>
+                      <div
+                        className={'cat-item' + (isActive ? ' active' : '')}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                        onClick={() => {
+                          setSelCat(selCat === cat.slug ? '' : cat.slug);
+                          if (children.length > 0) setExpandedCats(prev => {
+                            const next = new Set(prev);
+                            next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug);
+                            return next;
+                          });
+                        }}
+                      >
+                        <span>{cat.name}</span>
+                        {children.length > 0 && (
+                          isExpanded
+                            ? <ChevronDown size={13} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.5 }} />
+                            : <ChevronRight size={13} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.5 }} />
+                        )}
+                      </div>
+                      {isExpanded && children.map(child => (
+                        <div
+                          key={child.slug}
+                          className={'cat-item' + (selCat === child.slug ? ' active' : '')}
+                          style={{ paddingLeft: '20px', fontSize: '13px' }}
+                          onClick={() => setSelCat(selCat === child.slug ? '' : child.slug)}
+                        >
+                          {child.name}
+                        </div>
+                      ))}
+                    </Fragment>
+                  );
+                })}
               </div>
             </div>
 
@@ -255,6 +259,10 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 <input type="checkbox" checked={inStockOnly} onChange={e => setInStockOnly(e.target.checked)} />
                 Тільки в наявності
               </label>
+              <label className="filter-check">
+                <input type="checkbox" checked={saleOnly} onChange={e => setSaleOnly(e.target.checked)} />
+                Тільки акційні
+              </label>
             </div>
 
           </aside>
@@ -265,13 +273,13 @@ export default function CatalogClient({ products, categories, initialSearch = ''
             {/* Title row */}
             <div className="catalog-title-row">
               <div>
-                <h1 className="catalog-title">Каталог продукції</h1>
+                <h1 className="catalog-title">Оптовий каталог</h1>
                 <p className="catalog-count">{filtered.length} товарів</p>
               </div>
               <div className="catalog-actions">
-                <button className="action-btn">
+                <button className="action-btn excel" onClick={exportToExcel}>
                   <Upload size={14} strokeWidth={2} />
-                  Імпорт Excel
+                  Завантажити Excel
                 </button>
               </div>
             </div>
@@ -312,25 +320,19 @@ export default function CatalogClient({ products, categories, initialSearch = ''
               <div className="product-table-wrap">
                 <table className="product-table">
                   <colgroup>
-                    <col style={{ width: '96px' }} />
-                    <col style={{ width: '88px' }} />
-                    <col />
-                    <col style={{ width: '80px' }} />
-                    <col style={{ width: '130px' }} />
-                    <col style={{ width: '68px' }} />
-                    <col style={{ width: '90px' }} />
                     <col style={{ width: '100px' }} />
-                    <col style={{ width: '105px' }} />
-                    <col style={{ width: '76px' }} />
-                    <col style={{ width: '84px' }} />
+                    <col />
+                    <col style={{ width: '72px' }} />
+                    <col style={{ width: '120px' }} />
+                    <col style={{ width: '110px' }} />
+                    <col style={{ width: '115px' }} />
+                    <col style={{ width: '80px' }} />
+                    <col style={{ width: '136px' }} />
                   </colgroup>
                   <thead>
                     <tr>
                       <th>Фото</th>
-                      <th>Артикул</th>
                       <th>Назва продукту</th>
-                      <th>Бренд</th>
-                      <th>Тип</th>
                       <th>Об&apos;єм</th>
                       <th>Наявність</th>
                       <th>Ціна</th>
@@ -360,27 +362,28 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                               <ProductImage
                                 brand={p.brand} nl1={p.nl1 ?? ''} nl2={p.nl2 ?? undefined}
                                 volume={p.volume ?? ''} bc={p.bc} ac={p.ac} type={p.img_type}
+                                imageUrl={p.image ?? undefined}
                               />
                             </div>
                           </td>
-                          <td><span className="cell-sku">{p.sku}</span></td>
                           <td>
+                            <div className="cell-meta">{p.brand} · {p.sku}</div>
                             <div className="cell-name">
                               {p.name}
                               {isSale && <span className="badge-sale">АКЦІЯ</span>}
                             </div>
-                          </td>
-                          <td><span className="cell-text">{p.brand}</span></td>
-                          <td>
-                            {p.product_type
-                              ? <span className="badge-type">{p.product_type}</span>
-                              : <span className="cell-text">—</span>}
+                            {(p.product_type || p.color) && (
+                              <div className="cell-chars">
+                                {p.product_type && <span className="cell-char">{p.product_type}</span>}
+                                {p.color        && <span className="cell-char">{p.color}</span>}
+                              </div>
+                            )}
                           </td>
                           <td><span className="cell-text">{p.volume ?? '—'}</span></td>
                           <td>
                             <span className={'stock-badge ' + (inStock ? 'in' : 'out')}>
                               <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
-                              {inStock ? `${stockQty} рс` : 'Немає'}
+                              {inStock ? 'в наявності' : 'Немає'}
                             </span>
                           </td>
                           <td>
@@ -398,26 +401,49 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                             <input
                               className="qty-input"
                               type="number"
-                              value={qty}
+                              value={getInputVal(p.sku, p.min_order)}
                               min={p.min_order}
                               placeholder="Мін."
-                              onChange={e => {
-                                const v = parseInt(e.target.value, 10);
-                                if (!isNaN(v)) setQty(p.sku, p.min_order, v);
-                              }}
+                              onChange={e => setInputVals(prev => ({ ...prev, [p.sku]: e.target.value }))}
+                              onBlur={() => commitInputVal(p.sku, p.min_order)}
                             />
                           </td>
-                          <td style={{ position: 'relative', zIndex: 1 }}>
+                          <td style={{ position: 'relative', zIndex: 1, paddingLeft: '10px', paddingRight: '14px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
                             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                              <button className="action-icon-btn primary" title="В кошик">
-                                <Plus size={14} strokeWidth={2.5} />
+                              <button
+                                className={'action-icon-btn primary' + (added[p.sku] ? ' added' : '')}
+                                title={inStock ? 'В кошик' : 'Немає в наявності'}
+                                disabled={!inStock}
+                                onClick={e => { e.preventDefault(); e.stopPropagation(); handleAddToCart(p, qty); }}
+                                style={!inStock ? { opacity: 0.4, cursor: 'default' } : undefined}
+                              >
+                                {added[p.sku] ? <Check size={14} strokeWidth={2.5} /> : <Plus size={14} strokeWidth={2.5} />}
                               </button>
-                              <button className="action-icon-btn" title="Обране">
-                                <Heart size={13} strokeWidth={2} />
+                              <button
+                                className="action-icon-btn"
+                                title="Обране"
+                                onClick={() => toggle(p.sku)}
+                                style={{
+                                  color: isLiked(p.sku) ? '#EF4444' : undefined,
+                                  background: isLiked(p.sku) ? '#FEF2F2' : undefined,
+                                  borderColor: isLiked(p.sku) ? '#FECACA' : undefined,
+                                }}
+                              >
+                                <Heart size={13} strokeWidth={2} fill={isLiked(p.sku) ? '#EF4444' : 'none'} />
                               </button>
                               <Link href={`/product/${p.sku}`} className="action-icon-btn" title="Переглянути" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <Eye size={13} strokeWidth={2} />
                               </Link>
+                            </div>
+                            {inCartSkus.has(p.sku) && (() => {
+                              const cartQty = cartItems.find(i => i.sku === p.sku)?.qty ?? 0;
+                              return (
+                                <span style={{ fontSize: '11px', fontWeight: 600, color: '#16A34A', whiteSpace: 'nowrap' }}>
+                                  додано {cartQty} шт
+                                </span>
+                              );
+                            })()}
                             </div>
                           </td>
                         </tr>

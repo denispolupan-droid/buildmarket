@@ -1,0 +1,102 @@
+import Footer from '../components/Footer';
+import { MapPin, Phone, Mail, Clock } from 'lucide-react';
+
+export default function ContactsPage() {
+  return (
+    <>
+      <div style={{ background: '#F8FAFC', minHeight: '100vh' }}>
+        <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 32px 64px' }}>
+
+          <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>Контакти</h1>
+          <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '40px' }}>
+            Працюємо з B2B клієнтами по всій Україні
+          </p>
+
+          <div className="contacts-grid">
+
+            {/* Info cards */}
+            {[
+              {
+                icon: Phone,
+                title: 'Телефон',
+                lines: [
+                  <a key="p1" href="tel:+380671234567" style={{ color: '#1E3A5F', fontWeight: 600, fontSize: '15px' }}>+38 (067) 123-45-67</a>,
+                  <span key="p2" style={{ fontSize: '13px', color: '#64748B' }}>Менеджер з продажу</span>,
+                ],
+              },
+              {
+                icon: Mail,
+                title: 'Email',
+                lines: [
+                  <a key="e1" href="mailto:info@fixline.com.ua" style={{ color: '#1E3A5F', fontWeight: 600, fontSize: '15px' }}>info@fixline.com.ua</a>,
+                  <span key="e2" style={{ fontSize: '13px', color: '#64748B' }}>Відповідаємо протягом дня</span>,
+                ],
+              },
+              {
+                icon: MapPin,
+                title: 'Адреса складу',
+                lines: [
+                  <span key="a1" style={{ fontWeight: 600, fontSize: '15px', color: '#0F172A' }}>м. Харків</span>,
+                  <span key="a2" style={{ fontSize: '13px', color: '#64748B' }}>вул. Промислова, 12</span>,
+                ],
+              },
+              {
+                icon: Clock,
+                title: 'Графік роботи',
+                lines: [
+                  <span key="h1" style={{ fontWeight: 600, fontSize: '15px', color: '#0F172A' }}>Пн–Пт: 9:00 – 18:00</span>,
+                  <span key="h2" style={{ fontSize: '13px', color: '#64748B' }}>Сб–Нд: вихідний</span>,
+                ],
+              },
+            ].map(({ icon: Icon, title, lines }) => (
+              <div key={title} style={{
+                background: '#fff', border: '1px solid #E2E8F0', borderRadius: '14px',
+                padding: '24px', display: 'flex', gap: '16px', alignItems: 'flex-start',
+              }}>
+                <div style={{
+                  width: '44px', height: '44px', borderRadius: '12px',
+                  background: '#E8EEF5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  <Icon size={20} color="#1E3A5F" strokeWidth={1.8} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>
+                    {title}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {lines}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <div style={{
+            marginTop: '32px', background: '#1E3A5F', borderRadius: '16px',
+            padding: '32px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            flexWrap: 'wrap', gap: '16px',
+          }}>
+            <div>
+              <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
+                Готові до співпраці?
+              </div>
+              <div style={{ fontSize: '14px', color: '#94A3B8' }}>
+                Зареєструйтесь і отримайте доступ до оптових цін
+              </div>
+            </div>
+            <a href="/register" style={{
+              display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px',
+              borderRadius: '10px', background: '#fff', color: '#1E3A5F',
+              fontSize: '14px', fontWeight: 700,
+            }}>
+              Зареєструватися →
+            </a>
+          </div>
+
+        </div>
+      </div>
+      <Footer />
+    </>
+  );
+}
