@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Search, Plus, Heart, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
 import ProductImage from '../components/ProductImage';
@@ -27,6 +28,13 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const [inStockOnly,  setInStockOnly]  = useState(false);
   const [catsOpen,     setCatsOpen]     = useState(false);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
+  const router = useRouter();
+
+  const selectCat = (slug: string | null) => {
+    setSelCat(slug);
+    router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const { addItem } = useCart();
   const { skus: wishSkus, toggle: toggleWish } = useWishlist();
 
@@ -93,7 +101,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         }} className="shop-cats-list">
           <button
             className={'shop-cat-item' + (!selCat ? ' active' : '')}
-            onClick={() => { setSelCat(null); setExpandedCats(new Set()); }}
+            onClick={() => { selectCat(null); setExpandedCats(new Set()); }}
           >
             Всі категорії
           </button>
@@ -107,7 +115,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                   className={'shop-cat-item' + (isActive ? ' active' : '')}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
                   onClick={() => {
-                    setSelCat(selCat === cat.slug ? null : cat.slug);
+                    selectCat(selCat === cat.slug ? null : cat.slug);
                     if (children.length > 0) {
                       setExpandedCats(prev => {
                         const next = new Set(prev);
@@ -135,7 +143,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                         className={'shop-cat-item' + (childActive ? ' active' : '')}
                         style={{ paddingLeft: '22px', fontSize: '13px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                         onClick={() => {
-                          setSelCat(selCat === child.slug ? null : child.slug);
+                          selectCat(selCat === child.slug ? null : child.slug);
                           if (grandchildren.length > 0) setExpandedCats(prev => { const n = new Set(prev); n.has(child.slug) ? n.delete(child.slug) : n.add(child.slug); return n; });
                           window.scrollTo({ top: 0, behavior: 'smooth' });
                         }}
@@ -151,7 +159,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                           key={gc.slug}
                           className={'shop-cat-item' + (selCat === gc.slug ? ' active' : '')}
                           style={{ paddingLeft: '36px', fontSize: '12px', width: '100%', textAlign: 'left' }}
-                          onClick={() => { setSelCat(selCat === gc.slug ? null : gc.slug); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                          onClick={() => selectCat(selCat === gc.slug ? null : gc.slug)}
                         >
                           {gc.name}
                         </button>

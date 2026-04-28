@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback, Fragment } from 'react';
+import { useRouter } from 'next/navigation';
 import { Search, Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 import ProductImage from '../components/ProductImage';
@@ -15,6 +16,12 @@ type Props = { products: ProductFull[]; categories: Category[]; initialSearch?: 
 export default function CatalogClient({ products, categories, initialSearch = '', initialCategory = '', initialSaleOnly = false }: Props) {
   const [search,        setSearch]        = useState(initialSearch);
   const [selCat,        setSelCat]        = useState(initialCategory);
+  const router = useRouter();
+  const selectCat = (slug: string) => {
+    setSelCat(slug);
+    router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const [filterBrand,   setFilterBrand]   = useState('');
   const [filterType,    setFilterType]    = useState('');
   const [filterVolume,  setFilterVolume]  = useState('');
@@ -169,7 +176,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
               >
                 <div
                   className={'cat-item' + (!selCat ? ' active' : '')}
-                  onClick={() => setSelCat('')}
+                  onClick={() => selectCat('')}
                 >
                   Всі категорії
                 </div>
@@ -183,8 +190,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                         className={'cat-item' + (isActive ? ' active' : '')}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                         onClick={() => {
-                          setSelCat(selCat === cat.slug ? '' : cat.slug);
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                          selectCat(selCat === cat.slug ? '' : cat.slug);
                           if (children.length > 0) setExpandedCats(prev => {
                             const next = new Set(prev);
                             next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug);
@@ -204,7 +210,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                           key={child.slug}
                           className={'cat-item' + (selCat === child.slug ? ' active' : '')}
                           style={{ paddingLeft: '20px', fontSize: '13px' }}
-                          onClick={() => { setSelCat(selCat === child.slug ? '' : child.slug); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                          onClick={() => selectCat(selCat === child.slug ? '' : child.slug)}
                         >
                           {child.name}
                         </div>
