@@ -27,8 +27,8 @@ export default function BackButton({ breadcrumbId }: { breadcrumbId: string }) {
       onClick={() => router.back()}
       style={{
         position: 'fixed',
-        top: '72px',
-        left: '8px',
+        top: '64px',
+        left: '4px',
         zIndex: 100,
         display: 'flex',
         alignItems: 'center',
