@@ -23,7 +23,10 @@ type Props = {
 export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, name, brand, volume, nl1, nl2, bc, ac, imgType }: Props) {
   const [qty, setQty]           = useState(minOrder);
   const [added, setAdded]       = useState(false);
-  const [notified, setNotified] = useState(false);
+  const [notified,   setNotified]   = useState(false);
+  const [notifyEmail, setNotifyEmail] = useState('');
+  const [showInput,   setShowInput]   = useState(false);
+  const [sending,     setSending]     = useState(false);
   const { addItem } = useCart();
   const { isLiked, toggle: toggleWish } = useWishlist();
   const liked = isLiked(sku);
@@ -41,9 +44,19 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
     setTimeout(() => setAdded(false), 1500);
   }
 
-  function handleNotify() {
-    setNotified(true);
-    // TODO: save notification request to DB
+  async function handleNotify() {
+    if (!notifyEmail.trim() || !notifyEmail.includes('@')) return;
+    setSending(true);
+    try {
+      await fetch('/api/notify-stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sku, email: notifyEmail.trim(), name }),
+      });
+      setNotified(true);
+    } finally {
+      setSending(false);
+    }
   }
 
   const subtotal = (priceUnit * qty).toLocaleString('uk-UA');
@@ -125,9 +138,49 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
               <Check size={16} strokeWidth={2.5} />
               Ми повідомимо вас про появу товару
             </div>
+          ) : showInput ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <input
+                type="email"
+                placeholder="Ваш email"
+                value={notifyEmail}
+                onChange={e => setNotifyEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleNotify()}
+                autoFocus
+                style={{
+                  height: '44px', padding: '0 14px', borderRadius: '10px',
+                  border: '1px solid #E2E8F0', fontSize: '14px', outline: 'none',
+                  width: '100%',
+                }}
+              />
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={handleNotify}
+                  disabled={sending || !notifyEmail.includes('@')}
+                  style={{
+                    flex: 1, height: '40px', borderRadius: '10px',
+                    background: '#1E3A5F', color: '#fff', border: 'none',
+                    fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+                    opacity: sending ? 0.7 : 1,
+                  }}
+                >
+                  {sending ? 'Відправляємо...' : 'Підписатись'}
+                </button>
+                <button
+                  onClick={() => setShowInput(false)}
+                  style={{
+                    height: '40px', padding: '0 14px', borderRadius: '10px',
+                    background: 'none', border: '1px solid #E2E8F0',
+                    fontSize: '14px', color: '#64748B', cursor: 'pointer',
+                  }}
+                >
+                  Скасувати
+                </button>
+              </div>
+            </div>
           ) : (
             <button
-              onClick={handleNotify}
+              onClick={() => setShowInput(true)}
               style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
                 height: '44px', padding: '0 24px', borderRadius: '10px',
