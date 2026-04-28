@@ -1,11 +1,9 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 
 export default function BackButton({ breadcrumbId }: { breadcrumbId: string }) {
-  const router = useRouter();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -24,7 +22,7 @@ export default function BackButton({ breadcrumbId }: { breadcrumbId: string }) {
 
   return (
     <button
-      onClick={() => router.back()}
+      onClick={() => window.history.back()}
       style={{
         position: 'fixed',
         top: '64px',
