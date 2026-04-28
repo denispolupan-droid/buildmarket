@@ -302,7 +302,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                   <div className="shop-card__body">
                     <div className="shop-card__brand">{p.brand}</div>
                     <div className="shop-card__name">
-                      {p.name}{p.volume ? ` ${p.volume}` : ''}
+                      {p.name}{p.volume && !p.name.includes(p.volume) ? ` ${p.volume}` : ''}
                     </div>
                     <div className="shop-card__badges">
                       {p.product_type && <span className="shop-card__tag">{p.product_type}</span>}
