@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MapPin, CreditCard, Phone, Building2, Package } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash } from 'lucide-react';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number };
 
@@ -20,6 +20,7 @@ type Order = {
   delivery_address: string | null;
   payment_type: string;
   comment: string | null;
+  tracking_number: string | null;
   items: OrderItem[];
 };
 
@@ -47,6 +48,10 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
   const [orders, setOrders]     = useState<Order[]>(initialOrders);
   const [filter, setFilter]     = useState('');
   const [loading, setLoading]   = useState<string | null>(null);
+  const [ttnValues, setTtnValues] = useState<Record<string, string>>(
+    Object.fromEntries(initialOrders.map(o => [o.id, o.tracking_number ?? '']))
+  );
+  const [ttnSaving, setTtnSaving] = useState<string | null>(null);
 
   async function changeStatus(id: string, status: string) {
     setLoading(id + status);
@@ -59,6 +64,19 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
       setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
     }
     setLoading(null);
+  }
+
+  async function saveTTN(id: string) {
+    setTtnSaving(id);
+    const res = await fetch(`/api/admin/orders/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tracking_number: ttnValues[id] || null }),
+    });
+    if (res.ok) {
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, tracking_number: ttnValues[id] || null } : o));
+    }
+    setTtnSaving(null);
   }
 
   const filtered = filter ? orders.filter(o => o.status === filter) : orders;
@@ -178,6 +196,41 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
                       {order.comment && (
                         <div style={{ fontSize: '12px', color: '#64748B', fontStyle: 'italic', marginTop: '4px' }}>
                           «{order.comment}»
+                        </div>
+                      )}
+                      {order.delivery_type === 'nova' && (
+                        <div style={{ marginTop: '10px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            ТТН Нової Пошти
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <div style={{ position: 'relative', flex: 1 }}>
+                              <Hash size={12} color="#94A3B8" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }} />
+                              <input
+                                type="text"
+                                value={ttnValues[order.id] ?? ''}
+                                onChange={e => setTtnValues(prev => ({ ...prev, [order.id]: e.target.value }))}
+                                placeholder="59000000000000"
+                                style={{
+                                  width: '100%', height: '32px', paddingLeft: '26px', paddingRight: '8px',
+                                  border: '1px solid #E2E8F0', borderRadius: '7px',
+                                  fontSize: '12px', outline: 'none', boxSizing: 'border-box',
+                                }}
+                              />
+                            </div>
+                            <button
+                              onClick={() => saveTTN(order.id)}
+                              disabled={ttnSaving === order.id}
+                              style={{
+                                height: '32px', padding: '0 12px', borderRadius: '7px',
+                                background: '#1E3A5F', color: '#fff', border: 'none',
+                                fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                                opacity: ttnSaving === order.id ? 0.5 : 1,
+                              }}
+                            >
+                              {ttnSaving === order.id ? '...' : 'Зберегти'}
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>

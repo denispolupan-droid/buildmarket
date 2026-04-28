@@ -22,6 +22,7 @@ export default function CategorySection({ categories, products, role }: Props) {
         categories={categories}
         selectedSlug={selectedSlug}
         onSelect={setSelectedSlug}
+        role={role}
       />
       <CategoryPreview
         categories={categories}

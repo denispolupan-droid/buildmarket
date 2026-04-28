@@ -16,16 +16,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const { id } = await params;
-  const { status } = await req.json();
+  const body = await req.json();
+  const { status, tracking_number } = body;
 
-  const VALID = ['new', 'confirmed', 'shipped', 'delivered', 'cancelled'];
-  if (!VALID.includes(status)) {
-    return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+  const update: Record<string, string> = {};
+
+  if (status !== undefined) {
+    const VALID = ['new', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+    if (!VALID.includes(status)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+    }
+    update.status = status;
+  }
+
+  if (tracking_number !== undefined) {
+    update.tracking_number = tracking_number;
   }
 
   const { error } = await serviceClient
     .from('orders')
-    .update({ status })
+    .update(update)
     .eq('id', id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

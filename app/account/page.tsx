@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseServer } from '../../lib/supabase-server';
 import Footer from '../components/Footer';
-import { Package, ShoppingBag, User, MapPin, CreditCard } from 'lucide-react';
+import { Package, ShoppingBag, User, MapPin, CreditCard, XCircle, Truck } from 'lucide-react';
 import RepeatOrderButton from './RepeatOrderButton';
 
 const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
@@ -44,14 +44,21 @@ type Order = {
   payment_type: string;
   contact: string;
   phone: string;
+  tracking_number: string | null;
   items: OrderItem[];
 };
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string }>;
+}) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) redirect('/login?next=/account');
+
+  const { filter } = await searchParams;
 
   const { data: orders } = await supabase
     .from('orders')
@@ -59,6 +66,20 @@ export default async function AccountPage() {
     .order('created_at', { ascending: false });
 
   const companyName = user.user_metadata?.company_name as string | undefined;
+
+  const totalCount     = orders?.length ?? 0;
+  const activeCount    = orders?.filter(o => ['new','confirmed','shipped'].includes(o.status)).length ?? 0;
+  const shippedCount   = orders?.filter(o => o.status === 'shipped').length ?? 0;
+  const doneCount      = orders?.filter(o => o.status === 'delivered').length ?? 0;
+  const cancelledCount = orders?.filter(o => o.status === 'cancelled').length ?? 0;
+
+  const filteredOrders = orders?.filter(o => {
+    if (filter === 'active')    return ['new','confirmed','shipped'].includes(o.status);
+    if (filter === 'shipped')   return o.status === 'shipped';
+    if (filter === 'delivered') return o.status === 'delivered';
+    if (filter === 'cancelled') return o.status === 'cancelled';
+    return true;
+  }) ?? [];
 
   return (
     <>
@@ -86,28 +107,37 @@ export default async function AccountPage() {
           </div>
 
           {/* Stats */}
-          <div className="account-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' }}>
+          <div className="account-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '32px' }}>
             {[
-              { label: 'Всього замовлень', value: orders?.length ?? 0, icon: Package },
-              { label: 'Активних', value: orders?.filter(o => ['new','confirmed','shipped'].includes(o.status)).length ?? 0, icon: ShoppingBag },
-              { label: 'Виконаних', value: orders?.filter(o => o.status === 'delivered').length ?? 0, icon: User },
-            ].map(({ label, value, icon: Icon }) => (
-              <div key={label} style={{
-                background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px',
-                padding: '20px 24px', display: 'flex', alignItems: 'center', gap: '14px',
-              }}>
-                <div style={{
-                  width: '40px', height: '40px', borderRadius: '10px',
-                  background: '#E8EEF5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              { label: 'Всього',      value: totalCount,     icon: Package,     href: '/account',                  filterKey: undefined   },
+              { label: 'Активних',    value: activeCount,    icon: ShoppingBag, href: '/account?filter=active',    filterKey: 'active'    },
+              { label: 'Відправлено', value: shippedCount,   icon: Truck,       href: '/account?filter=shipped',   filterKey: 'shipped'   },
+              { label: 'Виконаних',   value: doneCount,      icon: User,        href: '/account?filter=delivered', filterKey: 'delivered' },
+              { label: 'Скасовано',   value: cancelledCount, icon: XCircle,     href: '/account?filter=cancelled', filterKey: 'cancelled' },
+            ].map(({ label, value, icon: Icon, href, filterKey }) => {
+              const isActive = filter === filterKey || (!filter && !filterKey);
+              return (
+                <Link key={label} href={href} style={{
+                  background: isActive ? '#1E3A5F' : 'var(--bg-card)',
+                  border: `1px solid ${isActive ? '#1E3A5F' : 'var(--border)'}`,
+                  borderRadius: '14px', padding: '20px 24px',
+                  display: 'flex', alignItems: 'center', gap: '14px',
+                  textDecoration: 'none', transition: 'all 0.15s',
                 }}>
-                  <Icon size={18} color="#1E3A5F" strokeWidth={2} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
-                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>{label}</div>
-                </div>
-              </div>
-            ))}
+                  <div style={{
+                    width: '40px', height: '40px', borderRadius: '10px',
+                    background: isActive ? 'rgba(255,255,255,0.15)' : '#E8EEF5',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>
+                    <Icon size={18} color={isActive ? '#fff' : '#1E3A5F'} strokeWidth={2} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '24px', fontWeight: 800, color: isActive ? '#fff' : 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+                    <div style={{ fontSize: '12px', color: isActive ? 'rgba(255,255,255,0.7)' : '#64748B', marginTop: '2px' }}>{label}</div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
 
           {/* Orders */}
@@ -115,7 +145,7 @@ export default async function AccountPage() {
             Мої замовлення
           </h2>
 
-          {!orders || orders.length === 0 ? (
+          {filteredOrders.length === 0 ? (
             <div style={{
               background: '#fff', border: '1px solid #E2E8F0', borderRadius: '14px',
               padding: '48px', textAlign: 'center',
@@ -132,7 +162,7 @@ export default async function AccountPage() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {orders.map((order: Order) => {
+              {filteredOrders.map((order: Order) => {
                 const status = STATUS_LABEL[order.status] ?? STATUS_LABEL.new;
                 const short = order.order_number;
                 const date = new Date(order.created_at).toLocaleDateString('uk-UA', {
@@ -192,7 +222,7 @@ export default async function AccountPage() {
                       padding: '12px 20px', fontSize: '12px', color: '#64748B',
                       flexWrap: 'wrap', gap: '10px',
                     }}>
-                      <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                           <MapPin size={12} />
                           {deliveryLabel}{subtypeLabel}
@@ -202,8 +232,17 @@ export default async function AccountPage() {
                           <CreditCard size={12} />
                           {PAYMENT_LABEL[order.payment_type] ?? order.payment_type}
                         </span>
+                        {order.tracking_number && (
+                          <a
+                            href={`https://novaposhta.ua/tracking/?cargo_number=${order.tracking_number}`}
+                            target="_blank" rel="noopener noreferrer"
+                            style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#4880B8', fontWeight: 600, textDecoration: 'none' }}
+                          >
+                            🚚 ТТН: {order.tracking_number}
+                          </a>
+                        )}
                       </div>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
                         <RepeatOrderButton items={order.items as OrderItem[]} />
                         <a href={`/invoice/${order.id}`} target="_blank" style={{
                           display: 'inline-flex', alignItems: 'center', gap: '6px',

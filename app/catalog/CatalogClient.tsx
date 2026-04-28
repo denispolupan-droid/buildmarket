@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback, Fragment } from 'react';
-import { Search, Upload, AlertCircle, Heart, Eye, Plus, Check, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 import ProductImage from '../components/ProductImage';
 import type { ProductFull, Category } from '../../lib/supabase';
@@ -22,6 +22,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const [inStockOnly,   setInStockOnly]   = useState(false);
   const [saleOnly,      setSaleOnly]      = useState(initialSaleOnly);
   const [expandedCats, setExpandedCats]  = useState<Set<string>>(new Set());
+  const [catsOpen,      setCatsOpen]      = useState(false);
   const [quantities,    setQuantities]    = useState<Record<string, number>>({});
   const [inputVals,     setInputVals]     = useState<Record<string, string>>({});
   const [added,         setAdded]         = useState<Record<string, boolean>>({});
@@ -135,7 +136,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       sku: p.sku, name: p.name, brand: p.brand, volume: p.volume,
       price: p.stock?.price_unit ?? 0, min_order: p.min_order,
       nl1: p.nl1 ?? '', nl2: p.nl2 ?? undefined,
-      bc: p.bc, ac: p.ac, img_type: p.img_type,
+      bc: p.bc, ac: p.ac, img_type: p.img_type, imageUrl: p.image ?? undefined,
     }, qty);
     setAdded(prev => ({ ...prev, [p.sku]: true }));
     setTimeout(() => setAdded(prev => ({ ...prev, [p.sku]: false })), 1500);
@@ -143,8 +144,13 @@ export default function CatalogClient({ products, categories, initialSearch = ''
 
   return (
     <>
-      <div style={{ background: 'var(--bg-page)', minHeight: '100vh' }}>
+      <div style={{ background: '#fff', minHeight: '100vh' }}>
       <div className="page-container">
+        <nav aria-label="Breadcrumb" style={{ padding: '16px 0 0', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <a href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</a>
+          <span>/</span>
+          <span style={{ color: '#475569' }}>Оптовий каталог</span>
+        </nav>
         <div className="catalog-page">
 
           {/* Sidebar */}
@@ -153,7 +159,14 @@ export default function CatalogClient({ products, categories, initialSearch = ''
             {/* Categories */}
             <div className="sidebar-section">
               <div className="sidebar-heading">Категорії</div>
-              <div className="cat-list">
+              <div
+                className="cat-list"
+                style={{
+                  maxHeight: catsOpen ? 'none' : '370px',
+                  overflowY: catsOpen ? 'visible' : 'auto',
+                  scrollbarWidth: 'none',
+                }}
+              >
                 <div
                   className={'cat-item' + (!selCat ? ' active' : '')}
                   onClick={() => setSelCat('')}
@@ -171,6 +184,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                         onClick={() => {
                           setSelCat(selCat === cat.slug ? '' : cat.slug);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
                           if (children.length > 0) setExpandedCats(prev => {
                             const next = new Set(prev);
                             next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug);
@@ -190,7 +204,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                           key={child.slug}
                           className={'cat-item' + (selCat === child.slug ? ' active' : '')}
                           style={{ paddingLeft: '20px', fontSize: '13px' }}
-                          onClick={() => setSelCat(selCat === child.slug ? '' : child.slug)}
+                          onClick={() => { setSelCat(selCat === child.slug ? '' : child.slug); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                         >
                           {child.name}
                         </div>
@@ -199,6 +213,21 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   );
                 })}
               </div>
+              {parentCats.length > 10 && (
+                <button
+                  onClick={() => setCatsOpen(o => !o)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '4px',
+                    width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+                    padding: '6px 10px', marginTop: '2px', borderRadius: '8px',
+                    fontSize: '13px', fontWeight: 600, color: '#4880B8',
+                  }}
+                >
+                  {catsOpen
+                    ? <><ChevronUp size={13} strokeWidth={2} />Згорнути</>
+                    : <><ChevronDown size={13} strokeWidth={2} />Показати всі</>}
+                </button>
+              )}
             </div>
 
             <hr className="sidebar-divider" />
@@ -272,11 +301,23 @@ export default function CatalogClient({ products, categories, initialSearch = ''
 
             {/* Title row */}
             <div className="catalog-title-row">
-              <div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                 <h1 className="catalog-title">Оптовий каталог</h1>
                 <p className="catalog-count">{filtered.length} товарів</p>
               </div>
               <div className="catalog-actions">
+                <button
+                  onClick={() => setSaleOnly(v => !v)}
+                  style={{
+                    height: '34px', padding: '0 14px', borderRadius: '8px', border: '1px solid var(--border)',
+                    background: saleOnly ? '#EF4444' : 'var(--bg-soft)',
+                    color: saleOnly ? '#fff' : 'var(--text-secondary)',
+                    fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '5px',
+                  }}
+                >
+                  🔥 Акції
+                </button>
                 <button className="action-btn excel" onClick={exportToExcel}>
                   <Upload size={14} strokeWidth={2} />
                   Завантажити Excel
@@ -295,18 +336,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
               />
             </div>
 
-            {/* Login notice */}
-            <div className="login-notice">
-              <AlertCircle size={16} className="login-notice__icon" />
-              <div>
-                <div className="login-notice__title">Для перегляду цін потрібно увійти</div>
-                <div className="login-notice__text">
-                  Будь ласка,{' '}
-                  <Link href="/login" className="login-notice__link">увійдіть</Link>
-                  , щоб побачити персоналізовані ціни залежно від типу вашого облікового запису.
-                </div>
-              </div>
-            </div>
 
             {/* Table */}
             {filtered.length === 0 ? (

@@ -72,9 +72,10 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
 
             <button
               onClick={handleAddToCart}
+              className={!added ? 'btn-primary' : undefined}
               style={{
                 height: '44px', padding: '0 28px', border: 'none', borderRadius: '10px',
-                background: added ? '#16A34A' : '#2563EB', color: '#fff',
+                background: added ? '#16A34A' : '#4880B8', color: '#fff',
                 fontSize: '14px', fontWeight: 700, cursor: 'pointer',
                 whiteSpace: 'nowrap', flexShrink: 0, marginLeft: '32px',
                 display: 'flex', alignItems: 'center', gap: '6px',

@@ -31,7 +31,7 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
       sku: product.sku, name: product.name, brand: product.brand,
       volume: product.volume, price, min_order: minOrder,
       nl1: product.nl1 ?? '', nl2: product.nl2 ?? undefined,
-      bc: product.bc, ac: product.ac, img_type: product.img_type,
+      bc: product.bc, ac: product.ac, img_type: product.img_type, imageUrl: product.image ?? undefined,
     }, qty);
     setAdded(true);
     setTimeout(() => {
@@ -136,7 +136,7 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
         style={{
           display: 'flex', alignItems: 'center', gap: '6px',
           height: '38px', padding: '0 16px', borderRadius: '10px', border: 'none',
-          background: added ? '#16A34A' : inStock ? '#1E3A5F' : '#E2E8F0',
+          background: added ? '#16A34A' : inStock ? '#4880B8' : '#E2E8F0',
           color: inStock ? '#fff' : '#94A3B8',
           fontSize: '13px', fontWeight: 700, flexShrink: 0,
           cursor: inStock ? 'pointer' : 'default', transition: 'background 0.2s',

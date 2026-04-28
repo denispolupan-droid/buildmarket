@@ -16,6 +16,7 @@ export type CartItem = {
   bc: string;
   ac: string;
   img_type: 'tube' | 'canister';
+  imageUrl?: string;
 };
 
 type CartContext = {

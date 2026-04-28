@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:www.figma.com)",
+      "Bash(node *)",
+      "Bash(npx next *)",
+      "Bash(npx tsx *)",
+      "Bash(xargs grep *)",
+      "Bash(find /c/projects/buildmarket/app -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" \\\\\\) ! -path \"*/node_modules/*\" -exec grep -l \"use client\\\\|'use client'\" {} \\\\;)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:3000 -o /dev/null -w \"%{http_code}\")",
+      "Bash(taskkill *)",
+      "Bash(del \"C:\\\\projects\\\\buildmarket\\\\middleware.ts\")",
+      "Bash(cmd *)",
+      "PowerShell(Stop-Process *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(curl -s http://localhost:3000)",
+      "PowerShell($env:USERPROFILE)",
+      "Bash(grep -E \"\\\\.\\(ts|js|xml|txt\\)$\")",
+      "Bash(npm list *)",
+      "WebFetch(domain:ftp1.master.co.ua)",
+      "Bash(curl -s \"https://ftp1.master.co.ua/images/priceRZTK.xml\")"
+    ],
+    "additionalDirectories": [
+      "c:\\projects\\buildmarket\\app"
+    ]
+  }
+}

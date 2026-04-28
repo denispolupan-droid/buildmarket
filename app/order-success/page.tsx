@@ -56,14 +56,6 @@ function SuccessContent() {
             }}>
               <ShoppingBag size={16} />Продовжити покупки
             </Link>
-            <a href="tel:+380" style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-              height: '46px', borderRadius: '10px', border: '1.5px solid #E2E8F0',
-              background: '#fff', color: '#475569', fontSize: '14px', fontWeight: 600,
-              textDecoration: 'none',
-            }}>
-              <Phone size={15} />Зателефонувати менеджеру
-            </a>
           </div>
         </div>
       </div>

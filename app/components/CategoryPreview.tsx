@@ -127,7 +127,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
       sku: product.sku, name: product.name, brand: product.brand, volume: product.volume,
       price: priceUnit, min_order: curMinOrder,
       nl1: product.nl1 ?? '', nl2: product.nl2 ?? undefined,
-      bc: product.bc, ac: product.ac, img_type: product.img_type,
+      bc: product.bc, ac: product.ac, img_type: product.img_type, imageUrl: product.image ?? undefined,
     }, qty);
     setCartAdded(true);
     setTimeout(() => setCartAdded(false), 1500);
@@ -180,16 +180,16 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '28px', flex: 1 }}>
           {bullets.map((b, i) => (
             <li key={i} style={{ display: 'flex', gap: '8px', fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-              <span style={{ color: '#2563EB', fontWeight: 700, flexShrink: 0 }}>•</span>
+              <span style={{ color: '#4880B8', fontWeight: 700, flexShrink: 0 }}>•</span>
               {b}
             </li>
           ))}
         </ul>
 
-        <Link href={catHref} style={{
+        <Link href={catHref} className="btn-primary" style={{
           display: 'inline-flex', alignItems: 'center', gap: '8px',
           height: '44px', padding: '0 22px', borderRadius: '10px',
-          background: '#2563EB', color: '#fff', fontSize: '14px', fontWeight: 700,
+          background: '#4880B8', color: '#fff', fontSize: '14px', fontWeight: 700,
           alignSelf: 'flex-start',
         }}>
           {isRetail ? 'Перейти до магазину →' : 'Перейти до каталогу →'}
@@ -307,7 +307,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
             {!isRetail && (
               <div style={{ marginBottom: '14px' }}>
                 <div style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '2px' }}>Мінімальне замовлення</div>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#2563EB' }}>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#4880B8' }}>
                   {product.min_order} рс / {packStr} уп
                 </div>
               </div>
@@ -316,6 +316,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <button
                 onClick={() => product && toggle(product.sku)}
+                className="btn-icon"
                 style={{
                   ...actionBtnStyle,
                   color: product && isLiked(product.sku) ? '#EF4444' : '#64748B',
@@ -347,9 +348,10 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
               <button
                 onClick={handleAddToCart}
                 disabled={stockQty < (curMinOrder)}
+                className={stockQty >= (curMinOrder) && !cartAdded ? 'btn-primary' : undefined}
                 style={{
                   flex: 1, height: '44px', borderRadius: '10px',
-                  background: cartAdded ? '#16A34A' : stockQty < (curMinOrder) ? '#E2E8F0' : '#2563EB',
+                  background: cartAdded ? '#16A34A' : stockQty < (curMinOrder) ? '#E2E8F0' : '#4880B8',
                   color: stockQty < (curMinOrder) ? '#94A3B8' : '#fff',
                   border: 'none', fontSize: '14px', fontWeight: 700,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
@@ -364,7 +366,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
                     : <><Plus size={15} strokeWidth={2.5} /> В кошик</>}
               </button>
 
-              <Link href={prodHref(product.sku)} style={{ ...actionBtnStyle, textDecoration: 'none' }}>
+              <Link href={prodHref(product.sku)} className="btn-icon" style={{ ...actionBtnStyle, textDecoration: 'none' }}>
                 <Eye size={15} strokeWidth={2} />
               </Link>
             </div>

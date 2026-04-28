@@ -144,6 +144,7 @@ type InvoiceData = {
   items: Item[];
   totalPrice: number;
   deliveryAddress: string;
+  paymentType?: string;
 };
 
 export function buildInvoiceHtml(d: InvoiceData): string {
@@ -223,24 +224,31 @@ export function buildInvoiceHtml(d: InvoiceData): string {
       </div>
     </div>
 
-    <!-- Bank details -->
-    <div style="margin:0 32px 24px;background:#EFF4FF;border-radius:12px;padding:20px;">
-      <div style="font-size:12px;font-weight:700;color:#1E3A5F;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">Реквізити для оплати</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        ${[
-          ['Отримувач', 'ФОП Buildmarket'],
-          ['IBAN', 'UA00 0000 0000 0000 0000 0000 000'],
-          ['Банк', 'АТ «ПриватБанк»'],
-          ['ЄДРПОУ', '00000000'],
-        ].map(([k, v]) => `
-          <div style="font-size:11px;color:#64748B;">${k}</div>
-          <div style="font-size:12px;font-weight:600;color:#0F172A;">${v}</div>
-        `).join('')}
-      </div>
-      <div style="margin-top:12px;font-size:12px;color:#64748B;">
-        Призначення платежу: <strong style="color:#0F172A;">Оплата за замовлення №${short}</strong>
-      </div>
-    </div>
+    <!-- Payment details -->
+    ${d.paymentType === 'cod'
+      ? `<div style="margin:0 32px 24px;background:#F0FDF4;border-radius:12px;padding:20px;border:1px solid #BBF7D0;">
+          <div style="font-size:12px;font-weight:700;color:#15803D;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Спосіб оплати</div>
+          <div style="font-size:14px;font-weight:600;color:#0F172A;">Оплата при отриманні (накладений платіж)</div>
+          <div style="font-size:12px;color:#64748B;margin-top:4px;">Оплата здійснюється при отриманні товару у відділенні Нової Пошти.</div>
+        </div>`
+      : `<div style="margin:0 32px 24px;background:#EFF4FF;border-radius:12px;padding:20px;">
+          <div style="font-size:12px;font-weight:700;color:#1E3A5F;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">Реквізити для оплати</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            ${[
+              ['Отримувач', 'ФОП Buildmarket'],
+              ['IBAN', 'UA00 0000 0000 0000 0000 0000 000'],
+              ['Банк', 'АТ «ПриватБанк»'],
+              ['ЄДРПОУ', '00000000'],
+            ].map(([k, v]) => `
+              <div style="font-size:11px;color:#64748B;">${k}</div>
+              <div style="font-size:12px;font-weight:600;color:#0F172A;">${v}</div>
+            `).join('')}
+          </div>
+          <div style="margin-top:12px;font-size:12px;color:#64748B;">
+            Призначення платежу: <strong style="color:#0F172A;">Оплата за замовлення №${short}</strong>
+          </div>
+        </div>`
+    }
 
     <!-- Footer -->
     <div style="background:#F8FAFC;padding:16px 32px;text-align:center;border-top:1px solid #F1F5F9;">

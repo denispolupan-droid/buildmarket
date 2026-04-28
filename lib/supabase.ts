@@ -23,6 +23,7 @@ export type Product = {
   pack_qty: number;
   min_order: number;
   description: string | null;
+  description_ru: string | null;
   image: string | null;
   nl1: string | null;
   nl2: string | null;
@@ -46,10 +47,12 @@ export type ProductCharacteristic = {
 export type ProductStock = {
   id: number;
   sku: string;
+  price_cost: number | null;
   price_unit: number;
   price_old: number | null;
   price_retail: number | null;
   price_retail_old: number | null;
+  price_drop: number | null;
   stock_qty: number;
   stock_status: 'in_stock' | 'out_of_stock' | 'on_order';
   supplier_sku: string | null;

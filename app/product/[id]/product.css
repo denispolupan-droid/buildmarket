@@ -35,8 +35,8 @@
   border: 2px solid transparent; display: flex; align-items: center;
   justify-content: center; cursor: pointer; transition: border-color 0.15s; overflow: hidden;
 }
-.product-gallery__thumb:hover { border-color: #2563EB; }
-.product-gallery__thumb.is-active { border-color: #2563EB; }
+.product-gallery__thumb:hover { border-color: #4880B8; }
+.product-gallery__thumb.is-active { border-color: #4880B8; }
 
 /* ── Product info card ── */
 .product-info {
@@ -73,8 +73,8 @@
 
 /* buttons */
 .product-info__btn-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
-.btn-order { flex: 1; height: 44px; border: none; border-radius: 10px; background: #2563EB; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
-.btn-order:hover { background: #1D4ED8; }
+.btn-order { flex: 1; height: 44px; border: none; border-radius: 10px; background: #4880B8; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.2s, transform 0.15s, box-shadow 0.15s; }
+.btn-order:hover { background: #3A6FA5; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(72, 128, 184, 0.35); }
 .btn-fav { width: 44px; height: 44px; border: 1px solid var(--border); border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 18px; flex-shrink: 0; cursor: pointer; }
 .btn-fav:hover { color: #EF4444; border-color: #FECACA; background: #FEF2F2; }
 
@@ -88,7 +88,7 @@
 .product-tabs { background: #fff; border: 1px solid var(--border); border-radius: 20px; margin-bottom: 32px; overflow: hidden; }
 .product-tabs__nav { display: flex; border-bottom: 1px solid var(--border); }
 .product-tabs__tab { padding: 18px 28px; font-size: 15px; font-weight: 500; color: var(--text-secondary); border: none; background: none; border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer; }
-.product-tabs__tab.is-active { color: #1E3A5F; font-weight: 700; border-bottom-color: #2563EB; }
+.product-tabs__tab.is-active { color: #1E3A5F; font-weight: 700; border-bottom-color: #4880B8; }
 .product-tabs__content { padding: 32px; }
 .product-tabs__desc { font-size: 15px; line-height: 1.8; color: var(--text-secondary); white-space: pre-line; }
 .chars-table { width: 100%; border-collapse: collapse; }
@@ -112,11 +112,12 @@
 .pc-tags { display: flex; flex-wrap: nowrap; gap: 4px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #E2E8F0; overflow: hidden; }
 .pc-tag { background: #F1F5F9; color: #475569; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
 .pc-minorder { font-size: 10px; color: #94A3B8; margin-bottom: 1px; }
-.pc-minorder-val { font-size: 12px; font-weight: 700; color: #2563EB; margin-bottom: 10px; }
+.pc-minorder-val { font-size: 12px; font-weight: 700; color: #4880B8; margin-bottom: 10px; }
 .pc-actions { display: flex; gap: 5px; align-items: center; margin-top: auto; }
-.pc-btn-cart { flex: 1; height: 38px; border-radius: 8px; background: #2563EB; color: #fff; border: none; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; }
-.pc-btn-cart:hover { background: #1D4ED8; }
-.pc-btn-icon { width: 34px; height: 34px; border-radius: 8px; border: 1px solid #E2E8F0; background: #fff; display: flex; align-items: center; justify-content: center; color: #64748B; cursor: pointer; flex-shrink: 0; text-decoration: none; }
+.pc-btn-cart { flex: 1; height: 38px; border-radius: 8px; background: #4880B8; color: #fff; border: none; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; transition: background 0.2s, transform 0.15s, box-shadow 0.15s; }
+.pc-btn-cart:hover { background: #3A6FA5; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(72, 128, 184, 0.35); }
+.pc-btn-icon { width: 34px; height: 34px; border-radius: 8px; border: 1px solid #E2E8F0; background: #fff; display: flex; align-items: center; justify-content: center; color: #64748B; cursor: pointer; flex-shrink: 0; text-decoration: none; transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s; }
+.pc-btn-icon:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.10); border-color: #4880B8; }
 
 /* ── Dark theme ── */
 [data-theme="dark"] .product-gallery { background: #1E293B; border-color: #334155; }

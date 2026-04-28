@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { unstable_noStore as noStore } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getProducts, getCategories } from '../../lib/supabase';
 import { createSupabaseServer } from '../../lib/supabase-server';
@@ -40,26 +41,41 @@ export default async function Catalog({
 }: {
   searchParams: Promise<{ q?: string; category?: string; sale?: string }>;
 }) {
+  noStore();
+  const { q, category, sale } = await searchParams;
+
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) redirect('/login?next=/catalog');
-  if (!isWholesale(user)) redirect('/shop');
-
-  const { q, category, sale } = await searchParams;
+  const shopUrl = category ? `/shop?category=${category}` : '/shop';
+  const loginUrl = category ? `/login?next=/catalog?category=${category}` : '/login?next=/catalog';
+  if (!user) redirect(loginUrl);
+  if (!isWholesale(user)) redirect(shopUrl);
 
   const [products, categories] = await Promise.all([
     getProducts(),
     getCategories(),
   ]);
 
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Головна', item: 'https://fixline.com.ua' },
+      { '@type': 'ListItem', position: 2, name: 'Оптовий каталог', item: 'https://fixline.com.ua/catalog' },
+    ],
+  };
+
   return (
-    <CatalogClient
-      products={products}
-      categories={categories}
-      initialSearch={q ?? ''}
-      initialCategory={category ?? ''}
-      initialSaleOnly={sale === '1'}
-    />
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      <CatalogClient
+        products={products}
+        categories={categories}
+        initialSearch={q ?? ''}
+        initialCategory={category ?? ''}
+        initialSaleOnly={sale === '1'}
+      />
+    </>
   );
 }

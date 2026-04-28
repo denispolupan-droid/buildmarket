@@ -13,7 +13,6 @@ import Footer from '../components/Footer';
 const DELIVERY_OPTIONS = [
   { value: 'nova',     label: 'Нова Пошта' },
   { value: 'kharkiv',  label: 'Доставка по Харкову та області' },
-  { value: 'pickup',   label: 'Самовивіз зі складу' },
 ];
 
 const PAYMENT_OPTIONS = [
@@ -70,15 +69,34 @@ export default function CartPage() {
   const [email,     setEmail]     = useState('');
 
   useEffect(() => {
-    getSupabaseBrowser().auth.getUser().then(({ data }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
+    const supabase = getSupabaseBrowser();
+    supabase.auth.getUser().then(async ({ data }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
       if (!data.user) {
         setRole('guest');
-      } else {
-        const type = data.user.user_metadata?.account_type as string | undefined;
-        const isWholesale = ['dealer', 'wholesale', 'contractor'].includes(type ?? '');
-        setRole(isWholesale ? 'wholesale' : 'retail');
-        setCompany(data.user.user_metadata?.company_name ?? '');
-        setEmail(data.user.email ?? '');
+        return;
+      }
+      const type = data.user.user_metadata?.account_type as string | undefined;
+      const wholesale = ['dealer', 'wholesale', 'contractor', 'shop_owner'].includes(type ?? '');
+      setRole(wholesale ? 'wholesale' : 'retail');
+      setCompany(data.user.user_metadata?.company_name ?? '');
+      setEmail(data.user.email ?? '');
+
+      // Auto-fill from last order
+      if (wholesale) {
+        const { data: orders } = await supabase
+          .from('orders')
+          .select('contact, phone, delivery_type, delivery_address, payment_type')
+          .eq('user_id', data.user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        if (orders) {
+          if (orders.contact) setContact(orders.contact);
+          if (orders.phone) setPhone(orders.phone);
+          if (orders.delivery_type) setDelivery(orders.delivery_type);
+          if (orders.delivery_address) setAddress(orders.delivery_address);
+          if (orders.payment_type) setPayment(orders.payment_type);
+        }
       }
     });
   }, []);
@@ -422,15 +440,16 @@ export default function CartPage() {
                       borderBottom: idx < items.length - 1 ? '1px solid var(--border)' : 'none',
                       alignItems: 'flex-start',
                     }}>
-                      <div style={{ width: '44px', height: '44px', flexShrink: 0 }}>
+                      <Link href={`/product/${item.sku}`} style={{ width: '64px', height: '64px', flexShrink: 0, display: 'block', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
                         <ProductImage
                           brand={item.brand} nl1={item.nl1} nl2={item.nl2}
                           volume={item.volume ?? ''} bc={item.bc} ac={item.ac} type={item.img_type}
+                          imageUrl={item.imageUrl}
                         />
-                      </div>
+                      </Link>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '11px', color: '#94A3B8', marginBottom: '1px' }}>{item.brand} · {item.sku}</div>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3, marginBottom: '6px' }}>{item.name}</div>
+                        <Link href={`/product/${item.sku}`} style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3, marginBottom: '6px', display: 'block', textDecoration: 'none' }}>{item.name}</Link>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <button
@@ -479,6 +498,18 @@ export default function CartPage() {
                   <span style={{ color: 'var(--text-primary)' }}>Разом</span>
                   <span style={{ color: '#1E3A5F' }}>{totalPrice.toFixed(2)} грн</span>
                 </div>
+                {role === 'guest' && (
+                  <div style={{
+                    background: '#FFF7ED', border: '1px solid #FED7AA',
+                    borderRadius: '10px', padding: '12px 14px', marginBottom: '12px',
+                    fontSize: '13px', color: '#92400E', lineHeight: 1.5,
+                  }}>
+                    <strong>💡 Зареєструйтесь</strong> — щоб зберігати історію замовлень та автоматично заповнювати дані при наступній покупці.{' '}
+                    <Link href="/register" style={{ color: '#4880B8', fontWeight: 700 }}>Реєстрація</Link>
+                    {' або '}
+                    <Link href="/login?next=/cart" style={{ color: '#4880B8', fontWeight: 700 }}>Увійти</Link>
+                  </div>
+                )}
                 <button
                   onClick={handleSubmit}
                   disabled={submitting}
@@ -500,7 +531,7 @@ export default function CartPage() {
                 {role === 'guest' && (
                   <p style={{ fontSize: '12px', color: '#64748B', textAlign: 'center', marginTop: '6px' }}>
                     Є акаунт?{' '}
-                    <Link href="/login?next=/cart" style={{ color: '#2563EB', fontWeight: 600 }}>Увійдіть</Link>
+                    <Link href="/login?next=/cart" style={{ color: '#4880B8', fontWeight: 600 }}>Увійдіть</Link>
                     {' '}для збереження замовлень
                   </p>
                 )}

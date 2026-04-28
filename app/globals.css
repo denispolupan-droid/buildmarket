@@ -1,7 +1,7 @@
 :root {
   /* Interactive blue */
-  --brand-blue:        #2563EB;
-  --brand-blue-dark:   #1D4ED8;
+  --brand-blue:        #4880B8;
+  --brand-blue-dark:   #3A6FA5;
   --brand-blue-light:  #EFF6FF;
 
   /* Dark navy (hero / footer) */
@@ -13,12 +13,12 @@
   --brand-teal-light:  #E6F7F6;
 
   /* Backward-compat aliases used in product page */
-  --brand-navy:        #2563EB;
-  --brand-navy-dark:   #1D4ED8;
-  --brand-main:        #2563EB;
+  --brand-navy:        #4880B8;
+  --brand-navy-dark:   #3A6FA5;
+  --brand-main:        #4880B8;
   --brand-accent:      #3DBFB8;
-  --btn-primary-bg:    #2563EB;
-  --btn-primary-bg-hover: #1D4ED8;
+  --btn-primary-bg:    #4880B8;
+  --btn-primary-bg-hover: #3A6FA5;
   --btn-primary-text:  #FFFFFF;
 
   /* Surfaces */
@@ -36,8 +36,8 @@
   --text-muted:     #94A3B8;
 
   /* Buttons */
-  --btn-navy-bg:      #2563EB;
-  --btn-navy-hover:   #1D4ED8;
+  --btn-navy-bg:      #4880B8;
+  --btn-navy-hover:   #3A6FA5;
   --btn-navy-text:    #FFFFFF;
   --btn-teal-bg:      #3DBFB8;
   --btn-teal-hover:   #2EA8A2;
@@ -97,6 +97,88 @@ input, select { font-family: inherit; }
 
 .page-container { max-width: 1440px; margin: 0 auto; padding: 0 40px; }
 
+/* Синя кнопка з підйомом */
+.btn-primary {
+  transition: background 0.2s, transform 0.15s, box-shadow 0.15s !important;
+}
+.btn-primary:hover {
+  background: #3A6FA5 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(72, 128, 184, 0.35);
+}
+
+/* Темна кнопка (Вхід, мобільний вхід) */
+.btn-dark {
+  transition: background 0.2s, transform 0.15s, box-shadow 0.15s !important;
+}
+.btn-dark:hover {
+  background: #16304f !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(30, 58, 95, 0.4);
+}
+
+/* Іконкові кнопки (wishlist, cart, стрілки каруселі, серце, eye) */
+.btn-icon {
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s !important;
+}
+.btn-icon:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  border-color: #4880B8 !important;
+}
+
+/* Навігаційні посилання */
+.btn-nav {
+  transition: all 0.15s !important;
+}
+.btn-nav:hover {
+  background: #E8EEF5 !important;
+  color: #1E3A5F !important;
+  transform: translateY(-1px);
+}
+
+/* Бренд-логотипи в hero */
+.brand-logo-link {
+  transition: color 0.15s, border-color 0.15s, background 0.15s, transform 0.15s !important;
+}
+.brand-logo-link:hover {
+  color: rgba(255,255,255,0.85) !important;
+  border-color: rgba(255,255,255,0.25) !important;
+  background: rgba(255,255,255,0.07) !important;
+  transform: translateY(-1px);
+}
+
+/* Бренд-картки (сітка) */
+.hero-brand-card {
+  transition: background 0.15s, border-color 0.15s, transform 0.15s, box-shadow 0.15s !important;
+}
+.hero-brand-card:hover {
+  background: #EFF6FF !important;
+  border-color: #4880B8 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(72,128,184,0.15);
+}
+
+/* Прозора (ghost) кнопка */
+.btn-ghost {
+  transition: background 0.15s, color 0.15s, transform 0.15s !important;
+}
+.btn-ghost:hover {
+  background: rgba(255,255,255,0.1) !important;
+  color: #fff !important;
+  transform: translateY(-1px);
+}
+
+/* Іконки соцмереж у футері */
+.btn-social {
+  transition: background 0.15s, color 0.15s, transform 0.15s !important;
+}
+.btn-social:hover {
+  background: rgba(255,255,255,0.14) !important;
+  color: #CBD5E1 !important;
+  transform: translateY(-1px);
+}
+
 /* Contacts grid */
 .contacts-grid {
   display: grid;
@@ -131,6 +213,15 @@ input, select { font-family: inherit; }
 
   /* Contacts */
   .contacts-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Hero */
+  .hero-grid {
+    grid-template-columns: 1fr !important;
+    padding: 40px 0 32px !important;
+  }
+  .hero-split {
     grid-template-columns: 1fr !important;
   }
 

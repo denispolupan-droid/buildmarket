@@ -74,7 +74,9 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     .filter((p) => p.sku !== product.sku && p.category_slug === product.category_slug)
     .slice(0, 5);
 
-  const categoryName = categories.find((c) => c.slug === product.category_slug)?.name ?? 'Каталог';
+  const productCat   = categories.find((c) => c.slug === product.category_slug);
+  const categoryName = productCat?.name ?? 'Каталог';
+  const parentCat    = productCat?.parent_slug ? categories.find(c => c.slug === productCat.parent_slug) : null;
 
   const breadcrumbLd = {
     '@context': 'https://schema.org',
@@ -115,7 +117,9 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
         <div className="breadcrumb">
           <Link href="/">Головна</Link>
           <span>›</span>
-          <Link href={isRetail ? '/shop' : '/catalog'}>{isRetail ? 'Магазин' : categoryName}</Link>
+          <Link href={isRetail ? '/shop' : '/catalog'}>{isRetail ? 'Магазин' : 'Каталог'}</Link>
+          {parentCat && (<><span>›</span><Link href={`${isRetail ? '/shop' : '/catalog'}?category=${parentCat.slug}`}>{parentCat.name}</Link></>)}
+          {productCat && (<><span>›</span><Link href={`${isRetail ? '/shop' : '/catalog'}?category=${productCat.slug}`}>{categoryName}</Link></>)}
           <span>›</span>
           <span>{product.name}</span>
         </div>
@@ -195,7 +199,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
               </div>
               <div className="product-info__meta-row">
                 <span className="product-info__meta-label">Доставка:</span>
-                <span className="product-info__meta-value">Нова Пошта, Укрпошта, самовивіз</span>
+                <span className="product-info__meta-value">Нова Пошта</span>
               </div>
             </div>
           </div>

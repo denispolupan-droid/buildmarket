@@ -10,7 +10,7 @@ const socials = [
 
 export default function Footer() {
   return (
-    <footer style={{ background: '#0F172A' }}>
+    <footer style={{ background: '#1A2744' }}>
       <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1.2fr', gap: '48px', paddingBottom: '40px' }}>
 
@@ -19,18 +19,17 @@ export default function Footer() {
             <Image
               src="/fixline-logo.png" alt="FIXLINE"
               width={136} height={34}
-              style={{ width: 'auto', height: '34px', display: 'block', marginBottom: '16px' }}
+              style={{ width: 'auto', height: '34px', display: 'block', marginBottom: '16px', filter: 'brightness(0) invert(1)' }}
             />
-            <p style={{ fontSize: '14px', color: '#64748B', lineHeight: '1.7', maxWidth: '300px', marginBottom: '20px' }}>
+            <p style={{ fontSize: '14px', color: '#94A3B8', lineHeight: '1.7', maxWidth: '300px', marginBottom: '20px' }}>
               Професійний B2B постачальник будівельної хімії: герметиків, клеїв, монтажних пін та супутніх матеріалів.
             </p>
             <div style={{ display: 'flex', gap: '8px' }}>
               {socials.map(({ Icon, label, href }) => (
-                <a key={label} href={href} title={label} style={{
+                <a key={label} href={href} title={label} className="btn-social" style={{
                   width: '36px', height: '36px', borderRadius: '8px',
                   background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B',
-                  transition: 'background 0.15s, color 0.15s',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8',
                 }}>
                   <Icon size={15} strokeWidth={2} />
                 </a>
@@ -45,7 +44,7 @@ export default function Footer() {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {["Зв'яжіться з нами", 'Умови доставки', 'Політика повернення', 'Часті питання', 'Про компанію'].map(l => (
-                <a key={l} href="#" style={{ fontSize: '14px', color: '#64748B' }}>{l}</a>
+                <a key={l} href="#" style={{ fontSize: '14px', color: '#94A3B8' }}>{l}</a>
               ))}
             </div>
           </div>
@@ -56,23 +55,23 @@ export default function Footer() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <a href="mailto:sales@fixline.com.ua" style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
-                fontSize: '14px', color: '#64748B', textDecoration: 'none',
+                fontSize: '14px', color: '#94A3B8', textDecoration: 'none',
               }}>
-                <Mail size={15} strokeWidth={2} color="#475569" />
+                <Mail size={15} strokeWidth={2} color="#7B90B2" />
                 sales@fixline.com.ua
               </a>
               <a href="tel:+380671234567" style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
-                fontSize: '14px', color: '#64748B', textDecoration: 'none',
+                fontSize: '14px', color: '#94A3B8', textDecoration: 'none',
               }}>
-                <Phone size={15} strokeWidth={2} color="#475569" />
+                <Phone size={15} strokeWidth={2} color="#7B90B2" />
                 +38 (067) 123-45-67
               </a>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#475569' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#7B90B2' }}>
                 <Clock4 size={15} strokeWidth={2} />
                 Пн–Пт 8:00–18:00
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#475569' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#7B90B2' }}>
                 <MapPin size={15} strokeWidth={2} />
                 Київ, Україна
               </span>
@@ -85,7 +84,7 @@ export default function Footer() {
           borderTop: '1px solid rgba(255,255,255,0.07)',
           padding: '18px 0', textAlign: 'center',
         }}>
-          <span style={{ fontSize: '13px', color: '#334155' }}>© 2026 FIXLINE. Всі права захищені.</span>
+          <span style={{ fontSize: '13px', color: '#64748B' }}>© 2026 FIXLINE. Всі права захищені.</span>
         </div>
       </div>
     </footer>

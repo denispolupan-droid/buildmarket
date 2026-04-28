@@ -67,33 +67,24 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    if (paymentType === 'invoice') {
-      // Send invoice for bank transfer
-      await resend.emails.send({
-        from: FROM,
-        to: email,
-        subject: `Рахунок-фактура №${data.order_number} — FIXLINE`,
-        html: buildInvoiceHtml({
-          orderId: data.id,
-          orderNumber: data.order_number,
-          company: company ?? '',
-          contact,
-          phone,
-          email,
-          items,
-          totalPrice,
-          deliveryAddress: deliveryAddress ?? '',
-        }),
-      });
-    } else {
-      // Send confirmation for COD
-      await resend.emails.send({
-        from: FROM,
-        to: email,
-        subject: `Замовлення №${data.order_number} прийнято — FIXLINE`,
-        html: buildCustomerConfirmationHtml(orderData),
-      });
-    }
+    // Always send invoice to customer regardless of payment method
+    await resend.emails.send({
+      from: FROM,
+      to: email,
+      subject: `Рахунок №${data.order_number} — FIXLINE`,
+      html: buildInvoiceHtml({
+        orderId: data.id,
+        orderNumber: data.order_number,
+        company: company ?? '',
+        contact,
+        phone,
+        email,
+        items,
+        totalPrice,
+        deliveryAddress: deliveryAddress ?? '',
+        paymentType,
+      }),
+    });
   } catch (e) {
     console.error('[customer email]', e);
   }

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, LayoutGrid, Phone, User, ShoppingCart, LogOut, ChevronDown, Menu, X, Heart, Sun, Moon, Store } from 'lucide-react';
+import { Home, LayoutGrid, Phone, User, ShoppingCart, LogOut, ChevronDown, Menu, X, Heart, Sun, Moon, Store, PackageCheck } from 'lucide-react';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
@@ -12,10 +12,11 @@ import { useTheme } from '../../lib/theme';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 const NAV = [
-  { href: '/',          icon: Home,       label: 'Головна'  },
-  { href: '/shop',      icon: Store,      label: 'Магазин'  },
-  { href: '/catalog',   icon: LayoutGrid, label: 'Опт'      },
-  { href: '/contacts',  icon: Phone,      label: 'Контакти' },
+  { href: '/',          icon: Home,         label: 'Головна'    },
+  { href: '/shop',      icon: Store,        label: 'Магазин'    },
+  { href: '/catalog',   icon: LayoutGrid,   label: 'Опт'        },
+  { href: '/dropship',  icon: PackageCheck, label: 'Дропшипінг' },
+  { href: '/contacts',  icon: Phone,        label: 'Контакти'   },
 ];
 
 export default function Header() {
@@ -67,7 +68,7 @@ export default function Header() {
       }}>
         <div style={{
           maxWidth: '1280px', margin: '0 auto', padding: '0 32px',
-          height: '64px',
+          height: '52px',
           display: 'grid',
           gridTemplateColumns: '1fr auto 1fr',
           alignItems: 'center',
@@ -75,7 +76,7 @@ export default function Header() {
 
           {/* Logo */}
           <Link href="/" onClick={e => handleNavClick(e, '/')} style={{ justifySelf: 'start', flexShrink: 0 }}>
-            <Image src="/fixline-logo.png" alt="FIXLINE" width={144} height={36} priority style={{ width: 'auto', height: '36px', display: 'block' }} />
+            <Image src="/fixline-logo.png" alt="FIXLINE" width={216} height={54} priority style={{ width: 'auto', height: '40px', display: 'block' }} />
           </Link>
 
           {/* Desktop nav */}
@@ -83,13 +84,12 @@ export default function Header() {
             {NAV.map(({ href, icon: Icon, label }) => {
               const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
               return (
-                <Link key={href} href={href} onClick={e => handleNavClick(e, href)} style={{
+                <Link key={href} href={href} onClick={e => handleNavClick(e, href)} className="btn-nav" style={{
                   display: 'inline-flex', alignItems: 'center', gap: '6px',
                   padding: '7px 14px', borderRadius: '8px',
                   fontSize: '14px', fontWeight: active ? 600 : 500,
                   color: active ? '#1E3A5F' : 'var(--text-secondary)',
                   background: active ? '#E8EEF5' : 'transparent',
-                  transition: 'all 0.15s',
                 }}>
                   <Icon size={15} strokeWidth={2} />
                   {label}
@@ -166,7 +166,7 @@ export default function Header() {
                   )}
                 </>
               ) : (
-                <Link href="/login" style={{
+                <Link href="/login" className="btn-dark" style={{
                   display: 'inline-flex', alignItems: 'center', gap: '7px',
                   height: '38px', padding: '0 18px', borderRadius: '8px',
                   background: '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 600,
@@ -177,7 +177,7 @@ export default function Header() {
             </div>
 
             {/* Wishlist */}
-            <Link href="/account/wishlist" aria-label="Обране" style={{
+            <Link href="/account/wishlist" aria-label="Обране" className="btn-icon" style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               width: '38px', height: '38px', borderRadius: '8px',
               border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)',
@@ -199,7 +199,7 @@ export default function Header() {
             </Link>
 
             {/* Cart */}
-            <Link href="/cart" style={{
+            <Link href="/cart" className="btn-icon" style={{
               display: 'inline-flex', alignItems: 'center', gap: '7px',
               height: '38px', padding: '0 18px', borderRadius: '8px',
               border: '1px solid var(--border)', background: 'var(--bg-card)',
@@ -293,7 +293,7 @@ export default function Header() {
                 </button>
               </>
             ) : (
-              <Link href="/login" style={{
+              <Link href="/login" className="btn-dark" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                 height: '48px', borderRadius: '10px', background: '#1E3A5F',
                 color: '#fff', fontSize: '15px', fontWeight: 700, margin: '4px 0',

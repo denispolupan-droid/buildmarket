@@ -78,28 +78,34 @@ async function main() {
     console.log('   ✅  Категорії оновлено');
   }
 
+  // Підтримуємо обидва формати: з * (шаблон) і без * (експорт)
+  const col = (r: ExcelRow, ...keys: string[]) => {
+    for (const k of keys) { const v = r[k]; if (v !== undefined && v !== '') return String(v); }
+    return '';
+  };
+
   for (const row of rows) {
-    const sku = String(row['SKU *'] ?? '').trim();
+    const sku = col(row, 'SKU *', 'SKU').trim();
     if (!sku) { skipped++; continue; }
 
     // Збираємо дані продукту
     const product = {
       sku,
-      name:          String(row['Назва *'] ?? '').trim(),
-      brand:         String(row['Бренд *'] ?? '').trim(),
-      category_slug: String(row['Категорія *'] ?? '').trim() || null,
-      product_type:  String(row['Тип матеріалу'] ?? '').trim() || null,
-      color:         String(row['Колір'] ?? '').trim() || null,
-      volume:        String(row["Об'єм / Вага"] ?? '').trim() || null,
+      name:          col(row, 'Назва *', 'Назва').trim(),
+      brand:         col(row, 'Бренд *', 'Бренд').trim(),
+      category_slug: col(row, 'Категорія *', 'Категорія (slug)').trim() || null,
+      product_type:  col(row, 'Тип матеріалу').trim() || null,
+      color:         col(row, 'Колір').trim() || null,
+      volume:        col(row, "Об'єм / Вага").trim() || null,
       pack_qty:      Number(row['В упаковці (шт)'] ?? 1) || 1,
       min_order:     Number(row['Мін. замовлення (шт)'] ?? 1) || 1,
-      description:   String(row['Опис'] ?? '').trim() || null,
-      image:         String(row['Фото (шлях)'] ?? '').trim() || null,
-      img_type:      (String(row['Тип SVG'] ?? 'tube').trim() as 'tube' | 'canister'),
-      nl1:           String(row['SVG рядок 1'] ?? '').trim() || null,
-      nl2:           String(row['SVG рядок 2'] ?? '').trim() || null,
-      bc:            String(row['SVG колір тіла'] ?? '#4A6080').trim() || '#4A6080',
-      ac:            String(row['SVG колір акценту'] ?? '#2A4060').trim() || '#2A4060',
+      description:   col(row, 'Опис').trim() || null,
+      image:         col(row, 'Фото (шлях)', 'Фото (URL)').trim() || null,
+      img_type:      (col(row, 'Тип SVG') as 'tube' | 'canister') || 'tube',
+      nl1:           col(row, 'SVG рядок 1').trim() || null,
+      nl2:           col(row, 'SVG рядок 2').trim() || null,
+      bc:            col(row, 'SVG колір тіла') || '#4A6080',
+      ac:            col(row, 'SVG колір акценту') || '#2A4060',
       sort_order:    Number(row['Порядок сортування'] ?? 0) || 0,
       is_active:     true,
     };
@@ -122,11 +128,16 @@ async function main() {
     }
 
     // Ціни та залишки (product_stock)
-    const supplierSku = String(row['Артикул постачальника'] ?? '').trim() || null;
-    const priceUnit = parseFloat(String(row['Ціна (грн/шт)'] ?? '').replace(',', '.')) || null;
+    const supplierSku   = String(row['Артикул постачальника'] ?? '').trim() || null;
+    const priceCost     = parseFloat(String(col(row, 'Наш вхід (грн)', 'Наш вхід').replace(',', '.')) || '') || null;
+    const priceUnit     = parseFloat(String(col(row, 'Ціна каталог (грн/шт)', 'Ціна (грн/шт)').replace(',', '.')) || '') || null;
+    const priceOldUnit  = parseFloat(String(col(row, 'Стара ціна каталог', 'Стара ціна').replace(',', '.')) || '') || null;
+    const priceRetail   = parseFloat(String(col(row, 'Ціна магазин (грн/шт)').replace(',', '.')) || '') || null;
+    const priceOldRetail= parseFloat(String(col(row, 'Стара ціна магазин').replace(',', '.')) || '') || null;
+    const priceDrop     = parseFloat(String(col(row, 'Ціна дроп (грн/шт)').replace(',', '.')) || '') || null;
+
     if (priceUnit !== null || supplierSku) {
       const stockQty = parseInt(String(row['Залишок (шт)'] ?? '0'), 10) || 0;
-      const priceOld = parseFloat(String(row['Стара ціна'] ?? '').replace(',', '.')) || null;
       const rawStatus = String(row['Статус'] ?? '').trim();
       const stockStatus = ['in_stock','out_of_stock','on_order'].includes(rawStatus)
         ? rawStatus
@@ -136,12 +147,16 @@ async function main() {
         .from('product_stock')
         .upsert({
           sku,
-          supplier_sku:  supplierSku,
-          price_unit:    priceUnit ?? 0,
-          price_old:     priceOld,
-          stock_qty:     stockQty,
-          stock_status:  stockStatus,
-          updated_at:    new Date().toISOString(),
+          supplier_sku:      supplierSku,
+          price_cost:        priceCost,
+          price_unit:        priceUnit ?? 0,
+          price_old:         priceOldUnit,
+          price_retail:      priceRetail,
+          price_retail_old:  priceOldRetail,
+          price_drop:        priceDrop,
+          stock_qty:         stockQty,
+          stock_status:      stockStatus,
+          updated_at:        new Date().toISOString(),
         }, { onConflict: 'sku' });
 
       if (stockErr) errors.push(`SKU ${sku} stock: ${stockErr.message}`);
