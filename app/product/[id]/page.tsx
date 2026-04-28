@@ -8,6 +8,7 @@ import ProductOrderPanel from './ProductOrderPanel';
 import ProductGallery from './ProductGallery';
 import ProductImage from '../../components/ProductImage';
 import RelatedCarousel from './RelatedCarousel';
+import BackButton from './BackButton';
 import Footer from '../../components/Footer';
 import './product.css';
 
@@ -111,6 +112,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <BackButton />
       <div style={{ background: 'var(--bg-page)', minHeight: '100vh' }}>
       <div className="page-container" style={{paddingTop: '8px', paddingBottom: '48px'}}>
 
