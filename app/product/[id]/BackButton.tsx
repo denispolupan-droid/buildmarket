@@ -1,45 +1,54 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useEffect, useState, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
 
-export default function BackButton() {
+export default function BackButton({ breadcrumbId }: { breadcrumbId: string }) {
   const router = useRouter();
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = document.getElementById(breadcrumbId);
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setVisible(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [breadcrumbId]);
+
+  if (!visible) return null;
 
   return (
     <button
       onClick={() => router.back()}
       style={{
         position: 'fixed',
-        top: '76px',
-        left: '20px',
+        top: '72px',
+        left: '8px',
         zIndex: 100,
         display: 'flex',
         alignItems: 'center',
-        gap: '6px',
-        height: '34px',
-        padding: '0 12px',
-        background: 'rgba(255,255,255,0.85)',
-        backdropFilter: 'blur(8px)',
-        border: '1px solid var(--border)',
-        borderRadius: '8px',
-        fontSize: '13px',
-        fontWeight: 600,
-        color: 'var(--text-secondary)',
+        gap: '4px',
+        height: '32px',
+        padding: '0 10px',
+        background: 'transparent',
+        border: 'none',
+        fontSize: '14px',
+        fontWeight: 700,
+        color: '#475569',
         cursor: 'pointer',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        transition: 'background 0.15s, color 0.15s',
+        letterSpacing: '-0.2px',
+        textShadow: '0 1px 3px rgba(255,255,255,0.8)',
+        transition: 'color 0.15s',
       }}
-      onMouseEnter={e => {
-        (e.currentTarget as HTMLButtonElement).style.background = '#fff';
-        (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)';
-      }}
-      onMouseLeave={e => {
-        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.85)';
-        (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
-      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#0F172A'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#475569'; }}
     >
-      <ArrowLeft size={14} strokeWidth={2.5} />
+      <ArrowLeft size={15} strokeWidth={2.5} />
       Назад
     </button>
   );

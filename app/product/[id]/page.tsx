@@ -112,11 +112,11 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <BackButton />
+      <BackButton breadcrumbId="product-breadcrumb" />
       <div style={{ background: 'var(--bg-page)', minHeight: '100vh' }}>
       <div className="page-container" style={{paddingTop: '8px', paddingBottom: '48px'}}>
 
-        <div className="breadcrumb">
+        <div className="breadcrumb" id="product-breadcrumb">
           <Link href="/">Головна</Link>
           <span>›</span>
           <Link href={isRetail ? '/shop' : '/catalog'}>{isRetail ? 'Магазин' : 'Каталог'}</Link>
