@@ -10,6 +10,21 @@ type Props = {
   characteristics: Characteristic[];
 };
 
+function formatDescription(text: string): string[] {
+  // Розбиваємо на речення і групуємо по 2-3 в абзац
+  const sentences = text
+    .replace(/([.!?])\s+([А-ЯІЇЄA-Z])/g, '$1\n$2')
+    .split('\n')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  const paragraphs: string[] = [];
+  for (let i = 0; i < sentences.length; i += 2) {
+    paragraphs.push(sentences.slice(i, i + 2).join(' '));
+  }
+  return paragraphs;
+}
+
 export default function ProductTabs({ description, descriptionFull, characteristics }: Props) {
   const displayDesc = descriptionFull || description;
   const [tab, setTab] = useState<'desc' | 'chars' | 'docs'>('desc');
@@ -40,7 +55,13 @@ export default function ProductTabs({ description, descriptionFull, characterist
       <div className="product-tabs__content">
         {tab === 'desc' && (
           displayDesc
-            ? <p className="product-tabs__desc">{displayDesc}</p>
+            ? <div className="product-tabs__desc">
+                {formatDescription(displayDesc).map((para, i) => (
+                  <p key={i} style={{ marginBottom: i < formatDescription(displayDesc).length - 1 ? '12px' : 0 }}>
+                    {para}
+                  </p>
+                ))}
+              </div>
             : <p className="product-tabs__desc" style={{color:'var(--text-muted)'}}>Опис відсутній</p>
         )}
 
