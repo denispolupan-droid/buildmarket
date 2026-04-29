@@ -4,43 +4,30 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Heart, Eye, Plus, Check } from 'lucide-react';
 import ProductImage from './ProductImage';
-import { CAT_COLORS, CAT_ICONS } from './CategoryCarousel';
+import { getCatIcon, getCatColor, catDescription } from './CategoryCarousel';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
 import type { ProductFull, Category } from '../../lib/supabase';
 import type { UserRole } from '../../lib/user-role';
 
+const CAT_BULLETS: Record<string, string[]> = {
+  'germetyky':          ['Силіконові — універсальні та санітарні','Акрилові — під фарбування, для внутрішніх робіт','Поліуретанові та нейтральні','МС-полімерні та жаростійкі'],
+  'montazhna-pina':     ['Піна під пістолет — для проф. застосування','Побутова піна — зручне нанесення','Вогнезахисна піна класу В1','Піна-клей та очисники піни'],
+  'klei':               ['Рідкі цвяхи та монтажний клей','Клей для шпалер з індикатором','ПВА та столярний клей (D2-D4)','Суперклей, епоксидний, контактний'],
+  'farby':              ['Водоемульсійні фасадні та інтер\'єрні','Алкідні фарби та емалі','Лаки, просочення, колоранти','Розчинники та перетворювачі іржі'],
+  'gruntivky':          ['Ґрунтовки готові та концентрати','Шпаклівки гіпсові та цементні','Бетоноконтакт та адгезійна ґрунт-фарба','Антигрибкові засоби'],
+  'hidroizolyatsiya':   ['Бітумні та гідроізол. мастики','Праймери для бітумних покриттів','Ізоляційні стрічки та мембрани','Для покрівель, фундаментів, санвузлів'],
+  'kriplennya':         ['Дюбелі нейлонові та металеві','Анкери для бетону та цегли','Шурупи та саморізи для ГК','Покриття: оцинковане, фосфатоване'],
+  'instrumenty':        ['Пістолети для герметика та піни','Шпателі та кельми','Кисті, валики та малярні інструменти','Шліфувальний та вимірювальний інструмент'],
+  'strichky':           ['Герметизуюча бутилова стрічка','Малярна стрічка для чистих меж','Стрічка для швів та серпянка','Звукоізоляційна стрічка Knauf'],
+  'plastyfikatory':     ['Пластифікатори для бетону та розчинів','Протиморозні добавки','Замінник вапна','Для теплої підлоги'],
+  'vologopoglinachi':   ['Поглиначі вологи Ceresit Stop Волога','Таблетки змінні Aero 360°','Різні аромати та об\'єми','Для приміщень до 20 м²'],
+  'zamazky-dlya-shviv': ['Цементні затирки Ceresit CE33 (шов 1-6 мм)','Еластичні CE40 (шов до 20 мм)','50+ кольорів у асортименті','Для керамічної плитки та мозаїки'],
+  'zakhyst-derevyny':   ['Антисептики від грибка та комах','Морилки та тонуючі засоби','Захисні покриття Lotus','Для зовнішніх та внутрішніх робіт'],
+};
+
 function getCatBullets(name: string, slug: string): string[] {
-  const n = (name + ' ' + slug).toLowerCase();
-  if (n.includes('silicone') || n.includes('sealant') || n.includes('герметик'))
-    return [
-      'Силіконові герметики (універсальні, санітарні, високотемпературні)',
-      'Акрилові герметики (під фарбування, для внутрішніх робіт)',
-      'Поліуретанові герметики',
-      'Спеціалізовані формули для різних застосувань',
-    ];
-  if (n.includes('foam') || n.includes('піна'))
-    return [
-      'Однокомпонентні піни (побутові та професійні)',
-      'Двокомпонентні піни для промислового використання',
-      'Вогнестійкі монтажні піни класу В1',
-      'Зимові формули: застосування до −10°C',
-    ];
-  if (n.includes('adhesive') || n.includes('клей'))
-    return [
-      'Монтажні клеї для важких матеріалів',
-      'Контактні клеї швидкого схоплювання',
-      'Конструкційні клеї підвищеної міцності',
-      'Спеціальні клеї (для дзеркал, полістиролу)',
-    ];
-  if (n.includes('acrylic'))
-    return [
-      'Акрилові герметики для внутрішніх робіт',
-      'Варіанти під фарбування та безбарвні',
-      'Еластичні акрилові шпаклівки',
-      'Герметики для вікон і дверей',
-    ];
-  return [
+  return CAT_BULLETS[slug] ?? [
     'Широкий вибір продукції для будівництва',
     'Оптові ціни для дилерів та підрядників',
     'Технічна документація та сертифікати',
@@ -80,10 +67,16 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
 
   const catIndex    = categories.findIndex(c => c.slug === selectedSlug);
   const category    = categories[catIndex] ?? categories[0];
-  const iconColor   = CAT_COLORS[(catIndex + 1) % CAT_COLORS.length];
-  const Icon        = CAT_ICONS[(catIndex + 1) % CAT_ICONS.length];
+  const iconColor   = getCatColor(category?.slug ?? '', catIndex + 1);
+  const Icon        = getCatIcon(category?.slug ?? '', catIndex + 1);
   const bullets     = category ? getCatBullets(category.name, category.slug) : [];
-  const catProducts = products.filter(p => p.category_slug === selectedSlug).slice(0, 8);
+
+  // Підкатегорії обраної категорії
+  const subCats = categories.filter(c => c.parent_slug === selectedSlug);
+  // Якщо є підкатегорії — беремо по 1 товару з кожної; інакше — товари категорії напряму
+  const catProducts = subCats.length > 0
+    ? subCats.flatMap(sub => products.filter(p => p.category_slug === sub.slug).slice(0, 1))
+    : products.filter(p => p.category_slug === selectedSlug).slice(0, 8);
   const total       = catProducts.length;
 
   const minOrder = isRetail ? 1 : (catProducts[0]?.min_order ?? 1);
