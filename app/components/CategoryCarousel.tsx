@@ -16,7 +16,7 @@ type CardData = {
 };
 
 export const CAT_COLORS = ['#1E3A5F', '#0891B2', '#7C3AED', '#D97706', '#059669', '#DC2626', '#0EA5E9'];
-export const CAT_ICONS  = [Package, Pipette, SprayCan, Paintbrush, FlaskConical, Layers, Wrench, Scissors];
+export const CAT_ICONS  = [Package, Pen, SprayCan, Paintbrush, FlaskConical, Layers, Wrench, AlignJustify];
 
 // Іконка за slug категорії
 const SLUG_ICON: Record<string, React.ComponentType<{size?:number;color?:string;strokeWidth?:number}>> = {
