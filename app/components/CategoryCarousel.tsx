@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Package, Pen, SprayCan, Paintbrush, Drill, FlaskConical, Layers, AlignJustify, Shield, Droplets, Hammer, Grid3x3, CloudRain } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Package, Pen, SprayCan, Paintbrush, Bolt, FlaskConical, Layers, AlignJustify, Shield, Droplets, Hammer, Grid3x3, CloudRain } from 'lucide-react';
 import type { Category } from '../../lib/supabase';
 
 type CardData = {
@@ -16,7 +16,7 @@ type CardData = {
 };
 
 export const CAT_COLORS = ['#1E3A5F', '#0891B2', '#7C3AED', '#D97706', '#059669', '#DC2626', '#0EA5E9'];
-export const CAT_ICONS  = [Package, Pen, SprayCan, Paintbrush, FlaskConical, Layers, Drill, AlignJustify];
+export const CAT_ICONS  = [Package, Pen, SprayCan, Paintbrush, FlaskConical, Layers, Bolt, AlignJustify];
 
 // Іконка за slug категорії
 const SLUG_ICON: Record<string, React.ComponentType<{size?:number;color?:string;strokeWidth?:number}>> = {
@@ -26,7 +26,7 @@ const SLUG_ICON: Record<string, React.ComponentType<{size?:number;color?:string;
   'farby':              Paintbrush,
   'gruntivky':          Layers,
   'hidroizolyatsiya':   Shield,
-  'kriplennya':         Drill,
+  'kriplennya':         Bolt,
   'instrumenty':        Hammer,
   'strichky':           AlignJustify,
   'plastyfikatory':     FlaskConical,
