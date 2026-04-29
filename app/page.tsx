@@ -174,11 +174,8 @@ export default async function Home() {
         {/* Brand logos strip */}
         <div style={{ background: 'rgba(0,0,0,0.15)', borderTop: '1px solid rgba(255,255,255,0.06)', position: 'relative', zIndex: 1 }}>
           <div className="page-container" style={{ padding: '8px 40px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.1em', textTransform: 'uppercase', marginRight: '8px' }}>
-                Бренди
-              </span>
-              {[...new Set(products.map(p => p.brand))].slice(0, 8).map(brand => (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+              {[...new Set(products.map(p => p.brand))].slice(0, 14).map(brand => (
                 <Link
                   key={brand}
                   href={`/shop?brand=${encodeURIComponent(brand)}`}

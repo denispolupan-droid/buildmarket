@@ -144,10 +144,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
     <div style={{
       display: 'grid', gridTemplateColumns: '1fr 1fr',
       background: 'var(--bg-soft)',
-      border: '1px solid var(--border)', borderRadius: '18px',
-      overflow: 'hidden', marginTop: '16px',
-      boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
-      maxWidth: '860px', margin: '16px auto 0',
+      overflow: 'hidden',
     }}>
 
       {/* ── Left panel ── */}
