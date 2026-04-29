@@ -24,6 +24,8 @@ export type Product = {
   min_order: number;
   description: string | null;
   description_ru: string | null;
+  description_full: string | null;
+  description_full_ru: string | null;
   image: string | null;
   nl1: string | null;
   nl2: string | null;

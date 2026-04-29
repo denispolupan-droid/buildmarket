@@ -209,6 +209,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
 
         <ProductTabs
           description={product.description}
+          descriptionFull={product.description_full ?? null}
           characteristics={product.characteristics}
         />
 

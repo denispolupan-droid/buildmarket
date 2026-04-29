@@ -6,10 +6,12 @@ type Characteristic = { id: number; label: string; value: string };
 
 type Props = {
   description: string | null;
+  descriptionFull: string | null;
   characteristics: Characteristic[];
 };
 
-export default function ProductTabs({ description, characteristics }: Props) {
+export default function ProductTabs({ description, descriptionFull, characteristics }: Props) {
+  const displayDesc = descriptionFull || description;
   const [tab, setTab] = useState<'desc' | 'chars' | 'docs'>('desc');
 
   return (
@@ -37,8 +39,8 @@ export default function ProductTabs({ description, characteristics }: Props) {
 
       <div className="product-tabs__content">
         {tab === 'desc' && (
-          description
-            ? <p className="product-tabs__desc">{description}</p>
+          displayDesc
+            ? <p className="product-tabs__desc">{displayDesc}</p>
             : <p className="product-tabs__desc" style={{color:'var(--text-muted)'}}>Опис відсутній</p>
         )}
 
