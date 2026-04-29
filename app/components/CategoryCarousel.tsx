@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Package, Pen, SprayCan, Paintbrush, Wrench, FlaskConical, Layers, Tape, Shield, Droplets, Hammer, Grid3x3, CloudRain } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Package, Pen, SprayCan, Paintbrush, Wrench, FlaskConical, Layers, AlignJustify, Shield, Droplets, Hammer, Grid3x3, CloudRain } from 'lucide-react';
 import type { Category } from '../../lib/supabase';
 
 type CardData = {
@@ -28,7 +28,7 @@ const SLUG_ICON: Record<string, React.ComponentType<{size?:number;color?:string;
   'hidroizolyatsiya':   Shield,
   'kriplennya':         Wrench,
   'instrumenty':        Hammer,
-  'strichky':           Tape,
+  'strichky':           AlignJustify,
   'plastyfikatory':     FlaskConical,
   'vologopoglinachi':   CloudRain,
   'zamazky-dlya-shviv': Grid3x3,
