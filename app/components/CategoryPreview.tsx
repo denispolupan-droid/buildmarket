@@ -145,6 +145,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
       display: 'grid', gridTemplateColumns: '1fr 1fr',
       background: 'var(--bg-soft)',
       overflow: 'hidden',
+      height: '100%',
     }}>
 
       {/* ── Left panel ── */}

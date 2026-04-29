@@ -27,7 +27,7 @@ export default function CategorySection({ categories, products, role }: Props) {
       borderRadius: '18px',
       overflow: 'hidden',
       boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
-      minHeight: '460px',
+      height: '620px',
     }}>
       {/* Ліва панель — вертикальний список категорій */}
       <div style={{
@@ -35,6 +35,7 @@ export default function CategorySection({ categories, products, role }: Props) {
         scrollbarWidth: 'none',
         background: 'var(--bg-soft)',
         borderRight: '1px solid var(--border)',
+        height: '100%',
       }}>
         {parentCats.map((cat, i) => {
           const Icon = getCatIcon(cat.slug, i);
