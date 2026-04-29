@@ -27,7 +27,7 @@ export default function CategorySection({ categories, products, role }: Props) {
       borderRadius: '18px',
       overflow: 'hidden',
       boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
-      height: '620px',
+      height: '520px',
     }}>
       {/* Ліва панель — вертикальний список категорій */}
       <div style={{
