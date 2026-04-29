@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Package, Pipette, SprayCan, Paintbrush, Wrench, FlaskConical, Layers, Scissors, Shield, Droplets, Hammer, Grid3x3, Wind } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Package, Pen, SprayCan, Paintbrush, Wrench, FlaskConical, Layers, Tape, Shield, Droplets, Hammer, Grid3x3, CloudRain } from 'lucide-react';
 import type { Category } from '../../lib/supabase';
 
 type CardData = {
@@ -20,7 +20,7 @@ export const CAT_ICONS  = [Package, Pipette, SprayCan, Paintbrush, FlaskConical,
 
 // Іконка за slug категорії
 const SLUG_ICON: Record<string, React.ComponentType<{size?:number;color?:string;strokeWidth?:number}>> = {
-  'germetyky':          Pipette,
+  'germetyky':          Pen,
   'montazhna-pina':     SprayCan,
   'klei':               Droplets,
   'farby':              Paintbrush,
@@ -28,9 +28,9 @@ const SLUG_ICON: Record<string, React.ComponentType<{size?:number;color?:string;
   'hidroizolyatsiya':   Shield,
   'kriplennya':         Wrench,
   'instrumenty':        Hammer,
-  'strichky':           Scissors,
+  'strichky':           Tape,
   'plastyfikatory':     FlaskConical,
-  'vologopoglinachi':   Wind,
+  'vologopoglinachi':   CloudRain,
   'zamazky-dlya-shviv': Grid3x3,
   'zakhyst-derevyny':   Package,
 };

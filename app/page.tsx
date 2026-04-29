@@ -331,7 +331,7 @@ export default async function Home() {
             <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '32px' }}>
               Оберіть категорію для швидкого доступу до магазину або оптового каталогу
             </p>
-            <CategorySection categories={categories.filter(c => !c.parent_slug)} products={products} role={role} />
+            <CategorySection categories={categories} products={products} role={role} />
           </div>
         </section>
       )}
