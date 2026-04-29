@@ -154,6 +154,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
         borderRight: '1px solid var(--border)',
         display: 'flex', flexDirection: 'column',
         background: 'var(--bg-page)',
+        overflowY: 'auto', scrollbarWidth: 'none',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px' }}>
           <div style={{
@@ -187,7 +188,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
       </div>
 
       {/* ── Right panel ── */}
-      <div style={{ background: 'var(--bg-card)', padding: '24px' }}>
+      <div style={{ background: 'var(--bg-card)', padding: '24px', overflowY: 'auto', scrollbarWidth: 'none' }}>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <span style={{ fontSize: '11px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
