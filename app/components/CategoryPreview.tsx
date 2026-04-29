@@ -177,13 +177,12 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
           ))}
         </ul>
 
-        <Link href={catHref} className="btn-primary" style={{
-          display: 'inline-flex', alignItems: 'center', gap: '8px',
-          height: '44px', padding: '0 22px', borderRadius: '10px',
-          background: '#4880B8', color: '#fff', fontSize: '14px', fontWeight: 700,
-          alignSelf: 'flex-start',
+        <Link href={catHref} style={{
+          display: 'inline-flex', alignItems: 'center', gap: '6px',
+          fontSize: '13px', fontWeight: 600, color: '#4880B8',
+          textDecoration: 'none', marginTop: 'auto',
         }}>
-          {isRetail ? 'Перейти до магазину →' : 'Перейти до каталогу →'}
+          {isRetail ? 'Всі товари магазину →' : 'Всі товари каталогу →'}
         </Link>
       </div>
 
@@ -359,6 +358,13 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
 
               <Link href={prodHref(product.sku)} className="btn-icon" style={{ ...actionBtnStyle, textDecoration: 'none' }}>
                 <Eye size={15} strokeWidth={2} />
+              </Link>
+              <Link href={catHref} style={{
+                display: 'inline-flex', alignItems: 'center',
+                fontSize: '12px', fontWeight: 600, color: '#4880B8',
+                textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0,
+              }}>
+                Всі →
               </Link>
             </div>
           </div>
