@@ -368,15 +368,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             </select>
           </div>
         )}
-        {volumesG.length > 0 && (
-          <div className="shop-filter-group">
-            <div className="shop-filter-label">Вага (г)</div>
-            <select className={'shop-filter-select' + (filterVolumeG ? ' active' : '')} value={filterVolumeG} onChange={e => setFilterVolumeG(e.target.value)}>
-              <option value="">Всі</option>
-              {volumesG.map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
-          </div>
-        )}
         {colors.length > 0 && (
           <div className="shop-filter-group">
             <div className="shop-filter-label">Колір</div>
