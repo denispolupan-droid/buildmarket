@@ -229,6 +229,50 @@ const MATERIAL_MAP = {
   'lt':                                         'Aqua Protect LT',
 };
 
+// ── Перейменування labels ─────────────────────────────────────────────────────
+// old label → new label (для конкретних категорій або глобально)
+const LABEL_RENAME = {
+  'тип фарби': 'Тип',
+  'тип емалі': 'Тип',
+};
+
+// ── Нормалізація Тип по категоріях ───────────────────────────────────────────
+const TYPE_BY_CAT = {
+  // Алкідні фарби
+  'алкідна фарба/емаль':                                    'Алкідна емаль',
+  // Ґрунтовки-концентрати
+  'ґрунтовка-концентрат':                                   'Ґрунт-концентрат',
+  // Герметизуюча стрічка
+  'алюмінієва герметизуюча стрічка':                        'Алюмінієва стрічка',
+  'герметизуюча стрічка алюмінієва':                        'Алюмінієва стрічка',
+  // Колоранти
+  'колорант (пігментна паста для тонування)':               'Колорант',
+  'колорант (пігментна паста)':                             'Колорант',
+  // Піна
+  'пістолетна монтажна піна':                               'Пістолетна',
+  // Пластифікатори
+  'пластифікатор для бетону':                               'Пластифікатор',
+  'протиморозний пластифікатор':                            'Пластифікатор протиморозний',
+  'пластифікатор рідкий':                                   'Пластифікатор рідкий',
+  // Шліфувальні
+  'відрізний круг':                                         'Круг відрізний',
+  'алмазний диск turbo':                                    'Алмазний диск',
+  'диск алмазний сегментний':                               'Алмазний диск',
+  'круг шліфувальний самозачепний з 8 отвори':              'Круг шліфувальний',
+  'шліфувальний круг самозачепний':                         'Круг шліфувальний',
+  // Вологопоглиначі
+  'таблетка поглинача вологи':                              'Таблетка',
+  // Захисні покриття
+  'вогнебіозахист для деревини':                            'Вогнебіозахист',
+  // Дюбелі
+  'дюбель для монтажу ізолятора':                           'Дюбель для теплоізоляції',
+  'дюбель з термоголовкою для ізолятора':                   'Дюбель для теплоізоляції',
+  'дюбель з термоголовкою для монтажу ізолятора':           'Дюбель для теплоізоляції',
+  'дюбель для порожнистих матеріалів':                      'Дюбель для порожнистих матеріалів',
+  'клей для плит ппс та мв':                                'Клей для теплоізоляції',
+  'клейова суміш для кріплення та захисту теплоізоляційних плит': 'Клей для теплоізоляції',
+};
+
 // ── Стан (рідкі цвяхи, клеї) ─────────────────────────────────────────────────
 const STAN_MAP = {
   'паста':                   'Паста',
@@ -418,6 +462,10 @@ async function main() {
       if (badMastic.has(norm(val))) { toDelete.push({ id: c.id, sku: c.product_sku, label, val }); continue; }
     }
 
+    // Перейменування label
+    const newLabel = LABEL_RENAME[ln] ?? label;
+    const effectiveLn = norm(newLabel); // нормалізований новий label
+
     if (ln === 'колір') {
       // Видаляємо безглузді значення кольору
       if (COLOR_DELETE.has(norm(val))) { toDelete.push({ id: c.id, sku: c.product_sku, label, val }); continue; }
@@ -426,7 +474,8 @@ async function main() {
     else if (ln === 'країна виробник')          newVal = applyCountryMap(val);
     else if (ln === 'водостійкість')            newVal = applyWaterMap(val);
     else if (ln === 'основа')                   newVal = applyOsnovaGroutMap(val, cat);
-    else if (ln === 'тип')                      newVal = PRIMER_TYPE_MAP[norm(val)] ?? applySealantTypeMap(val);
+    else if (ln === 'тип' || effectiveLn === 'тип')
+                                                newVal = TYPE_BY_CAT[norm(val)] ?? PRIMER_TYPE_MAP[norm(val)] ?? applySealantTypeMap(val);
     else if (ln === 'витрата матеріалу' || ln === 'витрата' || ln === 'витрата ґрунтовки' || ln === 'витрата фарби')
                                                 newVal = normalizeConsumption(val);
     else if (ln === 'спосіб нанесення')         newVal = APPLICATION_MAP[norm(val)] ?? val;
@@ -449,8 +498,8 @@ async function main() {
     else if (ln === 'призначення' && norm(val).includes('гниття'))
                                                 newVal = 'Деревозахист';
 
-    if (newVal !== val) {
-      toUpdate.push({ id: c.id, label, oldVal: val, newVal, sku: c.product_sku });
+    if (newVal !== val || newLabel !== label) {
+      toUpdate.push({ id: c.id, label, newLabel, oldVal: val, newVal, sku: c.product_sku });
     }
   }
 
@@ -519,7 +568,7 @@ async function main() {
   for (const u of toUpdate) {
     const { error } = await supabase
       .from('product_characteristics')
-      .update({ value: u.newVal })
+      .update({ label: u.newLabel ?? u.label, value: u.newVal })
       .eq('id', u.id);
     if (error) console.error(`❌ [${u.sku}] ${u.label}:`, error.message);
     else { done++; if (done % 50 === 0) process.stdout.write(`\r   ${done}/${toUpdate.length}`); }
