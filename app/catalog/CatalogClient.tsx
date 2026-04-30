@@ -24,7 +24,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   };
   const [filterBrand,   setFilterBrand]   = useState('');
   const [filterType,    setFilterType]    = useState('');
-  const [filterVolume,  setFilterVolume]  = useState('');
+  const [filterVolume,   setFilterVolume]   = useState('');
+  const [filterVolumeKg, setFilterVolumeKg] = useState('');
   const [filterColor,   setFilterColor]   = useState('');
   const [filterChars,   setFilterChars]   = useState<Record<string, string>>({});
   const [inStockOnly,   setInStockOnly]   = useState(false);
@@ -58,10 +59,12 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   [products, matchingSlugs]);
 
   const HIDE = (v: string | null | undefined) => !!v && v !== 'Не вказано';
-  const brands  = useMemo(() => [...new Set(catProducts.map(p => p.brand).filter(HIDE))].sort() as string[], [catProducts]);
-  const types   = useMemo(() => [...new Set(catProducts.map(p => p.product_type).filter(HIDE))].sort() as string[], [catProducts]);
-  const volumes = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter(HIDE))].sort() as string[], [catProducts]);
-  const colors  = useMemo(() => [...new Set(catProducts.map(p => p.color).filter(HIDE))].sort() as string[], [catProducts]);
+  const parseVol = (v: string) => parseFloat(v.replace(',', '.').replace(/[^\d.]/g, '') || '0');
+  const brands    = useMemo(() => [...new Set(catProducts.map(p => p.brand).filter(HIDE))].sort() as string[], [catProducts]);
+  const types     = useMemo(() => [...new Set(catProducts.map(p => p.product_type).filter(HIDE))].sort() as string[], [catProducts]);
+  const volumesL  = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter(HIDE).filter((v): v is string => /л$|мл/.test(v ?? '')))].sort((a,b) => parseVol(a)-parseVol(b)), [catProducts]);
+  const volumesKg = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter(HIDE).filter((v): v is string => /кг/.test(v ?? '')))].sort((a,b) => parseVol(a)-parseVol(b)), [catProducts]);
+  const colors    = useMemo(() => [...new Set(catProducts.map(p => p.color).filter(HIDE))].sort() as string[], [catProducts]);
 
   const charOptions = useMemo(() => {
     const map: Record<string, Set<string>> = {};
@@ -95,7 +98,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       if (matchingSlugs && !matchingSlugs.has(p.category_slug ?? '')) return false;
       if (filterBrand   && p.brand          !== filterBrand)    return false;
       if (filterType    && p.product_type   !== filterType)     return false;
-      if (filterVolume  && p.volume         !== filterVolume)   return false;
+      if (filterVolume   && p.volume !== filterVolume)   return false;
+      if (filterVolumeKg && p.volume !== filterVolumeKg) return false;
       if (filterColor   && p.color          !== filterColor)    return false;
       if (inStockOnly   && (p.stock?.stock_qty ?? 0) < p.min_order) return false;
       if (saleOnly) {
@@ -108,7 +112,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       }
       return true;
     });
-  }, [products, search, matchingSlugs, filterBrand, filterType, filterVolume, filterColor, filterChars, inStockOnly, saleOnly]);
+  }, [products, search, matchingSlugs, filterBrand, filterType, filterVolume, filterVolumeKg, filterColor, filterChars, inStockOnly, saleOnly]);
 
   const exportToExcel = useCallback(async () => {
     const XLSX = await import('xlsx');
@@ -144,7 +148,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     } else if ((childrenOf[selCat] ?? []).length > 0) {
       setExpandedCats(prev => new Set([...prev, selCat]));
     }
-    setFilterBrand(''); setFilterType(''); setFilterVolume(''); setFilterColor(''); setFilterChars({});
+    setFilterBrand(''); setFilterType(''); setFilterVolume(''); setFilterVolumeKg(''); setFilterColor(''); setFilterChars({});
   }, [selCat, categories, childrenOf]);
 
   const loggedRef = useRef('');
@@ -295,12 +299,21 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   </select>
                 </div>
               )}
-              {volumes.length > 1 && (
+              {volumesL.length > 1 && (
                 <div className="filter-group">
                   <div className="filter-label">Об&apos;єм</div>
                   <select className={'filter-select' + (filterVolume ? ' active' : '')} value={filterVolume} onChange={e => setFilterVolume(e.target.value)}>
-                    <option value="">Всі об&apos;єми</option>
-                    {volumes.map(v => <option key={v} value={v}>{v}</option>)}
+                    <option value="">Всі</option>
+                    {volumesL.map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                </div>
+              )}
+              {volumesKg.length > 1 && (
+                <div className="filter-group">
+                  <div className="filter-label">Маса</div>
+                  <select className={'filter-select' + (filterVolumeKg ? ' active' : '')} value={filterVolumeKg} onChange={e => setFilterVolumeKg(e.target.value)}>
+                    <option value="">Всі</option>
+                    {volumesKg.map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                 </div>
               )}
