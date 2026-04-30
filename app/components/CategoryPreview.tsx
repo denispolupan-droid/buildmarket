@@ -222,7 +222,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
               <Link href={prodHref(product.sku)} style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, textDecoration: 'none' }}>{product.name}</Link>
               {isSale && <span style={{ flexShrink: 0, background: '#EF4444', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>АКЦІЯ −{discount}%</span>}
             </div>
-            <div style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '8px' }}>{product.sku}</div>
+            <div style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '8px' }}>Арт. {product.sku}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
               {isSale && priceOld && <span style={{ fontSize: '13px', color: '#EF4444', textDecoration: 'line-through', fontWeight: 600 }}>{priceOld} грн</span>}
               {priceUnit > 0 ? <span style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{priceUnit} грн</span> : <span style={{ fontSize: '14px', color: '#94A3B8' }}>За запитом</span>}
