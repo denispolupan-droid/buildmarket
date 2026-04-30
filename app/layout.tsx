@@ -36,6 +36,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="uk" className={inter.className} suppressHydrationWarning>
+      <head><meta name="google" content="notranslate" /></head>
       <body>
         <ThemeProvider>
           <CartProvider>

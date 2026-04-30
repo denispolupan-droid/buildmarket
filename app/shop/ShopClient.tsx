@@ -170,7 +170,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const brands  = useMemo(() => [...new Set(catProducts.map(p => p.brand).filter(HIDE))].sort() as string[], [catProducts]);
   const types   = useMemo(() => [...new Set(catProducts.map(p => p.product_type).filter(HIDE))].sort() as string[], [catProducts]);
   const volumesL  = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter(HIDE).filter((v): v is string => /л$|мл/.test(v ?? '')))].sort((a,b) => parseVol(a)-parseVol(b)), [catProducts]);
-  const volumesKg = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter(HIDE).filter((v): v is string => /кг/.test(v ?? '')))].sort((a,b) => parseVol(a)-parseVol(b)), [catProducts]);
+  const toGrams = (v: string) => { const n = parseVol(v); return /кг/.test(v) ? n * 1000 : n; };
+  const volumesKg = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter(HIDE).filter((v): v is string => /кг|г$/.test(v ?? '')))].sort((a,b) => toGrams(a)-toGrams(b)), [catProducts]);
   const colors  = useMemo(() => [...new Set(catProducts.map(p => p.color).filter(HIDE))].sort() as string[], [catProducts]);
 
   const charOptions = useMemo(() => {
