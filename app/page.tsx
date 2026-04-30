@@ -1,10 +1,26 @@
-export const dynamic = 'force-dynamic';
-
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import fs from 'fs';
 import path from 'path';
+
+export const revalidate = 300;
+
+export const metadata: Metadata = {
+  title: 'FIXLINE — професійна будівельна хімія оптом та в роздріб',
+  description: 'Герметики, монтажні піни, клеї, ґрунтовки від провідних брендів. Оптові ціни для дилерів та підрядників. Доставка по всій Україні.',
+  keywords: ['будівельна хімія', 'герметики', 'монтажні піни', 'клеї', 'ґрунтовки', 'опт', 'Україна'],
+  alternates: { canonical: 'https://fixline.com.ua' },
+  openGraph: {
+    title: 'FIXLINE — професійна будівельна хімія',
+    description: 'Герметики, монтажні піни, клеї, ґрунтовки. Оптові ціни, доставка по Україні.',
+    url: 'https://fixline.com.ua',
+    siteName: 'FIXLINE',
+    locale: 'uk_UA',
+    type: 'website',
+  },
+};
 import { Users, Package, ShieldCheck, Truck, Store, LayoutGrid, CheckCircle, MessageCircle, Award, Tag, PackageCheck } from 'lucide-react';
-import { getCategories, getProducts } from '../lib/supabase';
+import { getCategoriesCached, getProductsCached, getBrandsCached } from '../lib/supabase';
 import Footer from './components/Footer';
 import CategorySection from './components/CategorySection';
 
@@ -63,16 +79,12 @@ export default async function Home() {
   const role = getRole(user);
   const saleHref = role === 'wholesale' ? '/catalog?sale=1' : '/shop?sale=1';
 
-  const [categories, products] = await Promise.all([
-    getCategories(),
-    getProducts(),
+  const [categories, products, brands] = await Promise.all([
+    getCategoriesCached(),
+    getProductsCached(),
+    getBrandsCached(),
   ]);
 
-  const heroProducts = products
-    .filter((p, i, arr) => arr.findIndex(x => x.brand === p.brand) === i)
-    .slice(0, 4);
-
-  const uniqueBrands = [...new Set(products.map(p => p.brand))].slice(0, 6);
   const brandLogoMap = getBrandLogoMap();
 
   const orgLd = {
@@ -175,7 +187,7 @@ export default async function Home() {
         <div style={{ background: 'rgba(0,0,0,0.15)', borderTop: '1px solid rgba(255,255,255,0.06)', position: 'relative', zIndex: 1 }}>
           <div className="page-container" style={{ padding: '8px 40px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'space-between', flexWrap: 'nowrap' }}>
-              {[...new Set(products.map(p => p.brand))].slice(0, 14).map(brand => (
+              {brands.slice(0, 14).map(brand => (
                 <Link
                   key={brand}
                   href={`/shop?brand=${encodeURIComponent(brand)}`}

@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
-import { unstable_noStore as noStore } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { getProducts, getCategories } from '../../lib/supabase';
+import { getProductsCached, getCategoriesCached } from '../../lib/supabase';
 import { createSupabaseServer } from '../../lib/supabase-server';
 import { isWholesale } from '../../lib/user-role';
 import CatalogClient from './CatalogClient';
@@ -15,14 +14,15 @@ export async function generateMetadata({
   const BASE = 'https://fixline.com.ua';
 
   if (category) {
-    const categories = await getCategories();
+    const categories = await getCategoriesCached();
     const cat = categories.find(c => c.slug === category);
     if (cat) {
-      const title = `${cat.name} оптом — купити в Україні | Buildmarket`;
+      const title = `${cat.name} оптом — купити в Україні | FIXLINE`;
       const description = `${cat.name} оптом для дилерів, підрядників та магазинів. Широкий вибір, оптові ціни, доставка по Україні.`;
       return {
         title,
         description,
+        keywords: [cat.name, 'оптом', 'будівельна хімія', 'Україна'],
         openGraph: { title, description, url: `${BASE}/catalog?category=${category}`, siteName: 'FIXLINE', locale: 'uk_UA' },
         alternates: { canonical: `${BASE}/catalog?category=${category}` },
       };
@@ -30,9 +30,17 @@ export async function generateMetadata({
   }
 
   return {
-    title: 'Каталог будівельної хімії оптом | Buildmarket',
+    title: 'Каталог будівельної хімії оптом | FIXLINE',
     description: 'Герметики, монтажні піни, клеї, рідкі цвяхи та інша будівельна хімія оптом. Оптові ціни для дилерів, підрядників та будівельних компаній.',
+    keywords: ['будівельна хімія оптом', 'герметики оптом', 'монтажна піна оптом', 'клеї оптом'],
     alternates: { canonical: `${BASE}/catalog` },
+    openGraph: {
+      title: 'Оптовий каталог будівельної хімії | FIXLINE',
+      description: 'Герметики, монтажні піни, клеї оптом. Ціни для дилерів та підрядників.',
+      url: `${BASE}/catalog`,
+      siteName: 'FIXLINE',
+      locale: 'uk_UA',
+    },
   };
 }
 
@@ -41,7 +49,6 @@ export default async function Catalog({
 }: {
   searchParams: Promise<{ q?: string; category?: string; sale?: string }>;
 }) {
-  noStore();
   const { q, category, sale } = await searchParams;
 
   const supabase = await createSupabaseServer();
@@ -53,8 +60,8 @@ export default async function Catalog({
   if (!isWholesale(user)) redirect(shopUrl);
 
   const [products, categories] = await Promise.all([
-    getProducts(),
-    getCategories(),
+    getProductsCached(),
+    getCategoriesCached(),
   ]);
 
   const breadcrumbLd = {

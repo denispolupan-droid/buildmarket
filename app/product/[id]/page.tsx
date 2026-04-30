@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { getProductBySku, getProducts, getCategories } from '../../../lib/supabase';
+import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached } from '../../../lib/supabase';
 import ProductTabs from './ProductTabs';
 import ProductOrderPanel from './ProductOrderPanel';
 import ProductGallery from './ProductGallery';
@@ -14,9 +14,11 @@ import './product.css';
 
 const BASE = 'https://fixline.com.ua';
 
+export const revalidate = 60;
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id: sku } = await params;
-  const product = await getProductBySku(sku);
+  const product = await getProductBySkuCached(sku);
   if (!product) return {};
 
   const price = product.stock?.price_unit;
@@ -29,6 +31,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title,
     description,
+    keywords: [product.brand, product.name, 'купити', 'оптом', 'будівельна хімія', 'Україна'],
     openGraph: {
       title,
       description,
@@ -53,13 +56,13 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   const [{ id: sku }, sp] = await Promise.all([params, searchParams]);
   const isRetail = sp.from === 'shop';
 
-  const [product, allInCategory, categories] = await Promise.all([
-    getProductBySku(sku),
-    getProducts({ category: undefined }),
-    getCategories(),
-  ]);
-
+  const product = await getProductBySkuCached(sku);
   if (!product) notFound();
+
+  const [related, categories] = await Promise.all([
+    product.category_slug ? getRelatedProductsCached(product.category_slug, product.sku, 5) : Promise.resolve([]),
+    getCategoriesCached(),
+  ]);
 
   const priceUnit = isRetail
     ? (product.stock?.price_retail ?? 0)
@@ -70,10 +73,6 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   const stockQty  = product.stock?.stock_qty  ?? 0;
   const minOrder  = isRetail ? 1 : product.min_order;
   const pricePack = isRetail ? priceUnit : priceUnit * product.pack_qty;
-
-  const related = allInCategory
-    .filter((p) => p.sku !== product.sku && p.category_slug === product.category_slug)
-    .slice(0, 5);
 
   const productCat   = categories.find((c) => c.slug === product.category_slug);
   const categoryName = productCat?.name ?? 'Каталог';

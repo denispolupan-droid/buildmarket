@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { unstable_cache } from 'next/cache';
 
 // ── Типи, що відповідають схемі БД ───────────────────────────────────────────
 
@@ -158,3 +159,62 @@ export async function getProductBySku(sku: string): Promise<ProductFull | null> 
   if (error) return null;
   return data as ProductFull;
 }
+
+export async function getBrands(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('brand')
+    .eq('is_active', true);
+  if (error) throw error;
+  const unique = [...new Set((data ?? []).map((p: { brand: string }) => p.brand))];
+  return unique;
+}
+
+// ── Кэшированные функции для ISR ──────────────────────────────────────────────
+
+export const getCategoriesCached = unstable_cache(
+  async () => getCategories(),
+  ['categories'],
+  { revalidate: 300, tags: ['categories'] }
+);
+
+export const getProductsCached = unstable_cache(
+  async (opts?: { category?: string; limit?: number }) => getProducts(opts),
+  ['products'],
+  { revalidate: 60, tags: ['products'] }
+);
+
+export const getBrandsCached = unstable_cache(
+  async () => getBrands(),
+  ['brands'],
+  { revalidate: 300, tags: ['brands'] }
+);
+
+export const getProductBySkuCached = unstable_cache(
+  async (sku: string) => getProductBySku(sku),
+  ['product'],
+  { revalidate: 60, tags: ['products'] }
+);
+
+export async function getRelatedProducts(categorySlug: string, excludeSku: string, limit = 5): Promise<ProductFull[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      stock:product_stock(*),
+      characteristics:product_characteristics(*)
+    `)
+    .eq('is_active', true)
+    .eq('category_slug', categorySlug)
+    .neq('sku', excludeSku)
+    .order('sort_order')
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as ProductFull[];
+}
+
+export const getRelatedProductsCached = unstable_cache(
+  async (categorySlug: string, excludeSku: string, limit = 5) => getRelatedProducts(categorySlug, excludeSku, limit),
+  ['related-products'],
+  { revalidate: 60, tags: ['products'] }
+);
