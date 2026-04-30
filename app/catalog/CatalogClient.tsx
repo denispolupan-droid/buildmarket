@@ -26,6 +26,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const [filterType,    setFilterType]    = useState('');
   const [filterVolume,  setFilterVolume]  = useState('');
   const [filterColor,   setFilterColor]   = useState('');
+  const [filterChars,   setFilterChars]   = useState<Record<string, string>>({});
   const [inStockOnly,   setInStockOnly]   = useState(false);
   const [saleOnly,      setSaleOnly]      = useState(initialSaleOnly);
   const [expandedCats, setExpandedCats]  = useState<Set<string>>(new Set());
@@ -52,10 +53,29 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     return new Set([selCat, ...children]);
   }, [selCat, childrenOf]);
 
-  const brands  = useMemo(() => ['', ...[...new Set(products.map(p => p.brand))]], [products]);
-  const types   = useMemo(() => ['', ...[...new Set(products.map(p => p.product_type).filter(Boolean))]] as string[], [products]);
-  const volumes = useMemo(() => ['', ...[...new Set(products.map(p => p.volume).filter(Boolean))]] as string[], [products]);
-  const colors  = useMemo(() => ['', ...[...new Set(products.map(p => p.color).filter(Boolean))]] as string[], [products]);
+  const catProducts = useMemo(() =>
+    matchingSlugs ? products.filter(p => matchingSlugs.has(p.category_slug ?? '')) : products,
+  [products, matchingSlugs]);
+
+  const brands  = useMemo(() => [...new Set(catProducts.map(p => p.brand))].sort(), [catProducts]);
+  const types   = useMemo(() => [...new Set(catProducts.map(p => p.product_type).filter(Boolean))].sort() as string[], [catProducts]);
+  const volumes = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter(Boolean))].sort() as string[], [catProducts]);
+  const colors  = useMemo(() => [...new Set(catProducts.map(p => p.color).filter(Boolean))].sort() as string[], [catProducts]);
+
+  const charOptions = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    catProducts.forEach(p =>
+      (p.characteristics ?? []).forEach(c => {
+        if (!c.label || !c.value) return;
+        (map[c.label] ??= new Set()).add(c.value);
+      })
+    );
+    return Object.entries(map)
+      .filter(([, vals]) => vals.size > 1)
+      .sort((a, b) => b[1].size - a[1].size)
+      .slice(0, 5)
+      .map(([label, vals]) => ({ label, values: [...vals].sort() }));
+  }, [catProducts]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -72,9 +92,12 @@ export default function CatalogClient({ products, categories, initialSearch = ''
         const po = p.stock?.price_old  ?? null;
         if (!(po != null && pu > 0 && pu < po)) return false;
       }
+      for (const [label, val] of Object.entries(filterChars)) {
+        if (val && !p.characteristics.some(c => c.label === label && c.value === val)) return false;
+      }
       return true;
     });
-  }, [products, search, matchingSlugs, filterBrand, filterType, filterVolume, filterColor, inStockOnly, saleOnly]);
+  }, [products, search, matchingSlugs, filterBrand, filterType, filterVolume, filterColor, filterChars, inStockOnly, saleOnly]);
 
   const exportToExcel = useCallback(async () => {
     const XLSX = await import('xlsx');
@@ -110,6 +133,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     } else if ((childrenOf[selCat] ?? []).length > 0) {
       setExpandedCats(prev => new Set([...prev, selCat]));
     }
+    setFilterBrand(''); setFilterType(''); setFilterVolume(''); setFilterColor(''); setFilterChars({});
   }, [selCat, categories, childrenOf]);
 
   const loggedRef = useRef('');
@@ -242,54 +266,55 @@ export default function CatalogClient({ products, categories, initialSearch = ''
             <div className="sidebar-section">
               <div className="sidebar-heading">Фільтри</div>
 
-              <div className="filter-group">
-                <div className="filter-label">Бренд</div>
-                <select
-                  className={'filter-select' + (filterBrand ? ' active' : '')}
-                  value={filterBrand}
-                  onChange={e => setFilterBrand(e.target.value)}
-                >
-                  <option value="">Всі бренди</option>
-                  {brands.filter(Boolean).map(b => <option key={b} value={b}>{b}</option>)}
-                </select>
-              </div>
-
-              <div className="filter-group">
-                <div className="filter-label">Тип</div>
-                <select
-                  className={'filter-select' + (filterType ? ' active' : '')}
-                  value={filterType}
-                  onChange={e => setFilterType(e.target.value)}
-                >
-                  <option value="">Всі типи</option>
-                  {types.filter(Boolean).map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-
-              <div className="filter-group">
-                <div className="filter-label">Об&apos;єм</div>
-                <select
-                  className={'filter-select' + (filterVolume ? ' active' : '')}
-                  value={filterVolume}
-                  onChange={e => setFilterVolume(e.target.value)}
-                >
-                  <option value="">Всі об&apos;єми</option>
-                  {volumes.filter(Boolean).map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
-              </div>
-
-              <div className="filter-group">
-                <div className="filter-label">Колір</div>
-                <select
-                  className={'filter-select' + (filterColor ? ' active' : '')}
-                  value={filterColor}
-                  onChange={e => setFilterColor(e.target.value)}
-                >
-                  <option value="">Всі кольори</option>
-                  {colors.filter(Boolean).map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-
+              {brands.length > 1 && (
+                <div className="filter-group">
+                  <div className="filter-label">Бренд</div>
+                  <select className={'filter-select' + (filterBrand ? ' active' : '')} value={filterBrand} onChange={e => setFilterBrand(e.target.value)}>
+                    <option value="">Всі бренди</option>
+                    {brands.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+              )}
+              {types.length > 1 && (
+                <div className="filter-group">
+                  <div className="filter-label">Тип</div>
+                  <select className={'filter-select' + (filterType ? ' active' : '')} value={filterType} onChange={e => setFilterType(e.target.value)}>
+                    <option value="">Всі типи</option>
+                    {types.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              )}
+              {volumes.length > 1 && (
+                <div className="filter-group">
+                  <div className="filter-label">Об&apos;єм</div>
+                  <select className={'filter-select' + (filterVolume ? ' active' : '')} value={filterVolume} onChange={e => setFilterVolume(e.target.value)}>
+                    <option value="">Всі об&apos;єми</option>
+                    {volumes.map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                </div>
+              )}
+              {colors.length > 1 && (
+                <div className="filter-group">
+                  <div className="filter-label">Колір</div>
+                  <select className={'filter-select' + (filterColor ? ' active' : '')} value={filterColor} onChange={e => setFilterColor(e.target.value)}>
+                    <option value="">Всі кольори</option>
+                    {colors.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              )}
+              {charOptions.map(({ label, values }) => (
+                <div key={label} className="filter-group">
+                  <div className="filter-label">{label}</div>
+                  <select
+                    className={'filter-select' + (filterChars[label] ? ' active' : '')}
+                    value={filterChars[label] ?? ''}
+                    onChange={e => setFilterChars(prev => ({ ...prev, [label]: e.target.value }))}
+                  >
+                    <option value="">Всі</option>
+                    {values.map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                </div>
+              ))}
               <label className="filter-check">
                 <input type="checkbox" checked={inStockOnly} onChange={e => setInStockOnly(e.target.checked)} />
                 Тільки в наявності

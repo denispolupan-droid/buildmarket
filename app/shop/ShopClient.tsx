@@ -127,6 +127,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const [filterType,   setFilterType]   = useState('');
   const [filterVolume, setFilterVolume] = useState('');
   const [filterColor,  setFilterColor]  = useState('');
+  const [filterChars,  setFilterChars]  = useState<Record<string, string>>({});
   const [inStockOnly,  setInStockOnly]  = useState(false);
   const [catsOpen,     setCatsOpen]     = useState(false);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
@@ -136,13 +137,9 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     setSelCat(slug);
     router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    setFilterBrand(''); setFilterType(''); setFilterVolume(''); setFilterColor(''); setFilterChars({});
   };
   const { skus: wishSkus, toggle: toggleWish } = useWishlist();
-
-  const brands  = useMemo(() => [...new Set(products.map(p => p.brand))].sort(), [products]);
-  const types   = useMemo(() => [...new Set(products.map(p => p.product_type).filter(Boolean))].sort() as string[], [products]);
-  const volumes = useMemo(() => [...new Set(products.map(p => p.volume).filter(Boolean))].sort() as string[], [products]);
-  const colors  = useMemo(() => [...new Set(products.map(p => p.color).filter(Boolean))].sort() as string[], [products]);
 
   const parentCats = useMemo(() => categories.filter(c => !c.parent_slug), [categories]);
   const childrenOf = useMemo(() => {
@@ -162,6 +159,30 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     return new Set([selCat, ...children]);
   }, [selCat, childrenOf]);
 
+  const catProducts = useMemo(() =>
+    matchingSlugs ? products.filter(p => matchingSlugs.has(p.category_slug ?? '')) : products,
+  [products, matchingSlugs]);
+
+  const brands  = useMemo(() => [...new Set(catProducts.map(p => p.brand))].sort(), [catProducts]);
+  const types   = useMemo(() => [...new Set(catProducts.map(p => p.product_type).filter(Boolean))].sort() as string[], [catProducts]);
+  const volumes = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter(Boolean))].sort() as string[], [catProducts]);
+  const colors  = useMemo(() => [...new Set(catProducts.map(p => p.color).filter(Boolean))].sort() as string[], [catProducts]);
+
+  const charOptions = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    catProducts.forEach(p =>
+      (p.characteristics ?? []).forEach(c => {
+        if (!c.label || !c.value) return;
+        (map[c.label] ??= new Set()).add(c.value);
+      })
+    );
+    return Object.entries(map)
+      .filter(([, vals]) => vals.size > 1)
+      .sort((a, b) => b[1].size - a[1].size)
+      .slice(0, 5)
+      .map(([label, vals]) => ({ label, values: [...vals].sort() }));
+  }, [catProducts]);
+
   const filtered = useMemo(() => {
     let list = products;
     if (matchingSlugs)  list = list.filter(p => matchingSlugs.has(p.category_slug ?? ''));
@@ -171,6 +192,9 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     if (filterVolume)   list = list.filter(p => p.volume === filterVolume);
     if (filterColor)    list = list.filter(p => p.color === filterColor);
     if (inStockOnly)    list = list.filter(p => (p.stock?.stock_qty ?? 0) >= 1);
+    for (const [label, val] of Object.entries(filterChars)) {
+      if (val) list = list.filter(p => p.characteristics.some(c => c.label === label && c.value === val));
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(p =>
@@ -180,7 +204,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       );
     }
     return list;
-  }, [products, matchingSlugs, saleOnly, filterBrand, filterType, filterVolume, filterColor, inStockOnly, search]);
+  }, [products, matchingSlugs, saleOnly, filterBrand, filterType, filterVolume, filterColor, filterChars, inStockOnly, search]);
 
   const countFor = (slug: string) => {
     const children = (childrenOf[slug] ?? []).map(c => c.slug);
@@ -328,6 +352,19 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             </select>
           </div>
         )}
+        {charOptions.map(({ label, values }) => (
+          <div key={label} className="shop-filter-group">
+            <div className="shop-filter-label">{label}</div>
+            <select
+              className={'shop-filter-select' + (filterChars[label] ? ' active' : '')}
+              value={filterChars[label] ?? ''}
+              onChange={e => setFilterChars(prev => ({ ...prev, [label]: e.target.value }))}
+            >
+              <option value="">Всі</option>
+              {values.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+        ))}
         <label className="shop-filter-check">
           <input type="checkbox" checked={inStockOnly} onChange={e => setInStockOnly(e.target.checked)} />
           Тільки в наявності
