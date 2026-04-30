@@ -225,7 +225,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const charOptions = useMemo(() => {
     const map: Record<string, Set<string>> = {};
     const SKIP_CHAR_LABELS = new Set([
-      'Тип',
+      'Тип', 'Тип фарби', 'Тип ґрунтовки', 'Тип герметика', 'Тип клею',
       'Мінімальна температура застосування', 'Максимальна температура застосування',
       'Мінімальна температура експлуатації', 'Максимальна температура експлуатації',
       'Мінімальна температура зберігання',   'Максимальна температура зберігання',
