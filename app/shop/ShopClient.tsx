@@ -56,7 +56,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
             {p.product_type && <span className="shop-card__tag">{p.product_type}</span>}
             {p.color && <span className="shop-card__tag">{p.color}</span>}
           </div>
-          <div style={{ fontSize: '11px', color: '#94A3B8', marginBottom: '4px' }}>{p.sku}</div>
+          <div style={{ fontSize: '11px', color: '#94A3B8', marginBottom: '4px' }}>Арт. {p.sku}</div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
             <div className={'shop-card__stock' + (inStock ? '' : ' out')}>
               <span className="shop-card__stock-dot" />
