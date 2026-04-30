@@ -9,6 +9,7 @@ type WishlistContext = {
   skus: Set<string>;
   toggle: (sku: string) => void;
   isLiked: (sku: string) => boolean;
+  cleanSkus: (validSkus: string[]) => void;
   loaded: boolean;
 };
 
@@ -61,8 +62,17 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
   const isLiked = useCallback((sku: string) => skus.has(sku), [skus]);
 
+  const cleanSkus = useCallback((validSkus: string[]) => {
+    const valid = new Set(validSkus);
+    setSkus(prev => {
+      const next = new Set([...prev].filter(s => valid.has(s)));
+      localStorage.setItem(LS_KEY, JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
+
   return (
-    <WishlistCtx.Provider value={{ skus, toggle, isLiked, loaded }}>
+    <WishlistCtx.Provider value={{ skus, toggle, isLiked, cleanSkus, loaded }}>
       {children}
     </WishlistCtx.Provider>
   );

@@ -252,6 +252,9 @@
 .shop-card__wish.active { color: #EF4444; border-color: #FECACA; background: #FFF1F2; }
 [data-theme="dark"] .shop-card__wish.active { background: #3D1515; border-color: #7F2020; }
 .shop-card__clickable { display: block; text-decoration: none; color: inherit; }
+.shop-card__footer input[type=number]::-webkit-inner-spin-button,
+.shop-card__footer input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.shop-card__footer input[type=number] { -moz-appearance: textfield; }
 .shop-card__clickable:hover .shop-card__name { color: #1E3A5F; }
 [data-theme="dark"] .shop-card__clickable:hover .shop-card__name { color: #93B8D8; }
 

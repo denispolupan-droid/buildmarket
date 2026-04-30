@@ -10,7 +10,7 @@ import Footer from '../../components/Footer';
 import type { ProductFull } from '../../../lib/supabase';
 
 export default function GuestWishlistPage() {
-  const { skus, loaded } = useWishlist();
+  const { skus, loaded, cleanSkus } = useWishlist();
   const [products, setProducts] = useState<ProductFull[]>([]);
   const [fetching, setFetching] = useState(false);
 
@@ -26,7 +26,9 @@ export default function GuestWishlistPage() {
       .in('sku', [...skus])
       .eq('is_active', true)
       .then(({ data }: { data: ProductFull[] | null }) => {
-        setProducts((data ?? []) as ProductFull[]);
+        const found = (data ?? []) as ProductFull[];
+        setProducts(found);
+        cleanSkus(found.map(p => p.sku));
         setFetching(false);
       });
   }, [skus, loaded]);

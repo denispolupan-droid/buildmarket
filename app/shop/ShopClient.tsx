@@ -3,11 +3,113 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Search, Plus, Heart, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
+import { Search, Plus, Minus, Heart, ChevronDown, ChevronUp, ChevronRight, Check } from 'lucide-react';
 import ProductImage from '../components/ProductImage';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
 import type { ProductFull, Category } from '../../lib/supabase';
+
+type CardProps = {
+  p: ProductFull;
+  price: number | null;
+  priceOld: number | null;
+  inStock: boolean;
+  salePercent: number | null;
+  isWished: boolean;
+  onToggleWish: () => void;
+};
+
+function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggleWish }: CardProps) {
+  const [qty, setQty] = useState(1);
+  const [inputVal, setInputVal] = useState('1');
+  const { addItem, items } = useCart();
+  const inCart = items.some(i => i.sku === p.sku);
+
+  function handleAdd() {
+    addItem({
+      sku: p.sku, name: p.name, brand: p.brand, volume: p.volume ?? null,
+      price: price ?? 0, min_order: 1,
+      nl1: p.nl1 ?? '', nl2: p.nl2 ?? undefined,
+      bc: p.bc, ac: p.ac, img_type: p.img_type, imageUrl: p.image ?? undefined,
+    }, qty);
+  }
+
+  return (
+    <div className="shop-card">
+      <Link href={`/product/${p.sku}?from=shop`} className="shop-card__clickable">
+        <div className="shop-card__img">
+          {salePercent && salePercent > 0 && (
+            <span className="shop-card__badge-sale">-{salePercent}%</span>
+          )}
+          <ProductImage
+            brand={p.brand} nl1={p.nl1 ?? ''} nl2={p.nl2 ?? undefined}
+            volume={p.volume ?? ''} bc={p.bc} ac={p.ac} type={p.img_type}
+            variant="front" imageUrl={p.image ?? undefined}
+          />
+        </div>
+        <div className="shop-card__body">
+          <div className="shop-card__brand">{p.brand}</div>
+          <div className="shop-card__name">
+            {p.name}{p.volume && !p.name.includes(p.volume) ? ` ${p.volume}` : ''}
+          </div>
+          <div className="shop-card__badges">
+            {p.product_type && <span className="shop-card__tag">{p.product_type}</span>}
+            {p.color && <span className="shop-card__tag">{p.color}</span>}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+            <div className={'shop-card__stock' + (inStock ? '' : ' out')}>
+              <span className="shop-card__stock-dot" />
+              {inStock ? 'В наявності' : 'Немає'}
+            </div>
+            <div className="shop-card__price-wrap" style={{ textAlign: 'right' }}>
+              {priceOld && <span className="shop-card__price-old">{priceOld} грн</span>}
+              {price
+                ? <div className="shop-card__price">{price} <span>грн</span></div>
+                : <div className="shop-card__price-na">Ціна за запитом</div>
+              }
+            </div>
+          </div>
+        </div>
+      </Link>
+
+      <div className="shop-card__footer" style={{ justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <button
+            className={'shop-card__wish' + (isWished ? ' active' : '')}
+            aria-label={isWished ? 'Прибрати з обраного' : 'Додати в обране'}
+            onClick={onToggleWish}
+          >
+            <Heart size={15} fill={isWished ? '#EF4444' : 'none'} strokeWidth={2} />
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden', height: '44px', background: 'var(--bg-card)' }}>
+            <button onClick={() => { const v = Math.max(1, qty - 1); setQty(v); setInputVal(String(v)); }} style={{ width: '32px', height: '44px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+              <Minus size={13} strokeWidth={2.5} />
+            </button>
+            <input
+              type="number"
+              value={inputVal}
+              min={1}
+              onChange={e => setInputVal(e.target.value)}
+              onBlur={() => { const v = parseInt(inputVal, 10); const valid = !isNaN(v) && v >= 1 ? v : 1; setQty(valid); setInputVal(String(valid)); }}
+              style={{ width: '36px', height: '44px', border: 'none', background: 'none', textAlign: 'center', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', outline: 'none', padding: 0 }}
+            />
+            <button onClick={() => { const v = qty + 1; setQty(v); setInputVal(String(v)); }} style={{ width: '32px', height: '44px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+              <Plus size={13} strokeWidth={2.5} />
+            </button>
+          </div>
+          <button
+            className="shop-card__btn"
+            disabled={!inStock}
+            onClick={handleAdd}
+            style={inCart ? { background: '#0D9488' } : undefined}
+          >
+            {inCart ? <><Check size={15} strokeWidth={2.5} /> В кошику</> : <><Plus size={15} strokeWidth={2.5} /> В кошик</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 type Props = {
   products: ProductFull[];
@@ -35,7 +137,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  const { addItem } = useCart();
   const { skus: wishSkus, toggle: toggleWish } = useWishlist();
 
   const brands  = useMemo(() => [...new Set(products.map(p => p.brand))].sort(), [products]);
@@ -279,82 +380,17 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             const salePercent = price && priceOld
               ? Math.round((1 - price / priceOld) * 100)
               : null;
-
             return (
-              <div key={p.sku} className="shop-card">
-                <Link href={`/product/${p.sku}?from=shop`} className="shop-card__clickable">
-                  <div className="shop-card__img">
-                    {salePercent && salePercent > 0 && (
-                      <span className="shop-card__badge-sale">-{salePercent}%</span>
-                    )}
-                    <ProductImage
-                      brand={p.brand}
-                      nl1={p.nl1 ?? ''}
-                      nl2={p.nl2 ?? undefined}
-                      volume={p.volume ?? ''}
-                      bc={p.bc}
-                      ac={p.ac}
-                      type={p.img_type}
-                      variant="front"
-                      imageUrl={p.image ?? undefined}
-                    />
-                  </div>
-                  <div className="shop-card__body">
-                    <div className="shop-card__brand">{p.brand}</div>
-                    <div className="shop-card__name">
-                      {p.name}{p.volume && !p.name.includes(p.volume) ? ` ${p.volume}` : ''}
-                    </div>
-                    <div className="shop-card__badges">
-                      {p.product_type && <span className="shop-card__tag">{p.product_type}</span>}
-                      {p.color && <span className="shop-card__tag">{p.color}</span>}
-                    </div>
-                    <div className={'shop-card__stock' + (inStock ? '' : ' out')}>
-                      <span className="shop-card__stock-dot" />
-                      {inStock ? 'В наявності' : 'Немає'}
-                    </div>
-                  </div>
-                </Link>
-
-                <div className="shop-card__footer">
-                  <div className="shop-card__price-wrap">
-                    {priceOld && <span className="shop-card__price-old">{priceOld} грн</span>}
-                    {price
-                      ? <div className="shop-card__price">{price} <span>грн</span></div>
-                      : <div className="shop-card__price-na">Ціна за запитом</div>
-                    }
-                  </div>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <button
-                      className={'shop-card__wish' + (wishSkus.has(p.sku) ? ' active' : '')}
-                      aria-label={wishSkus.has(p.sku) ? 'Прибрати з обраного' : 'Додати в обране'}
-                      onClick={() => toggleWish(p.sku)}
-                    >
-                      <Heart size={15} fill={wishSkus.has(p.sku) ? '#EF4444' : 'none'} strokeWidth={2} />
-                    </button>
-                    <button
-                      className="shop-card__btn"
-                      disabled={!inStock}
-                      onClick={() => addItem({
-                        sku: p.sku,
-                        name: p.name,
-                        brand: p.brand,
-                        volume: p.volume ?? null,
-                        price: price ?? 0,
-                        min_order: 1,
-                        nl1: p.nl1 ?? '',
-                        nl2: p.nl2 ?? undefined,
-                        bc: p.bc,
-                        ac: p.ac,
-                        img_type: p.img_type,
-                        imageUrl: p.image ?? undefined,
-                      }, 1)}
-                    >
-                      <Plus size={15} strokeWidth={2.5} />
-                      В кошик
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <ShopCard
+                key={p.sku}
+                p={p}
+                price={price}
+                priceOld={priceOld}
+                inStock={inStock}
+                salePercent={salePercent}
+                isWished={wishSkus.has(p.sku)}
+                onToggleWish={() => toggleWish(p.sku)}
+              />
             );
           })}
         </div>
