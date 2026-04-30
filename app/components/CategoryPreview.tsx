@@ -182,7 +182,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
         </ul>
 
         {/* Фіксована кнопка внизу */}
-        <div style={{ padding: '20px 28px 32px', flexShrink: 0 }}>
+        <div style={{ padding: '12px 28px 24px', flexShrink: 0 }}>
           <Link href={catHref} className="btn-primary" style={{
             display: 'inline-flex', alignItems: 'center', gap: '8px',
             height: '44px', padding: '0 22px', borderRadius: '10px',
@@ -197,7 +197,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
       {/* ── Right panel ── */}
       <div style={{ background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        {/* Фіксований заголовок */}
+        {/* Фіксований заголовок — пагінація */}
         <div style={{ padding: '24px 24px 12px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: '11px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
             Приклади товарів
@@ -215,55 +215,47 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
           </div>
         </div>
 
-        {/* Скролений контент */}
-        <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', padding: '0 24px' }}>
-          {product ? (
-            <div style={{ background: 'var(--bg-soft)', borderRadius: '14px', padding: '20px', border: '1px solid var(--border-light)' }}>
-              <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', alignItems: 'flex-start' }}>
-                <Link href={prodHref(product.sku)} style={{ width: '100px', height: '100px', flexShrink: 0, background: 'var(--bg-card)', borderRadius: '10px', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <ProductImage brand={product.brand} nl1={product.nl1 ?? ''} nl2={product.nl2 ?? undefined} volume={product.volume ?? ''} bc={product.bc} ac={product.ac} type={product.img_type} imageUrl={product.image ?? undefined} />
-                </Link>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
-                    <Link href={prodHref(product.sku)} style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, textDecoration: 'none' }}>{product.name}</Link>
-                    {isSale && <span style={{ flexShrink: 0, background: '#EF4444', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>АКЦІЯ −{discount}%</span>}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '10px' }}>{product.sku}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
-                    {isSale && priceOld && <span style={{ fontSize: '13px', color: '#EF4444', textDecoration: 'line-through', fontWeight: 600 }}>{priceOld} грн</span>}
-                    {priceUnit > 0 ? <span style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{priceUnit} грн</span> : <span style={{ fontSize: '14px', color: '#94A3B8' }}>За запитом</span>}
-                  </div>
-                  {stockQty >= curMinOrder && <div style={{ fontSize: '11px', color: '#15803D', fontWeight: 600, marginBottom: '3px' }}>● в наявності</div>}
-                  {!isRetail && <div style={{ fontSize: '11px', color: '#64748B', marginBottom: '2px' }}>В упаковці: {product.pack_qty} шт</div>}
-                </div>
-              </div>
-              {specs.length > 0 && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', marginBottom: '12px', paddingBottom: '14px', borderBottom: '1px solid var(--border)' }}>
-                  {specs.slice(0, 6).map(s => (
-                    <div key={s.label}>
-                      <div style={{ fontSize: '11px', color: '#94A3B8', marginBottom: '2px' }}>{s.label}</div>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{s.value}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {!isRetail && (
-                <div>
-                  <div style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '2px' }}>Мінімальне замовлення</div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#4880B8' }}>{product.min_order} рс / {packStr} уп</div>
-                </div>
-              )}
+        {product ? (<>
+          {/* Фіксований блок — назва, ціна, наявність */}
+          <div style={{ padding: '0 24px 12px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '2px' }}>
+              <Link href={prodHref(product.sku)} style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, textDecoration: 'none' }}>{product.name}</Link>
+              {isSale && <span style={{ flexShrink: 0, background: '#EF4444', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>АКЦІЯ −{discount}%</span>}
             </div>
-          ) : (
-            <div style={{ background: 'var(--bg-soft)', borderRadius: '14px', padding: '48px 24px', textAlign: 'center', border: '1px solid var(--border)' }}>
-              <div style={{ fontSize: '15px', color: 'var(--text-muted)' }}>Немає товарів у цій категорії</div>
+            <div style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '8px' }}>{product.sku}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+              {isSale && priceOld && <span style={{ fontSize: '13px', color: '#EF4444', textDecoration: 'line-through', fontWeight: 600 }}>{priceOld} грн</span>}
+              {priceUnit > 0 ? <span style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{priceUnit} грн</span> : <span style={{ fontSize: '14px', color: '#94A3B8' }}>За запитом</span>}
             </div>
-          )}
-        </div>
+            {stockQty >= curMinOrder && <div style={{ fontSize: '11px', color: '#15803D', fontWeight: 600, marginBottom: '2px' }}>● в наявності</div>}
+            {!isRetail && <div style={{ fontSize: '11px', color: '#64748B' }}>В упаковці: {product.pack_qty} шт</div>}
+          </div>
 
-        {/* Фіксовані кнопки внизу */}
-        {product && (
-          <div style={{ padding: '12px 24px 24px', flexShrink: 0, display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {/* Скролений блок — фото + характеристики */}
+          <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', padding: '0 24px 12px' }}>
+            <Link href={prodHref(product.sku)} style={{ display: 'flex', width: '100%', height: '140px', overflow: 'hidden', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+              <ProductImage brand={product.brand} nl1={product.nl1 ?? ''} nl2={product.nl2 ?? undefined} volume={product.volume ?? ''} bc={product.bc} ac={product.ac} type={product.img_type} imageUrl={product.image ?? undefined} />
+            </Link>
+            {specs.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', paddingBottom: !isRetail ? '12px' : undefined, borderBottom: !isRetail ? '1px solid var(--border)' : undefined }}>
+                {specs.slice(0, 6).map(s => (
+                  <div key={s.label}>
+                    <div style={{ fontSize: '11px', color: '#94A3B8', marginBottom: '2px' }}>{s.label}</div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{s.value}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!isRetail && (
+              <div style={{ paddingTop: '12px' }}>
+                <div style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '2px' }}>Мінімальне замовлення</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#4880B8' }}>{product.min_order} рс / {packStr} уп</div>
+              </div>
+            )}
+          </div>
+
+          {/* Фіксовані кнопки внизу */}
+          <div style={{ padding: '12px 24px 24px', flexShrink: 0, display: 'flex', gap: '8px', alignItems: 'center', borderTop: '1px solid var(--border)' }}>
             <button onClick={() => product && toggle(product.sku)} className="btn-icon" style={{ ...actionBtnStyle, color: isLiked(product.sku) ? '#EF4444' : '#64748B', background: isLiked(product.sku) ? '#FEF2F2' : 'var(--bg-card)', border: `1px solid ${isLiked(product.sku) ? '#FECACA' : 'var(--border)'}` }}>
               <Heart size={16} strokeWidth={2} fill={isLiked(product.sku) ? '#EF4444' : 'none'} />
             </button>
@@ -274,6 +266,12 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
             <Link href={prodHref(product.sku)} className="btn-icon" style={{ ...actionBtnStyle, textDecoration: 'none' }}>
               <Eye size={15} strokeWidth={2} />
             </Link>
+          </div>
+        </>) : (
+          <div style={{ flex: 1, padding: '0 24px' }}>
+            <div style={{ background: 'var(--bg-soft)', borderRadius: '14px', padding: '48px 24px', textAlign: 'center', border: '1px solid var(--border)' }}>
+              <div style={{ fontSize: '15px', color: 'var(--text-muted)' }}>Немає товарів у цій категорії</div>
+            </div>
           </div>
         )}
       </div>

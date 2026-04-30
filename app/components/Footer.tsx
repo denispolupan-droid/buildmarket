@@ -1,11 +1,31 @@
 import Image from 'next/image';
-import { Mail, Phone, MapPin, Send, Camera, Clock4 } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, Clock4 } from 'lucide-react';
 
-const socials = [
-  { Icon: Send,   label: 'Telegram',  href: '#' },
-  { Icon: Phone,  label: 'Viber',     href: '#' },
-  { Icon: Camera, label: 'Instagram', href: '#' },
-  { Icon: Mail,   label: 'Email',     href: '#' },
+function InstagramIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" strokeWidth="3"/>
+    </svg>
+  );
+}
+
+function ViberIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3C7.03 3 3 6.58 3 11c0 2.5 1.22 4.73 3.13 6.26V20l2.87-1.43c.97.24 1.98.37 3 .37 4.97 0 9-3.58 9-8S16.97 3 12 3z"/>
+      <path d="M9.5 9.5c.3.8.8 1.6 1.5 2.3s1.5 1.2 2.3 1.5"/>
+      <path d="M14.5 14.5c.4-.1.7-.4.7-.8a3.3 3.3 0 0 0-1-2 3.3 3.3 0 0 0-2-1c-.4 0-.7.3-.8.7"/>
+    </svg>
+  );
+}
+
+const socials: { label: string; href: string; icon: React.ReactNode }[] = [
+  { label: 'Telegram',  href: '#', icon: <Send size={20} strokeWidth={2} /> },
+  { label: 'Viber',     href: '#', icon: <ViberIcon /> },
+  { label: 'Instagram', href: '#', icon: <InstagramIcon /> },
+  { label: 'Email',     href: '#', icon: <Mail size={20} strokeWidth={2} /> },
 ];
 
 export default function Footer() {
@@ -25,13 +45,13 @@ export default function Footer() {
               Професійний B2B постачальник будівельної хімії: герметиків, клеїв, монтажних пін та супутніх матеріалів.
             </p>
             <div style={{ display: 'flex', gap: '8px' }}>
-              {socials.map(({ Icon, label, href }) => (
+              {socials.map(({ label, href, icon }) => (
                 <a key={label} href={href} title={label} className="btn-social" style={{
                   width: '36px', height: '36px', borderRadius: '8px',
                   background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8',
                 }}>
-                  <Icon size={15} strokeWidth={2} />
+                  {icon}
                 </a>
               ))}
             </div>
