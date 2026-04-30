@@ -65,9 +65,19 @@ export default function CatalogClient({ products, categories, initialSearch = ''
 
   const charOptions = useMemo(() => {
     const map: Record<string, Set<string>> = {};
+    const SKIP_CHAR_LABELS = new Set([
+      'Мінімальна температура застосування', 'Максимальна температура застосування',
+      'Мінімальна температура експлуатації', 'Максимальна температура експлуатації',
+      'Мінімальна температура зберігання',   'Максимальна температура зберігання',
+      'Час висихання поверхні', 'Час висихання', 'Час повного затвердіння',
+      'Час початкового схоплення', 'Час поверхневого висихання',
+      'Термін зберігання', 'Витрата матеріалу', 'Витрата', 'Витрата фарби', 'Витрата ґрунтовки',
+      'Первинне розширення', 'Вторинне розширення', 'Вихід піни',
+      'Міцність клейового з\'єднання',
+    ]);
     catProducts.forEach(p =>
       (p.characteristics ?? []).forEach(c => {
-        if (!c.label || !c.value || c.value === 'Не вказано') return;
+        if (!c.label || !c.value || c.value === 'Не вказано' || SKIP_CHAR_LABELS.has(c.label)) return;
         (map[c.label] ??= new Set()).add(c.value);
       })
     );
