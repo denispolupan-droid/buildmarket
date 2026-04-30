@@ -412,6 +412,12 @@ async function main() {
     // Видаляємо "Не вказано" та подібне з усіх характеристик
     if (DELETE_VALUES.has(val)) { toDelete.push({ id: c.id, sku: c.product_sku, label, val }); continue; }
 
+    // Видаляємо некоректні значення Спосіб нанесення у мастик (тип продукту ≠ спосіб нанесення)
+    if (ln === 'спосіб нанесення' && cat.includes('mastyky')) {
+      const badMastic = new Set(['клеюче-каучукова', 'емульсійна (наливом)', 'емульсійна']);
+      if (badMastic.has(norm(val))) { toDelete.push({ id: c.id, sku: c.product_sku, label, val }); continue; }
+    }
+
     if (ln === 'колір') {
       // Видаляємо безглузді значення кольору
       if (COLOR_DELETE.has(norm(val))) { toDelete.push({ id: c.id, sku: c.product_sku, label, val }); continue; }
@@ -431,6 +437,17 @@ async function main() {
     else if (ln === 'тип клею')                 newVal = GLUE_TYPE_MAP[norm(val)] ?? val;
     else if (ln === 'спосіб нанесення' && (cat.includes('mastyky') || cat.includes('bitum')))
                                                 newVal = MASTIC_APPLICATION_MAP[norm(val)] ?? APPLICATION_MAP[norm(val)] ?? val;
+    else if (ln === 'кількість компонентів') {
+      if (val === '1') newVal = 'Однокомпонентний';
+      else if (val === '2') newVal = 'Двокомпонентний';
+    }
+    else if (ln === 'сумісність') {
+      const n2 = norm(val);
+      if (n2.includes('тонування') || n2.includes('водорозчин') || n2.includes('водній'))
+        newVal = 'Для тонування фарб';
+    }
+    else if (ln === 'призначення' && norm(val).includes('гниття'))
+                                                newVal = 'Деревозахист';
 
     if (newVal !== val) {
       toUpdate.push({ id: c.id, label, oldVal: val, newVal, sku: c.product_sku });
