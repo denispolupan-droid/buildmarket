@@ -57,16 +57,17 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     matchingSlugs ? products.filter(p => matchingSlugs.has(p.category_slug ?? '')) : products,
   [products, matchingSlugs]);
 
-  const brands  = useMemo(() => [...new Set(catProducts.map(p => p.brand))].sort(), [catProducts]);
-  const types   = useMemo(() => [...new Set(catProducts.map(p => p.product_type).filter(Boolean))].sort() as string[], [catProducts]);
-  const volumes = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter(Boolean))].sort() as string[], [catProducts]);
-  const colors  = useMemo(() => [...new Set(catProducts.map(p => p.color).filter(Boolean))].sort() as string[], [catProducts]);
+  const HIDE = (v: string | null | undefined) => !!v && v !== 'Не вказано';
+  const brands  = useMemo(() => [...new Set(catProducts.map(p => p.brand).filter(HIDE))].sort() as string[], [catProducts]);
+  const types   = useMemo(() => [...new Set(catProducts.map(p => p.product_type).filter(HIDE))].sort() as string[], [catProducts]);
+  const volumes = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter(HIDE))].sort() as string[], [catProducts]);
+  const colors  = useMemo(() => [...new Set(catProducts.map(p => p.color).filter(HIDE))].sort() as string[], [catProducts]);
 
   const charOptions = useMemo(() => {
     const map: Record<string, Set<string>> = {};
     catProducts.forEach(p =>
       (p.characteristics ?? []).forEach(c => {
-        if (!c.label || !c.value) return;
+        if (!c.label || !c.value || c.value === 'Не вказано') return;
         (map[c.label] ??= new Set()).add(c.value);
       })
     );

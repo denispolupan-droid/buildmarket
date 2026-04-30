@@ -1,0 +1,367 @@
+/**
+ * normalize-values.mjs
+ * Нормалізує значення характеристик: прибирає дублі кольорів, країн,
+ * типів, виправляє основу замазок, зводить водостійкість до Так/Ні.
+ *
+ * node scripts/supabase/normalize-values.mjs --dry-run
+ * node scripts/supabase/normalize-values.mjs
+ */
+
+import { readFileSync } from 'fs';
+import { createClient } from '@supabase/supabase-js';
+
+const envLines = readFileSync('.env.local', 'utf-8').split('\n');
+const env = {};
+for (const line of envLines) {
+  const m = line.match(/^([^#=\s]+)\s*=\s*(.*)$/);
+  if (m) env[m[1]] = m[2].trim();
+}
+const supabase = createClient(env['NEXT_PUBLIC_SUPABASE_URL'], env['SUPABASE_SERVICE_ROLE_KEY']);
+const DRY = process.argv.includes('--dry-run');
+
+// ── Нормалізація кольорів (Колір у chars + products.color) ───────────────────
+const COLOR_MAP = {
+  // іменники → прикметники
+  'Горіх':              'Горіховий',
+  'Горіх світлий':      'Горіховий світлий',
+  'Графіт':             'Графітовий',
+  'Жасмін':             'Жасміновий',
+  'Дуб':                'Дубовий',
+  // жіночий рід → чоловічий
+  'Жовта':              'Жовтий',
+  'Зелена':             'Зелений',
+  'Бежева':             'Бежевий',
+  'Біла':               'Білий',
+  'Сіра':               'Сірий',
+  'Чорна':              'Чорний',
+  'Коричнева':          'Коричневий',
+  'Червона':            'Червоний',
+  'Синя':               'Синій',
+  'Рожева':             'Рожевий',
+  'Прозора':            'Прозорий',
+  'Золота':             'Золотий',
+  'Срібна':             'Срібний',
+  'Кремова':            'Кремовий',
+  'Оливкова':           'Оливковий',
+  'Антрацитова':        'Антрацитовий',
+  // "Жовто-коричневий" — вже правильно, але на всяк
+  'Жовто-коричнева':    'Жовто-коричневий',
+};
+
+// ── Нормалізація країн ────────────────────────────────────────────────────────
+const COUNTRY_MAP = {
+  'Германія':               'Німеччина',
+  'Германия':               'Німеччина',
+  'Germany':                'Німеччина',
+  'Польша':                 'Польща',
+  'Poland':                 'Польща',
+  'Чехия':                  'Чехія',
+  'Czech':                  'Чехія',
+  'Австрия':                'Австрія',
+  'Austria':                'Австрія',
+  'Швеция':                 'Швеція',
+  'Росія':                  'Не вказано',
+  'Российская Федерация':   'Не вказано',
+  'Російська Федерація':    'Не вказано',
+  'Lotus':                  'Не вказано',
+  'Невизначена':            'Не вказано',
+  'Невизначено':            'Не вказано',
+  'Не зазначено':           'Не вказано',
+  'Не зазначена':           'Не вказано',
+  'Не визначено':           'Не вказано',
+  'не вказано':             'Не вказано',
+  'Не вказана':             'Не вказано',
+};
+
+// ── Нормалізація Водостійкість → Так / Ні ────────────────────────────────────
+const WATER_YES = new Set([
+  'висока', 'водостійка', 'водостійкий', 'водостійке',
+  'високі показники', 'так', 'є', 'є водостійкість',
+  'high', 'yes', 'водостійкість висока',
+]);
+const WATER_NO = new Set([
+  'ні', 'no', 'немає', 'відсутня', 'не водостійкий', 'не водостійка',
+]);
+
+// ── Нормалізація Основа ───────────────────────────────────────────────────────
+// Для замазок: Силікон/Силіконова → Цементна
+const GROUT_CATS = new Set([
+  'zamazky-dlya-shviv', 'zamazky-tsementni', 'tsementni-zamazky',
+  'elastychni-zamazky', 'epoksydni-zamazky',
+]);
+const OSNOVA_GROUT_MAP = {
+  'силікон':     'Цементна',
+  'силіконова':  'Цементна',
+  'цемент':      'Цементна',
+  'цементна':    'Цементна',
+};
+// Загальна нормалізація Основа (для всіх категорій)
+const OSNOVA_GENERAL_MAP = {
+  'цемент':                             'Цементна',
+  'акрил':                              'Акрилова',
+  'на основі води':                     'Водна',
+  'водна (акрилова)':                   'Акрилова',
+  'акрилова водна дисперсія':           'Акрилова',
+  'акрил з кварцовим піском':           'Акрилова',
+  'водна дисперсія':                    'Водна',
+  'дисперсійна (водна)':                'Водна',
+  'дисперсійна на водній основі':       'Водна',
+  'на водній основі':                   'Водна',
+  'латексна (водна дисперсія)':         'Латексна',
+  'алкідна (гф-021)':                   'Алкідна',
+  'алкідна (гф)':                       'Алкідна',
+  'гф (гліфталева)':                    'Алкідна',
+  'гф-021':                             'Алкідна',
+  'гф-021 (алкідна)':                   'Алкідна',
+  'олійна (гф-021)':                    'Олійна',
+  'на основі олійних смол':             'Олійна',
+  'на основі олійно-смол':              'Олійна',
+  'невизначена':                        'Не вказано',
+  'fa':                                 'Не вказано',
+};
+
+// ── Нормалізація Витрати матеріалу ───────────────────────────────────────────
+// Прибираємо: "(на один шар)", "(в один шар)", "(залежить від...)", "(після розведення...)"
+// Нормалізуємо: "м2" → "м²", "г/м2" → "г/м²"
+const CONSUMPTION_NOISE = [
+  /\s*\(на один шар\)/gi,
+  /\s*\(в один шар\)/gi,
+  /\s*\(залежить від[^)]*\)/gi,
+  /\s*\(після розведення[^)]*\)/gi,
+  /\s*\(при розведенні[^)]*\)/gi,
+  /\s+на один шар$/gi,
+  /\s+в один шар$/gi,
+];
+function normalizeConsumption(val) {
+  let v = val.replace(/м2(?=[^\d]|$)/g, 'м²').replace(/г\/м2/g, 'г/м²');
+  for (const re of CONSUMPTION_NOISE) v = v.replace(re, '');
+  return v.trim();
+}
+
+// ── Нормалізація Способу нанесення ───────────────────────────────────────────
+const APPLICATION_MAP = {
+  'валик, пензель':                              'Валик, пензель',
+  'валиком, пензлем':                            'Валик, пензель',
+  'пензель, валик':                              'Валик, пензель',
+  'пензлем, валиком':                            'Валик, пензель',
+  'кисть, валик':                                'Валик, пензель',
+  'валиком, пензлем або розпилювачем':           'Валик, пензель, розпилювач',
+  'кисть, валик, розпилювач':                    'Валик, пензель, розпилювач',
+  'пензель, валик або розпилювання':             'Валик, пензель, розпилювач',
+  'пензель, валик, розпилення':                  'Валик, пензель, розпилювач',
+  'пензель, валик, розпилювач':                  'Валик, пензель, розпилювач',
+  'пензлем, валиком або розпилюванням':          'Валик, пензель, розпилювач',
+  'пензлем, валиком або розпилювачем':           'Валик, пензель, розпилювач',
+  'щітка, валик або розпилення':                 'Щітка, валик, розпилювач',
+  'розпилення':                                  'Розпилювач',
+  'розпилення/змочування':                       'Розпилювач',
+  'розпилення/нанесення':                        'Розпилювач',
+};
+
+// ── Нормалізація Типу ґрунтовок ───────────────────────────────────────────────
+const PRIMER_TYPE_MAP = {
+  'адгезійна ґрунтовка (бетоноконтакт)':        'Адгезійна',
+  'адгезійна грунтовка (бетоноконтакт)':        'Адгезійна',
+  'ґрунт-концентрат':                           'Ґрунт-концентрат',
+  'грунтовка-концентрат':                       'Ґрунт-концентрат',
+  'грунт-концентрат':                           'Ґрунт-концентрат',
+  'антигрибковий/антицвіль засіб':              'Антигрибковий',
+  'антигрибковий / антицвіль засіб':            'Антигрибковий',
+};
+
+// ── Нормалізація Матеріалу (стрічки та ін.) ──────────────────────────────────
+const MATERIAL_MAP = {
+  'алюміній (alu)':                             'Алюміній',
+  'aqua protect (lt)':                          'Aqua Protect LT',
+  'lt':                                         'Aqua Protect LT',
+};
+
+// ── Нормалізація Тип для герметиків ──────────────────────────────────────────
+const SEALANT_TYPE_MAP = {
+  // довгі описові назви → короткі стандарти
+  'санітарний (для ванної та санвузлів)':    'Санітарний',
+  'санітарний герметик':                     'Санітарний',
+  'для санвузлів':                           'Санітарний',
+  'універсальний герметик':                  'Універсальний',
+  'universal':                               'Універсальний',
+  'покрівельний герметик':                   'Покрівельний',
+  'для покрівлі':                            'Покрівельний',
+  'кровля':                                  'Покрівельний',
+  'термостійкий герметик':                   'Термостійкий',
+  'жаростійкий':                             'Термостійкий',
+  'вогнестійкий':                            'Термостійкий',
+  'нейтральний герметик':                    'Нейтральний',
+  'нейтральный':                             'Нейтральний',
+  'кислотний герметик':                      'Кислотний',
+  'оцтовокислий':                            'Кислотний',
+  'для акваріумів':                          'Аквасилікон',
+  'аквасилікон':                             'Аквасилікон',
+  'для швів у кладці':                       'Для кладки',
+  'для кам\'яних конструкцій':              'Для кладки',
+  'герметизація для швів у кам\'яних конструкціях, цеглі, камені': 'Для кладки',
+  'для паркету':                             'Для паркету',
+  'для дерева':                              'Для дерева',
+  'для металу':                              'Для металу',
+  'для скла':                                'Для скла',
+  'будівельний':                             'Будівельний',
+  'монтажний':                               'Монтажний',
+  'ремонтний':                               'Ремонтний',
+};
+
+// ── Стаття 2109-005: додати Колір = Білий ────────────────────────────────────
+const SPECIAL_SKU = '2109-005';
+const SPECIAL_COLOR = 'Білий';
+
+// ── Утиліти ───────────────────────────────────────────────────────────────────
+const norm = s => s?.trim().toLowerCase() ?? '';
+
+function applyColorMap(val) {
+  return COLOR_MAP[val?.trim()] ?? val;
+}
+function applyCountryMap(val) {
+  return COUNTRY_MAP[val?.trim()] ?? val;
+}
+function applyWaterMap(val) {
+  const n = norm(val);
+  if (WATER_YES.has(n)) return 'Так';
+  if (WATER_NO.has(n))  return 'Ні';
+  return val;
+}
+function applyOsnovaGroutMap(val, catSlug) {
+  const n = norm(val);
+  if (GROUT_CATS.has(catSlug)) return OSNOVA_GROUT_MAP[n] ?? OSNOVA_GENERAL_MAP[n] ?? val;
+  return OSNOVA_GENERAL_MAP[n] ?? val;
+}
+function applySealantTypeMap(val) {
+  return SEALANT_TYPE_MAP[norm(val)] ?? val;
+}
+
+// ── Головна функція ───────────────────────────────────────────────────────────
+async function main() {
+  console.log(`\n🔧 Нормалізація значень характеристик${DRY ? ' (DRY RUN)' : ''}...\n`);
+
+  // 1. Завантажуємо всі характеристики + category_slug з products
+  const allChars = [];
+  let page = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from('product_characteristics')
+      .select('id, product_sku, label, value')
+      .range(page * 1000, page * 1000 + 999);
+    if (error) { console.error('❌', error.message); process.exit(1); }
+    if (!data?.length) break;
+    allChars.push(...data);
+    if (data.length < 1000) break;
+    page++;
+  }
+  console.log(`Завантажено характеристик: ${allChars.length}`);
+
+  // 2. Завантажуємо products щоб знати category_slug
+  const { data: products, error: pe } = await supabase
+    .from('products')
+    .select('sku, category_slug, color');
+  if (pe) { console.error('❌', pe.message); process.exit(1); }
+  const catBySkу = Object.fromEntries(products.map(p => [p.sku, p.category_slug ?? '']));
+  const colorBySku = Object.fromEntries(products.map(p => [p.sku, p.color ?? '']));
+  console.log(`Завантажено товарів:       ${products.length}`);
+
+  // 3. Визначаємо оновлення
+  const toUpdate = [];
+
+  for (const c of allChars) {
+    const label = c.label?.trim();
+    const val   = c.value?.trim();
+    const cat   = catBySkу[c.product_sku] ?? '';
+    let newVal  = val;
+
+    if (!label || !val) continue;
+
+    const ln = norm(label);
+
+    if (ln === 'колір')                         newVal = applyColorMap(val);
+    else if (ln === 'країна виробник')          newVal = applyCountryMap(val);
+    else if (ln === 'водостійкість')            newVal = applyWaterMap(val);
+    else if (ln === 'основа')                   newVal = applyOsnovaGroutMap(val, cat);
+    else if (ln === 'тип')                      newVal = PRIMER_TYPE_MAP[norm(val)] ?? applySealantTypeMap(val);
+    else if (ln === 'витрата матеріалу' || ln === 'витрата' || ln === 'витрата ґрунтовки' || ln === 'витрата фарби')
+                                                newVal = normalizeConsumption(val);
+    else if (ln === 'спосіб нанесення')         newVal = APPLICATION_MAP[norm(val)] ?? val;
+    else if (ln === 'матеріал')                 newVal = MATERIAL_MAP[norm(val)] ?? val;
+
+    if (newVal !== val) {
+      toUpdate.push({ id: c.id, label, oldVal: val, newVal, sku: c.product_sku });
+    }
+  }
+
+  // 4. Знайти 2109-005: чи є вже Колір?
+  const specialChars = allChars.filter(c => c.product_sku === SPECIAL_SKU);
+  const hasColor = specialChars.some(c => norm(c.label) === 'колір');
+  let addColor = null;
+  if (!hasColor) {
+    addColor = { product_sku: SPECIAL_SKU, label: 'Колір', value: SPECIAL_COLOR, sort_order: 1 };
+    console.log(`\n➕ Стаття ${SPECIAL_SKU}: додаємо Колір = ${SPECIAL_COLOR}`);
+  } else {
+    console.log(`\n✓  Стаття ${SPECIAL_SKU}: Колір вже є`);
+  }
+
+  // 5. Нормалізація products.color
+  const colorUpdates = [];
+  for (const p of products) {
+    const mapped = applyColorMap(p.color);
+    if (mapped !== p.color) {
+      colorUpdates.push({ sku: p.sku, oldColor: p.color, newColor: mapped });
+    }
+  }
+
+  // ── Звіт ──────────────────────────────────────────────────────────────────
+  console.log(`\nЗмін у характеристиках:   ${toUpdate.length}`);
+  console.log(`Змін у products.color:     ${colorUpdates.length}`);
+
+  if (DRY) {
+    console.log('\n── Приклади змін у chars ──');
+    toUpdate.slice(0, 20).forEach(u =>
+      console.log(`  [${u.sku}] ${u.label}: "${u.oldVal}" → "${u.newVal}"`)
+    );
+    console.log('\n── Приклади змін у color ──');
+    colorUpdates.slice(0, 10).forEach(u =>
+      console.log(`  [${u.sku}] "${u.oldColor}" → "${u.newColor}"`)
+    );
+    console.log('\n🔍 DRY RUN — дані не змінено.\n');
+    return;
+  }
+
+  // ── Записуємо ─────────────────────────────────────────────────────────────
+  if (addColor) {
+    const { error } = await supabase.from('product_characteristics').insert(addColor);
+    if (error) console.error('❌ insert color:', error.message);
+    else console.log(`✅ Додано Колір = ${SPECIAL_COLOR} для ${SPECIAL_SKU}`);
+  }
+
+  console.log('\n✏️  Оновлюю характеристики...');
+  let done = 0;
+  for (const u of toUpdate) {
+    const { error } = await supabase
+      .from('product_characteristics')
+      .update({ value: u.newVal })
+      .eq('id', u.id);
+    if (error) console.error(`❌ [${u.sku}] ${u.label}:`, error.message);
+    else { done++; if (done % 50 === 0) process.stdout.write(`\r   ${done}/${toUpdate.length}`); }
+  }
+  console.log(`\r   ${done}/${toUpdate.length} ✓`);
+
+  console.log('\n✏️  Оновлюю products.color...');
+  let cdone = 0;
+  for (const u of colorUpdates) {
+    const { error } = await supabase
+      .from('products')
+      .update({ color: u.newColor })
+      .eq('sku', u.sku);
+    if (error) console.error(`❌ [${u.sku}]:`, error.message);
+    else { cdone++; }
+  }
+  console.log(`   ${cdone}/${colorUpdates.length} ✓`);
+
+  console.log('\n✅ Нормалізацію завершено!\n');
+}
+
+main().catch(err => { console.error('\n❌', err.message); process.exit(1); });
