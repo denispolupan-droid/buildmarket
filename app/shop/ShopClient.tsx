@@ -22,8 +22,18 @@ type CardProps = {
 function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggleWish }: CardProps) {
   const [qty, setQty] = useState(1);
   const [inputVal, setInputVal] = useState('1');
+  const [copied, setCopied] = useState(false);
   const { addItem, items } = useCart();
   const inCart = items.some(i => i.sku === p.sku);
+
+  function handleCopySku(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    navigator.clipboard.writeText(p.sku).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
 
   function handleAdd() {
     addItem({
@@ -56,7 +66,19 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
             {p.product_type && <span className="shop-card__tag">{p.product_type}</span>}
             {p.color && <span className="shop-card__tag">{p.color}</span>}
           </div>
-          <div style={{ fontSize: '11px', color: '#94A3B8', marginBottom: '4px' }}>Арт. {p.sku}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+            <span style={{ fontSize: '11px', color: '#94A3B8' }}>Арт. {p.sku}</span>
+            <button
+              onClick={handleCopySku}
+              title="Копіювати артикул"
+              style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: copied ? '#16A34A' : '#CBD5E1', lineHeight: 1, display: 'flex', alignItems: 'center' }}
+            >
+              {copied
+                ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              }
+            </button>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
             <div className={'shop-card__stock' + (inStock ? '' : ' out')}>
               <span className="shop-card__stock-dot" />
