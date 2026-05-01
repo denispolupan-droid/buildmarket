@@ -98,6 +98,52 @@ input, select { font-family: inherit; }
 
 .page-container { max-width: 1440px; margin: 0 auto; padding: 0 40px; }
 
+/* ── Skeleton shimmer effect ── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #E2E8F0 0%,
+    #F1F5F9 40%,
+    #F8FAFC 50%,
+    #F1F5F9 60%,
+    #E2E8F0 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+.skeleton-dark {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.06) 0%,
+    rgba(255,255,255,0.12) 40%,
+    rgba(255,255,255,0.15) 50%,
+    rgba(255,255,255,0.12) 60%,
+    rgba(255,255,255,0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+[data-theme="dark"] .skeleton {
+  background: linear-gradient(
+    90deg,
+    #1E293B 0%,
+    #334155 40%,
+    #475569 50%,
+    #334155 60%,
+    #1E293B 100%
+  );
+  background-size: 200% 100%;
+}
+
 /* Синя кнопка з підйомом */
 .btn-primary {
   transition: background 0.2s, transform 0.15s, box-shadow 0.15s !important;

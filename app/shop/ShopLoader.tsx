@@ -33,21 +33,21 @@ export default function ShopLoader({ initialSaleOnly, initialCategory, initialBr
     return (
       <div className="shop-layout">
         <aside className="shop-sidebar">
-          <div style={{ height: '24px', background: '#F1F5F9', borderRadius: '6px', marginBottom: '16px', width: '120px' }} />
+          <div className="skeleton" style={{ height: '24px', marginBottom: '16px', width: '120px' }} />
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} style={{ height: '40px', background: '#F8FAFC', borderRadius: '8px', marginBottom: '4px' }} />
+            <div key={i} className="skeleton" style={{ height: '40px', marginBottom: '4px' }} />
           ))}
         </aside>
         <div style={{ flex: 1 }}>
-          <div style={{ height: '48px', background: '#F1F5F9', borderRadius: '8px', marginBottom: '24px' }} />
+          <div className="skeleton" style={{ height: '48px', marginBottom: '24px' }} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
             {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} style={{ background: '#F8FAFC', borderRadius: '12px', overflow: 'hidden' }}>
-                <div style={{ aspectRatio: '1', background: '#F1F5F9' }} />
+              <div key={i} style={{ background: '#fff', borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0' }}>
+                <div className="skeleton" style={{ aspectRatio: '1', borderRadius: 0 }} />
                 <div style={{ padding: '16px' }}>
-                  <div style={{ height: '14px', background: '#E2E8F0', borderRadius: '4px', marginBottom: '8px', width: '40%' }} />
-                  <div style={{ height: '18px', background: '#E2E8F0', borderRadius: '4px', marginBottom: '12px' }} />
-                  <div style={{ height: '24px', background: '#E2E8F0', borderRadius: '4px', width: '50%' }} />
+                  <div className="skeleton" style={{ height: '14px', marginBottom: '8px', width: '40%' }} />
+                  <div className="skeleton" style={{ height: '18px', marginBottom: '12px' }} />
+                  <div className="skeleton" style={{ height: '24px', width: '50%' }} />
                 </div>
               </div>
             ))}
