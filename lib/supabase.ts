@@ -195,3 +195,33 @@ export const getRelatedProductsCached = unstable_cache(
   ['related-products'],
   { revalidate: 60, tags: ['products'] }
 );
+
+export async function getPreviewProducts(categorySlugs: string[], limitPerCategory = 2): Promise<ProductFull[]> {
+  if (categorySlugs.length === 0) return [];
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      stock:product_stock(*),
+      characteristics:product_characteristics(*)
+    `)
+    .eq('is_active', true)
+    .in('category_slug', categorySlugs)
+    .order('sort_order')
+    .limit(categorySlugs.length * limitPerCategory * 2);
+  if (error) throw error;
+  const result: ProductFull[] = [];
+  const countBySlug: Record<string, number> = {};
+  for (const p of (data ?? []) as ProductFull[]) {
+    const slug = p.category_slug ?? '';
+    countBySlug[slug] = (countBySlug[slug] ?? 0) + 1;
+    if (countBySlug[slug] <= limitPerCategory) result.push(p);
+  }
+  return result;
+}
+
+export const getPreviewProductsCached = unstable_cache(
+  async (categorySlugs: string[], limitPerCategory = 2) => getPreviewProducts(categorySlugs, limitPerCategory),
+  ['preview-products'],
+  { revalidate: 300, tags: ['products'] }
+);

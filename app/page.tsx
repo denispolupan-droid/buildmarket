@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   },
 };
 import { Users, Package, ShieldCheck, Truck, Store, LayoutGrid, CheckCircle, MessageCircle, Award, Tag, PackageCheck } from 'lucide-react';
-import { getCategoriesCached, getProductsCached, getBrandsCached } from '../lib/supabase';
+import { getCategoriesCached, getPreviewProductsCached, getBrandsCached } from '../lib/supabase';
 import Footer from './components/Footer';
 import CategorySection from './components/CategorySection';
 
@@ -79,11 +79,12 @@ export default async function Home() {
   const role = getRole(user);
   const saleHref = role === 'wholesale' ? '/catalog?sale=1' : '/shop?sale=1';
 
-  const [categories, products, brands] = await Promise.all([
+  const [categories, brands] = await Promise.all([
     getCategoriesCached(),
-    getProductsCached(),
     getBrandsCached(),
   ]);
+  const allSlugs = categories.map(c => c.slug);
+  const products = await getPreviewProductsCached(allSlugs, 2);
 
   const brandLogoMap = getBrandLogoMap();
 
