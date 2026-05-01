@@ -42,7 +42,8 @@ export async function proxy(request: NextRequest) {
 
   if (AUTH_ROUTES.some(route => pathname.startsWith(route))) {
     if (user) {
-      return NextResponse.redirect(new URL('/', request.url));
+      const next = request.nextUrl.searchParams.get('next') || '/';
+      return NextResponse.redirect(new URL(next, request.url));
     }
     return response;
   }
