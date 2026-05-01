@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { monitoring } from '../lib/monitoring';
 
 export default function Error({
   error,
@@ -10,7 +11,9 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('Application error:', error);
+    monitoring.captureException(error, {
+      tags: { digest: error.digest ?? 'unknown' },
+    });
   }, [error]);
 
   return (
