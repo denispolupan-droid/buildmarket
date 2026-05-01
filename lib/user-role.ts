@@ -1,6 +1,7 @@
 import type { User } from '@supabase/supabase-js';
+import type { UserRole } from '../types';
 
-export type UserRole = 'wholesale' | 'retail' | 'dropship' | 'guest';
+export type { UserRole } from '../types';
 
 const WHOLESALE_TYPES = ['dealer', 'contractor', 'shop_owner'];
 const DROPSHIP_TYPES  = ['dropship'];

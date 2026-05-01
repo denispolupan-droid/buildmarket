@@ -2,22 +2,9 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
+import type { CartItem } from '../types';
 
-export type CartItem = {
-  sku: string;
-  name: string;
-  brand: string;
-  volume: string | null;
-  price: number;
-  qty: number;
-  min_order: number;
-  nl1: string;
-  nl2?: string;
-  bc: string;
-  ac: string;
-  img_type: 'tube' | 'canister';
-  imageUrl?: string;
-};
+export type { CartItem } from '../types';
 
 type CartContext = {
   items: CartItem[];
