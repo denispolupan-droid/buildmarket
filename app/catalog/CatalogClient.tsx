@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef, useCallback, Fragment } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
@@ -17,11 +17,25 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const [search,        setSearch]        = useState(initialSearch);
   const [selCat,        setSelCat]        = useState(initialCategory);
   const router = useRouter();
+  const catsListRef = useRef<HTMLDivElement>(null);
+  const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const scrollCatToTop = useCallback((slug: string) => {
+    const container = catsListRef.current;
+    const catEl = catRefs.current[slug];
+    if (container && catEl) {
+      const containerTop = container.getBoundingClientRect().top;
+      const catTop = catEl.getBoundingClientRect().top;
+      container.scrollTo({ top: container.scrollTop + (catTop - containerTop), behavior: 'smooth' });
+    }
+  }, []);
+
   const selectCat = (slug: string) => {
     setSelCat(slug);
     router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setVisibleCount(50);
+    if (slug) setTimeout(() => scrollCatToTop(slug), 50);
   };
   const [filterBrand,   setFilterBrand]   = useState('');
   const [filterType,    setFilterType]    = useState('');
@@ -209,6 +223,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
             <div className="sidebar-section">
               <div className="sidebar-heading">Категорії</div>
               <div
+                ref={catsListRef}
                 className="cat-list"
                 style={{
                   maxHeight: catsOpen ? 'none' : '370px',
@@ -227,7 +242,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   const isExpanded = expandedCats.has(cat.slug);
                   const isActive = selCat === cat.slug || children.some(c => c.slug === selCat);
                   return (
-                    <Fragment key={cat.slug}>
+                    <div key={cat.slug} ref={el => { catRefs.current[cat.slug] = el; }}>
                       <div
                         className={'cat-item' + (isActive ? ' active' : '')}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
@@ -257,7 +272,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                           {child.name}
                         </div>
                       ))}
-                    </Fragment>
+                    </div>
                   );
                 })}
               </div>
