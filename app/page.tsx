@@ -23,6 +23,7 @@ import { Users, Package, ShieldCheck, Truck, Store, LayoutGrid, CheckCircle, Mes
 import { getCategoriesCached, getPreviewProductsCached, getBrandsCached } from '../lib/supabase';
 import Footer from './components/Footer';
 import CategorySection from './components/CategorySection';
+import PromoBanner from './components/PromoBanner';
 
 function getBrandLogoMap(): Record<string, string> {
   try {
@@ -72,13 +73,6 @@ const trust = [
 
 
 export default async function Home() {
-  const { createSupabaseServer } = await import('../lib/supabase-server');
-  const { getRole } = await import('../lib/user-role');
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  const role = getRole(user);
-  const saleHref = role === 'wholesale' ? '/catalog?sale=1' : '/shop?sale=1';
-
   const [categories, brands] = await Promise.all([
     getCategoriesCached(),
     getBrandsCached(),
@@ -100,20 +94,7 @@ export default async function Home() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgLd) }} />
-      {/* Promo banner */}
-      <div style={{ background: '#243F63', padding: '4px 24px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <span style={{ fontSize: '12px', fontWeight: 700, color: '#E2E8F0' }}>
-          ⚡ 🎁 ВЕСНЯНА{' '}
-          <Link href={saleHref} style={{
-            color: '#FCD34D', textDecoration: 'underline', textUnderlineOffset: '2px', fontWeight: 800,
-          }}>
-            АКЦІЯ
-          </Link>
-          ! Знижки до{' '}
-          <span style={{ color: '#FCD34D', fontWeight: 800 }}>25%</span>{' '}
-          на герметики та монтажні піни до кінця квітня ⚡
-        </span>
-      </div>
+      <PromoBanner />
 
       {/* Hero */}
       <section style={{
@@ -341,7 +322,7 @@ export default async function Home() {
             <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '32px' }}>
               Оберіть категорію для швидкого доступу до магазину або оптового каталогу
             </p>
-            <CategorySection categories={categories} products={products} role={role} />
+            <CategorySection categories={categories} products={products} />
           </div>
         </section>
       )}

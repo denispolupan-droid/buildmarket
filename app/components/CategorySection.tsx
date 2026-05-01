@@ -1,18 +1,31 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import CategoryPreview from './CategoryPreview';
 import { getCatIcon, getCatColor } from './CategoryCarousel';
+import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import type { Category, ProductFull } from '../../lib/supabase';
 import type { UserRole } from '../../lib/user-role';
+
+const WHOLESALE_TYPES = ['dealer', 'contractor', 'shop_owner'];
+const DROPSHIP_TYPES = ['dropship'];
 
 type Props = {
   categories: Category[];
   products: ProductFull[];
-  role: UserRole;
 };
 
-export default function CategorySection({ categories, products, role }: Props) {
+export default function CategorySection({ categories, products }: Props) {
+  const [role, setRole] = useState<UserRole>('guest');
+
+  useEffect(() => {
+    getSupabaseBrowser().auth.getUser().then(({ data }: { data: { user: { user_metadata?: { account_type?: string } } | null } }) => {
+      const type = data.user?.user_metadata?.account_type;
+      if (DROPSHIP_TYPES.includes(type ?? '')) setRole('dropship');
+      else if (WHOLESALE_TYPES.includes(type ?? '')) setRole('wholesale');
+      else if (data.user) setRole('retail');
+    });
+  }, []);
   const parentCats = categories.filter(c => !c.parent_slug);
   const [selectedSlug, setSelectedSlug] = useState(parentCats[0]?.slug ?? '');
 
