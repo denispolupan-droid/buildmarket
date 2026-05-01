@@ -21,6 +21,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     setSelCat(slug);
     router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    setVisibleCount(50);
   };
   const [filterBrand,   setFilterBrand]   = useState('');
   const [filterType,    setFilterType]    = useState('');
@@ -30,6 +31,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const [filterChars,   setFilterChars]   = useState<Record<string, string>>({});
   const [inStockOnly,   setInStockOnly]   = useState(false);
   const [saleOnly,      setSaleOnly]      = useState(initialSaleOnly);
+  const [visibleCount,  setVisibleCount]  = useState(50);
   const [expandedCats, setExpandedCats]  = useState<Set<string>>(new Set());
   const [catsOpen,      setCatsOpen]      = useState(false);
   const [quantities,    setQuantities]    = useState<Record<string, number>>({});
@@ -427,7 +429,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map(p => {
+                    {filtered.slice(0, visibleCount).map(p => {
                       const priceUnit = p.stock?.price_unit ?? 0;
                       const priceOld  = p.stock?.price_old  ?? null;
                       const stockQty  = p.stock?.stock_qty  ?? 0;
@@ -536,6 +538,21 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {filtered.length > visibleCount && (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <button
+                  onClick={() => setVisibleCount(v => v + 50)}
+                  style={{
+                    height: '48px', padding: '0 32px', borderRadius: '12px',
+                    background: '#1E3A5F', color: '#fff', border: 'none',
+                    fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  Показати більше ({filtered.length - visibleCount} залишилось)
+                </button>
               </div>
             )}
 

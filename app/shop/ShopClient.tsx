@@ -154,6 +154,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const [filterChars,  setFilterChars]  = useState<Record<string, string>>({});
   const [filterPlasticGroup, setFilterPlasticGroup] = useState('');
   const [inStockOnly,  setInStockOnly]  = useState(false);
+  const [visibleCount, setVisibleCount] = useState(24);
   const [catsOpen,     setCatsOpen]     = useState(false);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
   const router = useRouter();
@@ -163,6 +164,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setFilterBrand(''); setFilterType(''); setFilterVolume(''); setFilterVolumeKg(''); setFilterColor(''); setFilterChars({}); setFilterPlasticGroup('');
+    setVisibleCount(24);
   };
   const { skus: wishSkus, toggle: toggleWish } = useWishlist();
 
@@ -511,7 +513,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           {filtered.length === 0 && (
             <div className="shop-empty">Нічого не знайдено</div>
           )}
-          {filtered.map(p => {
+          {filtered.slice(0, visibleCount).map(p => {
             const price = p.stock?.price_retail ?? null;
             const priceOld = p.stock?.price_retail_old ?? null;
             const inStock = (p.stock?.stock_qty ?? 0) >= 1;
@@ -532,6 +534,21 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             );
           })}
         </div>
+
+        {filtered.length > visibleCount && (
+          <div style={{ textAlign: 'center', padding: '32px 0' }}>
+            <button
+              onClick={() => setVisibleCount(v => v + 24)}
+              style={{
+                height: '48px', padding: '0 32px', borderRadius: '12px',
+                background: '#1E3A5F', color: '#fff', border: 'none',
+                fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              Показати більше ({filtered.length - visibleCount} залишилось)
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
