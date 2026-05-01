@@ -6,6 +6,17 @@ const WHOLESALE_ROUTES = ['/catalog'];
 const AUTH_ROUTES = ['/login', '/register'];
 
 export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  const needsAuth =
+    PROTECTED_ROUTES.some(route => pathname.startsWith(route)) ||
+    WHOLESALE_ROUTES.some(route => pathname.startsWith(route)) ||
+    AUTH_ROUTES.some(route => pathname.startsWith(route));
+
+  if (!needsAuth) {
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -28,7 +39,6 @@ export async function proxy(request: NextRequest) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
-  const pathname = request.nextUrl.pathname;
 
   if (AUTH_ROUTES.some(route => pathname.startsWith(route))) {
     if (user) {
