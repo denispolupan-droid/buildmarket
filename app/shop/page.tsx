@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../components/Footer';
-import ShopShowcase from './ShopShowcase';
+import ShopLoader from './ShopLoader';
 import './shop.css';
 
 export const metadata: Metadata = {
@@ -19,8 +19,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
-  const { category } = await searchParams;
+export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; sale?: string; brand?: string }> }) {
+  const { category, sale, brand } = await searchParams;
 
   const breadcrumbLd = {
     '@context': 'https://schema.org',
@@ -41,7 +41,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
             <span>/</span>
             <span style={{ color: '#475569' }}>Магазин</span>
           </nav>
-          <ShopShowcase initialCategory={category} />
+          <ShopLoader initialCategory={category} initialSaleOnly={sale === '1'} initialBrand={brand} />
         </div>
       </div>
       <Footer />
