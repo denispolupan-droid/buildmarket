@@ -1,11 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getProductsCached, getCategoriesCached } from '../../lib/supabase';
 import Footer from '../components/Footer';
-import ShopClient from './ShopClient';
+import ShopLoader from './ShopLoader';
 import './shop.css';
-
-export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: 'Магазин — будівельна хімія в роздріб | FIXLINE',
@@ -24,10 +21,6 @@ export const metadata: Metadata = {
 
 export default async function ShopPage({ searchParams }: { searchParams: Promise<{ sale?: string; category?: string; brand?: string }> }) {
   const { sale, category, brand } = await searchParams;
-  const [products, categories] = await Promise.all([
-    getProductsCached(),
-    getCategoriesCached(),
-  ]);
 
   const breadcrumbLd = {
     '@context': 'https://schema.org',
@@ -48,7 +41,11 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
             <span>/</span>
             <span style={{ color: '#475569' }}>Магазин</span>
           </nav>
-          <ShopClient products={products} categories={categories} initialSaleOnly={sale === '1'} initialCategory={category} initialBrand={brand} />
+          <ShopLoader
+            initialSaleOnly={sale === '1'}
+            initialCategory={category}
+            initialBrand={brand}
+          />
         </div>
       </div>
       <Footer />

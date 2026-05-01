@@ -1,9 +1,6 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { getProductsCached, getCategoriesCached } from '../../lib/supabase';
-import { createSupabaseServer } from '../../lib/supabase-server';
-import { isWholesale } from '../../lib/user-role';
-import CatalogClient from './CatalogClient';
+import { getCategoriesCached } from '../../lib/supabase';
+import CatalogLoader from './CatalogLoader';
 
 export async function generateMetadata({
   searchParams,
@@ -51,19 +48,6 @@ export default async function Catalog({
 }) {
   const { q, category, sale } = await searchParams;
 
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  const shopUrl = category ? `/shop?category=${category}` : '/shop';
-  const loginUrl = category ? `/login?next=/catalog?category=${category}` : '/login?next=/catalog';
-  if (!user) redirect(loginUrl);
-  if (!isWholesale(user)) redirect(shopUrl);
-
-  const [products, categories] = await Promise.all([
-    getProductsCached(),
-    getCategoriesCached(),
-  ]);
-
   const breadcrumbLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -76,9 +60,7 @@ export default async function Catalog({
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
-      <CatalogClient
-        products={products}
-        categories={categories}
+      <CatalogLoader
         initialSearch={q ?? ''}
         initialCategory={category ?? ''}
         initialSaleOnly={sale === '1'}
