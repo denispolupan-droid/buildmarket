@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import './login.css';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextUrl = searchParams.get('next') || '/catalog';
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [error,    setError]    = useState('');
@@ -26,7 +28,7 @@ export default function LoginPage() {
       setError('Невірний email або пароль. Перевірте дані та спробуйте знову.');
       setLoading(false);
     } else {
-      router.push('/catalog');
+      router.push(nextUrl);
       router.refresh();
     }
   }
