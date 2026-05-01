@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../components/Footer';
-import ShopLoader from './ShopLoader';
+import ShopShowcase from './ShopShowcase';
 import './shop.css';
 
 export const metadata: Metadata = {
@@ -19,8 +19,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<{ sale?: string; category?: string; brand?: string }> }) {
-  const { sale, category, brand } = await searchParams;
+export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
+  const { category } = await searchParams;
 
   const breadcrumbLd = {
     '@context': 'https://schema.org',
@@ -34,18 +34,14 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
-      <div style={{ background: '#fff', minHeight: '100vh' }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px 32px 64px' }} className="mobile-pad">
-          <nav aria-label="Breadcrumb" style={{ marginBottom: '16px', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div style={{ background: '#F8FAFC', minHeight: '100vh' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 32px 64px' }} className="mobile-pad">
+          <nav aria-label="Breadcrumb" style={{ marginBottom: '24px', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Link href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</Link>
             <span>/</span>
             <span style={{ color: '#475569' }}>Магазин</span>
           </nav>
-          <ShopLoader
-            initialSaleOnly={sale === '1'}
-            initialCategory={category}
-            initialBrand={brand}
-          />
+          <ShopShowcase initialCategory={category} />
         </div>
       </div>
       <Footer />

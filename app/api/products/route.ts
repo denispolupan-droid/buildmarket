@@ -1,11 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { getProductsCached, getCategoriesCached } from '../../../lib/supabase';
 
 export const revalidate = 60;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const category = request.nextUrl.searchParams.get('category');
+
   const [products, categories] = await Promise.all([
-    getProductsCached(),
+    getProductsCached(category ? { category } : undefined),
     getCategoriesCached(),
   ]);
 
