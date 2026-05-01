@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Search, Plus, Minus, Heart, ChevronDown, ChevronUp, ChevronRight, Check } from 'lucide-react';
@@ -158,6 +158,18 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const [catsOpen,     setCatsOpen]     = useState(false);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
   const router = useRouter();
+  const catsListRef = useRef<HTMLDivElement>(null);
+  const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const scrollCatToTop = useCallback((slug: string) => {
+    const container = catsListRef.current;
+    const catEl = catRefs.current[slug];
+    if (container && catEl) {
+      const containerTop = container.getBoundingClientRect().top;
+      const catTop = catEl.getBoundingClientRect().top;
+      container.scrollTo({ top: container.scrollTop + (catTop - containerTop), behavior: 'smooth' });
+    }
+  }, []);
 
   const selectCat = (slug: string | null) => {
     setSelCat(slug);
@@ -165,6 +177,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setFilterBrand(''); setFilterType(''); setFilterVolume(''); setFilterVolumeKg(''); setFilterColor(''); setFilterChars({}); setFilterPlasticGroup('');
     setVisibleCount(24);
+    if (slug) setTimeout(() => scrollCatToTop(slug), 50);
   };
   const { skus: wishSkus, toggle: toggleWish } = useWishlist();
 
@@ -303,12 +316,16 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       <aside className="shop-sidebar">
         <h3>Категорії</h3>
 
-        <div style={{
-          maxHeight: catsOpen ? 'none' : '370px',
-          overflowY: catsOpen ? 'visible' : 'auto',
-          transition: 'max-height 0.2s ease',
-          scrollbarWidth: 'none',
-        }} className="shop-cats-list">
+        <div
+          ref={catsListRef}
+          style={{
+            maxHeight: catsOpen ? 'none' : '370px',
+            overflowY: catsOpen ? 'visible' : 'auto',
+            transition: 'max-height 0.2s ease',
+            scrollbarWidth: 'none',
+          }}
+          className="shop-cats-list"
+        >
           <button
             className={'shop-cat-item' + (!selCat ? ' active' : '')}
             onClick={() => { selectCat(null); setExpandedCats(new Set()); }}
@@ -320,7 +337,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             const isExpanded = expandedCats.has(cat.slug);
             const isActive = selCat === cat.slug || children.some(c => c.slug === selCat);
             return (
-              <div key={cat.slug} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div key={cat.slug} ref={el => { catRefs.current[cat.slug] = el; }} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 <button
                   className={'shop-cat-item' + (isActive ? ' active' : '')}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
