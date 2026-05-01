@@ -194,7 +194,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       <div style={{ background: '#fff', minHeight: '100vh' }}>
       <div className="page-container">
         <nav aria-label="Breadcrumb" style={{ padding: '16px 0 0', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <a href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</a>
+          <Link href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</Link>
           <span>/</span>
           <span style={{ color: '#475569' }}>Оптовий каталог</span>
         </nav>

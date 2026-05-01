@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { getProductsCached, getCategoriesCached } from '../../lib/supabase';
 import Footer from '../components/Footer';
 import ShopClient from './ShopClient';
@@ -43,7 +44,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       <div style={{ background: '#fff', minHeight: '100vh' }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px 32px 64px' }} className="mobile-pad">
           <nav aria-label="Breadcrumb" style={{ marginBottom: '16px', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <a href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</a>
+            <Link href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</Link>
             <span>/</span>
             <span style={{ color: '#475569' }}>Магазин</span>
           </nav>

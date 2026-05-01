@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import Footer from '../components/Footer';
 import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 
@@ -85,13 +86,13 @@ export default function ContactsPage() {
                 Зареєструйтесь і отримайте доступ до оптових цін
               </div>
             </div>
-            <a href="/register" style={{
+            <Link href="/register" style={{
               display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px',
               borderRadius: '10px', background: '#fff', color: '#1E3A5F',
               fontSize: '14px', fontWeight: 700,
             }}>
               Зареєструватися →
-            </a>
+            </Link>
           </div>
 
         </div>
