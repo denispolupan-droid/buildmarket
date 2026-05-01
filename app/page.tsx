@@ -267,14 +267,14 @@ export default async function Home() {
                   </li>
                 ))}
               </ul>
-              <a href="/login?next=/catalog" className="btn-primary" style={{
+              <Link href="/login?next=/catalog" style={{
                 marginTop: 'auto', height: '40px', borderRadius: '10px',
                 background: '#4880B8', color: '#fff', fontSize: '13px', fontWeight: 700,
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                textDecoration: 'none', cursor: 'pointer',
+                textDecoration: 'none',
               }}>
                 <LayoutGrid size={14} />Оптовий каталог
-              </a>
+              </Link>
             </div>
 
             {/* Dropship */}
@@ -371,15 +371,15 @@ export default async function Home() {
             }}>
               <Store size={15} />До магазину
             </Link>
-            <a href="/login?next=/catalog" className="btn-ghost" style={{
+            <Link href="/login?next=/catalog" style={{
               height: '44px', padding: '0 24px', borderRadius: '10px',
               border: '1px solid rgba(255,255,255,0.12)', color: '#94A3B8',
               fontSize: '14px', fontWeight: 600,
               display: 'inline-flex', alignItems: 'center', gap: '7px', background: 'transparent',
-              textDecoration: 'none', cursor: 'pointer',
+              textDecoration: 'none',
             }}>
               <LayoutGrid size={15} />Оптовий каталог
-            </a>
+            </Link>
           </div>
         </div>
       </section>
