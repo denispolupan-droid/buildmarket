@@ -108,6 +108,30 @@ function parse1cXml(buffer: Buffer): ParsedRow[] {
   }).filter(r => r.supplier_sku);
 }
 
+// ── Google Sheets → пряме посилання на CSV ────────────────────────────────────
+
+function normalizeUrl(url: string): { url: string; format: string } {
+  const gsheets = url.match(
+    /docs\.google\.com\/spreadsheets\/d\/([^/]+).*?[#&?]gid=(\d+)/
+  );
+  if (gsheets) {
+    const [, id, gid] = gsheets;
+    return {
+      url: `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`,
+      format: 'csv',
+    };
+  }
+  // Без gid — перший лист
+  const gsheetsNoGid = url.match(/docs\.google\.com\/spreadsheets\/d\/([^/]+)/);
+  if (gsheetsNoGid) {
+    return {
+      url: `https://docs.google.com/spreadsheets/d/${gsheetsNoGid[1]}/export?format=csv`,
+      format: 'csv',
+    };
+  }
+  return { url, format: '' };
+}
+
 // ── Скачування файлу ──────────────────────────────────────────────────────────
 
 async function fetchFile(url: string): Promise<Buffer> {
@@ -134,13 +158,15 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
   if (supErr || !supplier) throw new Error('Постачальника не знайдено');
   if (!supplier.source_url) throw new Error('URL файлу не вказано');
 
-  // 2. Скачуємо і парсимо файл
-  const buffer = await fetchFile(supplier.source_url);
+  // 2. Нормалізуємо URL (Google Sheets → export CSV) і скачуємо файл
+  const { url: fetchUrl, format: detectedFormat } = normalizeUrl(supplier.source_url);
+  const buffer = await fetchFile(fetchUrl);
+  const format = detectedFormat || supplier.file_format;
 
   let parsed: ParsedRow[];
-  if (supplier.file_format === '1c_xml') {
+  if (format === '1c_xml') {
     parsed = parse1cXml(buffer);
-  } else if (supplier.file_format === 'xls') {
+  } else if (format === 'xls') {
     parsed = parseXlsx(buffer);
   } else {
     parsed = parseCsv(buffer);
