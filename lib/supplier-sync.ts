@@ -28,6 +28,54 @@ export type SyncResult = {
 
 // ── Парсери ───────────────────────────────────────────────────────────────────
 
+/**
+ * Розумний парсер для нестандартних файлів (Google Sheets, прайси з групами).
+ * Не шукає заголовок — сканує кожен рядок і витягує дані там,
+ * де є артикул у форматі ХXXX-XXX (наприклад 1548-377).
+ */
+function parseSmartCsv(buffer: Buffer): ParsedRow[] {
+  const text = buffer.toString('utf-8');
+  const lines = text.split(/\r?\n/).filter(Boolean);
+  const sep = lines[0]?.includes(';') ? ';' : ',';
+
+  // Артикул постачальника: 3+ цифр, дефіс, 2+ цифр (1548-377, 1610-100 тощо)
+  const SKU_RE = /^\d{3,}-\d{2,}$/;
+  // Ціна: число з крапкою або комою (224,30 або 224.30)
+  const PRICE_RE = /^\d+[.,]\d+$|^\d+$/;
+
+  const rows: ParsedRow[] = [];
+
+  for (const line of lines) {
+    const cells = line.split(sep).map(c => c.trim().replace(/^["']|["']$/g, ''));
+
+    // Шукаємо колонку з артикулом
+    const skuIdx = cells.findIndex(c => SKU_RE.test(c));
+    if (skuIdx < 0) continue;
+
+    const supplier_sku = cells[skuIdx];
+
+    // Шукаємо ціну — найближча числова колонка праворуч від артикулу
+    let price_in = 0;
+    for (let i = skuIdx + 1; i < cells.length; i++) {
+      const val = cells[i].replace(',', '.');
+      if (PRICE_RE.test(cells[i]) && parseFloat(val) > 0) {
+        price_in = parseFloat(val);
+        break;
+      }
+    }
+
+    // Назва товару — перша непорожня колонка ліворуч від артикулу
+    let sample_name: string | undefined;
+    for (let i = skuIdx - 1; i >= 0; i--) {
+      if (cells[i]) { sample_name = cells[i]; break; }
+    }
+
+    rows.push({ supplier_sku, price_in, stock_qty: 0, sample_name });
+  }
+
+  return rows;
+}
+
 function parseCsv(buffer: Buffer): ParsedRow[] {
   const text = buffer.toString('utf-8');
   const lines = text.split(/\r?\n/).filter(Boolean);
@@ -110,7 +158,7 @@ function parse1cXml(buffer: Buffer): ParsedRow[] {
 
 // ── Google Sheets → пряме посилання на CSV ────────────────────────────────────
 
-function normalizeUrl(url: string): { url: string; format: string } {
+function normalizeUrl(url: string): { url: string; isGoogleSheets: boolean } {
   const gsheets = url.match(
     /docs\.google\.com\/spreadsheets\/d\/([^/]+).*?[#&?]gid=(\d+)/
   );
@@ -118,18 +166,17 @@ function normalizeUrl(url: string): { url: string; format: string } {
     const [, id, gid] = gsheets;
     return {
       url: `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`,
-      format: 'csv',
+      isGoogleSheets: true,
     };
   }
-  // Без gid — перший лист
   const gsheetsNoGid = url.match(/docs\.google\.com\/spreadsheets\/d\/([^/]+)/);
   if (gsheetsNoGid) {
     return {
       url: `https://docs.google.com/spreadsheets/d/${gsheetsNoGid[1]}/export?format=csv`,
-      format: 'csv',
+      isGoogleSheets: true,
     };
   }
-  return { url, format: '' };
+  return { url, isGoogleSheets: false };
 }
 
 // ── Скачування файлу ──────────────────────────────────────────────────────────
@@ -159,14 +206,18 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
   if (!supplier.source_url) throw new Error('URL файлу не вказано');
 
   // 2. Нормалізуємо URL (Google Sheets → export CSV) і скачуємо файл
-  const { url: fetchUrl, format: detectedFormat } = normalizeUrl(supplier.source_url);
+  const { url: fetchUrl, isGoogleSheets } = normalizeUrl(supplier.source_url);
   const buffer = await fetchFile(fetchUrl);
-  const format = detectedFormat || supplier.file_format;
+
+  // Google Sheets або явно вказаний формат 'google_sheets' → розумний парсер
+  const useSmartParser = isGoogleSheets || supplier.file_format === 'google_sheets';
 
   let parsed: ParsedRow[];
-  if (format === '1c_xml') {
+  if (useSmartParser) {
+    parsed = parseSmartCsv(buffer);
+  } else if (supplier.file_format === '1c_xml') {
     parsed = parse1cXml(buffer);
-  } else if (format === 'xls') {
+  } else if (supplier.file_format === 'xls') {
     parsed = parseXlsx(buffer);
   } else {
     parsed = parseCsv(buffer);

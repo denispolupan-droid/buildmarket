@@ -29,7 +29,10 @@ const EMPTY: Omit<Supplier, 'id' | 'last_synced_at' | 'last_sync'> = {
 };
 
 const FORMAT_LABELS: Record<string, string> = {
-  csv: 'CSV', xls: 'Excel (XLS/XLSX)', '1c_xml': '1С CommerceML (XML)',
+  google_sheets: 'Google Sheets (розумний парсер)',
+  csv:           'CSV (стандартний)',
+  xls:           'Excel (XLS/XLSX)',
+  '1c_xml':      '1С CommerceML (XML)',
 };
 
 const cell: React.CSSProperties = { padding: '10px 12px', textAlign: 'left', borderBottom: '1px solid #E2E8F0', fontSize: '13px', verticalAlign: 'middle' };
