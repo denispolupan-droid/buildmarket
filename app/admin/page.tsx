@@ -30,7 +30,7 @@ export default async function AdminPage() {
       <div style={{ background: '#F8FAFC', minHeight: '100vh' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '40px 32px 64px' }}>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
             <div>
               <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
                 Панель менеджера
@@ -44,6 +44,36 @@ export default async function AdminPage() {
                 )}
               </p>
             </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '28px' }}>
+            <a
+              href="/admin"
+              style={{
+                padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: 600,
+                background: '#1E3A5F', color: '#fff', textDecoration: 'none',
+              }}
+            >
+              Замовлення
+            </a>
+            <a
+              href="/admin/products"
+              style={{
+                padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: 600,
+                background: '#fff', border: '1px solid #E2E8F0', color: '#475569', textDecoration: 'none',
+              }}
+            >
+              Товари
+            </a>
+            <a
+              href="/admin/suppliers"
+              style={{
+                padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: 600,
+                background: '#fff', border: '1px solid #E2E8F0', color: '#475569', textDecoration: 'none',
+              }}
+            >
+              Постачальники
+            </a>
           </div>
 
           <AdminOrders initialOrders={orders ?? []} />
