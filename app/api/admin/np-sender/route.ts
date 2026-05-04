@@ -24,6 +24,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  // 1. Get sender counterparty
   const counterRes = await npCall('Counterparty', 'getCounterparties', {
     CounterpartyProperty: 'Sender',
     Page: '1',
@@ -38,35 +39,38 @@ export async function GET() {
 
   const sender = counterRes.data[0];
 
-  // getWarehouses works with CityRef (city ref from getCities, same as Counterparty.City)
-  const [contactsRes, warehousesRes] = await Promise.all([
+  // 2. Get contacts + sender addresses in parallel
+  // getCounterpartyAddresses returns warehouses registered for this sender account
+  const [contactsRes, addressesRes] = await Promise.all([
     npCall('ContactPerson', 'getContactPersonsList', {
       CounterpartyRef: sender.Ref,
       Page: '1',
     }),
-    npCall('Address', 'getWarehouses', {
-      CityRef: sender.City,
-      Limit: '200',
-      Page: '1',
+    npCall('Counterparty', 'getCounterpartyAddresses', {
+      Ref: sender.Ref,
+      CounterpartyProperty: 'Sender',
     }),
   ]);
 
   const contact = contactsRes.data?.[0];
-  // NP stores phone in different fields depending on counterparty type
   const phone: string = sender.Phone || contact?.Phones || contact?.Phone || '';
 
-  type WHRaw = { Ref: string; Description: string; Number: string; CityRef?: string };
+  type AddrRaw = { Ref: string; Description: string; CityRef?: string; Number?: string };
+  const addresses: AddrRaw[] = addressesRes.data ?? [];
+
+  // CityRef: prefer from address, fallback to sender.City
+  const cityRef: string = addresses[0]?.CityRef ?? sender.City ?? '';
 
   return NextResponse.json({
     ref: sender.Ref,
-    cityRef: sender.City,
+    cityRef,
     contactRef: contact?.Ref ?? sender.Ref,
     phone,
-    warehouses: (warehousesRes.data ?? []).map((w: WHRaw) => ({
-      ref: w.Ref,
-      cityRef: w.CityRef ?? sender.City,
-      description: w.Description,
-      number: w.Number,
+    warehouses: addresses.map((a: AddrRaw) => ({
+      ref: a.Ref,
+      cityRef: a.CityRef ?? cityRef,
+      description: a.Description,
+      number: a.Number ?? '',
     })),
   });
 }
