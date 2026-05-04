@@ -98,7 +98,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   const [description, setDescription] = useState('Будівельні матеріали');
 
   // Delivery payment (хто платить за пересилку)
-  const [payerType,     setPayerType]     = useState<'Sender' | 'Recipient'>('Sender');
+  const [payerType,     setPayerType]     = useState<'Sender' | 'Recipient'>('Recipient');
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'NonCash'>(isCod ? 'Cash' : 'NonCash');
 
   // COD — накладений платіж
