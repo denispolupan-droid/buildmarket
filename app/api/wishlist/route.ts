@@ -4,14 +4,14 @@ import { createSupabaseServer } from '../../../lib/supabase-server';
 export async function GET() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ skus: [] });
+  if (!user) return NextResponse.json({ skus: [], authenticated: false });
 
   const { data } = await supabase
     .from('wishlists')
     .select('product_sku')
     .eq('user_id', user.id);
 
-  return NextResponse.json({ skus: (data ?? []).map(r => r.product_sku) });
+  return NextResponse.json({ skus: (data ?? []).map(r => r.product_sku), authenticated: true });
 }
 
 export async function POST(req: NextRequest) {

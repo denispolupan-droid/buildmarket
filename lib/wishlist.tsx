@@ -27,15 +27,21 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
     // Then try syncing with server (logged-in users)
     fetch('/api/wishlist')
-      .then(r => r.ok ? r.json() : { skus: [] })
+      .then(r => r.ok ? r.json() : { skus: [], authenticated: false })
       .then(data => {
         const serverSkus: string[] = data.skus ?? [];
-        if (serverSkus.length > 0) {
-          // Merge server + local
+        const authenticated: boolean = data.authenticated ?? false;
+        if (authenticated) {
+          // Logged-in: trust server completely (clears stale localStorage)
+          setSkus(new Set(serverSkus));
+          localStorage.setItem(LS_KEY, JSON.stringify(serverSkus));
+        } else if (serverSkus.length > 0) {
+          // Guest with server items — merge
           const merged = new Set([...localSet, ...serverSkus]);
           setSkus(merged);
           localStorage.setItem(LS_KEY, JSON.stringify([...merged]));
         } else {
+          // Guest, no server — use localStorage
           setSkus(localSet);
         }
         setLoaded(true);

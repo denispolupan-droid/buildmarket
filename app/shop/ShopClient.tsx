@@ -95,40 +95,38 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
         </div>
       </Link>
 
-      <div className="shop-card__footer" style={{ justifyContent: 'flex-end' }}>
-        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-          <button
-            className={'shop-card__wish' + (isWished ? ' active' : '')}
-            aria-label={isWished ? 'Прибрати з обраного' : 'Додати в обране'}
-            onClick={onToggleWish}
-          >
-            <Heart size={15} fill={isWished ? '#EF4444' : 'none'} strokeWidth={2} />
+      <div className="shop-card__footer">
+        <button
+          className={'shop-card__wish' + (isWished ? ' active' : '')}
+          aria-label={isWished ? 'Прибрати з обраного' : 'Додати в обране'}
+          onClick={onToggleWish}
+        >
+          <Heart size={14} fill={isWished ? '#EF4444' : 'none'} strokeWidth={2} />
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: '7px', overflow: 'hidden', height: '34px', background: 'var(--bg-card)' }}>
+          <button onClick={() => { const v = Math.max(1, qty - 1); setQty(v); setInputVal(String(v)); }} style={{ width: '26px', height: '34px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+            <Minus size={11} strokeWidth={2.5} />
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden', height: '44px', background: 'var(--bg-card)' }}>
-            <button onClick={() => { const v = Math.max(1, qty - 1); setQty(v); setInputVal(String(v)); }} style={{ width: '32px', height: '44px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
-              <Minus size={13} strokeWidth={2.5} />
-            </button>
-            <input
-              type="number"
-              value={inputVal}
-              min={1}
-              onChange={e => setInputVal(e.target.value)}
-              onBlur={() => { const v = parseInt(inputVal, 10); const valid = !isNaN(v) && v >= 1 ? v : 1; setQty(valid); setInputVal(String(valid)); }}
-              style={{ width: '36px', height: '44px', border: 'none', background: 'none', textAlign: 'center', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', outline: 'none', padding: 0 }}
-            />
-            <button onClick={() => { const v = qty + 1; setQty(v); setInputVal(String(v)); }} style={{ width: '32px', height: '44px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
-              <Plus size={13} strokeWidth={2.5} />
-            </button>
-          </div>
-          <button
-            className="shop-card__btn"
-            disabled={!inStock}
-            onClick={handleAdd}
-            style={inCart ? { background: '#0D9488' } : undefined}
-          >
-            {inCart ? <><Check size={15} strokeWidth={2.5} /> В кошику</> : <><Plus size={15} strokeWidth={2.5} /> В кошик</>}
+          <input
+            type="number"
+            value={inputVal}
+            min={1}
+            onChange={e => setInputVal(e.target.value)}
+            onBlur={() => { const v = parseInt(inputVal, 10); const valid = !isNaN(v) && v >= 1 ? v : 1; setQty(valid); setInputVal(String(valid)); }}
+            style={{ width: '28px', height: '34px', border: 'none', background: 'none', textAlign: 'center', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', outline: 'none', padding: 0 }}
+          />
+          <button onClick={() => { const v = qty + 1; setQty(v); setInputVal(String(v)); }} style={{ width: '26px', height: '34px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+            <Plus size={11} strokeWidth={2.5} />
           </button>
         </div>
+        <button
+          className="shop-card__btn"
+          disabled={!inStock}
+          onClick={handleAdd}
+          style={inCart ? { background: '#0D9488' } : undefined}
+        >
+          {inCart ? <><Check size={14} strokeWidth={2.5} /> В кошику</> : <><Plus size={14} strokeWidth={2.5} /> В кошик</>}
+        </button>
       </div>
     </div>
   );
