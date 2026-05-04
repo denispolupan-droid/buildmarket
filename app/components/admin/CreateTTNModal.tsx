@@ -1,18 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Search, MapPin, Loader2, Package, CreditCard, Truck } from 'lucide-react';
+import { X, Search, MapPin, Loader2, Package, CreditCard, Truck, Banknote } from 'lucide-react';
 
 type Settlement = { Ref: string; Present: string; MainDescription: string; Area: string; RegionsDescription: string };
 type Warehouse  = { Ref: string; Description: string; Number: string };
 type SenderWH   = { ref: string; description: string; number: string };
 
 type SenderInfo = {
-  ref: string;
-  cityRef: string;
-  contactRef: string;
-  phone: string;
-  warehouses: SenderWH[];
+  ref: string; cityRef: string; contactRef: string; phone: string; warehouses: SenderWH[];
 };
 
 type OrderSnap = {
@@ -21,21 +17,17 @@ type OrderSnap = {
   phone: string;
   total_price: number;
   payment_type: string;
+  total_qty: number;
   delivery_city_ref: string | null;
   delivery_city_name: string | null;
   delivery_warehouse_ref: string | null;
 };
 
-type Props = {
-  order: OrderSnap;
-  onClose: () => void;
-  onCreated: (ttn: string) => void;
-};
+type Props = { order: OrderSnap; onClose: () => void; onCreated: (ttn: string) => void };
 
 async function npRequest(modelName: string, calledMethod: string, methodProperties: object) {
   const res = await fetch('/api/novaposhta', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ modelName, calledMethod, methodProperties }),
   });
   const data = await res.json();
@@ -51,31 +43,27 @@ const inp: React.CSSProperties = {
   height: '36px', padding: '0 10px', border: '1px solid #E2E8F0', borderRadius: '8px',
   fontSize: '13px', outline: 'none', boxSizing: 'border-box', width: '100%', color: '#0F172A',
 };
-
 const lbl: React.CSSProperties = {
   fontSize: '11px', fontWeight: 700, color: '#64748B', marginBottom: '4px', display: 'block',
   textTransform: 'uppercase', letterSpacing: '0.04em',
 };
-
 const secTitle: React.CSSProperties = {
   fontSize: '11px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase',
   letterSpacing: '0.06em', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '5px',
 };
-
 const dropStyle: React.CSSProperties = {
   position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 100,
   background: '#fff', border: '1px solid #E2E8F0', borderRadius: '10px',
   boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxHeight: '200px', overflowY: 'auto',
 };
-
 const dropBtn: React.CSSProperties = {
   width: '100%', padding: '8px 12px', background: 'none', border: 'none',
-  cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid #F8FAFC',
-  fontSize: '12px', color: '#374151',
+  cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid #F8FAFC', fontSize: '12px', color: '#374151',
 };
 
 export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   const initial = splitContact(order.contact);
+  const isCod = order.payment_type === 'cod';
 
   // Recipient
   const [lastName,   setLastName]   = useState(initial.lastName);
@@ -89,7 +77,6 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   const [selectedCity, setSelectedCity] = useState<Settlement | null>(null);
   const [cityDropOpen, setCityDropOpen] = useState(false);
   const [cityLoading,  setCityLoading]  = useState(false);
-
   const [warehouses,   setWarehouses]   = useState<Warehouse[]>([]);
   const [whQuery,      setWhQuery]      = useState('');
   const [selectedWH,   setSelectedWH]   = useState<Warehouse | null>(null);
@@ -105,18 +92,18 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   const [senderWhOpen,  setSenderWhOpen]  = useState(false);
 
   // Cargo
-  const [weight,      setWeight]      = useState('1');
+  const [weight,      setWeight]      = useState('');
   const [seats,       setSeats]       = useState('1');
   const [cost,        setCost]        = useState(String(Math.ceil(order.total_price)));
   const [description, setDescription] = useState('Будівельні матеріали');
 
-  // Payment — auto-fill from order
-  const [payerType,     setPayerType]     = useState<'Sender' | 'Recipient'>(
-    order.payment_type === 'cod' ? 'Recipient' : 'Sender'
-  );
-  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'NonCash'>(
-    order.payment_type === 'cod' ? 'Cash' : 'NonCash'
-  );
+  // Delivery payment (хто платить за пересилку)
+  const [payerType,     setPayerType]     = useState<'Sender' | 'Recipient'>('Sender');
+  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'NonCash'>(isCod ? 'Cash' : 'NonCash');
+
+  // COD — накладений платіж
+  const [codEnabled, setCodEnabled] = useState(isCod);
+  const [codAmount,  setCodAmount]  = useState(String(Math.ceil(order.total_price)));
 
   // Submit
   const [submitting, setSubmitting] = useState(false);
@@ -128,37 +115,27 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   const debRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    fetch('/api/admin/np-sender')
-      .then(r => r.json())
-      .then(d => {
-        if (d.error) { setSenderError(d.error); return; }
-        setSenderInfo(d);
-        if (d.warehouses?.length === 1) setSenderWH(d.warehouses[0]);
-      })
-      .catch(() => setSenderError('Не вдалося завантажити дані відправника'))
+    fetch('/api/admin/np-sender').then(r => r.json()).then(d => {
+      if (d.error) { setSenderError(d.error); return; }
+      setSenderInfo(d);
+      if (d.warehouses?.length === 1) setSenderWH(d.warehouses[0]);
+    }).catch(() => setSenderError('Не вдалося завантажити дані відправника'))
       .finally(() => setSenderLoading(false));
   }, []);
 
-  // Auto-fill city + warehouse from order refs
   useEffect(() => {
-    const cityRef = order.delivery_city_ref;
-    if (!cityRef) return;
-
-    const cityName = order.delivery_city_name ?? '';
-    setSelectedCity({ Ref: cityRef, Present: cityName, MainDescription: cityName, Area: '', RegionsDescription: '' });
-    setCityQuery(cityName);
+    const ref = order.delivery_city_ref;
+    if (!ref) return;
+    const name = order.delivery_city_name ?? '';
+    setSelectedCity({ Ref: ref, Present: name, MainDescription: name, Area: '', RegionsDescription: '' });
+    setCityQuery(name);
     setWhLoading(true);
-
-    npRequest('Address', 'getWarehouses', { SettlementRef: cityRef, Limit: 200, Page: 1 })
+    npRequest('Address', 'getWarehouses', { SettlementRef: ref, Limit: 200, Page: 1 })
       .then((data: Warehouse[]) => {
         setWarehouses(data);
-        const whRef = order.delivery_warehouse_ref;
-        if (whRef) {
-          const match = data.find(w => w.Ref === whRef);
-          if (match) { setSelectedWH(match); setWhQuery(match.Description); }
-        }
-      })
-      .finally(() => setWhLoading(false));
+        const wRef = order.delivery_warehouse_ref;
+        if (wRef) { const m = data.find(w => w.Ref === wRef); if (m) { setSelectedWH(m); setWhQuery(m.Description); } }
+      }).finally(() => setWhLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -176,90 +153,64 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
     if (q.length < 2) { setSettlements([]); return; }
     setCityLoading(true);
     npRequest('Address', 'searchSettlements', { CityName: q, Limit: 10, Page: 1 })
-      .then((data: { Addresses: Settlement[] }[]) => {
-        setSettlements(data[0]?.Addresses ?? []);
-        setCityDropOpen(true);
-      })
+      .then((data: { Addresses: Settlement[] }[]) => { setSettlements(data[0]?.Addresses ?? []); setCityDropOpen(true); })
       .finally(() => setCityLoading(false));
   }, []);
 
   function handleCityInput(val: string) {
-    setCityQuery(val);
-    setSelectedCity(null);
+    setCityQuery(val); setSelectedCity(null);
     if (debRef.current) clearTimeout(debRef.current);
     debRef.current = setTimeout(() => searchCities(val), 350);
   }
 
   function selectCity(s: Settlement) {
-    setSelectedCity(s);
-    setCityQuery(s.Present);
-    setCityDropOpen(false);
-    setSettlements([]);
-    setSelectedWH(null);
-    setWhQuery('');
-    setWhLoading(true);
+    setSelectedCity(s); setCityQuery(s.Present); setCityDropOpen(false); setSettlements([]);
+    setSelectedWH(null); setWhQuery(''); setWhLoading(true);
     npRequest('Address', 'getWarehouses', { SettlementRef: s.Ref, Limit: 200, Page: 1 })
-      .then((data: Warehouse[]) => setWarehouses(data))
-      .finally(() => setWhLoading(false));
+      .then((data: Warehouse[]) => setWarehouses(data)).finally(() => setWhLoading(false));
   }
 
-  const filteredWH = warehouses.filter(w =>
-    w.Description.toLowerCase().includes(whQuery.toLowerCase()) || w.Number.includes(whQuery)
-  );
-
-  const filteredSenderWH = (senderInfo?.warehouses ?? []).filter(w =>
-    w.description.toLowerCase().includes(senderWhQ.toLowerCase()) || w.number.includes(senderWhQ)
-  );
+  const filteredWH       = warehouses.filter(w => w.Description.toLowerCase().includes(whQuery.toLowerCase()) || w.Number.includes(whQuery));
+  const filteredSenderWH = (senderInfo?.warehouses ?? []).filter(w => w.description.toLowerCase().includes(senderWhQ.toLowerCase()) || w.number.includes(senderWhQ));
 
   async function handleSubmit() {
-    if (!selectedCity)                          { setError('Оберіть місто одержувача'); return; }
-    if (!selectedWH)                            { setError('Оберіть відділення одержувача'); return; }
-    if (!senderInfo)                            { setError('Дані відправника не завантажені'); return; }
+    if (!selectedCity)    { setError('Оберіть місто одержувача'); return; }
+    if (!selectedWH)      { setError('Оберіть відділення одержувача'); return; }
+    if (!senderInfo)      { setError('Дані відправника не завантажені'); return; }
     if (!senderWH && senderInfo.warehouses.length > 0) { setError('Оберіть відділення відправника'); return; }
-    if (!lastName || !firstName)                { setError('Вкажіть прізвище та ім\'я одержувача'); return; }
+    if (!lastName || !firstName) { setError('Вкажіть прізвище та ім\'я одержувача'); return; }
+    if (!weight || parseFloat(weight) <= 0) { setError('Вкажіть вагу відправлення'); return; }
+    if (codEnabled && (!codAmount || parseFloat(codAmount) <= 0)) { setError('Вкажіть суму накладеного платежу'); return; }
 
-    setSubmitting(true);
-    setError('');
+    setSubmitting(true); setError('');
 
     const res = await fetch('/api/admin/create-ttn', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         orderId: order.id,
-        senderRef: senderInfo.ref,
-        senderCityRef: senderInfo.cityRef,
+        senderRef: senderInfo.ref, senderCityRef: senderInfo.cityRef,
         senderWarehouseRef: senderWH?.ref ?? senderInfo.warehouses[0]?.ref,
-        senderContactRef: senderInfo.contactRef,
-        senderPhone: senderInfo.phone,
-        lastName, firstName, middleName,
-        recipientPhone: phone,
-        cityRecipientRef: selectedCity.Ref,
-        recipientAddressRef: selectedWH.Ref,
-        weight: parseFloat(weight) || 1,
-        seatsAmount: parseInt(seats) || 1,
-        cost: parseFloat(cost) || 0,
-        description,
-        payerType,
-        paymentMethod,
+        senderContactRef: senderInfo.contactRef, senderPhone: senderInfo.phone,
+        lastName, firstName, middleName, recipientPhone: phone,
+        cityRecipientRef: selectedCity.Ref, recipientAddressRef: selectedWH.Ref,
+        weight: parseFloat(weight), seatsAmount: parseInt(seats) || 1,
+        cost: parseFloat(cost) || 0, description,
+        payerType, paymentMethod,
+        codEnabled, codAmount: codEnabled ? parseFloat(codAmount) : 0,
       }),
     });
 
     const data = await res.json();
-    if (!res.ok || data.error) {
-      setError(data.error ?? 'Помилка');
-      setSubmitting(false);
-      return;
-    }
+    if (!res.ok || data.error) { setError(data.error ?? 'Помилка'); setSubmitting(false); return; }
     onCreated(data.ttn);
   }
 
-  const radioBtn = (active: boolean) => ({
+  const radio = (active: boolean): React.CSSProperties => ({
     flex: 1, height: '34px', borderRadius: '7px',
     border: `1.5px solid ${active ? '#1E3A5F' : '#E2E8F0'}`,
-    background: active ? '#EFF4FF' : '#fff',
-    color: active ? '#1E3A5F' : '#64748B',
+    background: active ? '#EFF4FF' : '#fff', color: active ? '#1E3A5F' : '#64748B',
     fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-  } as React.CSSProperties);
+  });
 
   return (
     <div
@@ -283,60 +234,33 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
 
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-          {/* Sender status */}
-          {senderLoading && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#94A3B8', fontSize: '13px' }}>
-              <Loader2 size={14} className="spin" /> Завантаження даних відправника...
-            </div>
-          )}
-          {senderError && (
-            <div style={{ padding: '12px', background: '#FEF2F2', borderRadius: '8px', color: '#DC2626', fontSize: '13px' }}>
-              {senderError}
-            </div>
-          )}
+          {senderLoading && <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#94A3B8', fontSize: '13px' }}><Loader2 size={14} className="spin" /> Завантаження даних відправника...</div>}
+          {senderError   && <div style={{ padding: '12px', background: '#FEF2F2', borderRadius: '8px', color: '#DC2626', fontSize: '13px' }}>{senderError}</div>}
 
           {/* Recipient */}
           <section>
             <div style={secTitle}><span>Одержувач</span></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-              <div>
-                <label style={lbl}>Прізвище</label>
-                <input style={inp} value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Іванов" />
-              </div>
-              <div>
-                <label style={lbl}>Ім'я</label>
-                <input style={inp} value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Іван" />
-              </div>
+              <div><label style={lbl}>Прізвище</label><input style={inp} value={lastName}   onChange={e => setLastName(e.target.value)}   placeholder="Іванов" /></div>
+              <div><label style={lbl}>Ім'я</label>    <input style={inp} value={firstName}  onChange={e => setFirstName(e.target.value)}  placeholder="Іван" /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <div>
-                <label style={lbl}>По батькові</label>
-                <input style={inp} value={middleName} onChange={e => setMiddleName(e.target.value)} placeholder="Іванович" />
-              </div>
-              <div>
-                <label style={lbl}>Телефон</label>
-                <input style={inp} value={phone} onChange={e => setPhone(e.target.value)} placeholder="0671234567" />
-              </div>
+              <div><label style={lbl}>По батькові</label><input style={inp} value={middleName} onChange={e => setMiddleName(e.target.value)} placeholder="Іванович" /></div>
+              <div><label style={lbl}>Телефон</label>    <input style={inp} value={phone}      onChange={e => setPhone(e.target.value)}      placeholder="0671234567" /></div>
             </div>
           </section>
 
-          {/* Recipient city + warehouse */}
+          {/* City + Warehouse */}
           <section>
             <div style={secTitle}><MapPin size={11} /><span>Місто та відділення одержувача</span></div>
-
             <div ref={cityRef} style={{ position: 'relative', marginBottom: '8px' }}>
               <label style={lbl}>Місто</label>
               <div style={{ position: 'relative' }}>
                 <div style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }}>
                   {cityLoading ? <Loader2 size={14} className="spin" /> : <Search size={14} />}
                 </div>
-                <input
-                  style={{ ...inp, paddingLeft: '30px' }}
-                  placeholder="Харків, Київ, Одеса..."
-                  value={cityQuery}
-                  onChange={e => handleCityInput(e.target.value)}
-                  onFocus={() => settlements.length > 0 && setCityDropOpen(true)}
-                />
+                <input style={{ ...inp, paddingLeft: '30px' }} placeholder="Харків, Київ, Одеса..." value={cityQuery}
+                  onChange={e => handleCityInput(e.target.value)} onFocus={() => settlements.length > 0 && setCityDropOpen(true)} />
               </div>
               {cityDropOpen && settlements.length > 0 && (
                 <div style={dropStyle}>
@@ -352,7 +276,6 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
                 </div>
               )}
             </div>
-
             <div ref={whRef} style={{ position: 'relative' }}>
               <label style={lbl}>Відділення</label>
               {whLoading ? (
@@ -361,25 +284,18 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
                 </div>
               ) : (
                 <div style={{ position: 'relative' }}>
-                  <div style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }}>
-                    <Search size={14} />
-                  </div>
-                  <input
-                    style={{ ...inp, paddingLeft: '30px' }}
+                  <div style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }}><Search size={14} /></div>
+                  <input style={{ ...inp, paddingLeft: '30px' }}
                     placeholder={selectedCity ? 'Номер або адреса відділення' : 'Спочатку оберіть місто'}
-                    value={whQuery}
-                    disabled={!selectedCity}
+                    value={whQuery} disabled={!selectedCity}
                     onChange={e => { setWhQuery(e.target.value); setWhDropOpen(true); setSelectedWH(null); }}
-                    onFocus={() => filteredWH.length > 0 && setWhDropOpen(true)}
-                  />
+                    onFocus={() => filteredWH.length > 0 && setWhDropOpen(true)} />
                 </div>
               )}
               {whDropOpen && filteredWH.length > 0 && (
                 <div style={dropStyle}>
                   {filteredWH.slice(0, 50).map(w => (
-                    <button key={w.Ref} onMouseDown={() => { setSelectedWH(w); setWhQuery(w.Description); setWhDropOpen(false); }} style={dropBtn}>
-                      {w.Description}
-                    </button>
+                    <button key={w.Ref} onMouseDown={() => { setSelectedWH(w); setWhQuery(w.Description); setWhDropOpen(false); }} style={dropBtn}>{w.Description}</button>
                   ))}
                 </div>
               )}
@@ -393,23 +309,16 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
               <div ref={senderWhRef} style={{ position: 'relative' }}>
                 <label style={lbl}>Відправляємо з відділення</label>
                 <div style={{ position: 'relative' }}>
-                  <div style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }}>
-                    <Search size={14} />
-                  </div>
-                  <input
-                    style={{ ...inp, paddingLeft: '30px' }}
-                    placeholder="Оберіть відділення відправки..."
+                  <div style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }}><Search size={14} /></div>
+                  <input style={{ ...inp, paddingLeft: '30px' }} placeholder="Оберіть відділення відправки..."
                     value={senderWH ? senderWH.description : senderWhQ}
                     onChange={e => { setSenderWhQ(e.target.value); setSenderWH(null); setSenderWhOpen(true); }}
-                    onFocus={() => setSenderWhOpen(true)}
-                  />
+                    onFocus={() => setSenderWhOpen(true)} />
                 </div>
                 {senderWhOpen && filteredSenderWH.length > 0 && (
                   <div style={dropStyle}>
                     {filteredSenderWH.slice(0, 50).map(w => (
-                      <button key={w.ref} onMouseDown={() => { setSenderWH(w); setSenderWhOpen(false); setSenderWhQ(''); }} style={dropBtn}>
-                        {w.description}
-                      </button>
+                      <button key={w.ref} onMouseDown={() => { setSenderWH(w); setSenderWhOpen(false); setSenderWhQ(''); }} style={dropBtn}>{w.description}</button>
                     ))}
                   </div>
                 )}
@@ -422,8 +331,20 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
             <div style={secTitle}><Package size={11} /><span>Вантаж</span></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
               <div>
-                <label style={lbl}>Вага, кг</label>
-                <input style={inp} type="number" min="0.1" step="0.1" value={weight} onChange={e => setWeight(e.target.value)} />
+                <label style={lbl}>
+                  Вага, кг <span style={{ color: '#EF4444' }}>*</span>
+                </label>
+                <input
+                  style={{ ...inp, borderColor: !weight ? '#FCA5A5' : '#E2E8F0', background: !weight ? '#FFF5F5' : '#fff' }}
+                  type="number" min="0.1" step="0.1" value={weight}
+                  onChange={e => setWeight(e.target.value)}
+                  placeholder="Введіть вагу"
+                />
+                {order.total_qty > 0 && (
+                  <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '3px' }}>
+                    Позицій у замовленні: {order.total_qty} шт.
+                  </div>
+                )}
               </div>
               <div>
                 <label style={lbl}>Місць</label>
@@ -442,32 +363,71 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
             </div>
           </section>
 
-          {/* Payment */}
+          {/* COD — накладений платіж */}
+          <section>
+            <div
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '12px 14px', borderRadius: '10px', cursor: 'pointer',
+                border: `1.5px solid ${codEnabled ? '#F59E0B' : '#E2E8F0'}`,
+                background: codEnabled ? '#FFFBEB' : '#F8FAFC',
+              }}
+              onClick={() => setCodEnabled(v => !v)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Banknote size={16} color={codEnabled ? '#D97706' : '#94A3B8'} />
+                <span style={{ fontSize: '13px', fontWeight: 700, color: codEnabled ? '#92400E' : '#64748B' }}>
+                  Накладений платіж (COD)
+                </span>
+                {isCod && <span style={{ fontSize: '11px', background: '#FDE68A', color: '#92400E', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>з замовлення</span>}
+              </div>
+              <div style={{
+                width: '36px', height: '20px', borderRadius: '10px', position: 'relative', transition: 'background 0.2s',
+                background: codEnabled ? '#F59E0B' : '#CBD5E1',
+              }}>
+                <div style={{
+                  position: 'absolute', top: '2px', width: '16px', height: '16px', borderRadius: '50%', background: '#fff',
+                  transition: 'left 0.2s', left: codEnabled ? '18px' : '2px',
+                }} />
+              </div>
+            </div>
+            {codEnabled && (
+              <div style={{ marginTop: '8px', padding: '12px 14px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px' }}>
+                <label style={{ ...lbl, color: '#92400E' }}>Сума до стягнення з одержувача, грн</label>
+                <input
+                  style={{ ...inp, borderColor: '#FCD34D', background: '#fff' }}
+                  type="number" min="1" step="0.01" value={codAmount}
+                  onChange={e => setCodAmount(e.target.value)}
+                />
+                <div style={{ fontSize: '11px', color: '#A16207', marginTop: '4px' }}>
+                  Одержувач сплачує цю суму готівкою при отриманні. Кошти повертаються вам через НП.
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* Delivery payment */}
           <section>
             <div style={secTitle}><CreditCard size={11} /><span>Оплата доставки</span></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               <div>
-                <label style={lbl}>Платник</label>
+                <label style={lbl}>Платник за пересилку</label>
                 <div style={{ display: 'flex', gap: '6px' }}>
-                  <button style={radioBtn(payerType === 'Sender')}   onClick={() => setPayerType('Sender')}>Відправник</button>
-                  <button style={radioBtn(payerType === 'Recipient')} onClick={() => setPayerType('Recipient')}>Одержувач</button>
+                  <button style={radio(payerType === 'Sender')}    onClick={() => setPayerType('Sender')}>Відправник</button>
+                  <button style={radio(payerType === 'Recipient')} onClick={() => setPayerType('Recipient')}>Одержувач</button>
                 </div>
               </div>
               <div>
-                <label style={lbl}>Спосіб</label>
+                <label style={lbl}>Спосіб оплати доставки</label>
                 <div style={{ display: 'flex', gap: '6px' }}>
-                  <button style={radioBtn(paymentMethod === 'Cash')}    onClick={() => setPaymentMethod('Cash')}>Готівка</button>
-                  <button style={radioBtn(paymentMethod === 'NonCash')} onClick={() => setPaymentMethod('NonCash')}>Безготівк.</button>
+                  <button style={radio(paymentMethod === 'Cash')}    onClick={() => setPaymentMethod('Cash')}>Готівка</button>
+                  <button style={radio(paymentMethod === 'NonCash')} onClick={() => setPaymentMethod('NonCash')}>Безготівк.</button>
                 </div>
               </div>
             </div>
           </section>
 
-          {error && (
-            <div style={{ padding: '10px 12px', background: '#FEF2F2', borderRadius: '8px', color: '#DC2626', fontSize: '13px' }}>
-              {error}
-            </div>
-          )}
+          {error && <div style={{ padding: '10px 12px', background: '#FEF2F2', borderRadius: '8px', color: '#DC2626', fontSize: '13px' }}>{error}</div>}
         </div>
 
         {/* Footer */}
@@ -475,16 +435,12 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
           <button onClick={onClose} style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: '1.5px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             Скасувати
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={submitting || senderLoading || !!senderError}
-            style={{ height: '38px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: (submitting || senderLoading || !!senderError) ? 0.5 : 1 }}
-          >
+          <button onClick={handleSubmit} disabled={submitting || senderLoading || !!senderError}
+            style={{ height: '38px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: (submitting || senderLoading || !!senderError) ? 0.5 : 1 }}>
             {submitting ? <><Loader2 size={14} className="spin" />Створення...</> : <><Truck size={14} />Створити ТТН</>}
           </button>
         </div>
       </div>
-
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}.spin{animation:spin 1s linear infinite}`}</style>
     </div>
   );

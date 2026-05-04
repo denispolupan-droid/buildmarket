@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
     cityRecipientRef, recipientAddressRef,
     weight, seatsAmount, cost, description,
     payerType, paymentMethod,
+    codEnabled, codAmount,
   } = body;
 
   // Step 1: Create recipient counterparty
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
   const contactRecipientRef = cRes.data[0].ContactPerson?.data?.[0]?.Ref ?? cRes.data[0].Ref;
 
   // Step 2: Create TTN
-  const ttnRes = await npCall('InternetDocument', 'save', {
+  const ttnPayload: Record<string, unknown> = {
     PayerType: payerType,
     PaymentMethod: paymentMethod,
     DateTime: todayStr(),
@@ -94,7 +95,17 @@ export async function POST(req: NextRequest) {
     RecipientAddress: recipientAddressRef,
     ContactRecipient: contactRecipientRef,
     RecipientsPhone: normalizePhone(recipientPhone),
-  });
+  };
+
+  if (codEnabled && codAmount > 0) {
+    ttnPayload.BackwardDeliveryData = [{
+      PayerType: 'Recipient',
+      CargoType: 'Money',
+      RedeliveryString: String(parseFloat(codAmount).toFixed(2)),
+    }];
+  }
+
+  const ttnRes = await npCall('InternetDocument', 'save', ttnPayload);
 
   if (!ttnRes.success) {
     return NextResponse.json(
