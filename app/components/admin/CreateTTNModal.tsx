@@ -20,6 +20,10 @@ type OrderSnap = {
   contact: string;
   phone: string;
   total_price: number;
+  payment_type: string;
+  delivery_city_ref: string | null;
+  delivery_city_name: string | null;
+  delivery_warehouse_ref: string | null;
 };
 
 type Props = {
@@ -106,9 +110,13 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   const [cost,        setCost]        = useState(String(Math.ceil(order.total_price)));
   const [description, setDescription] = useState('Будівельні матеріали');
 
-  // Payment
-  const [payerType,     setPayerType]     = useState<'Sender' | 'Recipient'>('Sender');
-  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'NonCash'>('Cash');
+  // Payment — auto-fill from order
+  const [payerType,     setPayerType]     = useState<'Sender' | 'Recipient'>(
+    order.payment_type === 'cod' ? 'Recipient' : 'Sender'
+  );
+  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'NonCash'>(
+    order.payment_type === 'cod' ? 'Cash' : 'NonCash'
+  );
 
   // Submit
   const [submitting, setSubmitting] = useState(false);
@@ -129,6 +137,29 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
       })
       .catch(() => setSenderError('Не вдалося завантажити дані відправника'))
       .finally(() => setSenderLoading(false));
+  }, []);
+
+  // Auto-fill city + warehouse from order refs
+  useEffect(() => {
+    const cityRef = order.delivery_city_ref;
+    if (!cityRef) return;
+
+    const cityName = order.delivery_city_name ?? '';
+    setSelectedCity({ Ref: cityRef, Present: cityName, MainDescription: cityName, Area: '', RegionsDescription: '' });
+    setCityQuery(cityName);
+    setWhLoading(true);
+
+    npRequest('Address', 'getWarehouses', { SettlementRef: cityRef, Limit: 200, Page: 1 })
+      .then((data: Warehouse[]) => {
+        setWarehouses(data);
+        const whRef = order.delivery_warehouse_ref;
+        if (whRef) {
+          const match = data.find(w => w.Ref === whRef);
+          if (match) { setSelectedWH(match); setWhQuery(match.Description); }
+        }
+      })
+      .finally(() => setWhLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

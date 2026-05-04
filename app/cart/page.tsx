@@ -100,9 +100,12 @@ export default function CartPage() {
       }
     });
   }, []);
-  const [delivery,     setDelivery]     = useState('');
-  const [novaSubtype,  setNovaSubtype]  = useState<'warehouse' | 'courier' | ''>('');
-  const [address,      setAddress]      = useState('');
+  const [delivery,          setDelivery]          = useState('');
+  const [novaSubtype,       setNovaSubtype]       = useState<'warehouse' | 'courier' | ''>('');
+  const [address,           setAddress]           = useState('');
+  const [novaCityRef,       setNovaCityRef]       = useState('');
+  const [novaCityName,      setNovaCityName]      = useState('');
+  const [novaWarehouseRef,  setNovaWarehouseRef]  = useState('');
   const [payment,   setPayment]   = useState('');
   const [comment,   setComment]   = useState('');
   const [commentOpen, setCommentOpen] = useState(false);
@@ -138,6 +141,9 @@ export default function CartPage() {
           deliveryType: delivery,
           deliverySubtype: delivery === 'nova' ? novaSubtype : null,
           deliveryAddress: address || null,
+          deliveryCityRef: delivery === 'nova' && novaCityRef ? novaCityRef : null,
+          deliveryCityName: delivery === 'nova' && novaCityName ? novaCityName : null,
+          deliveryWarehouseRef: delivery === 'nova' && novaSubtype === 'warehouse' && novaWarehouseRef ? novaWarehouseRef : null,
           paymentType: payment,
           comment: comment || null,
           items,
@@ -309,9 +315,11 @@ export default function CartPage() {
                               <NovaPoshtaSelect
                                 key={novaSubtype}
                                 mode={novaSubtype}
-                                onCityChange={city => setAddress(city)}
+                                onCityChange={city => { setNovaCityName(city); setAddress(city); }}
                                 onWarehouseChange={wh => setAddress(wh)}
                                 onAddressChange={addr => setAddress(addr)}
+                                onCityRefChange={setNovaCityRef}
+                                onWarehouseRefChange={setNovaWarehouseRef}
                               />
                             </div>
                           )}

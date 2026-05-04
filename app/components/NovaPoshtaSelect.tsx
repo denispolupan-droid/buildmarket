@@ -23,6 +23,8 @@ type Props = {
   onCityChange?: (city: string) => void;
   onWarehouseChange?: (warehouse: string) => void;
   onAddressChange?: (address: string) => void;
+  onCityRefChange?: (ref: string) => void;
+  onWarehouseRefChange?: (ref: string) => void;
 };
 
 async function npRequest(modelName: string, calledMethod: string, methodProperties: object) {
@@ -50,7 +52,7 @@ const labelStyle: React.CSSProperties = {
   color: '#374151', marginBottom: '6px',
 };
 
-export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange, onAddressChange }: Props) {
+export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange, onAddressChange, onCityRefChange, onWarehouseRefChange }: Props) {
   const [cityQuery,      setCityQuery]      = useState('');
   const [settlements,    setSettlements]    = useState<Settlement[]>([]);
   const [selectedCity,   setSelectedCity]   = useState<Settlement | null>(null);
@@ -105,6 +107,7 @@ export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange
     setSelectedWH(null);
     setWarehouseQuery('');
     onCityChange?.(s.Present);
+    onCityRefChange?.(s.Ref);
 
     if (mode === 'warehouse') {
       setWhLoading(true);
@@ -119,6 +122,7 @@ export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange
     setWarehouseQuery(w.Description);
     setWhDropOpen(false);
     onWarehouseChange?.(w.Description);
+    onWarehouseRefChange?.(w.Ref);
   }
 
   const filteredWH = warehouses.filter(w =>

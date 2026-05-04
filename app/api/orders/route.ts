@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const body = await req.json();
-  const { company, contact, phone, email, deliveryType, deliverySubtype, deliveryAddress, paymentType, comment, items, totalPrice } = body;
+  const { company, contact, phone, email, deliveryType, deliverySubtype, deliveryAddress, deliveryCityRef, deliveryCityName, deliveryWarehouseRef, paymentType, comment, items, totalPrice } = body;
 
   const admin = createSupabaseAdmin();
   const { data, error } = await admin
@@ -24,6 +24,9 @@ export async function POST(req: NextRequest) {
       delivery_type: deliveryType,
       delivery_subtype: deliverySubtype ?? null,
       delivery_address: deliveryAddress ?? null,
+      delivery_city_ref: deliveryCityRef ?? null,
+      delivery_city_name: deliveryCityName ?? null,
+      delivery_warehouse_ref: deliveryWarehouseRef ?? null,
       payment_type: paymentType,
       comment: comment ?? null,
       items,

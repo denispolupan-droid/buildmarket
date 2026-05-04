@@ -19,6 +19,9 @@ type Order = {
   delivery_type: string;
   delivery_subtype: string | null;
   delivery_address: string | null;
+  delivery_city_ref: string | null;
+  delivery_city_name: string | null;
+  delivery_warehouse_ref: string | null;
   payment_type: string;
   comment: string | null;
   tracking_number: string | null;
@@ -283,7 +286,16 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
 
       {ttnModalOrder && (
         <CreateTTNModal
-          order={ttnModalOrder}
+          order={{
+            id: ttnModalOrder.id,
+            contact: ttnModalOrder.contact,
+            phone: ttnModalOrder.phone,
+            total_price: ttnModalOrder.total_price,
+            payment_type: ttnModalOrder.payment_type,
+            delivery_city_ref: ttnModalOrder.delivery_city_ref,
+            delivery_city_name: ttnModalOrder.delivery_city_name,
+            delivery_warehouse_ref: ttnModalOrder.delivery_warehouse_ref,
+          }}
           onClose={() => setTtnModalOrder(null)}
           onCreated={ttn => {
             setTtnValues(prev => ({ ...prev, [ttnModalOrder.id]: ttn }));
