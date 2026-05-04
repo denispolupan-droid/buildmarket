@@ -10,6 +10,7 @@ type WishlistContext = {
   toggle: (sku: string) => void;
   isLiked: (sku: string) => boolean;
   cleanSkus: (validSkus: string[]) => void;
+  clear: () => void;
   loaded: boolean;
 };
 
@@ -71,8 +72,13 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const clear = useCallback(() => {
+    setSkus(new Set());
+    localStorage.removeItem(LS_KEY);
+  }, []);
+
   return (
-    <WishlistCtx.Provider value={{ skus, toggle, isLiked, cleanSkus, loaded }}>
+    <WishlistCtx.Provider value={{ skus, toggle, isLiked, cleanSkus, clear, loaded }}>
       {children}
     </WishlistCtx.Provider>
   );

@@ -23,8 +23,8 @@ const toAdd = [
   // ── Фарби та покриття (розширення) ───────────────────────────────────────
   { slug: 'vodoemiulsiyni-fasadni',   name: 'Водоемульсійні фасадні фарби',       parent_slug: 'farby',       sort_order: 41 },
   { slug: 'vodoemiulsiyni-interierni',name: "Водоемульсійні інтер'єрні фарби",    parent_slug: 'farby',       sort_order: 42 },
-  { slug: 'alkidni-farby',            name: 'Алкідні фарби та емалі',             parent_slug: 'farby',       sort_order: 43 },
-  { slug: 'farby-3v1',                name: 'Фарба 3 в 1',                        parent_slug: 'farby',       sort_order: 44 },
+  { slug: 'alkidni-farby',            name: 'Алкідні емалі',                      parent_slug: 'farby',       sort_order: 43 },
+  { slug: 'farby-3v1',                name: 'Фарби 3 в 1',                        parent_slug: 'farby',       sort_order: 44 },
   { slug: 'moltkovi-farby',           name: 'Молоткові фарби',                    parent_slug: 'farby',       sort_order: 45 },
   { slug: 'farby-dlya-pidlohy',       name: 'Фарба для підлоги',                  parent_slug: 'farby',       sort_order: 46 },
   // laky — вже є, sort_order: 47

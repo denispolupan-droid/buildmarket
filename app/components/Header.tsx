@@ -40,6 +40,8 @@ export default function Header() {
 
   async function handleLogout() {
     await getSupabaseBrowser().auth.signOut();
+    clearCart();
+    clearWishlist();
     setMenuOpen(false);
     setMobileOpen(false);
     router.push('/');
@@ -53,8 +55,8 @@ export default function Header() {
     }
   }
 
-  const { totalItems } = useCart();
-  const { skus: wishSkus } = useWishlist();
+  const { totalItems, clearCart } = useCart();
+  const { skus: wishSkus, clear: clearWishlist } = useWishlist();
   const totalWish = wishSkus.size;
   const { theme, toggle: toggleTheme } = useTheme();
   const companyName = user?.user_metadata?.company_name as string | undefined;
