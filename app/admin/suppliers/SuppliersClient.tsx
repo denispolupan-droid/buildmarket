@@ -286,10 +286,9 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               {([
-                { key: 'col_sku',   lbl: 'Артикул (SKU)',  ph: 'напр. Артикул, Код' },
-                { key: 'col_price', lbl: 'Ціна',           ph: 'напр. Ціна, Прайс' },
+                { key: 'col_sku',   lbl: 'Артикул (SKU)',       ph: 'напр. Артикул, Код' },
+                { key: 'col_price', lbl: 'Ціна',                ph: 'напр. Ціна, Прайс' },
                 { key: 'col_qty',   lbl: 'Залишок / Наявність', ph: 'напр. Залишок, Наявність, Кількість' },
-                { key: 'col_name',  lbl: 'Назва товару',   ph: 'напр. Найменування, Товар' },
               ] as const).map(({ key, lbl, ph }) => (
                 <div key={key}>
                   <span style={label}>{lbl}</span>
