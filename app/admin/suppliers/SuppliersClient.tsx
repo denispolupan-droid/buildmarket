@@ -2,8 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Layers, Eye, EyeOff } from 'lucide-react';
 
 type BrandDiscount = { brand: string; discount_pct: number };
+
+type SheetInfo = { name: string; hidden: boolean; skuRows: number; totalRows: number };
 
 type Supplier = {
   id: number;
@@ -11,6 +14,7 @@ type Supplier = {
   name: string;
   source_url: string | null;
   file_format: string;
+  sheet_name: string | null;
   sync_interval_h: number;
   markup_retail: number;
   markup_wholesale: number;
@@ -24,6 +28,7 @@ type Supplier = {
 
 const EMPTY: Omit<Supplier, 'id' | 'last_synced_at' | 'last_sync'> = {
   slug: '', name: '', source_url: '', file_format: 'csv',
+  sheet_name: null,
   sync_interval_h: 24, markup_retail: 22, markup_wholesale: 10,
   markup_drop: 15, is_active: true, notes: '', brand_discounts: [],
 };
@@ -45,9 +50,12 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
   const [suppliers, setSuppliers] = useState<Supplier[]>(initial);
   const [editing, setEditing] = useState<Partial<Supplier> | null>(null);
   const [isNew, setIsNew] = useState(false);
-  const [syncing, setSyncing] = useState<number | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [syncing,       setSyncing]       = useState<number | null>(null);
+  const [saving,        setSaving]        = useState(false);
+  const [error,         setError]         = useState('');
+  const [sheets,        setSheets]        = useState<SheetInfo[] | null>(null);
+  const [sheetsLoading, setSheetsLoading] = useState(false);
+  const [sheetsError,   setSheetsError]   = useState('');
 
   // ── Скидки на бренды ──────────────────────────────────────────────────────
 
@@ -97,11 +105,24 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
     setSuppliers(all);
   }
 
+  async function loadSheets() {
+    if (!editing?.id) return;
+    setSheetsLoading(true); setSheetsError(''); setSheets(null);
+    const res = await fetch(`/api/admin/suppliers/${editing.id}/sheets`);
+    const data = await res.json();
+    setSheetsLoading(false);
+    if (!res.ok) { setSheetsError(data.error ?? 'Помилка'); return; }
+    setSheets(data.sheets);
+  }
+
   // ── Рендер форми ──────────────────────────────────────────────────────────
 
   if (editing !== null) {
     const e = editing;
-    const set = (k: keyof typeof EMPTY, v: unknown) => setEditing(prev => ({ ...prev, [k]: v }));
+    const set = (k: keyof typeof EMPTY, v: unknown) => {
+      setEditing(prev => ({ ...prev, [k]: v }));
+      if (k === 'source_url' || k === 'file_format') { setSheets(null); setSheetsError(''); }
+    };
 
     return (
       <div style={{ maxWidth: '760px' }}>
@@ -137,6 +158,93 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
             <input style={input} type="number" min={1} value={e.sync_interval_h ?? 24} onChange={ev => set('sync_interval_h', Number(ev.target.value))} />
           </div>
         </div>
+
+        {/* Sheet selector — only for Excel */}
+        {e.file_format === 'xls' && (
+          <div style={{ background: '#F0F7FF', border: '1px solid #BFDBFE', borderRadius: '8px', padding: '14px 16px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <Layers size={15} color="#3B82F6" />
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#1D4ED8' }}>Аркуш Excel</span>
+            </div>
+            <p style={{ fontSize: '12px', color: '#475569', marginBottom: '10px' }}>
+              Якщо файл містить кілька аркушів — вкажіть назву того, де знаходиться весь асортимент.
+              Залиште порожнім, щоб система обрала аркуш з найбільшою кількістю товарів автоматично.
+            </p>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', marginBottom: sheets ? '12px' : '0' }}>
+              <div style={{ flex: 1 }}>
+                <span style={label}>Назва аркушу</span>
+                <input
+                  style={input}
+                  value={e.sheet_name ?? ''}
+                  onChange={ev => set('sheet_name', ev.target.value || null)}
+                  placeholder="Наприклад: Весь асортимент"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={loadSheets}
+                disabled={sheetsLoading || !e.id || !e.source_url}
+                style={{ ...btn('#3B82F6'), height: '34px', whiteSpace: 'nowrap', opacity: (!e.id || !e.source_url) ? 0.4 : 1 }}
+                title={!e.id ? 'Спочатку збережіть постачальника' : !e.source_url ? 'Вкажіть URL файлу' : ''}
+              >
+                {sheetsLoading ? 'Завантаження...' : 'Переглянути аркуші'}
+              </button>
+            </div>
+
+            {sheetsError && (
+              <p style={{ fontSize: '12px', color: '#DC2626', margin: '4px 0 0' }}>{sheetsError}</p>
+            )}
+
+            {sheets && (
+              <div style={{ border: '1px solid #BFDBFE', borderRadius: '7px', overflow: 'hidden', background: '#fff' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                  <thead>
+                    <tr style={{ background: '#EFF6FF' }}>
+                      <th style={{ padding: '7px 10px', textAlign: 'left', color: '#1D4ED8', fontWeight: 700 }}>Аркуш</th>
+                      <th style={{ padding: '7px 10px', textAlign: 'left', color: '#1D4ED8', fontWeight: 700 }}>Видимість</th>
+                      <th style={{ padding: '7px 10px', textAlign: 'right', color: '#1D4ED8', fontWeight: 700 }}>Рядків з товарами</th>
+                      <th style={{ padding: '7px 10px', textAlign: 'right', color: '#1D4ED8', fontWeight: 700 }}>Всього рядків</th>
+                      <th style={{ padding: '7px 10px' }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sheets.map(s => (
+                      <tr key={s.name} style={{ borderTop: '1px solid #DBEAFE', background: e.sheet_name === s.name ? '#EFF6FF' : '#fff' }}>
+                        <td style={{ padding: '7px 10px', fontWeight: e.sheet_name === s.name ? 700 : 400, color: '#0F172A' }}>
+                          {s.name}
+                        </td>
+                        <td style={{ padding: '7px 10px' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: s.hidden ? '#94A3B8' : '#16A34A' }}>
+                            {s.hidden ? <><EyeOff size={11} /> Прихований</> : <><Eye size={11} /> Видимий</>}
+                          </span>
+                        </td>
+                        <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: s.skuRows > 0 ? '#1D4ED8' : '#94A3B8' }}>
+                          {s.skuRows > 0 ? s.skuRows : '—'}
+                        </td>
+                        <td style={{ padding: '7px 10px', textAlign: 'right', color: '#64748B' }}>
+                          {s.totalRows}
+                        </td>
+                        <td style={{ padding: '7px 10px', textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            onClick={() => set('sheet_name', e.sheet_name === s.name ? null : s.name)}
+                            style={{
+                              padding: '3px 10px', borderRadius: '5px', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: 600,
+                              background: e.sheet_name === s.name ? '#DCFCE7' : '#EFF6FF',
+                              color: e.sheet_name === s.name ? '#16A34A' : '#3B82F6',
+                            }}
+                          >
+                            {e.sheet_name === s.name ? '✓ Обрано' : 'Обрати'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
 
         <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
           <p style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', marginBottom: '12px' }}>Наценки від вхідної ціни</p>
@@ -243,7 +351,17 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                       <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>{s.slug}</div>
                       {s.source_url && <div style={{ fontSize: '11px', color: '#3B82F6', marginTop: '2px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.source_url}</div>}
                     </td>
-                    <td style={cell}>{FORMAT_LABELS[s.file_format] ?? s.file_format}</td>
+                    <td style={cell}>
+                      <div>{FORMAT_LABELS[s.file_format] ?? s.file_format}</div>
+                      {s.file_format === 'xls' && s.sheet_name && (
+                        <div style={{ fontSize: '11px', color: '#3B82F6', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <Layers size={10} /> {s.sheet_name}
+                        </div>
+                      )}
+                      {s.file_format === 'xls' && !s.sheet_name && (
+                        <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>авто-вибір аркушу</div>
+                      )}
+                    </td>
                     <td style={cell}>кожні {s.sync_interval_h} год</td>
                     <td style={cell}>
                       <span style={{ fontSize: '12px' }}>

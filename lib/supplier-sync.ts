@@ -111,7 +111,7 @@ function parseCsv(buffer: Buffer): ParsedRow[] {
   return rows;
 }
 
-function parseXlsx(buffer: Buffer): ParsedRow[] {
+function parseXlsx(buffer: Buffer, sheetName?: string | null): ParsedRow[] {
   const wb = XLSX.read(buffer, { type: 'buffer' });
 
   const col = (obj: Record<string, unknown>, ...names: string[]) => {
@@ -119,8 +119,9 @@ function parseXlsx(buffer: Buffer): ParsedRow[] {
     return key ? String(obj[key]).trim() : '';
   };
 
-  const parseSheet = (sheetName: string): ParsedRow[] => {
-    const ws = wb.Sheets[sheetName];
+  const parseSheet = (name: string): ParsedRow[] => {
+    const ws = wb.Sheets[name];
+    if (!ws) return [];
     const raw = XLSX.utils.sheet_to_json<Record<string, string | number>>(ws, { defval: '' });
     return raw.map(r => ({
       supplier_sku: col(r, 'sku', 'артикул', 'article', 'код'),
@@ -130,10 +131,15 @@ function parseXlsx(buffer: Buffer): ParsedRow[] {
     })).filter(r => r.supplier_sku);
   };
 
-  // Перебираємо всі листи (включно з прихованими) — беремо той, де найбільше розпізнаних рядків
+  // Якщо вказано конкретний аркуш — використовуємо його
+  if (sheetName && wb.Sheets[sheetName]) {
+    return parseSheet(sheetName);
+  }
+
+  // Інакше перебираємо всі листи (включно з прихованими) і беремо той з найбільшою кількістю розпізнаних рядків
   let best: ParsedRow[] = [];
-  for (const sheetName of wb.SheetNames) {
-    const rows = parseSheet(sheetName);
+  for (const name of wb.SheetNames) {
+    const rows = parseSheet(name);
     if (rows.length > best.length) best = rows;
   }
   return best;
@@ -228,7 +234,7 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
   } else if (supplier.file_format === '1c_xml') {
     parsed = parse1cXml(buffer);
   } else if (supplier.file_format === 'xls') {
-    parsed = parseXlsx(buffer);
+    parsed = parseXlsx(buffer, supplier.sheet_name ?? null);
   } else {
     parsed = parseCsv(buffer);
   }
