@@ -32,66 +32,40 @@ export default async function AdminProductsPage() {
     .order('sort_order');
 
   return (
-    <div style={{ background: '#F8FAFC', minHeight: '100vh' }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-          <div>
-            <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
-              Панель менеджера
-            </h1>
-            <p style={{ fontSize: '14px', color: '#64748B', marginTop: '4px' }}>
-              {products?.length ?? 0} товарів у базі
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <Link
-              href="/admin/products/import"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                height: '44px', padding: '0 20px', borderRadius: '10px',
-                background: '#fff', border: '1px solid #E2E8F0', color: '#475569',
-                fontSize: '14px', fontWeight: 600, textDecoration: 'none',
-              }}
-            >
-              <Upload size={18} /> Імпорт
-            </Link>
-            <Link
-              href="/admin/products/new"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                height: '44px', padding: '0 20px', borderRadius: '10px',
-                background: '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 600,
-                textDecoration: 'none',
-              }}
-            >
-              <Plus size={18} /> Додати товар
-            </Link>
-          </div>
+    <div style={{ padding: '32px 36px 64px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
+        <div>
+          <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', margin: 0 }}>Товари</h1>
+          <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>
+            {products?.length ?? 0} товарів у базі
+          </p>
         </div>
-
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '28px' }}>
-          <a
-            href="/admin"
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <Link
+            href="/admin/products/import"
             style={{
-              padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: 600,
-              background: '#fff', border: '1px solid #E2E8F0', color: '#475569', textDecoration: 'none',
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              height: '40px', padding: '0 18px', borderRadius: '10px',
+              background: '#fff', border: '1px solid #E2E8F0', color: '#475569',
+              fontSize: '13px', fontWeight: 600, textDecoration: 'none',
             }}
           >
-            Замовлення
-          </a>
-          <a
-            href="/admin/products"
+            <Upload size={16} /> Імпорт
+          </Link>
+          <Link
+            href="/admin/products/new"
             style={{
-              padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: 600,
-              background: '#1E3A5F', color: '#fff', textDecoration: 'none',
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              height: '40px', padding: '0 18px', borderRadius: '10px',
+              background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 600,
+              textDecoration: 'none',
             }}
           >
-            Товари
-          </a>
+            <Plus size={16} /> Додати товар
+          </Link>
         </div>
-
-        <ProductsTable products={products ?? []} categories={categories ?? []} />
       </div>
+      <ProductsTable products={products ?? []} categories={categories ?? []} />
     </div>
   );
 }
