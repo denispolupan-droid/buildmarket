@@ -38,25 +38,33 @@ export async function GET() {
 
   const sender = counterRes.data[0];
 
+  // getWarehouses works with CityRef (city ref from getCities, same as Counterparty.City)
   const [contactsRes, warehousesRes] = await Promise.all([
     npCall('ContactPerson', 'getContactPersonsList', {
       CounterpartyRef: sender.Ref,
       Page: '1',
     }),
     npCall('Address', 'getWarehouses', {
-      SettlementRef: sender.City,
+      CityRef: sender.City,
       Limit: '200',
       Page: '1',
     }),
   ]);
 
+  const contact = contactsRes.data?.[0];
+  // NP stores phone in different fields depending on counterparty type
+  const phone: string = sender.Phone || contact?.Phones || contact?.Phone || '';
+
+  type WHRaw = { Ref: string; Description: string; Number: string; CityRef?: string };
+
   return NextResponse.json({
     ref: sender.Ref,
     cityRef: sender.City,
-    contactRef: contactsRes.data?.[0]?.Ref ?? sender.Ref,
-    phone: sender.Phone ?? '',
-    warehouses: (warehousesRes.data ?? []).map((w: { Ref: string; Description: string; Number: string }) => ({
+    contactRef: contact?.Ref ?? sender.Ref,
+    phone,
+    warehouses: (warehousesRes.data ?? []).map((w: WHRaw) => ({
       ref: w.Ref,
+      cityRef: w.CityRef ?? sender.City,
       description: w.Description,
       number: w.Number,
     })),

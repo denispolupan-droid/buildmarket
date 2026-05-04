@@ -53,6 +53,14 @@ export async function POST(req: NextRequest) {
     codEnabled, codAmount,
   } = body;
 
+  const normalizedSenderPhone = normalizePhone(senderPhone);
+  if (!normalizedSenderPhone) {
+    return NextResponse.json(
+      { error: 'Телефон відправника порожній. Додайте номер телефону у налаштуваннях акаунту Нової Пошти.' },
+      { status: 400 },
+    );
+  }
+
   // Step 1: Create recipient counterparty
   const cRes = await npCall('Counterparty', 'save', {
     FirstName: firstName,
@@ -89,7 +97,7 @@ export async function POST(req: NextRequest) {
     Sender: senderRef,
     SenderAddress: senderWarehouseRef,
     ContactSender: senderContactRef,
-    SendersPhone: normalizePhone(senderPhone),
+    SendersPhone: normalizedSenderPhone,
     CityRecipient: cityRecipientRef,
     Recipient: recipientRef,
     RecipientAddress: recipientAddressRef,

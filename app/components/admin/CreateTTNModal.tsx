@@ -5,7 +5,7 @@ import { X, Search, MapPin, Loader2, Package, CreditCard, Truck, Banknote } from
 
 type Settlement = { Ref: string; Present: string; MainDescription: string; Area: string; RegionsDescription: string };
 type Warehouse  = { Ref: string; Description: string; Number: string; CityRef: string };
-type SenderWH   = { ref: string; description: string; number: string };
+type SenderWH   = { ref: string; cityRef: string; description: string; number: string };
 
 type SenderInfo = {
   ref: string; cityRef: string; contactRef: string; phone: string; warehouses: SenderWH[];
@@ -211,7 +211,8 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         orderId: order.id,
-        senderRef: senderInfo.ref, senderCityRef: senderInfo.cityRef,
+        senderRef: senderInfo.ref,
+        senderCityRef: senderWH?.cityRef ?? senderInfo.warehouses[0]?.cityRef ?? senderInfo.cityRef,
         senderWarehouseRef: senderWH?.ref ?? senderInfo.warehouses[0]?.ref,
         senderContactRef: senderInfo.contactRef, senderPhone: senderInfo.phone,
         lastName, firstName, middleName, recipientPhone: phone,
