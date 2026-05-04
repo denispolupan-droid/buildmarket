@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Search, MapPin, Loader2, Package, CreditCard, Truck, Banknote } from 'lucide-react';
 
 type Settlement = { Ref: string; Present: string; MainDescription: string; Area: string; RegionsDescription: string };
-type Warehouse  = { Ref: string; Description: string; Number: string };
+type Warehouse  = { Ref: string; Description: string; Number: string; CityRef: string };
 type SenderWH   = { ref: string; description: string; number: string };
 
 type SenderInfo = {
@@ -215,7 +215,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
         senderWarehouseRef: senderWH?.ref ?? senderInfo.warehouses[0]?.ref,
         senderContactRef: senderInfo.contactRef, senderPhone: senderInfo.phone,
         lastName, firstName, middleName, recipientPhone: phone,
-        cityRecipientRef: selectedCity.Ref, recipientAddressRef: selectedWH.Ref,
+        cityRecipientRef: selectedWH.CityRef || selectedCity.Ref, recipientAddressRef: selectedWH.Ref,
         weight: parseFloat(weight), seatsAmount: parseInt(seats) || 1,
         cost: parseFloat(cost) || 0, description,
         payerType, paymentMethod,
