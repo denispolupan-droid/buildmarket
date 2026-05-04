@@ -6,7 +6,7 @@ import { Layers, Eye, EyeOff } from 'lucide-react';
 
 type BrandDiscount = { brand: string; discount_pct: number };
 
-type SheetInfo = { name: string; hidden: boolean; skuRows: number; totalRows: number };
+type SheetInfo = { name: string; hidden: boolean; skuRows: number; totalRows: number; headers: string[] };
 
 type Supplier = {
   id: number;
@@ -15,6 +15,10 @@ type Supplier = {
   source_url: string | null;
   file_format: string;
   sheet_name: string | null;
+  col_sku:   string | null;
+  col_price: string | null;
+  col_qty:   string | null;
+  col_name:  string | null;
   sync_interval_h: number;
   markup_retail: number;
   markup_wholesale: number;
@@ -28,7 +32,7 @@ type Supplier = {
 
 const EMPTY: Omit<Supplier, 'id' | 'last_synced_at' | 'last_sync'> = {
   slug: '', name: '', source_url: '', file_format: 'csv',
-  sheet_name: null,
+  sheet_name: null, col_sku: null, col_price: null, col_qty: null, col_name: null,
   sync_interval_h: 24, markup_retail: 22, markup_wholesale: 10,
   markup_drop: 15, is_active: true, notes: '', brand_discounts: [],
 };
@@ -243,6 +247,61 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Column mapping — for XLS and CSV */}
+        {(e.file_format === 'xls' || e.file_format === 'csv') && (
+          <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', padding: '14px 16px', marginBottom: '16px' }}>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: '#92400E', marginBottom: '4px' }}>Маппінг колонок</p>
+            <p style={{ fontSize: '12px', color: '#78350F', marginBottom: '12px' }}>
+              Вкажіть точні назви колонок з файлу постачальника. Залиште порожнім — система спробує знайти автоматично за стандартними словами.
+            </p>
+
+            {/* Show headers from selected sheet */}
+            {sheets && (() => {
+              const activeSheet = sheets.find(s => s.name === e.sheet_name) ?? sheets.find(s => s.skuRows > 0) ?? sheets[0];
+              const hdrs = activeSheet?.headers ?? [];
+              return hdrs.length > 0 ? (
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 600, color: '#92400E', marginBottom: '5px' }}>
+                    Колонки у файлі ({activeSheet?.name}):
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                    {hdrs.map(h => (
+                      <span
+                        key={h}
+                        style={{ padding: '2px 8px', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '4px', fontSize: '11px', cursor: 'default' }}
+                        title={`Клікніть щоб скопіювати: "${h}"`}
+                        onClick={() => navigator.clipboard?.writeText(h)}
+                      >
+                        {h}
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#A16207', marginTop: '4px' }}>Клік по назві — скопіювати в буфер</div>
+                </div>
+              ) : null;
+            })()}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              {([
+                { key: 'col_sku',   lbl: 'Артикул (SKU)',  ph: 'напр. Артикул, Код' },
+                { key: 'col_price', lbl: 'Ціна',           ph: 'напр. Ціна, Прайс' },
+                { key: 'col_qty',   lbl: 'Залишок / Наявність', ph: 'напр. Залишок, Наявність, Кількість' },
+                { key: 'col_name',  lbl: 'Назва товару',   ph: 'напр. Найменування, Товар' },
+              ] as const).map(({ key, lbl, ph }) => (
+                <div key={key}>
+                  <span style={label}>{lbl}</span>
+                  <input
+                    style={input}
+                    value={(e as Record<string, unknown>)[key] as string ?? ''}
+                    onChange={ev => set(key as keyof typeof EMPTY, ev.target.value || null)}
+                    placeholder={ph}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

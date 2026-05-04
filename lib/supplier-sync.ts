@@ -76,7 +76,9 @@ function parseSmartCsv(buffer: Buffer): ParsedRow[] {
   return rows;
 }
 
-function parseCsv(buffer: Buffer): ParsedRow[] {
+type ColMap = { sku?: string | null; price?: string | null; qty?: string | null; name?: string | null };
+
+function parseCsv(buffer: Buffer, cm: ColMap = {}): ParsedRow[] {
   const text = buffer.toString('utf-8');
   const lines = text.split(/\r?\n/).filter(Boolean);
   if (lines.length < 2) return [];
@@ -84,13 +86,18 @@ function parseCsv(buffer: Buffer): ParsedRow[] {
   const sep = lines[0].includes(';') ? ';' : ',';
   const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
 
-  const col = (...names: string[]) =>
-    names.reduce<number>((f, n) => (f >= 0 ? f : headers.indexOf(n)), -1);
+  const col = (override: string | null | undefined, ...names: string[]) => {
+    if (override) {
+      const idx = headers.indexOf(override.toLowerCase().trim());
+      if (idx >= 0) return idx;
+    }
+    return names.reduce<number>((f, n) => (f >= 0 ? f : headers.indexOf(n)), -1);
+  };
 
-  const iSku  = col('sku', 'supplier_sku', 'артикул', 'article', 'код');
-  const iPrice = col('price', 'ціна', 'цена', 'price_unit', 'прайс');
-  const iQty  = col('qty', 'quantity', 'залишок', 'остаток', 'кількість', 'количество');
-  const iName = col('name', 'назва', 'наименование', 'товар');
+  const iSku   = col(cm.sku,   'sku', 'supplier_sku', 'артикул', 'article', 'код');
+  const iPrice = col(cm.price, 'price', 'ціна', 'цена', 'price_unit', 'прайс');
+  const iQty   = col(cm.qty,   'qty', 'quantity', 'залишок', 'остаток', 'кількість', 'количество', 'наявність', 'наличие');
+  const iName  = col(cm.name,  'name', 'назва', 'наименование', 'товар');
 
   if (iSku < 0 || iPrice < 0) {
     throw new Error(`CSV: не знайдено колонки SKU або Ціна. Заголовки: ${headers.join(', ')}`);
@@ -104,18 +111,19 @@ function parseCsv(buffer: Buffer): ParsedRow[] {
     rows.push({
       supplier_sku,
       price_in:    parseFloat(cells[iPrice]?.replace(',', '.') ?? '0') || 0,
-      stock_qty:   parseInt(cells[iQty] ?? '0', 10) || 0,
+      stock_qty:   iQty >= 0 ? (parseInt(cells[iQty] ?? '0', 10) || 0) : 0,
       sample_name: iName >= 0 ? cells[iName] : undefined,
     });
   }
   return rows;
 }
 
-function parseXlsx(buffer: Buffer, sheetName?: string | null): ParsedRow[] {
+function parseXlsx(buffer: Buffer, sheetName?: string | null, cm: ColMap = {}): ParsedRow[] {
   const wb = XLSX.read(buffer, { type: 'buffer' });
 
-  const col = (obj: Record<string, unknown>, ...names: string[]) => {
-    const key = Object.keys(obj).find(k => names.includes(k.toLowerCase().trim()));
+  const col = (obj: Record<string, unknown>, override: string | null | undefined, ...names: string[]) => {
+    const allNames = override ? [override.toLowerCase().trim(), ...names] : names;
+    const key = Object.keys(obj).find(k => allNames.includes(k.toLowerCase().trim()));
     return key ? String(obj[key]).trim() : '';
   };
 
@@ -124,10 +132,10 @@ function parseXlsx(buffer: Buffer, sheetName?: string | null): ParsedRow[] {
     if (!ws) return [];
     const raw = XLSX.utils.sheet_to_json<Record<string, string | number>>(ws, { defval: '' });
     return raw.map(r => ({
-      supplier_sku: col(r, 'sku', 'артикул', 'article', 'код'),
-      price_in:     parseFloat(String(col(r, 'price', 'ціна', 'цена', 'прайс')).replace(',', '.')) || 0,
-      stock_qty:    parseInt(col(r, 'qty', 'залишок', 'остаток', 'кількість'), 10) || 0,
-      sample_name:  col(r, 'name', 'назва', 'наименование', 'товар') || undefined,
+      supplier_sku: col(r, cm.sku,   'sku', 'артикул', 'article', 'код'),
+      price_in:     parseFloat(String(col(r, cm.price, 'price', 'ціна', 'цена', 'прайс')).replace(',', '.')) || 0,
+      stock_qty:    parseInt(col(r, cm.qty,   'qty', 'залишок', 'остаток', 'кількість', 'наявність', 'наличие') || '0', 10) || 0,
+      sample_name:  col(r, cm.name,  'name', 'назва', 'наименование', 'товар') || undefined,
     })).filter(r => r.supplier_sku);
   };
 
@@ -225,8 +233,14 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
   const { url: fetchUrl, isGoogleSheets } = normalizeUrl(supplier.source_url);
   const buffer = await fetchFile(fetchUrl);
 
-  // Google Sheets або явно вказаний формат 'google_sheets' → розумний парсер
   const useSmartParser = isGoogleSheets || supplier.file_format === 'google_sheets';
+
+  const cm: ColMap = {
+    sku:   supplier.col_sku   ?? null,
+    price: supplier.col_price ?? null,
+    qty:   supplier.col_qty   ?? null,
+    name:  supplier.col_name  ?? null,
+  };
 
   let parsed: ParsedRow[];
   if (useSmartParser) {
@@ -234,9 +248,9 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
   } else if (supplier.file_format === '1c_xml') {
     parsed = parse1cXml(buffer);
   } else if (supplier.file_format === 'xls') {
-    parsed = parseXlsx(buffer, supplier.sheet_name ?? null);
+    parsed = parseXlsx(buffer, supplier.sheet_name ?? null, cm);
   } else {
-    parsed = parseCsv(buffer);
+    parsed = parseCsv(buffer, cm);
   }
 
   if (parsed.length === 0) throw new Error('Файл порожній або не вдалось розпізнати формат');

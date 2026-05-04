@@ -41,17 +41,18 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const ws = wb.Sheets[name];
     const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
 
-    // Count rows that look like product data (have SKU-like values)
     const skuRows = raw.filter(row =>
       Object.values(row).some(v => SKU_RE.test(String(v).trim()))
     ).length;
 
-    // Also count total non-empty rows
     const totalRows = raw.filter(row =>
       Object.values(row).some(v => String(v).trim() !== '')
     ).length;
 
-    return { name, hidden, skuRows, totalRows };
+    // Collect all column headers from the sheet
+    const headers = raw.length > 0 ? Object.keys(raw[0]) : [];
+
+    return { name, hidden, skuRows, totalRows, headers };
   });
 
   return NextResponse.json({ sheets });
