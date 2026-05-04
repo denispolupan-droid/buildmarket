@@ -113,20 +113,30 @@ function parseCsv(buffer: Buffer): ParsedRow[] {
 
 function parseXlsx(buffer: Buffer): ParsedRow[] {
   const wb = XLSX.read(buffer, { type: 'buffer' });
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const raw = XLSX.utils.sheet_to_json<Record<string, string | number>>(ws, { defval: '' });
 
   const col = (obj: Record<string, unknown>, ...names: string[]) => {
     const key = Object.keys(obj).find(k => names.includes(k.toLowerCase().trim()));
     return key ? String(obj[key]).trim() : '';
   };
 
-  return raw.map(r => ({
-    supplier_sku: col(r, 'sku', 'артикул', 'article', 'код'),
-    price_in:     parseFloat(String(col(r, 'price', 'ціна', 'цена', 'прайс')).replace(',', '.')) || 0,
-    stock_qty:    parseInt(col(r, 'qty', 'залишок', 'остаток', 'кількість'), 10) || 0,
-    sample_name:  col(r, 'name', 'назва', 'наименование', 'товар') || undefined,
-  })).filter(r => r.supplier_sku);
+  const parseSheet = (sheetName: string): ParsedRow[] => {
+    const ws = wb.Sheets[sheetName];
+    const raw = XLSX.utils.sheet_to_json<Record<string, string | number>>(ws, { defval: '' });
+    return raw.map(r => ({
+      supplier_sku: col(r, 'sku', 'артикул', 'article', 'код'),
+      price_in:     parseFloat(String(col(r, 'price', 'ціна', 'цена', 'прайс')).replace(',', '.')) || 0,
+      stock_qty:    parseInt(col(r, 'qty', 'залишок', 'остаток', 'кількість'), 10) || 0,
+      sample_name:  col(r, 'name', 'назва', 'наименование', 'товар') || undefined,
+    })).filter(r => r.supplier_sku);
+  };
+
+  // Перебираємо всі листи (включно з прихованими) — беремо той, де найбільше розпізнаних рядків
+  let best: ParsedRow[] = [];
+  for (const sheetName of wb.SheetNames) {
+    const rows = parseSheet(sheetName);
+    if (rows.length > best.length) best = rows;
+  }
+  return best;
 }
 
 function parse1cXml(buffer: Buffer): ParsedRow[] {
