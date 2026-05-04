@@ -2,12 +2,13 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { ShoppingBag, Package, Truck, Store, ChevronLeft } from 'lucide-react';
+import { ShoppingBag, Package, Truck, Store, ChevronLeft, Settings } from 'lucide-react';
 
 const NAV = [
   { href: '/admin',           label: 'Замовлення',    icon: ShoppingBag, exact: true },
   { href: '/admin/products',  label: 'Товари',        icon: Package,     exact: false },
   { href: '/admin/suppliers', label: 'Постачальники', icon: Truck,       exact: false },
+  { href: '/admin/settings',  label: 'Налаштування',  icon: Settings,    exact: false },
 ];
 
 type Props = { newOrdersCount: number };

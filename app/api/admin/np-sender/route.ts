@@ -1,5 +1,22 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
+import { createClient } from '@supabase/supabase-js';
+
+const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
+
+const serviceClient = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
+
+async function npCall(modelName: string, calledMethod: string, methodProperties: object) {
+  const res = await fetch(NP_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ apiKey: process.env.NOVA_POSHTA_API_KEY, modelName, calledMethod, methodProperties }),
+  });
+  return res.json();
+}
 
 export async function GET() {
   const supabase = await createSupabaseServer();
@@ -8,29 +25,50 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const ref          = process.env.NP_SENDER_REF;
-  const contactRef   = process.env.NP_SENDER_CONTACT_REF;
-  const phone        = process.env.NP_SENDER_PHONE ?? '';
-  const cityRef      = process.env.NP_SENDER_CITY_REF;
-  const warehouseRef = process.env.NP_SENDER_WAREHOUSE_REF;
+  // Read saved sender config from DB
+  const { data: rows } = await serviceClient.from('app_settings').select('key, value');
+  const cfg: Record<string, string> = {};
+  (rows ?? []).forEach(r => { cfg[r.key] = r.value; });
 
-  if (!ref || !contactRef || !cityRef || !warehouseRef) {
+  // Merge: DB takes priority, then env vars
+  const cityRef      = cfg.np_sender_city_ref      || process.env.NP_SENDER_CITY_REF      || '';
+  const warehouseRef = cfg.np_sender_warehouse_ref  || process.env.NP_SENDER_WAREHOUSE_REF  || '';
+  const warehouseDesc = cfg.np_sender_warehouse_desc || process.env.NP_SENDER_WAREHOUSE_DESC || '';
+
+  // Sender ref + contact + phone: try DB, then env, then NP API
+  let senderRef    = cfg.np_sender_ref         || process.env.NP_SENDER_REF         || '';
+  let contactRef   = cfg.np_sender_contact_ref  || process.env.NP_SENDER_CONTACT_REF  || '';
+  let phone        = cfg.np_sender_phone        || process.env.NP_SENDER_PHONE        || '';
+
+  if (!senderRef || !contactRef) {
+    const counterRes = await npCall('Counterparty', 'getCounterparties', { CounterpartyProperty: 'Sender', Page: '1' });
+    const sender = counterRes.data?.[0];
+    if (sender) {
+      senderRef  = senderRef  || sender.Ref;
+      const contactsRes = await npCall('ContactPerson', 'getContactPersonsList', { CounterpartyRef: sender.Ref, Page: '1' });
+      const contact = contactsRes.data?.[0];
+      contactRef = contactRef || contact?.Ref || sender.Ref;
+      phone      = phone      || sender.Phone || contact?.Phones || contact?.Phone || '';
+    }
+  }
+
+  if (!cityRef || !warehouseRef) {
     return NextResponse.json(
-      { error: 'Налаштування відправника НП не задані. Додайте NP_SENDER_* змінні у середовище Vercel.' },
-      { status: 500 },
+      { error: 'Не налаштовано відділення відправника. Перейдіть у Налаштування → НП Відправник.' },
+      { status: 404 },
     );
   }
 
   return NextResponse.json({
-    ref,
+    ref: senderRef,
     cityRef,
     contactRef,
     phone,
     warehouses: [{
       ref: warehouseRef,
       cityRef,
-      description: process.env.NP_SENDER_WAREHOUSE_DESC ?? 'Відділення відправника',
-      number: '1',
+      description: warehouseDesc || 'Відділення відправника',
+      number: '',
     }],
   });
 }
