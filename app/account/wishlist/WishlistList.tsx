@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { Heart } from 'lucide-react';
 import { useWishlist } from '../../../lib/wishlist';
@@ -8,7 +9,13 @@ import type { ProductFull } from '../../../lib/supabase';
 import type { UserRole } from '../../../lib/user-role';
 
 export default function WishlistList({ products, role }: { products: ProductFull[]; role: UserRole }) {
-  const { skus } = useWishlist();
+  const { skus, cleanSkus } = useWishlist();
+
+  // Sync client context with server-verified products — removes stale/deleted SKUs
+  useEffect(() => {
+    cleanSkus(products.map(p => p.sku));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const visible = products.filter(p => skus.has(p.sku));
   const isRetail = role === 'retail';
 

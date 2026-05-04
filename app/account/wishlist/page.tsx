@@ -18,7 +18,18 @@ export default async function WishlistPage() {
     .order('created_at', { ascending: false });
 
   const skus = (rows ?? []).map(r => r.product_sku);
-  const products = (await Promise.all(skus.map(sku => getProductBySku(sku)))).filter(Boolean);
+  const fetched = (await Promise.all(skus.map(sku => getProductBySku(sku))));
+  const products = fetched.filter(Boolean);
+
+  // Remove orphaned wishlist rows (product was deleted from catalog)
+  const validSkus = new Set(products.map(p => p!.sku));
+  const orphans = skus.filter(s => !validSkus.has(s));
+  if (orphans.length > 0) {
+    await supabase.from('wishlists').delete()
+      .eq('user_id', user.id)
+      .in('product_sku', orphans);
+  }
+
   const role = getRole(user);
 
   return (
