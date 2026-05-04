@@ -293,6 +293,7 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
             total_price: ttnModalOrder.total_price,
             payment_type: ttnModalOrder.payment_type,
             total_qty: ttnModalOrder.items.reduce((s, i) => s + i.qty, 0),
+            items: ttnModalOrder.items.map(i => ({ sku: i.sku, qty: i.qty, name: i.name })),
             delivery_city_ref: ttnModalOrder.delivery_city_ref,
             delivery_city_name: ttnModalOrder.delivery_city_name,
             delivery_warehouse_ref: ttnModalOrder.delivery_warehouse_ref,

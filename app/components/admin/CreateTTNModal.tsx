@@ -11,6 +11,8 @@ type SenderInfo = {
   ref: string; cityRef: string; contactRef: string; phone: string; warehouses: SenderWH[];
 };
 
+type WeightLine = { sku: string; volume: string | null; weightKg: number; qty: number; totalKg: number };
+
 type OrderSnap = {
   id: string;
   contact: string;
@@ -18,6 +20,7 @@ type OrderSnap = {
   total_price: number;
   payment_type: string;
   total_qty: number;
+  items: { sku: string; qty: number; name: string }[];
   delivery_city_ref: string | null;
   delivery_city_name: string | null;
   delivery_warehouse_ref: string | null;
@@ -92,8 +95,10 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   const [senderWhOpen,  setSenderWhOpen]  = useState(false);
 
   // Cargo
-  const [weight,      setWeight]      = useState('');
-  const [seats,       setSeats]       = useState('1');
+  const [weight,       setWeight]       = useState('');
+  const [weightLines,  setWeightLines]  = useState<WeightLine[]>([]);
+  const [weightLoading, setWeightLoading] = useState(false);
+  const [seats,        setSeats]        = useState('1');
   const [cost,        setCost]        = useState(String(Math.ceil(order.total_price)));
   const [description, setDescription] = useState('Будівельні матеріали');
 
@@ -136,6 +141,24 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
         const wRef = order.delivery_warehouse_ref;
         if (wRef) { const m = data.find(w => w.Ref === wRef); if (m) { setSelectedWH(m); setWhQuery(m.Description); } }
       }).finally(() => setWhLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-calculate weight from product volumes
+  useEffect(() => {
+    if (!order.items?.length) return;
+    setWeightLoading(true);
+    fetch('/api/admin/order-weight', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: order.items.map(i => ({ sku: i.sku, qty: i.qty })) }),
+    })
+      .then(r => r.json())
+      .then(d => {
+        setWeightLines(d.lines ?? []);
+        if (d.totalWeightKg > 0) setWeight(String(d.totalWeightKg));
+      })
+      .finally(() => setWeightLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -334,15 +357,31 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
                 <label style={lbl}>
                   Вага, кг <span style={{ color: '#EF4444' }}>*</span>
                 </label>
-                <input
-                  style={{ ...inp, borderColor: !weight ? '#FCA5A5' : '#E2E8F0', background: !weight ? '#FFF5F5' : '#fff' }}
-                  type="number" min="0.1" step="0.1" value={weight}
-                  onChange={e => setWeight(e.target.value)}
-                  placeholder="Введіть вагу"
-                />
-                {order.total_qty > 0 && (
-                  <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '3px' }}>
-                    Позицій у замовленні: {order.total_qty} шт.
+                <div style={{ position: 'relative' }}>
+                  <input
+                    style={{ ...inp, borderColor: !weight ? '#FCA5A5' : '#E2E8F0', background: !weight ? '#FFF5F5' : '#fff', paddingRight: weightLoading ? '32px' : '10px' }}
+                    type="number" min="0.1" step="0.1" value={weight}
+                    onChange={e => setWeight(e.target.value)}
+                    placeholder="Введіть вагу"
+                  />
+                  {weightLoading && (
+                    <div style={{ position: 'absolute', right: '9px', top: '50%', transform: 'translateY(-50%)' }}>
+                      <Loader2 size={13} className="spin" color="#94A3B8" />
+                    </div>
+                  )}
+                </div>
+                {weightLines.length > 0 && (
+                  <div style={{ marginTop: '6px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '6px', overflow: 'hidden' }}>
+                    {weightLines.map(l => (
+                      <div key={l.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px', borderBottom: '1px solid #F1F5F9', fontSize: '11px' }}>
+                        <span style={{ color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>
+                          {order.items.find(i => i.sku === l.sku)?.name ?? l.sku}
+                        </span>
+                        <span style={{ color: l.weightKg > 0 ? '#374151' : '#FCA5A5', flexShrink: 0, marginLeft: '6px', fontWeight: 600 }}>
+                          {l.weightKg > 0 ? `${l.qty}×${l.volume} = ${l.totalKg} кг` : `${l.qty} шт — вага невідома`}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
