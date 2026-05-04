@@ -99,7 +99,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
 
   // Delivery payment (хто платить за пересилку)
   const [payerType,     setPayerType]     = useState<'Sender' | 'Recipient'>('Recipient');
-  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'NonCash'>(isCod ? 'Cash' : 'NonCash');
+  const paymentMethod = 'Cash';
 
   // COD — накладений платіж
   const [codEnabled, setCodEnabled] = useState(isCod);
@@ -409,20 +409,11 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
           {/* Delivery payment */}
           <section>
             <div style={secTitle}><CreditCard size={11} /><span>Оплата доставки</span></div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <div>
-                <label style={lbl}>Платник за пересилку</label>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button style={radio(payerType === 'Sender')}    onClick={() => setPayerType('Sender')}>Відправник</button>
-                  <button style={radio(payerType === 'Recipient')} onClick={() => setPayerType('Recipient')}>Одержувач</button>
-                </div>
-              </div>
-              <div>
-                <label style={lbl}>Спосіб оплати доставки</label>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button style={radio(paymentMethod === 'Cash')}    onClick={() => setPaymentMethod('Cash')}>Готівка</button>
-                  <button style={radio(paymentMethod === 'NonCash')} onClick={() => setPaymentMethod('NonCash')}>Безготівк.</button>
-                </div>
+            <div>
+              <label style={lbl}>Платник за пересилку</label>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button style={radio(payerType === 'Sender')}    onClick={() => setPayerType('Sender')}>Відправник</button>
+                <button style={radio(payerType === 'Recipient')} onClick={() => setPayerType('Recipient')}>Одержувач</button>
               </div>
             </div>
           </section>
