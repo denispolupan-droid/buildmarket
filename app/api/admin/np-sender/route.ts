@@ -40,15 +40,16 @@ export async function GET() {
   let contactRef   = cfg.np_sender_contact_ref  || process.env.NP_SENDER_CONTACT_REF  || '';
   let phone        = cfg.np_sender_phone        || process.env.NP_SENDER_PHONE        || '';
 
-  if (!senderRef || !contactRef) {
+  // Always fetch sender/contact/phone from NP API if any are missing
+  if (!senderRef || !contactRef || !phone) {
     const counterRes = await npCall('Counterparty', 'getCounterparties', { CounterpartyProperty: 'Sender', Page: '1' });
     const sender = counterRes.data?.[0];
     if (sender) {
-      senderRef  = senderRef  || sender.Ref;
+      senderRef = senderRef || sender.Ref;
       const contactsRes = await npCall('ContactPerson', 'getContactPersonsList', { CounterpartyRef: sender.Ref, Page: '1' });
       const contact = contactsRes.data?.[0];
       contactRef = contactRef || contact?.Ref || sender.Ref;
-      phone      = phone      || sender.Phone || contact?.Phones || contact?.Phone || '';
+      phone      = phone      || contact?.Phones || contact?.Phone || sender.Phone || '';
     }
   }
 

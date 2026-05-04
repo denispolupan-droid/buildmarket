@@ -54,7 +54,8 @@ export default function NpSenderSettings({ initialCityRef, initialCityName, init
   const [whDropOpen,   setWhDropOpen]   = useState(false);
   const [whLoading,    setWhLoading]    = useState(false);
 
-  const [phone,   setPhone]   = useState(initialPhone);
+  const [phone,        setPhone]        = useState(initialPhone);
+  const [phoneLoading, setPhoneLoading] = useState(!initialPhone);
   const [saving,  setSaving]  = useState(false);
   const [saved,   setSaved]   = useState(false);
   const [error,   setError]   = useState('');
@@ -77,6 +78,16 @@ export default function NpSenderSettings({ initialCityRef, initialCityName, init
     if (!initialCityRef) return;
     npRequest('Address', 'getWarehouses', { SettlementRef: initialCityRef, Limit: 200, Page: 1 })
       .then((data: Warehouse[]) => setWarehouses(data));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-fetch phone from NP API if not saved
+  useEffect(() => {
+    if (initialPhone) return;
+    fetch('/api/admin/np-sender')
+      .then(r => r.json())
+      .then(d => { if (d.phone) setPhone(d.phone); })
+      .finally(() => setPhoneLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -195,8 +206,15 @@ export default function NpSenderSettings({ initialCityRef, initialCityName, init
         {/* Phone */}
         <div>
           <label style={lbl}>Телефон відправника</label>
-          <input style={inp} value={phone} onChange={e => setPhone(e.target.value)} placeholder="380671234567" />
-          <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>Формат: 380XXXXXXXXX (без + і пробілів)</div>
+          <div style={{ position: 'relative' }}>
+            <input style={{ ...inp, paddingRight: phoneLoading ? '36px' : '12px' }} value={phone} onChange={e => setPhone(e.target.value)} placeholder="380671234567" />
+            {phoneLoading && (
+              <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)' }}>
+                <Loader2 size={14} color="#94A3B8" style={{ animation: 'spin 1s linear infinite' }} />
+              </div>
+            )}
+          </div>
+          <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>Підтягується автоматично з НП. Формат: 380XXXXXXXXX</div>
         </div>
 
         {error && <div style={{ padding: '10px 12px', background: '#FEF2F2', borderRadius: '8px', color: '#DC2626', fontSize: '13px' }}>{error}</div>}
