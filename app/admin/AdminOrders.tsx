@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck } from 'lucide-react';
+import CreateTTNModal from '../components/admin/CreateTTNModal';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number };
 
@@ -51,7 +52,8 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
   const [ttnValues, setTtnValues] = useState<Record<string, string>>(
     Object.fromEntries(initialOrders.map(o => [o.id, o.tracking_number ?? '']))
   );
-  const [ttnSaving, setTtnSaving] = useState<string | null>(null);
+  const [ttnSaving,      setTtnSaving]      = useState<string | null>(null);
+  const [ttnModalOrder,  setTtnModalOrder]  = useState<Order | null>(null);
 
   async function changeStatus(id: string, status: string) {
     setLoading(id + status);
@@ -230,6 +232,19 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
                             >
                               {ttnSaving === order.id ? '...' : 'Зберегти'}
                             </button>
+                            {order.delivery_subtype === 'warehouse' && (
+                              <button
+                                onClick={() => setTtnModalOrder(order)}
+                                title="Створити ТТН через API Нової Пошти"
+                                style={{
+                                  height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
+                                  background: '#EFF4FF', color: '#1E3A5F', border: '1.5px solid #C7D7F5',
+                                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}
+                              >
+                                <Truck size={14} />
+                              </button>
+                            )}
                           </div>
                         </div>
                       )}
@@ -264,6 +279,20 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
             );
           })}
         </div>
+      )}
+
+      {ttnModalOrder && (
+        <CreateTTNModal
+          order={ttnModalOrder}
+          onClose={() => setTtnModalOrder(null)}
+          onCreated={ttn => {
+            setTtnValues(prev => ({ ...prev, [ttnModalOrder.id]: ttn }));
+            setOrders(prev => prev.map(o =>
+              o.id === ttnModalOrder.id ? { ...o, tracking_number: ttn, status: 'shipped' } : o
+            ));
+            setTtnModalOrder(null);
+          }}
+        />
       )}
     </>
   );
