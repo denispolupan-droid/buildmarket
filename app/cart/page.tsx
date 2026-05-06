@@ -139,7 +139,7 @@ export default function CartPage() {
   const [noCallback,  setNoCallback]  = useState(true);
   const [errors, setErrors] = useState<Set<string>>(new Set());
 
-  function validate() {
+  function validate(): Set<string> {
     const e = new Set<string>();
     if (!isRetail && !company.trim()) e.add('company');
     if (!lastName.trim())  e.add('lastName');
@@ -152,7 +152,7 @@ export default function CartPage() {
     if (delivery === 'nova' && novaSubtype === 'courier' && !address.trim()) e.add('address');
     if (!payment)         e.add('payment');
     setErrors(e);
-    return e.size === 0;
+    return e;
   }
 
   function scrollToFirstError(errs: Set<string>) {
@@ -170,18 +170,7 @@ export default function CartPage() {
   const [submitError, setSubmitError] = useState('');
 
   async function handleSubmit() {
-    const errs = new Set<string>();
-    if (!isRetail && !company.trim()) errs.add('company');
-    if (!lastName.trim())  errs.add('lastName');
-    if (!firstName.trim()) errs.add('firstName');
-    if (!/^\+?3?8?(0\d{9})$/.test(phone.replace(/[\s\-()]/g, ''))) errs.add('phone');
-    if (!email.trim())    errs.add('email');
-    if (!delivery)        errs.add('delivery');
-    if (delivery === 'nova' && !novaSubtype) errs.add('novaSubtype');
-    if (delivery === 'nova' && novaSubtype === 'warehouse' && !novaWarehouseRef) errs.add('address');
-    if (delivery === 'nova' && novaSubtype === 'courier' && !address.trim()) errs.add('address');
-    if (!payment)         errs.add('payment');
-    setErrors(errs);
+    const errs = validate();
     if (errs.size > 0) {
       setTimeout(() => scrollToFirstError(errs), 50);
       return;

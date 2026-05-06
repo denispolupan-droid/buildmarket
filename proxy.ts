@@ -1,6 +1,31 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+// ── Simple in-process rate limiter (resets per cold-start, but enough for basic abuse protection) ──
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+const RATE_LIMITS: { path: string; max: number; windowMs: number }[] = [
+  { path: '/api/orders',      max: 5,  windowMs: 10 * 60_000 }, // 5 замовлень / 10 хв
+  { path: '/api/novaposhta',  max: 60, windowMs: 60_000 },       // 60 запитів / хв
+  { path: '/api/notify-stock',max: 10, windowMs: 60_000 },
+  { path: '/login',           max: 10, windowMs: 60_000 },
+  { path: '/register',        max: 5,  windowMs: 60_000 },
+];
+
+function checkRateLimit(ip: string, pathname: string): boolean {
+  const rule = RATE_LIMITS.find(r => pathname.startsWith(r.path));
+  if (!rule) return true;
+  const key = `${ip}:${rule.path}`;
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+  if (!entry || entry.resetAt < now) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + rule.windowMs });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= rule.max;
+}
+
 const PROTECTED_ROUTES = ['/account', '/admin'];
 const PUBLIC_OVERRIDES = ['/account/wishlist'];
 const WHOLESALE_ROUTES = ['/catalog'];
@@ -8,6 +33,14 @@ const AUTH_ROUTES = ['/login', '/register'];
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  // Rate limiting
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? request.headers.get('x-real-ip')
+    ?? 'unknown';
+  if (!checkRateLimit(ip, pathname)) {
+    return new NextResponse('Too Many Requests', { status: 429, headers: { 'Retry-After': '60' } });
+  }
 
   if (PUBLIC_OVERRIDES.some(route => pathname.startsWith(route))) {
     return NextResponse.next();
