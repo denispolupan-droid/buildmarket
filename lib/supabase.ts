@@ -135,9 +135,10 @@ export async function getBrands(): Promise<string[]> {
   const { data, error } = await supabase
     .from('products')
     .select('brand')
-    .eq('is_active', true);
+    .eq('is_active', true)
+    .limit(2000);
   if (error) throw error;
-  const unique = [...new Set((data ?? []).map((p: { brand: string }) => p.brand))];
+  const unique = [...new Set((data ?? []).map((p: { brand: string }) => p.brand))].sort();
   return unique;
 }
 

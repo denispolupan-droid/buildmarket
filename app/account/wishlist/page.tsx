@@ -1,5 +1,10 @@
 import { createSupabaseServer } from '../../../lib/supabase-server';
-import { getProductBySku } from '../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const serviceClient = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 import { getRole } from '../../../lib/user-role';
 import Footer from '../../components/Footer';
 import WishlistList from './WishlistList';
@@ -18,8 +23,14 @@ export default async function WishlistPage() {
     .order('created_at', { ascending: false });
 
   const skus = (rows ?? []).map(r => r.product_sku);
-  const fetched = (await Promise.all(skus.map(sku => getProductBySku(sku))));
-  const products = fetched.filter(Boolean);
+  const { data: fetched } = skus.length > 0
+    ? await serviceClient
+        .from('products')
+        .select('*, stock:product_stock(*), characteristics:product_characteristics(*)')
+        .in('sku', skus)
+        .eq('is_active', true)
+    : { data: [] };
+  const products = fetched ?? [];
 
   // Remove orphaned wishlist rows (product was deleted from catalog)
   const validSkus = new Set(products.map(p => p!.sku));

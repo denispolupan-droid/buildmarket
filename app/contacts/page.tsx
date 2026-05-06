@@ -1,10 +1,45 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../components/Footer';
 import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 
+export const metadata: Metadata = {
+  title: 'Контакти | FIXLINE — будівельна хімія B2B',
+  description: 'Зв\'яжіться з FIXLINE: +38 (099) 199-77-88, info@fixline.com.ua. Доставка по всій Україні. Графік роботи: пн–пт 9:00–16:00.',
+  alternates: { canonical: 'https://fixline.com.ua/contacts' },
+  openGraph: {
+    title: 'Контакти FIXLINE',
+    description: 'Телефон: +38 (099) 199-77-88 | Email: info@fixline.com.ua | Графік: пн–пт 9–16',
+    url: 'https://fixline.com.ua/contacts',
+  },
+};
+
 export default function ContactsPage() {
+  const localBusinessLd = {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: 'FIXLINE',
+    description: 'B2B постачальник будівельної хімії: герметики, клеї, монтажні піни',
+    url: 'https://fixline.com.ua',
+    telephone: '+380991997788',
+    email: 'info@fixline.com.ua',
+    address: {
+      '@type': 'PostalAddress',
+      addressCountry: 'UA',
+      addressRegion: 'Харківська область',
+    },
+    openingHoursSpecification: {
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+      opens: '09:00',
+      closes: '16:00',
+    },
+    priceRange: '$$',
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessLd) }} />
       <div style={{ background: '#F8FAFC', minHeight: '100vh' }}>
         <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 32px 64px' }}>
 

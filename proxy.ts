@@ -68,7 +68,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
     const accountType = user.user_metadata?.account_type as string | undefined;
-    const isWholesale = ['dealer', 'contractor', 'shop_owner'].includes(accountType ?? '');
+    const isWholesale = ['dealer', 'wholesale', 'contractor', 'shop_owner'].includes(accountType ?? '');
     if (!isWholesale) {
       const category = request.nextUrl.searchParams.get('category');
       const shopUrl = category ? `/shop?category=${category}` : '/shop';
