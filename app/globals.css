@@ -51,21 +51,23 @@
   --status-order:    #D97706;
 }
 
-/* ── Dark theme ── */
+/* ── Dark theme (soft) ── */
 [data-theme="dark"] {
-  --bg-page:        #0F172A;
-  --bg-card:        #1E293B;
-  --bg-soft:        #162032;
-  --border:         #334155;
-  --border-light:   #1E293B;
-  --text-primary:   #F1F5F9;
-  --text-secondary: #94A3B8;
-  --text-muted:     #64748B;
+  --bg-page:        #1C2333;
+  --bg-card:        #243044;
+  --bg-soft:        #19202E;
+  --border:         #2E3D55;
+  --border-light:   #243044;
+  --text-primary:   #E2E8F0;
+  --text-secondary: #8FA3BE;
+  --text-muted:     #556A85;
 
-  --btn-ghost-border: #334155;
-  --btn-ghost-hover:  #1E293B;
-  --status-instock:   #22C55E;
+  --btn-ghost-border: #2E3D55;
+  --btn-ghost-hover:  #243044;
+  --status-instock:   #34D399;
   --status-outstock:  #F87171;
+
+  --brand-blue-light: #1E3A5F55;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -110,27 +112,12 @@ input, select { font-family: inherit; }
 /* Картки в корзині */
 [data-theme="dark"] .cart-section-card { background: var(--bg-card) !important; border-color: var(--border) !important; }
 
-/* Загальний білий фон для dropdowns і поповерів */
-[data-theme="dark"] [style*="background:#fff"],
-[data-theme="dark"] [style*="background: #fff"],
-[data-theme="dark"] [style*="background:#F8FAFC"],
-[data-theme="dark"] [style*="background: #F8FAFC"],
-[data-theme="dark"] [style*="background:#F1F5F9"],
-[data-theme="dark"] [style*="background: #F1F5F9"] {
+/* Dropdown-и пошуку (Nova Poshta select, product search) */
+[data-theme="dark"] div[style*="background: #fff"],
+[data-theme="dark"] div[style*="background:#fff"] {
   background: var(--bg-card) !important;
-}
-
-/* Текст що захардкоджений #0F172A */
-[data-theme="dark"] [style*="color:#0F172A"],
-[data-theme="dark"] [style*="color: #0F172A"] {
-  color: var(--text-primary) !important;
-}
-
-/* Бордери #E2E8F0 */
-[data-theme="dark"] [style*="border: 1px solid #E2E8F0"],
-[data-theme="dark"] [style*="border:1px solid #E2E8F0"],
-[data-theme="dark"] [style*="borderColor: #E2E8F0"] {
   border-color: var(--border) !important;
+  color: var(--text-primary) !important;
 }
 
 /* Wishlist page background */

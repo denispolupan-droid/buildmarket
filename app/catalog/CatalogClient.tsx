@@ -273,7 +273,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
 
   return (
     <>
-      <div style={{ background: '#fff', minHeight: '100vh' }}>
+      <div style={{ background: 'var(--bg-page)', minHeight: '100vh' }}>
       <div className="page-container">
         <nav aria-label="Breadcrumb" style={{ padding: '32px 0 0', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Link href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</Link>
