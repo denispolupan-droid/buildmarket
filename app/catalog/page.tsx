@@ -59,29 +59,41 @@ export default async function Catalog({
   };
 
   const catMeta = category ? getCategoryMeta(category) : null;
+  const catName = category ? (await getCategoriesCached()).find(c => c.slug === category)?.name : null;
 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
-      {catMeta && (
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px 24px 0' }}>
-          <div style={{ padding: '16px 20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', marginBottom: '4px' }}>
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
-              {catMeta.description}
-            </p>
-            {catMeta.seoText && (
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7, margin: '8px 0 0' }}>
-                {catMeta.seoText}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
       <CatalogLoader
         initialSearch={q ?? ''}
         initialCategory={category ?? ''}
         initialSaleOnly={sale === '1'}
       />
+      {catMeta && catName && (
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 24px 32px' }}>
+          <details>
+            <summary style={{
+              fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)',
+              cursor: 'pointer', userSelect: 'none', listStyle: 'none',
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '10px 0',
+            }}>
+              <span>Про категорію «{catName}»</span>
+              <span style={{ fontSize: '11px' }}>▼</span>
+            </summary>
+            <div style={{ padding: '12px 0 0', borderTop: '1px solid var(--border)' }}>
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
+                {catMeta.description}
+              </p>
+              {catMeta.seoText && (
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7, margin: '8px 0 0' }}>
+                  {catMeta.seoText}
+                </p>
+              )}
+            </div>
+          </details>
+        </div>
+      )}
     </>
   );
 }

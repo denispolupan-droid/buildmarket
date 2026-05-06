@@ -88,22 +88,33 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
             {brand && <><span>/</span><span style={{ color: '#475569' }}>{brand}</span></>}
             {sale === '1' && <><span>/</span><span style={{ color: '#475569' }}>Акції</span></>}
           </nav>
+          <ShopLoader initialCategory={category} initialSaleOnly={sale === '1'} initialBrand={brand} />
           {cat && (() => {
             const meta = getCategoryMeta(cat.slug);
             return meta ? (
-              <div style={{ marginBottom: '20px', padding: '16px 20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
-                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
-                  {meta.description}
-                </p>
-                {meta.seoText && (
-                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7, margin: '8px 0 0' }}>
-                    {meta.seoText}
+              <details style={{ marginTop: '32px' }}>
+                <summary style={{
+                  fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)',
+                  cursor: 'pointer', userSelect: 'none', listStyle: 'none',
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  padding: '10px 0',
+                }}>
+                  <span>Про категорію «{cat.name}»</span>
+                  <span style={{ fontSize: '11px' }}>▼</span>
+                </summary>
+                <div style={{ padding: '12px 0 0', borderTop: '1px solid var(--border)' }}>
+                  <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
+                    {meta.description}
                   </p>
-                )}
-              </div>
+                  {meta.seoText && (
+                    <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7, margin: '8px 0 0' }}>
+                      {meta.seoText}
+                    </p>
+                  )}
+                </div>
+              </details>
             ) : null;
           })()}
-          <ShopLoader initialCategory={category} initialSaleOnly={sale === '1'} initialBrand={brand} />
         </div>
       </div>
       <Footer />
