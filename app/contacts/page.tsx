@@ -40,11 +40,11 @@ export default function ContactsPage() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessLd) }} />
-      <div style={{ background: '#F8FAFC', minHeight: '100vh' }}>
+      <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
         <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 32px 64px' }}>
 
-          <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>Контакти</h1>
-          <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '40px' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>Контакти</h1>
+          <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '40px' }}>
             Працюємо з B2B клієнтами по всій Україні
           </p>
 
@@ -56,47 +56,47 @@ export default function ContactsPage() {
                 icon: Phone,
                 title: 'Телефон',
                 lines: [
-                  <a key="p1" href="tel:+380991997788" style={{ color: '#1E3A5F', fontWeight: 600, fontSize: '15px' }}>+38 (099) 199-77-88</a>,
-                  <span key="p2" style={{ fontSize: '13px', color: '#64748B' }}>Менеджер з продажу</span>,
+                  <a key="p1" href="tel:+380991997788" style={{ color: 'var(--brand-blue)', fontWeight: 600, fontSize: '15px' }}>+38 (099) 199-77-88</a>,
+                  <span key="p2" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Менеджер з продажу</span>,
                 ],
               },
               {
                 icon: Mail,
                 title: 'Email',
                 lines: [
-                  <a key="e1" href="mailto:info@fixline.com.ua" style={{ color: '#1E3A5F', fontWeight: 600, fontSize: '15px' }}>info@fixline.com.ua</a>,
-                  <span key="e2" style={{ fontSize: '13px', color: '#64748B' }}>Відповідаємо протягом дня</span>,
+                  <a key="e1" href="mailto:info@fixline.com.ua" style={{ color: 'var(--brand-blue)', fontWeight: 600, fontSize: '15px' }}>info@fixline.com.ua</a>,
+                  <span key="e2" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Відповідаємо протягом дня</span>,
                 ],
               },
               {
                 icon: MapPin,
                 title: 'Адреса складу',
                 lines: [
-                  <span key="a1" style={{ fontWeight: 600, fontSize: '15px', color: '#0F172A' }}>м. Харків</span>,
-                  <span key="a2" style={{ fontSize: '13px', color: '#64748B' }}>вул. Промислова, 12</span>,
+                  <span key="a1" style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-primary)' }}>м. Харків</span>,
+                  <span key="a2" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>вул. Промислова, 12</span>,
                 ],
               },
               {
                 icon: Clock,
                 title: 'Графік роботи',
                 lines: [
-                  <span key="h1" style={{ fontWeight: 600, fontSize: '15px', color: '#0F172A' }}>Пн–Пт: 9:00 – 16:00</span>,
-                  <span key="h2" style={{ fontSize: '13px', color: '#64748B' }}>Сб–Нд: вихідний</span>,
+                  <span key="h1" style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-primary)' }}>Пн–Пт: 9:00 – 16:00</span>,
+                  <span key="h2" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Сб–Нд: вихідний</span>,
                 ],
               },
             ].map(({ icon: Icon, title, lines }) => (
               <div key={title} style={{
-                background: '#fff', border: '1px solid #E2E8F0', borderRadius: '14px',
+                background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px',
                 padding: '24px', display: 'flex', gap: '16px', alignItems: 'flex-start',
               }}>
                 <div style={{
                   width: '44px', height: '44px', borderRadius: '12px',
-                  background: '#E8EEF5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}>
-                  <Icon size={20} color="#1E3A5F" strokeWidth={1.8} />
+                  <Icon size={20} color="#4880B8" strokeWidth={1.8} />
                 </div>
                 <div>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>
                     {title}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>

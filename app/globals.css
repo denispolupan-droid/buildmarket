@@ -51,23 +51,24 @@
   --status-order:    #D97706;
 }
 
-/* ── Dark theme (soft) ── */
+/* ── Dark theme (soft slate) ── */
 [data-theme="dark"] {
-  --bg-page:        #1C2333;
-  --bg-card:        #243044;
-  --bg-soft:        #19202E;
-  --border:         #2E3D55;
-  --border-light:   #243044;
-  --text-primary:   #E2E8F0;
-  --text-secondary: #8FA3BE;
-  --text-muted:     #556A85;
+  --bg-page:        #252B38;
+  --bg-card:        #2F3647;
+  --bg-soft:        #202631;
+  --border:         #3B4560;
+  --border-light:   #2F3647;
+  --text-primary:   #CDD5E0;
+  --text-secondary: #7E93AB;
+  --text-muted:     #546070;
 
-  --btn-ghost-border: #2E3D55;
-  --btn-ghost-hover:  #243044;
+  --btn-ghost-border: #3B4560;
+  --btn-ghost-hover:  #2F3647;
   --status-instock:   #34D399;
   --status-outstock:  #F87171;
 
-  --brand-blue-light: #1E3A5F55;
+  --brand-blue-light: #4880B822;
+  --brand-teal-light: #3DBFB822;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
