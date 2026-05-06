@@ -51,7 +51,7 @@ const FILTER_TABS = [
   ...STATUSES,
 ];
 
-export default function AdminOrders({ initialOrders }: { initialOrders: Order[] }) {
+export default function AdminOrders({ initialOrders, currentPage = 1, totalPages = 1 }: { initialOrders: Order[]; currentPage?: number; totalPages?: number }) {
   const [orders, setOrders]     = useState<Order[]>(initialOrders);
   const [filter, setFilter]     = useState('');
   const [loading, setLoading]   = useState<string | null>(null);
@@ -664,6 +664,34 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '24px' }}>
+          {currentPage > 1 && (
+            <a href={`?page=${currentPage - 1}`} style={{
+              height: '36px', padding: '0 16px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center',
+              border: '1.5px solid #E2E8F0', background: '#fff', color: '#475569', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+            }}>← Попередня</a>
+          )}
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter(p => Math.abs(p - currentPage) <= 2)
+            .map(p => (
+              <a key={p} href={`?page=${p}`} style={{
+                height: '36px', width: '36px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                border: `1.5px solid ${p === currentPage ? '#1E3A5F' : '#E2E8F0'}`,
+                background: p === currentPage ? '#1E3A5F' : '#fff',
+                color: p === currentPage ? '#fff' : '#475569', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+              }}>{p}</a>
+            ))}
+          {currentPage < totalPages && (
+            <a href={`?page=${currentPage + 1}`} style={{
+              height: '36px', padding: '0 16px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center',
+              border: '1.5px solid #E2E8F0', background: '#fff', color: '#475569', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+            }}>Наступна →</a>
+          )}
         </div>
       )}
 

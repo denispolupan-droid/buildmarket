@@ -12,6 +12,16 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { company, contact, phone, email, deliveryType, deliverySubtype, deliveryAddress, deliveryCityRef, deliveryCityName, deliveryWarehouseRef, paymentType, comment, items, totalPrice } = body;
 
+  // Server-side validation
+  const phoneClean = String(phone ?? '').replace(/[\s\-()]/g, '');
+  if (!contact?.trim()) return NextResponse.json({ error: 'Вкажіть контактну особу' }, { status: 400 });
+  if (!/^\+?3?8?(0\d{9})$/.test(phoneClean)) return NextResponse.json({ error: 'Невірний номер телефону' }, { status: 400 });
+  if (!email?.trim() || !email.includes('@')) return NextResponse.json({ error: 'Невірний email' }, { status: 400 });
+  if (!deliveryType) return NextResponse.json({ error: 'Вкажіть тип доставки' }, { status: 400 });
+  if (!paymentType) return NextResponse.json({ error: 'Вкажіть тип оплати' }, { status: 400 });
+  if (!Array.isArray(items) || items.length === 0) return NextResponse.json({ error: 'Кошик порожній' }, { status: 400 });
+  if (typeof totalPrice !== 'number' || totalPrice < 0) return NextResponse.json({ error: 'Невірна сума' }, { status: 400 });
+
   const admin = createSupabaseAdmin();
   const { data, error } = await admin
     .from('orders')
