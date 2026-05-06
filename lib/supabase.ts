@@ -51,6 +51,14 @@ export async function getCategories(): Promise<Category[]> {
   return data ?? [];
 }
 
+// Поля для списку — без description (зберігає ~200KB на запит)
+const PRODUCT_LIST_SELECT = `
+  id, sku, name, brand, category_slug, is_active, sort_order,
+  nl1, nl2, bc, ac, img_type, color, product_type, volume, image,
+  stock:product_stock(*),
+  characteristics:product_characteristics(*)
+`;
+
 export async function getProducts(opts?: {
   category?: string;
   search?: string;
@@ -59,11 +67,7 @@ export async function getProducts(opts?: {
 }): Promise<ProductFull[]> {
   let query = supabase
     .from('products')
-    .select(`
-      *,
-      stock:product_stock(*),
-      characteristics:product_characteristics(*)
-    `)
+    .select(PRODUCT_LIST_SELECT)
     .eq('is_active', true)
     .order('sort_order');
 
@@ -94,7 +98,8 @@ export async function getProductsLight(opts?: {
   let query = supabase
     .from('products')
     .select(`
-      *,
+      id, sku, name, brand, category_slug, is_active, sort_order,
+      nl1, nl2, bc, ac, img_type, color, product_type, volume, image,
       stock:product_stock(*)
     `)
     .eq('is_active', true)

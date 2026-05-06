@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
@@ -333,6 +334,12 @@ export async function POST(req: NextRequest) {
       results.errors.push({ row: i + 2, sku, error: String(err) });
     }
   }
+
+  // Скидаємо кеш продуктів одразу після імпорту
+  // @ts-ignore — Next.js 16 requires second arg 'max', type definitions lag behind
+  revalidateTag('products', 'max');
+  // @ts-ignore
+  revalidateTag('categories', 'max');
 
   return NextResponse.json(results);
 }

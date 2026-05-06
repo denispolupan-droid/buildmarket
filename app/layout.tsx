@@ -36,7 +36,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="uk" className={inter.className} suppressHydrationWarning>
-      <head><meta name="google" content="notranslate" /></head>
+      <head>
+        <meta name="google" content="notranslate" />
+        <link rel="preconnect" href="https://boaztnparrdoeknajprn.supabase.co" />
+        <link rel="dns-prefetch" href="https://boaztnparrdoeknajprn.supabase.co" />
+      </head>
       <body>
         <ThemeProvider>
           <CartProvider>
