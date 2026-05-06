@@ -21,7 +21,7 @@ export default function ContactsPage() {
                 icon: Phone,
                 title: 'Телефон',
                 lines: [
-                  <a key="p1" href="tel:+380671234567" style={{ color: '#1E3A5F', fontWeight: 600, fontSize: '15px' }}>+38 (067) 123-45-67</a>,
+                  <a key="p1" href="tel:+380991997788" style={{ color: '#1E3A5F', fontWeight: 600, fontSize: '15px' }}>+38 (099) 199-77-88</a>,
                   <span key="p2" style={{ fontSize: '13px', color: '#64748B' }}>Менеджер з продажу</span>,
                 ],
               },
@@ -45,7 +45,7 @@ export default function ContactsPage() {
                 icon: Clock,
                 title: 'Графік роботи',
                 lines: [
-                  <span key="h1" style={{ fontWeight: 600, fontSize: '15px', color: '#0F172A' }}>Пн–Пт: 9:00 – 18:00</span>,
+                  <span key="h1" style={{ fontWeight: 600, fontSize: '15px', color: '#0F172A' }}>Пн–Пт: 9:00 – 16:00</span>,
                   <span key="h2" style={{ fontSize: '13px', color: '#64748B' }}>Сб–Нд: вихідний</span>,
                 ],
               },

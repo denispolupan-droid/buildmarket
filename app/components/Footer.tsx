@@ -80,20 +80,20 @@ export default function Footer() {
                 <Mail size={15} strokeWidth={2} color="#7B90B2" />
                 sales@fixline.com.ua
               </a>
-              <a href="tel:+380671234567" style={{
+              <a href="tel:+380991997788" style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
                 fontSize: '14px', color: '#94A3B8', textDecoration: 'none',
               }}>
                 <Phone size={15} strokeWidth={2} color="#7B90B2" />
-                +38 (067) 123-45-67
+                +38 (099) 199-77-88
               </a>
               <span style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#7B90B2' }}>
                 <Clock4 size={15} strokeWidth={2} />
-                Пн–Пт 8:00–18:00
+                Пн–Пт 9:00–16:00
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#7B90B2' }}>
                 <MapPin size={15} strokeWidth={2} />
-                Київ, Україна
+                Україна
               </span>
             </div>
           </div>
