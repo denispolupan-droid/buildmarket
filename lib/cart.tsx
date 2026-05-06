@@ -10,6 +10,7 @@ type CartContext = {
   items: CartItem[];
   totalItems: number;
   totalPrice: number;
+  loaded: boolean;
   addItem: (item: Omit<CartItem, 'qty'>, qty: number) => void;
   removeItem: (sku: string) => void;
   updateQty: (sku: string, qty: number) => void;
@@ -22,17 +23,20 @@ const STORAGE_KEY = 'fixline_cart';
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setItems(JSON.parse(raw));
     } catch {}
+    setLoaded(true);
   }, []);
 
   useEffect(() => {
+    if (!loaded) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
+  }, [items, loaded]);
 
   const addItem = useCallback((item: Omit<CartItem, 'qty'>, qty: number) => {
     setItems(prev => {
@@ -58,7 +62,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const totalPrice = items.reduce((s, i) => s + i.price * i.qty, 0);
 
   return (
-    <CartCtx.Provider value={{ items, totalItems, totalPrice, addItem, removeItem, updateQty, clearCart }}>
+    <CartCtx.Provider value={{ items, totalItems, totalPrice, loaded, addItem, removeItem, updateQty, clearCart }}>
       {children}
     </CartCtx.Provider>
   );

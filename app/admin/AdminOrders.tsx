@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw } from 'lucide-react';
 import CreateTTNModal from '../components/admin/CreateTTNModal';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number };
@@ -25,6 +25,8 @@ type Order = {
   payment_type: string;
   comment: string | null;
   tracking_number: string | null;
+  payment_confirmed: boolean;
+  callback_done: boolean;
   items: OrderItem[];
 };
 
@@ -57,6 +59,37 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
   );
   const [ttnSaving,      setTtnSaving]      = useState<string | null>(null);
   const [ttnModalOrder,  setTtnModalOrder]  = useState<Order | null>(null);
+  const [syncing,        setSyncing]        = useState(false);
+  const [syncResult,     setSyncResult]     = useState<{ updated: number; checked: number } | null>(null);
+
+  const SYNC_KEY = 'lastDeliverySync';
+  const SYNC_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 години
+
+  async function syncDeliveryStatus() {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const res = await fetch('/api/admin/sync-delivery-status', { method: 'POST' });
+      const data = await res.json();
+      setSyncResult(data);
+      if (data.updated > 0) {
+        setOrders(prev => prev.map(o =>
+          data.updatedIds?.includes(o.id) ? { ...o, status: 'delivered' } : o
+        ));
+      }
+      localStorage.setItem(SYNC_KEY, Date.now().toString());
+    } catch {
+      // silent fail — не заважаємо роботі
+    }
+    setSyncing(false);
+  }
+
+  useEffect(() => {
+    const last = parseInt(localStorage.getItem(SYNC_KEY) ?? '0', 10);
+    if (Date.now() - last > SYNC_INTERVAL_MS) {
+      syncDeliveryStatus();
+    }
+  }, []);
 
   async function changeStatus(id: string, status: string) {
     setLoading(id + status);
@@ -69,6 +102,15 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
       setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
     }
     setLoading(null);
+  }
+
+  async function toggleFlag(id: string, field: 'payment_confirmed' | 'callback_done', value: boolean) {
+    await fetch(`/api/admin/orders/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: value }),
+    });
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, [field]: value } : o));
   }
 
   async function saveTTN(id: string) {
@@ -88,8 +130,9 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
 
   return (
     <>
-      {/* Filter tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
+      {/* Filter tabs + sync button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', gap: '12px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         {FILTER_TABS.map(tab => (
           <button
             key={tab.value}
@@ -110,6 +153,33 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
             </span>
           </button>
         ))}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          {syncResult && (
+            <span style={{ fontSize: '12px', color: syncResult.updated > 0 ? '#15803D' : '#64748B' }}>
+              {syncResult.updated > 0
+                ? `✓ Оновлено: ${syncResult.updated} з ${syncResult.checked}`
+                : `Перевірено: ${syncResult.checked}, змін немає`}
+            </span>
+          )}
+          <button
+            onClick={syncDeliveryStatus}
+            disabled={syncing}
+            title="Синхронізувати статуси доставки НП"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              height: '34px', padding: '0 14px', borderRadius: '8px',
+              border: '1.5px solid #E2E8F0', background: '#fff',
+              fontSize: '13px', fontWeight: 600, color: '#475569',
+              cursor: syncing ? 'wait' : 'pointer',
+              opacity: syncing ? 0.6 : 1,
+            }}
+          >
+            <RefreshCw size={13} style={{ animation: syncing ? 'spin 1s linear infinite' : 'none' }} />
+            {syncing ? 'Синхронізую...' : 'Синхронізувати НП'}
+          </button>
+        </div>
       </div>
 
       {filtered.length === 0 ? (
@@ -130,6 +200,10 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
             });
             const delivery = DELIVERY_LABEL[order.delivery_type] ?? order.delivery_type;
             const subtype = order.delivery_subtype === 'courier' ? ' — кур\'єр' : order.delivery_subtype === 'warehouse' ? ' — відділення' : '';
+            const isCod = order.payment_type === 'cod';
+            const paymentConfirmed = order.payment_confirmed ?? false;
+            const noCallback = order.comment?.includes('Не передзвонювати') ?? false;
+            const callbackDone = order.callback_done ?? false;
 
             return (
               <div key={order.id} style={{
@@ -194,15 +268,89 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
                         <MapPin size={13} color="#64748B" style={{ flexShrink: 0, marginTop: '2px' }} />
                         <span>{delivery}{subtype}{order.delivery_address ? `: ${order.delivery_address}` : ''}</span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#374151' }}>
-                        <CreditCard size={13} color="#64748B" />
-                        {PAYMENT_LABEL[order.payment_type] ?? order.payment_type}
-                      </div>
-                      {order.comment && (
-                        <div style={{ fontSize: '12px', color: '#64748B', fontStyle: 'italic', marginTop: '4px' }}>
-                          «{order.comment}»
+                      {/* Payment badge */}
+                      {isCod ? (
+                        <div style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '6px',
+                          padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
+                          background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC',
+                        }}>
+                          <CreditCard size={12} /> Накладений платіж
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '6px',
+                            padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
+                            background: paymentConfirmed ? '#DCFCE7' : '#FEF3C7',
+                            color: paymentConfirmed ? '#15803D' : '#B45309',
+                            border: `1px solid ${paymentConfirmed ? '#86EFAC' : '#FCD34D'}`,
+                          }}>
+                            <CreditCard size={12} />
+                            {paymentConfirmed ? '✓ Оплата підтверджена' : '⏳ Очікуємо оплату за рахунком'}
+                          </div>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '6px', cursor: 'pointer' }}
+                            onClick={() => toggleFlag(order.id, 'payment_confirmed', !paymentConfirmed)}>
+                            <div style={{
+                              width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
+                              border: `2px solid ${paymentConfirmed ? '#15803D' : '#D97706'}`,
+                              background: paymentConfirmed ? '#15803D' : '#fff',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              {paymentConfirmed && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </div>
+                            <span style={{ fontSize: '12px', color: '#475569' }}>Оплату отримано</span>
+                          </label>
                         </div>
                       )}
+
+                      {/* Callback badge */}
+                      {noCallback ? (
+                        <div style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '6px',
+                          padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
+                          background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC',
+                        }}>
+                          ✓ Без дзвінка
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '6px',
+                            padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
+                            background: callbackDone ? '#DCFCE7' : '#FEF3C7',
+                            color: callbackDone ? '#15803D' : '#B45309',
+                            border: `1px solid ${callbackDone ? '#86EFAC' : '#FCD34D'}`,
+                          }}>
+                            {callbackDone ? '✓ Зателефонували' : '☎ Потрібен дзвінок'}
+                          </div>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '6px', cursor: 'pointer' }}
+                            onClick={() => toggleFlag(order.id, 'callback_done', !callbackDone)}>
+                            <div style={{
+                              width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
+                              border: `2px solid ${callbackDone ? '#15803D' : '#D97706'}`,
+                              background: callbackDone ? '#15803D' : '#fff',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              {callbackDone && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </div>
+                            <span style={{ fontSize: '12px', color: '#475569' }}>Зателефонували</span>
+                          </label>
+                        </div>
+                      )}
+
+                      {(() => {
+                        const displayComment = order.comment
+                          ?.split('\n')
+                          .filter(line => !line.includes('Не передзвонювати'))
+                          .join('\n')
+                          .trim();
+                        return displayComment ? (
+                          <div style={{ fontSize: '12px', color: '#64748B', fontStyle: 'italic', marginTop: '4px' }}>
+                            «{displayComment}»
+                          </div>
+                        ) : null;
+                      })()}
                       {order.delivery_type === 'nova' && (
                         <div style={{ marginTop: '10px' }}>
                           <div style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>

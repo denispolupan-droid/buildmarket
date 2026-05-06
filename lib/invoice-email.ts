@@ -1,5 +1,152 @@
 export type Item = { sku: string; name: string; brand: string; qty: number; price: number };
 
+export type CustomerOrderEmailData = {
+  orderNumber: number;
+  orderId: string;
+  company: string;
+  contact: string;
+  totalPrice: number;
+  paymentType: string;
+  userId: string | null;
+  invoiceUrl: string;
+  siteUrl: string;
+};
+
+export function buildCustomerOrderEmail(d: CustomerOrderEmailData): string {
+  const date = new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const isCod = d.paymentType === 'cod';
+  const isGuest = d.userId === null;
+  const accountUrl = `${d.siteUrl}/account`;
+  const registerUrl = `${d.siteUrl}/login`;
+
+  const paymentSection = isCod
+    ? `<div style="padding:24px 32px;border-bottom:1px solid #F1F5F9;">
+        <div style="background:#F0FDF4;border-radius:12px;padding:20px;border:1px solid #BBF7D0;">
+          <div style="font-size:12px;font-weight:700;color:#15803D;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Спосіб оплати</div>
+          <div style="font-size:14px;font-weight:700;color:#0F172A;margin-bottom:6px;">Накладений платіж (Нова Пошта)</div>
+          <div style="font-size:13px;color:#374151;line-height:1.6;">
+            Ви обрали оплату накладеним платежем. <strong>Оплачувати рахунок заздалегідь не потрібно</strong> — оплата здійснюється при отриманні товару у відділенні або кур'єру.
+          </div>
+        </div>
+      </div>`
+    : `<div style="padding:24px 32px;border-bottom:1px solid #F1F5F9;">
+        <div style="background:#EFF4FF;border-radius:12px;padding:20px;border:1px solid #C7D9F5;">
+          <div style="font-size:12px;font-weight:700;color:#1E3A5F;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Спосіб оплати</div>
+          <div style="font-size:14px;font-weight:700;color:#0F172A;margin-bottom:8px;">Безготівковий розрахунок (рахунок-фактура)</div>
+          <div style="font-size:13px;color:#374151;line-height:1.6;">
+            Здійсніть оплату за <a href="${d.invoiceUrl}" style="color:#1E3A5F;font-weight:600;">посиланням на рахунок</a> та у призначенні платежу вкажіть номер замовлення <strong>№${d.orderNumber}</strong>.
+            Після надходження коштів ми передамо замовлення в обробку та повідомимо вас про статус.
+          </div>
+        </div>
+      </div>`;
+
+  const accountSection = isGuest
+    ? `<div style="padding:24px 32px;border-bottom:1px solid #F1F5F9;">
+        <div style="font-size:12px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">Особистий кабінет</div>
+        <div style="font-size:13px;color:#374151;line-height:1.6;margin-bottom:14px;">
+          Ви оформили замовлення без реєстрації. Рекомендуємо зареєструватися, щоб отримати додаткові можливості:
+        </div>
+        <ul style="margin:0 0 18px;padding-left:20px;font-size:13px;color:#64748B;line-height:2.1;">
+          <li>Зручний доступ до історії замовлень</li>
+          <li>Швидше оформлення наступних покупок</li>
+          <li>Відстеження статусу замовлень у реальному часі</li>
+          <li>Персональні пропозиції та знижки</li>
+        </ul>
+        <a href="${registerUrl}" style="display:inline-block;background:#F8FAFC;border:1.5px solid #C7D9F5;color:#1E3A5F;font-size:13px;font-weight:700;padding:10px 22px;border-radius:8px;text-decoration:none;">
+          Зареєструватися →
+        </a>
+      </div>`
+    : `<div style="padding:24px 32px;border-bottom:1px solid #F1F5F9;">
+        <div style="font-size:12px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">Особистий кабінет</div>
+        <div style="font-size:13px;color:#374151;line-height:1.6;margin-bottom:16px;">
+          Ви можете переглянути деталі замовлення та його статус у своєму особистому кабінеті:
+        </div>
+        <a href="${accountUrl}" style="display:inline-block;background:#F8FAFC;border:1.5px solid #C7D9F5;color:#1E3A5F;font-size:13px;font-weight:700;padding:10px 22px;border-radius:8px;text-decoration:none;margin-bottom:16px;">
+          Мої замовлення →
+        </a>
+        <ul style="margin:0;padding-left:20px;font-size:13px;color:#64748B;line-height:2.1;">
+          <li>Повна історія замовлень</li>
+          <li>Відстеження статусів у реальному часі</li>
+          <li>Швидке повторне оформлення</li>
+          <li>Персональні пропозиції та спеціальні умови</li>
+        </ul>
+      </div>`;
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F8FAFC;font-family:Inter,system-ui,sans-serif;">
+  <div style="max-width:620px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #E2E8F0;">
+
+    <!-- Header -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#1E3A5F;">
+      <tr>
+        <td style="padding:28px 32px;">
+          <div style="color:#fff;font-size:20px;font-weight:800;letter-spacing:-0.5px;">FIXLINE</div>
+          <div style="color:#94A3B8;font-size:12px;margin-top:2px;">B2B платформа будівельної хімії</div>
+        </td>
+        <td style="padding:28px 32px;text-align:right;color:#fff;font-size:28px;">✅</td>
+      </tr>
+    </table>
+
+    <!-- Greeting -->
+    <div style="padding:28px 32px;border-bottom:1px solid #F1F5F9;">
+      <div style="font-size:20px;font-weight:800;color:#0F172A;margin-bottom:10px;">Вітаємо, ${d.company || d.contact}!</div>
+      <div style="font-size:14px;color:#64748B;line-height:1.7;">
+        Дякуємо за покупку в нашому інтернет-магазині. Ваше замовлення успішно оформлено.
+      </div>
+    </div>
+
+    <!-- Order details -->
+    <div style="padding:24px 32px;border-bottom:1px solid #F1F5F9;background:#F8FAFC;">
+      <div style="font-size:12px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:14px;">Деталі замовлення</div>
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="font-size:14px;color:#64748B;padding-bottom:10px;">Номер замовлення</td>
+          <td style="font-size:14px;font-weight:700;color:#0F172A;text-align:right;padding-bottom:10px;">№${d.orderNumber}</td>
+        </tr>
+        <tr>
+          <td style="font-size:14px;color:#64748B;padding-bottom:10px;">Дата</td>
+          <td style="font-size:14px;color:#0F172A;text-align:right;padding-bottom:10px;">${date}</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="border-top:1px solid #E2E8F0;padding-top:10px;"></td>
+        </tr>
+        <tr>
+          <td style="font-size:14px;color:#64748B;">Сума</td>
+          <td style="font-size:16px;font-weight:800;color:#1E3A5F;text-align:right;">${d.totalPrice.toFixed(2)} грн</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Invoice link -->
+    <div style="padding:24px 32px;border-bottom:1px solid #F1F5F9;text-align:center;">
+      <div style="font-size:13px;color:#64748B;margin-bottom:16px;">Рахунок доступний за посиланням:</div>
+      <a href="${d.invoiceUrl}" style="display:inline-block;background:#1E3A5F;color:#fff;font-size:14px;font-weight:700;padding:13px 30px;border-radius:10px;text-decoration:none;">
+        📄 Переглянути рахунок
+      </a>
+    </div>
+
+    ${paymentSection}
+    ${accountSection}
+
+    <div style="margin:0 32px 24px;background:#FFFBEB;border-radius:12px;padding:16px 20px;border:1px solid #FDE68A;">
+      <div style="font-size:12px;color:#92400E;line-height:1.6;">
+        📦 <strong>Щодо вартості доставки:</strong> ми не формуємо і не несемо відповідальності за вартість доставки. Доставка здійснюється за тарифами перевізника (Нова Пошта) та оплачується отримувачем окремо.
+      </div>
+    </div>
+
+    <div style="background:#F8FAFC;padding:20px 32px;text-align:center;border-top:1px solid #F1F5F9;">
+      <div style="font-size:13px;color:#64748B;margin-bottom:6px;">Якщо у вас виникнуть питання — звертайтесь до нас:</div>
+      <a href="mailto:info@fixline.com.ua" style="font-size:13px;color:#1E3A5F;font-weight:600;">info@fixline.com.ua</a>
+      <div style="font-size:11px;color:#CBD5E1;margin-top:10px;">FIXLINE · fixline.com.ua</div>
+    </div>
+
+  </div>
+</body>
+</html>`;
+}
+
 export type OrderEmailData = {
   orderNumber: number;
   company: string;
@@ -249,6 +396,13 @@ export function buildInvoiceHtml(d: InvoiceData): string {
           </div>
         </div>`
     }
+
+    <!-- Delivery note -->
+    <div style="margin:0 32px 16px;background:#FFFBEB;border-radius:10px;padding:14px 18px;border:1px solid #FDE68A;">
+      <div style="font-size:11px;color:#92400E;line-height:1.6;">
+        📦 Вартість доставки не включена до рахунку. Доставка здійснюється за тарифами Нової Пошти та оплачується отримувачем окремо. Ми не несемо відповідальності за вартість і терміни доставки.
+      </div>
+    </div>
 
     <!-- Footer -->
     <div style="background:#F8FAFC;padding:16px 32px;text-align:center;border-top:1px solid #F1F5F9;">

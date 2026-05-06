@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createSupabaseServer, createSupabaseAdmin } from '../../../lib/supabase-server';
-import { buildInvoiceHtml, buildAdminNotificationHtml, buildCustomerConfirmationHtml } from '../../../lib/invoice-email';
+import { buildAdminNotificationHtml, buildCustomerOrderEmail } from '../../../lib/invoice-email';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -42,6 +42,8 @@ export async function POST(req: NextRequest) {
 
   const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'denis.polupan@gmail.com';
   const FROM = 'FIXLINE <noreply@fixline.com.ua>';
+  const siteUrl = new URL(req.url).origin;
+  const invoiceUrl = `${siteUrl}/invoice/${data.id}`;
 
   const orderData = {
     orderNumber: data.order_number,
@@ -58,7 +60,6 @@ export async function POST(req: NextRequest) {
   };
 
   try {
-    // Always notify admin
     await resend.emails.send({
       from: FROM,
       to: ADMIN_EMAIL,
@@ -69,23 +70,25 @@ export async function POST(req: NextRequest) {
     console.error('[admin email]', e);
   }
 
+  const customerSubject = paymentType === 'cod'
+    ? `Замовлення №${data.order_number} оформлено — FIXLINE`
+    : `Рахунок №${data.order_number} — FIXLINE`;
+
   try {
-    // Always send invoice to customer regardless of payment method
     await resend.emails.send({
       from: FROM,
       to: email,
-      subject: `Рахунок №${data.order_number} — FIXLINE`,
-      html: buildInvoiceHtml({
-        orderId: data.id,
+      subject: customerSubject,
+      html: buildCustomerOrderEmail({
         orderNumber: data.order_number,
+        orderId: data.id,
         company: company ?? '',
         contact,
-        phone,
-        email,
-        items,
         totalPrice,
-        deliveryAddress: deliveryAddress ?? '',
         paymentType,
+        userId: user?.id ?? null,
+        invoiceUrl,
+        siteUrl,
       }),
     });
   } catch (e) {

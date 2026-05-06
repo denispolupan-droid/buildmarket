@@ -11,9 +11,29 @@ import NovaPoshtaSelect from '../components/NovaPoshtaSelect';
 import Footer from '../components/Footer';
 
 const DELIVERY_OPTIONS = [
-  { value: 'nova',     label: 'Нова Пошта' },
-  { value: 'kharkiv',  label: 'Доставка по Харкову та області' },
+  { value: 'nova', label: 'Нова Пошта' },
 ];
+
+function getLocalDigits(str: string): string {
+  const raw = str.replace(/\D/g, '');
+  // Strip country code 38, keep the leading 0
+  if (raw.startsWith('380')) return raw.slice(2);   // "3806..." → "06..."
+  if (raw.startsWith('38'))  return '0' + raw.slice(2); // "38X..." → "0X..."
+  if (raw.startsWith('0'))   return raw;
+  return raw.length ? '0' + raw : '';
+}
+
+function formatPhone(localDigits: string): string {
+  const d = localDigits.slice(0, 10);
+  if (!d) return '';
+  let r = '+38 (' + d.slice(0, Math.min(3, d.length));
+  if (d.length <= 3) return r;
+  r += ') ' + d.slice(3, Math.min(6, d.length));
+  if (d.length <= 6) return r;
+  r += '-' + d.slice(6, Math.min(8, d.length));
+  if (d.length <= 8) return r;
+  return r + '-' + d.slice(8, 10);
+}
 
 const PAYMENT_OPTIONS = [
   { value: 'invoice',  label: 'Безготівковий розрахунок (рахунок-фактура)' },
@@ -59,13 +79,15 @@ function Section({ icon: Icon, title, children, error }: { icon: React.ElementTy
 }
 
 export default function CartPage() {
-  const { items, totalItems, totalPrice, removeItem, updateQty, clearCart } = useCart();
+  const { items, totalItems, totalPrice, loaded, removeItem, updateQty, clearCart } = useCart();
   const router = useRouter();
 
   const [role, setRole] = useState<'wholesale' | 'retail' | 'guest'>('guest');
-  const [company,   setCompany]   = useState('');
-  const [contact,   setContact]   = useState('');
-  const [phone,     setPhone]     = useState('');
+  const [company,    setCompany]    = useState('');
+  const [lastName,   setLastName]   = useState('');
+  const [firstName,  setFirstName]  = useState('');
+  const [middleName, setMiddleName] = useState('');
+  const [phone,      setPhone]      = useState('');
   const [email,     setEmail]     = useState('');
 
   useEffect(() => {
@@ -91,7 +113,12 @@ export default function CartPage() {
           .limit(1)
           .single();
         if (orders) {
-          if (orders.contact) setContact(orders.contact);
+          if (orders.contact) {
+            const parts = orders.contact.trim().split(/\s+/);
+            setLastName(parts[0] ?? '');
+            setFirstName(parts[1] ?? '');
+            setMiddleName(parts[2] ?? '');
+          }
           if (orders.phone) setPhone(orders.phone);
           if (orders.delivery_type) setDelivery(orders.delivery_type);
           if (orders.delivery_address) setAddress(orders.delivery_address);
@@ -107,29 +134,58 @@ export default function CartPage() {
   const [novaCityName,      setNovaCityName]      = useState('');
   const [novaWarehouseRef,  setNovaWarehouseRef]  = useState('');
   const [payment,   setPayment]   = useState('');
-  const [comment,   setComment]   = useState('');
+  const [comment,     setComment]     = useState('');
   const [commentOpen, setCommentOpen] = useState(false);
+  const [noCallback,  setNoCallback]  = useState(true);
   const [errors, setErrors] = useState<Set<string>>(new Set());
 
   function validate() {
     const e = new Set<string>();
     if (!isRetail && !company.trim()) e.add('company');
-    if (!contact.trim())  e.add('contact');
+    if (!lastName.trim())  e.add('lastName');
+    if (!firstName.trim()) e.add('firstName');
     if (!/^\+?3?8?(0\d{9})$/.test(phone.replace(/[\s\-()]/g, ''))) e.add('phone');
     if (!email.trim())    e.add('email');
     if (!delivery)        e.add('delivery');
     if (delivery === 'nova' && !novaSubtype) e.add('novaSubtype');
-    if ((delivery === 'nova' || delivery === 'kharkiv') && !address.trim()) e.add('address');
+    if (delivery === 'nova' && novaSubtype === 'warehouse' && !novaWarehouseRef) e.add('address');
+    if (delivery === 'nova' && novaSubtype === 'courier' && !address.trim()) e.add('address');
     if (!payment)         e.add('payment');
     setErrors(e);
     return e.size === 0;
+  }
+
+  function scrollToFirstError(errs: Set<string>) {
+    const priority = ['company', 'lastName', 'firstName', 'phone', 'email', 'delivery', 'novaSubtype', 'address', 'payment'];
+    for (const key of priority) {
+      if (errs.has(key)) {
+        const el = document.getElementById(`field-${key}`);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        break;
+      }
+    }
   }
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
   async function handleSubmit() {
-    if (!validate()) return;
+    const errs = new Set<string>();
+    if (!isRetail && !company.trim()) errs.add('company');
+    if (!lastName.trim())  errs.add('lastName');
+    if (!firstName.trim()) errs.add('firstName');
+    if (!/^\+?3?8?(0\d{9})$/.test(phone.replace(/[\s\-()]/g, ''))) errs.add('phone');
+    if (!email.trim())    errs.add('email');
+    if (!delivery)        errs.add('delivery');
+    if (delivery === 'nova' && !novaSubtype) errs.add('novaSubtype');
+    if (delivery === 'nova' && novaSubtype === 'warehouse' && !novaWarehouseRef) errs.add('address');
+    if (delivery === 'nova' && novaSubtype === 'courier' && !address.trim()) errs.add('address');
+    if (!payment)         errs.add('payment');
+    setErrors(errs);
+    if (errs.size > 0) {
+      setTimeout(() => scrollToFirstError(errs), 50);
+      return;
+    }
     setSubmitting(true);
     setSubmitError('');
     try {
@@ -137,7 +193,9 @@ export default function CartPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          company, contact, phone, email,
+          company,
+          contact: [lastName, firstName, middleName].filter(Boolean).join(' '),
+          phone, email,
           deliveryType: delivery,
           deliverySubtype: delivery === 'nova' ? novaSubtype : null,
           deliveryAddress: address || null,
@@ -145,7 +203,7 @@ export default function CartPage() {
           deliveryCityName: delivery === 'nova' && novaCityName ? novaCityName : null,
           deliveryWarehouseRef: delivery === 'nova' && novaSubtype === 'warehouse' && novaWarehouseRef ? novaWarehouseRef : null,
           paymentType: payment,
-          comment: comment || null,
+          comment: [comment, noCallback ? '⛔ Не передзвонювати для підтвердження' : ''].filter(Boolean).join('\n') || null,
           items,
           totalPrice,
         }),
@@ -168,6 +226,13 @@ export default function CartPage() {
   const isRetail = role !== 'wholesale';
   const backHref = isRetail ? '/shop' : '/catalog';
   const backLabel = isRetail ? 'До магазину' : 'До каталогу';
+
+  if (!loaded) return (
+    <div style={{ background: 'var(--bg-soft)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 40, height: 40, border: '3px solid #E2E8F0', borderTopColor: '#1E3A5F', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
 
   if (items.length === 0) {
     return (
@@ -224,29 +289,57 @@ export default function CartPage() {
               <Section icon={User} title="Контактні дані">
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                   {!isRetail && (
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <label style={labelStyle}>Назва компанії</label>
+                    <div id="field-company" style={{ gridColumn: '1 / -1' }}>
+                      <label style={{ ...labelStyle, color: errors.has('company') ? '#EF4444' : undefined }}>Назва компанії</label>
                       <input style={{ ...inputStyle, border: err('company') ?? inputStyle.border }} placeholder="ТОВ «Будмайстер»" value={company} onChange={e => { setCompany(e.target.value); setErrors(s => { const n = new Set(s); n.delete('company'); return n; }); }} />
+                      {errors.has('company') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Вкажіть назву компанії</p>}
                     </div>
                   )}
-                  <div>
-                    <label style={labelStyle}>Контактна особа</label>
-                    <input style={{ ...inputStyle, border: err('contact') ?? inputStyle.border }} placeholder="Прізвище Ім'я" value={contact} onChange={e => { setContact(e.target.value); setErrors(s => { const n = new Set(s); n.delete('contact'); return n; }); }} />
+                  <div id="field-lastName">
+                    <label style={{ ...labelStyle, color: errors.has('lastName') ? '#EF4444' : undefined }}>Прізвище</label>
+                    <input style={{ ...inputStyle, border: err('lastName') ?? inputStyle.border }} placeholder="Іванченко" value={lastName} onChange={e => { setLastName(e.target.value); setErrors(s => { const n = new Set(s); n.delete('lastName'); return n; }); }} />
+                    {errors.has('lastName') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Вкажіть прізвище</p>}
                   </div>
-                  <div>
-                    <label style={labelStyle}>Телефон</label>
-                    <input style={{ ...inputStyle, border: err('phone') ?? inputStyle.border }} placeholder="+380 (___) ___-__-__" value={phone} onChange={e => { setPhone(e.target.value); setErrors(s => { const n = new Set(s); n.delete('phone'); return n; }); }} />
-                    {errors.has('phone') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Введіть коректний номер телефону</p>}
+                  <div id="field-firstName">
+                    <label style={{ ...labelStyle, color: errors.has('firstName') ? '#EF4444' : undefined }}>Ім'я</label>
+                    <input style={{ ...inputStyle, border: err('firstName') ?? inputStyle.border }} placeholder="Іван" value={firstName} onChange={e => { setFirstName(e.target.value); setErrors(s => { const n = new Set(s); n.delete('firstName'); return n; }); }} />
+                    {errors.has('firstName') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Вкажіть ім'я</p>}
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={labelStyle}>Email для підтвердження</label>
+                    <label style={labelStyle}>По батькові <span style={{ fontWeight: 400, color: '#94A3B8' }}>(необов'язково)</span></label>
+                    <input style={inputStyle} placeholder="Іванович" value={middleName} onChange={e => setMiddleName(e.target.value)} />
+                  </div>
+                  <div id="field-phone">
+                    <label style={{ ...labelStyle, color: errors.has('phone') ? '#EF4444' : undefined }}>Телефон</label>
+                    <input
+                      style={{ ...inputStyle, border: err('phone') ?? inputStyle.border }}
+                      placeholder="+38 (0__) ___-__-__"
+                      value={phone}
+                      onChange={e => {
+                        setPhone(formatPhone(getLocalDigits(e.target.value)));
+                        setErrors(s => { const n = new Set(s); n.delete('phone'); return n; });
+                      }}
+                      onKeyDown={e => {
+                        if (e.key !== 'Backspace') return;
+                        e.preventDefault();
+                        const shorter = getLocalDigits(phone).slice(0, -1);
+                        setPhone(formatPhone(shorter));
+                        setErrors(s => { const n = new Set(s); n.delete('phone'); return n; });
+                      }}
+                    />
+                    {errors.has('phone') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Введіть коректний номер телефону</p>}
+                  </div>
+                  <div id="field-email" style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ ...labelStyle, color: errors.has('email') ? '#EF4444' : undefined }}>Email для підтвердження</label>
                     <input style={{ ...inputStyle, border: err('email') ?? inputStyle.border }} type="email" placeholder="company@email.com" value={email} onChange={e => { setEmail(e.target.value); setErrors(s => { const n = new Set(s); n.delete('email'); return n; }); }} />
+                    {errors.has('email') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Вкажіть email</p>}
                   </div>
                 </div>
               </Section>
 
               {/* Delivery */}
-              <Section icon={Truck} title="Спосіб доставки" error={errors.has('delivery') || errors.has('novaSubtype')}>
+              <div id="field-delivery" /><div id="field-novaSubtype" /><div id="field-address" />
+              <Section icon={Truck} title="Спосіб доставки" error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {DELIVERY_OPTIONS.filter(opt => !delivery || delivery === opt.value).map(opt => (
                     <div key={opt.value}>
@@ -265,7 +358,7 @@ export default function CartPage() {
                         }}>
                           {delivery === opt.value && <Check size={10} color="#fff" strokeWidth={3} />}
                         </div>
-                        <input type="radio" name="delivery" value={opt.value} checked={delivery === opt.value} onChange={() => setDelivery(opt.value)} style={{ display: 'none' }} />
+                        <input type="radio" name="delivery" value={opt.value} checked={delivery === opt.value} onChange={() => { setDelivery(opt.value); setErrors(s => { const n = new Set(s); n.delete('delivery'); return n; }); }} style={{ display: 'none' }} />
                         <span style={{ fontSize: '14px', fontWeight: delivery === opt.value ? 600 : 500, color: 'var(--text-primary)', flex: 1 }}>{opt.label}</span>
                         {delivery === opt.value && (
                           <button
@@ -296,7 +389,7 @@ export default function CartPage() {
                               }}>
                                 {novaSubtype === sub && <Check size={8} color="#fff" strokeWidth={3} />}
                               </div>
-                              <input type="radio" name="nova_sub" value={sub} checked={novaSubtype === sub} onChange={() => setNovaSubtype(sub)} style={{ display: 'none' }} />
+                              <input type="radio" name="nova_sub" value={sub} checked={novaSubtype === sub} onChange={() => { setNovaSubtype(sub); setErrors(s => { const n = new Set(s); n.delete('novaSubtype'); return n; }); }} style={{ display: 'none' }} />
                               <span style={{ fontSize: '13px', fontWeight: novaSubtype === sub ? 600 : 500, color: 'var(--text-primary)', flex: 1 }}>
                                 {sub === 'warehouse' ? 'Відділення' : 'Кур\'єр'}
                               </span>
@@ -315,9 +408,9 @@ export default function CartPage() {
                               <NovaPoshtaSelect
                                 key={novaSubtype}
                                 mode={novaSubtype}
-                                onCityChange={city => { setNovaCityName(city); setAddress(city); }}
-                                onWarehouseChange={wh => setAddress(wh)}
-                                onAddressChange={addr => setAddress(addr)}
+                                onCityChange={city => { setNovaCityName(city); setAddress(city); setErrors(s => { const n = new Set(s); n.delete('address'); return n; }); }}
+                                onWarehouseChange={wh => { setAddress(wh); setErrors(s => { const n = new Set(s); n.delete('address'); return n; }); }}
+                                onAddressChange={addr => { setAddress(addr); setErrors(s => { const n = new Set(s); n.delete('address'); return n; }); }}
                                 onCityRefChange={setNovaCityRef}
                                 onWarehouseRefChange={setNovaWarehouseRef}
                               />
@@ -343,9 +436,11 @@ export default function CartPage() {
                 </div>
                 {errors.has('delivery') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>Оберіть спосіб доставки</p>}
                 {errors.has('novaSubtype') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>Оберіть відділення або кур'єр</p>}
+                {errors.has('address') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>Оберіть місто та відділення Нової Пошти</p>}
               </Section>
 
               {/* Payment */}
+              <div id="field-payment" />
               <Section icon={CreditCard} title="Спосіб оплати" error={errors.has('payment')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {PAYMENT_OPTIONS.filter(opt => !payment || payment === opt.value).map(opt => (
@@ -364,7 +459,7 @@ export default function CartPage() {
                       }}>
                         {payment === opt.value && <Check size={10} color="#fff" strokeWidth={3} />}
                       </div>
-                      <input type="radio" name="payment" value={opt.value} checked={payment === opt.value} onChange={() => setPayment(opt.value)} style={{ display: 'none' }} />
+                      <input type="radio" name="payment" value={opt.value} checked={payment === opt.value} onChange={() => { setPayment(opt.value); setErrors(s => { const n = new Set(s); n.delete('payment'); return n; }); }} style={{ display: 'none' }} />
                       <span style={{ fontSize: '14px', fontWeight: payment === opt.value ? 600 : 500, color: 'var(--text-primary)', flex: 1 }}>{opt.label}</span>
                       {payment === opt.value && (
                         <button
@@ -499,7 +594,7 @@ export default function CartPage() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                     <span style={{ color: '#64748B' }}>Доставка</span>
-                    <span style={{ color: '#16A34A', fontWeight: 600 }}>Уточнюється</span>
+                    <span style={{ color: '#64748B', fontWeight: 500 }}>За тарифами перевізника</span>
                   </div>
                 </div>
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
@@ -508,14 +603,11 @@ export default function CartPage() {
                 </div>
                 {role === 'guest' && (
                   <div style={{
-                    background: '#FFF7ED', border: '1px solid #FED7AA',
+                    background: '#F0F9FF', border: '1px solid #BAE6FD',
                     borderRadius: '10px', padding: '12px 14px', marginBottom: '12px',
-                    fontSize: '13px', color: '#92400E', lineHeight: 1.5,
+                    fontSize: '13px', color: '#0369A1', lineHeight: 1.5,
                   }}>
-                    <strong>💡 Зареєструйтесь</strong> — щоб зберігати історію замовлень та автоматично заповнювати дані при наступній покупці.{' '}
-                    <Link href="/register" style={{ color: '#4880B8', fontWeight: 700 }}>Реєстрація</Link>
-                    {' або '}
-                    <Link href="/login?next=/cart" style={{ color: '#4880B8', fontWeight: 700 }}>Увійти</Link>
+                    💡 Можна оформити замовлення без реєстрації — просто заповніть форму.
                   </div>
                 )}
                 <button
@@ -533,16 +625,34 @@ export default function CartPage() {
                 {submitError && (
                   <p style={{ fontSize: '12px', color: '#EF4444', textAlign: 'center', marginTop: '8px' }}>{submitError}</p>
                 )}
-                <p style={{ fontSize: '12px', color: '#94A3B8', textAlign: 'center', marginTop: '10px' }}>
-                  Менеджер зв&apos;яжеться з вами для підтвердження
-                </p>
-                {role === 'guest' && (
-                  <p style={{ fontSize: '12px', color: '#64748B', textAlign: 'center', marginTop: '6px' }}>
-                    Є акаунт?{' '}
-                    <Link href="/login?next=/cart" style={{ color: '#4880B8', fontWeight: 600 }}>Увійдіть</Link>
-                    {' '}для збереження замовлень
-                  </p>
-                )}
+                <div
+                  onClick={() => setNoCallback(v => !v)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '12px',
+                    marginTop: '12px', cursor: 'pointer', userSelect: 'none',
+                    padding: '12px 14px', borderRadius: '10px',
+                    background: noCallback ? '#F0FDF4' : '#F8FAFC',
+                    border: `1.5px solid ${noCallback ? '#86EFAC' : '#E2E8F0'}`,
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <div style={{
+                    width: '20px', height: '20px', borderRadius: '6px', flexShrink: 0,
+                    border: `2px solid ${noCallback ? '#16A34A' : '#CBD5E1'}`,
+                    background: noCallback ? '#16A34A' : '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.15s',
+                  }}>
+                    {noCallback && (
+                      <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+                        <path d="M1 4.5L4 7.5L10 1" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: noCallback ? '#15803D' : '#64748B', lineHeight: 1.4 }}>
+                    Не передзвонювати для підтвердження замовлення
+                  </span>
+                </div>
               </div>
 
             </div>

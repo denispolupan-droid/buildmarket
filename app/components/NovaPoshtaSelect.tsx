@@ -83,8 +83,11 @@ export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange
 
   const searchCities = useCallback((q: string) => {
     if (q.length < 2) { setSettlements([]); return; }
+    // NP API accepts only letters, spaces, hyphens and apostrophes
+    const sanitized = q.replace(/[^а-яіїєґёА-ЯІЇЄҐЁa-zA-Z\s\-''ʼ]/g, '').trim();
+    if (sanitized.length < 2) { setSettlements([]); return; }
     setCityLoading(true);
-    npRequest('Address', 'searchSettlements', { CityName: q, Limit: 10, Page: 1 })
+    npRequest('Address', 'searchSettlements', { CityName: sanitized, Limit: 10, Page: 1 })
       .then((data: { Addresses: Settlement[] }[]) => {
         setSettlements(data[0]?.Addresses ?? []);
         setCityDropOpen(true);

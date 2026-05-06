@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import './login.css';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextUrl = searchParams.get('next') || '/catalog';
@@ -67,9 +67,26 @@ export default function LoginPage() {
         <hr className="auth-divider" />
         <p className="auth-footer">
           Ще немає акаунту?{' '}
-          <Link href="/register">Зареєструватися</Link>
+          <Link href={`/register${nextUrl !== '/catalog' ? `?next=${nextUrl}` : ''}`}>Зареєструватися</Link>
         </p>
+        <form action={nextUrl !== '/catalog' ? nextUrl : '/cart'} method="get" style={{ margin: '10px 0 0' }}>
+          <button type="submit" style={{
+            width: '100%', padding: '12px', borderRadius: '10px',
+            fontSize: '14px', fontWeight: 600, cursor: 'pointer',
+            border: '1.5px solid #E2E8F0', background: 'transparent', color: '#64748B',
+          }}>
+            Продовжити без реєстрації →
+          </button>
+        </form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

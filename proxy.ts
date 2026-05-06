@@ -1,12 +1,17 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PROTECTED_ROUTES = ['/account', '/cart', '/admin', '/invoice'];
+const PROTECTED_ROUTES = ['/account', '/admin'];
+const PUBLIC_OVERRIDES = ['/account/wishlist'];
 const WHOLESALE_ROUTES = ['/catalog'];
 const AUTH_ROUTES = ['/login', '/register'];
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  if (PUBLIC_OVERRIDES.some(route => pathname.startsWith(route))) {
+    return NextResponse.next();
+  }
 
   const needsAuth =
     PROTECTED_ROUTES.some(route => pathname.startsWith(route)) ||

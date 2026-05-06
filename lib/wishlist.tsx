@@ -73,6 +73,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     const valid = new Set(validSkus);
     setSkus(prev => {
       const next = new Set([...prev].filter(s => valid.has(s)));
+      if (next.size === prev.size) return prev; // ничего не удалилось — та же ссылка
       localStorage.setItem(LS_KEY, JSON.stringify([...next]));
       return next;
     });

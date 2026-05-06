@@ -56,6 +56,8 @@ function RegisterForm() {
   const [loading,     setLoading]     = useState(false);
   const [done,        setDone]        = useState(false);
 
+  const nextUrl = searchParams.get('next') ?? '';
+
   useEffect(() => {
     const type = searchParams.get('type');
     if (type === 'dropship') setAccountType('dropship');
@@ -193,8 +195,17 @@ function RegisterForm() {
         <hr className="auth-divider" />
         <p className="auth-footer">
           Вже є акаунт?{' '}
-          <Link href="/login">Увійти</Link>
+          <Link href={`/login${nextUrl ? `?next=${nextUrl}` : ''}`}>Увійти</Link>
         </p>
+        <form action={nextUrl || '/cart'} method="get" style={{ margin: '10px 0 0' }}>
+          <button type="submit" style={{
+            width: '100%', padding: '12px', borderRadius: '10px',
+            fontSize: '14px', fontWeight: 600, cursor: 'pointer',
+            border: '1.5px solid #E2E8F0', background: 'transparent', color: '#64748B',
+          }}>
+            Продовжити без реєстрації →
+          </button>
+        </form>
       </div>
     </div>
   );

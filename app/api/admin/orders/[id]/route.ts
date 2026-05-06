@@ -17,9 +17,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { status, tracking_number } = body;
+  const { status, tracking_number, payment_confirmed, callback_done } = body;
 
-  const update: Record<string, string> = {};
+  const update: Record<string, unknown> = {};
 
   if (status !== undefined) {
     const VALID = ['new', 'confirmed', 'shipped', 'delivered', 'cancelled'];
@@ -29,9 +29,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     update.status = status;
   }
 
-  if (tracking_number !== undefined) {
-    update.tracking_number = tracking_number;
-  }
+  if (tracking_number !== undefined) update.tracking_number = tracking_number;
+  if (payment_confirmed !== undefined) update.payment_confirmed = payment_confirmed;
+  if (callback_done !== undefined) update.callback_done = callback_done;
 
   const { error } = await serviceClient
     .from('orders')
