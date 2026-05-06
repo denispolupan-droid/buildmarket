@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { getCategoriesCached } from '../../lib/supabase';
 import CatalogLoader from './CatalogLoader';
-import { getCategoryMeta } from '../../lib/category-descriptions';
 
 export async function generateMetadata({
   searchParams,
@@ -58,9 +57,6 @@ export default async function Catalog({
     ],
   };
 
-  const catMeta = category ? getCategoryMeta(category) : null;
-  const catName = category ? (await getCategoriesCached()).find(c => c.slug === category)?.name : null;
-
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
@@ -69,32 +65,6 @@ export default async function Catalog({
         initialCategory={category ?? ''}
         initialSaleOnly={sale === '1'}
       />
-      {catMeta && catName && (
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 24px 32px' }}>
-          <details>
-            <summary style={{
-              fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)',
-              cursor: 'pointer', userSelect: 'none', listStyle: 'none',
-              display: 'inline-flex', alignItems: 'center', gap: '6px',
-              padding: '7px 12px', borderRadius: '8px',
-              border: '1px solid var(--border)', background: 'var(--bg-card)',
-            }}>
-              <span>ℹ️ Про категорію «{catName}»</span>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>▼</span>
-            </summary>
-            <div style={{ padding: '12px 0 0', borderTop: '1px solid var(--border)' }}>
-              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
-                {catMeta.description}
-              </p>
-              {catMeta.seoText && (
-                <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7, margin: '8px 0 0' }}>
-                  {catMeta.seoText}
-                </p>
-              )}
-            </div>
-          </details>
-        </div>
-      )}
     </>
   );
 }

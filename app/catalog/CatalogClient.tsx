@@ -9,6 +9,7 @@ import type { ProductFull, Category } from '../../lib/supabase';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
 import Footer from '../components/Footer';
+import { getCategoryMeta } from '../../lib/category-descriptions';
 import './catalog.css';
 
 type Props = { products: ProductFull[]; categories: Category[]; initialSearch?: string; initialCategory?: string; initialSaleOnly?: boolean };
@@ -21,27 +22,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sidebarRef = useRef<HTMLElement>(null);
 
-  useEffect(() => {
-    const handleWheel = (e: WheelEvent) => {
-      const sidebar = sidebarRef.current;
-      const catsList = catsListRef.current;
-      if (!sidebar) return;
-      const sidebarRect = sidebar.getBoundingClientRect();
-      if (e.clientX > sidebarRect.right) return;
-      e.preventDefault();
-      if (catsList) {
-        const catsRect = catsList.getBoundingClientRect();
-        if (e.clientX >= catsRect.left && e.clientX <= catsRect.right &&
-            e.clientY >= catsRect.top  && e.clientY <= catsRect.bottom) {
-          catsList.scrollTop += e.deltaY;
-          return;
-        }
-      }
-      sidebar.scrollTop += e.deltaY;
-    };
-    document.addEventListener('wheel', handleWheel, { passive: false });
-    return () => document.removeEventListener('wheel', handleWheel);
-  }, []);
+  // Sidebar scrolls naturally via CSS overflow-y:scroll + overscroll-behavior:contain
 
   useEffect(() => {
     if (initialCategory) setTimeout(() => scrollCatToTop(initialCategory), 150);
@@ -643,6 +624,31 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       </div>
       </div>
 
+      {(() => {
+        const meta = selCat ? getCategoryMeta(selCat) : null;
+        const catName = selCat ? categories.find(c => c.slug === selCat)?.name : null;
+        if (!meta || !catName) return null;
+        return (
+          <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 20px 32px' }}>
+            <details>
+              <summary style={{
+                fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)',
+                cursor: 'pointer', userSelect: 'none', listStyle: 'none',
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '7px 12px', borderRadius: '8px',
+                border: '1px solid var(--border)', background: 'var(--bg-card)',
+              }}>
+                <span>ℹ️ Про категорію «{catName}»</span>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>▼</span>
+              </summary>
+              <div style={{ padding: '12px 0 0', borderTop: '1px solid var(--border)', marginTop: '8px' }}>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>{meta.description}</p>
+                {meta.seoText && <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7, margin: '8px 0 0' }}>{meta.seoText}</p>}
+              </div>
+            </details>
+          </div>
+        );
+      })()}
       <Footer />
     </>
   );
