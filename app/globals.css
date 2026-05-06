@@ -82,19 +82,84 @@ a { text-decoration: none; color: inherit; }
 button { cursor: pointer; font-family: inherit; }
 input, select { font-family: inherit; }
 
-/* Dark mode global overrides for inline-styled sections */
+/* ── Dark mode global overrides ── */
 [data-theme="dark"] main { background: var(--bg-page); }
-[data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
-  background: var(--bg-card); color: var(--text-primary); border-color: var(--border);
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--border);
   color-scheme: dark;
 }
 [data-theme="dark"] hr { border-color: var(--border); }
+
+/* Кожен розділ і картка що використовують фон #fff або #F8FAFC в inline-стилях */
+[data-theme="dark"] section { background: var(--bg-page); }
+[data-theme="dark"] .auth-card { background: var(--bg-card) !important; border-color: var(--border) !important; }
+[data-theme="dark"] .auth-input { background: var(--bg-card) !important; color: var(--text-primary) !important; border-color: var(--border) !important; }
+[data-theme="dark"] .auth-page { background: var(--bg-page) !important; }
+
+/* Картки товарів у preview на головній */
+[data-theme="dark"] .product-preview-card { background: var(--bg-card) !important; border-color: var(--border) !important; }
+
+/* Секції головної сторінки */
+[data-theme="dark"] .home-section-light { background: var(--bg-soft) !important; }
+
+/* Картки в корзині */
+[data-theme="dark"] .cart-section-card { background: var(--bg-card) !important; border-color: var(--border) !important; }
+
+/* Загальний білий фон для dropdowns і поповерів */
+[data-theme="dark"] [style*="background:#fff"],
+[data-theme="dark"] [style*="background: #fff"],
+[data-theme="dark"] [style*="background:#F8FAFC"],
+[data-theme="dark"] [style*="background: #F8FAFC"],
+[data-theme="dark"] [style*="background:#F1F5F9"],
+[data-theme="dark"] [style*="background: #F1F5F9"] {
+  background: var(--bg-card) !important;
+}
+
+/* Текст що захардкоджений #0F172A */
+[data-theme="dark"] [style*="color:#0F172A"],
+[data-theme="dark"] [style*="color: #0F172A"] {
+  color: var(--text-primary) !important;
+}
+
+/* Бордери #E2E8F0 */
+[data-theme="dark"] [style*="border: 1px solid #E2E8F0"],
+[data-theme="dark"] [style*="border:1px solid #E2E8F0"],
+[data-theme="dark"] [style*="borderColor: #E2E8F0"] {
+  border-color: var(--border) !important;
+}
 
 /* Wishlist page background */
 [data-theme="dark"] .wishlist-page-bg { background: var(--bg-page) !important; }
 
 /* Account / order pages white panels */
 [data-theme="dark"] .white-panel { background: var(--bg-card) !important; border-color: var(--border) !important; }
+
+/* Логін/реєстрація — оверрайди для форм */
+[data-theme="dark"] .login-notice { background: #1a1400 !important; border-color: #854d0e !important; }
+
+/* Каталог — додаткові оверрайди */
+[data-theme="dark"] .cell-char { background: #334155 !important; color: #94A3B8 !important; }
+[data-theme="dark"] .badge-type { background: #334155 !important; color: #94A3B8 !important; }
+[data-theme="dark"] .cell-text { color: #94A3B8 !important; }
+[data-theme="dark"] .cell-name { color: #F1F5F9 !important; }
+[data-theme="dark"] .price-only { color: var(--text-primary) !important; }
+[data-theme="dark"] .stock-badge.in { background: #14532D !important; color: #4ADE80 !important; }
+[data-theme="dark"] .stock-badge.out { background: #450a0a !important; color: #f87171 !important; }
+[data-theme="dark"] .qty-input { background: var(--bg-card) !important; border-color: var(--border) !important; color: var(--text-primary) !important; }
+[data-theme="dark"] .action-icon-btn { background: var(--bg-card) !important; border-color: var(--border) !important; color: var(--text-secondary) !important; }
+[data-theme="dark"] .action-icon-btn:hover { border-color: #4880B8 !important; }
+[data-theme="dark"] .empty-state h3 { color: var(--text-primary) !important; }
+
+/* Skeleton в темній темі */
+[data-theme="dark"] .skeleton {
+  background: linear-gradient(90deg, #1E293B 0%, #334155 40%, #475569 50%, #334155 60%, #1E293B 100%) !important;
+  background-size: 200% 100% !important;
+}
 
 .page-container { max-width: 1440px; margin: 0 auto; padding: 0 40px; }
 

@@ -216,7 +216,7 @@ export default async function Home() {
             <div style={{
               border: '1px solid var(--border)', borderRadius: '16px',
               padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '14px',
-              background: '#F1F5F9',
+              background: 'var(--bg-soft)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -248,7 +248,7 @@ export default async function Home() {
             <div style={{
               border: '1px solid var(--border)', borderRadius: '16px',
               padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '14px',
-              background: '#F1F5F9',
+              background: 'var(--bg-soft)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -281,7 +281,7 @@ export default async function Home() {
             <div style={{
               border: '1px solid var(--border)', borderRadius: '16px',
               padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '14px',
-              background: '#F1F5F9',
+              background: 'var(--bg-soft)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
