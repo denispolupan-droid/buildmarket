@@ -275,10 +275,35 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     <>
       <div style={{ background: 'var(--bg-page)', minHeight: '100vh' }}>
       <div className="page-container">
-        <nav aria-label="Breadcrumb" style={{ padding: '32px 0 0', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <nav aria-label="Breadcrumb" style={{ padding: '32px 0 0', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           <Link href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</Link>
           <span>/</span>
-          <span style={{ color: '#475569' }}>Оптовий каталог</span>
+          {selCat ? (
+            <button onClick={() => selectCat(null as unknown as string)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: '13px', padding: 0 }}>
+              Оптовий каталог
+            </button>
+          ) : (
+            <span style={{ color: '#475569' }}>Оптовий каталог</span>
+          )}
+          {selCat && (() => {
+            const cat = categories.find(c => c.slug === selCat);
+            if (!cat) return null;
+            const parent = cat.parent_slug ? categories.find(c => c.slug === cat.parent_slug) : null;
+            return (
+              <>
+                {parent && (
+                  <>
+                    <span>/</span>
+                    <button onClick={() => selectCat(parent.slug)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: '13px', padding: 0 }}>
+                      {parent.name}
+                    </button>
+                  </>
+                )}
+                <span>/</span>
+                <span style={{ color: '#475569' }}>{cat.name}</span>
+              </>
+            );
+          })()}
         </nav>
         <div className="catalog-page">
 

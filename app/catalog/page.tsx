@@ -73,13 +73,14 @@ export default async function Catalog({
         <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 24px 32px' }}>
           <details>
             <summary style={{
-              fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)',
+              fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)',
               cursor: 'pointer', userSelect: 'none', listStyle: 'none',
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '10px 0',
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              padding: '7px 12px', borderRadius: '8px',
+              border: '1px solid var(--border)', background: 'var(--bg-card)',
             }}>
-              <span>Про категорію «{catName}»</span>
-              <span style={{ fontSize: '11px' }}>▼</span>
+              <span>ℹ️ Про категорію «{catName}»</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>▼</span>
             </summary>
             <div style={{ padding: '12px 0 0', borderTop: '1px solid var(--border)' }}>
               <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
