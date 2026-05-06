@@ -44,6 +44,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
+function volLabel(v: string) {
+  return /кг|г$/.test(v) ? 'Вага' : "Об'єм";
+}
+
 function stockLabel(stockQty: number, minOrder: number) {
   return stockQty >= minOrder ? 'В наявності' : 'Немає в наявності';
 }
@@ -136,9 +140,8 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
             <h1 className="product-info__title">{product.name}</h1>
 
             <div className="product-info__badges">
-              {product.volume       && <span className="badge">{product.volume}</span>}
-              {product.product_type && <span className="badge">{product.product_type}</span>}
-              {product.color        && <span className="badge">{product.color}</span>}
+              {product.volume && <span className="badge">{volLabel(product.volume)}: {product.volume}</span>}
+              {(() => { const c = product.color ?? product.characteristics.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="badge">Колір: {c}</span> : null; })()}
             </div>
 
             <div className="product-info__stock">

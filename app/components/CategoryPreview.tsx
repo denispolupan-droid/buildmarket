@@ -127,7 +127,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
   }
 
   const specs: { label: string; value: string }[] = [];
-  if (product?.volume)       specs.push({ label: "Об'єм",  value: product.volume });
+  if (product?.volume)       specs.push({ label: /кг|г$/.test(product.volume) ? 'Вага' : "Об'єм", value: product.volume });
   if (product?.color)        specs.push({ label: 'Колір',  value: product.color });
   if (product?.product_type) specs.push({ label: 'Тип',    value: product.product_type });
 

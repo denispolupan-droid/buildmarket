@@ -14,7 +14,7 @@
   position: sticky;
   top: 80px;
   max-height: calc(100vh - 100px);
-  overflow-y: auto;
+  overflow-y: scroll;
   scrollbar-width: none;
   overscroll-behavior: contain;
 }
@@ -158,10 +158,11 @@
 }
 .shop-card__badges {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 4px;
   margin-top: 2px;
   min-height: 22px;
+  overflow: hidden;
 }
 .shop-card__tag {
   font-size: 11px;
@@ -169,6 +170,11 @@
   background: var(--bg-soft);
   border-radius: 5px;
   padding: 2px 7px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 0 1 auto;
 }
 .shop-card__stock {
   display: flex;
@@ -188,10 +194,10 @@
 .shop-card__stock.out { color: var(--text-muted); }
 .shop-card__stock.out .shop-card__stock-dot { background: #94A3B8; }
 .shop-card__footer {
-  padding: 0 12px 12px;
+  padding: 0 10px 10px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   gap: 6px;
 }
 .shop-card__price-wrap { display: flex; flex-direction: column; gap: 1px; }
@@ -219,10 +225,12 @@
   color: var(--text-muted);
 }
 .shop-card__btn {
+  flex: 1;
   height: 34px;
-  padding: 0 12px;
+  padding: 0 10px;
   border-radius: 8px;
   background: #4880B8;
+  justify-content: center;
   color: #fff;
   font-size: 14px;
   font-weight: 700;

@@ -1,13 +1,25 @@
 import { redirect } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import ImportClient from './ImportClient';
 import Link from 'next/link';
+import type { Category } from '../../../../types';
+
+const serviceClient = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 
 export default async function ImportProductsPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+
+  const { data: categories } = await serviceClient
+    .from('categories')
+    .select('*')
+    .order('sort_order');
 
   return (
     <div style={{ background: '#F8FAFC', minHeight: '100vh' }}>
@@ -27,7 +39,7 @@ export default async function ImportProductsPage() {
           </p>
         </div>
 
-        <ImportClient />
+        <ImportClient categories={categories ?? []} />
       </div>
     </div>
   );

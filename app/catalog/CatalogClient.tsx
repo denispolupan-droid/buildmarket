@@ -19,6 +19,34 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const router = useRouter();
   const catsListRef = useRef<HTMLDivElement>(null);
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const sidebarRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      const sidebar = sidebarRef.current;
+      const catsList = catsListRef.current;
+      if (!sidebar) return;
+      const sidebarRect = sidebar.getBoundingClientRect();
+      if (e.clientX > sidebarRect.right) return;
+      e.preventDefault();
+      if (catsList) {
+        const catsRect = catsList.getBoundingClientRect();
+        if (e.clientX >= catsRect.left && e.clientX <= catsRect.right &&
+            e.clientY >= catsRect.top  && e.clientY <= catsRect.bottom) {
+          catsList.scrollTop += e.deltaY;
+          return;
+        }
+      }
+      sidebar.scrollTop += e.deltaY;
+    };
+    document.addEventListener('wheel', handleWheel, { passive: false });
+    return () => document.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  useEffect(() => {
+    if (initialCategory) setTimeout(() => scrollCatToTop(initialCategory), 150);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const scrollCatToTop = useCallback((slug: string) => {
     const container = catsListRef.current;
@@ -26,27 +54,36 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     if (container && catEl) {
       const containerTop = container.getBoundingClientRect().top;
       const catTop = catEl.getBoundingClientRect().top;
-      container.scrollTo({ top: container.scrollTop + (catTop - containerTop), behavior: 'smooth' });
+      container.scrollTo({ top: container.scrollTop + (catTop - containerTop) });
     }
   }, []);
 
   const selectCat = (slug: string) => {
     setSelCat(slug);
     router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
+    sidebarRef.current?.scrollTo({ top: 0 });
     setVisibleCount(50);
     if (slug) setTimeout(() => scrollCatToTop(slug), 50);
   };
-  const [filterBrand,   setFilterBrand]   = useState('');
-  const [filterType,    setFilterType]    = useState('');
+  const [filterValues,   setFilterValues]   = useState<Record<string, string>>({});
   const [filterVolume,   setFilterVolume]   = useState('');
   const [filterVolumeKg, setFilterVolumeKg] = useState('');
-  const [filterColor,   setFilterColor]   = useState('');
-  const [filterChars,   setFilterChars]   = useState<Record<string, string>>({});
   const [inStockOnly,   setInStockOnly]   = useState(false);
   const [saleOnly,      setSaleOnly]      = useState(initialSaleOnly);
   const [visibleCount,  setVisibleCount]  = useState(50);
-  const [expandedCats, setExpandedCats]  = useState<Set<string>>(new Set());
+  const [expandedCats, setExpandedCats]  = useState<Set<string>>(() => {
+    if (!initialCategory) return new Set<string>();
+    const expanded = new Set<string>();
+    const catMap = new Map(categories.map(c => [c.slug, c]));
+    let slug: string | null = initialCategory;
+    while (slug) {
+      const cat = catMap.get(slug);
+      if (cat?.parent_slug) { expanded.add(cat.parent_slug); slug = cat.parent_slug; }
+      else break;
+    }
+    return expanded;
+  });
   const [catsOpen,      setCatsOpen]      = useState(false);
   const [quantities,    setQuantities]    = useState<Record<string, number>>({});
   const [inputVals,     setInputVals]     = useState<Record<string, string>>({});
@@ -74,38 +111,65 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     matchingSlugs ? products.filter(p => matchingSlugs.has(p.category_slug ?? '')) : products,
   [products, matchingSlugs]);
 
-  const HIDE = (v: string | null | undefined) => !!v && v !== 'Не вказано';
   const parseVol = (v: string) => parseFloat(v.replace(',', '.').replace(/[^\d.]/g, '') || '0');
-  const brands    = useMemo(() => [...new Set(catProducts.map(p => p.brand).filter(HIDE))].sort() as string[], [catProducts]);
-  const types     = useMemo(() => [...new Set(catProducts.map(p => p.product_type).filter(HIDE))].sort() as string[], [catProducts]);
-  const volumesL  = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter(HIDE).filter((v): v is string => /л$|мл/.test(v ?? '')))].sort((a,b) => parseVol(a)-parseVol(b)), [catProducts]);
-  const toGrams = (v: string) => { const n = parseVol(v); return /кг/.test(v) ? n * 1000 : n; };
-  const volumesKg = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter(HIDE).filter((v): v is string => /кг|г$/.test(v ?? '')))].sort((a,b) => toGrams(a)-toGrams(b)), [catProducts]);
-  const colors    = useMemo(() => [...new Set(catProducts.map(p => p.color).filter(HIDE))].sort() as string[], [catProducts]);
+  const toGrams  = (v: string) => { const n = parseVol(v); return /кг/.test(v) ? n * 1000 : n; };
+  const toNum    = (s: string) => parseFloat(s.replace(',', '.').replace(/[^\d.]/g, '') || 'NaN');
 
-  const charOptions = useMemo(() => {
-    const map: Record<string, Set<string>> = {};
-    const SKIP_CHAR_LABELS = new Set([
-      'Мінімальна температура застосування', 'Максимальна температура застосування',
-      'Мінімальна температура експлуатації', 'Максимальна температура експлуатації',
-      'Мінімальна температура зберігання',   'Максимальна температура зберігання',
-      'Час висихання поверхні', 'Час висихання', 'Час повного затвердіння',
-      'Час початкового схоплення', 'Час поверхневого висихання',
-      'Термін зберігання', 'Витрата матеріалу', 'Витрата', 'Витрата фарби', 'Витрата ґрунтовки',
-      'Первинне розширення', 'Вторинне розширення', 'Вихід піни',
-      'Міцність клейового з\'єднання',
+  const volumesL  = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter((v): v is string => !!v && /л$|мл/.test(v)))].sort((a,b) => parseVol(a)-parseVol(b)), [catProducts]);
+  const volumesKg = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter((v): v is string => !!v && /кг|г$/.test(v)))].sort((a,b) => toGrams(a)-toGrams(b)), [catProducts]);
+
+  const allFilters = useMemo(() => {
+    const SKIP_LOWER = new Set([
+      'колір', 'бренд', 'торгова марка',
+      'тип', 'тип фарби', 'тип ґрунтовки', 'тип герметика', 'тип клею',
+      'обсяг', 'об\'єм', 'об\'єм упаковки', 'обсяг упаковки', 'вага',
+      'назва продукту', 'марка', 'розмір упаковки', 'розфасування',
+      'мінімальна температура застосування', 'максимальна температура застосування',
+      'мінімальна температура експлуатації', 'максимальна температура експлуатації',
+      'мінімальна температура зберігання',   'максимальна температура зберігання',
+      'час висихання поверхні', 'час висихання', 'час повного затвердіння',
+      'час початкового схоплення', 'час поверхневого висихання',
+      'термін зберігання', 'витрата матеріалу', 'витрата', 'витрата фарби', 'витрата ґрунтовки',
+      'первинне розширення', 'вторинне розширення', 'вихід піни',
+      'міцність клейового з\'єднання',
     ]);
-    catProducts.forEach(p =>
-      (p.characteristics ?? []).forEach(c => {
-        if (!c.label || !c.value || c.value === 'Не вказано' || SKIP_CHAR_LABELS.has(c.label)) return;
-        (map[c.label] ??= new Set()).add(c.value);
+    const map = new Map<string, Map<string, string>>();
+    const add = (label: string, val: string | null | undefined) => {
+      const v = val?.trim();
+      if (!v || v === 'Не вказано') return;
+      if (!map.has(label)) map.set(label, new Map());
+      const key = v.toLowerCase();
+      const ex = map.get(label)!.get(key);
+      if (!ex || (v[0] === v[0].toUpperCase() && ex[0] !== ex[0].toUpperCase())) map.get(label)!.set(key, v);
+    };
+    for (const p of catProducts) {
+      add('Бренд', p.brand);
+      add('Тип',   p.product_type);
+      add('Колір', p.color ?? p.characteristics.find(c => /^колір/i.test(c.label))?.value);
+      for (const c of p.characteristics ?? []) {
+        const label = c.label?.trim();
+        if (!label || SKIP_LOWER.has(label.toLowerCase()) || label.toLowerCase().includes('колір')) continue;
+        add(label, c.value);
+      }
+    }
+    const PRIMARY = new Set(['Бренд', 'Тип', 'Колір']);
+    return [...map.entries()]
+      .filter(([label, vals]) => vals.size > 1 || PRIMARY.has(label))
+      .filter(([, vals]) => vals.size > 0)
+      .sort((a, b) => {
+        const ap = PRIMARY.has(a[0]), bp = PRIMARY.has(b[0]);
+        if (ap !== bp) return ap ? -1 : 1;
+        return b[1].size - a[1].size;
       })
-    );
-    return Object.entries(map)
-      .filter(([, vals]) => vals.size > 1)
-      .sort((a, b) => b[1].size - a[1].size)
-      .slice(0, 5)
-      .map(([label, vals]) => ({ label, values: [...vals].sort() }));
+      .slice(0, 8)
+      .map(([label, vals]) => ({
+        label,
+        values: [...vals.values()].sort((a, b) => {
+          const na = toNum(a), nb = toNum(b);
+          if (!isNaN(na) && !isNaN(nb)) return na - nb;
+          return a.localeCompare(b, 'uk');
+        }),
+      }));
   }, [catProducts]);
 
   const filtered = useMemo(() => {
@@ -113,23 +177,25 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     return products.filter(p => {
       if (q && !p.name.toLowerCase().includes(q) && !p.sku.toLowerCase().includes(q) && !p.brand.toLowerCase().includes(q)) return false;
       if (matchingSlugs && !matchingSlugs.has(p.category_slug ?? '')) return false;
-      if (filterBrand   && p.brand          !== filterBrand)    return false;
-      if (filterType    && p.product_type   !== filterType)     return false;
       if (filterVolume   && p.volume !== filterVolume)   return false;
       if (filterVolumeKg && p.volume !== filterVolumeKg) return false;
-      if (filterColor   && p.color          !== filterColor)    return false;
       if (inStockOnly   && (p.stock?.stock_qty ?? 0) < p.min_order) return false;
       if (saleOnly) {
         const pu = p.stock?.price_unit ?? 0;
         const po = p.stock?.price_old  ?? null;
         if (!(po != null && pu > 0 && pu < po)) return false;
       }
-      for (const [label, val] of Object.entries(filterChars)) {
-        if (val && !p.characteristics.some(c => c.label === label && c.value === val)) return false;
+      for (const [label, val] of Object.entries(filterValues)) {
+        if (!val) continue;
+        const fv = val.toLowerCase();
+        if (label === 'Бренд')      { if (p.brand.trim().toLowerCase() !== fv) return false; }
+        else if (label === 'Тип')   { if ((p.product_type ?? '').trim().toLowerCase() !== fv) return false; }
+        else if (label === 'Колір') { if ((p.color ?? p.characteristics.find(c => /^колір/i.test(c.label))?.value ?? '').toLowerCase() !== fv) return false; }
+        else { if (!p.characteristics.some(c => c.label === label && c.value.trim().toLowerCase() === fv)) return false; }
       }
       return true;
     });
-  }, [products, search, matchingSlugs, filterBrand, filterType, filterVolume, filterVolumeKg, filterColor, filterChars, inStockOnly, saleOnly]);
+  }, [products, search, matchingSlugs, filterValues, filterVolume, filterVolumeKg, inStockOnly, saleOnly]);
 
   const exportToExcel = useCallback(async () => {
     const XLSX = await import('xlsx');
@@ -165,7 +231,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     } else if ((childrenOf[selCat] ?? []).length > 0) {
       setExpandedCats(prev => new Set([...prev, selCat]));
     }
-    setFilterBrand(''); setFilterType(''); setFilterVolume(''); setFilterVolumeKg(''); setFilterColor(''); setFilterChars({});
+    setFilterValues({}); setFilterVolume(''); setFilterVolumeKg('');
   }, [selCat, categories, childrenOf]);
 
   const loggedRef = useRef('');
@@ -209,7 +275,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     <>
       <div style={{ background: '#fff', minHeight: '100vh' }}>
       <div className="page-container">
-        <nav aria-label="Breadcrumb" style={{ padding: '16px 0 0', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <nav aria-label="Breadcrumb" style={{ padding: '32px 0 0', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Link href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</Link>
           <span>/</span>
           <span style={{ color: '#475569' }}>Оптовий каталог</span>
@@ -217,7 +283,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
         <div className="catalog-page">
 
           {/* Sidebar */}
-          <aside className="sidebar">
+          <aside className="sidebar" ref={sidebarRef}>
 
             {/* Categories */}
             <div className="sidebar-section">
@@ -299,24 +365,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
             <div className="sidebar-section">
               <div className="sidebar-heading">Фільтри</div>
 
-              {brands.length > 1 && (
-                <div className="filter-group">
-                  <div className="filter-label">Бренд</div>
-                  <select className={'filter-select' + (filterBrand ? ' active' : '')} value={filterBrand} onChange={e => setFilterBrand(e.target.value)}>
-                    <option value="">Всі бренди</option>
-                    {brands.map(b => <option key={b} value={b}>{b}</option>)}
-                  </select>
-                </div>
-              )}
-              {types.length > 1 && (
-                <div className="filter-group">
-                  <div className="filter-label">Тип</div>
-                  <select className={'filter-select' + (filterType ? ' active' : '')} value={filterType} onChange={e => setFilterType(e.target.value)}>
-                    <option value="">Всі типи</option>
-                    {types.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-              )}
               {volumesL.length > 1 && (
                 <div className="filter-group">
                   <div className="filter-label">Об&apos;єм</div>
@@ -335,24 +383,15 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   </select>
                 </div>
               )}
-              {colors.length > 1 && (
-                <div className="filter-group">
-                  <div className="filter-label">Колір</div>
-                  <select className={'filter-select' + (filterColor ? ' active' : '')} value={filterColor} onChange={e => setFilterColor(e.target.value)}>
-                    <option value="">Всі кольори</option>
-                    {colors.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-              )}
-              {charOptions.map(({ label, values }) => (
+              {allFilters.map(({ label, values }) => (
                 <div key={label} className="filter-group">
                   <div className="filter-label">{label}</div>
                   <select
-                    className={'filter-select' + (filterChars[label] ? ' active' : '')}
-                    value={filterChars[label] ?? ''}
-                    onChange={e => setFilterChars(prev => ({ ...prev, [label]: e.target.value }))}
+                    className={'filter-select' + (filterValues[label] ? ' active' : '')}
+                    value={filterValues[label] ?? ''}
+                    onChange={e => setFilterValues(prev => ({ ...prev, [label]: e.target.value }))}
                   >
-                    <option value="">Всі</option>
+                    <option value="">{label === 'Колір' ? 'Всі кольори' : label === 'Бренд' ? 'Всі бренди' : 'Всі'}</option>
                     {values.map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                 </div>
@@ -474,12 +513,15 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                               {p.name}
                               {isSale && <span className="badge-sale">АКЦІЯ</span>}
                             </div>
-                            {(p.product_type || p.color) && (
-                              <div className="cell-chars">
-                                {p.product_type && <span className="cell-char">{p.product_type}</span>}
-                                {p.color        && <span className="cell-char">{p.color}</span>}
-                              </div>
-                            )}
+                            {(() => {
+                              const colorVal = p.color ?? p.characteristics.find(c => /^Колір/i.test(c.label))?.value ?? null;
+                              return (p.product_type || colorVal) ? (
+                                <div className="cell-chars">
+                                  {p.product_type && <span className="cell-char">{p.product_type}</span>}
+                                  {colorVal       && <span className="cell-char">Колір: {colorVal}</span>}
+                                </div>
+                              ) : null;
+                            })()}
                           </td>
                           <td><span className="cell-text">{p.volume ?? '—'}</span></td>
                           <td>

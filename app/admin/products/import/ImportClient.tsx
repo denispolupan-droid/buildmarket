@@ -2,18 +2,36 @@
 
 import { useState, useRef } from 'react';
 import { Upload, FileSpreadsheet, Check, AlertCircle, Loader2, Download } from 'lucide-react';
+import type { Category } from '../../../../types';
 
 type ImportResult = {
   success: number;
   errors: { row: number; sku: string; error: string }[];
 };
 
-export default function ImportClient() {
+type Props = {
+  categories: Category[];
+};
+
+const inputStyle: React.CSSProperties = {
+  width: '100%', height: '40px', padding: '0 12px',
+  borderRadius: '8px', border: '1px solid #E2E8F0',
+  fontSize: '13px', outline: 'none', background: '#fff',
+};
+
+export default function ImportClient({ categories }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [preview, setPreview] = useState<Record<string, string>[] | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const parentCats = categories.filter(c => !c.parent_slug);
+  const childrenOf: Record<string, Category[]> = {};
+  categories.forEach(c => {
+    if (c.parent_slug) (childrenOf[c.parent_slug] ??= []).push(c);
+  });
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -26,14 +44,9 @@ export default function ImportClient() {
     formData.append('preview', 'true');
 
     try {
-      const res = await fetch('/api/admin/products/import', {
-        method: 'POST',
-        body: formData,
-      });
+      const res = await fetch('/api/admin/products/import', { method: 'POST', body: formData });
       const data = await res.json();
-      if (data.preview) {
-        setPreview(data.preview);
-      }
+      if (data.preview) setPreview(data.preview);
     } catch {
       setPreview(null);
     }
@@ -48,10 +61,7 @@ export default function ImportClient() {
     formData.append('file', file);
 
     try {
-      const res = await fetch('/api/admin/products/import', {
-        method: 'POST',
-        body: formData,
-      });
+      const res = await fetch('/api/admin/products/import', { method: 'POST', body: formData });
       const data = await res.json();
       setResult(data);
     } catch {
@@ -62,30 +72,77 @@ export default function ImportClient() {
   }
 
   function downloadTemplate() {
-    window.open('/api/admin/products/import?template=true', '_blank');
+    const url = selectedCategory
+      ? `/api/admin/products/import?template=true&category=${encodeURIComponent(selectedCategory)}`
+      : '/api/admin/products/import?template=true';
+    window.open(url, '_blank');
   }
+
+  const selectedCatName = selectedCategory
+    ? (categories.find(c => c.slug === selectedCategory)?.name ?? '')
+    : 'Усі категорії';
 
   return (
     <div>
+      {/* Template download */}
       <div style={{
         background: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0',
         padding: '24px', marginBottom: '20px',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', margin: 0 }}>
-            Завантаження файлу
-          </h2>
+        <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', marginBottom: '16px' }}>
+          Шаблон для заповнення
+        </h2>
+
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
+              Категорія
+            </label>
+            <select
+              value={selectedCategory}
+              onChange={e => setSelectedCategory(e.target.value)}
+              style={inputStyle}
+            >
+              <option value="">Усі категорії (загальний шаблон)</option>
+              {parentCats.map(cat => (
+                <optgroup key={cat.slug} label={cat.name}>
+                  <option value={cat.slug}>{cat.name}</option>
+                  {(childrenOf[cat.slug] ?? []).map(child => (
+                    <option key={child.slug} value={child.slug}>↳ {child.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
           <button
             onClick={downloadTemplate}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
-              padding: '8px 14px', borderRadius: '8px', border: '1px solid #E2E8F0',
-              background: '#fff', fontSize: '13px', fontWeight: 600, color: '#475569', cursor: 'pointer',
+              height: '40px', padding: '0 16px', borderRadius: '8px',
+              border: '1px solid #E2E8F0', background: '#fff',
+              fontSize: '13px', fontWeight: 600, color: '#475569', cursor: 'pointer',
+              whiteSpace: 'nowrap',
             }}
           >
             <Download size={14} /> Завантажити шаблон
           </button>
         </div>
+
+        {selectedCategory && (
+          <p style={{ fontSize: '12px', color: '#64748B', marginTop: '8px', margin: '8px 0 0' }}>
+            Шаблон міститиме тільки характеристики категорії <strong>{selectedCatName}</strong>
+          </p>
+        )}
+      </div>
+
+      {/* File upload */}
+      <div style={{
+        background: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0',
+        padding: '24px', marginBottom: '20px',
+      }}>
+        <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', marginBottom: '20px' }}>
+          Завантаження файлу
+        </h2>
 
         <div
           onClick={() => inputRef.current?.click()}
@@ -174,27 +231,23 @@ export default function ImportClient() {
         )}
       </div>
 
+      {/* Result */}
       {result && (
         <div style={{
           background: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0',
-          padding: '24px',
+          padding: '24px', marginBottom: '20px',
         }}>
           <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', marginBottom: '16px' }}>
             Результат імпорту
           </h2>
-
           <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-            <div style={{
-              flex: 1, padding: '16px', borderRadius: '8px',
-              background: '#F0FDF4', border: '1px solid #BBF7D0',
-            }}>
+            <div style={{ flex: 1, padding: '16px', borderRadius: '8px', background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#16A34A' }}>
                 <Check size={20} />
                 <span style={{ fontSize: '24px', fontWeight: 700 }}>{result.success}</span>
               </div>
               <div style={{ fontSize: '13px', color: '#15803D', marginTop: '4px' }}>Успішно імпортовано</div>
             </div>
-
             <div style={{
               flex: 1, padding: '16px', borderRadius: '8px',
               background: result.errors.length > 0 ? '#FEF2F2' : '#F8FAFC',
@@ -207,7 +260,6 @@ export default function ImportClient() {
               <div style={{ fontSize: '13px', color: result.errors.length > 0 ? '#B91C1C' : '#64748B', marginTop: '4px' }}>Помилок</div>
             </div>
           </div>
-
           {result.errors.length > 0 && (
             <div>
               <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#DC2626', marginBottom: '8px' }}>Помилки:</h3>
@@ -226,22 +278,30 @@ export default function ImportClient() {
         </div>
       )}
 
+      {/* Format hint */}
       <div style={{
         background: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0',
-        padding: '24px', marginTop: '20px',
+        padding: '24px',
       }}>
         <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', marginBottom: '16px' }}>
           Формат файлу
         </h2>
-        <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '12px' }}>
-          Обов'язкові колонки: <strong>sku</strong>, <strong>name</strong>, <strong>brand</strong>
+        <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '8px' }}>
+          Обов'язкові колонки: <strong>SKU</strong>, <strong>Назва</strong>, <strong>Бренд</strong>
         </p>
-        <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '12px' }}>
-          Додаткові колонки: category_slug, product_type, color, volume, pack_qty, min_order,
-          price_unit, price_retail, stock_qty, bc, ac, description
+        <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '8px' }}>
+          Формат такий самий як у <strong>catalog-export.xlsx</strong> — можна брати його як основу,
+          додавати нові рядки і завантажувати сюди.
+        </p>
+        <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '8px' }}>
+          <strong>Характеристики</strong> — окремі колонки після стандартних полів.
+          Назва колонки = назва характеристики, значення = що відображається на сайті.
+          Порожня клітинка — не відображається. Нова колонка — нова характеристика.
         </p>
         <p style={{ fontSize: '13px', color: '#94A3B8' }}>
           Якщо товар з таким SKU вже існує — він буде оновлений.
+          Характеристики замінюються тільки якщо хоча б одна заповнена.
+          Аркуш «Довідка» у шаблоні містить опис усіх полів.
         </p>
       </div>
     </div>

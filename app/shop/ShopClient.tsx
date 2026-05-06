@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Search, Plus, Minus, Heart, ChevronDown, ChevronUp, ChevronRight, Check } from 'lucide-react';
@@ -59,12 +59,18 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
         </div>
         <div className="shop-card__body">
           <div className="shop-card__brand">{p.brand}</div>
-          <div className="shop-card__name">
+          <div className="shop-card__name" title={`${p.name}${p.volume && !p.name.includes(p.volume) ? ` ${p.volume}` : ''}`}>
             {p.name}{p.volume && !p.name.includes(p.volume) ? ` ${p.volume}` : ''}
           </div>
           <div className="shop-card__badges">
-            {p.product_type && <span className="shop-card__tag">{p.product_type}</span>}
-            {p.color && <span className="shop-card__tag">{p.color}</span>}
+            {(() => {
+              const volL = p.volume ? (/кг|г$/.test(p.volume) ? 'Вага' : "Об'єм") : null;
+              const colorVal = p.color ?? p.characteristics?.find(c => /^Колір/i.test(c.label))?.value ?? null;
+              return (<>
+                {volL      && <span className="shop-card__tag" title={`${volL}: ${p.volume}`}>{volL}: {p.volume}</span>}
+                {colorVal  && <span className="shop-card__tag" title={`Колір: ${colorVal}`}>Колір: {colorVal}</span>}
+              </>);
+            })()}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
             <span style={{ fontSize: '11px', color: '#94A3B8' }}>Арт. {p.sku}</span>
@@ -144,20 +150,56 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const [search,       setSearch]       = useState('');
   const [selCat,       setSelCat]       = useState<string | null>(initialCategory ?? null);
   const [saleOnly,     setSaleOnly]     = useState(initialSaleOnly);
-  const [filterBrand,  setFilterBrand]  = useState(initialBrand ?? '');
-  const [filterType,   setFilterType]   = useState('');
-  const [filterVolume,   setFilterVolume]   = useState('');
-  const [filterVolumeKg, setFilterVolumeKg] = useState('');
-  const [filterColor,    setFilterColor]    = useState('');
-  const [filterChars,  setFilterChars]  = useState<Record<string, string>>({});
+  const [filterValues,       setFilterValues]       = useState<Record<string, string>>(initialBrand ? { 'Бренд': initialBrand } : {});
+  const [filterVolume,       setFilterVolume]       = useState('');
+  const [filterVolumeKg,     setFilterVolumeKg]     = useState('');
   const [filterPlasticGroup, setFilterPlasticGroup] = useState('');
   const [inStockOnly,  setInStockOnly]  = useState(false);
   const [visibleCount, setVisibleCount] = useState(24);
   const [catsOpen,     setCatsOpen]     = useState(false);
-  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(() => {
+    if (!initialCategory) return new Set<string>();
+    const expanded = new Set<string>();
+    const catMap = new Map(categories.map(c => [c.slug, c]));
+    let slug: string | null = initialCategory;
+    while (slug) {
+      const cat = catMap.get(slug);
+      if (cat?.parent_slug) { expanded.add(cat.parent_slug); slug = cat.parent_slug; }
+      else break;
+    }
+    return expanded;
+  });
   const router = useRouter();
   const catsListRef = useRef<HTMLDivElement>(null);
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const sidebarRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      const sidebar = sidebarRef.current;
+      const catsList = catsListRef.current;
+      if (!sidebar) return;
+      const sidebarRect = sidebar.getBoundingClientRect();
+      if (e.clientX > sidebarRect.right) return;
+      e.preventDefault();
+      if (catsList) {
+        const catsRect = catsList.getBoundingClientRect();
+        if (e.clientX >= catsRect.left && e.clientX <= catsRect.right &&
+            e.clientY >= catsRect.top  && e.clientY <= catsRect.bottom) {
+          catsList.scrollTop += e.deltaY;
+          return;
+        }
+      }
+      sidebar.scrollTop += e.deltaY;
+    };
+    document.addEventListener('wheel', handleWheel, { passive: false });
+    return () => document.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  useEffect(() => {
+    if (initialCategory) setTimeout(() => scrollCatToTop(initialCategory), 150);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const scrollCatToTop = useCallback((slug: string) => {
     const container = catsListRef.current;
@@ -165,15 +207,16 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     if (container && catEl) {
       const containerTop = container.getBoundingClientRect().top;
       const catTop = catEl.getBoundingClientRect().top;
-      container.scrollTo({ top: container.scrollTop + (catTop - containerTop), behavior: 'smooth' });
+      container.scrollTo({ top: container.scrollTop + (catTop - containerTop) });
     }
   }, []);
 
   const selectCat = (slug: string | null) => {
     setSelCat(slug);
     router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setFilterBrand(''); setFilterType(''); setFilterVolume(''); setFilterVolumeKg(''); setFilterColor(''); setFilterChars({}); setFilterPlasticGroup('');
+    window.scrollTo(0, 0);
+    sidebarRef.current?.scrollTo({ top: 0 });
+    setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup('');
     setVisibleCount(24);
     if (slug) setTimeout(() => scrollCatToTop(slug), 50);
   };
@@ -202,94 +245,102 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     matchingSlugs ? products.filter(p => matchingSlugs.has(p.category_slug ?? '')) : products,
   [products, matchingSlugs]);
 
-  const HIDE = (v: string | null | undefined) => !!v && v !== 'Не вказано';
   const parseVol = (v: string) => parseFloat(v.replace(',', '.').replace(/[^\d.]/g, '') || '0');
-  const brands  = useMemo(() => [...new Set(catProducts.map(p => p.brand).filter(HIDE))].sort() as string[], [catProducts]);
-  const types   = useMemo(() => [...new Set(catProducts.map(p => p.product_type).filter(HIDE))].sort() as string[], [catProducts]);
-  const volumesL  = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter(HIDE).filter((v): v is string => /л$|мл/.test(v ?? '')))].sort((a,b) => parseVol(a)-parseVol(b)), [catProducts]);
-  const toGrams = (v: string) => { const n = parseVol(v); return /кг/.test(v) ? n * 1000 : n; };
-  const volumesKg = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter(HIDE).filter((v): v is string => /кг|г$/.test(v ?? '')))].sort((a,b) => toGrams(a)-toGrams(b)), [catProducts]);
-  const colors  = useMemo(() => [...new Set(catProducts.map(p => p.color).filter(HIDE))].sort() as string[], [catProducts]);
+  const toGrams  = (v: string) => { const n = parseVol(v); return /кг/.test(v) ? n * 1000 : n; };
+  const toNum    = (s: string) => parseFloat(s.replace(',', '.').replace(/[^\d.]/g, '') || 'NaN');
 
-  const typePrefix = useMemo(() => {
-    if (types.length < 2) return '';
-    const words = types[0].split(' ');
-    let prefix = '';
-    for (let i = 1; i <= words.length; i++) {
-      const candidate = words.slice(0, i).join(' ');
-      if (types.every(t => t === candidate || t.startsWith(candidate + ' '))) {
-        prefix = candidate;
-      } else break;
-    }
-    return prefix.length >= 5 ? prefix : '';
-  }, [types]);
+  const volumesL  = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter((v): v is string => !!v && /л$|мл/.test(v)))].sort((a,b) => parseVol(a)-parseVol(b)), [catProducts]);
+  const volumesKg = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter((v): v is string => !!v && /кг|г$/.test(v)))].sort((a,b) => toGrams(a)-toGrams(b)), [catProducts]);
 
-  const typeLabel = (t: string) => {
-    if (!typePrefix || t === typePrefix) return t;
-    const rest = t.slice(typePrefix.length + 1);
-    return rest.charAt(0).toUpperCase() + rest.slice(1);
-  };
-
-  const isPlasticCat = typePrefix === 'Пластифікатор';
-
-  const plasticIsFrost = (p: ProductFull) => /протиморозн/i.test(p.product_type ?? '');
-  const plasticIsWarm  = (p: ProductFull) => /теплих підлог/i.test(p.product_type ?? '');
-
-  const charOptions = useMemo(() => {
-    const map: Record<string, Set<string>> = {};
-    const SKIP_CHAR_LABELS = new Set([
-      'Тип', 'Тип фарби', 'Тип ґрунтовки', 'Тип герметика', 'Тип клею',
-      'Колір',
-      'Мінімальна температура застосування', 'Максимальна температура застосування',
-      'Мінімальна температура експлуатації', 'Максимальна температура експлуатації',
-      'Мінімальна температура зберігання',   'Максимальна температура зберігання',
-      'Час висихання поверхні', 'Час висихання', 'Час повного затвердіння',
-      'Час початкового схоплення', 'Час поверхневого висихання',
-      'Термін зберігання', 'Витрата матеріалу', 'Витрата', 'Витрата фарби', 'Витрата ґрунтовки',
-      'Первинне розширення', 'Вторинне розширення', 'Вихід піни',
-      'Міцність клейового з\'єднання',
-      'Обсяг', 'Об\'єм', 'Об\'єм упаковки', 'Обсяг упаковки', 'Вага',
-      'Назва продукту', 'Марка', 'Розмір упаковки', 'Розфасування',
+  // Єдиний useMemo для ВСІХ фільтрів: поля продукту + характеристики в одному місці
+  const allFilters = useMemo(() => {
+    const SKIP_LOWER = new Set([
+      'колір',
+      'бренд', 'торгова марка',
+      'тип', 'тип фарби', 'тип ґрунтовки', 'тип герметика', 'тип клею',
+      'обсяг', 'об\'єм', 'об\'єм упаковки', 'обсяг упаковки', 'вага',
+      'назва продукту', 'марка', 'розмір упаковки', 'розфасування',
+      'мінімальна температура застосування', 'максимальна температура застосування',
+      'мінімальна температура експлуатації', 'максимальна температура експлуатації',
+      'мінімальна температура зберігання',   'максимальна температура зберігання',
+      'час висихання поверхні', 'час висихання', 'час повного затвердіння',
+      'час початкового схоплення', 'час поверхневого висихання',
+      'термін зберігання', 'витрата матеріалу', 'витрата', 'витрата фарби', 'витрата ґрунтовки',
+      'первинне розширення', 'вторинне розширення', 'вихід піни',
+      'міцність клейового з\'єднання',
     ]);
-    catProducts.forEach(p =>
-      (p.characteristics ?? []).forEach(c => {
-        if (!c.label || !c.value || c.value === 'Не вказано' || SKIP_CHAR_LABELS.has(c.label)) return;
-        (map[c.label] ??= new Set()).add(c.value);
+    const SKIP_VALUES: Record<string, Set<string>> = {
+      'Стан': new Set(['двокомпонентний', 'двокомпонентний шприц']),
+    };
+    const map = new Map<string, Map<string, string>>();
+
+    const add = (label: string, val: string | null | undefined) => {
+      const v = val?.trim();
+      if (!v || v === 'Не вказано') return;
+      if (!map.has(label)) map.set(label, new Map());
+      const key = v.toLowerCase();
+      const ex = map.get(label)!.get(key);
+      if (!ex || (v[0] === v[0].toUpperCase() && ex[0] !== ex[0].toUpperCase())) map.get(label)!.set(key, v);
+    };
+
+    for (const p of catProducts) {
+      add('Бренд',  p.brand);
+      add('Тип',    p.product_type);
+      add('Колір',  p.color ?? p.characteristics.find(c => /^колір/i.test(c.label))?.value);
+      for (const c of p.characteristics ?? []) {
+        const label = c.label?.trim();
+        if (!label || SKIP_LOWER.has(label.toLowerCase())) continue;
+        if (label.toLowerCase().includes('колір')) continue;
+        if (SKIP_VALUES[label]?.has(c.value?.trim().toLowerCase())) continue;
+        add(label, c.value);
+      }
+    }
+
+    const PRIMARY = new Set(['Бренд', 'Тип', 'Колір']);
+    return [...map.entries()]
+      .filter(([label, vals]) => vals.size > 1 || PRIMARY.has(label))
+      .filter(([, vals]) => vals.size > 0)
+      .sort((a, b) => {
+        const ap = PRIMARY.has(a[0]), bp = PRIMARY.has(b[0]);
+        if (ap !== bp) return ap ? -1 : 1;
+        return b[1].size - a[1].size;
       })
-    );
-    const toNum = (s: string) => parseFloat(s.replace(',', '.').replace(/[^\d.]/g, '') || 'NaN');
-    return Object.entries(map)
-      .filter(([, vals]) => vals.size > 1)
-      .sort((a, b) => b[1].size - a[1].size)
-      .slice(0, 5)
-      .map(([label, vals]) => {
-        const values = [...vals].sort((a, b) => {
+      .slice(0, 8)
+      .map(([label, vals]) => ({
+        label,
+        values: [...vals.values()].sort((a, b) => {
           const na = toNum(a), nb = toNum(b);
           if (!isNaN(na) && !isNaN(nb)) return na - nb;
           return a.localeCompare(b, 'uk');
-        });
-        return { label, values };
-      });
+        }),
+      }));
   }, [catProducts]);
+
+  const isPlasticCat = (filterValues['Тип'] ?? '').toLowerCase().includes('пластифікатор') ||
+    allFilters.find(f => f.label === 'Тип')?.values.some(v => /пластифікатор/i.test(v)) === true &&
+    allFilters.find(f => f.label === 'Тип')?.values.every(v => /пластифікатор/i.test(v)) === true;
+  const plasticIsFrost = (p: ProductFull) => /протиморозн/i.test(p.product_type ?? '');
+  const plasticIsWarm  = (p: ProductFull) => /теплих підлог/i.test(p.product_type ?? '');
 
   const filtered = useMemo(() => {
     let list = products;
     if (matchingSlugs)  list = list.filter(p => matchingSlugs.has(p.category_slug ?? ''));
     if (saleOnly)       list = list.filter(p => p.stock?.price_retail_old != null && (p.stock?.price_retail ?? 0) > 0);
-    if (filterBrand)    list = list.filter(p => p.brand === filterBrand);
     if (isPlasticCat && filterPlasticGroup) {
-      if (filterPlasticGroup === 'frost')     list = list.filter(plasticIsFrost);
-      else if (filterPlasticGroup === 'warm') list = list.filter(plasticIsWarm);
+      if (filterPlasticGroup === 'frost')          list = list.filter(plasticIsFrost);
+      else if (filterPlasticGroup === 'warm')      list = list.filter(plasticIsWarm);
       else if (filterPlasticGroup === 'universal') list = list.filter(p => !plasticIsFrost(p) && !plasticIsWarm(p));
-    } else if (filterType) {
-      list = list.filter(p => p.product_type === filterType);
     }
-    if (filterVolume)    list = list.filter(p => p.volume === filterVolume);
-    if (filterVolumeKg)  list = list.filter(p => p.volume === filterVolumeKg);
-    if (filterColor)    list = list.filter(p => p.color === filterColor);
+    if (filterVolume)   list = list.filter(p => p.volume === filterVolume);
+    if (filterVolumeKg) list = list.filter(p => p.volume === filterVolumeKg);
     if (inStockOnly)    list = list.filter(p => (p.stock?.stock_qty ?? 0) >= 1);
-    for (const [label, val] of Object.entries(filterChars)) {
-      if (val) list = list.filter(p => p.characteristics.some(c => c.label === label && c.value === val));
+    for (const [label, val] of Object.entries(filterValues)) {
+      if (!val) continue;
+      const fv = val.toLowerCase();
+      if (label === 'Бренд')       list = list.filter(p => p.brand.trim().toLowerCase() === fv);
+      else if (label === 'Тип')    list = list.filter(p => (p.product_type ?? '').trim().toLowerCase() === fv);
+      else if (label === 'Колір')  list = list.filter(p => (p.color ?? p.characteristics.find(c => /^колір/i.test(c.label))?.value ?? '').toLowerCase() === fv);
+      else list = list.filter(p => p.characteristics.some(c => c.label === label && c.value.trim().toLowerCase() === fv));
     }
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -300,7 +351,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       );
     }
     return list;
-  }, [products, matchingSlugs, saleOnly, filterBrand, filterType, filterVolume, filterVolumeKg, filterColor, filterChars, inStockOnly, search, filterPlasticGroup, isPlasticCat]);
+  }, [products, matchingSlugs, saleOnly, filterValues, filterVolume, filterVolumeKg, inStockOnly, search, filterPlasticGroup, isPlasticCat]);
 
   const countFor = (slug: string) => {
     const children = (childrenOf[slug] ?? []).map(c => c.slug);
@@ -311,7 +362,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   return (
     <div className="shop-layout">
       {/* Sidebar */}
-      <aside className="shop-sidebar">
+      <aside className="shop-sidebar" ref={sidebarRef}>
         <h3>Категорії</h3>
 
         <div
@@ -348,7 +399,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                         return next;
                       });
                     }
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo(0, 0);
                   }}
                 >
                   <span>{cat.name}</span>
@@ -370,7 +421,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                         onClick={() => {
                           selectCat(selCat === child.slug ? null : child.slug);
                           if (grandchildren.length > 0) setExpandedCats(prev => { const n = new Set(prev); n.has(child.slug) ? n.delete(child.slug) : n.add(child.slug); return n; });
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                          window.scrollTo(0, 0);
                         }}
                       >
                         <span>{child.name}</span>
@@ -416,33 +467,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         <hr className="shop-sidebar__divider" />
         <p className="shop-sidebar__heading">Фільтри</p>
 
-        {brands.length > 0 && (
-          <div className="shop-filter-group">
-            <div className="shop-filter-label">Бренд</div>
-            <select className={'shop-filter-select' + (filterBrand ? ' active' : '')} value={filterBrand} onChange={e => setFilterBrand(e.target.value)}>
-              <option value="">Всі бренди</option>
-              {brands.map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
-          </div>
-        )}
-        {(isPlasticCat || types.length > 0) && (
-          <div className="shop-filter-group">
-            <div className="shop-filter-label">Тип</div>
-            {isPlasticCat ? (
-              <select className={'shop-filter-select' + (filterPlasticGroup ? ' active' : '')} value={filterPlasticGroup} onChange={e => setFilterPlasticGroup(e.target.value)}>
-                <option value="">Всі</option>
-                <option value="universal">Універсальний</option>
-                <option value="frost">Протиморозний</option>
-                <option value="warm">Для теплих підлог</option>
-              </select>
-            ) : (
-              <select className={'shop-filter-select' + (filterType ? ' active' : '')} value={filterType} onChange={e => setFilterType(e.target.value)}>
-                <option value="">Всі</option>
-                {types.map(t => <option key={t} value={t}>{typeLabel(t)}</option>)}
-              </select>
-            )}
-          </div>
-        )}
         {volumesL.length > 0 && (
           <div className="shop-filter-group">
             <div className="shop-filter-label">Об&apos;єм</div>
@@ -461,24 +485,26 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             </select>
           </div>
         )}
-        {colors.length > 0 && (
+        {isPlasticCat && (
           <div className="shop-filter-group">
-            <div className="shop-filter-label">Колір</div>
-            <select className={'shop-filter-select' + (filterColor ? ' active' : '')} value={filterColor} onChange={e => setFilterColor(e.target.value)}>
-              <option value="">Всі кольори</option>
-              {colors.map(c => <option key={c} value={c}>{c}</option>)}
+            <div className="shop-filter-label">Тип</div>
+            <select className={'shop-filter-select' + (filterPlasticGroup ? ' active' : '')} value={filterPlasticGroup} onChange={e => setFilterPlasticGroup(e.target.value)}>
+              <option value="">Всі</option>
+              <option value="universal">Універсальний</option>
+              <option value="frost">Протиморозний</option>
+              <option value="warm">Для теплих підлог</option>
             </select>
           </div>
         )}
-        {charOptions.map(({ label, values }) => (
+        {allFilters.filter(f => !(isPlasticCat && f.label === 'Тип')).map(({ label, values }) => (
           <div key={label} className="shop-filter-group">
             <div className="shop-filter-label">{label}</div>
             <select
-              className={'shop-filter-select' + (filterChars[label] ? ' active' : '')}
-              value={filterChars[label] ?? ''}
-              onChange={e => setFilterChars(prev => ({ ...prev, [label]: e.target.value }))}
+              className={'shop-filter-select' + (filterValues[label] ? ' active' : '')}
+              value={filterValues[label] ?? ''}
+              onChange={e => setFilterValues(prev => ({ ...prev, [label]: e.target.value }))}
             >
-              <option value="">Всі</option>
+              <option value="">{label === 'Колір' ? 'Всі кольори' : label === 'Бренд' ? 'Всі бренди' : 'Всі'}</option>
               {values.map(v => <option key={v} value={v}>{v}</option>)}
             </select>
           </div>

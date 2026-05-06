@@ -44,6 +44,9 @@ export default function ProductForm({ product, categories, isNew }: Props) {
   const [packQty, setPackQty] = useState(product?.pack_qty ?? 1);
   const [minOrder, setMinOrder] = useState(product?.min_order ?? 1);
   const [description, setDescription] = useState(product?.description ?? '');
+  const [descriptionRu, setDescriptionRu] = useState(product?.description_ru ?? '');
+  const [descriptionFull, setDescriptionFull] = useState(product?.description_full ?? '');
+  const [descriptionFullRu, setDescriptionFullRu] = useState(product?.description_full_ru ?? '');
   const [isActive, setIsActive] = useState(product?.is_active ?? true);
   const [sortOrder, setSortOrder] = useState(product?.sort_order ?? 0);
 
@@ -169,6 +172,9 @@ export default function ProductForm({ product, categories, isNew }: Props) {
             pack_qty: packQty,
             min_order: minOrder,
             description: description || null,
+            description_ru: descriptionRu || null,
+            description_full: descriptionFull || null,
+            description_full_ru: descriptionFullRu || null,
             is_active: isActive,
             sort_order: sortOrder,
             img_type: imgType,
@@ -323,14 +329,46 @@ export default function ProductForm({ product, categories, isNew }: Props) {
           </div>
         </div>
 
-        <div style={{ marginBottom: '16px' }}>
-          <label style={labelStyle}>Опис</label>
-          <textarea
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            rows={3}
-            style={{ ...inputStyle, height: 'auto', padding: '12px 14px', resize: 'vertical' }}
-          />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+          <div>
+            <label style={labelStyle}>Опис (укр)</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              rows={3}
+              style={{ ...inputStyle, height: 'auto', padding: '12px 14px', resize: 'vertical' }}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Опис (рус)</label>
+            <textarea
+              value={descriptionRu}
+              onChange={e => setDescriptionRu(e.target.value)}
+              rows={3}
+              style={{ ...inputStyle, height: 'auto', padding: '12px 14px', resize: 'vertical' }}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+          <div>
+            <label style={labelStyle}>Повний опис (укр)</label>
+            <textarea
+              value={descriptionFull}
+              onChange={e => setDescriptionFull(e.target.value)}
+              rows={5}
+              style={{ ...inputStyle, height: 'auto', padding: '12px 14px', resize: 'vertical' }}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Повний опис (рус)</label>
+            <textarea
+              value={descriptionFullRu}
+              onChange={e => setDescriptionFullRu(e.target.value)}
+              rows={5}
+              style={{ ...inputStyle, height: 'auto', padding: '12px 14px', resize: 'vertical' }}
+            />
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>

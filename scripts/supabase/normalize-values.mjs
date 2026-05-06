@@ -273,6 +273,22 @@ const TYPE_BY_CAT = {
   'клейова суміш для кріплення та захисту теплоізоляційних плит': 'Клей для теплоізоляції',
 };
 
+// ── Нормалізація products.product_type ───────────────────────────────────────
+const PRODUCT_TYPE_MAP = {
+  'рідина':             'Рідкий',
+  'рідка':              'Рідкий',
+  'рідке':              'Рідкий',
+  'рідкий':             'Рідкий',
+  'паста':              'Паста',
+  'пастоподібний':      'Паста',
+  'пастоподібна':       'Паста',
+  'порошок':            'Порошок',
+  'сухий':              'Порошок',
+  'суха суміш':         'Суха суміш',
+  'гель':               'Гель',
+  'пінополіуретан':     'Піна',
+};
+
 // ── Стан (рідкі цвяхи, клеї) ─────────────────────────────────────────────────
 const STAN_MAP = {
   'паста':                   'Паста',
@@ -290,6 +306,8 @@ const STAN_MAP = {
   'сухе порошкоподібне':     'Порошок',
   'рідкий':                  'Рідкий',
   'рідка':                   'Рідкий',
+  'рідина':                  'Рідкий',
+  'рідке':                   'Рідкий',
   'гель':                    'Гель',
 };
 
@@ -427,7 +445,7 @@ async function main() {
   // 2. Завантажуємо products щоб знати category_slug
   const { data: products, error: pe } = await supabase
     .from('products')
-    .select('sku, category_slug, color');
+    .select('sku, category_slug, color, product_type');
   if (pe) { console.error('❌', pe.message); process.exit(1); }
   const catBySkу = Object.fromEntries(products.map(p => [p.sku, p.category_slug ?? '']));
   const colorBySku = Object.fromEntries(products.map(p => [p.sku, p.color ?? '']));
@@ -483,6 +501,25 @@ async function main() {
     else if (ln === 'призначення')              newVal = PURPOSE_MAP[norm(val)] ?? val;
     else if (ln === 'стан' || ln === 'стан клею' || ln === 'стан (консистенція)' || ln === 'консистенція')
                                                 newVal = STAN_MAP[norm(val)] ?? val;
+    else if (ln === 'ступінь блиску' || ln === 'блиск') {
+      const GLOSS_MAP = {
+        'матова':             'Матовий',
+        'матове':             'Матовий',
+        'матовий':            'Матовий',
+        'глянцева':           'Глянцевий',
+        'глянцеве':           'Глянцевий',
+        'глянцевий':          'Глянцевий',
+        'напівглянцева':      'Напівглянцевий',
+        'напівглянцеве':      'Напівглянцевий',
+        'напівглянцевий':     'Напівглянцевий',
+        'напівматова':        'Напівматовий',
+        'напівматове':        'Напівматовий',
+        'напівматовий':       'Напівматовий',
+        'шовковисто-матова':  'Шовковисто-матовий',
+        'шовковисто-матове':  'Шовковисто-матовий',
+      };
+      newVal = GLOSS_MAP[norm(val)] ?? val;
+    }
     else if (ln === 'тип клею')                 newVal = GLUE_TYPE_MAP[norm(val)] ?? val;
     else if (ln === 'спосіб нанесення' && (cat.includes('mastyky') || cat.includes('bitum')))
                                                 newVal = MASTIC_APPLICATION_MAP[norm(val)] ?? APPLICATION_MAP[norm(val)] ?? val;
@@ -523,10 +560,21 @@ async function main() {
     }
   }
 
+  // 6. Нормалізація products.product_type
+  const typeUpdates = [];
+  for (const p of products) {
+    if (!p.product_type) continue;
+    const mapped = PRODUCT_TYPE_MAP[p.product_type.toLowerCase().trim()];
+    if (mapped && mapped !== p.product_type) {
+      typeUpdates.push({ sku: p.sku, oldType: p.product_type, newType: mapped });
+    }
+  }
+
   // ── Звіт ──────────────────────────────────────────────────────────────────
-  console.log(`\nВидалень (Не вказано тощо): ${toDelete.length}`);
-  console.log(`Змін у характеристиках:     ${toUpdate.length}`);
-  console.log(`Змін у products.color:      ${colorUpdates.length}`);
+  console.log(`\nВидалень (Не вказано тощо):   ${toDelete.length}`);
+  console.log(`Змін у характеристиках:       ${toUpdate.length}`);
+  console.log(`Змін у products.color:        ${colorUpdates.length}`);
+  console.log(`Змін у products.product_type: ${typeUpdates.length}`);
 
   if (DRY) {
     console.log('\n── Видалення (перші 20) ──');
@@ -540,6 +588,10 @@ async function main() {
     console.log('\n── Зміни у color ──');
     colorUpdates.slice(0, 10).forEach(u =>
       console.log(`  [${u.sku}] "${u.oldColor}" → "${u.newColor}"`)
+    );
+    console.log('\n── Зміни у product_type ──');
+    typeUpdates.forEach(u =>
+      console.log(`  [${u.sku}] "${u.oldType}" → "${u.newType}"`)
     );
     console.log('\n🔍 DRY RUN — дані не змінено.\n');
     return;
@@ -586,6 +638,18 @@ async function main() {
     else { cdone++; }
   }
   console.log(`   ${cdone}/${colorUpdates.length} ✓`);
+
+  console.log('\n✏️  Оновлюю products.product_type...');
+  let tdone = 0;
+  for (const u of typeUpdates) {
+    const { error } = await supabase
+      .from('products')
+      .update({ product_type: u.newType })
+      .eq('sku', u.sku);
+    if (error) console.error(`❌ [${u.sku}]:`, error.message);
+    else { tdone++; }
+  }
+  console.log(`   ${tdone}/${typeUpdates.length} ✓`);
 
   console.log('\n✅ Нормалізацію завершено!\n');
 }

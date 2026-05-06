@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import ProductsTable from './ProductsTable';
 import Link from 'next/link';
-import { Plus, Upload } from 'lucide-react';
+import { Plus, Upload, Download } from 'lucide-react';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,6 +41,17 @@ export default async function AdminProductsPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
+          <a
+            href="/api/admin/products/export"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              height: '40px', padding: '0 18px', borderRadius: '10px',
+              background: '#fff', border: '1px solid #E2E8F0', color: '#475569',
+              fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+            }}
+          >
+            <Download size={16} /> Експорт
+          </a>
           <Link
             href="/admin/products/import"
             style={{

@@ -7,6 +7,10 @@ export default function BackButton({ breadcrumbId }: { breadcrumbId: string }) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
     const el = document.getElementById(breadcrumbId);
     if (!el) return;
 

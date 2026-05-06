@@ -53,15 +53,20 @@ async function main() {
 
   // ── Аркуш "Товари" ─────────────────────────────────────────────────────────
 
+  // Збираємо всі унікальні назви характеристик, відсортовані за частотою
+  const labelFreq = {};
+  products.forEach(p => {
+    const chars = Array.isArray(p.characteristics) ? p.characteristics : [];
+    chars.forEach(c => { labelFreq[c.label] = (labelFreq[c.label] ?? 0) + 1; });
+  });
+  const uniqueLabels = Object.entries(labelFreq)
+    .sort((a, b) => b[1] - a[1])
+    .map(([label]) => label);
+
   const rows = products.map(p => {
     const stock = Array.isArray(p.stock) ? p.stock[0] : p.stock;
     const chars = Array.isArray(p.characteristics) ? p.characteristics : [];
     chars.sort((a, b) => a.sort_order - b.sort_order);
-
-    const parentSlug = catParent[p.category_slug] ?? p.category_slug;
-    const catLabel   = p.category_slug
-      ? `${catName[parentSlug] ?? parentSlug} › ${catParent[p.category_slug] ? catName[p.category_slug] ?? p.category_slug : ''}`
-      : '';
 
     const row = {
       'SKU':                    p.sku ?? '',
@@ -69,7 +74,6 @@ async function main() {
       'Назва':                  p.name ?? '',
       'Бренд':                  p.brand ?? '',
       'Категорія (slug)':       p.category_slug ?? '',
-      'Категорія (назва)':      catLabel.replace(/ › $/, ''),
       "Об'єм / Вага":           p.volume ?? '',
       'Тип матеріалу':          p.product_type ?? '',
       'Колір':                  p.color ?? '',
@@ -96,11 +100,10 @@ async function main() {
       'Порядок сортування':     p.sort_order ?? 0,
     };
 
-    // Характеристики (до 10)
-    for (let i = 0; i < 10; i++) {
-      const c = chars[i];
-      row[`Характеристика ${i + 1}`] = c ? `${c.label}|${c.value}` : '';
-    }
+    // Характеристики — кожна окремою колонкою
+    const charMap = {};
+    chars.forEach(c => { charMap[c.label] = c.value; });
+    uniqueLabels.forEach(label => { row[label] = charMap[label] ?? ''; });
 
     return row;
   });
@@ -108,11 +111,12 @@ async function main() {
   const wsProducts = XLSX.utils.json_to_sheet(rows);
 
   // Ширина колонок
-  const colWidths = [
-    12, 22, 55, 15, 25, 35, 12, 18, 12, 14, 18,
-    14, 12, 12, 14, 50, 35, 10, 14, 14, 16, 18,
-    25, 25, 25, 25, 25, 25, 25, 25, 25, 25,
+  const standardWidths = [
+    12, 22, 55, 15, 25, 12, 18, 12, 14, 18,
+    14, 16, 16, 18, 18, 16, 12, 12,
+    40, 40, 60, 60, 45, 10, 18, 18, 16, 18, 12,
   ];
+  const colWidths = [...standardWidths, ...uniqueLabels.map(() => 22)];
   wsProducts['!cols'] = colWidths.map(w => ({ wch: w }));
 
   // Жирний заголовок
@@ -170,7 +174,7 @@ async function main() {
     { 'Поле': 'Тип SVG',               'Опис': 'Тип генерованого зображення',                  'Приклад': 'tube / canister' },
     { 'Поле': 'SVG рядок 1',           'Опис': 'Перший рядок тексту на заглушці',              'Приклад': 'LACRYSIL' },
     { 'Поле': 'SVG рядок 2',           'Опис': 'Другий рядок тексту на заглушці',              'Приклад': 'UNIVERSAL' },
-    { 'Поле': 'Характеристика N',      'Опис': 'Формат: Назва|Значення',                       'Приклад': 'Температура застосування|-10°C...+40°C' },
+    { 'Поле': '<Назва характеристики>', 'Опис': 'Колонки після стандартних — характеристики товару. Порожня клітинка = не відображається на сайті. Нова колонка = нова характеристика.', 'Приклад': 'Матеріал → Силіконовий' },
   ];
 
   const wsHelp = XLSX.utils.json_to_sheet(helpRows);

@@ -81,9 +81,9 @@ export default function RelatedCarousel({ products, retail = false }: { products
             const packFrac    = relMinOrder / p.pack_qty;
             const packStr     = packFrac % 1 === 0 ? `${packFrac}` : packFrac.toFixed(1);
             const specs: { label: string; value: string }[] = [];
-            if (p.volume)       specs.push({ label: "Об'єм",  value: p.volume });
-            if (p.color)        specs.push({ label: 'Колір',  value: p.color });
-            if (p.product_type) specs.push({ label: 'Тип',    value: p.product_type });
+            const colorVal = p.color ?? p.characteristics.find(c => /^Колір/i.test(c.label))?.value ?? null;
+            if (p.volume) specs.push({ label: /кг|г$/.test(p.volume) ? 'Вага' : "Об'єм", value: p.volume });
+            if (colorVal) specs.push({ label: 'Колір', value: colorVal });
 
             return (
               <div
@@ -92,7 +92,7 @@ export default function RelatedCarousel({ products, retail = false }: { products
                 style={{ flex: `0 0 calc((100% - ${(VISIBLE - 1) * GAP}px) / ${VISIBLE})` }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px', marginBottom: '10px' }}>
-                  <Link href={`/product/${p.sku}${retail ? '?from=shop' : ''}`} className="pc-name" style={{ textDecoration: 'none', color: 'inherit' }}>{p.name}</Link>
+                  <Link href={`/product/${p.sku}${retail ? '?from=shop' : ''}`} className="pc-name" style={{ textDecoration: 'none', color: 'inherit' }} title={p.name}>{p.name}</Link>
                   {isSale && <span style={{ flexShrink: 0, background: '#EF4444', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '5px', whiteSpace: 'nowrap' }}>−{Math.round((1 - relPrice / relPriceOld!) * 100)}%</span>}
                 </div>
 
@@ -119,7 +119,7 @@ export default function RelatedCarousel({ products, retail = false }: { products
 
                 {specs.length > 0 && (
                   <div className="pc-tags">
-                    {specs.slice(0, 3).map(s => <span key={s.label} className="pc-tag">{s.value}</span>)}
+                    {specs.slice(0, 3).map(s => <span key={s.label} className="pc-tag" title={`${s.label}: ${s.value}`}>{s.label}: {s.value}</span>)}
                     {specs.length > 3 && <span className="pc-tag" style={{ color: '#94A3B8' }}>+{specs.length - 3}</span>}
                   </div>
                 )}
