@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Footer from '../components/Footer';
 import ShopLoader from './ShopLoader';
 import { getCategoriesCached } from '../../lib/supabase';
+import { getCategoryMeta } from '../../lib/category-descriptions';
 import './shop.css';
 
 const BASE = 'https://fixline.com.ua';
@@ -87,6 +88,21 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
             {brand && <><span>/</span><span style={{ color: '#475569' }}>{brand}</span></>}
             {sale === '1' && <><span>/</span><span style={{ color: '#475569' }}>Акції</span></>}
           </nav>
+          {cat && (() => {
+            const meta = getCategoryMeta(cat.slug);
+            return meta ? (
+              <div style={{ marginBottom: '20px', padding: '16px 20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
+                  {meta.description}
+                </p>
+                {meta.seoText && (
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7, margin: '8px 0 0' }}>
+                    {meta.seoText}
+                  </p>
+                )}
+              </div>
+            ) : null;
+          })()}
           <ShopLoader initialCategory={category} initialSaleOnly={sale === '1'} initialBrand={brand} />
         </div>
       </div>

@@ -1,0 +1,85 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import Footer from '../components/Footer';
+import { ARTICLES } from '../../lib/blog';
+import { BookOpen, Clock, ArrowRight } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'Блог | Поради щодо будівельної хімії — FIXLINE',
+  description: 'Корисні статті про герметики, монтажну піну, клеї та ґрунтовки. Як вибрати, як використовувати, типові помилки та поради від практиків.',
+  alternates: { canonical: 'https://fixline.com.ua/blog' },
+  openGraph: {
+    title: 'Блог FIXLINE — поради щодо будівельної хімії',
+    description: 'Статті про герметики, монтажну піну та клеї: вибір, застосування, типові помилки.',
+    url: 'https://fixline.com.ua/blog',
+    siteName: 'FIXLINE',
+    locale: 'uk_UA',
+  },
+};
+
+export default function BlogPage() {
+  return (
+    <>
+      <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
+        <div style={{ maxWidth: '860px', margin: '0 auto', padding: '48px 32px 64px' }}>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+            <BookOpen size={28} color="#4880B8" strokeWidth={1.8} />
+            <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+              Блог
+            </h1>
+          </div>
+          <p style={{ fontSize: '15px', color: 'var(--text-muted)', marginBottom: '40px' }}>
+            Поради, порівняння та відповіді на часті питання щодо будівельної хімії
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {ARTICLES.map(article => (
+              <Link
+                key={article.slug}
+                href={`/blog/${article.slug}`}
+                style={{ textDecoration: 'none' }}
+              >
+                <div style={{
+                  background: 'var(--bg-card)', border: '1px solid var(--border)',
+                  borderRadius: '14px', padding: '24px 28px',
+                  transition: 'box-shadow 0.2s, transform 0.2s',
+                }}
+                  className="blog-card"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                    <span style={{
+                      fontSize: '12px', fontWeight: 600, padding: '3px 10px', borderRadius: '20px',
+                      background: '#EFF6FF', color: '#4880B8',
+                    }}>
+                      {article.category}
+                    </span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Clock size={12} /> {article.readTime} хв читання
+                    </span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                      {new Date(article.date).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px', lineHeight: 1.4 }}>
+                    {article.title}
+                  </h2>
+                  <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 14px' }}>
+                    {article.description}
+                  </p>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#4880B8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    Читати статтю <ArrowRight size={14} />
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+      <Footer />
+      <style>{`
+        .blog-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.1); transform: translateY(-2px); }
+      `}</style>
+    </>
+  );
+}

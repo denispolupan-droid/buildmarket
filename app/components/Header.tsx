@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, LayoutGrid, Phone, User, ShoppingCart, LogOut, ChevronDown, Menu, X, Heart, Sun, Moon, Store, PackageCheck } from 'lucide-react';
+import { Home, LayoutGrid, Phone, User, ShoppingCart, LogOut, ChevronDown, Menu, X, Heart, Sun, Moon, Store, PackageCheck, BookOpen } from 'lucide-react';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
@@ -16,6 +16,7 @@ const NAV = [
   { href: '/shop',      icon: Store,        label: 'Магазин'    },
   { href: '/catalog',   icon: LayoutGrid,   label: 'Опт'        },
   { href: '/dropship',  icon: PackageCheck, label: 'Дропшипінг' },
+  { href: '/blog',      icon: BookOpen,     label: 'Блог'       },
   { href: '/contacts',  icon: Phone,        label: 'Контакти'   },
 ];
 
