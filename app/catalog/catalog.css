@@ -127,36 +127,36 @@
 .empty-state p { font-size: 14px; color: #94A3B8; }
 
 /* ── Dark theme overrides ── */
-[data-theme="dark"] .sidebar { background: #1E293B; border-color: #334155; }
-[data-theme="dark"] .sidebar-divider { border-color: #334155; }
-[data-theme="dark"] .sidebar-heading { color: #F1F5F9; }
-[data-theme="dark"] .cat-item { color: #94A3B8; }
-[data-theme="dark"] .cat-item:hover { background: #0F172A; color: #F1F5F9; }
-[data-theme="dark"] .cat-item.active { background: #1E3A5F; color: #93C5FD; }
-[data-theme="dark"] .filter-label { color: #94A3B8; }
-[data-theme="dark"] .filter-select { background: #0F172A; border-color: #334155; color: #F1F5F9; }
-[data-theme="dark"] .filter-select.active { background: #1E3A5F; border-color: #3B82F6; color: #93C5FD; }
-[data-theme="dark"] .filter-check { color: #94A3B8; }
+[data-theme="dark"] .sidebar { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .sidebar-divider { border-color: var(--border); }
+[data-theme="dark"] .sidebar-heading { color: var(--text-primary); }
+[data-theme="dark"] .cat-item { color: var(--text-secondary); }
+[data-theme="dark"] .cat-item:hover { background: var(--bg-soft); color: var(--text-primary); }
+[data-theme="dark"] .cat-item.active { background: #1E3A5F44; color: #93C5FD; }
+[data-theme="dark"] .filter-label { color: var(--text-secondary); }
+[data-theme="dark"] .filter-select { background: var(--bg-soft); border-color: var(--border); color: var(--text-primary); }
+[data-theme="dark"] .filter-select.active { background: #1E3A5F44; border-color: #4880B8; color: #93C5FD; }
+[data-theme="dark"] .filter-check { color: var(--text-secondary); }
 
-[data-theme="dark"] .catalog-title { color: #F1F5F9; }
-[data-theme="dark"] .catalog-count { color: #64748B; }
-[data-theme="dark"] .action-btn { background: #1E293B; border-color: #334155; color: #94A3B8; }
-[data-theme="dark"] .action-btn:hover { background: #0F172A; }
+[data-theme="dark"] .catalog-title { color: var(--text-primary); }
+[data-theme="dark"] .catalog-count { color: var(--text-muted); }
+[data-theme="dark"] .action-btn { background: var(--bg-card); border-color: var(--border); color: var(--text-secondary); }
+[data-theme="dark"] .action-btn:hover { background: var(--bg-soft); }
 [data-theme="dark"] .action-btn.excel { background: #14532D; border-color: #166534; color: #4ADE80; }
 [data-theme="dark"] .action-btn.excel:hover { background: #166534; }
 
-[data-theme="dark"] .search-bar input { background: #1E293B; border-color: #334155; color: #F1F5F9; }
-[data-theme="dark"] .search-bar input::placeholder { color: #64748B; }
+[data-theme="dark"] .search-bar input { background: var(--bg-card); border-color: var(--border); color: var(--text-primary); }
+[data-theme="dark"] .search-bar input::placeholder { color: var(--text-muted); }
 
-[data-theme="dark"] .product-table-wrap { background: #1E293B; border-color: #334155; }
-[data-theme="dark"] .product-table th { background: #162032 !important; border-color: #334155; color: #64748B; }
-[data-theme="dark"] .product-table td { background: #1E293B; border-color: #334155; }
+[data-theme="dark"] .product-table-wrap { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .product-table th { background: var(--bg-soft) !important; border-color: var(--border); color: var(--text-muted); }
+[data-theme="dark"] .product-table td { background: var(--bg-card); border-color: var(--border); }
 [data-theme="dark"] .product-table tr:last-child td { border-bottom: none; }
-[data-theme="dark"] .product-table tr:hover td { background: #1A2D45; }
+[data-theme="dark"] .product-table tr:hover td { background: var(--bg-soft); }
 
-[data-theme="dark"] .cell-photo { background: #0F172A; }
-[data-theme="dark"] .cell-meta { color: #64748B; }
-[data-theme="dark"] .cell-name { color: #F1F5F9; }
+[data-theme="dark"] .cell-photo { background: var(--bg-soft); }
+[data-theme="dark"] .cell-meta { color: var(--text-muted); }
+[data-theme="dark"] .cell-name { color: var(--text-primary); }
 [data-theme="dark"] .cell-char { background: #0F172A; color: #94A3B8; }
 [data-theme="dark"] .cell-text { color: #94A3B8; }
 [data-theme="dark"] .badge-type { background: #1E293B; color: #94A3B8; }
