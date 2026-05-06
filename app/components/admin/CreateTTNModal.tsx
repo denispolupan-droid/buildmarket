@@ -15,6 +15,7 @@ type WeightLine = { sku: string; volume: string | null; weightKg: number; qty: n
 
 type OrderSnap = {
   id: string;
+  mergedIds?: string[];
   contact: string;
   phone: string;
   total_price: number;
@@ -226,6 +227,17 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
 
     const data = await res.json();
     if (!res.ok || data.error) { setError(data.error ?? 'Помилка'); setSubmitting(false); return; }
+
+    // For merged orders: save TTN to all order IDs
+    const idsToUpdate = order.mergedIds ?? [order.id];
+    await Promise.all(idsToUpdate.map(id =>
+      fetch(`/api/admin/orders/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tracking_number: data.ttn, status: 'shipped' }),
+      })
+    ));
+
     onCreated(data.ttn);
   }
 

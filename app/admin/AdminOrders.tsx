@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, Merge } from 'lucide-react';
 import CreateTTNModal from '../components/admin/CreateTTNModal';
+import { getSupabaseBrowser } from '../../lib/supabase-browser';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number };
 
@@ -62,6 +63,23 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
   const [syncing,        setSyncing]        = useState(false);
   const [syncResult,     setSyncResult]     = useState<{ updated: number; checked: number } | null>(null);
 
+  // Edit order items
+  const [editingId,   setEditingId]   = useState<string | null>(null);
+  const [editItems,   setEditItems]   = useState<OrderItem[]>([]);
+  const [editSaving,  setEditSaving]  = useState(false);
+  const [addName,     setAddName]     = useState('');
+  const [addQty,      setAddQty]      = useState(1);
+  const [addPrice,    setAddPrice]    = useState('');
+  const [addSku,      setAddSku]      = useState('');
+  const [prodSearch,  setProdSearch]  = useState('');
+  const [prodResults, setProdResults] = useState<{sku:string;name:string;brand:string;price:number}[]>([]);
+  const [prodOpen,    setProdOpen]    = useState(false);
+  const prodRef = useRef<HTMLDivElement>(null);
+
+  // Merge orders
+  const [selectedIds,    setSelectedIds]    = useState<Set<string>>(new Set());
+  const [mergeModal,     setMergeModal]     = useState<Parameters<typeof CreateTTNModal>[0]['order'] | null>(null);
+
   const SYNC_KEY = 'lastDeliverySync';
   const SYNC_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 години
 
@@ -104,6 +122,90 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
     setLoading(null);
   }
 
+  // Product search for add-item
+  useEffect(() => {
+    if (prodSearch.length < 2) { setProdResults([]); return; }
+    const t = setTimeout(async () => {
+      const sb = getSupabaseBrowser();
+      const { data } = await sb.from('products')
+        .select('sku, name, brand, stock:product_stock(price_unit)')
+        .or(`name.ilike.%${prodSearch}%,sku.ilike.%${prodSearch}%`)
+        .limit(6);
+      setProdResults((data ?? []).map((p: { sku: string; name: string; brand: string; stock: { price_unit: number }[] | null }) => ({
+        sku: p.sku, name: p.name, brand: p.brand,
+        price: p.stock?.[0]?.price_unit ?? 0,
+      })));
+      setProdOpen(true);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [prodSearch]);
+
+  useEffect(() => {
+    function h(e: MouseEvent) {
+      if (prodRef.current && !prodRef.current.contains(e.target as Node)) setProdOpen(false);
+    }
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  function startEdit(order: Order) {
+    setEditingId(order.id);
+    setEditItems(order.items.map(i => ({ ...i })));
+    setAddName(''); setAddQty(1); setAddPrice(''); setAddSku(''); setProdSearch('');
+  }
+
+  async function saveEdit(orderId: string) {
+    setEditSaving(true);
+    const total = editItems.reduce((s, i) => s + i.price * i.qty, 0);
+    await fetch(`/api/admin/orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: editItems, total_price: total }),
+    });
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, items: editItems, total_price: total } : o));
+    setEditingId(null);
+    setEditSaving(false);
+  }
+
+  function addItem() {
+    if (!addName.trim() || addQty < 1) return;
+    setEditItems(prev => [
+      ...prev,
+      { sku: addSku || `MANUAL-${Date.now()}`, name: addName.trim(), brand: '', qty: addQty, price: parseFloat(addPrice) || 0 },
+    ]);
+    setAddName(''); setAddQty(1); setAddPrice(''); setAddSku(''); setProdSearch('');
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function openMergeModal() {
+    const sel = orders.filter(o => selectedIds.has(o.id));
+    if (sel.length < 2) return;
+    const primary = sel[0];
+    const mergedItems = sel.flatMap(o => o.items);
+    const totalPrice = sel.reduce((s, o) => s + o.total_price, 0);
+    const totalQty   = sel.reduce((s, o) => s + o.items.reduce((sq, i) => sq + i.qty, 0), 0);
+    setMergeModal({
+      id: primary.id,
+      mergedIds: sel.map(o => o.id),
+      contact: primary.contact,
+      phone: primary.phone,
+      total_price: totalPrice,
+      payment_type: primary.payment_type,
+      total_qty: totalQty,
+      items: mergedItems.map(i => ({ sku: i.sku, qty: i.qty, name: i.name })),
+      delivery_city_ref: primary.delivery_city_ref,
+      delivery_city_name: primary.delivery_city_name,
+      delivery_warehouse_ref: primary.delivery_warehouse_ref,
+    });
+  }
+
   async function toggleFlag(id: string, field: 'payment_confirmed' | 'callback_done', value: boolean) {
     await fetch(`/api/admin/orders/${id}`, {
       method: 'PATCH',
@@ -130,6 +232,36 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
 
   return (
     <>
+      {/* Merge bar */}
+      {selectedIds.size >= 2 && (
+        <div style={{
+          position: 'sticky', top: '52px', zIndex: 50,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 20px', marginBottom: '16px',
+          background: '#1E3A5F', borderRadius: '12px',
+          boxShadow: '0 4px 20px rgba(30,58,95,0.35)',
+        }}>
+          <span style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>
+            Вибрано замовлень: {selectedIds.size} · Сума: {orders.filter(o => selectedIds.has(o.id)).reduce((s, o) => s + o.total_price, 0).toFixed(2)} грн
+          </span>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => setSelectedIds(new Set())} style={{
+              height: '34px', padding: '0 14px', borderRadius: '8px',
+              border: '1px solid rgba(255,255,255,0.2)', background: 'transparent',
+              color: '#fff', fontSize: '13px', cursor: 'pointer',
+            }}>Скасувати</button>
+            <button onClick={openMergeModal} style={{
+              height: '34px', padding: '0 16px', borderRadius: '8px',
+              border: 'none', background: '#fff', color: '#1E3A5F',
+              fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '6px',
+            }}>
+              <Truck size={14} /> Об'єднати в ТТН
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Filter tabs + sync button */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', gap: '12px', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -216,6 +348,18 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
                   flexWrap: 'wrap', gap: '8px',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {/* Checkbox for merge */}
+                    <div
+                      onClick={() => toggleSelect(order.id)}
+                      style={{
+                        width: '18px', height: '18px', borderRadius: '5px', flexShrink: 0, cursor: 'pointer',
+                        border: `2px solid ${selectedIds.has(order.id) ? '#1E3A5F' : '#CBD5E1'}`,
+                        background: selectedIds.has(order.id) ? '#1E3A5F' : '#fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                    >
+                      {selectedIds.has(order.id) && <Check size={11} color="#fff" strokeWidth={3} />}
+                    </div>
                     <span style={{ fontSize: '15px', fontWeight: 800, color: '#0F172A' }}>#{short}</span>
                     <span style={{ fontSize: '12px', color: '#94A3B8' }}>{date}</span>
                     <span style={{
@@ -225,9 +369,23 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
                       {status.label}
                     </span>
                   </div>
-                  <span style={{ fontSize: '16px', fontWeight: 800, color: '#1E3A5F' }}>
-                    {order.total_price.toFixed(2)} грн
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '16px', fontWeight: 800, color: '#1E3A5F' }}>
+                      {order.total_price.toFixed(2)} грн
+                    </span>
+                    <button
+                      onClick={() => editingId === order.id ? setEditingId(null) : startEdit(order)}
+                      style={{
+                        height: '28px', padding: '0 10px', borderRadius: '7px', fontSize: '12px', fontWeight: 600,
+                        border: `1.5px solid ${editingId === order.id ? '#EF4444' : '#E2E8F0'}`,
+                        background: editingId === order.id ? '#FEF2F2' : '#fff',
+                        color: editingId === order.id ? '#EF4444' : '#475569',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
+                      }}
+                    >
+                      {editingId === order.id ? <><X size={11} /> Скасувати</> : <><Pencil size={11} /> Редагувати</>}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="admin-order-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0' }}>
@@ -247,7 +405,82 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
                       <div style={{ fontSize: '12px', color: '#94A3B8' }}>{order.email}</div>
                     </div>
 
-                    <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: '12px' }}>
+                    {editingId === order.id ? (
+                      /* ── Edit mode ── */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {editItems.map((item, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                            <span style={{ flex: 1, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ color: '#94A3B8', marginRight: '4px' }}>{item.brand}</span>{item.name}
+                            </span>
+                            <input
+                              type="number" min={1} value={item.qty}
+                              onChange={e => setEditItems(prev => prev.map((it, i) => i === idx ? { ...it, qty: Math.max(1, parseInt(e.target.value) || 1) } : it))}
+                              style={{ width: '46px', height: '26px', border: '1px solid #E2E8F0', borderRadius: '6px', textAlign: 'center', fontSize: '12px', outline: 'none' }}
+                            />
+                            <span style={{ color: '#64748B', width: '70px', textAlign: 'right', flexShrink: 0 }}>
+                              {(item.price * item.qty).toFixed(0)} грн
+                            </span>
+                            <button onClick={() => setEditItems(prev => prev.filter((_, i) => i !== idx))}
+                              style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#EF4444', padding: '2px', flexShrink: 0, display: 'flex' }}>
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))}
+
+                        {/* Add item */}
+                        <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: '8px', marginTop: '4px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', marginBottom: '6px', textTransform: 'uppercase' }}>Додати товар</div>
+                          <div ref={prodRef} style={{ position: 'relative', marginBottom: '6px' }}>
+                            <input
+                              placeholder="Пошук за назвою або SKU..."
+                              value={prodSearch}
+                              onChange={e => setProdSearch(e.target.value)}
+                              onFocus={() => prodResults.length > 0 && setProdOpen(true)}
+                              style={{ width: '100%', height: '28px', padding: '0 8px', border: '1px solid #E2E8F0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                            />
+                            {prodOpen && prodResults.length > 0 && (
+                              <div style={{ position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, zIndex: 50, background: '#fff', border: '1px solid #E2E8F0', borderRadius: '8px', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', maxHeight: '160px', overflowY: 'auto' }}>
+                                {prodResults.map(p => (
+                                  <button key={p.sku} onMouseDown={() => {
+                                    setAddSku(p.sku); setAddName(`${p.brand} ${p.name}`); setAddPrice(String(p.price));
+                                    setProdSearch(`${p.brand} ${p.name}`); setProdOpen(false);
+                                  }} style={{ width: '100%', padding: '6px 10px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #F8FAFC' }}>
+                                    <span style={{ color: '#94A3B8', marginRight: '4px' }}>{p.sku}</span>{p.brand} {p.name}
+                                    {p.price > 0 && <span style={{ color: '#1E3A5F', marginLeft: '6px', fontWeight: 600 }}>{p.price} грн</span>}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 50px 70px auto', gap: '4px', alignItems: 'center' }}>
+                            <input placeholder="Назва товару" value={addName} onChange={e => setAddName(e.target.value)}
+                              style={{ height: '28px', padding: '0 8px', border: '1px solid #E2E8F0', borderRadius: '6px', fontSize: '12px', outline: 'none' }} />
+                            <input placeholder="К-сть" type="number" min={1} value={addQty} onChange={e => setAddQty(parseInt(e.target.value) || 1)}
+                              style={{ height: '28px', padding: '0 6px', border: '1px solid #E2E8F0', borderRadius: '6px', fontSize: '12px', textAlign: 'center', outline: 'none' }} />
+                            <input placeholder="Ціна" type="number" min={0} value={addPrice} onChange={e => setAddPrice(e.target.value)}
+                              style={{ height: '28px', padding: '0 6px', border: '1px solid #E2E8F0', borderRadius: '6px', fontSize: '12px', outline: 'none' }} />
+                            <button onClick={addItem} style={{ height: '28px', width: '28px', borderRadius: '6px', border: 'none', background: '#1E3A5F', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Plus size={13} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Save / total */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #F1F5F9' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: '#1E3A5F' }}>
+                            Разом: {editItems.reduce((s, i) => s + i.price * i.qty, 0).toFixed(2)} грн
+                          </span>
+                          <button onClick={() => saveEdit(order.id)} disabled={editSaving}
+                            style={{ height: '30px', padding: '0 14px', borderRadius: '7px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', opacity: editSaving ? 0.6 : 1 }}>
+                            {editSaving ? '...' : <><Check size={12} /> Зберегти</>}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* ── Normal mode ── */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                       {order.items.map(item => (
                         <div key={item.sku} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
                           <span style={{ color: '#374151' }}>
@@ -258,6 +491,8 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
                           </span>
                         </div>
                       ))}
+                      </div>
+                    )}
                     </div>
                   </div>
 
@@ -453,6 +688,22 @@ export default function AdminOrders({ initialOrders }: { initialOrders: Order[] 
               o.id === ttnModalOrder.id ? { ...o, tracking_number: ttn, status: 'shipped' } : o
             ));
             setTtnModalOrder(null);
+          }}
+        />
+      )}
+
+      {mergeModal && (
+        <CreateTTNModal
+          order={mergeModal}
+          onClose={() => setMergeModal(null)}
+          onCreated={ttn => {
+            const ids = mergeModal.mergedIds ?? [mergeModal.id];
+            setOrders(prev => prev.map(o =>
+              ids.includes(o.id) ? { ...o, tracking_number: ttn, status: 'shipped' } : o
+            ));
+            ids.forEach(id => setTtnValues(prev => ({ ...prev, [id]: ttn })));
+            setSelectedIds(new Set());
+            setMergeModal(null);
           }}
         />
       )}

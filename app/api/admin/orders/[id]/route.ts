@@ -32,6 +32,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (tracking_number !== undefined) update.tracking_number = tracking_number;
   if (payment_confirmed !== undefined) update.payment_confirmed = payment_confirmed;
   if (callback_done !== undefined) update.callback_done = callback_done;
+  if (body.items !== undefined) update.items = body.items;
+  if (body.total_price !== undefined) update.total_price = body.total_price;
 
   const { error } = await serviceClient
     .from('orders')
