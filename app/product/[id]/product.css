@@ -129,11 +129,32 @@
   .product-tabs__tab { padding: 14px 16px; font-size: 14px; }
   .products-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .breadcrumb { flex-wrap: wrap; font-size: 13px; }
+  /* Prevent theme toggle from covering the heart button */
+  .product-info__btn-row { padding-right: 52px; }
 }
 @media (max-width: 480px) {
   .products-grid { grid-template-columns: 1fr; }
   .product-gallery__main { height: 240px; }
   .product-info__price-unit { font-size: 22px; }
+}
+
+/* ── Related carousel mobile ── */
+@media (max-width: 640px) {
+  .related-carousel-arrows { display: none !important; }
+  .related-carousel-track {
+    overflow-x: auto !important;
+    transform: none !important;
+    transition: none !important;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  .related-carousel-track::-webkit-scrollbar { display: none; }
+  .related-carousel-track .product-card {
+    flex: 0 0 calc(50% - 8px) !important;
+    scroll-snap-align: start;
+  }
 }
 
 /* ── Dark theme ── */

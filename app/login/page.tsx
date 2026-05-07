@@ -71,15 +71,17 @@ function LoginForm() {
           Ще немає акаунту?{' '}
           <Link href={`/register${nextUrl !== '/catalog' ? `?next=${nextUrl}` : ''}`}>Зареєструватися</Link>
         </p>
-        <form action={nextUrl !== '/catalog' ? nextUrl : '/cart'} method="get" style={{ margin: '10px 0 0' }}>
-          <button type="submit" style={{
-            width: '100%', padding: '12px', borderRadius: '10px',
-            fontSize: '14px', fontWeight: 600, cursor: 'pointer',
-            border: '1.5px solid #E2E8F0', background: 'transparent', color: '#64748B',
-          }}>
-            Продовжити без реєстрації →
-          </button>
-        </form>
+        {!nextUrl.startsWith('/catalog') && (
+          <form action={nextUrl} method="get" style={{ margin: '10px 0 0' }}>
+            <button type="submit" style={{
+              width: '100%', padding: '12px', borderRadius: '10px',
+              fontSize: '14px', fontWeight: 600, cursor: 'pointer',
+              border: '1.5px solid #E2E8F0', background: 'transparent', color: '#64748B',
+            }}>
+              Продовжити без реєстрації →
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

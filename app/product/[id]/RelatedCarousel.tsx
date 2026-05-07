@@ -54,7 +54,7 @@ export default function RelatedCarousel({ products, retail = false }: { products
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
         <h2 className="section-title" style={{ margin: 0 }}>Схожі товари</h2>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="related-carousel-arrows" style={{ display: 'flex', gap: '8px' }}>
           <button onClick={() => moveTo(cur - 1)} disabled={cur === 0} style={arrowStyle(cur > 0)}>
             <ChevronLeft size={18} strokeWidth={2} />
           </button>
@@ -66,7 +66,7 @@ export default function RelatedCarousel({ products, retail = false }: { products
 
       {/* Track */}
       <div ref={wrapRef} style={{ overflow: 'hidden' }}>
-        <div style={{
+        <div className="related-carousel-track" style={{
           display: 'flex', gap: `${GAP}px`,
           transform: `translateX(-${offset}px)`,
           transition: 'transform 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
