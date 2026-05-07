@@ -36,7 +36,7 @@ function LoginForm() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <Image src="/fixline-logo.png" alt="FIXLINE" width={144} height={36} className="auth-logo" />
+        <Image src="/fixline-logo.svg" alt="FIXLINE" width={182} height={34} className="auth-logo" />
         <h1 className="auth-title">Вхід в особистий кабінет</h1>
         <p className="auth-sub">B2B платформа будівельної хімії</p>
 

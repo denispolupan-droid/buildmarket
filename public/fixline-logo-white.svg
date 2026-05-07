@@ -1,0 +1,22 @@
+<svg viewBox="0 0 182 34" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FIXLINE">
+  <title>FIXLINE</title>
+
+  <!-- Icon: three bars (stylized F) -->
+  <rect x="0" y="0"  width="28" height="6" rx="2" fill="#4880B8"/>
+  <rect x="0" y="10" width="20" height="6" rx="2" fill="#ffffff"/>
+  <rect x="0" y="20" width="13" height="6" rx="2" fill="#ffffff"/>
+
+  <!-- Thin accent line -->
+  <rect x="36" y="2" width="1.5" height="22" rx="1" fill="#4880B8" opacity="0.5"/>
+
+  <!-- Wordmark -->
+  <text
+    x="45"
+    y="26"
+    font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    font-size="24"
+    font-weight="800"
+    letter-spacing="-0.8"
+    fill="#ffffff"
+  >FIXLINE</text>
+</svg>

@@ -37,9 +37,9 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <Image
-              src="/fixline-logo.png" alt="FIXLINE"
-              width={136} height={34}
-              style={{ width: 'auto', height: '34px', display: 'block', marginBottom: '16px', filter: 'brightness(0) invert(1)' }}
+              src="/fixline-logo-white.svg" alt="FIXLINE"
+              width={136} height={26}
+              style={{ width: 'auto', height: '26px', display: 'block', marginBottom: '16px' }}
             />
             <p style={{ fontSize: '14px', color: '#94A3B8', lineHeight: '1.7', maxWidth: '300px', marginBottom: '20px' }}>
               Професійний B2B постачальник будівельної хімії: герметиків, клеїв, монтажних пін та супутніх матеріалів.

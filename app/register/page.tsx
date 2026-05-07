@@ -93,7 +93,7 @@ function RegisterForm() {
     return (
       <div className="auth-page">
         <div className="auth-card" style={{ textAlign: 'center' }}>
-          <Image src="/fixline-logo.png" alt="FIXLINE" width={144} height={36} className="auth-logo" />
+          <Image src="/fixline-logo.svg" alt="FIXLINE" width={182} height={34} className="auth-logo" />
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
           <h1 className="auth-title">Акаунт створено!</h1>
           <p className="auth-sub" style={{ marginBottom: '24px' }}>

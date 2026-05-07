@@ -79,7 +79,7 @@ export default function Header() {
 
           {/* Logo */}
           <Link href="/" onClick={e => handleNavClick(e, '/')} style={{ justifySelf: 'start', flexShrink: 0 }}>
-            <Image src="/fixline-logo.png" alt="FIXLINE" width={216} height={54} priority style={{ width: 'auto', height: '40px', display: 'block' }} />
+            <Image src="/fixline-logo.svg" alt="FIXLINE" width={182} height={34} priority style={{ width: 'auto', height: '34px', display: 'block' }} />
           </Link>
 
           {/* Desktop nav */}

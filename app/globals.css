@@ -85,6 +85,10 @@ a { text-decoration: none; color: inherit; }
 button { cursor: pointer; font-family: inherit; }
 input, select { font-family: inherit; }
 
+/* ── Logo dark mode ── */
+[data-theme="dark"] .logo-dark { fill: #CDD5E0 !important; }
+[data-theme="dark"] .logo-white { fill: #FFFFFF !important; }
+
 /* ── Dark mode global overrides ── */
 [data-theme="dark"] main { background: var(--bg-page); }
 
