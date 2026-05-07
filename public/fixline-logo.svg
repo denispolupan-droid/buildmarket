@@ -1,23 +1,35 @@
-<svg viewBox="0 0 182 34" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FIXLINE">
+<svg viewBox="0 0 168 36" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FIXLINE">
   <title>FIXLINE</title>
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4880B8"/>
+      <stop offset="100%" stop-color="#3DBFB8"/>
+    </linearGradient>
+  </defs>
 
-  <!-- Icon: three bars (stylized F) -->
-  <rect x="0" y="0"  width="28" height="6" rx="2" fill="#4880B8"/>
-  <rect x="0" y="10" width="20" height="6" rx="2" fill="#1E3A5F" class="logo-dark"/>
-  <rect x="0" y="20" width="13" height="6" rx="2" fill="#1E3A5F" class="logo-dark"/>
+  <!-- Icon: three bars -->
+  <rect x="0" y="1"  width="26" height="5" rx="2" fill="url(#g)"/>
+  <rect x="0" y="11" width="18" height="4" rx="2" fill="#1E3A5F" class="logo-dark"/>
+  <rect x="0" y="20" width="11" height="4" rx="2" fill="#1E3A5F" class="logo-dark"/>
 
-  <!-- Thin accent line between icon and text -->
-  <rect x="36" y="2" width="1.5" height="22" rx="1" fill="#4880B8" opacity="0.3"/>
-
-  <!-- Wordmark -->
+  <!-- Wordmark: fix (gradient) + line (dark) -->
   <text
-    x="45"
-    y="26"
+    x="34"
+    y="27"
     font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-    font-size="24"
+    font-size="23"
+    font-weight="600"
+    letter-spacing="-0.3"
+    fill="url(#g)"
+  >fix</text>
+  <text
+    x="73"
+    y="27"
+    font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    font-size="23"
     font-weight="800"
-    letter-spacing="-0.8"
+    letter-spacing="-0.3"
     fill="#1E3A5F"
     class="logo-dark"
-  >FIXLINE</text>
+  >line</text>
 </svg>
