@@ -91,7 +91,19 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
           <ShopLoader initialCategory={category} initialSaleOnly={sale === '1'} initialBrand={brand} />
           {cat && (() => {
             const meta = getCategoryMeta(cat.slug);
+            if (!meta) return null;
+            const faqLd = meta.faq ? {
+              '@context': 'https://schema.org',
+              '@type': 'FAQPage',
+              mainEntity: meta.faq.map(({ q, a }) => ({
+                '@type': 'Question',
+                name: q,
+                acceptedAnswer: { '@type': 'Answer', text: a },
+              })),
+            } : null;
             return meta ? (
+              <>
+              {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />}
               <details style={{ marginTop: '32px' }}>
                 <summary style={{
                   fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)',
@@ -114,6 +126,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
                   )}
                 </div>
               </details>
+              </>
             ) : null;
           })()}
         </div>
