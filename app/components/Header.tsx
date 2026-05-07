@@ -82,7 +82,7 @@ export default function Header() {
             <Image
               src={theme === 'dark' ? '/fixline-logo-white.svg' : '/fixline-logo.svg'}
               alt="fixline" width={178} height={42} priority
-              style={{ width: 'auto', height: '34px', display: 'block' }}
+              style={{ width: 'auto', height: '40px', display: 'block' }}
             />
           </Link>
 
