@@ -378,7 +378,7 @@
   .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .shop-mobile-filter-btn { display: flex; }
   .shop-title { display: none; }
-  .shop-topbar { justify-content: flex-end; }
+  .shop-topbar { justify-content: flex-start; }
 }
 @media (max-width: 480px) {
   .shop-grid { grid-template-columns: 1fr; }
