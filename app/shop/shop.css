@@ -52,14 +52,8 @@
   user-select: none;
 }
 .shop-cat-item:hover { background: var(--bg-soft); color: var(--text-primary); }
-.shop-cat-item.active {
-  background: #DBEAFE; color: #1E40AF; font-weight: 600;
-  border-left: 2px solid #4880B8; padding-left: 10px;
-}
-[data-theme="dark"] .shop-cat-item.active {
-  background: #1E3A5F; color: #93C5FD;
-  border-left: 2px solid #4880B8; padding-left: 10px;
-}
+.shop-cat-item.active { background: #EEF4FF; color: #1E40AF; font-weight: 600; }
+[data-theme="dark"] .shop-cat-item.active { background: #1E3A5F; color: #93C5FD; }
 .shop-cat-count {
   font-size: 11px;
   color: var(--text-muted);

@@ -13,14 +13,8 @@
   font-size: 14px; font-weight: 500; color: var(--text-secondary); transition: all 0.12s;
 }
 .cat-item:hover { background: var(--bg-soft); color: var(--text-primary); }
-.cat-item.active {
-  background: #DBEAFE; color: #1E40AF; font-weight: 600;
-  border-left: 2px solid #4880B8; padding-left: 10px;
-}
-[data-theme="dark"] .cat-item.active {
-  background: #1E3A5F; color: #93C5FD;
-  border-left: 2px solid #4880B8; padding-left: 10px;
-}
+.cat-item.active { background: #EEF4FF; color: #1E40AF; font-weight: 600; }
+[data-theme="dark"] .cat-item.active { background: #1E3A5F; color: #93C5FD; }
 .filter-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
 .filter-group { margin-bottom: 14px; }
 .filter-group:last-of-type { margin-bottom: 0; }
