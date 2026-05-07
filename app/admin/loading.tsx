@@ -1,16 +1,16 @@
 export default function AdminLoading() {
   return (
-    <div style={{ padding: '32px 36px 64px' }}>
+    <div style={{ padding: '32px 36px 64px', background: 'var(--bg-soft)', minHeight: '100vh' }}>
       <div style={{ marginBottom: '28px' }}>
-        <div style={{ width: '160px', height: '24px', background: '#E2E8F0', borderRadius: '6px', marginBottom: '8px' }} />
-        <div style={{ width: '80px', height: '16px', background: '#F1F5F9', borderRadius: '4px' }} />
+        <div style={{ width: '160px', height: '24px', background: 'var(--border)', borderRadius: '6px', marginBottom: '8px' }} />
+        <div style={{ width: '80px', height: '16px', background: 'var(--border)', borderRadius: '4px', opacity: 0.6 }} />
       </div>
       {[1, 2, 3].map(i => (
         <div key={i} style={{
-          background: '#fff', border: '1px solid #E2E8F0', borderRadius: '16px',
+          background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px',
           marginBottom: '16px', overflow: 'hidden', animation: 'pulse 1.5s ease-in-out infinite',
         }}>
-          <div style={{ padding: '14px 20px', background: '#F8FAFC', height: '48px' }} />
+          <div style={{ padding: '14px 20px', background: 'var(--bg-soft)', height: '48px' }} />
           <div style={{ height: '120px' }} />
         </div>
       ))}

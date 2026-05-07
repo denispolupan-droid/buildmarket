@@ -1,6 +1,6 @@
 export default function ShopLoading() {
   return (
-    <div style={{ background: '#F8FAFC', minHeight: '100vh' }}>
+    <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px' }}>
         <nav style={{ marginBottom: '24px', fontSize: '13px', color: '#94A3B8' }}>
           Головна / Магазин

@@ -15,7 +15,7 @@ export default function HomeLoading() {
       </div>
 
       {/* Paths skeleton */}
-      <div style={{ background: '#fff', padding: '48px 0' }}>
+      <div style={{ background: 'var(--bg-card)', padding: '48px 0' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 40px' }}>
           <div className="skeleton" style={{ height: '28px', maxWidth: '400px', margin: '0 auto 32px' }} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>

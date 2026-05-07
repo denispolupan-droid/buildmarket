@@ -1,6 +1,6 @@
 export default function CatalogLoading() {
   return (
-    <div style={{ background: '#fff', minHeight: '100vh', padding: '32px' }}>
+    <div style={{ background: 'var(--bg-page)', minHeight: '100vh', padding: '32px' }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
         <div className="skeleton" style={{ height: '32px', marginBottom: '24px', width: '200px' }} />
 
