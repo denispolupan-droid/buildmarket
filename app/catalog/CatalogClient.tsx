@@ -22,7 +22,30 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sidebarRef = useRef<HTMLElement>(null);
 
-  // Sidebar scrolls naturally via CSS overflow-y:scroll + overscroll-behavior:contain
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      const sidebar = sidebarRef.current;
+      const catsList = catsListRef.current;
+      if (!sidebar) return;
+      const sidebarRect = sidebar.getBoundingClientRect();
+      // Only intercept when mouse is over the sidebar
+      if (e.clientX < sidebarRect.left || e.clientX > sidebarRect.right ||
+          e.clientY < sidebarRect.top  || e.clientY > sidebarRect.bottom) return;
+      e.preventDefault();
+      // If mouse is over the cats list — scroll it first
+      if (catsList) {
+        const catsRect = catsList.getBoundingClientRect();
+        if (e.clientX >= catsRect.left && e.clientX <= catsRect.right &&
+            e.clientY >= catsRect.top  && e.clientY <= catsRect.bottom) {
+          catsList.scrollTop += e.deltaY;
+          return;
+        }
+      }
+      sidebar.scrollTop += e.deltaY;
+    };
+    document.addEventListener('wheel', handleWheel, { passive: false });
+    return () => document.removeEventListener('wheel', handleWheel);
+  }, []);
 
   useEffect(() => {
     if (initialCategory) setTimeout(() => scrollCatToTop(initialCategory), 150);
