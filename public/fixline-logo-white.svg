@@ -1,21 +1,18 @@
-<svg viewBox="0 0 195 40" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FIXLINE">
+<svg viewBox="0 0 180 42" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="fixline">
   <title>fixline</title>
 
-  <!-- Icon: three bars -->
-  <rect x="0" y="0"  width="32" height="7" rx="2" fill="#4880B8"/>
-  <rect x="0" y="12" width="23" height="7" rx="2" fill="#ffffff"/>
-  <rect x="0" y="24" width="15" height="7" rx="2" fill="#ffffff"/>
+  <rect x="0" y="4"  width="30" height="7" rx="3.5" fill="#4880B8"/>
+  <rect x="0" y="16" width="22" height="7" rx="3.5" fill="#ffffff"/>
+  <rect x="0" y="28" width="14" height="7" rx="3.5" fill="#ffffff"/>
 
-  <!-- Thin accent line -->
-  <rect x="41" y="2" width="1.5" height="26" rx="1" fill="#4880B8" opacity="0.5"/>
+  <rect x="40" y="5" width="1.5" height="28" rx="1" fill="#4880B8" opacity="0.5"/>
 
-  <!-- Wordmark -->
   <text
-    x="51"
-    y="31"
+    x="50"
+    y="36"
     font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-    font-size="28"
-    font-weight="800"
+    font-size="42"
+    font-weight="500"
     letter-spacing="-1"
     fill="#ffffff"
   >fixline</text>
