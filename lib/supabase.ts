@@ -144,8 +144,12 @@ export async function getBrands(): Promise<string[]> {
     .eq('is_active', true)
     .limit(2000);
   if (error) throw error;
-  const unique = [...new Set((data ?? []).map((p: { brand: string }) => p.brand?.trim()).filter(Boolean))].sort();
-  return unique;
+  const seen = new Map<string, string>();
+  for (const { brand } of (data ?? []) as { brand: string }[]) {
+    const b = brand?.trim();
+    if (b && !seen.has(b.toUpperCase())) seen.set(b.toUpperCase(), b);
+  }
+  return [...seen.values()].sort();
 }
 
 // ── Кэшированные функции для ISR ──────────────────────────────────────────────
