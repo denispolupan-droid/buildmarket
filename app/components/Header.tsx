@@ -316,6 +316,7 @@ export default function Header() {
         onClick={toggleTheme}
         aria-label={theme === 'dark' ? 'Перемкнути на світлу тему' : 'Перемкнути на темну тему'}
         title={theme === 'dark' ? 'Світла тема' : 'Темна тема'}
+        className="theme-toggle-btn"
         style={{
           position: 'fixed', bottom: '24px', right: '24px', zIndex: 999,
           width: '44px', height: '44px', borderRadius: '50%',

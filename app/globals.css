@@ -415,6 +415,9 @@ input, select { font-family: inherit; }
 
   /* Shop count */
   .shop-count { display: none; }
+
+  /* Theme toggle — move above card content on mobile */
+  .theme-toggle-btn { bottom: 72px !important; right: 12px !important; width: 36px !important; height: 36px !important; }
 }
 
 @media (max-width: 480px) {
