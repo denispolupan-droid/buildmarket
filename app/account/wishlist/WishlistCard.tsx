@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useRef } from 'react';
-import { ShoppingCart, Trash2, Check } from 'lucide-react';
+import { ShoppingCart, Check, X } from 'lucide-react';
 import ProductImage from '../../components/ProductImage';
 import { useCart } from '../../../lib/cart';
 import { useWishlist } from '../../../lib/wishlist';
@@ -20,6 +20,7 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
 
   const price   = retail ? (product.stock?.price_retail ?? 0) : (product.stock?.price_unit ?? 0);
   const inStock = (product.stock?.stock_qty ?? 0) >= minOrder;
+  const total   = price > 0 ? price * qty : 0;
   const productHref = `/product/${product.sku}${retail ? '?from=shop' : ''}`;
 
   function handleAddToCart() {
@@ -44,7 +45,27 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
     <div className="wishlist-card" style={{
       background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px',
       padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px',
+      position: 'relative',
     }}>
+
+      {/* Delete — top-right corner (desktop: absolute; mobile: same via CSS) */}
+      <button
+        className="wc-btn-delete"
+        onClick={() => toggle(product.sku)}
+        title="Видалити з обраного"
+        style={{
+          position: 'absolute', top: '10px', right: '10px',
+          width: '26px', height: '26px', borderRadius: '50%',
+          background: 'var(--bg-soft)', border: '1px solid var(--border)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'var(--text-muted)', cursor: 'pointer',
+          transition: 'background 0.15s, color 0.15s',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#FEF2F2'; (e.currentTarget as HTMLButtonElement).style.color = '#EF4444'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-soft)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+      >
+        <X size={13} strokeWidth={2.5} />
+      </button>
 
       {/* Image */}
       <Link href={productHref} className="wishlist-card__img" style={{
@@ -108,8 +129,9 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
 
       </div>{/* end wishlist-card-info */}
 
-      {/* Actions: qty + price + cart + remove */}
+      {/* Actions: qty + unit price + cart button + total */}
       <div className="wishlist-card__actions" style={{ display: 'contents' }}>
+
         <input
           type="number"
           value={inputVal}
@@ -118,15 +140,16 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
           onChange={e => setInputVal(e.target.value)}
           onBlur={commitInput}
           style={{
-            width: '52px', height: '38px', borderRadius: '8px',
+            width: '52px', height: '36px', borderRadius: '8px',
             border: '1px solid var(--border)', background: 'var(--bg-card)',
             textAlign: 'center', fontSize: '13px', fontWeight: 700,
             color: 'var(--text-primary)', outline: 'none', flexShrink: 0,
           }}
         />
-        {/* Price — next to counter */}
-        <div className="wishlist-card__price" style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-          {price > 0 ? `${price} грн` : <span style={{ fontSize: '12px', color: '#94A3B8' }}>За запитом</span>}
+
+        {/* Unit price */}
+        <div className="wishlist-card__price" style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+          {price > 0 ? `${price} грн/шт` : <span style={{ fontSize: '12px', color: '#94A3B8' }}>За запитом</span>}
         </div>
 
         <button
@@ -134,8 +157,8 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
           onClick={handleAddToCart}
           disabled={!inStock}
           style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            height: '38px', padding: '0 16px', borderRadius: '10px', border: 'none',
+            display: 'flex', alignItems: 'center', gap: '5px',
+            height: '36px', padding: '0 14px', borderRadius: '10px', border: 'none',
             background: added ? '#16A34A' : inStock ? '#4880B8' : '#E2E8F0',
             color: inStock ? '#fff' : '#94A3B8',
             fontSize: '13px', fontWeight: 700, flexShrink: 0,
@@ -143,20 +166,16 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
             whiteSpace: 'nowrap',
           }}
         >
-          {added ? <><Check size={14} strokeWidth={2.5} /> Додано</> : <><ShoppingCart size={14} strokeWidth={2} /> В кошик</>}
+          {added ? <><Check size={13} strokeWidth={2.5} />Додано</> : <><ShoppingCart size={13} strokeWidth={2} />В кошик</>}
         </button>
-        <button
-          onClick={() => toggle(product.sku)}
-          title="Видалити з обраного"
-          style={{
-            width: '38px', height: '38px', borderRadius: '10px', flexShrink: 0,
-            background: '#FEF2F2', border: '1px solid #FECACA',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#EF4444', cursor: 'pointer',
-          }}
-        >
-          <Trash2 size={14} strokeWidth={2} />
-        </button>
+
+        {/* Total sum */}
+        {total > 0 && (
+          <div className="wishlist-card__total" style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+            {total.toLocaleString('uk-UA')} грн
+          </div>
+        )}
+
       </div>
 
     </div>
