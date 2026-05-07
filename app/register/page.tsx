@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTheme } from '../../lib/theme';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import '../login/login.css';
 
@@ -57,6 +58,7 @@ function RegisterForm() {
   const [done,        setDone]        = useState(false);
 
   const nextUrl = searchParams.get('next') ?? '';
+  const { theme } = useTheme();
 
   useEffect(() => {
     const type = searchParams.get('type');
@@ -93,7 +95,7 @@ function RegisterForm() {
     return (
       <div className="auth-page">
         <div className="auth-card" style={{ textAlign: 'center' }}>
-          <Image src="/fixline-logo.svg" alt="FIXLINE" width={182} height={34} className="auth-logo" />
+          <Image src={theme === 'dark' ? '/fixline-logo-white.svg' : '/fixline-logo.svg'} alt="fixline" width={178} height={42} className="auth-logo" />
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
           <h1 className="auth-title">Акаунт створено!</h1>
           <p className="auth-sub" style={{ marginBottom: '24px' }}>
@@ -110,7 +112,7 @@ function RegisterForm() {
   return (
     <div className="auth-page">
       <div className="auth-card" style={{ maxWidth: '520px' }}>
-        <Image src="/fixline-logo.png" alt="FIXLINE" width={144} height={36} className="auth-logo" />
+        <Image src={theme === 'dark' ? '/fixline-logo-white.svg' : '/fixline-logo.svg'} alt="fixline" width={178} height={42} className="auth-logo" />
         <h1 className="auth-title">Реєстрація</h1>
         <p className="auth-sub">Оберіть тип акаунту та заповніть форму</p>
 

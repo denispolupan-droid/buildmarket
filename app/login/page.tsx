@@ -5,11 +5,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
+import { useTheme } from '../../lib/theme';
 import './login.css';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { theme } = useTheme();
   const nextUrl = searchParams.get('next') || '/catalog';
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
@@ -36,7 +38,7 @@ function LoginForm() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <Image src="/fixline-logo.svg" alt="FIXLINE" width={182} height={34} className="auth-logo" />
+        <Image src={theme === 'dark' ? '/fixline-logo-white.svg' : '/fixline-logo.svg'} alt="fixline" width={178} height={42} className="auth-logo" />
         <h1 className="auth-title">Вхід в особистий кабінет</h1>
         <p className="auth-sub">B2B платформа будівельної хімії</p>
 
