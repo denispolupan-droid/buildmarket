@@ -12,19 +12,15 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
   const minOrder = retail ? 1 : product.min_order;
   const [added, setAdded] = useState(false);
   const [qty, setQty] = useState(minOrder);
+  const [inputVal, setInputVal] = useState(String(minOrder));
   const [tooltip, setTooltip] = useState(false);
   const { addItem } = useCart();
   const { toggle } = useWishlist();
-
   const nameRef = useRef<HTMLAnchorElement>(null);
-
-  function handleNameMouseEnter() {
-    const el = nameRef.current;
-    if (el && el.scrollHeight > el.clientHeight) setTooltip(true);
-  }
 
   const price   = retail ? (product.stock?.price_retail ?? 0) : (product.stock?.price_unit ?? 0);
   const inStock = (product.stock?.stock_qty ?? 0) >= minOrder;
+  const productHref = `/product/${product.sku}${retail ? '?from=shop' : ''}`;
 
   function handleAddToCart() {
     addItem({
@@ -34,12 +30,15 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
       bc: product.bc, ac: product.ac, img_type: product.img_type, imageUrl: product.image ?? undefined,
     }, qty);
     setAdded(true);
-    setTimeout(() => {
-      toggle(product.sku);
-    }, 800);
+    setTimeout(() => toggle(product.sku), 800);
   }
 
-  const productHref = `/product/${product.sku}${retail ? '?from=shop' : ''}`;
+  function commitInput() {
+    const v = parseInt(inputVal, 10);
+    const valid = !isNaN(v) && v >= minOrder ? v : minOrder;
+    setQty(valid);
+    setInputVal(String(valid));
+  }
 
   return (
     <div className="wishlist-card" style={{
@@ -60,72 +59,71 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
         />
       </Link>
 
-      {/* Name + meta */}
-      <div className="wishlist-card__meta" style={{ flex: 1, minWidth: 0, position: 'relative' }}>
-        <div style={{ fontSize: '11px', color: '#94A3B8', marginBottom: '2px' }}>
-          {product.brand} · {product.sku}
-        </div>
-        <Link
-          ref={nameRef}
-          href={productHref}
-          onMouseEnter={handleNameMouseEnter}
-          onMouseLeave={() => setTooltip(false)}
-          style={{
-            fontSize: '14px', fontWeight: 700, color: '#0F172A',
-            lineHeight: 1.3, textDecoration: 'none',
-            display: '-webkit-box', WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical', overflow: 'hidden',
-          }}
-        >
-          {product.name}
-        </Link>
+      {/* Info wrapper: display:contents on desktop → flex-col on mobile */}
+      <div className="wishlist-card-info">
 
-        {/* Inline overlay replacing truncated name */}
-        {tooltip && (
-          <div style={{
-            position: 'absolute', top: '18px', left: 0, right: 0,
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            borderRadius: '0 8px 8px 8px',
-            padding: '6px 8px',
-            fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)',
-            lineHeight: 1.3,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
-            zIndex: 50,
-            pointerEvents: 'none',
-            animation: 'fadeIn 0.12s ease',
-          }}>
-            {product.name}
+        {/* Name + meta */}
+        <div className="wishlist-card__meta" style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+          <div style={{ fontSize: '11px', color: '#94A3B8', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {product.brand} · {product.sku}
           </div>
-        )}
-      </div>
+          <Link
+            ref={nameRef}
+            href={productHref}
+            onMouseEnter={() => { const el = nameRef.current; if (el && el.scrollHeight > el.clientHeight) setTooltip(true); }}
+            onMouseLeave={() => setTooltip(false)}
+            style={{
+              fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)',
+              lineHeight: 1.3, textDecoration: 'none',
+              display: '-webkit-box', WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical', overflow: 'hidden',
+            }}
+          >
+            {product.name}
+          </Link>
+          {tooltip && (
+            <div style={{
+              position: 'absolute', top: '18px', left: 0, right: 0,
+              background: 'var(--bg-card)', border: '1px solid var(--border)',
+              borderRadius: '0 8px 8px 8px', padding: '6px 8px',
+              fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)',
+              lineHeight: 1.3, boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+              zIndex: 50, pointerEvents: 'none',
+            }}>
+              {product.name}
+            </div>
+          )}
+        </div>
 
-      {/* Pack qty */}
-      <div className="wishlist-card__pack" style={{ fontSize: '12px', color: '#64748B', flexShrink: 0, minWidth: '70px', textAlign: 'center' }}>
-        <div style={{ fontSize: '10px', color: '#94A3B8', marginBottom: '2px' }}>в упаковці</div>
-        <span style={{ fontWeight: 700, color: '#0F172A' }}>{product.pack_qty}</span> шт
-      </div>
+        {/* Pack qty */}
+        <div className="wishlist-card__pack" style={{ fontSize: '12px', color: '#64748B', flexShrink: 0, minWidth: '70px', textAlign: 'center' }}>
+          <div style={{ fontSize: '10px', color: '#94A3B8', marginBottom: '2px' }}>в упаковці</div>
+          <span style={{ fontWeight: 700, color: '#0F172A' }}>{product.pack_qty}</span> шт
+        </div>
 
-      {/* Stock */}
-      <div className="wishlist-card__stock" style={{ fontSize: '12px', fontWeight: 600, color: inStock ? '#15803D' : '#DC2626', flexShrink: 0, minWidth: '90px' }}>
-        ● {inStock ? 'в наявності' : 'немає'}
-      </div>
+        {/* Stock */}
+        <div className="wishlist-card__stock" style={{ fontSize: '12px', fontWeight: 600, color: inStock ? '#15803D' : '#DC2626', flexShrink: 0, minWidth: '90px' }}>
+          ● {inStock ? 'в наявності' : 'немає'}
+        </div>
 
-      {/* Price */}
-      <div className="wishlist-card__price" style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', flexShrink: 0, minWidth: '90px', textAlign: 'right' }}>
-        {price > 0 ? `${price} грн` : <span style={{ fontSize: '13px', color: '#94A3B8' }}>За запитом</span>}
-      </div>
+        {/* Price */}
+        <div className="wishlist-card__price" style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', flexShrink: 0, minWidth: '90px', textAlign: 'right' }}>
+          {price > 0 ? `${price} грн` : <span style={{ fontSize: '13px', color: '#94A3B8' }}>За запитом</span>}
+        </div>
+
+      </div>{/* end wishlist-card-info */}
 
       {/* Actions: qty + cart + remove */}
       <div className="wishlist-card__actions" style={{ display: 'contents' }}>
         <input
           type="number"
-          value={qty}
+          value={inputVal}
           min={minOrder}
           disabled={!inStock}
-          onChange={e => { const v = parseInt(e.target.value, 10); if (!isNaN(v) && v >= minOrder) setQty(v); }}
+          onChange={e => setInputVal(e.target.value)}
+          onBlur={commitInput}
           style={{
-            width: '56px', height: '38px', borderRadius: '8px',
+            width: '52px', height: '38px', borderRadius: '8px',
             border: '1px solid var(--border)', background: 'var(--bg-card)',
             textAlign: 'center', fontSize: '13px', fontWeight: 700,
             color: 'var(--text-primary)', outline: 'none', flexShrink: 0,
@@ -161,12 +159,6 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
         </button>
       </div>
 
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 }
