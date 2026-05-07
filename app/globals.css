@@ -72,7 +72,8 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { zoom: 0.95; }
+html { zoom: 0.95; overflow-x: hidden; }
+body { overflow-x: hidden; }
 
 body {
   font-family: Inter, system-ui, sans-serif;
@@ -382,8 +383,8 @@ input, select { font-family: inherit; }
   }
 
   /* Hero sections */
-  .hero-content { padding: 32px 0 24px; }
-  .hero-checklist { flex-direction: column; align-items: center; gap: 10px; margin: 0 0 24px; }
+  .hero-content { padding: 32px 16px 24px; text-align: left; }
+  .hero-checklist { flex-direction: column; align-items: flex-start; gap: 10px; margin: 0 0 24px; }
   .hero-benefits-grid { grid-template-columns: 1fr 1fr; gap: 12px 0; padding: 20px 0 4px; }
   .hero-benefits-grid > div { border-left: none !important; padding: 0 12px; border-bottom: 1px solid rgba(255,255,255,0.07); }
   .hero-benefits-grid > div:nth-last-child(-n+2) { border-bottom: none; }
@@ -394,6 +395,18 @@ input, select { font-family: inherit; }
   /* Home page grids */
   .home-paths-grid { grid-template-columns: 1fr; }
   .home-trust-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* Hide desktop-heavy sections on mobile */
+  .home-category-section { display: none; }
+  .home-trust-section { display: none; }
+  .home-cta-section { display: none; }
+
+  /* Footer */
+  .footer-inner { padding: 32px 16px 0 !important; }
+  .footer-grid { grid-template-columns: 1fr !important; gap: 28px !important; }
+
+  /* Shop count */
+  .shop-count { display: none; }
 }
 
 @media (max-width: 480px) {

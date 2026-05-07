@@ -319,7 +319,7 @@ export default async function Home() {
 
       {/* Categories carousel + interactive preview */}
       {categories.length > 0 && (
-        <section style={{ background: 'var(--bg-soft)', padding: '20px 0 44px', borderTop: '1px solid var(--border)' }}>
+        <section className="home-category-section" style={{ background: 'var(--bg-soft)', padding: '20px 0 44px', borderTop: '1px solid var(--border)' }}>
           <div className="page-container">
             <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', marginBottom: '6px' }}>
               Категорії продукції
@@ -333,7 +333,7 @@ export default async function Home() {
       )}
 
       {/* Trust strip */}
-      <section style={{ background: 'var(--bg-card)', padding: '40px 0', borderTop: '1px solid var(--border)' }}>
+      <section className="home-trust-section" style={{ background: 'var(--bg-card)', padding: '40px 0', borderTop: '1px solid var(--border)' }}>
         <div className="page-container">
           <div className="home-trust-grid">
             {trust.map(({ icon: Icon, bg, iconColor, stat, title, text }) => (
@@ -359,7 +359,7 @@ export default async function Home() {
       </section>
 
       {/* CTA */}
-      <section style={{ background: '#1E3059', padding: '28px 0', textAlign: 'center' }}>
+      <section className="home-cta-section" style={{ background: '#1E3059', padding: '28px 0', textAlign: 'center' }}>
         <div className="page-container">
           <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', marginBottom: '10px' }}>
             Готові зробити замовлення?

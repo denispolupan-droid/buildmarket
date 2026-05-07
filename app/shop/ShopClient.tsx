@@ -219,6 +219,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     sidebarRef.current?.scrollTo({ top: 0 });
     setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup('');
     setVisibleCount(24);
+    setMobileSidebarOpen(false);
     if (slug) setTimeout(() => scrollCatToTop(slug), 50);
   };
   const { skus: wishSkus, toggle: toggleWish } = useWishlist();
@@ -466,7 +467,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         )}
 
         <hr className="shop-sidebar__divider" />
-        <p className="shop-sidebar__heading">Фільтри</p>
+        <p className="shop-sidebar__heading">Фільтри за властивостями</p>
 
         {volumesL.length > 0 && (
           <div className="shop-filter-group">
@@ -538,7 +539,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                   onClick={() => setMobileSidebarOpen(v => !v)}
                 >
                   <SlidersHorizontal size={14} strokeWidth={2} />
-                  Фільтри
+                  Категорії
                   {count > 0 && <span className="shop-mobile-filter-badge">{count}</span>}
                 </button>
               );

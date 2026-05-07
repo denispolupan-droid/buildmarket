@@ -31,8 +31,8 @@ const socials: { label: string; href: string; icon: React.ReactNode }[] = [
 export default function Footer() {
   return (
     <footer style={{ background: '#1A2744' }}>
-      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '48px 32px 0' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1.2fr', gap: '48px', paddingBottom: '40px' }}>
+      <div className="footer-inner" style={{ maxWidth: '1280px', margin: '0 auto', padding: '48px 32px 0' }}>
+        <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1.2fr', gap: '48px', paddingBottom: '40px' }}>
 
           {/* Brand */}
           <div>
