@@ -114,7 +114,7 @@ export default function DropshipPage() {
           pointerEvents: 'none',
         }} />
         <div className="page-container" style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px', alignItems: 'center' }}>
+          <div className="drop-hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px', alignItems: 'center' }}>
 
             {/* Left — text */}
             <div>

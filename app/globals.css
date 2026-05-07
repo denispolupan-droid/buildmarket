@@ -424,6 +424,16 @@ input, select { font-family: inherit; }
   .home-trust-grid { grid-template-columns: 1fr; }
 }
 
+/* ── Dropship page mobile ── */
+@media (max-width: 768px) {
+  .drop-hero-grid  { grid-template-columns: 1fr !important; gap: 28px !important; }
+  .drop-steps      { grid-template-columns: 1fr 1fr !important; gap: 14px !important; }
+  .drop-benefits   { grid-template-columns: 1fr !important; gap: 12px !important; }
+}
+@media (max-width: 480px) {
+  .drop-steps { grid-template-columns: 1fr !important; }
+}
+
 /* ── Wishlist card ── */
 .wishlist-card-info { display: contents; }
 
