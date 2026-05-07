@@ -119,7 +119,7 @@ export default async function Home() {
         }} />
 
         {/* Main content */}
-        <div className="page-container" style={{ position: 'relative', zIndex: 1, padding: '52px 40px 48px', textAlign: 'center' }}>
+        <div className="page-container hero-content" style={{ position: 'relative', zIndex: 1 }}>
 
           <h1 style={{
             fontSize: 'clamp(28px, 4vw, 52px)', fontWeight: 900,
@@ -133,7 +133,7 @@ export default async function Home() {
             Професійна будівельна хімія
           </h1>
 
-          <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 36px', display: 'flex', gap: '28px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <ul className="hero-checklist">
             {[
               'Оригінальна продукція від виробників',
               'Для дилерів, підрядників та магазинів',
@@ -146,7 +146,7 @@ export default async function Home() {
             ))}
           </ul>
 
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '28px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0' }}>
+          <div className="hero-benefits-grid" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
             {[
               { icon: ShieldCheck,   title: 'Прямі поставки',          text: 'Своєчасно та без затримок' },
               { icon: Tag,           title: 'Вигідні ціни',            text: 'Конкурентні тарифи для партнерів' },
@@ -171,8 +171,8 @@ export default async function Home() {
 
         {/* Brand logos strip */}
         <div style={{ background: 'rgba(0,0,0,0.15)', borderTop: '1px solid rgba(255,255,255,0.06)', position: 'relative', zIndex: 1 }}>
-          <div className="page-container" style={{ padding: '8px 40px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+          <div className="page-container hero-brand-strip-outer">
+            <div className="hero-brand-strip">
               {brands.slice(0, 14).map(brand => (
                 <Link
                   key={brand}
@@ -214,7 +214,7 @@ export default async function Home() {
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '32px' }}>
             Роздріб, опт або дропшипінг — знайдемо умови для кожного
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', maxWidth: '1100px', margin: '0 auto' }}>
+          <div className="home-paths-grid">
 
             {/* Retail */}
             <div style={{
@@ -335,7 +335,7 @@ export default async function Home() {
       {/* Trust strip */}
       <section style={{ background: 'var(--bg-card)', padding: '40px 0', borderTop: '1px solid var(--border)' }}>
         <div className="page-container">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
+          <div className="home-trust-grid">
             {trust.map(({ icon: Icon, bg, iconColor, stat, title, text }) => (
               <div key={title} style={{ textAlign: 'center' }}>
                 <div style={{

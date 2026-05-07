@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Search, Plus, Minus, Heart, ChevronDown, ChevronUp, ChevronRight, Check } from 'lucide-react';
+import { Search, Plus, Minus, Heart, ChevronDown, ChevronUp, ChevronRight, Check, SlidersHorizontal } from 'lucide-react';
 import ProductImage from '../components/ProductImage';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
@@ -155,8 +155,9 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const [filterVolumeKg,     setFilterVolumeKg]     = useState('');
   const [filterPlasticGroup, setFilterPlasticGroup] = useState('');
   const [inStockOnly,  setInStockOnly]  = useState(false);
-  const [visibleCount, setVisibleCount] = useState(24);
-  const [catsOpen,     setCatsOpen]     = useState(false);
+  const [visibleCount,        setVisibleCount]        = useState(24);
+  const [catsOpen,            setCatsOpen]            = useState(false);
+  const [mobileSidebarOpen,   setMobileSidebarOpen]   = useState(false);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(() => {
     if (!initialCategory) return new Set<string>();
     const expanded = new Set<string>();
@@ -362,7 +363,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   return (
     <div className="shop-layout">
       {/* Sidebar */}
-      <aside className="shop-sidebar" ref={sidebarRef}>
+      <aside className={'shop-sidebar' + (mobileSidebarOpen ? ' mobile-open' : '')} ref={sidebarRef}>
         <h3>Категорії</h3>
 
         <div
@@ -526,19 +527,36 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             <h1 className="shop-title">{saleOnly ? 'Акційні товари' : 'Магазин'}</h1>
             <span className="shop-count">{filtered.length} товарів</span>
           </div>
-          <button
-            onClick={() => setSaleOnly(v => !v)}
-            className={saleOnly ? undefined : 'btn-icon'}
-            style={{
-              height: '34px', padding: '0 14px', borderRadius: '8px', border: '1px solid var(--border)',
-              background: saleOnly ? '#EF4444' : 'var(--bg-soft)',
-              color: saleOnly ? '#fff' : 'var(--text-secondary)',
-              fontSize: '13px', fontWeight: 700, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: '5px',
-            }}
-          >
-            🔥 Акція
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {(() => {
+              const count = Object.values(filterValues).filter(Boolean).length +
+                (filterVolume ? 1 : 0) + (filterVolumeKg ? 1 : 0) +
+                (inStockOnly ? 1 : 0) + (filterPlasticGroup ? 1 : 0);
+              return (
+                <button
+                  className={'shop-mobile-filter-btn' + (mobileSidebarOpen ? ' active' : '')}
+                  onClick={() => setMobileSidebarOpen(v => !v)}
+                >
+                  <SlidersHorizontal size={14} strokeWidth={2} />
+                  Фільтри
+                  {count > 0 && <span className="shop-mobile-filter-badge">{count}</span>}
+                </button>
+              );
+            })()}
+            <button
+              onClick={() => setSaleOnly(v => !v)}
+              className={saleOnly ? undefined : 'btn-icon'}
+              style={{
+                height: '34px', padding: '0 14px', borderRadius: '8px', border: '1px solid var(--border)',
+                background: saleOnly ? '#EF4444' : 'var(--bg-soft)',
+                color: saleOnly ? '#fff' : 'var(--text-secondary)',
+                fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '5px',
+              }}
+            >
+              🔥 Акція
+            </button>
+          </div>
         </div>
 
         <div className="shop-search">

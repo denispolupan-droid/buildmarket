@@ -340,6 +340,8 @@ export async function POST(req: NextRequest) {
   revalidateTag('products', 'max');
   // @ts-ignore
   revalidateTag('categories', 'max');
+  // @ts-ignore
+  revalidateTag('brands', 'max');
 
   return NextResponse.json(results);
 }

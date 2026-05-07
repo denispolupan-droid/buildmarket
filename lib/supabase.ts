@@ -144,7 +144,7 @@ export async function getBrands(): Promise<string[]> {
     .eq('is_active', true)
     .limit(2000);
   if (error) throw error;
-  const unique = [...new Set((data ?? []).map((p: { brand: string }) => p.brand))].sort();
+  const unique = [...new Set((data ?? []).map((p: { brand: string }) => p.brand?.trim()).filter(Boolean))].sort();
   return unique;
 }
 

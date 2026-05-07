@@ -250,7 +250,7 @@ export default function Header() {
       {/* Mobile menu overlay */}
       {mobileOpen && (
         <div style={{
-          position: 'fixed', top: '64px', left: 0, right: 0, bottom: 0,
+          position: 'fixed', top: '53px', left: 0, right: 0, bottom: 0,
           background: 'var(--bg-card)', zIndex: 99, overflowY: 'auto',
           borderTop: '1px solid var(--border)',
           padding: '16px',
