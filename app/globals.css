@@ -383,7 +383,7 @@ input, select { font-family: inherit; }
 
   /* Hero sections */
   .hero-content { padding: 32px 16px 24px; text-align: center; }
-  .hero-checklist { flex-direction: column; align-items: center; gap: 10px; margin: 0 0 24px; }
+  .hero-checklist { flex-direction: column; align-items: flex-start; gap: 10px; width: fit-content; margin: 0 auto 24px; }
   .hero-benefits-grid { grid-template-columns: 1fr 1fr; gap: 0; padding: 20px 0 4px; }
   .hero-benefits-grid > div {
     border-left: none !important;
