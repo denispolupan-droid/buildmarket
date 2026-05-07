@@ -9,14 +9,15 @@ export default function CatalogLoading() {
           <div className="skeleton" style={{ height: '40px', width: '150px' }} />
         </div>
 
-        <div style={{ background: '#F8FAFC', borderRadius: '12px', overflow: 'hidden' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
           {Array.from({ length: 10 }).map((_, i) => (
             <div key={i} style={{
               display: 'flex',
               gap: '16px',
               padding: '16px 20px',
-              borderBottom: '1px solid #E2E8F0',
-              alignItems: 'center'
+              borderBottom: '1px solid var(--border)',
+              alignItems: 'center',
+              background: 'var(--bg-card)',
             }}>
               <div className="skeleton" style={{ width: '60px', height: '60px', flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
