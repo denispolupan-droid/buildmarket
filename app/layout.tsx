@@ -40,6 +40,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <meta name="google" content="notranslate" />
         <link rel="preconnect" href="https://boaztnparrdoeknajprn.supabase.co" />
         <link rel="dns-prefetch" href="https://boaztnparrdoeknajprn.supabase.co" />
+        {/* Blocking script — applies theme BEFORE first paint, eliminates white flash */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          try {
+            var t = localStorage.getItem('theme') ||
+              (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', t);
+            if (t === 'dark') document.documentElement.style.background = '#252B38';
+          } catch(e) {}
+        ` }} />
       </head>
       <body>
         <ThemeProvider>
