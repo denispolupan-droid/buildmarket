@@ -28,9 +28,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       const catsList = catsListRef.current;
       if (!sidebar) return;
       const sidebarRect = sidebar.getBoundingClientRect();
-      // Only intercept when mouse is over the sidebar
-      if (e.clientX < sidebarRect.left || e.clientX > sidebarRect.right ||
-          e.clientY < sidebarRect.top  || e.clientY > sidebarRect.bottom) return;
+      // If mouse is to the right of the sidebar — let the page scroll normally
+      if (e.clientX > sidebarRect.right) return;
       e.preventDefault();
       // If mouse is over the cats list — scroll it first
       if (catsList) {
