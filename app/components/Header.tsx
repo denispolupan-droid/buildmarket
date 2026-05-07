@@ -93,9 +93,17 @@ export default function Header() {
                   fontSize: '14px', fontWeight: active ? 600 : 500,
                   color: active ? '#1E3A5F' : 'var(--text-secondary)',
                   background: active ? '#E8EEF5' : 'transparent',
+                  position: 'relative',
                 }}>
                   <Icon size={15} strokeWidth={2} />
                   {label}
+                  {active && (
+                    <span style={{
+                      position: 'absolute', bottom: '2px', left: '14px', right: '14px',
+                      height: '2px', borderRadius: '1px',
+                      background: 'linear-gradient(90deg, #4880B8, #3DBFB8)',
+                    }} />
+                  )}
                 </Link>
               );
             })}

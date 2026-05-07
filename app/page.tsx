@@ -123,8 +123,12 @@ export default async function Home() {
 
           <h1 style={{
             fontSize: 'clamp(28px, 4vw, 52px)', fontWeight: 900,
-            color: '#fff', lineHeight: 1.15, marginBottom: '28px',
+            lineHeight: 1.15, marginBottom: '28px',
             letterSpacing: '-0.5px',
+            background: 'linear-gradient(135deg, #ffffff 0%, #93C5FD 60%, #5EEAD4 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
           }}>
             Професійна будівельна хімія
           </h1>
