@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
+import { Search, Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import ProductImage from '../components/ProductImage';
 import type { ProductFull, Category } from '../../lib/supabase';
@@ -67,6 +67,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     window.scrollTo(0, 0);
     sidebarRef.current?.scrollTo({ top: 0 });
     setVisibleCount(50);
+    setMobilePanel(null);
     if (slug) setTimeout(() => scrollCatToTop(slug), 50);
   };
   const [filterValues,   setFilterValues]   = useState<Record<string, string>>({});
@@ -88,6 +89,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     return expanded;
   });
   const [catsOpen,      setCatsOpen]      = useState(false);
+  const [mobilePanel,   setMobilePanel]   = useState<'cats' | 'filters' | null>(null);
   const [quantities,    setQuantities]    = useState<Record<string, number>>({});
   const [inputVals,     setInputVals]     = useState<Record<string, string>>({});
   const [added,         setAdded]         = useState<Record<string, boolean>>({});
@@ -311,10 +313,10 @@ export default function CatalogClient({ products, categories, initialSearch = ''
         <div className="catalog-page">
 
           {/* Sidebar */}
-          <aside className="sidebar" ref={sidebarRef}>
+          <aside className={`sidebar${mobilePanel ? ' mobile-open' : ''}${mobilePanel === 'cats' ? ' mobile-cats' : ''}${mobilePanel === 'filters' ? ' mobile-filters' : ''}`} ref={sidebarRef}>
 
             {/* Categories */}
-            <div className="sidebar-section">
+            <div className="sidebar-section sidebar-cats-section">
               <div className="sidebar-heading">Категорії</div>
               <div
                 ref={catsListRef}
@@ -387,6 +389,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
               )}
             </div>
 
+            <div className="sidebar-filters-section">
             <hr className="sidebar-divider" />
 
             {/* Filters */}
@@ -433,6 +436,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 Тільки акційні
               </label>
             </div>
+            </div>{/* end sidebar-filters-section */}
 
           </aside>
 
@@ -446,7 +450,31 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 <p className="catalog-count">{filtered.length} товарів</p>
               </div>
               <div className="catalog-actions">
+                {/* Mobile only: two panel buttons */}
                 <button
+                  className={'catalog-mobile-btn' + (mobilePanel === 'cats' ? ' active' : '')}
+                  onClick={() => setMobilePanel(v => v === 'cats' ? null : 'cats')}
+                >
+                  <LayoutList size={14} strokeWidth={2} />
+                  Категорії
+                </button>
+                {(() => {
+                  const count = Object.values(filterValues).filter(Boolean).length +
+                    (filterVolume ? 1 : 0) + (filterVolumeKg ? 1 : 0) + (inStockOnly ? 1 : 0);
+                  return (
+                    <button
+                      className={'catalog-mobile-btn' + (mobilePanel === 'filters' ? ' active' : '')}
+                      onClick={() => setMobilePanel(v => v === 'filters' ? null : 'filters')}
+                    >
+                      <SlidersHorizontal size={14} strokeWidth={2} />
+                      Фільтри
+                      {count > 0 && <span className="catalog-mobile-badge">{count}</span>}
+                    </button>
+                  );
+                })()}
+                {/* Desktop only */}
+                <button
+                  className="catalog-desktop-btn"
                   onClick={() => setSaleOnly(v => !v)}
                   style={{
                     height: '34px', padding: '0 14px', borderRadius: '8px', border: '1px solid var(--border)',
@@ -458,7 +486,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 >
                   🔥 Акції
                 </button>
-                <button className="action-btn excel" onClick={exportToExcel}>
+                <button className="catalog-desktop-btn action-btn excel" onClick={exportToExcel}>
                   <Upload size={14} strokeWidth={2} />
                   Завантажити Excel
                 </button>

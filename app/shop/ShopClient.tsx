@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Search, Plus, Minus, Heart, ChevronDown, ChevronUp, ChevronRight, Check, SlidersHorizontal } from 'lucide-react';
+import { Search, Plus, Minus, Heart, ChevronDown, ChevronUp, ChevronRight, Check, SlidersHorizontal, LayoutList } from 'lucide-react';
 import ProductImage from '../components/ProductImage';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
@@ -155,9 +155,9 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const [filterVolumeKg,     setFilterVolumeKg]     = useState('');
   const [filterPlasticGroup, setFilterPlasticGroup] = useState('');
   const [inStockOnly,  setInStockOnly]  = useState(false);
-  const [visibleCount,        setVisibleCount]        = useState(24);
-  const [catsOpen,            setCatsOpen]            = useState(false);
-  const [mobileSidebarOpen,   setMobileSidebarOpen]   = useState(false);
+  const [visibleCount,  setVisibleCount]  = useState(24);
+  const [catsOpen,      setCatsOpen]      = useState(false);
+  const [mobilePanel,   setMobilePanel]   = useState<'cats' | 'filters' | null>(null);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(() => {
     if (!initialCategory) return new Set<string>();
     const expanded = new Set<string>();
@@ -219,7 +219,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     sidebarRef.current?.scrollTo({ top: 0 });
     setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup('');
     setVisibleCount(24);
-    setMobileSidebarOpen(false);
+    setMobilePanel(null);
     if (slug) setTimeout(() => scrollCatToTop(slug), 50);
   };
   const { skus: wishSkus, toggle: toggleWish } = useWishlist();
@@ -364,7 +364,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   return (
     <div className="shop-layout">
       {/* Sidebar */}
-      <aside className={'shop-sidebar' + (mobileSidebarOpen ? ' mobile-open' : '')} ref={sidebarRef}>
+      <aside className={`shop-sidebar${mobilePanel ? ' mobile-open' : ''}${mobilePanel === 'cats' ? ' mobile-cats' : ''}${mobilePanel === 'filters' ? ' mobile-filters' : ''}`} ref={sidebarRef}>
+        <div className="sidebar-cats-section">
         <h3>Категорії</h3>
 
         <div
@@ -466,6 +467,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           </button>
         )}
 
+        </div>{/* end sidebar-cats-section */}
+        <div className="sidebar-filters-section">
         <hr className="shop-sidebar__divider" />
         <p className="shop-sidebar__heading">Фільтри за властивостями</p>
 
@@ -519,6 +522,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           <input type="checkbox" checked={saleOnly} onChange={e => setSaleOnly(e.target.checked)} />
           Тільки акційні
         </label>
+        </div>{/* end sidebar-filters-section */}
       </aside>
 
       {/* Main */}
@@ -529,17 +533,24 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             <span className="shop-count">{filtered.length} товарів</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              className={'shop-mobile-filter-btn' + (mobilePanel === 'cats' ? ' active' : '')}
+              onClick={() => setMobilePanel(v => v === 'cats' ? null : 'cats')}
+            >
+              <LayoutList size={14} strokeWidth={2} />
+              Категорії
+            </button>
             {(() => {
               const count = Object.values(filterValues).filter(Boolean).length +
                 (filterVolume ? 1 : 0) + (filterVolumeKg ? 1 : 0) +
                 (inStockOnly ? 1 : 0) + (filterPlasticGroup ? 1 : 0);
               return (
                 <button
-                  className={'shop-mobile-filter-btn' + (mobileSidebarOpen ? ' active' : '')}
-                  onClick={() => setMobileSidebarOpen(v => !v)}
+                  className={'shop-mobile-filter-btn' + (mobilePanel === 'filters' ? ' active' : '')}
+                  onClick={() => setMobilePanel(v => v === 'filters' ? null : 'filters')}
                 >
                   <SlidersHorizontal size={14} strokeWidth={2} />
-                  Категорії
+                  Фільтри
                   {count > 0 && <span className="shop-mobile-filter-badge">{count}</span>}
                 </button>
               );

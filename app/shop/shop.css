@@ -373,6 +373,8 @@
     margin-bottom: 16px;
   }
   .shop-sidebar.mobile-open { display: block; }
+  .shop-sidebar.mobile-cats .sidebar-filters-section { display: none; }
+  .shop-sidebar.mobile-filters .sidebar-cats-section { display: none; }
   .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .shop-mobile-filter-btn { display: flex; }
   .shop-title { font-size: 18px; }
