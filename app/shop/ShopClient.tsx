@@ -394,15 +394,21 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                   className={'shop-cat-item' + (isActive ? ' active' : '')}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
                   onClick={() => {
-                    selectCat(selCat === cat.slug ? null : cat.slug);
-                    if (children.length > 0) {
-                      setExpandedCats(prev => {
-                        const next = new Set(prev);
-                        next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug);
-                        return next;
-                      });
+                    if (children.length > 0 && !expandedCats.has(cat.slug)) {
+                      // First click on collapsed parent → expand only, don't navigate
+                      setExpandedCats(prev => { const next = new Set(prev); next.add(cat.slug); return next; });
+                    } else {
+                      // Already expanded or no children → navigate
+                      selectCat(selCat === cat.slug ? null : cat.slug);
+                      if (children.length > 0) {
+                        setExpandedCats(prev => {
+                          const next = new Set(prev);
+                          next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug);
+                          return next;
+                        });
+                      }
+                      window.scrollTo(0, 0);
                     }
-                    window.scrollTo(0, 0);
                   }}
                 >
                   <span>{cat.name}</span>

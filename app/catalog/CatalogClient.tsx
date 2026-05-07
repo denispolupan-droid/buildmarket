@@ -343,12 +343,17 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                         className={'cat-item' + (isActive ? ' active' : '')}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                         onClick={() => {
-                          selectCat(selCat === cat.slug ? '' : cat.slug);
-                          if (children.length > 0) setExpandedCats(prev => {
-                            const next = new Set(prev);
-                            next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug);
-                            return next;
-                          });
+                          if (children.length > 0 && !expandedCats.has(cat.slug)) {
+                            // First click on collapsed parent → expand only
+                            setExpandedCats(prev => { const next = new Set(prev); next.add(cat.slug); return next; });
+                          } else {
+                            selectCat(selCat === cat.slug ? '' : cat.slug);
+                            if (children.length > 0) setExpandedCats(prev => {
+                              const next = new Set(prev);
+                              next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug);
+                              return next;
+                            });
+                          }
                         }}
                       >
                         <span>{cat.name}</span>

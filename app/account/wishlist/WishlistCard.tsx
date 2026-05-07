@@ -106,14 +106,9 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
           ● {inStock ? 'в наявності' : 'немає'}
         </div>
 
-        {/* Price */}
-        <div className="wishlist-card__price" style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', flexShrink: 0, minWidth: '90px', textAlign: 'right' }}>
-          {price > 0 ? `${price} грн` : <span style={{ fontSize: '13px', color: '#94A3B8' }}>За запитом</span>}
-        </div>
-
       </div>{/* end wishlist-card-info */}
 
-      {/* Actions: qty + cart + remove */}
+      {/* Actions: qty + price + cart + remove */}
       <div className="wishlist-card__actions" style={{ display: 'contents' }}>
         <input
           type="number"
@@ -129,6 +124,11 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
             color: 'var(--text-primary)', outline: 'none', flexShrink: 0,
           }}
         />
+        {/* Price — next to counter */}
+        <div className="wishlist-card__price" style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+          {price > 0 ? `${price} грн` : <span style={{ fontSize: '12px', color: '#94A3B8' }}>За запитом</span>}
+        </div>
+
         <button
           className="wc-btn-cart"
           onClick={handleAddToCart}
