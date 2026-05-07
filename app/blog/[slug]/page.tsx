@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
 import { getArticle, ARTICLES } from '../../../lib/blog';
-import { ArrowLeft, Clock, Calendar, BookOpen } from 'lucide-react';
+import { ArrowLeft, Clock, BookOpen } from 'lucide-react';
 
 export function generateStaticParams() {
   return ARTICLES.map(a => ({ slug: a.slug }));
@@ -513,9 +513,6 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             </span>
             <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Clock size={12} /> {article.readTime} хв читання
-            </span>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Calendar size={12} /> {new Date(article.date).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' })}
             </span>
           </div>
 
