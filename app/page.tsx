@@ -173,32 +173,38 @@ export default async function Home() {
         <div style={{ background: 'rgba(0,0,0,0.15)', borderTop: '1px solid rgba(255,255,255,0.06)', position: 'relative', zIndex: 1 }}>
           <div className="page-container hero-brand-strip-outer">
             <div className="hero-brand-strip">
-              {brands.slice(0, 14).map(brand => (
-                <Link
-                  key={brand}
-                  href={`/shop?brand=${encodeURIComponent(brand)}`}
-                  className="brand-logo-link"
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    height: '30px', padding: '0 12px', borderRadius: '7px',
-                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)',
-                    textDecoration: 'none', minWidth: '72px',
-                  }}
-                >
-                  {brandLogoMap[brand.toLowerCase()] ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={brandLogoMap[brand.toLowerCase()]}
-                      alt={brand}
-                      style={{ width: '64px', height: '24px', objectFit: 'contain' }}
-                    />
-                  ) : (
-                    <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                      {brand}
-                    </span>
-                  )}
-                </Link>
-              ))}
+              {brands.slice(0, 14).map(brand => {
+                const logoSrc = brandLogoMap[brand.toLowerCase()];
+                return (
+                  <Link
+                    key={brand}
+                    href={`/shop?brand=${encodeURIComponent(brand)}`}
+                    className="brand-logo-link"
+                    style={{
+                      display: logoSrc ? 'block' : 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                      height: '30px',
+                      padding: logoSrc ? 0 : '0 12px',
+                      borderRadius: '7px', overflow: 'hidden',
+                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)',
+                      textDecoration: 'none', minWidth: logoSrc ? '80px' : '72px',
+                    }}
+                  >
+                    {logoSrc ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={logoSrc}
+                        alt={brand}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                        {brand}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>
