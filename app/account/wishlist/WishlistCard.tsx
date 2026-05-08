@@ -154,8 +154,9 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
 
         {/* Total sum — next to counter */}
         {total > 0 && (
-          <div className="wishlist-card__total" style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-            {total.toLocaleString('uk-UA')} грн
+          <div className="wishlist-card__total" style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: '11px', color: '#94A3B8', display: 'block', lineHeight: 1 }}>сума</span>
+            <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>{total.toLocaleString('uk-UA')} грн</span>
           </div>
         )}
 

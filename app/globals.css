@@ -185,22 +185,21 @@ input, select { font-family: inherit; }
 }
 .hero-scroll-hint { display: none; }
 
-/* Scroll-to-top button */
+/* Scroll-to-top button — sits left of the theme toggle */
 .scroll-to-top-btn {
-  position: fixed; bottom: 72px; right: 24px; z-index: 1000;
-  width: 38px; height: 38px; border-radius: 50%;
+  position: fixed; bottom: 24px; right: 76px; z-index: 1000;
+  width: 44px; height: 44px; border-radius: 50%;
   background: #4880B8; color: #fff;
   border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 3px 12px rgba(0,0,0,0.22);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
   transition: background 0.15s, transform 0.15s;
 }
 .scroll-to-top-btn:hover { background: #3B6EC4; transform: translateY(-2px); }
 @media (max-width: 768px) {
   .scroll-to-top-btn {
-    width: 32px; height: 32px; bottom: 80px; right: 16px;
-    background: rgba(72,128,184,0.65);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    width: 36px; height: 36px; bottom: 24px; right: 72px;
+    background: rgba(72,128,184,0.75);
   }
 }
 .hero-brand-strip-outer {
