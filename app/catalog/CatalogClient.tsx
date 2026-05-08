@@ -53,13 +53,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
 
   const scrollCatToTop = useCallback((slug: string) => {
     const catEl = catRefs.current[slug];
-    const container = catsListRef.current;
-    if (!catEl || !container) return;
-    const scrollEl = container.scrollHeight > container.clientHeight ? container : sidebarRef.current;
-    if (!scrollEl) return;
-    const elTop = catEl.getBoundingClientRect().top;
-    const scrollElTop = scrollEl.getBoundingClientRect().top;
-    scrollEl.scrollTo({ top: scrollEl.scrollTop + (elTop - scrollElTop), behavior: 'smooth' });
+    if (!catEl) return;
+    catEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
   const selectCat = (slug: string, scrollSlug?: string) => {
