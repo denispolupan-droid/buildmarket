@@ -142,6 +142,10 @@ input, select { font-family: inherit; }
 [data-theme="dark"] .price-only { color: var(--text-primary) !important; }
 [data-theme="dark"] .stock-badge.in { background: #14532D !important; color: #4ADE80 !important; }
 [data-theme="dark"] .stock-badge.out { background: #450a0a !important; color: #f87171 !important; }
+
+/* Головна — CTA і футер адаптуються до темної теми */
+[data-theme="dark"] .home-cta-section { background: var(--bg-card) !important; border-top: 1px solid var(--border) !important; }
+[data-theme="dark"] footer { background: var(--bg-soft) !important; border-top: 1px solid var(--border) !important; }
 [data-theme="dark"] .qty-input { background: var(--bg-card) !important; border-color: var(--border) !important; color: var(--text-primary) !important; }
 [data-theme="dark"] .action-icon-btn { background: var(--bg-card) !important; border-color: var(--border) !important; color: var(--text-secondary) !important; }
 [data-theme="dark"] .action-icon-btn:hover { border-color: #4880B8 !important; }

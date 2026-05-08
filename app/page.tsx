@@ -188,41 +188,23 @@ export default async function Home() {
         <div style={{ background: 'rgba(0,0,0,0.15)', borderTop: '1px solid rgba(255,255,255,0.06)', position: 'relative', zIndex: 1 }}>
           <div className="page-container hero-brand-strip-outer">
             <div className="hero-brand-strip">
-              {sortedBrands.slice(0, 16).map(brand => {
-                const logoSrc = brandLogoMap[brand.toLowerCase()];
-                return (
-                  <Link
-                    key={brand}
-                    href={`/shop?brand=${encodeURIComponent(brand)}`}
-                    className="brand-logo-link"
-                    style={logoSrc ? {
-                      display: 'block',
-                      width: '76px', height: '26px',
-                      borderRadius: '7px', overflow: 'hidden',
-                      border: '1px solid rgba(255,255,255,0.09)',
-                      textDecoration: 'none', flexShrink: 0,
-                    } : {
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      height: '30px', padding: '0 12px', borderRadius: '7px',
-                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)',
-                      textDecoration: 'none', minWidth: '72px',
-                    }}
-                  >
-                    {logoSrc ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={logoSrc}
-                        alt={brand}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                      />
-                    ) : (
-                      <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                        {brand}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
+              {brands.slice(0, 16).map(brand => (
+                <Link
+                  key={brand}
+                  href={`/shop?brand=${encodeURIComponent(brand)}`}
+                  className="brand-logo-link"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    height: '28px', padding: '0 12px', borderRadius: '7px',
+                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)',
+                    textDecoration: 'none', minWidth: '64px',
+                  }}
+                >
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                    {brand}
+                  </span>
+                </Link>
+              ))}
             </div>
           </div>
         </div>
