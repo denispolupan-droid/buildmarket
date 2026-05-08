@@ -81,6 +81,11 @@ export default async function Home() {
   const products = await getPreviewProductsCached(allSlugs, 2);
 
   const brandLogoMap = getBrandLogoMap();
+  const sortedBrands = [...brands].sort((a, b) => {
+    const aHas = !!brandLogoMap[a.toLowerCase()];
+    const bHas = !!brandLogoMap[b.toLowerCase()];
+    return aHas === bHas ? 0 : aHas ? -1 : 1;
+  });
 
   const orgLd = {
     '@context': 'https://schema.org',
@@ -173,7 +178,7 @@ export default async function Home() {
         <div style={{ background: 'rgba(0,0,0,0.15)', borderTop: '1px solid rgba(255,255,255,0.06)', position: 'relative', zIndex: 1 }}>
           <div className="page-container hero-brand-strip-outer">
             <div className="hero-brand-strip">
-              {brands.slice(0, 14).map(brand => {
+              {sortedBrands.slice(0, 16).map(brand => {
                 const logoSrc = brandLogoMap[brand.toLowerCase()];
                 return (
                   <Link
@@ -182,7 +187,7 @@ export default async function Home() {
                     className="brand-logo-link"
                     style={logoSrc ? {
                       display: 'block',
-                      height: '30px',
+                      width: '90px', height: '30px',
                       borderRadius: '7px', overflow: 'hidden',
                       border: '1px solid rgba(255,255,255,0.09)',
                       textDecoration: 'none', flexShrink: 0,
@@ -198,7 +203,7 @@ export default async function Home() {
                       <img
                         src={logoSrc}
                         alt={brand}
-                        style={{ height: '30px', width: 'auto', display: 'block' }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                       />
                     ) : (
                       <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
