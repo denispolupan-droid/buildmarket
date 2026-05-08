@@ -31,13 +31,15 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       // If mouse is to the right of the sidebar — let the page scroll normally
       if (e.clientX > sidebarRect.right) return;
       e.preventDefault();
-      // If mouse is over the cats list — scroll it first
+      // If mouse is over the cats list and it's scrollable — scroll it, otherwise sidebar
       if (catsList) {
         const catsRect = catsList.getBoundingClientRect();
         if (e.clientX >= catsRect.left && e.clientX <= catsRect.right &&
             e.clientY >= catsRect.top  && e.clientY <= catsRect.bottom) {
-          catsList.scrollTop += e.deltaY;
-          return;
+          if (catsList.scrollHeight > catsList.clientHeight) {
+            catsList.scrollTop += e.deltaY;
+            return;
+          }
         }
       }
       sidebar.scrollTop += e.deltaY;

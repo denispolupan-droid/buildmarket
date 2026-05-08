@@ -187,8 +187,10 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         const catsRect = catsList.getBoundingClientRect();
         if (e.clientX >= catsRect.left && e.clientX <= catsRect.right &&
             e.clientY >= catsRect.top  && e.clientY <= catsRect.bottom) {
-          catsList.scrollTop += e.deltaY;
-          return;
+          if (catsList.scrollHeight > catsList.clientHeight) {
+            catsList.scrollTop += e.deltaY;
+            return;
+          }
         }
       }
       sidebar.scrollTop += e.deltaY;
