@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import fs from 'fs';
-import path from 'path';
 
 export const revalidate = 300;
 
@@ -20,35 +18,11 @@ export const metadata: Metadata = {
   },
 };
 import { Users, Package, ShieldCheck, Truck, Store, LayoutGrid, CheckCircle, MessageCircle, Award, Tag, PackageCheck } from 'lucide-react';
-import { getCategoriesCached, getPreviewProductsCached, getBrandsCached } from '../lib/supabase';
+import { getCategoriesCached, getPreviewProductsCached } from '../lib/supabase';
 import Footer from './components/Footer';
 import CategorySection from './components/CategorySection';
 import PromoBanner from './components/PromoBanner';
 
-const cyrillicAliases: Record<string, string> = {
-  'атаман': 'ataman',
-  'лакрисіл': 'lacrysil',
-  'церезіт': 'ceresit',
-  'патекс': 'pattex',
-};
-
-function getBrandLogoMap(): Record<string, string> {
-  try {
-    const dir = path.join(process.cwd(), 'public', 'brands');
-    const files = fs.readdirSync(dir);
-    const map: Record<string, string> = {};
-    for (const file of files) {
-      const key = file.replace(/\.[^.]+$/, '').toLowerCase();
-      map[key] = `/brands/${file}`;
-    }
-    for (const [cyr, lat] of Object.entries(cyrillicAliases)) {
-      if (map[lat]) map[cyr] = map[lat];
-    }
-    return map;
-  } catch {
-    return {};
-  }
-}
 
 const trust = [
   {
@@ -83,19 +57,9 @@ const trust = [
 
 
 export default async function Home() {
-  const [categories, brands] = await Promise.all([
-    getCategoriesCached(),
-    getBrandsCached(),
-  ]);
+  const categories = await getCategoriesCached();
   const allSlugs = categories.map(c => c.slug);
   const products = await getPreviewProductsCached(allSlugs, 2);
-
-  const brandLogoMap = getBrandLogoMap();
-  const sortedBrands = [...brands].sort((a, b) => {
-    const aHas = !!brandLogoMap[a.toLowerCase()];
-    const bHas = !!brandLogoMap[b.toLowerCase()];
-    return aHas === bHas ? 0 : aHas ? -1 : 1;
-  });
 
   const orgLd = {
     '@context': 'https://schema.org',
@@ -184,30 +148,6 @@ export default async function Home() {
 
         </div>
 
-        {/* Brand logos strip */}
-        <div style={{ background: 'rgba(0,0,0,0.15)', borderTop: '1px solid rgba(255,255,255,0.06)', position: 'relative', zIndex: 1 }}>
-          <div className="page-container hero-brand-strip-outer">
-            <div className="hero-brand-strip">
-              {brands.slice(0, 16).map(brand => (
-                <Link
-                  key={brand}
-                  href={`/shop?brand=${encodeURIComponent(brand)}`}
-                  className="brand-logo-link"
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    height: '28px', padding: '0 12px', borderRadius: '7px',
-                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)',
-                    textDecoration: 'none', minWidth: '64px',
-                  }}
-                >
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                    {brand}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
       </section>
 
 
