@@ -180,14 +180,17 @@ export default async function Home() {
                     key={brand}
                     href={`/shop?brand=${encodeURIComponent(brand)}`}
                     className="brand-logo-link"
-                    style={{
-                      display: logoSrc ? 'block' : 'flex',
-                      alignItems: 'center', justifyContent: 'center',
-                      height: '30px',
-                      padding: logoSrc ? 0 : '0 12px',
+                    style={logoSrc ? {
+                      display: 'block',
+                      width: '90px', height: '30px',
                       borderRadius: '7px', overflow: 'hidden',
+                      border: '1px solid rgba(255,255,255,0.09)',
+                      textDecoration: 'none', flexShrink: 0,
+                    } : {
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      height: '30px', padding: '0 12px', borderRadius: '7px',
                       background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)',
-                      textDecoration: 'none', minWidth: logoSrc ? '80px' : '72px',
+                      textDecoration: 'none', minWidth: '72px',
                     }}
                   >
                     {logoSrc ? (
@@ -195,7 +198,7 @@ export default async function Home() {
                       <img
                         src={logoSrc}
                         alt={brand}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        style={{ width: '100%', height: '100%', objectFit: 'fill', display: 'block' }}
                       />
                     ) : (
                       <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
