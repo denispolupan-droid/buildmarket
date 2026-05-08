@@ -1,4 +1,5 @@
 import { revalidateTag } from 'next/cache';
+import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 
 export async function GET(req: Request) {
@@ -7,8 +8,9 @@ export async function GET(req: Request) {
   if (secret !== process.env.REVALIDATE_SECRET) {
     return NextResponse.json({ error: 'Invalid secret' }, { status: 401 });
   }
-  revalidateTag('brands');
-  revalidateTag('categories');
-  revalidateTag('products');
+  revalidateTag('brands', 'max');
+  revalidateTag('categories', 'max');
+  revalidateTag('products', 'max');
+  revalidatePath('/');
   return NextResponse.json({ revalidated: true, ts: Date.now() });
 }
