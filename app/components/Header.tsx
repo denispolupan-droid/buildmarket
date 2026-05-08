@@ -229,19 +229,24 @@ export default function Header() {
               )}
             </Link>
 
-            {/* Theme toggle — desktop only (mobile: fixed button) */}
+            {/* Theme toggle — desktop only, separated at right edge */}
             <button
               className="desktop-nav"
               onClick={toggleTheme}
               aria-label={theme === 'dark' ? 'Світла тема' : 'Темна тема'}
               style={{
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                width: '38px', height: '38px', borderRadius: '8px',
-                border: '1px solid var(--border)', background: 'var(--bg-card)',
-                color: 'var(--text-secondary)', cursor: 'pointer',
+                width: '32px', height: '32px', borderRadius: '6px',
+                border: 'none', background: 'transparent',
+                color: 'var(--text-muted)', cursor: 'pointer',
+                marginLeft: '8px',
+                opacity: 0.65,
+                transition: 'opacity 0.15s',
               }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+              onMouseLeave={e => (e.currentTarget.style.opacity = '0.65')}
             >
-              {theme === 'dark' ? <Sun size={16} strokeWidth={2} /> : <Moon size={16} strokeWidth={2} />}
+              {theme === 'dark' ? <Sun size={16} strokeWidth={1.75} /> : <Moon size={16} strokeWidth={1.75} />}
             </button>
 
             {/* Hamburger */}
