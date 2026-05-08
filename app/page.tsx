@@ -148,6 +148,13 @@ export default async function Home() {
 
         </div>
 
+        {/* Mobile scroll hint */}
+        <div className="hero-scroll-hint">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+
       </section>
 
 
