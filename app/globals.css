@@ -187,19 +187,28 @@ input, select { font-family: inherit; }
 
 /* Scroll-to-top button */
 .scroll-to-top-btn {
-  position: fixed; bottom: 78px; right: 24px; z-index: 1000;
+  position: fixed; bottom: 78px; right: 8px; z-index: 1000;
   width: 44px; height: 44px; border-radius: 50%;
-  background: #4880B8; color: #fff;
-  border: none; cursor: pointer;
+  background: rgba(72,128,184,0.38); color: #fff;
+  border: 1px solid rgba(72,128,184,0.3);
+  cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   transition: background 0.15s, transform 0.15s;
 }
-.scroll-to-top-btn:hover { background: #3B6EC4; transform: translateY(-2px); }
+.scroll-to-top-btn:hover { background: rgba(72,128,184,0.7); transform: translateY(-2px); }
+
+/* Desktop: theme toggle also right: 8px */
+.theme-toggle-btn { right: 8px !important; }
+
 /* Mobile: theme toggle moves up, arrow sits below it */
 @media (max-width: 768px) {
-  .theme-toggle-btn { bottom: 80px !important; }
-  .scroll-to-top-btn { bottom: 24px !important; right: 24px !important; }
+  .theme-toggle-btn { bottom: 80px !important; right: 24px !important; }
+  .scroll-to-top-btn {
+    bottom: 24px !important; right: 24px !important;
+    background: #4880B8 !important; border: none !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25) !important;
+  }
 }
 .hero-brand-strip-outer {
   padding: 8px 40px;
