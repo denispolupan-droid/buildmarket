@@ -206,8 +206,10 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
 
   const scrollCatToTop = useCallback((slug: string) => {
     const catEl = catRefs.current[slug];
-    if (!catEl) return;
-    catEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const container = catsListRef.current;
+    if (!catEl || !container) return;
+    const offset = catEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+    container.scrollTo({ top: container.scrollTop + offset, behavior: 'smooth' });
   }, []);
 
   const selectCat = (slug: string | null, scrollSlug?: string) => {
