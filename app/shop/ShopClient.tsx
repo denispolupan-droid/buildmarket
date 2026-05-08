@@ -364,6 +364,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   };
 
   return (
+    <>
     <div className="shop-layout">
       {/* Sidebar */}
       <aside className={`shop-sidebar${mobilePanel ? ' mobile-open' : ''}${mobilePanel === 'cats' ? ' mobile-cats' : ''}${mobilePanel === 'filters' ? ' mobile-filters' : ''}`} ref={sidebarRef}>
@@ -636,5 +637,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       </div>
     </div>
     <ScrollToTop />
+    </>
   );
 }
