@@ -211,7 +211,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     if (!scrollEl) return;
     const elTop = catEl.getBoundingClientRect().top;
     const scrollElTop = scrollEl.getBoundingClientRect().top;
-    scrollEl.scrollTo({ top: scrollEl.scrollTop + (elTop - scrollElTop) });
+    scrollEl.scrollTo({ top: scrollEl.scrollTop + (elTop - scrollElTop), behavior: 'smooth' });
   }, []);
 
   const selectCat = (slug: string | null, scrollSlug?: string) => {
@@ -390,11 +390,12 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           {parentCats.map(cat => {
             const children = childrenOf[cat.slug] ?? [];
             const isExpanded = expandedCats.has(cat.slug);
-            const isActive = selCat === cat.slug || children.some(c => c.slug === selCat);
+            const isDirectActive = selCat === cat.slug;
+            const isParentActive = !isDirectActive && children.some(c => c.slug === selCat || childrenOf[c.slug]?.some(g => g.slug === selCat));
             return (
               <div key={cat.slug} ref={el => { catRefs.current[cat.slug] = el; }} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 <button
-                  className={'shop-cat-item' + (isActive ? ' active' : '')}
+                  className={'shop-cat-item' + (isDirectActive ? ' active' : isParentActive ? ' parent-active' : '')}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
                   onClick={() => {
                     if (children.length > 0 && !expandedCats.has(cat.slug)) {
@@ -425,11 +426,12 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                 {isExpanded && children.map(child => {
                   const grandchildren = childrenOf[child.slug] ?? [];
                   const childExpanded = expandedCats.has(child.slug);
-                  const childActive = selCat === child.slug || grandchildren.some(g => g.slug === selCat);
+                  const isChildDirectActive = selCat === child.slug;
+                  const isChildParentActive = !isChildDirectActive && grandchildren.some(g => g.slug === selCat);
                   return (
                     <div key={child.slug} ref={el => { catRefs.current[child.slug] = el; }} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                       <button
-                        className={'shop-cat-item' + (childActive ? ' active' : '')}
+                        className={'shop-cat-item' + (isChildDirectActive ? ' active' : isChildParentActive ? ' parent-active' : '')}
                         style={{ paddingLeft: '22px', fontSize: '13px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                         onClick={() => {
                           selectCat(selCat === child.slug ? null : child.slug, cat.slug);

@@ -15,6 +15,8 @@
 .cat-item:hover { background: var(--bg-soft); color: var(--text-primary); }
 .cat-item.active { background: #EEF4FF; color: #1E40AF; font-weight: 600; }
 [data-theme="dark"] .cat-item.active { background: #1E3A5F; color: #93C5FD; }
+.cat-item.parent-active { background: #F5F8FF; color: #3B6EC4; font-weight: 600; }
+[data-theme="dark"] .cat-item.parent-active { background: #172B47; color: #7EB5E8; }
 .filter-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
 .filter-group { margin-bottom: 14px; }
 .filter-group:last-of-type { margin-bottom: 0; }

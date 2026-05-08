@@ -60,7 +60,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     if (!scrollEl) return;
     const elTop = catEl.getBoundingClientRect().top;
     const scrollElTop = scrollEl.getBoundingClientRect().top;
-    scrollEl.scrollTo({ top: scrollEl.scrollTop + (elTop - scrollElTop) });
+    scrollEl.scrollTo({ top: scrollEl.scrollTop + (elTop - scrollElTop), behavior: 'smooth' });
   }, []);
 
   const selectCat = (slug: string, scrollSlug?: string) => {
@@ -339,11 +339,12 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 {parentCats.map(cat => {
                   const children = childrenOf[cat.slug] ?? [];
                   const isExpanded = expandedCats.has(cat.slug);
-                  const isActive = selCat === cat.slug || children.some(c => c.slug === selCat);
+                  const isDirectActive = selCat === cat.slug;
+                  const isParentActive = !isDirectActive && children.some(c => c.slug === selCat);
                   return (
                     <div key={cat.slug} ref={el => { catRefs.current[cat.slug] = el; }}>
                       <div
-                        className={'cat-item' + (isActive ? ' active' : '')}
+                        className={'cat-item' + (isDirectActive ? ' active' : isParentActive ? ' parent-active' : '')}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                         onClick={() => {
                           if (children.length > 0 && !expandedCats.has(cat.slug)) {
