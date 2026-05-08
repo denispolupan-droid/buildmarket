@@ -399,11 +399,9 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
                   onClick={() => {
                     if (children.length > 0 && !expandedCats.has(cat.slug)) {
-                      // First click on collapsed parent → expand only, don't navigate
                       setExpandedCats(prev => { const next = new Set(prev); next.add(cat.slug); return next; });
-                      setTimeout(() => scrollCatToTop(cat.slug), 50);
+                      selectCat(cat.slug);
                     } else {
-                      // Already expanded or no children → navigate
                       selectCat(selCat === cat.slug ? null : cat.slug);
                       if (children.length > 0) {
                         setExpandedCats(prev => {

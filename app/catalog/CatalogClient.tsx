@@ -348,9 +348,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                         onClick={() => {
                           if (children.length > 0 && !expandedCats.has(cat.slug)) {
-                            // First click on collapsed parent → expand only
                             setExpandedCats(prev => { const next = new Set(prev); next.add(cat.slug); return next; });
-                            setTimeout(() => scrollCatToTop(cat.slug), 50);
+                            selectCat(cat.slug);
                           } else {
                             selectCat(selCat === cat.slug ? '' : cat.slug);
                             if (children.length > 0) setExpandedCats(prev => {
