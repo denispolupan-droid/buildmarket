@@ -213,7 +213,7 @@ export default async function Home() {
                       <img
                         src={logoSrc}
                         alt={brand}
-                        style={{ width: '100%', height: '100%', objectFit: 'fill', display: 'block' }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                       />
                     ) : (
                       <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
