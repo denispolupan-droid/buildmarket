@@ -17,17 +17,8 @@
   overflow-y: scroll;
   scrollbar-width: none;
   overscroll-behavior: contain;
-  scroll-padding-top: 46px;
 }
 .shop-sidebar::-webkit-scrollbar { display: none; }
-.shop-sidebar .sidebar-cats-section h3 {
-  position: sticky;
-  top: 0;
-  background: var(--bg-card);
-  z-index: 2;
-  padding-bottom: 10px;
-  margin-bottom: 0;
-}
 
 .shop-cats-list {
   scrollbar-width: none;

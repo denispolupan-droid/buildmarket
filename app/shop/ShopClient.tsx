@@ -370,8 +370,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         <div
           ref={catsListRef}
           style={{
-            maxHeight: catsOpen ? 'none' : '370px',
-            overflowY: catsOpen ? 'visible' : 'auto',
+            maxHeight: catsOpen ? 'calc(100vh - 220px)' : '370px',
+            overflowY: 'auto',
             transition: 'max-height 0.2s ease',
             scrollbarWidth: 'none',
           }}
@@ -480,7 +480,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         </div>{/* end sidebar-cats-section */}
         <div className="sidebar-filters-section">
         <hr className="shop-sidebar__divider" />
-        <p className="shop-sidebar__heading">Фільтри за властивостями</p>
+        <p className="shop-sidebar__heading">Фільтри</p>
 
         {volumesL.length > 0 && (
           <div className="shop-filter-group">

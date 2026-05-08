@@ -320,8 +320,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 ref={catsListRef}
                 className="cat-list"
                 style={{
-                  maxHeight: catsOpen ? 'none' : '370px',
-                  overflowY: catsOpen ? 'visible' : 'auto',
+                  maxHeight: catsOpen ? 'calc(100vh - 220px)' : '370px',
+                  overflowY: 'auto',
                   scrollbarWidth: 'none',
                 }}
               >
