@@ -318,13 +318,9 @@ export default function Header() {
         title={theme === 'dark' ? 'Світла тема' : 'Темна тема'}
         className="theme-toggle-btn"
         style={{
-          position: 'fixed', bottom: '24px', right: '24px', zIndex: 999,
-          width: '44px', height: '44px', borderRadius: '50%',
           background: theme === 'dark' ? '#1E293B' : '#0F172A',
           border: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#F1F5F9', cursor: 'pointer',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+          color: '#F1F5F9',
         }}
       >
         {theme === 'dark' ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}

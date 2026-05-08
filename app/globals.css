@@ -198,15 +198,17 @@ input, select { font-family: inherit; }
 }
 .scroll-to-top-btn:hover { background: rgba(72,128,184,0.7); transform: translateY(-2px); }
 
-/* Desktop: theme toggle also right: 8px */
-.theme-toggle-btn { right: 8px !important; }
+/* Theme toggle base */
+.theme-toggle-btn {
+  position: fixed; bottom: 24px; right: 8px; z-index: 999;
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+}
 
-/* Mobile: same size, same right alignment, stacked */
+/* Mobile: same 40×40, right:16px, stacked */
 @media (max-width: 768px) {
-  .theme-toggle-btn {
-    bottom: 78px !important; right: 16px !important;
-    width: 40px !important; height: 40px !important;
-  }
+  .theme-toggle-btn { bottom: 78px; right: 16px; width: 40px; height: 40px; }
   .scroll-to-top-btn {
     bottom: 24px !important; right: 16px !important;
     width: 40px !important; height: 40px !important;
