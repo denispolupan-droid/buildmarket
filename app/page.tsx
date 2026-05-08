@@ -25,6 +25,13 @@ import Footer from './components/Footer';
 import CategorySection from './components/CategorySection';
 import PromoBanner from './components/PromoBanner';
 
+const cyrillicAliases: Record<string, string> = {
+  'атаман': 'ataman',
+  'лакрисіл': 'lacrysil',
+  'церезіт': 'ceresit',
+  'патекс': 'pattex',
+};
+
 function getBrandLogoMap(): Record<string, string> {
   try {
     const dir = path.join(process.cwd(), 'public', 'brands');
@@ -33,6 +40,9 @@ function getBrandLogoMap(): Record<string, string> {
     for (const file of files) {
       const key = file.replace(/\.[^.]+$/, '').toLowerCase();
       map[key] = `/brands/${file}`;
+    }
+    for (const [cyr, lat] of Object.entries(cyrillicAliases)) {
+      if (map[lat]) map[cyr] = map[lat];
     }
     return map;
   } catch {
@@ -187,10 +197,10 @@ export default async function Home() {
                     className="brand-logo-link"
                     style={logoSrc ? {
                       display: 'block',
-                      height: '30px', padding: 0,
+                      height: '30px',
                       borderRadius: '7px', overflow: 'hidden',
-                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)',
-                      textDecoration: 'none', minWidth: '80px',
+                      border: '1px solid rgba(255,255,255,0.09)',
+                      textDecoration: 'none',
                     } : {
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       height: '30px', padding: '0 12px', borderRadius: '7px',
@@ -203,7 +213,7 @@ export default async function Home() {
                       <img
                         src={logoSrc}
                         alt={brand}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        style={{ height: '30px', width: 'auto', display: 'block' }}
                       />
                     ) : (
                       <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
