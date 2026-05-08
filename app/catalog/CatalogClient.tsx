@@ -347,7 +347,9 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                         className={'cat-item' + (isDirectActive ? ' active' : isParentActive ? ' parent-active' : '')}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                         onClick={() => {
-                          if (children.length > 0 && !expandedCats.has(cat.slug)) {
+                          if (children.length > 0 && window.innerWidth <= 768) {
+                            setExpandedCats(prev => { const next = new Set(prev); next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug); return next; });
+                          } else if (children.length > 0 && !expandedCats.has(cat.slug)) {
                             setExpandedCats(prev => { const next = new Set(prev); next.add(cat.slug); return next; });
                             selectCat(cat.slug);
                           } else {
