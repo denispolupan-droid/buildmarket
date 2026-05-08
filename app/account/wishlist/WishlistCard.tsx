@@ -122,14 +122,19 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
           <span style={{ fontWeight: 700, color: '#0F172A' }}>{product.pack_qty}</span> шт
         </div>
 
-        {/* Stock */}
-        <div className="wishlist-card__stock" style={{ fontSize: '12px', fontWeight: 600, color: inStock ? '#15803D' : '#DC2626', flexShrink: 0, minWidth: '90px' }}>
-          ● {inStock ? 'в наявності' : 'немає'}
+        {/* Stock + Price row (display:contents on desktop; flex row on mobile) */}
+        <div className="wishlist-card__stock-price-row">
+          <div className="wishlist-card__stock" style={{ fontSize: '12px', fontWeight: 600, color: inStock ? '#15803D' : '#DC2626', flexShrink: 0, minWidth: '90px' }}>
+            ● {inStock ? 'в наявності' : 'немає'}
+          </div>
+          <div className="wishlist-card__price" style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+            {price > 0 ? `${price} грн/шт` : <span style={{ fontSize: '12px', color: '#94A3B8' }}>За запитом</span>}
+          </div>
         </div>
 
       </div>{/* end wishlist-card-info */}
 
-      {/* Actions: qty + unit price + cart button + total */}
+      {/* Actions: qty + total + cart button */}
       <div className="wishlist-card__actions" style={{ display: 'contents' }}>
 
         <input
@@ -147,10 +152,12 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
           }}
         />
 
-        {/* Unit price */}
-        <div className="wishlist-card__price" style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-          {price > 0 ? `${price} грн/шт` : <span style={{ fontSize: '12px', color: '#94A3B8' }}>За запитом</span>}
-        </div>
+        {/* Total sum — next to counter */}
+        {total > 0 && (
+          <div className="wishlist-card__total" style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+            {total.toLocaleString('uk-UA')} грн
+          </div>
+        )}
 
         <button
           className="wc-btn-cart"
@@ -168,13 +175,6 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
         >
           {added ? <><Check size={13} strokeWidth={2.5} />Додано</> : <><ShoppingCart size={13} strokeWidth={2} />В кошик</>}
         </button>
-
-        {/* Total sum */}
-        {total > 0 && (
-          <div className="wishlist-card__total" style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-            {total.toLocaleString('uk-UA')} грн
-          </div>
-        )}
 
       </div>
 
