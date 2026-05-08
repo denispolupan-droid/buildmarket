@@ -346,6 +346,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                           if (children.length > 0 && !expandedCats.has(cat.slug)) {
                             // First click on collapsed parent → expand only
                             setExpandedCats(prev => { const next = new Set(prev); next.add(cat.slug); return next; });
+                            setTimeout(() => scrollCatToTop(cat.slug), 50);
                           } else {
                             selectCat(selCat === cat.slug ? '' : cat.slug);
                             if (children.length > 0) setExpandedCats(prev => {
@@ -366,6 +367,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                       {isExpanded && children.map(child => (
                         <div
                           key={child.slug}
+                          ref={el => { catRefs.current[child.slug] = el; }}
                           className={'cat-item' + (selCat === child.slug ? ' active' : '')}
                           style={{ paddingLeft: '20px', fontSize: '13px' }}
                           onClick={() => selectCat(selCat === child.slug ? '' : child.slug)}

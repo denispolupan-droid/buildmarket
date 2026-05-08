@@ -397,6 +397,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                     if (children.length > 0 && !expandedCats.has(cat.slug)) {
                       // First click on collapsed parent → expand only, don't navigate
                       setExpandedCats(prev => { const next = new Set(prev); next.add(cat.slug); return next; });
+                      setTimeout(() => scrollCatToTop(cat.slug), 50);
                     } else {
                       // Already expanded or no children → navigate
                       selectCat(selCat === cat.slug ? null : cat.slug);
@@ -423,7 +424,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                   const childExpanded = expandedCats.has(child.slug);
                   const childActive = selCat === child.slug || grandchildren.some(g => g.slug === selCat);
                   return (
-                    <div key={child.slug} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <div key={child.slug} ref={el => { catRefs.current[child.slug] = el; }} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                       <button
                         className={'shop-cat-item' + (childActive ? ' active' : '')}
                         style={{ paddingLeft: '22px', fontSize: '13px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
@@ -442,6 +443,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                       {childExpanded && grandchildren.map(gc => (
                         <button
                           key={gc.slug}
+                          ref={el => { catRefs.current[gc.slug] = el as unknown as HTMLDivElement; }}
                           className={'shop-cat-item' + (selCat === gc.slug ? ' active' : '')}
                           style={{ paddingLeft: '36px', fontSize: '12px', width: '100%', textAlign: 'left' }}
                           onClick={() => selectCat(selCat === gc.slug ? null : gc.slug)}
