@@ -55,8 +55,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     const catEl = catRefs.current[slug];
     const container = catsListRef.current;
     if (!catEl || !container) return;
-    const isScrollable = ['auto', 'scroll'].includes(getComputedStyle(container).overflowY);
-    const scrollEl = isScrollable ? container : sidebarRef.current;
+    const scrollEl = container.scrollHeight > container.clientHeight ? container : sidebarRef.current;
     if (!scrollEl) return;
     const elTop = catEl.getBoundingClientRect().top;
     const scrollElTop = scrollEl.getBoundingClientRect().top;
