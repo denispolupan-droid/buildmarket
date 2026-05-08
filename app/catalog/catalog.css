@@ -1,12 +1,13 @@
 .catalog-page { display: grid; grid-template-columns: 260px 1fr; gap: 24px; padding: 28px 0 48px; align-items: start; }
 
 /* ── Sidebar ── */
-.sidebar { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 16px; position: sticky; top: 80px; max-height: calc(100vh - 100px); overflow-y: scroll; scrollbar-width: none; overscroll-behavior: contain; }
+.sidebar { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 16px; position: sticky; top: 80px; max-height: calc(100vh - 100px); overflow-y: scroll; scrollbar-width: none; overscroll-behavior: contain; scroll-padding-top: 46px; }
 .sidebar::-webkit-scrollbar { display: none; }
 .sidebar-section { margin-bottom: 24px; }
 .sidebar-section:last-child { margin-bottom: 0; }
 .sidebar-divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 .sidebar-heading { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; }
+.sidebar-cats-section .sidebar-heading { position: sticky; top: 0; background: var(--bg-card); z-index: 2; padding-bottom: 10px; margin-bottom: 0; }
 .cat-list { display: flex; flex-direction: column; gap: 2px; }
 .cat-item {
   padding: 8px 12px; border-radius: 8px; cursor: pointer; user-select: none;
