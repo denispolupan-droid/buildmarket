@@ -52,13 +52,15 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   }, []);
 
   const scrollCatToTop = useCallback((slug: string) => {
-    const container = catsListRef.current;
     const catEl = catRefs.current[slug];
-    if (container && catEl) {
-      const containerTop = container.getBoundingClientRect().top;
-      const catTop = catEl.getBoundingClientRect().top;
-      container.scrollTo({ top: container.scrollTop + (catTop - containerTop) });
-    }
+    const container = catsListRef.current;
+    if (!catEl || !container) return;
+    const isScrollable = ['auto', 'scroll'].includes(getComputedStyle(container).overflowY);
+    const scrollEl = isScrollable ? container : sidebarRef.current;
+    if (!scrollEl) return;
+    const elTop = catEl.getBoundingClientRect().top;
+    const scrollElTop = scrollEl.getBoundingClientRect().top;
+    scrollEl.scrollTo({ top: scrollEl.scrollTop + (elTop - scrollElTop) });
   }, []);
 
   const selectCat = (slug: string, scrollSlug?: string) => {
