@@ -229,6 +229,21 @@ export default function Header() {
               )}
             </Link>
 
+            {/* Theme toggle — desktop only (mobile: fixed button) */}
+            <button
+              className="desktop-nav"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Світла тема' : 'Темна тема'}
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: '38px', height: '38px', borderRadius: '8px',
+                border: '1px solid var(--border)', background: 'var(--bg-card)',
+                color: 'var(--text-secondary)', cursor: 'pointer',
+              }}
+            >
+              {theme === 'dark' ? <Sun size={16} strokeWidth={2} /> : <Moon size={16} strokeWidth={2} />}
+            </button>
+
             {/* Hamburger */}
             <button
               className="hamburger-btn"
