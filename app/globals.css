@@ -187,7 +187,7 @@ input, select { font-family: inherit; }
 
 /* Scroll-to-top button */
 .scroll-to-top-btn {
-  position: fixed; bottom: 78px; right: 8px; z-index: 1000;
+  position: fixed; bottom: 24px; right: 20px; z-index: 1000;
   width: 44px; height: 44px; border-radius: 50%;
   background: rgba(72,128,184,0.38); color: #fff;
   border: 1px solid rgba(72,128,184,0.3);
