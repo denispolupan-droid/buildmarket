@@ -212,7 +212,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     }
   }, []);
 
-  const selectCat = (slug: string | null) => {
+  const selectCat = (slug: string | null, scrollSlug?: string) => {
     setSelCat(slug);
     router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
     window.scrollTo(0, 0);
@@ -220,7 +220,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup('');
     setVisibleCount(24);
     setMobilePanel(null);
-    if (slug) setTimeout(() => scrollCatToTop(slug), 50);
+    const target = scrollSlug ?? slug;
+    if (target) setTimeout(() => scrollCatToTop(target), 50);
   };
   const { skus: wishSkus, toggle: toggleWish } = useWishlist();
 
@@ -429,7 +430,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                         className={'shop-cat-item' + (childActive ? ' active' : '')}
                         style={{ paddingLeft: '22px', fontSize: '13px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                         onClick={() => {
-                          selectCat(selCat === child.slug ? null : child.slug);
+                          selectCat(selCat === child.slug ? null : child.slug, cat.slug);
                           if (grandchildren.length > 0) setExpandedCats(prev => { const n = new Set(prev); n.has(child.slug) ? n.delete(child.slug) : n.add(child.slug); return n; });
                           window.scrollTo(0, 0);
                         }}
@@ -446,7 +447,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                           ref={el => { catRefs.current[gc.slug] = el as unknown as HTMLDivElement; }}
                           className={'shop-cat-item' + (selCat === gc.slug ? ' active' : '')}
                           style={{ paddingLeft: '36px', fontSize: '12px', width: '100%', textAlign: 'left' }}
-                          onClick={() => selectCat(selCat === gc.slug ? null : gc.slug)}
+                          onClick={() => selectCat(selCat === gc.slug ? null : gc.slug, cat.slug)}
                         >
                           {gc.name}
                         </button>

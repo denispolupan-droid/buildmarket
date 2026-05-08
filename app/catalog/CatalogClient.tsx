@@ -61,14 +61,15 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     }
   }, []);
 
-  const selectCat = (slug: string) => {
+  const selectCat = (slug: string, scrollSlug?: string) => {
     setSelCat(slug);
     router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
     window.scrollTo(0, 0);
     sidebarRef.current?.scrollTo({ top: 0 });
     setVisibleCount(50);
     setMobilePanel(null);
-    if (slug) setTimeout(() => scrollCatToTop(slug), 50);
+    const target = scrollSlug ?? slug;
+    if (target) setTimeout(() => scrollCatToTop(target), 50);
   };
   const [filterValues,   setFilterValues]   = useState<Record<string, string>>({});
   const [filterVolume,   setFilterVolume]   = useState('');
@@ -370,7 +371,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                           ref={el => { catRefs.current[child.slug] = el; }}
                           className={'cat-item' + (selCat === child.slug ? ' active' : '')}
                           style={{ paddingLeft: '20px', fontSize: '13px' }}
-                          onClick={() => selectCat(selCat === child.slug ? '' : child.slug)}
+                          onClick={() => selectCat(selCat === child.slug ? '' : child.slug, cat.slug)}
                         >
                           {child.name}
                         </div>
