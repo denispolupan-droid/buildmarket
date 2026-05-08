@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Search, Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import ProductImage from '../components/ProductImage';
+import ScrollToTop from '../components/ScrollToTop';
 import type { ProductFull, Category } from '../../lib/supabase';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
@@ -709,6 +710,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
         );
       })()}
       <Footer />
+      <ScrollToTop />
     </>
   );
 }
