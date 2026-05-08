@@ -185,9 +185,9 @@ input, select { font-family: inherit; }
 }
 .hero-scroll-hint { display: none; }
 
-/* Scroll-to-top button — sits left of the theme toggle */
+/* Scroll-to-top button — stacked above theme toggle */
 .scroll-to-top-btn {
-  position: fixed; bottom: 24px; right: 76px; z-index: 1000;
+  position: fixed; bottom: 78px; right: 24px; z-index: 1000;
   width: 44px; height: 44px; border-radius: 50%;
   background: #4880B8; color: #fff;
   border: none; cursor: pointer;
@@ -196,12 +196,6 @@ input, select { font-family: inherit; }
   transition: background 0.15s, transform 0.15s;
 }
 .scroll-to-top-btn:hover { background: #3B6EC4; transform: translateY(-2px); }
-@media (max-width: 768px) {
-  .scroll-to-top-btn {
-    width: 36px; height: 36px; bottom: 24px; right: 72px;
-    background: rgba(72,128,184,0.75);
-  }
-}
 .hero-brand-strip-outer {
   padding: 8px 40px;
 }
