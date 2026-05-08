@@ -175,7 +175,7 @@ export const getProductsLightCached = unstable_cache(
 export const getBrandsCached = unstable_cache(
   async () => getBrands(),
   ['brands'],
-  { revalidate: 300, tags: ['brands'] }
+  { revalidate: 60, tags: ['brands'] }
 );
 
 export const getProductBySkuCached = unstable_cache(

@@ -196,11 +196,12 @@ export default async function Home() {
                     href={`/shop?brand=${encodeURIComponent(brand)}`}
                     className="brand-logo-link"
                     style={logoSrc ? {
-                      display: 'block',
-                      height: '30px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: '100px', height: '36px',
                       borderRadius: '7px', overflow: 'hidden',
-                      border: '1px solid rgba(255,255,255,0.09)',
-                      textDecoration: 'none',
+                      background: '#fff',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      textDecoration: 'none', flexShrink: 0,
                     } : {
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       height: '30px', padding: '0 12px', borderRadius: '7px',
@@ -213,7 +214,7 @@ export default async function Home() {
                       <img
                         src={logoSrc}
                         alt={brand}
-                        style={{ height: '30px', width: 'auto', display: 'block' }}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
                     ) : (
                       <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
