@@ -187,11 +187,10 @@ export default async function Home() {
                     className="brand-logo-link"
                     style={logoSrc ? {
                       display: 'block',
-                      width: '90px', height: '30px',
+                      height: '30px', padding: 0,
                       borderRadius: '7px', overflow: 'hidden',
-                      background: 'rgba(255,255,255,0.92)',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      textDecoration: 'none', flexShrink: 0,
+                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)',
+                      textDecoration: 'none', minWidth: '80px',
                     } : {
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       height: '30px', padding: '0 12px', borderRadius: '7px',
@@ -204,7 +203,7 @@ export default async function Home() {
                       <img
                         src={logoSrc}
                         alt={brand}
-                        style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                       />
                     ) : (
                       <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
