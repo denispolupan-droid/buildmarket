@@ -237,13 +237,13 @@ export default function Header() {
               style={{
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 width: '34px', height: '34px', borderRadius: '8px',
-                border: '1px solid var(--border)', background: 'var(--bg-soft)',
+                border: '1px solid var(--border)', background: 'var(--bg-card)',
                 color: 'var(--text-secondary)', cursor: 'pointer',
                 marginLeft: '8px',
                 transition: 'background 0.15s, color 0.15s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-card)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-soft)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-soft)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-card)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
             >
               {theme === 'dark' ? <Sun size={15} strokeWidth={2} /> : <Moon size={15} strokeWidth={2} />}
             </button>
