@@ -201,11 +201,15 @@ input, select { font-family: inherit; }
 /* Desktop: theme toggle also right: 8px */
 .theme-toggle-btn { right: 8px !important; }
 
-/* Mobile: theme toggle moves up, arrow sits below it */
+/* Mobile: same size, same right alignment, stacked */
 @media (max-width: 768px) {
-  .theme-toggle-btn { bottom: 80px !important; right: 24px !important; }
+  .theme-toggle-btn {
+    bottom: 78px !important; right: 16px !important;
+    width: 40px !important; height: 40px !important;
+  }
   .scroll-to-top-btn {
-    bottom: 24px !important; right: 24px !important;
+    bottom: 24px !important; right: 16px !important;
+    width: 40px !important; height: 40px !important;
     background: #4880B8 !important; border: none !important;
     box-shadow: 0 4px 16px rgba(0,0,0,0.25) !important;
   }
