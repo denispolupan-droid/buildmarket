@@ -44,8 +44,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       }
       sidebar.scrollTop += e.deltaY;
     };
-    document.addEventListener('wheel', handleWheel, { passive: false });
-    return () => document.removeEventListener('wheel', handleWheel);
+    document.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    return () => document.removeEventListener('wheel', handleWheel, { capture: true });
   }, []);
 
   useEffect(() => {
@@ -277,7 +277,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
 
   return (
     <>
-      <div style={{ background: 'var(--bg-page)', minHeight: '100vh' }}>
       <div className="page-container">
         <nav aria-label="Breadcrumb" style={{ padding: '32px 0 0', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           <Link href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</Link>
@@ -680,7 +679,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
 
           </div>
         </div>
-      </div>
       </div>
 
       {(() => {
