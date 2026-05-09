@@ -208,6 +208,7 @@ input, select { font-family: inherit; }
   z-index: 9999;
 }
 [data-tooltip]:hover::after { opacity: 1; }
+[data-tooltip][data-tooltip-end]::after { left: auto; right: 0; transform: none; }
 
 /* Scroll-to-top button */
 .scroll-to-top-btn {

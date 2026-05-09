@@ -235,6 +235,7 @@ export default function Header() {
               onClick={toggleTheme}
               aria-label={theme === 'dark' ? 'Світла тема' : 'Темна тема'}
               data-tooltip={theme === 'dark' ? 'Світла тема' : 'Темна тема'}
+              data-tooltip-end=""
               style={{
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 width: '34px', height: '34px', borderRadius: '8px',
