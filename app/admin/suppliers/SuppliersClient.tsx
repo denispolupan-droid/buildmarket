@@ -44,9 +44,9 @@ const FORMAT_LABELS: Record<string, string> = {
   '1c_xml':      '1С CommerceML (XML)',
 };
 
-const cell: React.CSSProperties = { padding: '10px 12px', textAlign: 'left', borderBottom: '1px solid #E2E8F0', fontSize: '13px', verticalAlign: 'middle' };
-const input: React.CSSProperties = { width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' };
-const label: React.CSSProperties = { display: 'block', fontSize: '12px', color: '#64748B', marginBottom: '4px', fontWeight: 600 };
+const cell: React.CSSProperties = { padding: '10px 12px', textAlign: 'left', borderBottom: '1px solid var(--border)', fontSize: '13px', verticalAlign: 'middle', color: 'var(--text-primary)' };
+const input: React.CSSProperties = { width: '100%', padding: '7px 10px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box', background: 'var(--bg-soft)', color: 'var(--text-primary)' };
+const label: React.CSSProperties = { display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 600 };
 const btn = (color: string): React.CSSProperties => ({ padding: '7px 14px', background: color, color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 });
 
 export default function SuppliersClient({ initial, brands }: { initial: Supplier[]; brands: string[] }) {
@@ -130,7 +130,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
 
     return (
       <div style={{ maxWidth: '760px' }}>
-        <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '24px', color: '#0F172A' }}>
+        <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '24px', color: 'var(--text-primary)' }}>
           {isNew ? 'Новий постачальник' : `Редагування: ${e.name}`}
         </h2>
 
@@ -304,8 +304,8 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
           </div>
         )}
 
-        <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-          <p style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', marginBottom: '12px' }}>Наценки від вхідної ціни</p>
+        <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>Наценки від вхідної ціни</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
             <div>
               <span style={label}>Магазин %</span>
@@ -322,12 +322,12 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
           </div>
         </div>
 
-        <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+        <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <p style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', margin: 0 }}>Додаткові знижки на бренди</p>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Додаткові знижки на бренди</p>
             <button style={btn('#3B82F6')} onClick={addDiscount}>+ Додати</button>
           </div>
-          <p style={{ fontSize: '12px', color: '#64748B', marginBottom: '10px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
             Реальний вхід = ціна з файлу × (1 − знижка%)
           </p>
           {(e.brand_discounts ?? []).map((d, i) => (
@@ -343,7 +343,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
               <button onClick={() => removeDiscount(i)} style={{ padding: '7px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#DC2626', fontSize: '14px' }}>✕</button>
             </div>
           ))}
-          {!(e.brand_discounts ?? []).length && <p style={{ fontSize: '12px', color: '#94A3B8' }}>Немає знижок — ціна береться з файлу напряму</p>}
+          {!(e.brand_discounts ?? []).length && <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Немає знижок — ціна береться з файлу напряму</p>}
         </div>
 
         <div style={{ marginBottom: '20px' }}>
@@ -372,8 +372,8 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0F172A', margin: 0 }}>Постачальники</h1>
-          <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>{suppliers.length} постачальників</p>
+          <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Постачальники</h1>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>{suppliers.length} постачальників</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <a href="/admin/suppliers/unmapped" style={{ ...btn('#64748B'), textDecoration: 'none', display: 'inline-block' }}>
@@ -390,12 +390,12 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
           Постачальників ще немає. Додайте першого.
         </div>
       ) : (
-        <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: '10px', overflow: 'hidden' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#F8FAFC' }}>
+              <tr style={{ background: 'var(--bg-soft)' }}>
                 {['Назва', 'Формат', 'Інтервал', 'Наценки (маг/опт/дроп)', 'Остання синх.', 'Статус', ''].map(h => (
-                  <th key={h} style={{ ...cell, fontWeight: 700, color: '#374151', fontSize: '12px' }}>{h}</th>
+                  <th key={h} style={{ ...cell, fontWeight: 700, color: 'var(--text-secondary)', fontSize: '12px' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -403,10 +403,10 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
               {suppliers.map(s => {
                 const lastSync = s.last_sync?.[0];
                 return (
-                  <tr key={s.id} style={{ background: s.is_active ? '#fff' : '#F8FAFC' }}>
+                  <tr key={s.id} style={{ background: s.is_active ? 'var(--bg-card)' : 'var(--bg-soft)' }}>
                     <td style={cell}>
-                      <div style={{ fontWeight: 600, color: '#0F172A' }}>{s.name}</div>
-                      <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>{s.slug}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.name}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{s.slug}</div>
                       {s.source_url && <div style={{ fontSize: '11px', color: '#3B82F6', marginTop: '2px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.source_url}</div>}
                     </td>
                     <td style={cell}>
@@ -434,14 +434,14 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                     <td style={cell}>
                       {s.last_synced_at ? (
                         <>
-                          <div style={{ fontSize: '12px' }}>{new Date(s.last_synced_at).toLocaleString('uk-UA')}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--text-primary)' }}>{new Date(s.last_synced_at).toLocaleString('uk-UA')}</div>
                           {lastSync && (
                             <div style={{ fontSize: '11px', color: lastSync.error_message ? '#DC2626' : '#16A34A', marginTop: '2px' }}>
                               {lastSync.error_message ?? `оновлено: ${lastSync.rows_updated}, немаплених: ${lastSync.rows_unmapped}`}
                             </div>
                           )}
                         </>
-                      ) : <span style={{ color: '#94A3B8', fontSize: '12px' }}>ніколи</span>}
+                      ) : <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>ніколи</span>}
                     </td>
                     <td style={cell}>
                       <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, background: s.is_active ? '#DCFCE7' : '#F1F5F9', color: s.is_active ? '#16A34A' : '#64748B' }}>
