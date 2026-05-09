@@ -540,7 +540,7 @@ export default function CartPage() {
                         />
                       </Link>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '11px', color: '#94A3B8', marginBottom: '1px' }}>{item.brand} · {item.sku}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '1px' }}>{item.brand} · {item.sku}</div>
                         <Link href={`/product/${item.sku}`} style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3, marginBottom: '6px', display: 'block', textDecoration: 'none' }}>{item.name}</Link>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -558,14 +558,14 @@ export default function CartPage() {
                               <Plus size={10} />
                             </button>
                           </div>
-                          <span style={{ fontSize: '13px', fontWeight: 700, color: '#1E3A5F' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
                             {item.price > 0 ? `${(item.price * item.qty).toFixed(2)} грн` : '—'}
                           </span>
                         </div>
                       </div>
                       <button
                         onClick={() => removeItem(item.sku)}
-                        style={{ width: '24px', height: '24px', borderRadius: '6px', border: 'none', background: 'none', cursor: 'pointer', color: '#CBD5E1', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        style={{ width: '24px', height: '24px', borderRadius: '6px', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-secondary)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
                         <Trash2 size={13} />
                       </button>
