@@ -36,11 +36,16 @@ export type SyncResult = {
 function parseSmartCsv(buffer: Buffer): ParsedRow[] {
   const text = buffer.toString('utf-8');
   const lines = text.split(/\r?\n/).filter(Boolean);
-  const sep = lines[0]?.includes(';') ? ';' : ',';
 
-  // Артикул постачальника: 3+ цифр, дефіс, 2+ цифр (1548-377, 1610-100 тощо)
+  // Автовизначення роздільника: таб (TSV/Google Sheets) → крапка з комою → кома
+  const firstLine = lines[0] ?? '';
+  const sep = firstLine.includes('\t') ? '\t'
+    : firstLine.includes(';') ? ';'
+    : ',';
+
+  // Артикул постачальника: 3+ цифр, дефіс, 2+ цифр (1548-377, 2719-011 тощо)
   const SKU_RE = /^\d{3,}-\d{2,}$/;
-  // Ціна: число з крапкою або комою (224,30 або 224.30)
+  // Ціна після очищення: 224,30 або 224.30 або 224
   const PRICE_RE = /^\d+[.,]\d+$|^\d+$/;
 
   const rows: ParsedRow[] = [];
@@ -54,13 +59,28 @@ function parseSmartCsv(buffer: Buffer): ParsedRow[] {
 
     const supplier_sku = cells[skuIdx];
 
-    // Шукаємо ціну — найближча числова колонка праворуч від артикулу
+    // Шукаємо ціну: знімаємо суфікси валюти (грн, ₴, uah) перед перевіркою
     let price_in = 0;
+    let priceColIdx = -1;
     for (let i = skuIdx + 1; i < cells.length; i++) {
-      const val = cells[i].replace(',', '.');
-      if (PRICE_RE.test(cells[i]) && parseFloat(val) > 0) {
+      const cleaned = cells[i].replace(/\s*(?:грн|₴|uah)\s*\.?$/gi, '').trim();
+      const val = cleaned.replace(',', '.');
+      if (cleaned && PRICE_RE.test(cleaned) && parseFloat(val) > 0) {
         price_in = parseFloat(val);
+        priceColIdx = i;
         break;
+      }
+    }
+
+    // Наявність: перший цілочисельний рядок після колонки ціни
+    let stock_qty = 0;
+    if (priceColIdx >= 0) {
+      for (let i = priceColIdx + 1; i < cells.length; i++) {
+        const qty = cells[i].trim();
+        if (/^\d+$/.test(qty)) {
+          stock_qty = parseInt(qty, 10);
+          break;
+        }
       }
     }
 
@@ -70,7 +90,7 @@ function parseSmartCsv(buffer: Buffer): ParsedRow[] {
       if (cells[i]) { sample_name = cells[i]; break; }
     }
 
-    rows.push({ supplier_sku, price_in, stock_qty: 0, sample_name });
+    rows.push({ supplier_sku, price_in, stock_qty, sample_name });
   }
 
   return rows;
@@ -189,14 +209,14 @@ function normalizeUrl(url: string): { url: string; isGoogleSheets: boolean } {
   if (gsheets) {
     const [, id, gid] = gsheets;
     return {
-      url: `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`,
+      url: `https://docs.google.com/spreadsheets/d/${id}/export?format=tsv&gid=${gid}`,
       isGoogleSheets: true,
     };
   }
   const gsheetsNoGid = url.match(/docs\.google\.com\/spreadsheets\/d\/([^/]+)/);
   if (gsheetsNoGid) {
     return {
-      url: `https://docs.google.com/spreadsheets/d/${gsheetsNoGid[1]}/export?format=csv`,
+      url: `https://docs.google.com/spreadsheets/d/${gsheetsNoGid[1]}/export?format=tsv`,
       isGoogleSheets: true,
     };
   }
