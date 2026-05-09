@@ -578,17 +578,17 @@ export default function CartPage() {
               <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                    <span style={{ color: '#64748B' }}>Товарів ({totalItems} шт)</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>Товарів ({totalItems} шт)</span>
                     <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{totalPrice.toFixed(2)} грн</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                    <span style={{ color: '#64748B' }}>Доставка</span>
-                    <span style={{ color: '#64748B', fontWeight: 500 }}>За тарифами перевізника</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>Доставка</span>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>За тарифами перевізника</span>
                   </div>
                 </div>
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
                   <span style={{ color: 'var(--text-primary)' }}>Разом</span>
-                  <span style={{ color: '#1E3A5F' }}>{totalPrice.toFixed(2)} грн</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{totalPrice.toFixed(2)} грн</span>
                 </div>
                 {role === 'guest' && (
                   <div style={{
