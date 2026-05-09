@@ -6,7 +6,7 @@ import { ShieldCheck, Users, Package, Award, Truck, MessageCircle } from 'lucide
 
 export const metadata: Metadata = {
   title: 'Про компанію FIXLINE — постачальник будівельної хімії',
-  description: 'FIXLINE — постачальник будівельної хімії в Україні. 10+ років на ринку, 500+ активних клієнтів, 1000+ артикулів. Герметики, монтажні піни, клеї від Ceresit, Lacrysil, Pattex та інших брендів.',
+  description: 'FIXLINE — лінія фіксації. FIX (фіксувати, кріпити) + LINE (лінія матеріалів). Постачальник будівельної хімії в Україні: герметики, клеї, монтажні піни, ґрунтовки від перевірених виробників.',
   keywords: ['про компанію FIXLINE', 'постачальник будівельної хімії', 'поставщик строительной химии Украина', 'оптова будівельна хімія', 'герметики оптом постачальник', 'Харків будівельна хімія'],
   alternates: { canonical: 'https://fixline.com.ua/about' },
   openGraph: {
@@ -88,14 +88,97 @@ export default function AboutPage() {
               <span>/</span>
               <span style={{ color: '#94A3B8' }}>Про компанію</span>
             </nav>
-            <h1 style={{ fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 900, color: '#fff', lineHeight: 1.15, marginBottom: '20px', letterSpacing: '-0.5px' }}>
-              Про компанію FIXLINE
+            {/* Name breakdown */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0', marginBottom: '28px', userSelect: 'none' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span style={{
+                  fontSize: 'clamp(40px, 6vw, 72px)', fontWeight: 900, letterSpacing: '-2px', lineHeight: 1,
+                  background: 'linear-gradient(135deg, #fff 0%, #93C5FD 100%)',
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                }}>FIX</span>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#4880B8', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: '4px' }}>
+                  фіксація
+                </span>
+              </div>
+              <span style={{ fontSize: 'clamp(40px, 6vw, 72px)', fontWeight: 900, color: 'rgba(255,255,255,0.15)', margin: '0 2px', lineHeight: 1, alignSelf: 'flex-start', paddingTop: '2px' }}>+</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span style={{
+                  fontSize: 'clamp(40px, 6vw, 72px)', fontWeight: 900, letterSpacing: '-2px', lineHeight: 1,
+                  background: 'linear-gradient(135deg, #93C5FD 0%, #5EEAD4 100%)',
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                }}>LINE</span>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#5EEAD4', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: '4px' }}>
+                  лінія
+                </span>
+              </div>
+            </div>
+
+            <h1 style={{ fontSize: 'clamp(20px, 2.5vw, 30px)', fontWeight: 700, color: '#fff', lineHeight: 1.3, marginBottom: '16px', letterSpacing: '-0.3px' }}>
+              Лінія фіксації — все для надійного монтажу
             </h1>
-            <p style={{ fontSize: '17px', color: '#94A3B8', lineHeight: 1.7, maxWidth: '640px', margin: 0 }}>
-              Постачальник будівельної хімії в Україні.
-              Герметики, монтажні піни, клеї, ґрунтовки та захисні покриття —
-              від перевірених виробників за конкурентними цінами.
+            <p style={{ fontSize: '16px', color: '#94A3B8', lineHeight: 1.7, maxWidth: '580px', margin: 0 }}>
+              Герметики, клеї, монтажні піни, ґрунтовки — матеріали, що фіксують,
+              захищають і тримають. Від перевірених виробників за конкурентними цінами.
             </p>
+          </div>
+        </section>
+
+        {/* Name story */}
+        <section style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', padding: '48px 0' }}>
+          <div className="page-container">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px', alignItems: 'center' }} className="about-content-grid">
+
+              {/* Left — concept cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                {[
+                  { word: 'FIX',      color: '#4880B8', bg: 'rgba(72,128,184,0.08)', border: 'rgba(72,128,184,0.2)',  meanings: ['Фіксувати',  'Кріпити',    'Склеювати', 'Герметизувати'] },
+                  { word: 'LINE',     color: '#14B8A6', bg: 'rgba(20,184,166,0.08)',  border: 'rgba(20,184,166,0.2)', meanings: ['Лінія',      'Асортимент', 'Підбір',    'Система'] },
+                ].map(({ word, color, bg, border, meanings }) => (
+                  <div key={word} style={{ background: bg, border: `1px solid ${border}`, borderRadius: '16px', padding: '24px 20px' }}>
+                    <div style={{ fontSize: '36px', fontWeight: 900, color, marginBottom: '16px', letterSpacing: '-1px', lineHeight: 1 }}>{word}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {meanings.map(m => (
+                        <span key={m} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: color, flexShrink: 0 }} />
+                          {m}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Combined */}
+                <div style={{ gridColumn: '1 / -1', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px 24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 900, letterSpacing: '-0.5px', flexShrink: 0 }}>
+                    <span style={{ color: '#4880B8' }}>FIX</span>
+                    <span style={{ color: '#14B8A6' }}>LINE</span>
+                  </div>
+                  <div style={{ width: '1px', height: '32px', background: 'var(--border)', flexShrink: 0 }} />
+                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+                    Лінія матеріалів для фіксації — повний асортимент того, що кріпить, клеїть, герметизує та захищає в будівництві та ремонті.
+                  </p>
+                </div>
+              </div>
+
+              {/* Right — text */}
+              <div>
+                <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px', lineHeight: 1.3 }}>
+                  Назва — це концепція
+                </h2>
+                <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.8, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <p>
+                    <strong style={{ color: 'var(--text-primary)' }}>FIX</strong> — від англійського "fix": фіксувати, кріпити, усувати. Це суть будівельної хімії: клей тримає, герметик захищає, піна фіксує.
+                  </p>
+                  <p>
+                    <strong style={{ color: 'var(--text-primary)' }}>LINE</strong> — лінія, асортимент, система. Не один продукт, а повна лінійка матеріалів для будь-якого завдання на будмайданчику або в ремонті.
+                  </p>
+                  <p>
+                    Разом <strong style={{ color: 'var(--text-primary)' }}>FIXLINE</strong> — це лінія фіксації: все що потрібно, щоб усе трималося надійно.
+                  </p>
+                </div>
+              </div>
+
+            </div>
           </div>
         </section>
 
