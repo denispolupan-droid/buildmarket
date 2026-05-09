@@ -211,6 +211,7 @@ input, select { font-family: inherit; }
 [data-tooltip][data-tooltip-end]::after { left: auto; right: 0; transform: none; }
 [data-tooltip][data-tooltip-below]::after { bottom: auto; top: calc(100% + 6px); }
 [data-tooltip][data-tooltip-left]::after { bottom: auto; top: 50%; transform: translateY(-50%); left: auto; right: calc(100% + 8px); }
+[data-tooltip][data-tooltip-right]::after { bottom: auto; top: 50%; transform: translateY(-50%); left: calc(100% + 8px); right: auto; }
 
 /* Scroll-to-top button */
 .scroll-to-top-btn {
