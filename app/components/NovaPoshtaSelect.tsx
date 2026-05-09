@@ -40,18 +40,6 @@ async function npRequest(modelName: string, calledMethod: string, methodProperti
   return data.success ? data.data : [];
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%', height: '44px', padding: '0 14px 0 40px',
-  border: '1px solid #E2E8F0', borderRadius: '10px',
-  background: '#fff', fontSize: '14px', color: '#0F172A',
-  outline: 'none', boxSizing: 'border-box',
-};
-
-const labelStyle: React.CSSProperties = {
-  display: 'block', fontSize: '13px', fontWeight: 600,
-  color: '#374151', marginBottom: '6px',
-};
-
 export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange, onAddressChange, onCityRefChange, onWarehouseRefChange }: Props) {
   const [cityQuery,      setCityQuery]      = useState('');
   const [settlements,    setSettlements]    = useState<Settlement[]>([]);
@@ -71,7 +59,6 @@ export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange
   const whRef   = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Close dropdowns on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (cityRef.current && !cityRef.current.contains(e.target as Node)) setCityDropOpen(false);
@@ -83,7 +70,6 @@ export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange
 
   const searchCities = useCallback((q: string) => {
     if (q.length < 2) { setSettlements([]); return; }
-    // NP API accepts only letters, spaces, hyphens and apostrophes
     const sanitized = q.replace(/[^а-яіїєґёА-ЯІЇЄҐЁa-zA-Z\s\-''ʼ]/g, '').trim();
     if (sanitized.length < 2) { setSettlements([]); return; }
     setCityLoading(true);
@@ -138,13 +124,13 @@ export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange
 
       {/* City search */}
       <div ref={cityRef} style={{ position: 'relative' }}>
-        <label style={labelStyle}>Місто / населений пункт</label>
+        <label className="np-label">Місто / населений пункт</label>
         <div style={{ position: 'relative' }}>
-          <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#94A3B8' }}>
+          <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-secondary)' }}>
             {cityLoading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Search size={16} />}
           </div>
           <input
-            style={inputStyle}
+            className="np-input"
             placeholder="Введіть назву міста..."
             value={cityQuery}
             onChange={e => handleCityInput(e.target.value)}
@@ -152,26 +138,13 @@ export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange
           />
         </div>
         {cityDropOpen && settlements.length > 0 && (
-          <div style={{
-            position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 50,
-            background: '#fff', border: '1px solid #E2E8F0', borderRadius: '10px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.1)', maxHeight: '240px', overflowY: 'auto',
-          }}>
+          <div className="np-dropdown">
             {settlements.map(s => (
-              <button
-                key={s.Ref}
-                onMouseDown={() => selectCity(s)}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'flex-start', gap: '8px',
-                  padding: '10px 14px', background: 'none', border: 'none',
-                  cursor: 'pointer', textAlign: 'left',
-                  borderBottom: '1px solid #F8FAFC',
-                }}
-              >
-                <MapPin size={14} color="#94A3B8" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <button key={s.Ref} onMouseDown={() => selectCity(s)} className="np-dropdown-item">
+                <MapPin size={14} color="var(--text-secondary)" style={{ flexShrink: 0, marginTop: '2px' }} />
                 <div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#0F172A' }}>{s.MainDescription}</div>
-                  <div style={{ fontSize: '12px', color: '#94A3B8' }}>{s.RegionsDescription ? `${s.RegionsDescription} р-н, ` : ''}{s.Area} обл.</div>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{s.MainDescription}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{s.RegionsDescription ? `${s.RegionsDescription} р-н, ` : ''}{s.Area} обл.</div>
                 </div>
               </button>
             ))}
@@ -182,19 +155,19 @@ export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange
       {/* Warehouse select */}
       {mode === 'warehouse' && selectedCity && (
         <div ref={whRef} style={{ position: 'relative' }}>
-          <label style={labelStyle}>Відділення Нової Пошти</label>
+          <label className="np-label">Відділення Нової Пошти</label>
           {whLoading ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 14px', border: '1px solid #E2E8F0', borderRadius: '10px', fontSize: '14px', color: '#94A3B8' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 14px', border: '1px solid var(--border)', borderRadius: '10px', fontSize: '14px', color: 'var(--text-secondary)' }}>
               <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
               Завантаження відділень...
             </div>
           ) : (
             <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#94A3B8' }}>
+              <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-secondary)' }}>
                 <Search size={16} />
               </div>
               <input
-                style={inputStyle}
+                className="np-input"
                 placeholder="Пошук відділення або номер..."
                 value={warehouseQuery}
                 onChange={e => { setWarehouseQuery(e.target.value); setWhDropOpen(true); setSelectedWH(null); }}
@@ -203,24 +176,11 @@ export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange
             </div>
           )}
           {whDropOpen && filteredWH.length > 0 && (
-            <div style={{
-              position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 50,
-              background: '#fff', border: '1px solid #E2E8F0', borderRadius: '10px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.1)', maxHeight: '260px', overflowY: 'auto',
-            }}>
+            <div className="np-dropdown">
               {filteredWH.slice(0, 50).map(w => (
-                <button
-                  key={w.Ref}
-                  onMouseDown={() => selectWarehouse(w)}
-                  style={{
-                    width: '100%', display: 'flex', alignItems: 'flex-start', gap: '8px',
-                    padding: '10px 14px', background: 'none', border: 'none',
-                    cursor: 'pointer', textAlign: 'left',
-                    borderBottom: '1px solid #F8FAFC',
-                  }}
-                >
-                  <MapPin size={14} color="#94A3B8" style={{ flexShrink: 0, marginTop: '2px' }} />
-                  <div style={{ fontSize: '13px', color: '#0F172A', lineHeight: 1.4 }}>{w.Description}</div>
+                <button key={w.Ref} onMouseDown={() => selectWarehouse(w)} className="np-dropdown-item">
+                  <MapPin size={14} color="var(--text-secondary)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.4 }}>{w.Description}</div>
                 </button>
               ))}
             </div>
@@ -231,9 +191,10 @@ export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange
       {/* Courier address */}
       {mode === 'courier' && selectedCity && (
         <div>
-          <label style={labelStyle}>Адреса доставки</label>
+          <label className="np-label">Адреса доставки</label>
           <input
-            style={{ ...inputStyle, paddingLeft: '14px' }}
+            className="np-input"
+            style={{ paddingLeft: '14px' }}
             placeholder="Вулиця, будинок, квартира"
             value={courierAddress}
             onChange={e => { setCourierAddress(e.target.value); onAddressChange?.(e.target.value); }}
@@ -241,7 +202,34 @@ export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange
         </div>
       )}
 
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .np-label {
+          display: block; font-size: 13px; font-weight: 600;
+          color: var(--text-secondary); margin-bottom: 6px;
+        }
+        .np-input {
+          width: 100%; height: 44px; padding: 0 14px 0 40px;
+          border: 1px solid var(--border); border-radius: 10px;
+          background: var(--bg-card); font-size: 14px; color: var(--text-primary);
+          outline: none; box-sizing: border-box;
+        }
+        .np-input::placeholder { color: var(--text-secondary); }
+        .np-input:focus { border-color: var(--accent, #4880B8); }
+        .np-dropdown {
+          position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50;
+          background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.15); max-height: 260px; overflow-y: auto;
+        }
+        .np-dropdown-item {
+          width: 100%; display: flex; align-items: flex-start; gap: 8px;
+          padding: 10px 14px; background: none; border: none;
+          cursor: pointer; text-align: left;
+          border-bottom: 1px solid var(--border-light);
+        }
+        .np-dropdown-item:hover { background: var(--bg-soft); }
+        .np-dropdown-item:last-child { border-bottom: none; }
+      `}</style>
     </div>
   );
 }
