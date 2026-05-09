@@ -335,10 +335,15 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
     const discountPct = discountMap[brand] ?? 0;
     const priceCost = row.price_in * (1 - discountPct / 100);
 
-    // Рахуємо ціни продажу
-    const priceUnit   = parseFloat((priceCost * (1 + supplier.markup_wholesale / 100)).toFixed(2));
-    const priceRetail = parseFloat((priceCost * (1 + supplier.markup_retail   / 100)).toFixed(2));
-    const priceDrop   = parseFloat((priceCost * (1 + supplier.markup_drop     / 100)).toFixed(2));
+    // Рахуємо ціни продажу із заокругленням:
+    //   магазин (retail) — вниз до цілого: 99,45 → 99
+    //   опт і дроп — до найближчих 0,50: 99,45 → 99,50
+    const roundFloor  = (v: number) => Math.floor(v);
+    const roundHalf   = (v: number) => Math.round(v * 2) / 2;
+
+    const priceUnit   = roundHalf(priceCost * (1 + supplier.markup_wholesale / 100));
+    const priceRetail = roundFloor(priceCost * (1 + supplier.markup_retail   / 100));
+    const priceDrop   = roundHalf(priceCost * (1 + supplier.markup_drop     / 100));
     const stockStatus = row.stock_qty > 0 ? 'in_stock' : 'out_of_stock';
 
     const { error } = await supabase
