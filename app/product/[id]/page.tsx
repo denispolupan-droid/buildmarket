@@ -25,13 +25,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const priceStr = price ? ` — ${price} грн` : '';
   const volume = product.volume && !product.name.includes(product.volume) ? ` ${product.volume}` : '';
   const title = `${product.brand} ${product.name}${volume}${priceStr} | FIXLINE`;
-  const rawDesc = product.description ?? `Купити ${product.brand} ${product.name}${volume} оптом. Артикул ${product.sku}. Оптові ціни для дилерів та підрядників на FIXLINE.`;
+  const rawDesc = product.description
+    ?? `Купити ${product.brand} ${product.name}${volume} оптом. Артикул ${product.sku}. Оптові ціни для дилерів та підрядників на FIXLINE. Купить ${product.brand} ${product.name}${volume} оптом в Украине.`;
   const description = rawDesc.length <= 155 ? rawDesc : rawDesc.slice(0, rawDesc.lastIndexOf(' ', 155)) + '…';
 
   return {
     title,
     description,
-    keywords: [product.brand, product.name, 'купити', 'оптом', 'будівельна хімія', 'Україна'],
+    keywords: [product.brand, product.name, 'купити', 'купить', 'оптом', 'будівельна хімія', 'строительная химия', 'Україна', 'Украина', product.sku],
     openGraph: {
       title,
       description,
@@ -39,6 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       siteName: 'FIXLINE',
       locale: 'uk_UA',
       type: 'website',
+      images: [{ url: `${BASE}/product/${sku}/opengraph-image`, width: 1200, height: 630, alt: title }],
     },
     alternates: { canonical: `${BASE}/product/${sku}` },
   };
@@ -92,13 +94,19 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     ],
   };
 
+  const productFullName = `${product.brand} ${product.name}${product.volume ? ' ' + product.volume : ''}`;
+  const productImage = (product as any).image
+    ? (product as any).image
+    : `${BASE}/product/${product.sku}/opengraph-image`;
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: `${product.brand} ${product.name}${product.volume ? ' ' + product.volume : ''}`,
+    name: productFullName,
+    alternateName: productFullName,
     sku: product.sku,
     brand: { '@type': 'Brand', name: product.brand },
     description: product.description ?? undefined,
+    image: productImage,
     url: `${BASE}/product/${product.sku}`,
     offers: {
       '@type': 'Offer',
@@ -107,7 +115,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
       availability: stockQty >= product.min_order
         ? 'https://schema.org/InStock'
         : 'https://schema.org/OutOfStock',
-      seller: { '@type': 'Organization', name: 'FIXLINE' },
+      seller: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
     },
   };
 

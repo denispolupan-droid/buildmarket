@@ -5,8 +5,8 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: 'FIXLINE — професійна будівельна хімія оптом та в роздріб',
-  description: 'Герметики, монтажні піни, клеї, ґрунтовки від провідних брендів. Оптові ціни для дилерів та підрядників. Доставка по всій Україні.',
-  keywords: ['будівельна хімія', 'герметики', 'монтажні піни', 'клеї', 'ґрунтовки', 'опт', 'Україна'],
+  description: 'Герметики, монтажні піни, клеї, ґрунтовки від провідних брендів. Оптові ціни для дилерів та підрядників. Доставка по всій Україні. Строительная химия оптом — герметики, монтажная пена, клеи.',
+  keywords: ['будівельна хімія', 'строительная химия', 'герметики', 'монтажна піна', 'монтажная пена', 'клеї', 'клеи', 'ґрунтовки', 'грунтовки', 'будівельна хімія оптом', 'строительная химия оптом', 'купити', 'купить', 'Україна', 'Украина'],
   alternates: { canonical: 'https://fixline.com.ua' },
   openGraph: {
     title: 'FIXLINE — професійна будівельна хімія',
@@ -67,12 +67,25 @@ export default async function Home() {
     name: 'FIXLINE',
     url: 'https://fixline.com.ua',
     logo: 'https://fixline.com.ua/fixline-logo.png',
-    contactPoint: { '@type': 'ContactPoint', contactType: 'sales', availableLanguage: 'Ukrainian' },
+    contactPoint: { '@type': 'ContactPoint', contactType: 'sales', availableLanguage: ['Ukrainian', 'Russian'] },
+  };
+
+  const websiteLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'FIXLINE',
+    url: 'https://fixline.com.ua',
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: { '@type': 'EntryPoint', urlTemplate: 'https://fixline.com.ua/shop?q={search_term_string}' },
+      'query-input': 'required name=search_term_string',
+    },
   };
 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteLd) }} />
       <PromoBanner />
 
       {/* Hero */}

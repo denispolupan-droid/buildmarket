@@ -5,12 +5,15 @@ import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Контакти | FIXLINE — будівельна хімія B2B',
-  description: 'Зв\'яжіться з FIXLINE: +38 (099) 199-77-88, info@fixline.com.ua. Доставка по всій Україні. Графік роботи: пн–пт 9:00–16:00.',
+  description: 'Зв\'яжіться з FIXLINE: +38 (099) 199-77-88, info@fixline.com.ua. Доставка по всій Україні. Будівельна хімія оптом — контакти постачальника.',
+  keywords: ['контакти FIXLINE', 'постачальник будівельна хімія', 'поставщик строительная химия Украина', 'оптова будівельна хімія контакти', 'Харків будівельна хімія'],
   alternates: { canonical: 'https://fixline.com.ua/contacts' },
   openGraph: {
-    title: 'Контакти FIXLINE',
-    description: 'Телефон: +38 (099) 199-77-88 | Email: info@fixline.com.ua | Графік: пн–пт 9–16',
+    title: 'Контакти FIXLINE — будівельна хімія оптом',
+    description: 'Телефон: +38 (099) 199-77-88 | Email: info@fixline.com.ua | Графік: пн–пт 9–16 | Харків',
     url: 'https://fixline.com.ua/contacts',
+    siteName: 'FIXLINE',
+    locale: 'uk_UA',
   },
 };
 

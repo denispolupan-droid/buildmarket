@@ -15,11 +15,11 @@ export async function generateMetadata({
     const cat = categories.find(c => c.slug === category);
     if (cat) {
       const title = `${cat.name} оптом — купити в Україні | FIXLINE`;
-      const description = `${cat.name} оптом для дилерів, підрядників та магазинів. Широкий вибір, оптові ціни, доставка по Україні.`;
+      const description = `${cat.name} оптом для дилерів, підрядників та магазинів. Широкий вибір, оптові ціни, доставка по Україні. Купить оптом по Украине.`;
       return {
         title,
         description,
-        keywords: [cat.name, 'оптом', 'будівельна хімія', 'Україна'],
+        keywords: [cat.name, 'оптом', 'будівельна хімія', 'строительная химия', 'Україна', 'Украина', 'купити', 'купить'],
         openGraph: { title, description, url: `${BASE}/catalog?category=${category}`, siteName: 'FIXLINE', locale: 'uk_UA' },
         alternates: { canonical: `${BASE}/catalog?category=${category}` },
       };
@@ -28,8 +28,8 @@ export async function generateMetadata({
 
   return {
     title: 'Каталог будівельної хімії оптом | FIXLINE',
-    description: 'Герметики, монтажні піни, клеї, рідкі цвяхи та інша будівельна хімія оптом. Оптові ціни для дилерів, підрядників та будівельних компаній.',
-    keywords: ['будівельна хімія оптом', 'герметики оптом', 'монтажна піна оптом', 'клеї оптом'],
+    description: 'Герметики, монтажні піни, клеї, рідкі цвяхи та інша будівельна хімія оптом. Оптові ціни для дилерів, підрядників та будівельних компаній. Строительная химия оптом по Украине.',
+    keywords: ['будівельна хімія оптом', 'строительная химия оптом', 'герметики оптом', 'монтажна піна оптом', 'монтажная пена оптом', 'клеї оптом', 'клеи оптом', 'купити оптом', 'купить оптом'],
     alternates: { canonical: `${BASE}/catalog` },
     openGraph: {
       title: 'Оптовий каталог будівельної хімії | FIXLINE',

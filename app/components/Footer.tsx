@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import { Mail, Phone, MapPin, Send, Clock4 } from 'lucide-react';
 
 function InstagramIcon() {
@@ -22,10 +23,18 @@ function ViberIcon() {
 }
 
 const socials: { label: string; href: string; icon: React.ReactNode }[] = [
-  { label: 'Telegram',  href: '#', icon: <Send size={20} strokeWidth={2} /> },
-  { label: 'Viber',     href: '#', icon: <ViberIcon /> },
-  { label: 'Instagram', href: '#', icon: <InstagramIcon /> },
-  { label: 'Email',     href: '#', icon: <Mail size={20} strokeWidth={2} /> },
+  { label: 'Telegram',  href: 'https://t.me/fixline_ua',      icon: <Send size={20} strokeWidth={2} /> },
+  { label: 'Viber',     href: 'viber://chat?number=380991997788', icon: <ViberIcon /> },
+  { label: 'Instagram', href: 'https://instagram.com/fixline.com.ua', icon: <InstagramIcon /> },
+  { label: 'Email',     href: 'mailto:info@fixline.com.ua',    icon: <Mail size={20} strokeWidth={2} /> },
+];
+
+const serviceLinks = [
+  { label: "Про компанію",        href: '/about' },
+  { label: "Зв'яжіться з нами",   href: '/contacts' },
+  { label: 'Умови доставки',      href: '/delivery' },
+  { label: 'Політика повернення', href: '/returns' },
+  { label: 'Часті питання',       href: '/blog' },
 ];
 
 export default function Footer() {
@@ -63,8 +72,8 @@ export default function Footer() {
               Обслуговування
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {["Зв'яжіться з нами", 'Умови доставки', 'Політика повернення', 'Часті питання', 'Про компанію'].map(l => (
-                <a key={l} href="#" style={{ fontSize: '14px', color: '#94A3B8' }}>{l}</a>
+              {serviceLinks.map(({ label, href }) => (
+                <Link key={label} href={href} style={{ fontSize: '14px', color: '#94A3B8', textDecoration: 'none' }}>{label}</Link>
               ))}
             </div>
           </div>

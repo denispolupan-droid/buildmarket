@@ -14,7 +14,8 @@ export const metadata: Metadata = {
     default: 'FIXLINE — будівельна хімія оптом | B2B платформа',
     template: '%s | FIXLINE',
   },
-  description: 'B2B платформа для оптових закупівель будівельної хімії. Герметики, монтажні піни, клеї, рідкі цвяхи. Оптові ціни для дилерів, магазинів та підрядників по всій Україні.',
+  description: 'B2B платформа для оптових закупівель будівельної хімії. Герметики, монтажні піни, клеї, рідкі цвяхи. Оптові ціни для дилерів та підрядників. Строительная химия оптом по Украине.',
+  keywords: ['будівельна хімія', 'строительная химия', 'герметики', 'монтажна піна', 'монтажная пена', 'клеї оптом', 'клеи оптом', 'будівельна хімія оптом', 'строительная химия оптом', 'Україна', 'Украина'],
   metadataBase: new URL('https://fixline.com.ua'),
   openGraph: {
     siteName: 'FIXLINE',
@@ -37,7 +38,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="uk" className={inter.className} suppressHydrationWarning>
       <head>
-        <meta name="google" content="notranslate" />
         <link rel="preconnect" href="https://boaztnparrdoeknajprn.supabase.co" />
         <link rel="dns-prefetch" href="https://boaztnparrdoeknajprn.supabase.co" />
         {/* Blocking script — applies theme BEFORE first paint, eliminates white flash */}
