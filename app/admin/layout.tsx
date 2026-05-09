@@ -19,7 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .eq('status', 'new');
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#F8FAFC' }}>
+    <div className="admin-layout" style={{ display: 'flex', minHeight: '100vh', background: '#F8FAFC' }}>
       <AdminSidebar newOrdersCount={count ?? 0} />
       <main style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
         {children}

@@ -13,7 +13,9 @@
     "db:template": "tsx scripts/supabase/generate-template.ts",
     "db:import": "tsx --env-file=.env.local scripts/supabase/import-from-excel.ts",
     "db:sync-xml": "tsx --env-file=.env.local scripts/supabase/sync-stock.ts --format=1c_xml",
-    "db:sync-csv": "tsx --env-file=.env.local scripts/supabase/sync-stock.ts --format=1c_csv"
+    "db:sync-csv": "tsx --env-file=.env.local scripts/supabase/sync-stock.ts --format=1c_csv",
+    "db:migrate": "node --env-file=.env.local scripts/apply-accounting-migrations.mjs",
+    "db:migrate:dry": "node --env-file=.env.local scripts/apply-accounting-migrations.mjs --dry-run"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

@@ -155,6 +155,66 @@ input, select { font-family: inherit; }
 [data-theme="dark"] .action-icon-btn:hover { border-color: #4880B8 !important; }
 [data-theme="dark"] .empty-state h3 { color: var(--text-primary) !important; }
 
+/* ── Admin panel dark mode ── */
+
+[data-theme="dark"] .admin-layout {
+  background: var(--bg-page) !important;
+}
+[data-theme="dark"] .admin-layout main {
+  background: var(--bg-page) !important;
+}
+
+/* Картка замовлення */
+[data-theme="dark"] .admin-order-card {
+  background: var(--bg-card) !important;
+  border-color: var(--border) !important;
+}
+/* Шапка картки */
+[data-theme="dark"] .admin-order-card .admin-order-header {
+  background: var(--bg-soft) !important;
+  border-bottom-color: var(--border) !important;
+}
+/* Колонки */
+[data-theme="dark"] .admin-order-card .admin-order-col {
+  border-color: var(--border) !important;
+}
+/* Горизонтальні розділювачі */
+[data-theme="dark"] .admin-order-card .admin-border-top {
+  border-top-color: var(--border) !important;
+}
+/* Вкладені секції з фоном #F8FAFC */
+[data-theme="dark"] .admin-order-card .admin-order-grid div[style*="background: #F8FAFC"] {
+  background: var(--bg-soft) !important;
+}
+/* Текст */
+[data-theme="dark"] .admin-order-card .admin-text-primary  { color: var(--text-primary)   !important; }
+[data-theme="dark"] .admin-order-card .admin-text-secondary { color: var(--text-secondary) !important; }
+[data-theme="dark"] .admin-order-card .admin-text-muted    { color: var(--text-muted)     !important; }
+
+/* Інпути всередині карток замовлень */
+[data-theme="dark"] .admin-order-card input {
+  background: var(--bg-soft) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Дропдаун пошуку товарів */
+[data-theme="dark"] .admin-order-card div[style*="background: #fff"],
+[data-theme="dark"] .admin-order-card div[style*="background:#fff"] {
+  background: var(--bg-card) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+}
+[data-theme="dark"] .admin-order-card button[style*="background: none"],
+[data-theme="dark"] .admin-order-card button[style*="background:none"] {
+  color: var(--text-muted) !important;
+}
+
+/* Панель маржі / поставщика */
+[data-theme="dark"] .admin-order-card div[style*="border: '1px solid #E2E8F0'"] {
+  border-color: var(--border) !important;
+}
+
 /* Skeleton в темній темі */
 [data-theme="dark"] .skeleton {
   background: linear-gradient(90deg, #1E293B 0%, #334155 40%, #475569 50%, #334155 60%, #1E293B 100%) !important;

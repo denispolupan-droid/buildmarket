@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, Merge } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, Merge, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import CreateTTNModal from '../components/admin/CreateTTNModal';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 
@@ -75,6 +76,28 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
   const [prodResults, setProdResults] = useState<{sku:string;name:string;brand:string;price:number}[]>([]);
   const [prodOpen,    setProdOpen]    = useState(false);
   const prodRef = useRef<HTMLDivElement>(null);
+
+  // Fulfillment / margin info
+  const [fulfillmentData,    setFulfillmentData]    = useState<Record<string, OrderFulfillmentInfo>>({});
+  const [fulfillmentOpen,    setFulfillmentOpen]    = useState<Set<string>>(new Set());
+  const [fulfillmentLoading, setFulfillmentLoading] = useState<Set<string>>(new Set());
+
+  async function toggleFulfillment(orderId: string) {
+    if (fulfillmentOpen.has(orderId)) {
+      setFulfillmentOpen(prev => { const s = new Set(prev); s.delete(orderId); return s; });
+      return;
+    }
+    setFulfillmentOpen(prev => new Set([...prev, orderId]));
+    if (fulfillmentData[orderId]) return;
+    setFulfillmentLoading(prev => new Set([...prev, orderId]));
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/fulfillment`);
+      const data = await res.json();
+      setFulfillmentData(prev => ({ ...prev, [orderId]: data }));
+    } finally {
+      setFulfillmentLoading(prev => { const s = new Set(prev); s.delete(orderId); return s; });
+    }
+  }
 
   // Merge orders
   const [selectedIds,    setSelectedIds]    = useState<Set<string>>(new Set());
@@ -338,11 +361,11 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
             const callbackDone = order.callback_done ?? false;
 
             return (
-              <div key={order.id} style={{
+              <div key={order.id} className="admin-order-card" style={{
                 background: '#fff', border: '1px solid #E2E8F0', borderRadius: '16px', overflow: 'hidden',
               }}>
                 {/* Header */}
-                <div style={{
+                <div className="admin-order-header" style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '14px 20px', background: '#F8FAFC', borderBottom: '1px solid #F1F5F9',
                   flexWrap: 'wrap', gap: '8px',
@@ -390,22 +413,22 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
 
                 <div className="admin-order-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0' }}>
                   {/* Left: client + items */}
-                  <div style={{ padding: '16px 20px', borderRight: '1px solid #F1F5F9' }}>
+                  <div className="admin-order-col" style={{ padding: '16px 20px', borderRight: '1px solid #F1F5F9' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
                       {order.company && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#0F172A', fontWeight: 600 }}>
+                        <div className="admin-text-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#0F172A', fontWeight: 600 }}>
                           <Building2 size={13} color="#64748B" />
                           {order.company}
                         </div>
                       )}
-                      <div style={{ fontSize: '13px', color: '#374151' }}>{order.contact}</div>
+                      <div className="admin-text-primary" style={{ fontSize: '13px', color: '#374151' }}>{order.contact}</div>
                       <a href={`tel:${order.phone}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#1E3A5F', fontWeight: 600 }}>
                         <Phone size={13} />{order.phone}
                       </a>
-                      <div style={{ fontSize: '12px', color: '#94A3B8' }}>{order.email}</div>
+                      <div className="admin-text-muted" style={{ fontSize: '12px', color: '#94A3B8' }}>{order.email}</div>
                     </div>
 
-                    <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: '12px' }}>
+                    <div className="admin-border-top" style={{ borderTop: '1px solid #F1F5F9', paddingTop: '12px' }}>
                     {editingId === order.id ? (
                       /* ── Edit mode ── */
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -481,25 +504,118 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                     ) : (
                       /* ── Normal mode ── */
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                      {order.items.map(item => (
-                        <div key={item.sku} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                          <span style={{ color: '#374151' }}>
-                            <span style={{ color: '#94A3B8', marginRight: '4px' }}>{item.brand}</span>{item.name}
-                          </span>
-                          <span style={{ color: '#64748B', flexShrink: 0, marginLeft: '12px' }}>
-                            {item.qty} шт
-                          </span>
-                        </div>
-                      ))}
+                        {order.items.map(item => (
+                          <div key={item.sku} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                            <span className="admin-text-primary" style={{ color: '#374151' }}>
+                              <span className="admin-text-muted" style={{ color: '#94A3B8', marginRight: '4px' }}>{item.brand}</span>{item.name}
+                            </span>
+                            <span className="admin-text-secondary" style={{ color: '#64748B', flexShrink: 0, marginLeft: '12px' }}>
+                              {item.qty} шт
+                            </span>
+                          </div>
+                        ))}
+
+                        {/* Fulfillment toggle */}
+                        <button
+                          onClick={() => toggleFulfillment(order.id)}
+                          style={{
+                            marginTop: '8px', display: 'flex', alignItems: 'center', gap: '5px',
+                            background: 'none', border: 'none', cursor: 'pointer', padding: '0',
+                            fontSize: '12px', fontWeight: 600,
+                            color: fulfillmentOpen.has(order.id) ? '#1E3A5F' : '#64748B',
+                          }}
+                        >
+                          <TrendingUp size={12} />
+                          {fulfillmentLoading.has(order.id)
+                            ? 'Завантаження...'
+                            : fulfillmentOpen.has(order.id)
+                              ? <><ChevronUp size={12} /> Сховати поставщика</>
+                              : <><ChevronDown size={12} /> Поставщик та маржа</>
+                          }
+                        </button>
+
+                        {/* Fulfillment panel */}
+                        {fulfillmentOpen.has(order.id) && fulfillmentData[order.id] && (() => {
+                          const fi = fulfillmentData[order.id];
+                          const marginColor = fi.total_margin >= 0 ? '#15803D' : '#DC2626';
+                          const marginBg    = fi.total_margin >= 0 ? '#F0FDF4' : '#FEF2F2';
+                          return (
+                            <div style={{
+                              marginTop: '8px', borderRadius: '10px', overflow: 'hidden',
+                              border: '1px solid #E2E8F0', fontSize: '12px',
+                            }}>
+                              {/* Summary bar */}
+                              <div style={{
+                                display: 'flex', gap: '12px', padding: '8px 12px',
+                                background: marginBg, borderBottom: '1px solid #E2E8F0',
+                                flexWrap: 'wrap',
+                              }}>
+                                <span style={{ fontWeight: 700, color: marginColor }}>
+                                  Маржа: {fi.total_margin.toFixed(0)} грн ({fi.margin_pct}%)
+                                </span>
+                                <span style={{ color: '#64748B' }}>
+                                  Виручка: {fi.total_revenue.toFixed(0)} грн
+                                </span>
+                                <span style={{ color: '#64748B' }}>
+                                  Собів.: {fi.total_cost.toFixed(0)} грн
+                                </span>
+                              </div>
+
+                              {/* Per-supplier breakdown */}
+                              {fi.by_supplier.map((group, gi) => (
+                                <div key={gi} style={{ borderBottom: gi < fi.by_supplier.length - 1 ? '1px solid #F1F5F9' : 'none' }}>
+                                  <div style={{
+                                    padding: '6px 12px', background: '#F8FAFC',
+                                    fontWeight: 600, color: '#374151', fontSize: '11px',
+                                    display: 'flex', justifyContent: 'space-between',
+                                  }}>
+                                    <span>📦 {group.supplier_name ?? 'Невідомий поставщик'}</span>
+                                    <span style={{ color: '#94A3B8' }}>
+                                      +{group.total_margin.toFixed(0)} грн
+                                    </span>
+                                  </div>
+                                  {group.items.map((item, ii) => (
+                                    <div key={ii} style={{
+                                      display: 'grid',
+                                      gridTemplateColumns: 'auto 1fr auto auto auto',
+                                      gap: '8px', padding: '5px 12px',
+                                      alignItems: 'center',
+                                      borderTop: '1px solid #F8FAFC',
+                                    }}>
+                                      <span style={{ color: '#94A3B8', fontFamily: 'monospace', fontSize: '11px' }}>
+                                        {item.supplier_sku ?? item.sku}
+                                      </span>
+                                      <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {item.name}
+                                      </span>
+                                      <span style={{ color: '#64748B', whiteSpace: 'nowrap' }}>
+                                        {item.qty} шт
+                                      </span>
+                                      <span style={{ color: '#64748B', whiteSpace: 'nowrap' }}>
+                                        {item.cost_price.toFixed(0)} → {item.sale_price.toFixed(0)} грн
+                                      </span>
+                                      <span style={{
+                                        whiteSpace: 'nowrap', fontWeight: 600,
+                                        color: item.margin >= 0 ? '#15803D' : '#DC2626',
+                                      }}>
+                                        +{item.margin.toFixed(0)} грн
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                     </div>
                   </div>
 
                   {/* Right: delivery + status change */}
-                  <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div className="admin-order-col" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '13px', color: '#374151' }}>
+                      <div className="admin-text-primary" style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '13px', color: '#374151' }}>
                         <MapPin size={13} color="#64748B" style={{ flexShrink: 0, marginTop: '2px' }} />
                         <span>{delivery}{subtype}{order.delivery_address ? `: ${order.delivery_address}` : ''}</span>
                       </div>
@@ -638,7 +754,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
 
                     {/* Status buttons */}
                     <div>
-                      <div style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <div className="admin-text-muted" style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                         Змінити статус
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
