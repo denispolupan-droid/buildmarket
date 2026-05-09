@@ -75,7 +75,7 @@ export default function DeliveryPage() {
                 Для великих оптових замовлень — доставка власним транспортом або перевізником до Харкова та найближчих регіонів.
               </p>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {['Від 50 кг або від 5000 грн', 'Харків та область — безкоштовно', 'Умови обговорюються з менеджером', 'Можливе розвантаження на об\'єкті'].map(i => (
+                {['Від 50 кг або від 5000 грн', 'Харків та область — безкоштовно', 'Умови обговорюються з менеджером'].map(i => (
                   <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                     <span style={{ color: '#4880B8', flexShrink: 0, marginTop: '2px' }}>✓</span>{i}
                   </li>

@@ -6,7 +6,7 @@ import { ShieldCheck, Users, Package, Award, Truck, MessageCircle } from 'lucide
 
 export const metadata: Metadata = {
   title: 'Про компанію FIXLINE — постачальник будівельної хімії',
-  description: 'FIXLINE — офіційний постачальник будівельної хімії в Україні. 10+ років на ринку, 500+ активних клієнтів, 1000+ артикулів. Герметики, монтажні піни, клеї від Soudal, Ceresit, Lacrysil та інших брендів.',
+  description: 'FIXLINE — постачальник будівельної хімії в Україні. 10+ років на ринку, 500+ активних клієнтів, 1000+ артикулів. Герметики, монтажні піни, клеї від Ceresit, Lacrysil, Pattex та інших брендів.',
   keywords: ['про компанію FIXLINE', 'постачальник будівельної хімії', 'поставщик строительной химии Украина', 'оптова будівельна хімія', 'герметики оптом постачальник', 'Харків будівельна хімія'],
   alternates: { canonical: 'https://fixline.com.ua/about' },
   openGraph: {
@@ -58,11 +58,9 @@ export default function AboutPage() {
     name: 'FIXLINE',
     url: 'https://fixline.com.ua',
     logo: 'https://fixline.com.ua/fixline-logo.png',
-    description: 'Офіційний постачальник будівельної хімії в Україні: герметики, монтажні піни, клеї, ґрунтовки оптом і в роздріб.',
-    foundingDate: '2014',
+    description: 'Постачальник будівельної хімії в Україні: герметики, монтажні піни, клеї, ґрунтовки оптом і в роздріб.',
     address: {
       '@type': 'PostalAddress',
-      streetAddress: 'вул. Промислова, 12',
       addressLocality: 'Харків',
       addressCountry: 'UA',
     },
@@ -73,7 +71,6 @@ export default function AboutPage() {
       contactType: 'sales',
       availableLanguage: ['Ukrainian', 'Russian'],
     },
-    numberOfEmployees: { '@type': 'QuantitativeValue', value: 15 },
   };
 
   return (
@@ -95,7 +92,7 @@ export default function AboutPage() {
               Про компанію FIXLINE
             </h1>
             <p style={{ fontSize: '17px', color: '#94A3B8', lineHeight: 1.7, maxWidth: '640px', margin: 0 }}>
-              Офіційний постачальник будівельної хімії в Україні з 2014 року.
+              Постачальник будівельної хімії в Україні.
               Герметики, монтажні піни, клеї, ґрунтовки та захисні покриття —
               від перевірених виробників за конкурентними цінами.
             </p>
@@ -131,34 +128,31 @@ export default function AboutPage() {
                 <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.8, display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <p>
                     FIXLINE — B2B постачальник будівельної хімії для дилерів, підрядників,
-                    будівельних магазинів та дропшиперів по всій Україні. Компанія заснована у 2014 році
-                    в Харкові та з тих пір стабільно розвивається попри всі виклики.
+                    будівельних магазинів та дропшиперів по всій Україні.
                   </p>
                   <p>
-                    Ми не виробник — ми посередник між провідними виробниками та нашими клієнтами.
-                    Наша задача: забезпечити наявність потрібного товару, актуальні ціни та швидку
-                    доставку з власного складу.
+                    Ми не виробник — ми зв'язуємо клієнтів з перевіреними виробниками та
+                    брендами. Наша задача: широкий асортимент, актуальні ціни та швидка
+                    доставка Новою Поштою в будь-яку точку України.
                   </p>
                   <p>
-                    За роки роботи ми сформували команду з 15+ фахівців та напрацювали
-                    прямі контракти з провідними виробниками. Це дозволяє нам пропонувати
-                    конкурентні ціни навіть на невеликі обсяги.
+                    Працюємо як з роздрібними покупцями від 1 одиниці, так і з оптовими
+                    клієнтами. Пропонуємо гнучкі умови та підбір аналогів під бюджет.
                   </p>
                 </div>
               </div>
               <div>
                 <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '20px' }}>
-                  Наш склад та логістика
+                  Доставка та логістика
                 </h2>
                 <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.8, display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <p>
-                    Власний склад площею 800 м² у Харкові з постійним залишком товарів у наявності.
-                    Усі позиції каталогу відображають реальний стан — жодного "під замовлення"
-                    без відповідного маркування.
+                    Відправляємо Новою Поштою по всій Україні. Замовлення до 14:00 — відправка
+                    того ж дня. Широкий асортимент підтримується в постійній наявності.
                   </p>
                   <p>
-                    Відправляємо Новою Поштою по всій Україні. Замовлення до 14:00 — відправка
-                    того ж дня. Для великих обсягів — власна логістика та адресна доставка.
+                    Для великих оптових партій — адресна доставка по Харкову та регіону,
+                    умови обговорюються з менеджером індивідуально.
                   </p>
                   <p>
                     Дропшиперам надаємо XML/YML-фід з актуальними залишками та цінами,
@@ -198,17 +192,17 @@ export default function AboutPage() {
               Бренди, з якими ми працюємо
             </h2>
             <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '40px' }}>
-              Офіційна продукція від провідних виробників будівельної хімії
+              Продукція від перевірених виробників будівельної хімії
             </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px' }} className="brands-grid">
               {brands.map(({ name, src }) => (
                 <div key={name} style={{
                   background: 'var(--bg-card)', border: '1px solid var(--border)',
-                  borderRadius: '14px', padding: '20px 32px',
+                  borderRadius: '12px', padding: '12px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  minWidth: '160px', height: '80px',
+                  aspectRatio: '3/2',
                 }}>
-                  <Image src={src} alt={name} width={120} height={40} style={{ objectFit: 'contain', maxHeight: '40px', width: 'auto' }} />
+                  <Image src={src} alt={name} width={160} height={80} style={{ objectFit: 'contain', width: '100%', height: '100%' }} />
                 </div>
               ))}
             </div>
@@ -243,10 +237,12 @@ export default function AboutPage() {
           .about-stats-grid  { grid-template-columns: repeat(2, 1fr) !important; }
           .about-values-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .about-content-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+          .brands-grid { grid-template-columns: repeat(3, 1fr) !important; }
         }
         @media (max-width: 480px) {
           .about-stats-grid  { grid-template-columns: 1fr !important; }
           .about-values-grid { grid-template-columns: 1fr !important; }
+          .brands-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
       `}</style>
     </>
