@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { syncSupplier } from '../../../../../../lib/supplier-sync';
 
@@ -15,6 +16,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   try {
     const result = await syncSupplier(Number(id));
+    // Очищаємо ISR-кеш каталогу і сторінок товарів
+    revalidatePath('/catalog', 'page');
+    revalidatePath('/shop', 'page');
+    revalidatePath('/', 'page');
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Невідома помилка';

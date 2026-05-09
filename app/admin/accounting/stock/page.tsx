@@ -10,24 +10,30 @@ export default async function StockPage() {
   // Синхронізовані залишки від постачальників (основне джерело при дропшипі)
   const { data: supplierStock } = await db
     .from('product_stock')
-    .select(`
-      sku, price_cost, price_unit, price_drop, stock_qty, stock_status, updated_at,
-      product:sku ( name, brand, category_slug )
-    `)
+    .select('sku, price_cost, price_unit, price_drop, stock_qty, stock_status, updated_at')
     .order('stock_qty', { ascending: false })
     .limit(500);
 
-  // Власні залишки (з обліку — поки що порожні якщо не було приходів)
-  const { data: ownBalance } = await db
+  // Назви товарів окремим запитом (уникаємо проблемного join через sku)
+  const skus = (supplierStock ?? []).map(s => s.sku);
+  const { data: productNames } = skus.length
+    ? await db.from('products').select('sku, name, brand').in('sku', skus)
+    : { data: [] };
+
+  const nameMap = new Map((productNames ?? []).map(p => [p.sku, p]));
+
+  // Власні залишки (поки порожні якщо не було приходів на власний склад)
+  const { data: physicalWarehouses } = await db
+    .from('warehouses').select('id').eq('warehouse_type', 'physical');
+  const physicalIds = (physicalWarehouses ?? []).map(w => w.id);
+
+  const { data: ownBalance } = physicalIds.length ? await db
     .from('stock_balance')
-    .select(`
-      sku, qty_total, qty_reserved, qty_available, avg_cost, updated_at,
-      warehouse:warehouse_id ( name, warehouse_type )
-    `)
-    .eq('warehouses.warehouse_type', 'physical')
+    .select('sku, qty_total, qty_reserved, qty_available, avg_cost, updated_at, warehouse_id')
+    .in('warehouse_id', physicalIds)
     .gt('qty_total', 0)
     .order('qty_total', { ascending: false })
-    .limit(200);
+    .limit(200) : { data: [] };
 
   const totalInStock = supplierStock?.filter(s => s.stock_status === 'in_stock').length ?? 0;
   const totalOut     = supplierStock?.filter(s => s.stock_status !== 'in_stock').length ?? 0;
@@ -77,7 +83,7 @@ export default async function StockPage() {
               <span style={{ textAlign: 'right' }}>Доступно</span><span style={{ textAlign: 'right' }}>Собів.</span>
             </div>
             {(ownBalance ?? []).map((row, idx) => (
-              <div key={`${row.sku}-${(row.warehouse as any)?.name}`} style={{
+              <div key={`${row.sku}-${(row as any).warehouse_id}`} style={{
                 display: 'grid', gridTemplateColumns: 'auto 1fr 100px 100px 100px 100px',
                 padding: '10px 16px', alignItems: 'center',
                 borderBottom: idx < (ownBalance?.length ?? 0) - 1 ? '1px solid var(--border-light)' : 'none',
@@ -85,9 +91,8 @@ export default async function StockPage() {
                 <span style={{ width: '120px', fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-muted)' }}>{row.sku}</span>
                 <div>
                   <div style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
-                    {(row as any).product?.brand} {(row as any).product?.name}
+                    {nameMap.get(row.sku)?.brand} {nameMap.get(row.sku)?.name}
                   </div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{(row.warehouse as any)?.name}</div>
                 </div>
                 <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{row.qty_total}</span>
                 <span style={{ textAlign: 'right', fontSize: '13px', color: '#B45309' }}>{row.qty_reserved > 0 ? row.qty_reserved : '—'}</span>
@@ -120,7 +125,7 @@ export default async function StockPage() {
         </div>
 
         {(supplierStock ?? []).slice(0, 200).map((row, idx) => {
-          const product = (row as any).product;
+          const product = nameMap.get(row.sku);
           const statusColor = row.stock_status === 'in_stock' ? { color: '#15803D', bg: '#F0FDF4', label: 'В наявності' }
             : row.stock_status === 'on_order' ? { color: '#B45309', bg: '#FEF3C7', label: 'Під замовлення' }
             : { color: '#DC2626', bg: '#FEF2F2', label: 'Відсутній' };
