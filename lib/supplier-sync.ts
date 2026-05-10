@@ -433,6 +433,10 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
 
     const stockStatus = row.stock_qty > 0 ? 'in_stock' : 'out_of_stock';
 
+    // qty_is_flag: зберігаємо 0 замість умовного числа (10, 5 тощо)
+    // Реальна наявність визначається через stock_status
+    const stockQty = supplier.qty_is_flag ? 0 : row.stock_qty;
+
     const { error } = await supabase
       .from('product_stock')
       .upsert({
@@ -443,7 +447,7 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
         price_retail:    priceRetail,
         price_retail_old: priceRetailOld,
         price_drop:      priceDrop,
-        stock_qty:       row.stock_qty,
+        stock_qty:       stockQty,
         stock_status:    stockStatus,
         updated_at:      new Date().toISOString(),
       }, { onConflict: 'sku' });

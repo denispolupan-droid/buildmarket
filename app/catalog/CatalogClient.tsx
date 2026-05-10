@@ -186,7 +186,11 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       if (matchingSlugs && !matchingSlugs.has(p.category_slug ?? '')) return false;
       if (filterVolume   && p.volume !== filterVolume)   return false;
       if (filterVolumeKg && p.volume !== filterVolumeKg) return false;
-      if (inStockOnly   && (p.stock?.stock_qty ?? 0) < p.min_order) return false;
+      if (inStockOnly) {
+        const s = p.stock;
+        const available = s?.stock_status === 'in_stock' || (s?.stock_qty ?? 0) >= p.min_order;
+        if (!available) return false;
+      }
       if (saleOnly) {
         const pu = p.stock?.price_unit ?? 0;
         const po = p.stock?.price_old  ?? null;
@@ -553,8 +557,9 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                     {filtered.slice(0, visibleCount).map(p => {
                       const priceUnit = p.stock?.price_unit ?? 0;
                       const priceOld  = p.stock?.price_old  ?? null;
-                      const stockQty  = p.stock?.stock_qty  ?? 0;
-                      const inStock   = stockQty >= p.min_order;
+                      const stockQty  = p.stock?.stock_qty    ?? 0;
+                      const stockSt   = p.stock?.stock_status;
+                      const inStock   = stockSt === 'in_stock' || stockQty >= p.min_order;
                       const isSale    = priceOld != null && priceUnit > 0 && priceUnit < priceOld;
                       const qty       = getQty(p.sku, p.min_order);
                       const packFrac  = p.min_order / p.pack_qty;

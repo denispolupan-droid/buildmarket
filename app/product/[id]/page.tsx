@@ -50,12 +50,19 @@ function volLabel(v: string) {
   return /кг|г$/.test(v) ? 'Вага' : "Об'єм";
 }
 
-function stockLabel(stockQty: number, minOrder: number) {
-  return stockQty >= minOrder ? 'В наявності' : 'Немає в наявності';
+function isInStock(stockStatus: string | undefined, stockQty: number, minOrder: number) {
+  // stock_status = 'in_stock' — товар є (навіть якщо qty=0 через qty_is_flag постачальника)
+  if (stockStatus === 'in_stock')     return true;
+  if (stockStatus === 'out_of_stock') return false;
+  return stockQty >= minOrder;
 }
 
-function stockDot(stockQty: number, minOrder: number) {
-  return stockQty >= minOrder ? 'stock-dot' : 'stock-dot out';
+function stockLabel(stockStatus: string | undefined, stockQty: number, minOrder: number) {
+  return isInStock(stockStatus, stockQty, minOrder) ? 'В наявності' : 'Немає в наявності';
+}
+
+function stockDot(stockStatus: string | undefined, stockQty: number, minOrder: number) {
+  return isInStock(stockStatus, stockQty, minOrder) ? 'stock-dot' : 'stock-dot out';
 }
 
 export default async function ProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ from?: string }> }) {
@@ -76,8 +83,10 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   const priceOld  = isRetail
     ? (product.stock?.price_retail_old ?? null)
     : (product.stock?.price_old ?? null);
-  const stockQty  = product.stock?.stock_qty  ?? 0;
-  const minOrder  = isRetail ? 1 : product.min_order;
+  const stockQty    = product.stock?.stock_qty    ?? 0;
+  const stockStatus = product.stock?.stock_status;
+  const minOrder    = isRetail ? 1 : product.min_order;
+  const inStock     = isInStock(stockStatus, stockQty, minOrder);
   const pricePack = isRetail ? priceUnit : priceUnit * product.pack_qty;
 
   const productCat   = categories.find((c) => c.slug === product.category_slug);
@@ -112,7 +121,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
       '@type': 'Offer',
       priceCurrency: 'UAH',
       price: priceUnit,
-      availability: stockQty >= product.min_order
+      availability: inStock
         ? 'https://schema.org/InStock'
         : 'https://schema.org/OutOfStock',
       seller: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
@@ -153,8 +162,8 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
             </div>
 
             <div className="product-info__stock">
-              <span className={stockDot(stockQty, product.min_order)}></span>
-              {stockLabel(stockQty, product.min_order)}
+              <span className={stockDot(stockStatus, stockQty, product.min_order)}></span>
+              {stockLabel(stockStatus, stockQty, product.min_order)}
             </div>
             <div className="product-info__sku">Артикул: {product.sku}</div>
 
@@ -181,7 +190,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
             <ProductOrderPanel
               priceUnit={priceUnit}
               minOrder={minOrder}
-              inStock={stockQty >= minOrder}
+              inStock={inStock}
               sku={product.sku}
               name={product.name}
               brand={product.brand}
