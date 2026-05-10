@@ -276,11 +276,13 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
   if (parsed.length === 0) throw new Error('Файл порожній або не вдалось розпізнати формат');
 
   // 3. Завантажуємо маппінг артикулів + дані для цін
+  const now = new Date().toISOString();
   const [
     { data: skuMapRows },
     { data: stockRows },
     { data: productBrands },
     { data: productOverrides },
+    { data: promotions },
   ] = await Promise.all([
     supabase.from('supplier_sku_map').select('supplier_sku, our_sku').eq('supplier_id', supplierId),
     supabase.from('product_stock').select('sku, supplier_sku'),
@@ -288,6 +290,12 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
     supabase.from('supplier_product_overrides')
       .select('our_sku, markup_retail, markup_wholesale, markup_drop, fixed_retail, fixed_wholesale, fixed_drop')
       .eq('supplier_id', supplierId),
+    supabase.from('supplier_promotions')
+      .select('our_sku, brand, promo_type, value, apply_retail, apply_wholesale, apply_drop, starts_at, ends_at')
+      .eq('supplier_id', supplierId)
+      .eq('is_active', true)
+      .or(`starts_at.is.null,starts_at.lte.${now}`)
+      .or(`ends_at.is.null,ends_at.gte.${now}`),
   ]);
 
   // supplier_sku → our_sku
@@ -316,6 +324,30 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
     productOverrideMap[sku]?.[field] ??
     brandSettingsMap[brand]?.[field] ??
     supplierDefault;
+
+  // Акційні ціни: знаходимо найбільш специфічну акцію для SKU/бренду
+  type Promo = { our_sku: string | null; brand: string | null; promo_type: string; value: number; apply_retail: boolean; apply_wholesale: boolean; apply_drop: boolean };
+  const promoList = (promotions ?? []) as Promo[];
+
+  const findPromo = (sku: string, brand: string): Promo | null =>
+    // Пріоритет: конкретний SKU > бренд > всі товари
+    promoList.find(p => p.our_sku === sku) ??
+    promoList.find(p => !p.our_sku && p.brand === brand) ??
+    promoList.find(p => !p.our_sku && !p.brand) ??
+    null;
+
+  // Застосовує акцію до ціни; повертає [promoPrice, originalPrice]
+  const applyPromo = (regularPrice: number, promo: Promo, roundFn: (v: number) => number): [number, number] => {
+    let promoPrice: number;
+    if (promo.promo_type === 'fixed_price') {
+      promoPrice = roundFn(promo.value);
+    } else if (promo.promo_type === 'percent') {
+      promoPrice = roundFn(regularPrice * (1 - promo.value / 100));
+    } else {
+      promoPrice = roundFn(Math.max(0, regularPrice - promo.value));
+    }
+    return [promoPrice, regularPrice];
+  };
 
   // 4. Обробляємо кожен рядок
   const logId = await supabase
@@ -347,19 +379,41 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
     const discountPct = brandSettingsMap[brand]?.discount_pct ?? 0;
     const priceCost = row.price_in * (1 - discountPct / 100);
 
-    // Рахуємо ціни з пріоритетом: товар > бренд > постачальник
+    // Рахуємо базові ціни: товар > бренд > постачальник
     const roundFloor = (v: number) => Math.floor(v);
     const roundHalf  = (v: number) => Math.round(v * 2) / 2;
 
     const override = productOverrideMap[ourSku];
 
-    // Фіксована ціна — найвищий пріоритет, ігнорує наценку
-    const priceRetail = override?.fixed_retail
+    // Базові ціни (фіксована ціна — найвищий пріоритет)
+    const baseRetail = override?.fixed_retail
       ?? roundFloor(priceCost * (1 + getMarkup(brand, ourSku, 'markup_retail', supplier.markup_retail) / 100));
-    const priceUnit   = override?.fixed_wholesale
+    const baseUnit   = override?.fixed_wholesale
       ?? roundHalf(priceCost * (1 + getMarkup(brand, ourSku, 'markup_wholesale', supplier.markup_wholesale) / 100));
-    const priceDrop   = override?.fixed_drop
+    const baseDrop   = override?.fixed_drop
       ?? roundHalf(priceCost * (1 + getMarkup(brand, ourSku, 'markup_drop', supplier.markup_drop) / 100));
+
+    // Акційні ціни
+    const promo = !override?.fixed_retail && !override?.fixed_wholesale && !override?.fixed_drop
+      ? findPromo(ourSku, brand)
+      : null; // якщо є фіксована ціна — акція не застосовується
+
+    let priceRetail = baseRetail, priceRetailOld: number | null = null;
+    let priceUnit   = baseUnit,   priceOld: number | null = null;
+    let priceDrop   = baseDrop;
+
+    if (promo) {
+      if (promo.apply_retail) {
+        [priceRetail, priceRetailOld] = applyPromo(baseRetail, promo, roundFloor);
+      }
+      if (promo.apply_wholesale) {
+        [priceUnit, priceOld] = applyPromo(baseUnit, promo, roundHalf);
+      }
+      if (promo.apply_drop) {
+        [priceDrop] = applyPromo(baseDrop, promo, roundHalf);
+      }
+    }
+
     const stockStatus = row.stock_qty > 0 ? 'in_stock' : 'out_of_stock';
 
     const { error } = await supabase
@@ -368,7 +422,9 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
         sku:             ourSku,
         price_cost:      parseFloat(priceCost.toFixed(2)),
         price_unit:      priceUnit,
+        price_old:       priceOld,
         price_retail:    priceRetail,
+        price_retail_old: priceRetailOld,
         price_drop:      priceDrop,
         stock_qty:       row.stock_qty,
         stock_status:    stockStatus,

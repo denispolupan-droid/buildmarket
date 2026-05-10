@@ -19,7 +19,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const { id } = await params;
 
-  const [{ data: supplier, error }, { data: syncLogs }, { data: productOverrides }] = await Promise.all([
+  const [{ data: supplier, error }, { data: syncLogs }, { data: productOverrides }, { data: promotions }] = await Promise.all([
     serviceClient
       .from('suppliers')
       .select('*, brand_discounts:supplier_brand_discounts(*)')
@@ -35,17 +35,46 @@ export async function GET(_req: NextRequest, { params }: Params) {
       .from('supplier_product_overrides')
       .select('our_sku, markup_retail, markup_wholesale, markup_drop, fixed_retail, fixed_wholesale, fixed_drop, notes')
       .eq('supplier_id', id),
+    serviceClient
+      .from('supplier_promotions')
+      .select('id, name, our_sku, brand, promo_type, value, apply_retail, apply_wholesale, apply_drop, starts_at, ends_at, is_active')
+      .eq('supplier_id', id)
+      .order('created_at', { ascending: false }),
   ]);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ...supplier, sync_logs: syncLogs ?? [], product_overrides: productOverrides ?? [] });
+  return NextResponse.json({ ...supplier, sync_logs: syncLogs ?? [], product_overrides: productOverrides ?? [], promotions: promotions ?? [] });
 }
 
 export async function PUT(req: NextRequest, { params }: Params) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const { id } = await params;
   const body = await req.json();
-  const { brand_discounts, last_sync, sync_logs, product_overrides, ...supplier } = body;
+  const { brand_discounts, last_sync, sync_logs, product_overrides, promotions, ...supplier } = body;
+
+  // Зберігаємо акції
+  if (Array.isArray(promotions)) {
+    await serviceClient.from('supplier_promotions').delete().eq('supplier_id', id);
+    const promoInsert = promotions
+      .filter((p: any) => p.name && p.value)
+      .map((p: any) => ({
+        supplier_id:     Number(id),
+        name:            p.name,
+        our_sku:         p.our_sku || null,
+        brand:           p.brand || null,
+        promo_type:      p.promo_type ?? 'percent',
+        value:           Number(p.value),
+        apply_retail:    p.apply_retail ?? true,
+        apply_wholesale: p.apply_wholesale ?? false,
+        apply_drop:      p.apply_drop ?? false,
+        starts_at:       p.starts_at || null,
+        ends_at:         p.ends_at || null,
+        is_active:       p.is_active ?? true,
+      }));
+    if (promoInsert.length > 0) {
+      await serviceClient.from('supplier_promotions').insert(promoInsert);
+    }
+  }
 
   // Зберігаємо product_overrides окремо
   if (Array.isArray(product_overrides)) {

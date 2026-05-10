@@ -490,6 +490,106 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
           )}
         </div>
 
+        {/* ── Акційні ціни ─────────────────────────────────────── */}
+        <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <div>
+              <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Акційні ціни</p>
+              <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Знижка автоматично застосовується при синку. Стара ціна зберігається для відображення на сайті.
+              </p>
+            </div>
+            <button style={btn('#E11D48')} onClick={() => setEditing(prev => ({
+              ...prev,
+              promotions: [...((prev as any).promotions ?? []), {
+                name: '', our_sku: null, brand: null, promo_type: 'percent', value: '',
+                apply_retail: true, apply_wholesale: false, apply_drop: false,
+                starts_at: '', ends_at: '', is_active: true,
+              }],
+            }))}>+ Акція</button>
+          </div>
+
+          {((e as any).promotions ?? []).length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+              {((e as any).promotions as any[]).map((p: any, i: number) => {
+                const setP = (field: string, val: unknown) => setEditing(prev => ({
+                  ...prev,
+                  promotions: ((prev as any).promotions ?? []).map((x: any, xi: number) =>
+                    xi === i ? { ...x, [field]: val } : x
+                  ),
+                }));
+                return (
+                  <div key={i} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 150px 100px 32px', gap: '8px', marginBottom: '8px', alignItems: 'end' }}>
+                      <div>
+                        <span style={label}>Назва акції</span>
+                        <input style={input} value={p.name} onChange={ev => setP('name', ev.target.value)} placeholder="напр. Літній розпродаж" />
+                      </div>
+                      <div>
+                        <span style={label}>Тип знижки</span>
+                        <select style={input} value={p.promo_type} onChange={ev => setP('promo_type', ev.target.value)}>
+                          <option value="percent">Знижка %</option>
+                          <option value="fixed_price">Нова ціна (грн)</option>
+                          <option value="fixed_discount">Знижка (грн)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <span style={label}>{p.promo_type === 'percent' ? 'Знижка %' : 'Значення'}</span>
+                        <input style={input} type="number" step="0.01" value={p.value ?? ''} onChange={ev => setP('value', ev.target.value)} placeholder="0" />
+                      </div>
+                      <button onClick={() => setEditing(prev => ({
+                        ...prev,
+                        promotions: ((prev as any).promotions ?? []).filter((_: any, xi: number) => xi !== i),
+                      }))} style={{ height: '36px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end' }}>
+                        ✕
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                      <div>
+                        <span style={label}>Ціль — бренд</span>
+                        <select style={input} value={p.brand ?? ''} onChange={ev => setP('brand', ev.target.value || null)}>
+                          <option value="">Всі товари</option>
+                          {brands.map(b => <option key={b} value={b}>{b}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <span style={label}>Дата початку</span>
+                        <input style={input} type="date" value={p.starts_at ? p.starts_at.slice(0,10) : ''} onChange={ev => setP('starts_at', ev.target.value || null)} />
+                      </div>
+                      <div>
+                        <span style={label}>Дата кінця</span>
+                        <input style={input} type="date" value={p.ends_at ? p.ends_at.slice(0,10) : ''} onChange={ev => setP('ends_at', ev.target.value || null)} />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Застосувати до:</span>
+                      {[
+                        { field: 'apply_retail', label: 'Магазин' },
+                        { field: 'apply_wholesale', label: 'Опт' },
+                        { field: 'apply_drop', label: 'Дроп' },
+                      ].map(({ field, label: lbl }) => (
+                        <label key={field} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', cursor: 'pointer', color: 'var(--text-primary)' }}>
+                          <input type="checkbox" checked={p[field] ?? false} onChange={ev => setP(field, ev.target.checked)} />
+                          {lbl}
+                        </label>
+                      ))}
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', cursor: 'pointer', marginLeft: 'auto', color: p.is_active ? '#15803D' : 'var(--text-muted)' }}>
+                        <input type="checkbox" checked={p.is_active ?? true} onChange={ev => setP('is_active', ev.target.checked)} />
+                        Активна
+                      </label>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {((e as any).promotions ?? []).length === 0 && (
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>Немає активних акцій</p>
+          )}
+        </div>
+
         <div style={{ marginBottom: '20px' }}>
           <span style={label}>Нотатки</span>
           <textarea style={{ ...input, minHeight: '72px', resize: 'vertical' }} value={e.notes ?? ''} onChange={ev => set('notes', ev.target.value)} />
