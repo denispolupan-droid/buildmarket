@@ -16,12 +16,30 @@ async function checkAdmin() {
 export async function GET() {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const { data, error } = await serviceClient
-    .from('suppliers')
-    .select('*, brand_discounts:supplier_brand_discounts(*), last_sync:supplier_sync_log(id,started_at,finished_at,rows_updated,rows_unmapped,error_message)')
-    .order('name');
+  const [{ data: suppliers, error }, { data: syncLogs }] = await Promise.all([
+    serviceClient
+      .from('suppliers')
+      .select('*, brand_discounts:supplier_brand_discounts(*)')
+      .order('name'),
+    serviceClient
+      .from('supplier_sync_log')
+      .select('supplier_id, rows_updated, rows_unmapped, error_message')
+      .order('started_at', { ascending: false })
+      .limit(100),
+  ]);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const lastSyncMap = new Map<number, object>();
+  for (const log of syncLogs ?? []) {
+    if (!lastSyncMap.has(log.supplier_id)) lastSyncMap.set(log.supplier_id, log);
+  }
+
+  const data = (suppliers ?? []).map(s => ({
+    ...s,
+    last_sync: lastSyncMap.has(s.id) ? [lastSyncMap.get(s.id)] : [],
+  }));
+
   return NextResponse.json(data);
 }
 

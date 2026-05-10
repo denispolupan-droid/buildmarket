@@ -19,14 +19,22 @@ export async function GET(_req: NextRequest, { params }: Params) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const { id } = await params;
 
-  const { data, error } = await serviceClient
-    .from('suppliers')
-    .select('*, brand_discounts:supplier_brand_discounts(*), sync_logs:supplier_sync_log(* order(started_at.desc) limit(10))')
-    .eq('id', id)
-    .single();
+  const [{ data: supplier, error }, { data: syncLogs }] = await Promise.all([
+    serviceClient
+      .from('suppliers')
+      .select('*, brand_discounts:supplier_brand_discounts(*)')
+      .eq('id', id)
+      .single(),
+    serviceClient
+      .from('supplier_sync_log')
+      .select('*')
+      .eq('supplier_id', id)
+      .order('started_at', { ascending: false })
+      .limit(10),
+  ]);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+  return NextResponse.json({ ...supplier, sync_logs: syncLogs ?? [] });
 }
 
 export async function PUT(req: NextRequest, { params }: Params) {
