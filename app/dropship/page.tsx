@@ -134,8 +134,11 @@ export default function DropshipPage() {
                 Оформлюйте замовлення в особистому кабінеті — ми відправляємо, а ваш заробіток автоматично надходить на баланс.
               </p>
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                <Link href="/register?type=dropship" className="btn-primary" style={{ height: '48px', padding: '0 28px', borderRadius: '10px', background: '#4880B8', color: '#fff', fontSize: '15px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                <Link href="/register?type=dropship" style={{ height: '48px', padding: '0 28px', borderRadius: '10px', background: '#4880B8', color: '#fff', fontSize: '15px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
                   Зареєструватись <ArrowRight size={16} />
+                </Link>
+                <Link href="/cabinet" style={{ height: '48px', padding: '0 22px', borderRadius: '10px', border: '1.5px solid rgba(255,255,255,0.2)', color: '#E2E8F0', fontSize: '14px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', background: 'transparent' }}>
+                  Вже партнер → Кабінет
                 </Link>
               </div>
             </div>
@@ -343,13 +346,32 @@ export default function DropshipPage() {
         <div className="page-container">
           <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', marginBottom: '12px' }}>Готові розпочати?</h2>
           <p style={{ fontSize: '14px', color: '#94A3B8', marginBottom: '32px', maxWidth: '480px', margin: '0 auto 32px' }}>
-            Зареєструйтесь — отримайте доступ до каталогу та особистого кабінету.
+            Зареєструйтесь — отримайте доступ до особистого кабінету, каталогу з дроп-цінами та XML-фіду.
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/register?type=dropship" className="btn-primary" style={{ height: '48px', padding: '0 32px', borderRadius: '10px', background: '#4880B8', color: '#fff', fontSize: '15px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <Link href="/register?type=dropship" style={{
+              height: '48px', padding: '0 32px', borderRadius: '10px',
+              background: '#4880B8', color: '#fff', fontSize: '15px', fontWeight: 700,
+              display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none',
+            }}>
               Зареєструватись <ArrowRight size={16} />
             </Link>
-            <a href="mailto:drop@fixline.com.ua" className="btn-ghost" style={{ height: '48px', padding: '0 28px', borderRadius: '10px', border: '1.5px solid rgba(255,255,255,0.2)', color: '#E2E8F0', fontSize: '15px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'transparent' }}>
+            <Link href="/cabinet" style={{
+              height: '48px', padding: '0 28px', borderRadius: '10px',
+              border: '1.5px solid rgba(255,255,255,0.2)', color: '#E2E8F0',
+              fontSize: '15px', fontWeight: 600,
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              background: 'transparent', textDecoration: 'none',
+            }}>
+              Вже партнер → Кабінет
+            </Link>
+            <a href="mailto:drop@fixline.com.ua" style={{
+              height: '48px', padding: '0 28px', borderRadius: '10px',
+              border: '1.5px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)',
+              fontSize: '15px', fontWeight: 500,
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              background: 'transparent', textDecoration: 'none',
+            }}>
               Задати питання
             </a>
           </div>
