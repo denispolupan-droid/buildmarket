@@ -2,12 +2,13 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { ShoppingBag, Package, Truck, Store, ChevronLeft, Settings, BookOpen, Warehouse, BarChart3 } from 'lucide-react';
+import { ShoppingBag, Package, Truck, Store, ChevronLeft, Settings, BookOpen, Warehouse, BarChart3, Users } from 'lucide-react';
 
 const NAV = [
   { href: '/admin',                      label: 'Замовлення',    icon: ShoppingBag, exact: true },
   { href: '/admin/products',             label: 'Товари',        icon: Package,     exact: false },
   { href: '/admin/suppliers',            label: 'Постачальники', icon: Truck,       exact: false },
+  { href: '/admin/partners',             label: 'Партнери',      icon: Users,       exact: false },
   { href: '/admin/finance',              label: 'Фінанси',       icon: BarChart3,   exact: false },
   { href: '/admin/accounting/documents', label: 'Облік',         icon: BookOpen,    exact: false },
   { href: '/admin/accounting/stock',     label: 'Залишки',       icon: Warehouse,   exact: false },
