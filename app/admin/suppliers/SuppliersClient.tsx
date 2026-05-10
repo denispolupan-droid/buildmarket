@@ -143,7 +143,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
     setEditing(e => ({ ...e, brand_discounts: (e?.brand_discounts ?? []).filter((_, idx) => idx !== i) }));
   }
 
-  function updateDiscount(i: number, field: keyof BrandDiscount, value: string | number) {
+  function updateDiscount(i: number, field: keyof BrandDiscount, value: string | number | boolean) {
     setEditing(e => {
       const ds = [...(e?.brand_discounts ?? [])];
       ds[i] = { ...ds[i], [field]: value };
