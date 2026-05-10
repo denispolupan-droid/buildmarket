@@ -2,7 +2,7 @@ name: Sync suppliers
 
 on:
   schedule:
-    - cron: '0 */6 * * *'   # кожні 6 годин: 00:00, 06:00, 12:00, 18:00 UTC
+    - cron: '0 */2 * * *'   # кожні 2 години
   workflow_dispatch:          # можна запустити вручну з GitHub
 
 jobs:
