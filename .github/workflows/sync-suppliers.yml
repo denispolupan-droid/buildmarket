@@ -1,0 +1,16 @@
+name: Sync suppliers
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # кожні 6 годин: 00:00, 06:00, 12:00, 18:00 UTC
+  workflow_dispatch:          # можна запустити вручну з GitHub
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger supplier sync
+        run: |
+          curl -s -f \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://fixline.com.ua/api/cron/sync-suppliers
