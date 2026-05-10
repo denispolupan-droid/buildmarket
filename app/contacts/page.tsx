@@ -75,7 +75,7 @@ export default function ContactsPage() {
                 icon: MapPin,
                 title: 'Регіон',
                 lines: [
-                  <span key="a1" style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-primary)' }}>м. Харків</span>,
+                  <span key="a1" style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-primary)' }}>м. Харків, Україна</span>,
                   <span key="a2" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Відправка по всій Україні</span>,
                 ],
               },
