@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseServer } from '../../lib/supabase-server';
+import { getRole } from '../../lib/user-role';
 import Footer from '../components/Footer';
 import { Package, ShoppingBag, User, MapPin, CreditCard, XCircle, Truck } from 'lucide-react';
 import RepeatOrderButton from './RepeatOrderButton';
@@ -57,6 +58,7 @@ export default async function AccountPage({
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) redirect('/login?next=/account');
+  if (getRole(user) === 'dropship') redirect('/cabinet');
 
   const { filter } = await searchParams;
 
