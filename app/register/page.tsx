@@ -79,6 +79,7 @@ function RegisterForm() {
       password,
       options: {
         data: { company_name: company, account_type: accountType },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
     if (error) {
