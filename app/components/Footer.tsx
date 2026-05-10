@@ -23,10 +23,7 @@ function ViberIcon() {
 }
 
 const socials: { label: string; href: string; icon: React.ReactNode }[] = [
-  { label: 'Telegram',  href: 'https://t.me/fixline_ua',      icon: <Send size={20} strokeWidth={2} /> },
-  { label: 'Viber',     href: 'viber://chat?number=380991997788', icon: <ViberIcon /> },
-  { label: 'Instagram', href: 'https://instagram.com/fixline.com.ua', icon: <InstagramIcon /> },
-  { label: 'Email',     href: 'mailto:info@fixline.com.ua',    icon: <Mail size={20} strokeWidth={2} /> },
+  { label: 'Email', href: 'mailto:info@fixline.com.ua', icon: <Mail size={20} strokeWidth={2} /> },
 ];
 
 const serviceLinks = [
