@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const body = await req.json();
-  const { brand_discounts, ...supplier } = body;
+  const { brand_discounts, last_sync, sync_logs, ...supplier } = body;
 
   const { data, error } = await serviceClient
     .from('suppliers')
