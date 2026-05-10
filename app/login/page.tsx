@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { useTheme } from '../../lib/theme';
+import { getRole } from '../../lib/user-role';
 import './login.css';
 
 function LoginForm() {
@@ -24,15 +25,24 @@ function LoginForm() {
     setLoading(true);
 
     const supabase = getSupabaseBrowser();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       setError('Невірний email або пароль. Перевірте дані та спробуйте знову.');
       setLoading(false);
+      return;
+    }
+
+    const role = getRole(data.user);
+
+    // Для дропшиперів — синхронізуємо профіль і редиректимо в кабінет
+    if (role === 'dropship') {
+      await fetch('/api/auth/sync-partner', { method: 'POST' });
+      router.push('/cabinet');
     } else {
       router.push(nextUrl);
-      router.refresh();
     }
+    router.refresh();
   }
 
   return (
