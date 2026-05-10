@@ -59,11 +59,15 @@ function parseSmartCsv(buffer: Buffer): ParsedRow[] {
 
     const supplier_sku = cells[skuIdx];
 
-    // Шукаємо ціну: знімаємо суфікси валюти (грн, ₴, uah) перед перевіркою
+    // Шукаємо ціну: знімаємо суфікси валюти і пробіли-роздільники тисяч
+    // Приклад: "1 277,70 грн" → "1277,70" → 1277.70
     let price_in = 0;
     let priceColIdx = -1;
     for (let i = skuIdx + 1; i < cells.length; i++) {
-      const cleaned = cells[i].replace(/\s*(?:грн|₴|uah)\s*\.?$/gi, '').trim();
+      const cleaned = cells[i]
+        .replace(/\s*(?:грн|₴|uah)\s*\.?$/gi, '')  // прибираємо валюту
+        .replace(/\s/g, '')                           // прибираємо пробіли (роздільник тисяч)
+        .trim();
       const val = cleaned.replace(',', '.');
       if (cleaned && PRICE_RE.test(cleaned) && parseFloat(val) > 0) {
         price_in = parseFloat(val);
