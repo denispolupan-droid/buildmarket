@@ -275,35 +275,47 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
 
   if (parsed.length === 0) throw new Error('Файл порожній або не вдалось розпізнати формат');
 
-  // 3. Завантажуємо маппінг артикулів (supplier_sku_map + старий product_stock.supplier_sku)
-  const [{ data: skuMapRows }, { data: stockRows }, { data: productBrands }] = await Promise.all([
-    supabase
-      .from('supplier_sku_map')
-      .select('supplier_sku, our_sku')
+  // 3. Завантажуємо маппінг артикулів + дані для цін
+  const [
+    { data: skuMapRows },
+    { data: stockRows },
+    { data: productBrands },
+    { data: productOverrides },
+  ] = await Promise.all([
+    supabase.from('supplier_sku_map').select('supplier_sku, our_sku').eq('supplier_id', supplierId),
+    supabase.from('product_stock').select('sku, supplier_sku'),
+    supabase.from('products').select('sku, brand'),
+    supabase.from('supplier_product_overrides')
+      .select('our_sku, markup_retail, markup_wholesale, markup_drop, fixed_retail, fixed_wholesale, fixed_drop')
       .eq('supplier_id', supplierId),
-    supabase
-      .from('product_stock')
-      .select('sku, supplier_sku'),
-    supabase
-      .from('products')
-      .select('sku, brand'),
   ]);
 
   // supplier_sku → our_sku
   const skuMap: Record<string, string> = {};
   (skuMapRows ?? []).forEach(r => { skuMap[r.supplier_sku] = r.our_sku; });
-  // Fallback: старий спосіб через product_stock.supplier_sku
   (stockRows ?? []).forEach(r => { if (r.supplier_sku && !skuMap[r.supplier_sku]) skuMap[r.supplier_sku] = r.sku; });
 
   // our_sku → brand
   const brandMap: Record<string, string> = {};
   (productBrands ?? []).forEach(p => { brandMap[p.sku] = p.brand; });
 
-  // brand → discount_pct
-  const discountMap: Record<string, number> = {};
-  (supplier.brand_discounts ?? []).forEach((d: { brand: string; discount_pct: number }) => {
-    discountMap[d.brand] = d.discount_pct;
+  // brand → { discount_pct, markup_retail, markup_wholesale, markup_drop }
+  type BrandSettings = { discount_pct: number; markup_retail?: number | null; markup_wholesale?: number | null; markup_drop?: number | null };
+  const brandSettingsMap: Record<string, BrandSettings> = {};
+  (supplier.brand_discounts ?? []).forEach((d: BrandSettings & { brand: string }) => {
+    brandSettingsMap[d.brand] = d;
   });
+
+  // our_sku → product override
+  type ProductOverride = { markup_retail?: number | null; markup_wholesale?: number | null; markup_drop?: number | null; fixed_retail?: number | null; fixed_wholesale?: number | null; fixed_drop?: number | null };
+  const productOverrideMap: Record<string, ProductOverride> = {};
+  (productOverrides ?? []).forEach(o => { productOverrideMap[o.our_sku] = o; });
+
+  // Хелпер: наценка з пріоритетом товар > бренд > постачальник
+  const getMarkup = (brand: string, sku: string, field: 'markup_retail' | 'markup_wholesale' | 'markup_drop', supplierDefault: number): number =>
+    productOverrideMap[sku]?.[field] ??
+    brandSettingsMap[brand]?.[field] ??
+    supplierDefault;
 
   // 4. Обробляємо кожен рядок
   const logId = await supabase
@@ -332,18 +344,22 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
 
     // Застосовуємо знижку на бренд → реальний вхід
     const brand = brandMap[ourSku] ?? '';
-    const discountPct = discountMap[brand] ?? 0;
+    const discountPct = brandSettingsMap[brand]?.discount_pct ?? 0;
     const priceCost = row.price_in * (1 - discountPct / 100);
 
-    // Рахуємо ціни продажу із заокругленням:
-    //   магазин (retail) — вниз до цілого: 99,45 → 99
-    //   опт і дроп — до найближчих 0,50: 99,45 → 99,50
-    const roundFloor  = (v: number) => Math.floor(v);
-    const roundHalf   = (v: number) => Math.round(v * 2) / 2;
+    // Рахуємо ціни з пріоритетом: товар > бренд > постачальник
+    const roundFloor = (v: number) => Math.floor(v);
+    const roundHalf  = (v: number) => Math.round(v * 2) / 2;
 
-    const priceUnit   = roundHalf(priceCost * (1 + supplier.markup_wholesale / 100));
-    const priceRetail = roundFloor(priceCost * (1 + supplier.markup_retail   / 100));
-    const priceDrop   = roundHalf(priceCost * (1 + supplier.markup_drop     / 100));
+    const override = productOverrideMap[ourSku];
+
+    // Фіксована ціна — найвищий пріоритет, ігнорує наценку
+    const priceRetail = override?.fixed_retail
+      ?? roundFloor(priceCost * (1 + getMarkup(brand, ourSku, 'markup_retail', supplier.markup_retail) / 100));
+    const priceUnit   = override?.fixed_wholesale
+      ?? roundHalf(priceCost * (1 + getMarkup(brand, ourSku, 'markup_wholesale', supplier.markup_wholesale) / 100));
+    const priceDrop   = override?.fixed_drop
+      ?? roundHalf(priceCost * (1 + getMarkup(brand, ourSku, 'markup_drop', supplier.markup_drop) / 100));
     const stockStatus = row.stock_qty > 0 ? 'in_stock' : 'out_of_stock';
 
     const { error } = await supabase

@@ -1,10 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Layers, Eye, EyeOff } from 'lucide-react';
+import { Layers, Eye, EyeOff, Search, Trash2 } from 'lucide-react';
+import { getSupabaseBrowser } from '../../../lib/supabase-browser';
 
-type BrandDiscount = { brand: string; discount_pct: number };
+type BrandDiscount = {
+  brand:            string;
+  discount_pct:     number;
+  markup_retail?:   number | null;
+  markup_wholesale?: number | null;
+  markup_drop?:     number | null;
+};
+
+type ProductOverride = {
+  our_sku:          string;
+  name?:            string;
+  brand?:           string;
+  markup_retail?:   number | string | null;
+  markup_wholesale?: number | string | null;
+  markup_drop?:     number | string | null;
+  fixed_retail?:    number | string | null;
+  fixed_wholesale?: number | string | null;
+  fixed_drop?:      number | string | null;
+  notes?:           string;
+};
 
 type SheetInfo = { name: string; hidden: boolean; skuRows: number; totalRows: number; headers: string[] };
 
@@ -27,6 +47,7 @@ type Supplier = {
   notes: string | null;
   last_synced_at: string | null;
   brand_discounts: BrandDiscount[];
+  product_overrides?: ProductOverride[];
   last_sync?: { rows_updated: number; rows_unmapped: number; error_message: string | null }[];
 };
 
@@ -60,6 +81,56 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
   const [sheets,        setSheets]        = useState<SheetInfo[] | null>(null);
   const [sheetsLoading, setSheetsLoading] = useState(false);
   const [sheetsError,   setSheetsError]   = useState('');
+
+  // ── Пошук товарів для product overrides ───────────────────────────────────
+  const [prodSearch,   setProdSearch]   = useState('');
+  const [prodResults,  setProdResults]  = useState<{sku:string;name:string;brand:string}[]>([]);
+  const [prodOpen,     setProdOpen]     = useState(false);
+  const prodRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (prodSearch.length < 2) { setProdResults([]); return; }
+    const t = setTimeout(async () => {
+      const sb = getSupabaseBrowser();
+      const { data } = await sb.from('products')
+        .select('sku, name, brand')
+        .or(`name.ilike.%${prodSearch}%,sku.ilike.%${prodSearch}%`)
+        .limit(8);
+      setProdResults(data ?? []);
+      setProdOpen(true);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [prodSearch]);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (prodRef.current && !prodRef.current.contains(e.target as Node)) setProdOpen(false);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  function addProductOverride(prod: { sku: string; name: string; brand: string }) {
+    const overrides = editing?.product_overrides ?? [];
+    if (overrides.find(o => o.our_sku === prod.sku)) return;
+    setEditing(e => ({
+      ...e,
+      product_overrides: [...(e?.product_overrides ?? []), { our_sku: prod.sku, name: prod.name, brand: prod.brand }],
+    }));
+    setProdSearch('');
+    setProdOpen(false);
+  }
+
+  function removeProductOverride(sku: string) {
+    setEditing(e => ({ ...e, product_overrides: (e?.product_overrides ?? []).filter(o => o.our_sku !== sku) }));
+  }
+
+  function updateProductOverride(sku: string, field: keyof ProductOverride, value: string) {
+    setEditing(e => ({
+      ...e,
+      product_overrides: (e?.product_overrides ?? []).map(o => o.our_sku === sku ? { ...o, [field]: value } : o),
+    }));
+  }
 
   // ── Скидки на бренды ──────────────────────────────────────────────────────
 
@@ -322,28 +393,101 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
           </div>
         </div>
 
+        {/* ── Наценки і знижки по брендах ─────────────────────────────── */}
         <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Додаткові знижки на бренди</p>
-            <button style={btn('#3B82F6')} onClick={addDiscount}>+ Додати</button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Наценки і знижки по брендах</p>
+            <button style={btn('#3B82F6')} onClick={addDiscount}>+ Додати бренд</button>
           </div>
-          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
-            Реальний вхід = ціна з файлу × (1 − знижка%)
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+            Знижка% зменшує вхідну ціну. Наценка% перекриває глобальну наценку для цього бренду. Порожнє поле = використовувати глобальне.
           </p>
+          {(e.brand_discounts ?? []).length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px 90px 90px 32px', gap: '6px', marginBottom: '6px', alignItems: 'center' }}>
+              {['Бренд', 'Знижка вх.%', 'Магазин%', 'Опт%', 'Дроп%', ''].map(h => (
+                <span key={h} style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{h}</span>
+              ))}
+            </div>
+          )}
           {(e.brand_discounts ?? []).map((d, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 32px', gap: '8px', marginBottom: '8px', alignItems: 'end' }}>
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px 90px 90px 32px', gap: '6px', marginBottom: '6px', alignItems: 'center' }}>
               <select style={input} value={d.brand} onChange={ev => updateDiscount(i, 'brand', ev.target.value)}>
-                <option value="">— Оберіть бренд —</option>
+                <option value="">— Бренд —</option>
                 {brands.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
-              <div>
-                <span style={label}>Знижка %</span>
-                <input style={input} type="number" step="0.1" value={d.discount_pct ?? ''} onChange={ev => updateDiscount(i, 'discount_pct', ev.target.value)} />
-              </div>
-              <button onClick={() => removeDiscount(i)} style={{ padding: '7px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#DC2626', fontSize: '14px' }}>✕</button>
+              <input style={{ ...input, textAlign: 'center' }} type="number" step="0.1" placeholder="0" value={d.discount_pct ?? ''} onChange={ev => updateDiscount(i, 'discount_pct', ev.target.value)} />
+              <input style={{ ...input, textAlign: 'center' }} type="number" step="0.1" placeholder="глоб." value={(d as any).markup_retail ?? ''} onChange={ev => updateDiscount(i, 'markup_retail' as any, ev.target.value)} />
+              <input style={{ ...input, textAlign: 'center' }} type="number" step="0.1" placeholder="глоб." value={(d as any).markup_wholesale ?? ''} onChange={ev => updateDiscount(i, 'markup_wholesale' as any, ev.target.value)} />
+              <input style={{ ...input, textAlign: 'center' }} type="number" step="0.1" placeholder="глоб." value={(d as any).markup_drop ?? ''} onChange={ev => updateDiscount(i, 'markup_drop' as any, ev.target.value)} />
+              <button onClick={() => removeDiscount(i)} style={{ padding: '7px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#DC2626' }}>✕</button>
             </div>
           ))}
-          {!(e.brand_discounts ?? []).length && <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Немає знижок — ціна береться з файлу напряму</p>}
+          {!(e.brand_discounts ?? []).length && <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Немає налаштувань — використовуються глобальні наценки</p>}
+        </div>
+
+        {/* ── Override цін на окремі товари ──────────────────────────── */}
+        <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
+            Ціни на окремі товари
+          </p>
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+            Перекриває налаштування бренду. Наценка% або фіксована ціна — заповнити одне. Порожнє = успадкувати від бренду/постачальника.
+          </p>
+
+          {/* Пошук товарів */}
+          <div ref={prodRef} style={{ position: 'relative', marginBottom: '12px' }}>
+            <Search size={13} color="var(--text-muted)" style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)' }} />
+            <input
+              value={prodSearch}
+              onChange={ev => setProdSearch(ev.target.value)}
+              onFocus={() => prodResults.length > 0 && setProdOpen(true)}
+              placeholder="Пошук товару для додавання override..."
+              style={{ ...input, paddingLeft: '28px' }}
+            />
+            {prodOpen && prodResults.length > 0 && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, zIndex: 50, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: '0 8px 20px rgba(0,0,0,0.12)', maxHeight: '200px', overflowY: 'auto' }}>
+                {prodResults.map(p => (
+                  <button key={p.sku} onMouseDown={() => addProductOverride(p)} style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-primary)' }}>
+                    <span style={{ color: 'var(--text-muted)', marginRight: '6px', fontFamily: 'monospace' }}>{p.sku}</span>
+                    {p.brand} {p.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Таблиця overrides */}
+          {(e.product_overrides ?? []).length > 0 && (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 75px 75px 75px 85px 85px 85px 32px', gap: '5px', marginBottom: '5px', alignItems: 'center' }}>
+                {['Товар', 'Маг%', 'Опт%', 'Дроп%', 'Ціна маг.', 'Ціна опт.', 'Ціна дроп.', ''].map(h => (
+                  <span key={h} style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{h}</span>
+                ))}
+              </div>
+              {(e.product_overrides ?? []).map(o => (
+                <div key={o.our_sku} style={{ display: 'grid', gridTemplateColumns: '1fr 75px 75px 75px 85px 85px 85px 32px', gap: '5px', marginBottom: '5px', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {o.brand} {o.name}
+                    </div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{o.our_sku}</div>
+                  </div>
+                  {(['markup_retail','markup_wholesale','markup_drop'] as const).map(f => (
+                    <input key={f} style={{ ...input, textAlign: 'center', padding: '5px 6px', fontSize: '12px' }} type="number" step="0.1" placeholder="—" value={o[f] ?? ''} onChange={ev => updateProductOverride(o.our_sku, f, ev.target.value)} />
+                  ))}
+                  {(['fixed_retail','fixed_wholesale','fixed_drop'] as const).map(f => (
+                    <input key={f} style={{ ...input, textAlign: 'center', padding: '5px 6px', fontSize: '12px' }} type="number" step="0.01" placeholder="—" value={o[f] ?? ''} onChange={ev => updateProductOverride(o.our_sku, f, ev.target.value)} />
+                  ))}
+                  <button onClick={() => removeProductOverride(o.our_sku)} style={{ padding: '5px', background: '#FEE2E2', border: 'none', borderRadius: '5px', cursor: 'pointer', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </>
+          )}
+          {!(e.product_overrides ?? []).length && (
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Немає overrides — знайдіть товар вище щоб додати</p>
+          )}
         </div>
 
         <div style={{ marginBottom: '20px' }}>
