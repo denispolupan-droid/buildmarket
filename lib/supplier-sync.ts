@@ -307,8 +307,17 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
   const brandMap: Record<string, string> = {};
   (productBrands ?? []).forEach(p => { brandMap[p.sku] = p.brand; });
 
-  // brand → { discount_pct, markup_retail, markup_wholesale, markup_drop }
-  type BrandSettings = { discount_pct: number; markup_retail?: number | null; markup_wholesale?: number | null; markup_drop?: number | null };
+  // brand → { discount_pct, markup_*, keep_price }
+  // keep_price = true → ціна продажу рахується від оригінальної вхідної ціни,
+  //   а не від ціни після знижки. Знижка зменшує лише собівартість (покращує маржу),
+  //   але не впливає на ціну клієнту.
+  type BrandSettings = {
+    discount_pct:     number;
+    markup_retail?:   number | null;
+    markup_wholesale?: number | null;
+    markup_drop?:     number | null;
+    keep_price?:      boolean | null;
+  };
   const brandSettingsMap: Record<string, BrandSettings> = {};
   (supplier.brand_discounts ?? []).forEach((d: BrandSettings & { brand: string }) => {
     brandSettingsMap[d.brand] = d;
@@ -376,8 +385,12 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
 
     // Застосовуємо знижку на бренд → реальний вхід
     const brand = brandMap[ourSku] ?? '';
-    const discountPct = brandSettingsMap[brand]?.discount_pct ?? 0;
-    const priceCost = row.price_in * (1 - discountPct / 100);
+    const brandSettings = brandSettingsMap[brand];
+    const discountPct   = brandSettings?.discount_pct ?? 0;
+    const priceCost     = row.price_in * (1 - discountPct / 100);
+
+    // keep_price: знижка зменшує собівартість, але ціна продажу рахується від оригіналу
+    const priceBase = brandSettings?.keep_price ? row.price_in : priceCost;
 
     // Рахуємо базові ціни: товар > бренд > постачальник
     const roundFloor = (v: number) => Math.floor(v);
@@ -387,11 +400,11 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
 
     // Базові ціни (фіксована ціна — найвищий пріоритет)
     const baseRetail = override?.fixed_retail
-      ?? roundFloor(priceCost * (1 + getMarkup(brand, ourSku, 'markup_retail', supplier.markup_retail) / 100));
+      ?? roundFloor(priceBase * (1 + getMarkup(brand, ourSku, 'markup_retail', supplier.markup_retail) / 100));
     const baseUnit   = override?.fixed_wholesale
-      ?? roundHalf(priceCost * (1 + getMarkup(brand, ourSku, 'markup_wholesale', supplier.markup_wholesale) / 100));
+      ?? roundHalf(priceBase * (1 + getMarkup(brand, ourSku, 'markup_wholesale', supplier.markup_wholesale) / 100));
     const baseDrop   = override?.fixed_drop
-      ?? roundHalf(priceCost * (1 + getMarkup(brand, ourSku, 'markup_drop', supplier.markup_drop) / 100));
+      ?? roundHalf(priceBase * (1 + getMarkup(brand, ourSku, 'markup_drop', supplier.markup_drop) / 100));
 
     // Акційні ціни
     const promo = !override?.fixed_retail && !override?.fixed_wholesale && !override?.fixed_drop

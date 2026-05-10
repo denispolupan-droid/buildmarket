@@ -6,11 +6,12 @@ import { Layers, Eye, EyeOff, Search, Trash2 } from 'lucide-react';
 import { getSupabaseBrowser } from '../../../lib/supabase-browser';
 
 type BrandDiscount = {
-  brand:            string;
-  discount_pct:     number;
-  markup_retail?:   number | null;
+  brand:             string;
+  discount_pct:      number;
+  markup_retail?:    number | null;
   markup_wholesale?: number | null;
-  markup_drop?:     number | null;
+  markup_drop?:      number | null;
+  keep_price?:       boolean | null;
 };
 
 type ProductOverride = {
@@ -403,14 +404,14 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
             Знижка% зменшує вхідну ціну. Наценка% перекриває глобальну наценку для цього бренду. Порожнє поле = використовувати глобальне.
           </p>
           {(e.brand_discounts ?? []).length > 0 && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px 90px 90px 32px', gap: '6px', marginBottom: '6px', alignItems: 'center' }}>
-              {['Бренд', 'Знижка вх.%', 'Магазин%', 'Опт%', 'Дроп%', ''].map(h => (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px 90px 90px auto 32px', gap: '6px', marginBottom: '6px', alignItems: 'center' }}>
+              {['Бренд', 'Знижка вх.%', 'Магазин%', 'Опт%', 'Дроп%', 'Ціна від оригіналу', ''].map(h => (
                 <span key={h} style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{h}</span>
               ))}
             </div>
           )}
           {(e.brand_discounts ?? []).map((d, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px 90px 90px 32px', gap: '6px', marginBottom: '6px', alignItems: 'center' }}>
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px 90px 90px auto 32px', gap: '6px', marginBottom: '6px', alignItems: 'center' }}>
               <select style={input} value={d.brand} onChange={ev => updateDiscount(i, 'brand', ev.target.value)}>
                 <option value="">— Бренд —</option>
                 {brands.map(b => <option key={b} value={b}>{b}</option>)}
@@ -419,6 +420,17 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
               <input style={{ ...input, textAlign: 'center' }} type="number" step="0.1" placeholder="глоб." value={(d as any).markup_retail ?? ''} onChange={ev => updateDiscount(i, 'markup_retail' as any, ev.target.value)} />
               <input style={{ ...input, textAlign: 'center' }} type="number" step="0.1" placeholder="глоб." value={(d as any).markup_wholesale ?? ''} onChange={ev => updateDiscount(i, 'markup_wholesale' as any, ev.target.value)} />
               <input style={{ ...input, textAlign: 'center' }} type="number" step="0.1" placeholder="глоб." value={(d as any).markup_drop ?? ''} onChange={ev => updateDiscount(i, 'markup_drop' as any, ev.target.value)} />
+              <label
+                title="Ціна продажу рахується від оригінальної вхідної ціни (без знижки). Знижка зменшує лише собівартість — маржа зростає, клієнт ціни не бачить."
+                style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '12px', color: d.keep_price ? '#15803D' : 'var(--text-muted)' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={d.keep_price ?? false}
+                  onChange={ev => updateDiscount(i, 'keep_price' as any, ev.target.checked)}
+                />
+                {d.keep_price ? '✓ Активно' : 'Вимкнено'}
+              </label>
               <button onClick={() => removeDiscount(i)} style={{ padding: '7px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#DC2626' }}>✕</button>
             </div>
           ))}
