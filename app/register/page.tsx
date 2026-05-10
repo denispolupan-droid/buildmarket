@@ -92,14 +92,31 @@ function RegisterForm() {
   }
 
   if (done) {
+    const isDropship = accountType === 'dropship';
     return (
       <div className="auth-page">
         <div className="auth-card" style={{ textAlign: 'center' }}>
           <Image src={theme === 'dark' ? '/fixline-logo-white.svg' : '/fixline-logo.svg'} alt="fixline" width={178} height={42} className="auth-logo" />
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
-          <h1 className="auth-title">Акаунт створено!</h1>
-          <p className="auth-sub" style={{ marginBottom: '24px' }}>
-            Перевірте пошту <strong>{email}</strong> та підтвердіть реєстрацію.
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>📧</div>
+          <h1 className="auth-title">Підтвердіть email</h1>
+          <p className="auth-sub" style={{ marginBottom: '12px' }}>
+            На адресу <strong>{email}</strong> надіслано листа з посиланням для підтвердження.
+          </p>
+          <div style={{
+            background: '#EFF6FF', border: '1px solid #BFDBFE',
+            borderRadius: '10px', padding: '14px 18px',
+            fontSize: '14px', color: '#1E40AF',
+            marginBottom: '24px', textAlign: 'left', lineHeight: 1.6,
+          }}>
+            <strong>Що робити:</strong><br />
+            1. Відкрийте листа від <strong>noreply@fixline.com.ua</strong><br />
+            2. Натисніть кнопку <strong>"Підтвердити email"</strong><br />
+            3. {isDropship
+              ? 'Після підтвердження Ви потрапите до особистого кабінету'
+              : 'Після підтвердження Ви зможете увійти в акаунт'}
+          </div>
+          <p style={{ fontSize: '13px', color: '#94A3B8', marginBottom: '20px' }}>
+            Не знайшли листа? Перевірте папку <strong>Спам</strong>.
           </p>
           <Link href="/login" className="auth-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
             Перейти до входу
