@@ -10,10 +10,13 @@ type Props = {
   categories: Category[];
 };
 
+const PAGE_SIZE = 100;
+
 export default function ProductsTable({ products, categories }: Props) {
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const categoryMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -54,6 +57,9 @@ export default function ProductsTable({ products, categories }: Props) {
     return list;
   }, [products, categories, search, filterCategory, filterStatus]);
 
+  // При зміні фільтрів — скидаємо кількість видимих
+  const resetVisible = () => setVisibleCount(PAGE_SIZE);
+
   return (
     <div>
       <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
@@ -63,7 +69,7 @@ export default function ProductsTable({ products, categories }: Props) {
             type="text"
             placeholder="Пошук за назвою, SKU, брендом..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); resetVisible(); }}
             style={{
               width: '100%', height: '44px', paddingLeft: '42px', paddingRight: '16px',
               borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '14px',
@@ -74,7 +80,7 @@ export default function ProductsTable({ products, categories }: Props) {
 
         <select
           value={filterCategory}
-          onChange={e => setFilterCategory(e.target.value)}
+          onChange={e => { setFilterCategory(e.target.value); resetVisible(); }}
           style={{
             height: '44px', padding: '0 16px', borderRadius: '10px',
             border: '1px solid #E2E8F0', fontSize: '14px', minWidth: '180px',
@@ -89,7 +95,7 @@ export default function ProductsTable({ products, categories }: Props) {
 
         <select
           value={filterStatus}
-          onChange={e => setFilterStatus(e.target.value)}
+          onChange={e => { setFilterStatus(e.target.value); resetVisible(); }}
           style={{
             height: '44px', padding: '0 16px', borderRadius: '10px',
             border: '1px solid #E2E8F0', fontSize: '14px', minWidth: '160px',
@@ -124,7 +130,7 @@ export default function ProductsTable({ products, categories }: Props) {
             </tr>
           </thead>
           <tbody>
-            {filtered.slice(0, 100).map(p => {
+            {filtered.slice(0, visibleCount).map(p => {
               const hasIssue = !p.stock?.price_retail || (p.stock?.stock_qty ?? 0) < 1;
               return (
                 <tr key={p.sku} style={{ borderBottom: '1px solid #F1F5F9' }}>
@@ -178,9 +184,21 @@ export default function ProductsTable({ products, categories }: Props) {
           </tbody>
         </table>
 
-        {filtered.length > 100 && (
-          <div style={{ padding: '16px', textAlign: 'center', color: '#64748B', fontSize: '13px', borderTop: '1px solid #E2E8F0' }}>
-            Показано 100 з {filtered.length}. Використовуйте пошук для знаходження потрібного товару.
+        {filtered.length > visibleCount && (
+          <div style={{ padding: '20px', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+              Показано {visibleCount} з {filtered.length}
+            </div>
+            <button
+              onClick={() => setVisibleCount(v => v + PAGE_SIZE)}
+              style={{
+                height: '38px', padding: '0 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+                border: '1.5px solid var(--border)', background: 'var(--bg-card)',
+                color: 'var(--text-primary)', cursor: 'pointer',
+              }}
+            >
+              Показати ще {Math.min(PAGE_SIZE, filtered.length - visibleCount)}
+            </button>
           </div>
         )}
 
