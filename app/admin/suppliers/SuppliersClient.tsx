@@ -159,7 +159,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
           </div>
           <div>
             <span style={label}>Синхронізація (кожні N годин)</span>
-            <input style={input} type="number" min={1} value={e.sync_interval_h ?? 24} onChange={ev => set('sync_interval_h', Number(ev.target.value))} />
+            <input style={input} type="number" min={1} value={e.sync_interval_h ?? ''} onChange={ev => set('sync_interval_h', ev.target.value)} />
           </div>
         </div>
 
@@ -309,15 +309,15 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
             <div>
               <span style={label}>Магазин %</span>
-              <input style={input} type="number" step="0.1" value={e.markup_retail ?? 22} onChange={ev => set('markup_retail', Number(ev.target.value))} />
+              <input style={input} type="number" step="0.1" value={e.markup_retail ?? ''} onChange={ev => set('markup_retail', ev.target.value)} />
             </div>
             <div>
               <span style={label}>Опт/каталог %</span>
-              <input style={input} type="number" step="0.1" value={e.markup_wholesale ?? 10} onChange={ev => set('markup_wholesale', Number(ev.target.value))} />
+              <input style={input} type="number" step="0.1" value={e.markup_wholesale ?? ''} onChange={ev => set('markup_wholesale', ev.target.value)} />
             </div>
             <div>
               <span style={label}>Дроп %</span>
-              <input style={input} type="number" step="0.1" value={e.markup_drop ?? 15} onChange={ev => set('markup_drop', Number(ev.target.value))} />
+              <input style={input} type="number" step="0.1" value={e.markup_drop ?? ''} onChange={ev => set('markup_drop', ev.target.value)} />
             </div>
           </div>
         </div>
@@ -338,7 +338,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
               </select>
               <div>
                 <span style={label}>Знижка %</span>
-                <input style={input} type="number" step="0.1" value={d.discount_pct} onChange={ev => updateDiscount(i, 'discount_pct', Number(ev.target.value))} />
+                <input style={input} type="number" step="0.1" value={d.discount_pct ?? ''} onChange={ev => updateDiscount(i, 'discount_pct', ev.target.value)} />
               </div>
               <button onClick={() => removeDiscount(i)} style={{ padding: '7px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#DC2626', fontSize: '14px' }}>✕</button>
             </div>
