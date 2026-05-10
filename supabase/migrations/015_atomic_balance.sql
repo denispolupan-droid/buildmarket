@@ -112,7 +112,7 @@ BEGIN
   INSERT INTO partner_balance_transactions
     (customer_id, tx_type, amount, order_id, description, created_by)
   VALUES
-    (p_customer_id, 'cod_credit', p_credit, p_order_id,
+    (p_customer_id, 'cod_credit', v_credit, p_order_id,
      format('COD отримано: %s ₴', p_cod_amount), 'system');
 
   -- Комісія НП

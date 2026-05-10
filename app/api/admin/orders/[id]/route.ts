@@ -35,27 +35,58 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { error } = await db.from('orders').update(update).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // При переходе в shipped — фиксируем продажу в учёте (дропшип)
+  // shipped → фіксуємо продаж в обліку (для не-дропшип замовлень сайту)
   if (status === 'shipped') {
     try {
       const { data: order } = await db
         .from('orders')
-        .select('id, order_number, items, channel_code')
+        .select('id, order_number, items, channel_code, partner_code')
         .eq('id', id)
         .single();
 
-      if (order?.items?.length) {
+      // Для замовлень сайту (не дропшип партнерів) — фіксуємо в acc_documents
+      if (order?.items?.length && order.channel_code !== 'dropship') {
         await recordDropshipSale({
-          order_id:      order.id,
-          order_number:  order.order_number,
-          order_items:   order.items,
-          channel_code:  order.channel_code ?? 'website',
-          confirmed_by:  user.email ?? 'admin',
+          order_id:     order.id,
+          order_number: order.order_number,
+          order_items:  order.items,
+          channel_code: order.channel_code ?? 'website',
+          confirmed_by: user.email ?? 'admin',
         });
       }
     } catch (err) {
-      // Не прерываем смену статуса если учёт упал — логируем и продолжаем
       console.error('[accounting] recordDropshipSale failed:', err);
+    }
+  }
+
+  // delivered + дропшип партнер → нараховуємо COD на баланс
+  if (status === 'delivered') {
+    try {
+      const { data: order } = await db
+        .from('orders')
+        .select('id, order_number, total_price, payment_type, channel_code, partner_code')
+        .eq('id', id)
+        .single();
+
+      if (order?.channel_code === 'dropship' && order.partner_code && order.payment_type === 'cod') {
+        // Знаходимо customers.id партнера (partner_code = customers.id)
+        const { data: customer } = await db
+          .from('customers')
+          .select('id')
+          .eq('id', order.partner_code)
+          .single();
+
+        if (customer) {
+          const { error: creditErr } = await db.rpc('credit_cod_to_partner', {
+            p_customer_id: customer.id,
+            p_cod_amount:  order.total_price,
+            p_order_id:    order.id,
+          });
+          if (creditErr) console.error('[balance] credit_cod_to_partner failed:', creditErr);
+        }
+      }
+    } catch (err) {
+      console.error('[balance] COD credit failed:', err);
     }
   }
 
