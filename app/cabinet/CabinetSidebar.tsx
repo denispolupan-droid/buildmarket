@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ShoppingBag, Wallet, Rss, ChevronLeft, Plus } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Wallet, Rss, ChevronLeft, Plus, FileUp } from 'lucide-react';
 
 const NAV = [
-  { href: '/cabinet',          label: 'Дашборд',    icon: LayoutDashboard, exact: true  },
-  { href: '/cabinet/orders',   label: 'Замовлення', icon: ShoppingBag,     exact: false },
-  { href: '/cabinet/balance',  label: 'Баланс',     icon: Wallet,          exact: false },
-  { href: '/cabinet/feed',     label: 'Прайс-фід',  icon: Rss,             exact: false },
+  { href: '/cabinet',                 label: 'Дашборд',    icon: LayoutDashboard, exact: true  },
+  { href: '/cabinet/orders',          label: 'Замовлення', icon: ShoppingBag,     exact: false },
+  { href: '/cabinet/orders/upload',   label: 'Excel імпорт', icon: FileUp,        exact: true  },
+  { href: '/cabinet/balance',         label: 'Баланс',     icon: Wallet,          exact: false },
+  { href: '/cabinet/feed',            label: 'Прайс-фід',  icon: Rss,             exact: false },
 ];
 
 export default function CabinetSidebar() {
