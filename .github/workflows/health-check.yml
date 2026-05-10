@@ -1,0 +1,49 @@
+name: Health check
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'   # Кожні 2 години
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check site availability
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://fixline.com.ua)
+          echo "Site status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::Site is DOWN or slow! HTTP $STATUS"
+            exit 1
+          fi
+
+      - name: Check supplier sync freshness
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SERVICE_KEY:  ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          # Перевіряємо що останній синк ЗРХ був не більше 4 годин тому
+          LAST_SYNC=$(curl -s \
+            -H "Authorization: Bearer $SERVICE_KEY" \
+            -H "apikey: $SERVICE_KEY" \
+            "$SUPABASE_URL/rest/v1/supplier_sync_log?select=started_at&supplier_id=eq.1&order=started_at.desc&limit=1" \
+            | python3 -c "import sys,json; data=json.load(sys.stdin); print(data[0]['started_at'] if data else 'never')")
+
+          echo "Last sync: $LAST_SYNC"
+
+          if [ "$LAST_SYNC" = "never" ]; then
+            echo "::warning::Supplier sync has never run"
+          else
+            # Перевіряємо що синк свіжий (4 години = 14400 секунд)
+            SYNC_TIME=$(date -d "$LAST_SYNC" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S" "${LAST_SYNC:0:19}" +%s 2>/dev/null || echo 0)
+            NOW=$(date +%s)
+            AGE=$((NOW - SYNC_TIME))
+            echo "Sync age: ${AGE}s"
+            if [ $AGE -gt 14400 ]; then
+              echo "::warning::Supplier sync is stale (${AGE}s ago)"
+            fi
+          fi
+
+      - name: Report success
+        run: echo "✓ All checks passed at $(date -u)"

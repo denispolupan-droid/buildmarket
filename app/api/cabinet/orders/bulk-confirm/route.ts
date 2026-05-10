@@ -49,18 +49,24 @@ export async function POST(req: NextRequest) {
   const { rows } = await req.json() as { rows: any[] };
   if (!rows?.length) return NextResponse.json({ error: 'Немає рядків для обробки' }, { status: 400 });
 
-  // Фінальна перевірка балансу
-  const totalCost  = rows.reduce((s: number, r: any) => s + r.cost_price * r.qty, 0);
-  const balanceAvail = Number(customer.balance) - Number(customer.balance_held);
-  if (balanceAvail < totalCost) {
-    return NextResponse.json({ error: `Недостатньо балансу. Потрібно ${totalCost.toFixed(2)} ₴` }, { status: 400 });
-  }
-
   const results: { row_num: number; status: 'ok' | 'error'; order_number?: number; ttn?: string; error?: string }[] = [];
 
   for (const row of rows) {
+    const rowCost = row.cost_price * row.qty;
     try {
-      // Крок 1: Отримувач в НП
+      // Крок 1: Атомарне списання балансу (race condition safe)
+      const { data: chargeRes, error: chargeErr } = await serviceClient
+        .rpc('charge_partner_balance', {
+          p_customer_id: customer.id,
+          p_amount:      rowCost,
+          p_description: `Замовлення (рядок ${row.row_num}): ${row.product_name} × ${row.qty}`,
+        });
+
+      if (chargeErr || !chargeRes?.success) {
+        throw new Error(chargeRes?.error ?? chargeErr?.message ?? 'Недостатньо балансу');
+      }
+
+      // Крок 2: Отримувач в НП
       const cRes = await npCall('Counterparty', 'save', {
         FirstName:            row.first_name,
         LastName:             row.last_name,
@@ -71,7 +77,10 @@ export async function POST(req: NextRequest) {
         CityRef:              row.city_ref,
       });
 
-      if (!cRes.success) throw new Error(cRes.errors?.join('; ') ?? 'Помилка отримувача НП');
+      if (!cRes.success) {
+        await serviceClient.rpc('refund_partner_balance', { p_customer_id: customer.id, p_amount: rowCost, p_description: `Повернення рядок ${row.row_num}: НП відхилила отримувача` });
+        throw new Error(cRes.errors?.join('; ') ?? 'Помилка отримувача НП');
+      }
       const recipientRef        = cRes.data[0].Ref;
       const contactRecipientRef = cRes.data[0].ContactPerson?.data?.[0]?.Ref ?? recipientRef;
 
@@ -103,9 +112,15 @@ export async function POST(req: NextRequest) {
         }],
       });
 
-      if (!ttnRes.success) throw new Error(ttnRes.errors?.join('; ') ?? 'Помилка ТТН НП');
+      if (!ttnRes.success) {
+        await serviceClient.rpc('refund_partner_balance', { p_customer_id: customer.id, p_amount: rowCost, p_description: `Повернення рядок ${row.row_num}: НП відхилила ТТН` });
+        throw new Error(ttnRes.errors?.join('; ') ?? 'Помилка ТТН НП');
+      }
       const ttn = ttnRes.data?.[0]?.IntDocNumber;
-      if (!ttn) throw new Error('НП не повернула номер ТТН');
+      if (!ttn) {
+        await serviceClient.rpc('refund_partner_balance', { p_customer_id: customer.id, p_amount: rowCost, p_description: `Повернення рядок ${row.row_num}: немає ТТН` });
+        throw new Error('НП не повернула номер ТТН');
+      }
 
       // Крок 3: Замовлення в БД
       const { data: order, error: orderErr } = await serviceClient
@@ -135,17 +150,10 @@ export async function POST(req: NextRequest) {
         .select('id, order_number')
         .single();
 
-      if (orderErr || !order) throw new Error(orderErr?.message ?? 'Помилка створення замовлення');
-
-      // Крок 4: Списання балансу
-      await serviceClient.from('partner_balance_transactions').insert({
-        customer_id:  customer.id,
-        tx_type:      'charge',
-        amount:       -(row.cost_price * row.qty),
-        order_id:     order.id,
-        description:  `Замовлення #${order.order_number}: ${row.product_name} × ${row.qty}`,
-        created_by:   'system',
-      });
+      if (orderErr || !order) {
+        await serviceClient.rpc('refund_partner_balance', { p_customer_id: customer.id, p_amount: rowCost, p_description: `Повернення рядок ${row.row_num}: помилка запису замовлення` });
+        throw new Error(orderErr?.message ?? 'Помилка створення замовлення');
+      }
 
       results.push({ row_num: row.row_num, status: 'ok', order_number: order.order_number, ttn });
 

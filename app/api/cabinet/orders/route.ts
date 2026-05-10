@@ -56,12 +56,20 @@ export async function POST(req: NextRequest) {
 
   if (!customer) return NextResponse.json({ error: 'Партнера не знайдено' }, { status: 404 });
 
-  const totalCost    = items.reduce((s: number, i: { qty: number; cost_price: number }) => s + i.cost_price * i.qty, 0);
-  const balanceAvail = Number(customer.balance) - Number(customer.balance_held);
+  const totalCost = items.reduce((s: number, i: { qty: number; cost_price: number }) => s + i.cost_price * i.qty, 0);
+  const itemsList = items.map((i: { name: string; qty: number }) => `${i.name} × ${i.qty}`).join(', ');
 
-  if (balanceAvail < totalCost) {
+  // ── Атомарне списання балансу (SELECT FOR UPDATE — захист від race condition) ──
+  const { data: chargeResult, error: chargeErr } = await serviceClient
+    .rpc('charge_partner_balance', {
+      p_customer_id: customer.id,
+      p_amount:      totalCost,
+      p_description: `Замовлення (очікування ТТН): ${itemsList}`,
+    });
+
+  if (chargeErr || !chargeResult?.success) {
     return NextResponse.json({
-      error: `Недостатньо балансу. Потрібно ${totalCost.toFixed(2)} ₴, доступно ${balanceAvail.toFixed(2)} ₴`,
+      error: chargeResult?.error ?? chargeErr?.message ?? 'Помилка списання балансу',
     }, { status: 400 });
   }
 
@@ -78,6 +86,12 @@ export async function POST(req: NextRequest) {
   });
 
   if (!cRes.success) {
+    // Повертаємо баланс якщо НП відмовила
+    await serviceClient.rpc('refund_partner_balance', {
+      p_customer_id: customer.id,
+      p_amount:      totalCost,
+      p_description: 'Повернення: НП відхилила отримувача',
+    });
     return NextResponse.json({
       error: `НП: помилка створення отримувача — ${cRes.errors?.join('; ') ?? 'невідома помилка'}`,
     }, { status: 400 });
@@ -118,6 +132,11 @@ export async function POST(req: NextRequest) {
   const ttnRes = await npCall('InternetDocument', 'save', ttnPayload);
 
   if (!ttnRes.success) {
+    await serviceClient.rpc('refund_partner_balance', {
+      p_customer_id: customer.id,
+      p_amount:      totalCost,
+      p_description: 'Повернення: НП відхилила ТТН',
+    });
     return NextResponse.json({
       error: `НП: помилка створення ТТН — ${ttnRes.errors?.join('; ') ?? 'невідома помилка'}`,
     }, { status: 400 });
@@ -125,6 +144,11 @@ export async function POST(req: NextRequest) {
 
   const ttn = ttnRes.data?.[0]?.IntDocNumber;
   if (!ttn) {
+    await serviceClient.rpc('refund_partner_balance', {
+      p_customer_id: customer.id,
+      p_amount:      totalCost,
+      p_description: 'Повернення: НП не повернула ТТН',
+    });
     return NextResponse.json({ error: 'НП не повернула номер ТТН' }, { status: 502 });
   }
 
@@ -158,19 +182,13 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (orderErr || !order) {
+    await serviceClient.rpc('refund_partner_balance', {
+      p_customer_id: customer.id,
+      p_amount:      totalCost,
+      p_description: 'Повернення: помилка запису замовлення в БД',
+    });
     return NextResponse.json({ error: `Помилка створення замовлення: ${orderErr?.message}` }, { status: 500 });
   }
-
-  // ── Списання балансу ─────────────────────────────────────────────────────────
-  const itemsList = items.map((i: { name: string; qty: number }) => `${i.name} × ${i.qty}`).join(', ');
-  await serviceClient.from('partner_balance_transactions').insert({
-    customer_id:  customer.id,
-    tx_type:      'charge',
-    amount:       -totalCost,
-    order_id:     order.id,
-    description:  `Замовлення #${order.order_number}: ${itemsList}`,
-    created_by:   'system',
-  });
 
   return NextResponse.json({ ok: true, order_number: order.order_number, ttn });
 }

@@ -1,0 +1,45 @@
+name: Weekly database backup
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'   # Щопонеділка о 06:00 Київського часу
+  workflow_dispatch:         # Можна запустити вручну
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Export critical tables
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SERVICE_KEY:  ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          mkdir -p backup
+
+          for TABLE in orders customers partner_balance_transactions partner_payout_requests acc_documents suppliers products; do
+            echo "Exporting $TABLE..."
+            curl -s \
+              -H "Authorization: Bearer $SERVICE_KEY" \
+              -H "apikey: $SERVICE_KEY" \
+              -H "Accept: text/csv" \
+              "$SUPABASE_URL/rest/v1/$TABLE?select=*&limit=100000" \
+              > "backup/${TABLE}.csv"
+            ROWS=$(wc -l < "backup/${TABLE}.csv")
+            echo "  → $ROWS rows"
+          done
+
+          echo "Backup date: $(date -u)" > backup/README.txt
+
+      - name: Upload backup as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_number }}-${{ github.run_id }}
+          path: backup/
+          retention-days: 90
+
+      - name: Summary
+        run: |
+          echo "### Backup completed" >> $GITHUB_STEP_SUMMARY
+          echo "Date: $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "Files:" >> $GITHUB_STEP_SUMMARY
+          ls -lh backup/ >> $GITHUB_STEP_SUMMARY
