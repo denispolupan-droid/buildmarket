@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Партнера не знайдено' }, { status: 404 });
     }
 
-    const token = process.env.MONOBANK_API_TOKEN?.replace(/^﻿/, '').trim();
+    const token = (process.env.MONOBANK_API_TOKEN ?? '').replace(/﻿/g, '').replace(/[^\x20-\x7E]/g, '').trim();
     if (!token) {
       return NextResponse.json({ error: 'Еквайринг не налаштовано' }, { status: 500 });
     }
