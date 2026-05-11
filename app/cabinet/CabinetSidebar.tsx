@@ -41,7 +41,8 @@ export default function CabinetSidebar() {
       {/* Nav */}
       <nav style={{ flex: 1, padding: '10px 10px 0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
         {NAV.map(({ href, label, icon: Icon, exact }) => {
-          const active = exact ? pathname === href : pathname.startsWith(href);
+          const moreSpecificActive = NAV.some(n => n.href !== href && n.exact && pathname === n.href);
+          const active = exact ? pathname === href : pathname.startsWith(href) && !moreSpecificActive;
           return (
             <Link key={href} href={href} style={{
               display: 'flex', alignItems: 'center', gap: '10px',

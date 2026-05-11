@@ -1,69 +1,77 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getProducts, getCategories } from '../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
-const BASE_URL = 'https://fixline.com.ua';
+const serviceClient = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
+
+const BASE_URL  = 'https://fixline.com.ua';
 const SHOP_NAME = 'FIXLINE';
 
-// Простий множник для формування дропшип-ціни (роздріб × 0.9)
-// В майбутньому замінити на окреме поле price_dropship у БД
-const DROPSHIP_RATIO = 0.9;
-
 export async function GET(request: NextRequest) {
-  // Перевірка API-ключа
-  const key = request.nextUrl.searchParams.get('key');
-  if (!key || key !== process.env.DROPSHIP_FEED_KEY) {
+  const { searchParams } = request.nextUrl;
+  const token = searchParams.get('token');
+
+  if (!token) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  const [products, categories] = await Promise.all([
-    getProducts(),
-    getCategories(),
+  // Validate token — partner_code or customer UUID
+  const { data: customer } = await serviceClient
+    .from('customers')
+    .select('id, is_active')
+    .or(`id.eq.${token},partner_code.eq.${token}`)
+    .eq('is_active', true)
+    .single();
+
+  if (!customer) {
+    return new NextResponse('Unauthorized', { status: 401 });
+  }
+
+  // Load catalog
+  const [{ data: products }, { data: stock }, { data: categories }] = await Promise.all([
+    serviceClient.from('products').select('sku, name, brand, category_slug, volume, color, product_type, description').eq('is_active', true).order('sort_order'),
+    serviceClient.from('product_stock').select('sku, price_drop, stock_status'),
+    serviceClient.from('categories').select('slug, name, parent_slug').order('sort_order'),
   ]);
 
-  const catMap = Object.fromEntries(categories.map(c => [c.slug, c.name]));
+  const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
 
-  const offers = products
-    .filter(p => p.is_active && (p.stock?.stock_qty ?? 0) > 0 && (p.stock?.price_retail ?? 0) > 0)
+  const offers = (products ?? [])
+    .filter(p => {
+      const s = stockMap.get(p.sku);
+      return s?.stock_status === 'in_stock' && (s?.price_drop ?? 0) > 0;
+    })
     .map(p => {
-      const retailPrice  = p.stock!.price_retail!;
-      const dropPrice    = Math.round(retailPrice * DROPSHIP_RATIO * 100) / 100;
-      const inStock      = (p.stock?.stock_qty ?? 0) >= (p.min_order ?? 1);
-      const catName      = catMap[p.category_slug ?? ''] ?? 'Будівельна хімія';
-      const description  = p.description ?? `${p.brand} ${p.name}`;
-
-      return `
-    <offer id="${p.sku}" available="${inStock}">
+      const price = stockMap.get(p.sku)!.price_drop;
+      const desc  = p.description ?? `${p.brand} ${p.name}`;
+      return `    <offer id="${p.sku}" available="true">
       <url>${BASE_URL}/product/${p.sku}</url>
-      <price>${dropPrice}</price>
+      <price>${price}</price>
       <currencyId>UAH</currencyId>
       <categoryId>${p.category_slug ?? 'other'}</categoryId>
-      <name>${escXml(p.name)}${p.volume ? ` ${escXml(p.volume)}` : ''}</name>
-      <vendor>${escXml(p.brand)}</vendor>
-      <vendorCode>${escXml(p.sku)}</vendorCode>
-      <description>${escXml(description)}</description>
-      <stock_quantity>${p.stock?.stock_qty ?? 0}</stock_quantity>
-      ${p.product_type ? `<param name="Тип">${escXml(p.product_type)}</param>` : ''}
-      ${p.color        ? `<param name="Колір">${escXml(p.color)}</param>` : ''}
-      ${p.volume       ? `<param name="Об'єм">${escXml(p.volume)}</param>` : ''}
+      <name>${x(p.name)}${p.volume ? ` ${x(p.volume)}` : ''}</name>
+      <vendor>${x(p.brand)}</vendor>
+      <vendorCode>${x(p.sku)}</vendorCode>
+      <description>${x(desc)}</description>${p.product_type ? `\n      <param name="Тип">${x(p.product_type)}</param>` : ''}${p.color ? `\n      <param name="Колір">${x(p.color)}</param>` : ''}${p.volume ? `\n      <param name="Об'єм">${x(p.volume)}</param>` : ''}
     </offer>`;
     })
     .join('\n');
 
-  const cats = categories.map(c =>
-    `<category id="${c.slug}"${c.parent_slug ? ` parentId="${c.parent_slug}"` : ''}>${escXml(c.name)}</category>`
-  ).join('\n    ');
+  const cats = (categories ?? [])
+    .map(c => `    <category id="${c.slug}"${c.parent_slug ? ` parentId="${c.parent_slug}"` : ''}>${x(c.name)}</category>`)
+    .join('\n');
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+  const yml = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE yml_catalog SYSTEM "shops.dtd">
 <yml_catalog date="${new Date().toISOString().slice(0, 19)}">
   <shop>
     <name>${SHOP_NAME}</name>
     <url>${BASE_URL}</url>
-    <currencies>
-      <currency id="UAH" rate="1"/>
-    </currencies>
+    <currencies><currency id="UAH" rate="1"/></currencies>
     <categories>
-    ${cats}
+${cats}
     </categories>
     <offers>
 ${offers}
@@ -71,16 +79,16 @@ ${offers}
   </shop>
 </yml_catalog>`;
 
-  return new NextResponse(xml, {
+  return new NextResponse(yml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': 'public, max-age=7200',
     },
   });
 }
 
-function escXml(str: string): string {
-  return str
+function x(s: string | null | undefined): string {
+  return (s ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')

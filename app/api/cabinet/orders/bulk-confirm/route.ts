@@ -23,6 +23,7 @@ async function npCall(modelName: string, calledMethod: string, props: object) {
 function normalizePhone(p: string): string {
   const d = p.replace(/\D/g, '');
   if (d.length === 12 && d.startsWith('38')) return d.slice(2);
+  if (d.length === 11 && d.startsWith('8'))  return '0' + d.slice(1);
   return d;
 }
 
