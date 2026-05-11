@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ShoppingBag, Wallet, Rss, ChevronLeft, Plus, FileUp } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Wallet, Rss, ChevronLeft, Plus, FileUp, Download } from 'lucide-react';
 
 const NAV = [
   { href: '/cabinet',                 label: 'Дашборд',    icon: LayoutDashboard, exact: true  },
@@ -58,8 +58,19 @@ export default function CabinetSidebar() {
         })}
       </nav>
 
+      {/* Pricelist download */}
+      <div style={{ padding: '8px 10px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        <a href="/api/cabinet/pricelist" download style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          padding: '9px 12px', borderRadius: '8px', textDecoration: 'none',
+          color: 'rgba(255,255,255,0.6)', fontSize: '13px', fontWeight: 500,
+        }}>
+          <Download size={14} /> Скачати прайс .xlsx
+        </a>
+      </div>
+
       {/* Back to site */}
-      <div style={{ padding: '12px 10px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+      <div style={{ padding: '8px 10px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
         <Link href="/" style={{
           display: 'flex', alignItems: 'center', gap: '8px',
           padding: '8px 12px', borderRadius: '8px', textDecoration: 'none',
