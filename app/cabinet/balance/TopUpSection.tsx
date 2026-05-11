@@ -95,7 +95,7 @@ export default function TopUpSection({ partnerName }: { partnerName: string }) {
                 value={amount}
                 onChange={e => { setAmount(e.target.value); setError(''); }}
                 placeholder="Інша сума (мін. 500 ₴)"
-                style={{ width: '100%', height: '42px', padding: '0 14px', border: `1.5px solid ${error ? '#FCA5A5' : 'var(--border)'}`, borderRadius: '9px', fontSize: '14px', background: 'var(--bg-soft)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
+                style={{ width: '100%', height: '44px', padding: '0 14px', border: `1.5px solid ${error ? '#FCA5A5' : 'var(--border)'}`, borderRadius: '9px', fontSize: '14px', background: 'var(--bg-soft)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
               />
               {error && <div style={{ fontSize: '12px', color: '#DC2626', marginTop: '4px' }}>{error}</div>}
             </div>
@@ -103,7 +103,7 @@ export default function TopUpSection({ partnerName }: { partnerName: string }) {
               onClick={handlePay}
               disabled={loading}
               style={{
-                height: '42px', padding: '0 24px', borderRadius: '9px', border: 'none',
+                height: '44px', padding: '0 22px', borderRadius: '9px', border: 'none',
                 background: loading ? '#94A3B8' : '#1E3A5F',
                 color: '#fff', fontSize: '14px', fontWeight: 700,
                 cursor: loading ? 'not-allowed' : 'pointer', flexShrink: 0,
@@ -111,8 +111,11 @@ export default function TopUpSection({ partnerName }: { partnerName: string }) {
               }}
             >
               <CreditCard size={15} />
-              {loading ? 'Завантаження...' : 'Оплатити'}
+              {loading ? 'Завантаження...' : 'Оплата карткою онлайн'}
             </button>
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
+            Visa · Mastercard · Apple Pay · Google Pay
           </div>
         </div>
       </div>
