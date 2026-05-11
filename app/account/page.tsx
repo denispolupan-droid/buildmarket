@@ -1,7 +1,13 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseServer } from '../../lib/supabase-server';
+import { createClient } from '@supabase/supabase-js';
 import { getRole } from '../../lib/user-role';
+
+const serviceClient = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 import Footer from '../components/Footer';
 import { Package, ShoppingBag, User, MapPin, CreditCard, XCircle, Truck } from 'lucide-react';
 import RepeatOrderButton from './RepeatOrderButton';
@@ -62,6 +68,17 @@ export default async function AccountPage({
 
   const { filter } = await searchParams;
 
+  // Баланс клієнта (якщо є запис в customers)
+  const { data: customer } = await serviceClient
+    .from('customers')
+    .select('id, balance, balance_held, type')
+    .eq('auth_user_id', user.id)
+    .single();
+
+  const balance      = Number(customer?.balance      ?? 0);
+  const balanceHeld  = Number(customer?.balance_held ?? 0);
+  const balanceAvail = balance - balanceHeld;
+
   const { data: orders } = await supabase
     .from('orders')
     .select('*')
@@ -90,21 +107,56 @@ export default async function AccountPage({
 
           {/* Header */}
           <div style={{ marginBottom: '32px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '4px' }}>
-              <div style={{
-                width: '48px', height: '48px', borderRadius: '12px',
-                background: '#1E3A5F', color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '20px', fontWeight: 800, flexShrink: 0,
-              }}>
-                {(companyName ?? user.email ?? '?').charAt(0).toUpperCase()}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{
+                  width: '48px', height: '48px', borderRadius: '12px',
+                  background: '#1E3A5F', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '20px', fontWeight: 800, flexShrink: 0,
+                }}>
+                  {(companyName ?? user.email ?? '?').charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                    {companyName ?? 'Особистий кабінет'}
+                  </h1>
+                  <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>{user.email}</p>
+                </div>
               </div>
-              <div>
-                <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-                  {companyName ?? 'Особистий кабінет'}
-                </h1>
-                <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>{user.email}</p>
-              </div>
+
+              {/* Баланс — показуємо якщо є запис в customers */}
+              {customer && (
+                <div style={{
+                  background: 'var(--bg-card)', border: '1px solid var(--border)',
+                  borderRadius: '14px', padding: '16px 24px',
+                  display: 'flex', alignItems: 'center', gap: '20px',
+                }}>
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
+                      Баланс рахунку
+                    </div>
+                    <div style={{ fontSize: '24px', fontWeight: 800, color: balanceAvail >= 0 ? '#15803D' : '#DC2626' }}>
+                      {balanceAvail.toFixed(2)} ₴
+                    </div>
+                    {balanceHeld > 0 && (
+                      <div style={{ fontSize: '11px', color: '#B45309', marginTop: '2px' }}>
+                        {balanceHeld.toFixed(2)} ₴ зарезервовано
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: '20px' }}>
+                    <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '8px' }}>
+                      Для поповнення зверніться до менеджера
+                    </div>
+                    <Link href="/contacts" style={{
+                      fontSize: '13px', fontWeight: 600, color: '#4880B8', textDecoration: 'none',
+                    }}>
+                      Зв'язатись →
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

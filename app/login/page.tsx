@@ -35,9 +35,12 @@ function LoginForm() {
 
     const role = getRole(data.user);
 
-    // Для дропшиперів — синхронізуємо профіль і редиректимо в кабінет
-    if (role === 'dropship') {
+    // Для дропшиперів і оптових — синхронізуємо профіль
+    if (role === 'dropship' || role === 'wholesale') {
       await fetch('/api/auth/sync-partner', { method: 'POST' });
+    }
+
+    if (role === 'dropship') {
       router.push('/cabinet');
     } else {
       router.push(nextUrl);

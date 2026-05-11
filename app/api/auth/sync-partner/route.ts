@@ -15,21 +15,23 @@ export async function POST() {
 
   const role = getRole(user);
 
-  // Тільки для дропшиперів створюємо customers запис
-  if (role !== 'dropship') return NextResponse.json({ role });
+  if (role !== 'dropship' && role !== 'wholesale') {
+    return NextResponse.json({ role });
+  }
 
   const { data: existing } = await serviceClient
     .from('customers')
-    .select('id, is_active, balance')
+    .select('id, is_active, balance, type')
     .eq('auth_user_id', user.id)
     .single();
 
   if (!existing) {
+    const isDropship = role === 'dropship';
     await serviceClient.from('customers').insert({
       auth_user_id: user.id,
-      type:         'dropship_partner',
-      price_tier:   'drop',
-      name:         user.user_metadata?.company_name || user.email || 'Партнер',
+      type:         isDropship ? 'dropship_partner' : 'wholesale',
+      price_tier:   isDropship ? 'drop' : 'wholesale',
+      name:         user.user_metadata?.company_name || user.email || 'Клієнт',
       email:        user.email,
       is_active:    true,
       balance:      0,

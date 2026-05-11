@@ -80,8 +80,10 @@ export default function PartnersClient({
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Партнери</h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>Дропшип-партнери та їх баланси</p>
+          <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Клієнти</h1>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
+            Дропшип-партнери та оптові клієнти — баланси і розрахунки
+          </p>
         </div>
       </div>
 
@@ -161,7 +163,16 @@ export default function PartnersClient({
               <div key={partner.id} style={{ borderBottom: i < partnersData.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 100px 80px 80px 160px', padding: '14px 20px', alignItems: 'center', gap: '12px' }}>
                   <div>
-                    <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{partner.name}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{partner.name}</span>
+                      <span style={{
+                        fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '20px',
+                        background: (partner as any).type === 'dropship_partner' ? '#EFF6FF' : '#F0FDF4',
+                        color:      (partner as any).type === 'dropship_partner' ? '#4880B8' : '#15803D',
+                      }}>
+                        {(partner as any).type === 'dropship_partner' ? 'Дроп' : 'Опт'}
+                      </span>
+                    </div>
                     <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{partner.email}</div>
                     {partner.phone && <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{partner.phone}</div>}
                   </div>

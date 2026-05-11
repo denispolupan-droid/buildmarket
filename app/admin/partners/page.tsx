@@ -9,8 +9,8 @@ const db = createClient(
 export default async function PartnersPage() {
   const [{ data: partners }, { data: payouts }] = await Promise.all([
     db.from('customers')
-      .select('id, name, email, phone, balance, balance_held, is_active, created_at, partner_code')
-      .eq('type', 'dropship_partner')
+      .select('id, name, email, phone, balance, balance_held, is_active, created_at, partner_code, type')
+      .in('type', ['dropship_partner', 'wholesale'])
       .order('created_at', { ascending: false }),
 
     db.from('partner_payout_requests')
