@@ -95,7 +95,7 @@ export async function sendSupplierOrder(input: SendSupplierOrderInput): Promise<
 
   // Отправляем
   await resend.emails.send({
-    from:    `BuildMarket <orders@buildmarket.com.ua>`,
+    from:    `FIXLINE <orders@fixline.com.ua>`,
     to:      supplierEmail,
     subject: `Заказ #${input.order_number} от BuildMarket`,
     html:    buildEmailHtml(supplier.name, input),
