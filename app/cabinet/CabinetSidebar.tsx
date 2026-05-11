@@ -27,8 +27,8 @@ export default function CabinetSidebar() {
         <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.38)', marginTop: '2px' }}>Кабінет партнера</div>
       </div>
 
-      {/* New order button */}
-      <div style={{ padding: '12px 10px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      {/* New order button + pricelist */}
+      <div style={{ padding: '12px 10px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <Link href="/cabinet/orders/new" style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
           height: '38px', borderRadius: '8px', background: '#4880B8',
@@ -36,6 +36,13 @@ export default function CabinetSidebar() {
         }}>
           <Plus size={15} /> Нове замовлення
         </Link>
+        <a href="/api/cabinet/pricelist" download style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+          height: '34px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)',
+          color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontWeight: 600, textDecoration: 'none',
+        }}>
+          <Download size={13} /> Скачати прайс .xlsx
+        </a>
       </div>
 
       {/* Nav */}
@@ -57,17 +64,6 @@ export default function CabinetSidebar() {
           );
         })}
       </nav>
-
-      {/* Pricelist download */}
-      <div style={{ padding: '8px 10px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-        <a href="/api/cabinet/pricelist" download style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          padding: '9px 12px', borderRadius: '8px', textDecoration: 'none',
-          color: 'rgba(255,255,255,0.6)', fontSize: '13px', fontWeight: 500,
-        }}>
-          <Download size={14} /> Скачати прайс .xlsx
-        </a>
-      </div>
 
       {/* Back to site */}
       <div style={{ padding: '8px 10px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
