@@ -10,6 +10,7 @@ export type CustomerOrderEmailData = {
   userId: string | null;
   invoiceUrl: string;
   siteUrl: string;
+  telegramBotUsername?: string;
 };
 
 export function buildCustomerOrderEmail(d: CustomerOrderEmailData): string {
@@ -18,6 +19,16 @@ export function buildCustomerOrderEmail(d: CustomerOrderEmailData): string {
   const isGuest = d.userId === null;
   const accountUrl = `${d.siteUrl}/account`;
   const registerUrl = `${d.siteUrl}/login`;
+  const telegramSection = d.telegramBotUsername
+    ? `<div style="padding:24px 32px;border-bottom:1px solid #F1F5F9;text-align:center;">
+        <div style="font-size:12px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">Сповіщення в Telegram</div>
+        <div style="font-size:13px;color:#374151;line-height:1.6;margin-bottom:16px;">Отримуйте миттєві оновлення про статус замовлення прямо в Telegram — без пошти.</div>
+        <a href="https://t.me/${d.telegramBotUsername}?start=${d.orderId}"
+           style="display:inline-block;background:#2AABEE;color:#fff;font-size:13px;font-weight:700;padding:11px 24px;border-radius:8px;text-decoration:none;">
+          Підписатися на сповіщення →
+        </a>
+      </div>`
+    : '';
 
   const paymentSection = isCod
     ? `<div style="padding:24px 32px;border-bottom:1px solid #F1F5F9;">
@@ -128,6 +139,7 @@ export function buildCustomerOrderEmail(d: CustomerOrderEmailData): string {
     </div>
 
     ${paymentSection}
+    ${telegramSection}
     ${accountSection}
 
     <div style="margin:0 32px 24px;background:#FFFBEB;border-radius:12px;padding:16px 20px;border:1px solid #FDE68A;">

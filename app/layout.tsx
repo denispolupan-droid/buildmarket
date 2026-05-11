@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Header from "./components/Header";
+import GoogleAnalytics from "./components/GoogleAnalytics";
 import { CartProvider } from "../lib/cart";
 import { WishlistProvider } from "../lib/wishlist";
 import { ThemeProvider } from "../lib/theme";
@@ -59,6 +61,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         ` }} />
       </head>
       <body>
+        <Suspense fallback={null}>
+          <GoogleAnalytics />
+        </Suspense>
         <ThemeProvider>
           <CartProvider>
             <WishlistProvider>

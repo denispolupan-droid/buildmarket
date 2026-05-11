@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { notifyCustomerStatus } from '../../../../lib/telegram';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -64,6 +65,19 @@ export async function GET(req: NextRequest) {
         .update({ status: 'delivered' })
         .in('id', deliveredIds);
       updated += deliveredIds.length;
+
+      // Notify customers via Telegram
+      const { data: tgOrders } = await serviceClient
+        .from('orders')
+        .select('order_number, telegram_chat_id')
+        .in('id', deliveredIds)
+        .not('telegram_chat_id', 'is', null);
+
+      for (const o of tgOrders ?? []) {
+        if (o.telegram_chat_id) {
+          notifyCustomerStatus(o.telegram_chat_id, o.order_number, 'delivered');
+        }
+      }
     }
   }
 

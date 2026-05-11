@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createSupabaseServer, createSupabaseAdmin } from '../../../lib/supabase-server';
 import { buildAdminNotificationHtml, buildCustomerOrderEmail } from '../../../lib/invoice-email';
+import { notifyAdminNewOrder } from '../../../lib/telegram';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -49,6 +50,25 @@ export async function POST(req: NextRequest) {
     console.error('[orders]', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Telegram: notify admin about new order (fire-and-forget)
+  notifyAdminNewOrder({
+    order_number: data.order_number,
+    contact,
+    company: company ?? null,
+    phone,
+    total_price: totalPrice,
+    payment_type: paymentType,
+    delivery_city_name: body.deliveryCityName ?? null,
+  });
+
+  // Mark abandoned cart as recovered (fire-and-forget)
+  admin
+    .from('abandoned_carts')
+    .update({ recovered_at: new Date().toISOString() })
+    .eq('email', email)
+    .is('recovered_at', null)
+    .then(() => {});
 
   const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'denis.polupan@gmail.com';
   const FROM = 'FIXLINE <noreply@fixline.com.ua>';
@@ -99,6 +119,7 @@ export async function POST(req: NextRequest) {
         userId: user?.id ?? null,
         invoiceUrl,
         siteUrl,
+        telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME,
       }),
     });
   } catch (e) {

@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Trash2, ShoppingCart, ArrowLeft, Plus, Minus, Check, ChevronDown, ChevronUp, User, Truck, CreditCard, MessageSquare } from 'lucide-react';
 import { useCart } from '../../lib/cart';
+import { trackBeginCheckout, trackPurchase } from '../../lib/analytics';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import ProductImage from '../components/ProductImage';
 import NovaPoshtaSelect from '../components/NovaPoshtaSelect';
@@ -79,8 +80,9 @@ function Section({ icon: Icon, title, children, error }: { icon: React.ElementTy
 }
 
 export default function CartPage() {
-  const { items, totalItems, totalPrice, loaded, removeItem, updateQty, clearCart } = useCart();
+  const { items, totalItems, totalPrice, loaded, addItem, removeItem, updateQty, clearCart } = useCart();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [role, setRole] = useState<'wholesale' | 'retail' | 'guest'>('guest');
   const [company,    setCompany]    = useState('');
@@ -127,6 +129,36 @@ export default function CartPage() {
       }
     });
   }, []);
+
+  // Restore cart from abandoned-cart email link (?restore=TOKEN)
+  useEffect(() => {
+    const token = searchParams.get('restore');
+    if (!token || !loaded) return;
+    fetch(`/api/cart/restore/${token}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.items?.length) {
+          for (const item of data.items) addItem(item, item.qty);
+          router.replace('/cart', { scroll: false });
+        }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
+
+  // Save cart to DB for abandoned-cart reminders (debounced 2s)
+  useEffect(() => {
+    if (!loaded || !email?.includes('@') || items.length === 0) return;
+    const t = setTimeout(() => {
+      fetch('/api/cart/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, items, totalPrice }),
+      }).catch(() => {});
+    }, 2000);
+    return () => clearTimeout(t);
+  }, [email, items, totalPrice, loaded]);
+
   const [delivery,          setDelivery]          = useState('');
   const [novaSubtype,       setNovaSubtype]       = useState<'warehouse' | 'courier' | ''>('');
   const [address,           setAddress]           = useState('');
@@ -177,6 +209,7 @@ export default function CartPage() {
     }
     setSubmitting(true);
     setSubmitError('');
+    trackBeginCheckout(items, totalPrice);
     try {
       const res = await fetch('/api/orders', {
         method: 'POST',
@@ -199,6 +232,7 @@ export default function CartPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Помилка сервера');
+      trackPurchase(String(data.id), items, totalPrice);
       clearCart();
       router.push(`/order-success?id=${data.id}&num=${data.orderNumber}${isRetail ? '&from=shop' : ''}`);
     } catch (e) {

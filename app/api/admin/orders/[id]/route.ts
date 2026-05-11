@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
 import { recordDropshipSale } from '../../../../../lib/accounting/dropship';
+import { notifyAdminStatusChange, notifyCustomerStatus } from '../../../../../lib/telegram';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createSupabaseServer();
@@ -87,6 +88,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     } catch (err) {
       console.error('[balance] COD credit failed:', err);
+    }
+  }
+
+  // Telegram notifications (fire-and-forget)
+  if (status) {
+    try {
+      const { data: order } = await db
+        .from('orders')
+        .select('order_number, contact, phone, telegram_chat_id, tracking_number')
+        .eq('id', id)
+        .single();
+
+      if (order) {
+        notifyAdminStatusChange(
+          { order_number: order.order_number, contact: order.contact, phone: order.phone },
+          status,
+        );
+        if (order.telegram_chat_id && ['confirmed', 'shipped', 'delivered', 'cancelled'].includes(status)) {
+          notifyCustomerStatus(order.telegram_chat_id, order.order_number, status, order.tracking_number);
+        }
+      }
+    } catch (err) {
+      console.error('[telegram]', err);
     }
   }
 
