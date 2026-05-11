@@ -47,15 +47,21 @@ export default function TopUpSection({ partnerName }: { partnerName: string }) {
     if (!num || num < 500) { setError('Мінімальна сума — 500 ₴'); return; }
     setError('');
     setLoading(true);
-    const res  = await fetch('/api/cabinet/topup', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ amount: num }),
-    });
-    const data = await res.json();
-    setLoading(false);
-    if (!res.ok) { setError(data.error ?? 'Помилка'); return; }
-    window.location.href = data.pageUrl;
+    try {
+      const res  = await fetch('/api/cabinet/topup', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ amount: num }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? `Помилка ${res.status}`); return; }
+      if (!data.pageUrl) { setError('Не вдалось отримати посилання на оплату'); return; }
+      window.location.href = data.pageUrl;
+    } catch (e) {
+      setError('Помилка мережі — спробуйте ще раз');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
