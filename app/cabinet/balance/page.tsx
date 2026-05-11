@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import { Wallet, ArrowDownCircle, Package } from 'lucide-react';
 import BalanceClient from './BalanceClient';
+import TopUpSection from './TopUpSection';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -69,22 +70,7 @@ export default async function BalancePage() {
         })}
       </div>
 
-      {/* Top-up info */}
-      <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px 24px', marginBottom: '24px' }}>
-        <h2 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>
-          Як поповнити баланс
-        </h2>
-        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '8px' }}>
-          Зробіть банківський переказ на рахунок FIXLINE із зазначенням у призначенні платежу:
-        </p>
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px 16px', fontFamily: 'monospace', fontSize: '13px', color: 'var(--text-primary)' }}>
-          Поповнення балансу партнера — {customer?.name ?? 'Партнер'}
-        </div>
-        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '10px' }}>
-          Після отримання переказу баланс буде поповнено протягом 1 робочого дня.
-          Реквізити для оплати надасть ваш менеджер.
-        </p>
-      </div>
+      <TopUpSection partnerName={customer?.name ?? 'Партнер'} />
 
       {/* Interactive part: payout requests */}
       <BalanceClient
