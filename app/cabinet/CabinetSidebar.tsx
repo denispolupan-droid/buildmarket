@@ -38,8 +38,8 @@ export default function CabinetSidebar() {
         </Link>
         <a href="/api/cabinet/pricelist" download style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
-          height: '34px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)',
-          color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontWeight: 600, textDecoration: 'none',
+          height: '34px', borderRadius: '8px', border: '1px solid rgba(74,179,93,0.5)',
+          background: 'rgba(74,179,93,0.15)', color: '#6FCF80', fontSize: '12px', fontWeight: 600, textDecoration: 'none',
         }}>
           <Download size={13} /> Скачати прайс .xlsx
         </a>
