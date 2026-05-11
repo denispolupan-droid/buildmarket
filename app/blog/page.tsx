@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: 'Блог | Поради щодо будівельної хімії — FIXLINE',
   description: 'Корисні статті про герметики, монтажну піну, клеї та ґрунтовки. Як вибрати, як використовувати, типові помилки та поради від практиків.',
   keywords: ['як вибрати герметик', 'як вибрати монтажну піну', 'будівельна хімія поради', 'как выбрать герметик', 'как выбрать монтажную пену', 'строительная химия советы', 'герметик для ванной', 'монтажная пена как использовать'],
-  alternates: { canonical: 'https://fixline.com.ua/blog' },
+  alternates: { canonical: 'https://fixline.com.ua/blog', languages: { 'uk': 'https://fixline.com.ua/blog', 'ru': 'https://fixline.com.ua/blog', 'x-default': 'https://fixline.com.ua/blog' } },
   openGraph: {
     title: 'Блог FIXLINE — поради щодо будівельної хімії',
     description: 'Статті про герметики, монтажну піну та клеї: вибір, застосування, типові помилки.',
@@ -18,9 +18,29 @@ export const metadata: Metadata = {
   },
 };
 
+const BASE = 'https://fixline.com.ua';
+
 export default function BlogPage() {
+  const blogLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    name: 'Блог FIXLINE — поради щодо будівельної хімії',
+    url: `${BASE}/blog`,
+    description: 'Корисні статті про герметики, монтажну піну, клеї та ґрунтовки.',
+    publisher: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
+    blogPost: ARTICLES.map(a => ({
+      '@type': 'BlogPosting',
+      headline: a.title,
+      description: a.description,
+      url: `${BASE}/blog/${a.slug}`,
+      datePublished: a.date,
+      image: `${BASE}${a.image}`,
+    })),
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogLd) }} />
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
         <div style={{ maxWidth: '860px', margin: '0 auto', padding: '48px 32px 64px' }}>
 

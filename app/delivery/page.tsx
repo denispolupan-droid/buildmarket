@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: 'Умови доставки | FIXLINE',
   description: 'Доставка будівельної хімії по всій Україні. Нова Пошта, адресна доставка. Замовлення до 14:00 — відправка в той самий день.',
   keywords: ['доставка будівельна хімія', 'Нова Пошта будматеріали', 'доставка строительная химия Украина', 'умови доставки'],
-  alternates: { canonical: 'https://fixline.com.ua/delivery' },
+  alternates: { canonical: 'https://fixline.com.ua/delivery', languages: { 'uk': 'https://fixline.com.ua/delivery', 'ru': 'https://fixline.com.ua/delivery', 'x-default': 'https://fixline.com.ua/delivery' } },
   openGraph: {
     title: 'Умови доставки — FIXLINE',
     description: 'Доставка по всій Україні. Нова Пошта, адресна доставка. Відправка в день замовлення.',

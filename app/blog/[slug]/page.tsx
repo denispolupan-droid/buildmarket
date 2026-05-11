@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: `${article.title} | FIXLINE`,
     description: article.description,
     keywords: article.keywords,
-    alternates: { canonical: `https://fixline.com.ua/blog/${slug}` },
+    alternates: { canonical: `https://fixline.com.ua/blog/${slug}`, languages: { 'uk': `https://fixline.com.ua/blog/${slug}`, 'ru': `https://fixline.com.ua/blog/${slug}`, 'x-default': `https://fixline.com.ua/blog/${slug}` } },
     openGraph: {
       title: article.title,
       description: article.description,
@@ -26,6 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       locale: 'uk_UA',
       type: 'article',
       publishedTime: article.date,
+      images: [{ url: `https://fixline.com.ua${article.image}`, width: 1200, height: 630, alt: article.title }],
     },
   };
 }
@@ -675,19 +676,132 @@ function ArticleVologa() {
   );
 }
 
-const ARTICLE_CATEGORY_LINKS: Record<string, { label: string; href: string }[]> = {
-  'gruntivscha-navishcho-i-yaku-vybrat':    [{ label: 'Ґрунтовки в магазині',      href: '/shop?category=gruntivky' }, { label: 'Бетоноконтакт',            href: '/shop?category=betonokontakt' }],
-  'kley-dlya-remontu-vybir':                [{ label: 'Клеї в магазині',           href: '/shop?category=klei' },      { label: 'Рідкі цвяхи',             href: '/shop?category=ridki-tsvyakhy' }],
-  'hidroizolyatsiya-fundamentu-i-vannoyi':  [{ label: 'Гідроізоляція в магазині',  href: '/shop?category=hidroizolyatsiya' }, { label: 'Бітумні мастики',    href: '/shop?category=bitumni-mastyky' }],
-  'zakhyst-derevyny-antyseptyk-lak-oliya':  [{ label: 'Захист деревини',           href: '/shop?category=zakhyst-derevyny' }, { label: 'Антисептики',       href: '/shop?category=antyseptyki' }],
-  'yak-vybrat-farbu':                       [{ label: 'Фарби в магазині',          href: '/shop?category=farby' },     { label: 'Фарби 3 в 1',             href: '/shop?category=farby-3v1' }],
-  'yak-vybrat-hermetyk':                    [{ label: 'Герметики в магазині',      href: '/shop?category=germetyky' }, { label: 'Силіконові герметики',     href: '/shop?category=sylikonovi-germetyky' }],
-  'montazhna-pina-yak-vykorystovuvaty':     [{ label: 'Монтажна піна в магазині',  href: '/shop?category=montazhna-pina' }, { label: 'Професійна піна',     href: '/shop?category=pistoletna-pina' }],
-  'shpaklivka-stin-startova-finishna':      [{ label: 'Шпаклівки в магазині',     href: '/shop?category=shpaklivky' }, { label: 'Ґрунтовки',              href: '/shop?category=gruntivky' }],
-  'zatyrka-dlya-plytky':                    [{ label: 'Затирки для плитки',        href: '/shop?category=zamazky-dlya-shviv' }, { label: 'Герметики для ванної', href: '/shop?category=sylikonovi-germetyky' }],
-  'peretvoryuvach-irzhi':                   [{ label: 'Розчинники та антикор',     href: '/shop?category=rozchynnyky' }, { label: 'Фарби для металу',      href: '/shop?category=farby' }],
-  'vologopoglynych':                        [{ label: 'Вологопоглиначі',           href: '/shop?category=vologopoglinachi' }, { label: 'Антигрибкові засоби', href: '/shop?category=antygrybok' }],
-};
+
+// ── Пластифікатор ─────────────────────────────────────────────────────────────
+function ArticlePlastyfikator() {
+  return (
+    <>
+      <p>Пластифікатор — рідка або порошкоподібна добавка в бетонний або цементний розчин, яка змінює його властивості без збільшення кількості води. Розбираємо навіщо він потрібен і коли без нього не обійтися.</p>
+      <h2>Що робить пластифікатор</h2>
+      <ul>
+        <li><strong>Підвищує рухливість розчину</strong> — суміш легше укладати і вона краще заповнює форму</li>
+        <li><strong>Збільшує міцність</strong> — менше води в розчині означає щільнішу структуру після застигання</li>
+        <li><strong>Зменшує тріщиноутворення</strong> — суміш усихає рівномірно</li>
+        <li><strong>Покращує морозостійкість</strong> — протиморозні різновиди дозволяють працювати до −15°C</li>
+      </ul>
+      <h2>Типи пластифікаторів</h2>
+      <h3>Звичайний (розріджувач)</h3>
+      <p>Зменшує кількість води необхідної для замішування на 10–15%. Результат — міцніший і щільніший бетон при тій самій консистенції. Використовують при заливці фундаментів, стяжок та монолітних конструкцій.</p>
+      <h3>Протиморозний</h3>
+      <p>Знижує температуру замерзання розчину. Дозволяє проводити бетонні роботи при температурах до −15°C. Містить антифризні компоненти — хлориди або нітрити. Важливо: хлоридні варіанти не можна використовувати в конструкціях з армуванням — іржавіє арматура.</p>
+      <h3>Суперпластифікатор</h3>
+      <p>Зменшує водопотребу на 20–30%. Застосовують при виробництві високоміцного бетону та в будівництві де критична щільність суміші.</p>
+      <h2>Таблиця вибору</h2>
+      <table>
+        <thead><tr><th>Задача</th><th>Тип</th></tr></thead>
+        <tbody>
+          <tr><td>Стяжка, фундамент, монолітні роботи влітку</td><td>Звичайний пластифікатор</td></tr>
+          <tr><td>Бетонні роботи взимку до −15°C</td><td>Протиморозний (безхлоридний для армованих конструкцій)</td></tr>
+          <tr><td>Висока щільність і міцність бетону</td><td>Суперпластифікатор</td></tr>
+          <tr><td>Плиткові клеї та штукатурні суміші</td><td>Пластифікатор для розчинів</td></tr>
+        </tbody>
+      </table>
+      <h2>Як використовувати</h2>
+      <p>Пластифікатор додають у воду замішування перед додаванням цементу. Дозування вказане на упаковці — зазвичай 0,5–1% від маси цементу. Перевищення дози не покращує результат, а може сповільнити твердіння.</p>
+      <h2>Типові помилки</h2>
+      <ul>
+        <li>Додають пластифікатор замість зменшення води — не дає ефекту</li>
+        <li>Використовують хлоридний варіант для залізобетону — іржавіє арматура</li>
+        <li>Перевищують дозування — бетон повільно твердіє або не набирає міцності</li>
+        <li>Змішують різні типи добавок без перевірки сумісності</li>
+      </ul>
+    </>
+  );
+}
+
+// ── МС-полімер vs поліуретан ──────────────────────────────────────────────────
+function ArticleMsPolymer() {
+  return (
+    <>
+      <p>МС-полімерні та поліуретанові герметики — два найміцніших і найуніверсальніших матеріали для ущільнення швів. На перший погляд вони схожі: обидва еластичні, міцні та витримують вуличні умови. Але між ними є принципові відмінності.</p>
+      <h2>Поліуретановий герметик</h2>
+      <p>Поліуретан (PU) — перевірений матеріал з найвищою адгезією серед еластичних герметиків. Міцно тримається на бетоні, металі, дереві та пластику без ґрунтування. Після затвердіння утворює надміцний шов який витримує значні механічні навантаження.</p>
+      <ul>
+        <li><strong>Плюси:</strong> висока міцність, відмінна адгезія, можна фарбувати і шліфувати</li>
+        <li><strong>Мінуси:</strong> містить розчинники (запах, токсичність до висихання), жовтіє на сонці, не підходить для внутрішніх робіт без вентиляції</li>
+        <li><strong>Застосування:</strong> фасадні шви, бетонні конструкції, автомобільна та суднова промисловість</li>
+      </ul>
+      <h2>МС-полімерний герметик</h2>
+      <p>МС-полімер (Modified Silicone або Silyl-terminated Polyether) — сучасніший матеріал, який поєднує переваги силіконових і поліуретанових герметиків без їхніх недоліків.</p>
+      <ul>
+        <li><strong>Плюси:</strong> без розчинників (безпечний для закритих приміщень), не жовтіє, фарбується, висока еластичність</li>
+        <li><strong>Мінуси:</strong> дорожче поліуретанового, потребує сухої поверхні при нанесенні</li>
+        <li><strong>Застосування:</strong> фасади, вікна, внутрішні роботи, приміщення де важлива естетика</li>
+      </ul>
+      <h2>Порівняння</h2>
+      <table>
+        <thead><tr><th>Характеристика</th><th>Поліуретановий</th><th>МС-полімерний</th></tr></thead>
+        <tbody>
+          <tr><td>Адгезія</td><td>Відмінна</td><td>Відмінна</td></tr>
+          <tr><td>Еластичність</td><td>Висока</td><td>Дуже висока</td></tr>
+          <tr><td>Розчинники</td><td>Є (запах)</td><td>Немає</td></tr>
+          <tr><td>Жовтіння на сонці</td><td>Так</td><td>Ні</td></tr>
+          <tr><td>Можна фарбувати</td><td>Так</td><td>Так</td></tr>
+          <tr><td>Внутрішні роботи</td><td>Обережно</td><td>Так</td></tr>
+          <tr><td>Ціна</td><td>Нижча</td><td>Вища</td></tr>
+        </tbody>
+      </table>
+      <h2>Що вибрати</h2>
+      <p><strong>Поліуретановий</strong> — якщо важлива максимальна міцність і бюджет обмежений. Ідеальний для зовнішніх промислових швів, фундаментів і бетонних конструкцій де естетика не критична.</p>
+      <p><strong>МС-полімерний</strong> — якщо потрібен шов без запаху, без жовтіння і з можливістю фарбування. Оптимальний для фасадів, вікон і будь-яких видимих швів де важливий зовнішній вигляд.</p>
+    </>
+  );
+}
+
+// ── Малярна стрічка ────────────────────────────────────────────────────────────
+function ArticleMalyarnaStrichka() {
+  return (
+    <>
+      <p>Малярна стрічка — простий інструмент, який економить годинники роботи при фарбуванні. Але вибрати неправильну стрічку — значить отримати підтікання фарби або залишки клею на поверхні. Розбираємо як вибрати правильно.</p>
+      <h2>Для чого використовують малярну стрічку</h2>
+      <ul>
+        <li>Захист поверхонь від потрапляння фарби (плінтуси, рами, скло)</li>
+        <li>Отримання рівних меж при фарбуванні в два кольори</li>
+        <li>Тимчасове кріплення легких матеріалів під час ремонту</li>
+        <li>Маркування та позначення зон</li>
+      </ul>
+      <h2>Типи малярних стрічок</h2>
+      <h3>Стандартна (паперова)</h3>
+      <p>Основа — тонкий крепований папір. Витримує температуру до +60–80°C. Підходить для більшості фарбувальних робіт в приміщенні. Час витримки під фарбою — до 24 год.</p>
+      <h3>Термостійка</h3>
+      <p>Витримує до +120–150°C. Використовують при фарбуванні радіаторів, труб і поверхонь які нагріваються. Час витримки — до 30 хв при максимальній температурі.</p>
+      <h3>Для делікатних поверхонь</h3>
+      <p>Слабкіший клей — не залишає слідів на свіжофарбованих поверхнях, шпалерах і декоративній штукатурці. Знімається без пошкоджень навіть через кілька днів.</p>
+      <h3>Зовнішня (УФ-стійка)</h3>
+      <p>Витримує сонце, вологу та перепади температур. Для фасадних робіт та тривалого використання на вулиці.</p>
+      <h2>Як правильно клеїти і знімати</h2>
+      <ul>
+        <li>Поверхня має бути сухою і знежиреною — інакше фарба підтікає під стрічку</li>
+        <li>Клеїти щільно, притискаючи пальцем по всій довжині</li>
+        <li>Знімати під кутом 45° до поверхні — не різко і не вертикально</li>
+        <li>Знімати через 10–30 хв після нанесення фарби — поки вона ще не повністю висохла</li>
+        <li>Якщо фарба вже суха — підрізати межу ножем перед зніманням</li>
+      </ul>
+      <h2>Чому залишаються сліди клею</h2>
+      <p>Сліди клею залишаються якщо стрічку тримали надто довго (особливо на сонці) або використали неправильний тип для делікатної поверхні. Видаляють залишки клею уайт-спіритом або спеціальним очисником.</p>
+      <h2>Таблиця вибору</h2>
+      <table>
+        <thead><tr><th>Ситуація</th><th>Тип стрічки</th></tr></thead>
+        <tbody>
+          <tr><td>Звичайне фарбування стін в приміщенні</td><td>Стандартна паперова</td></tr>
+          <tr><td>Фарбування радіаторів і труб</td><td>Термостійка</td></tr>
+          <tr><td>Захист свіжофарбованих або делікатних поверхонь</td><td>Для делікатних поверхонь</td></tr>
+          <tr><td>Фасадні та зовнішні роботи</td><td>УФ-стійка зовнішня</td></tr>
+        </tbody>
+      </table>
+    </>
+  );
+}
 
 const ARTICLE_CONTENT: Record<string, () => React.JSX.Element> = {
   'gruntivscha-navishcho-i-yaku-vybrat': ArticleGruntivka,
@@ -701,6 +815,9 @@ const ARTICLE_CONTENT: Record<string, () => React.JSX.Element> = {
   'zatyrka-dlya-plytky': ArticleZatyrka,
   'peretvoryuvach-irzhi': ArticleIrzha,
   'vologopoglynych': ArticleVologa,
+  'plastyfikator-dlya-betonu': ArticlePlastyfikator,
+  'ms-polymer-vs-poliuretan': ArticleMsPolymer,
+  'malyarna-strichka-yak-vybrat': ArticleMalyarnaStrichka,
 };
 
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
@@ -711,11 +828,22 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const Content = ARTICLE_CONTENT[slug];
   if (!Content) notFound();
 
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Головна', item: 'https://fixline.com.ua' },
+      { '@type': 'ListItem', position: 2, name: 'Блог', item: 'https://fixline.com.ua/blog' },
+      { '@type': 'ListItem', position: 3, name: article.title, item: `https://fixline.com.ua/blog/${slug}` },
+    ],
+  };
+
   const articleLd = {
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline: article.title,
     description: article.description,
+    image: `https://fixline.com.ua${article.image}`,
     datePublished: article.date,
     dateModified: article.date,
     author: { '@type': 'Organization', name: 'FIXLINE' },
@@ -725,37 +853,59 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
         <div style={{ maxWidth: '760px', margin: '0 auto', padding: '40px 32px 64px' }}>
 
-          {/* Back */}
-          <Link href="/blog" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '28px' }}>
-            <ArrowLeft size={14} /> Всі статті
-          </Link>
+          {/* Breadcrumb */}
+          <nav aria-label="Breadcrumb" style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <Link href="/" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Головна</Link>
+            <span>›</span>
+            <Link href="/blog" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Блог</Link>
+            <span>›</span>
+            <span style={{ color: 'var(--text-secondary)' }}>{article.title}</span>
+          </nav>
 
-          {/* Meta */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, padding: '3px 10px', borderRadius: '20px', background: '#EFF6FF', color: '#4880B8' }}>
-              {article.category}
-            </span>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Clock size={12} /> {article.readTime} хв читання
-            </span>
-          </div>
+          <article>
+            {/* Meta */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, padding: '3px 10px', borderRadius: '20px', background: '#EFF6FF', color: '#4880B8' }}>
+                {article.category}
+              </span>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Clock size={12} /> {article.readTime} хв читання
+              </span>
+              <time dateTime={article.date} style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                {new Date(article.date).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </time>
+            </div>
 
-          {/* Title */}
-          <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.3, margin: '0 0 12px' }}>
-            {article.title}
-          </h1>
-          <p style={{ fontSize: '16px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 32px' }}>
-            {article.description}
-          </p>
+            {/* Title */}
+            <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.3, margin: '0 0 12px' }}>
+              {article.title}
+            </h1>
+            <p style={{ fontSize: '16px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 32px' }}>
+              {article.description}
+            </p>
 
-          {/* Content */}
-          <div className="article-body">
-            <Content />
-          </div>
+            {/* Cover image */}
+            <div style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '36px' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={article.image}
+                alt={article.title}
+                width={1200}
+                height={630}
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+              />
+            </div>
+
+            {/* Content */}
+            <div className="article-body">
+              <Content />
+            </div>
+          </article>
 
           {/* CTA */}
           <div style={{ marginTop: '48px', padding: '24px 28px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px' }}>
@@ -765,9 +915,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.6 }}>
               Широкий вибір від перевірених виробників. Від 1 одиниці, доставка по всій Україні.
             </p>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {(ARTICLE_CATEGORY_LINKS[slug] ?? [{ label: 'До магазину', href: '/shop' }]).map(({ label, href }) => (
-                <Link key={href} href={href} style={{ height: '38px', padding: '0 18px', borderRadius: '8px', background: '#4880B8', color: '#fff', fontSize: '13px', fontWeight: 700, display: 'inline-flex', alignItems: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+              {(article.relatedLinks ?? [{ label: 'До магазину', href: '/shop' }]).map(({ label, href }) => (
+                <Link key={href} href={href} style={{ height: '38px', borderRadius: '8px', background: '#4880B8', color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 12px' }}>
                   {label}
                 </Link>
               ))}
@@ -779,6 +929,41 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
         </div>
       </div>
+
+      {/* Related articles */}
+      {(() => {
+        const related = ARTICLES.filter(a => a.slug !== slug).slice(0, 3);
+        if (related.length === 0) return null;
+        return (
+          <div style={{ background: 'var(--bg-soft)', borderTop: '1px solid var(--border)', padding: '40px 0 56px' }}>
+            <div style={{ maxWidth: '760px', margin: '0 auto', padding: '0 32px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 20px' }}>
+                Читайте також
+              </h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {related.map(a => (
+                  <Link key={a.slug} href={`/blog/${a.slug}`} style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px', textDecoration: 'none' }}>
+                    <div style={{ width: '96px', height: '54px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={a.image} alt={a.title} width={96} height={54} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px', lineHeight: 1.3 }}>
+                        {a.title}
+                      </p>
+                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
+                        {a.readTime} хв читання
+                      </p>
+                    </div>
+                    <span style={{ fontSize: '16px', color: 'var(--text-muted)', flexShrink: 0 }}>›</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <Footer />
       <style>{`
         .article-body { font-size: 15px; color: var(--text-secondary); line-height: 1.8; }

@@ -461,7 +461,9 @@ export default function CatalogClient({ products, categories, initialSearch = ''
             {/* Title row */}
             <div className="catalog-title-row">
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                <h1 className="catalog-title">Оптовий каталог</h1>
+                <h1 className="catalog-title">
+                  {selCat ? (categories.find(c => c.slug === selCat)?.name ?? 'Оптовий каталог') : 'Оптовий каталог'}
+                </h1>
                 <p className="catalog-count">{filtered.length} товарів</p>
               </div>
               <div className="catalog-actions">
@@ -695,22 +697,13 @@ export default function CatalogClient({ products, categories, initialSearch = ''
         if (!meta || !catName) return null;
         return (
           <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 20px 32px' }}>
-            <details>
-              <summary style={{
-                fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)',
-                cursor: 'pointer', userSelect: 'none', listStyle: 'none',
-                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                padding: '7px 12px', borderRadius: '8px',
-                border: '1px solid var(--border)', background: 'var(--bg-card)',
-              }}>
-                <span>ℹ️ Про категорію «{catName}»</span>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>▼</span>
-              </summary>
-              <div style={{ padding: '12px 0 0', borderTop: '1px solid var(--border)', marginTop: '8px' }}>
-                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>{meta.description}</p>
-                {meta.seoText && <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7, margin: '8px 0 0' }}>{meta.seoText}</p>}
-              </div>
-            </details>
+            <div style={{ padding: '16px 20px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
+                Про категорію «{catName}»
+              </p>
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>{meta.description}</p>
+              {meta.seoText && <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7, margin: '8px 0 0' }}>{meta.seoText}</p>}
+            </div>
           </div>
         );
       })()}

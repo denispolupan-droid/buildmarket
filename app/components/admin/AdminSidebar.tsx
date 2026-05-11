@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { ShoppingBag, Package, Truck, Store, ChevronLeft, Settings, BookOpen, Warehouse, BarChart3, Users } from 'lucide-react';
+import { ShoppingBag, Package, Truck, Store, ChevronLeft, Settings, BookOpen, Warehouse, BarChart3, Users, Star } from 'lucide-react';
 
 const NAV = [
   { href: '/admin',                      label: 'Замовлення',    icon: ShoppingBag, exact: true },
@@ -12,6 +12,7 @@ const NAV = [
   { href: '/admin/finance',              label: 'Фінанси',       icon: BarChart3,   exact: false },
   { href: '/admin/accounting/documents', label: 'Облік',         icon: BookOpen,    exact: false },
   { href: '/admin/accounting/stock',     label: 'Залишки',       icon: Warehouse,   exact: false },
+  { href: '/admin/reviews',              label: 'Відгуки',       icon: Star,        exact: false },
   { href: '/admin/settings',             label: 'Налаштування',  icon: Settings,    exact: false },
 ];
 

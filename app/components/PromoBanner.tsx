@@ -27,9 +27,9 @@ export default function PromoBanner() {
         }}>
           АКЦІЯ
         </Link>
-        ! Знижки до{' '}
-        <span style={{ color: '#FCD34D', fontWeight: 800 }}>25%</span>{' '}
-        на герметики та монтажні піни до кінця квітня ⚡
+        ! Знижки{' '}
+        <span style={{ color: '#FCD34D', fontWeight: 800 }}>15%</span>{' '}
+        на герметики та монтажні піни до кінця травня ⚡
       </span>
     </div>
   );

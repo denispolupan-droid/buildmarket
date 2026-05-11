@@ -10,7 +10,14 @@ import ProductImage from '../../components/ProductImage';
 import RelatedCarousel from './RelatedCarousel';
 import BackButton from './BackButton';
 import Footer from '../../components/Footer';
+import ProductReviews from './ProductReviews';
+import { createClient } from '@supabase/supabase-js';
 import './product.css';
+
+const service = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 
 const BASE = 'https://fixline.com.ua';
 
@@ -42,7 +49,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       type: 'website',
       images: [{ url: `${BASE}/product/${sku}/opengraph-image`, width: 1200, height: 630, alt: title }],
     },
-    alternates: { canonical: `${BASE}/product/${sku}` },
+    alternates: { canonical: `${BASE}/product/${sku}`, languages: { 'uk': `${BASE}/product/${sku}`, 'ru': `${BASE}/product/${sku}`, 'x-default': `${BASE}/product/${sku}` } },
   };
 }
 
@@ -72,10 +79,20 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   const product = await getProductBySkuCached(sku);
   if (!product) notFound();
 
-  const [related, categories] = await Promise.all([
+  const [related, categories, reviewsData] = await Promise.all([
     product.category_slug ? getRelatedProductsCached(product.category_slug, product.sku, 5) : Promise.resolve([]),
     getCategoriesCached(),
+    service.from('product_reviews')
+      .select('rating')
+      .eq('product_sku', sku)
+      .eq('is_approved', true),
   ]);
+
+  const approvedReviews = reviewsData.data ?? [];
+  const reviewCount = approvedReviews.length;
+  const reviewAvg = reviewCount
+    ? Math.round((approvedReviews.reduce((s: number, r: { rating: number }) => s + r.rating, 0) / reviewCount) * 10) / 10
+    : 0;
 
   const priceUnit = isRetail
     ? (product.stock?.price_retail ?? 0)
@@ -126,6 +143,15 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
         : 'https://schema.org/OutOfStock',
       seller: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
     },
+    ...(reviewCount >= 1 ? {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: reviewAvg,
+        reviewCount,
+        bestRating: 5,
+        worstRating: 1,
+      },
+    } : {}),
   };
 
   return (
@@ -234,6 +260,11 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
 
         {/* Схожі товари */}
         {related.length > 0 && <RelatedCarousel products={related} retail={isRetail} />}
+
+        {/* Відгуки */}
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '32px', marginTop: '32px' }}>
+          <ProductReviews sku={product.sku} productName={`${product.brand} ${product.name}`} />
+        </div>
 
       </div>
       </div>

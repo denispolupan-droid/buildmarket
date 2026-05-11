@@ -17,6 +17,14 @@ export const metadata: Metadata = {
   description: 'B2B платформа для оптових закупівель будівельної хімії. Герметики, монтажні піни, клеї, рідкі цвяхи. Оптові ціни для дилерів та підрядників. Строительная химия оптом по Украине.',
   keywords: ['будівельна хімія', 'строительная химия', 'герметики', 'монтажна піна', 'монтажная пена', 'клеї оптом', 'клеи оптом', 'будівельна хімія оптом', 'строительная химия оптом', 'Україна', 'Украина'],
   metadataBase: new URL('https://fixline.com.ua'),
+  alternates: {
+    canonical: 'https://fixline.com.ua',
+    languages: {
+      'uk': 'https://fixline.com.ua',
+      'ru': 'https://fixline.com.ua',
+      'x-default': 'https://fixline.com.ua',
+    },
+  },
   openGraph: {
     siteName: 'FIXLINE',
     locale: 'uk_UA',

@@ -571,6 +571,8 @@ input, select { font-family: inherit; }
   .drop-hero-grid  { grid-template-columns: 1fr !important; gap: 28px !important; }
   .drop-steps      { grid-template-columns: 1fr 1fr !important; gap: 14px !important; }
   .drop-benefits   { grid-template-columns: 1fr !important; gap: 12px !important; }
+  .drop-example    { grid-template-columns: 1fr !important; gap: 16px !important; }
+  .drop-rules      { grid-template-columns: 1fr !important; gap: 12px !important; }
 }
 @media (max-width: 480px) {
   .drop-steps { grid-template-columns: 1fr !important; }
@@ -617,4 +619,52 @@ input, select { font-family: inherit; }
   .wishlist-card__actions input { width: 44px !important; flex-shrink: 0 !important; }
   .wishlist-card__total { font-size: 14px !important; flex-shrink: 0 !important; }
   .wishlist-card__actions .wc-btn-cart { margin-left: auto !important; flex-shrink: 0 !important; }
+}
+
+/* ── Blog carousel ─────────────────────────────────────────────────────────── */
+.blog-carousel {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.blog-carousel__card {
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  transition: box-shadow 0.15s;
+}
+@media (max-width: 768px) {
+  .blog-carousel {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 12px;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .blog-carousel::-webkit-scrollbar { display: none; }
+  .blog-carousel__card {
+    scroll-snap-align: start;
+    min-width: 80vw;
+    max-width: 80vw;
+    flex-shrink: 0;
+  }
+  .blog-carousel__card > div:first-child {
+    aspect-ratio: unset !important;
+    height: 160px;
+  }
+  .blog-carousel__card > div:last-child {
+    padding: 12px 14px;
+    gap: 5px;
+  }
+}
+
+/* ── About stats — hide on mobile ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .about-stats-grid { display: none !important; }
 }

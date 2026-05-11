@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: 'Про компанію FIXLINE — постачальник будівельної хімії',
   description: 'FIXLINE — лінія фіксації. FIX (фіксувати, кріпити) + LINE (лінія матеріалів). Постачальник будівельної хімії в Україні: герметики, клеї, монтажні піни, ґрунтовки від перевірених виробників.',
   keywords: ['про компанію FIXLINE', 'постачальник будівельної хімії', 'поставщик строительной химии Украина', 'оптова будівельна хімія', 'герметики оптом постачальник', 'Харків будівельна хімія'],
-  alternates: { canonical: 'https://fixline.com.ua/about' },
+  alternates: { canonical: 'https://fixline.com.ua/about', languages: { 'uk': 'https://fixline.com.ua/about', 'ru': 'https://fixline.com.ua/about', 'x-default': 'https://fixline.com.ua/about' } },
   openGraph: {
     title: 'Про компанію FIXLINE',
     description: 'Офіційний постачальник будівельної хімії в Україні. 10+ років, 500+ клієнтів, 1000+ артикулів.',

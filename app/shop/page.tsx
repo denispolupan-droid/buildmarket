@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../components/Footer';
 import ShopLoader from './ShopLoader';
-import { getCategoriesCached } from '../../lib/supabase';
+import { getCategoriesCached, getProductsCached } from '../../lib/supabase';
 import { getCategoryMeta } from '../../lib/category-descriptions';
 import './shop.css';
 
@@ -21,7 +21,7 @@ export async function generateMetadata(
     return {
       title: 'Акційні товари — будівельна хімія зі знижкою | FIXLINE',
       description: 'Акції на герметики, монтажні піни, клеї та ґрунтовки. Купити зі знижкою від 1 одиниці з доставкою по Україні.',
-      alternates: { canonical: `${BASE}/shop?sale=1` },
+      alternates: { canonical: `${BASE}/shop?sale=1`, languages: { 'uk': `${BASE}/shop?sale=1`, 'ru': `${BASE}/shop?sale=1`, 'x-default': `${BASE}/shop?sale=1` } },
       openGraph: { title: 'Акційні товари | FIXLINE', url: `${BASE}/shop?sale=1`, locale: 'uk_UA', type: 'website' },
     };
   }
@@ -30,7 +30,7 @@ export async function generateMetadata(
     return {
       title: `${brand} купити в Україні — офіційний постачальник | FIXLINE`,
       description: `Купити ${brand} в роздріб та оптом. Широкий асортимент, доставка по всій Україні. Від 1 одиниці.`,
-      alternates: { canonical: `${BASE}/shop?brand=${encodeURIComponent(brand)}` },
+      alternates: { canonical: `${BASE}/shop?brand=${encodeURIComponent(brand)}`, languages: { 'uk': `${BASE}/shop?brand=${encodeURIComponent(brand)}`, 'ru': `${BASE}/shop?brand=${encodeURIComponent(brand)}`, 'x-default': `${BASE}/shop?brand=${encodeURIComponent(brand)}` } },
       openGraph: { title: `${brand} | Магазин FIXLINE`, url: `${BASE}/shop?brand=${encodeURIComponent(brand)}`, locale: 'uk_UA', type: 'website' },
     };
   }
@@ -40,7 +40,7 @@ export async function generateMetadata(
       title: `${cat.name} купити — ціни, доставка по Україні | FIXLINE`,
       description: `Купити ${cat.name.toLowerCase()} в роздріб від 1 одиниці. Широкий асортимент, низькі ціни, швидка доставка по всій Україні. Купить ${cat.name.toLowerCase()} с доставкой.`,
       keywords: [cat.name, 'купити', 'купить', 'будівельна хімія', 'строительная химия', 'Україна', 'Украина'],
-      alternates: { canonical: `${BASE}/shop?category=${category}` },
+      alternates: { canonical: `${BASE}/shop?category=${category}`, languages: { 'uk': `${BASE}/shop?category=${category}`, 'ru': `${BASE}/shop?category=${category}`, 'x-default': `${BASE}/shop?category=${category}` } },
       openGraph: {
         title: `${cat.name} | Магазин FIXLINE`,
         description: `${cat.name} — купити від 1 шт з доставкою по Україні.`,
@@ -54,7 +54,7 @@ export async function generateMetadata(
     title: 'Магазин — будівельна хімія в роздріб | FIXLINE',
     description: 'Купити будівельну хімію в роздріб: герметики, монтажні піни, клеї, ґрунтовки. Доставка по всій Україні. Купить строительную химию в розницу: герметики, монтажная пена, клеи.',
     keywords: ['магазин будівельної хімії', 'магазин строительной химии', 'герметики купити', 'герметики купить', 'монтажна піна', 'монтажная пена', 'клей будівельний', 'клей строительный', 'ґрунтовка', 'грунтовка'],
-    alternates: { canonical: `${BASE}/shop` },
+    alternates: { canonical: `${BASE}/shop`, languages: { 'uk': `${BASE}/shop`, 'ru': `${BASE}/shop`, 'x-default': `${BASE}/shop` } },
     openGraph: {
       title: 'Магазин будівельної хімії | FIXLINE',
       description: 'Герметики, монтажні піни, клеї, ґрунтовки. Від 1 одиниці з доставкою по Україні.',
@@ -76,9 +76,43 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   ];
   const breadcrumbLd = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: breadcrumbItems };
 
+  const itemListLd = cat ? await (async () => {
+    const products = await getProductsCached({ category: cat.slug, limit: 10 });
+    if (products.length === 0) return null;
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      name: cat.name,
+      url: `${BASE}/shop?category=${category}`,
+      numberOfItems: products.length,
+      itemListElement: products.map((p, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        item: {
+          '@type': 'Product',
+          name: p.name,
+          url: `${BASE}/product/${p.sku}`,
+          ...(p.image ? { image: `${BASE}${p.image.startsWith('/') ? '' : '/'}${p.image}` } : {}),
+          brand: { '@type': 'Brand', name: p.brand },
+          ...(p.stock ? {
+            offers: {
+              '@type': 'Offer',
+              price: p.stock.price_unit,
+              priceCurrency: 'UAH',
+              availability: p.stock.stock_status === 'in_stock'
+                ? 'https://schema.org/InStock'
+                : 'https://schema.org/OutOfStock',
+            },
+          } : {}),
+        },
+      })),
+    };
+  })() : null;
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      {itemListLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }} />}
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 32px 64px 8px' }} className="mobile-pad">
           <nav aria-label="Breadcrumb" style={{ marginBottom: '24px', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -89,6 +123,9 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
             {brand && <><span>/</span><span style={{ color: '#475569' }}>{brand}</span></>}
             {sale === '1' && <><span>/</span><span style={{ color: '#475569' }}>Акції</span></>}
           </nav>
+          <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 24px' }}>
+            {cat ? cat.name : brand ? `${brand} — каталог товарів` : sale === '1' ? 'Акційні товари' : 'Магазин будівельної хімії'}
+          </h1>
           <ShopLoader initialCategory={category} initialSaleOnly={sale === '1'} initialBrand={brand} />
           {cat && (() => {
             const meta = getCategoryMeta(cat.slug);
@@ -105,28 +142,43 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
             return meta ? (
               <>
               {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />}
-              <details style={{ marginTop: '32px' }}>
-                <summary style={{
-                  fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)',
-                  cursor: 'pointer', userSelect: 'none', listStyle: 'none',
-                  display: 'inline-flex', alignItems: 'center', gap: '6px',
-                  padding: '7px 12px', borderRadius: '8px',
-                  border: '1px solid var(--border)', background: 'var(--bg-card)',
-                }}>
-                  <span>ℹ️ Про категорію «{cat.name}»</span>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>▼</span>
-                </summary>
-                <div style={{ padding: '12px 0 0', borderTop: '1px solid var(--border)' }}>
-                  <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
-                    {meta.description}
+              <div style={{ marginTop: '32px', padding: '16px 20px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '8px' }}>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', margin: 0 }}>
+                    Про категорію «{cat.name}»
                   </p>
-                  {meta.seoText && (
-                    <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7, margin: '8px 0 0' }}>
-                      {meta.seoText}
-                    </p>
+                  {meta.blogSlug && (
+                    <Link href={`/blog/${meta.blogSlug}`} style={{ fontSize: '12px', color: '#4880B8', fontWeight: 600, whiteSpace: 'nowrap', textDecoration: 'none' }}>
+                      Читати статтю →
+                    </Link>
                   )}
                 </div>
-              </details>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
+                  {meta.description}
+                </p>
+                {meta.seoText && (
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7, margin: '8px 0 0' }}>
+                    {meta.seoText}
+                  </p>
+                )}
+                {meta.faq && meta.faq.length > 0 && (
+                  <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                    <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Часті запитання
+                    </p>
+                    {meta.faq.map((item, i) => (
+                      <div key={i} style={{ marginBottom: i < meta.faq!.length - 1 ? '12px' : 0 }}>
+                        <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px' }}>
+                          {item.q}
+                        </p>
+                        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>
+                          {item.a}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               </>
             ) : null;
           })()}

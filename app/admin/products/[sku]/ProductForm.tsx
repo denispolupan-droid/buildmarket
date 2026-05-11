@@ -65,6 +65,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
   const [priceCost, setPriceCost] = useState(product?.stock?.price_cost ?? 0);
   const [stockQty, setStockQty] = useState(product?.stock?.stock_qty ?? 0);
   const [stockStatus, setStockStatus] = useState(product?.stock?.stock_status ?? 'in_stock');
+  const [supplierSku, setSupplierSku] = useState(product?.stock?.supplier_sku ?? '');
 
   const [chars, setChars] = useState<{ label: string; value: string }[]>(
     product?.characteristics?.map(c => ({ label: c.label, value: c.value })) ?? []
@@ -193,6 +194,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
             price_cost: priceCost || null,
             stock_qty: stockQty,
             stock_status: stockStatus,
+            supplier_sku: supplierSku || null,
           },
           characteristics: chars.filter(c => c.label.trim() && c.value.trim()),
         }),
@@ -417,7 +419,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
           <div>
             <label style={labelStyle}>Залишок на складі</label>
             <input type="number" value={stockQty} onChange={e => setStockQty(Number(e.target.value))} style={inputStyle} min={0} />
@@ -429,6 +431,10 @@ export default function ProductForm({ product, categories, isNew }: Props) {
               <option value="out_of_stock">Немає в наявності</option>
               <option value="on_order">Під замовлення</option>
             </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Артикул постачальника</label>
+            <input type="text" value={supplierSku} onChange={e => setSupplierSku(e.target.value)} style={inputStyle} placeholder="напр. SUP-12345" />
           </div>
         </div>
       </div>

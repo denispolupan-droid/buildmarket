@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: 'FIXLINE — професійна будівельна хімія оптом та в роздріб',
   description: 'Герметики, монтажні піни, клеї, ґрунтовки від провідних брендів. Оптові ціни для дилерів та підрядників. Доставка по всій Україні. Строительная химия оптом — герметики, монтажная пена, клеи.',
   keywords: ['будівельна хімія', 'строительная химия', 'герметики', 'монтажна піна', 'монтажная пена', 'клеї', 'клеи', 'ґрунтовки', 'грунтовки', 'будівельна хімія оптом', 'строительная химия оптом', 'купити', 'купить', 'Україна', 'Украина'],
-  alternates: { canonical: 'https://fixline.com.ua' },
+  alternates: { canonical: 'https://fixline.com.ua', languages: { 'uk': 'https://fixline.com.ua', 'ru': 'https://fixline.com.ua', 'x-default': 'https://fixline.com.ua' } },
   openGraph: {
     title: 'FIXLINE — професійна будівельна хімія',
     description: 'Герметики, монтажні піни, клеї, ґрунтовки. Оптові ціни, доставка по Україні.',
@@ -22,6 +22,7 @@ import { getCategoriesCached, getPreviewProductsCached } from '../lib/supabase';
 import Footer from './components/Footer';
 import CategorySection from './components/CategorySection';
 import PromoBanner from './components/PromoBanner';
+import { ARTICLES } from '../lib/blog';
 
 
 const trust = [
@@ -299,7 +300,7 @@ export default async function Home() {
       )}
 
       {/* Trust strip */}
-      <section className="home-trust-section" style={{ background: 'var(--bg-card)', padding: '40px 0', borderTop: '1px solid var(--border)' }}>
+      <section className="home-trust-section" style={{ background: 'var(--bg-card)', padding: '24px 0', borderTop: '1px solid var(--border)' }}>
         <div className="page-container">
           <div className="home-trust-grid">
             {trust.map(({ icon: Icon, bg, iconColor, stat, title, text }) => (
@@ -319,6 +320,44 @@ export default async function Home() {
                 </div>
                 <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{text}</p>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Blog */}
+      <section style={{ background: 'var(--bg-soft)', padding: '48px 0', borderTop: '1px solid var(--border)' }}>
+        <div className="page-container">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '28px' }}>
+            <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+              Корисні статті
+            </h2>
+            <Link href="/blog" style={{ fontSize: '13px', color: '#4880B8', fontWeight: 600, textDecoration: 'none' }}>
+              Всі статті →
+            </Link>
+          </div>
+          <div className="blog-carousel">
+            {ARTICLES.slice(0, 3).map(article => (
+              <Link key={article.slug} href={`/blog/${article.slug}`} className="blog-carousel__card">
+                <div style={{ aspectRatio: '16/9', overflow: 'hidden' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={article.image} alt={article.title} width={600} height={338} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                </div>
+                <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#4880B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {article.category}
+                  </span>
+                  <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, lineHeight: 1.4 }}>
+                    {article.title}
+                  </p>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5, flex: 1 }}>
+                    {article.description}
+                  </p>
+                  <span style={{ fontSize: '12px', color: '#4880B8', fontWeight: 600, marginTop: '4px' }}>
+                    Читати →
+                  </span>
+                </div>
+              </Link>
             ))}
           </div>
         </div>
