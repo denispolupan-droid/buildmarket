@@ -631,8 +631,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                           <td>
                             {priceUnit > 0 ? (
                               <div>
-                                {isSale && <div className="price-old">{priceOld} грн</div>}
-                                <div className={isSale ? 'price-new' : 'price-only'}>{priceUnit} грн</div>
+                                {isSale && <div className="price-old">{Number(priceOld).toFixed(2)} грн</div>}
+                                <div className={isSale ? 'price-new' : 'price-only'}>{Number(priceUnit).toFixed(2)} грн</div>
                               </div>
                             ) : (
                               <span style={{ fontSize: 13, color: '#94A3B8' }}>За запитом</span>
