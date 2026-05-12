@@ -158,7 +158,7 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: calc(14px * 1.4 * 2);
+  height: calc(14px * 1.4 * 2);
 }
 .shop-card__badges {
   display: flex;

@@ -1,15 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Plus, Check, Bell, Heart } from 'lucide-react';
 import { useCart } from '../../../lib/cart';
 import { useWishlist } from '../../../lib/wishlist';
-import { getSupabaseBrowser } from '../../../lib/supabase-browser';
 
 type Props = {
   priceUnit: number;
-  priceWholesale?: number;
-  priceRetail?: number;
   minOrder: number;
   inStock: boolean;
   sku: string;
@@ -23,27 +20,16 @@ type Props = {
   imgType: 'tube' | 'canister';
 };
 
-export default function ProductOrderPanel({ priceUnit, priceWholesale, priceRetail, minOrder, inStock, sku, name, brand, volume, nl1, nl2, bc, ac, imgType }: Props) {
+export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, name, brand, volume, nl1, nl2, bc, ac, imgType }: Props) {
   const [qty, setQty]           = useState(minOrder);
   const [added, setAdded]       = useState(false);
   const [notified,   setNotified]   = useState(false);
   const [notifyEmail, setNotifyEmail] = useState('');
   const [showInput,   setShowInput]   = useState(false);
   const [sending,     setSending]     = useState(false);
-  const [isWholesale, setIsWholesale] = useState(false);
   const { addItem } = useCart();
   const { isLiked, toggle: toggleWish } = useWishlist();
   const liked = isLiked(sku);
-
-  useEffect(() => {
-    getSupabaseBrowser().auth.getUser().then(({ data }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
-      const type = data.user?.user_metadata?.account_type as string | undefined;
-      setIsWholesale(['dealer', 'wholesale', 'contractor', 'shop_owner'].includes(type ?? ''));
-    });
-  }, []);
-
-  const showDualPrice = isWholesale && priceWholesale && priceRetail && priceWholesale < priceRetail;
-  const cartPrice = showDualPrice ? priceWholesale! : priceUnit;
 
   function dec() { setQty(q => Math.max(minOrder, q - 1)); }
   function inc() { setQty(q => q + 1); }
@@ -53,7 +39,7 @@ export default function ProductOrderPanel({ priceUnit, priceWholesale, priceReta
   }
 
   function handleAddToCart() {
-    addItem({ sku, name, brand, volume, price: cartPrice, min_order: minOrder, nl1: nl1 ?? '', nl2: nl2 ?? undefined, bc, ac, img_type: imgType }, qty);
+    addItem({ sku, name, brand, volume, price: priceUnit, min_order: minOrder, nl1: nl1 ?? '', nl2: nl2 ?? undefined, bc, ac, img_type: imgType }, qty);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   }
@@ -73,7 +59,7 @@ export default function ProductOrderPanel({ priceUnit, priceWholesale, priceReta
     }
   }
 
-  const subtotal = (cartPrice * qty).toLocaleString('uk-UA');
+  const subtotal = (priceUnit * qty).toLocaleString('uk-UA');
 
   return (
     <div>
