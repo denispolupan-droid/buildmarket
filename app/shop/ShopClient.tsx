@@ -223,8 +223,14 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     const catEl = catRefs.current[slug];
     const container = catsListRef.current;
     if (!catEl || !container) return;
-    const offset = catEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-    container.scrollTo({ top: container.scrollTop + offset, behavior: 'smooth' });
+    if (container.scrollHeight > container.clientHeight + 4) {
+      // Список з прокруткою — скролимо всередині контейнера
+      const offset = catEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+      container.scrollTo({ top: container.scrollTop + offset, behavior: 'smooth' });
+    } else {
+      // Список повністю розгорнутий — скролимо сторінку вгору
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }, []);
 
   const selectCat = (slug: string | null, scrollSlug?: string) => {
