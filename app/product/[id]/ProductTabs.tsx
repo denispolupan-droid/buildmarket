@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 type Characteristic = { id: number; label: string; value: string };
 
@@ -28,25 +28,33 @@ function formatDescription(text: string): string[] {
 export default function ProductTabs({ description, descriptionFull, characteristics }: Props) {
   const displayDesc = descriptionFull || description;
   const [tab, setTab] = useState<'desc' | 'chars' | 'docs'>('desc');
+  const tabsRef = useRef<HTMLDivElement>(null);
+
+  function switchTab(t: 'desc' | 'chars' | 'docs') {
+    setTab(t);
+    setTimeout(() => {
+      tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }
 
   return (
-    <div className="product-tabs">
+    <div className="product-tabs" ref={tabsRef}>
       <div className="product-tabs__nav">
         <button
           className={'product-tabs__tab' + (tab === 'desc' ? ' is-active' : '')}
-          onClick={() => setTab('desc')}
+          onClick={() => switchTab('desc')}
         >
           Опис
         </button>
         <button
           className={'product-tabs__tab' + (tab === 'chars' ? ' is-active' : '')}
-          onClick={() => setTab('chars')}
+          onClick={() => switchTab('chars')}
         >
           Характеристики
         </button>
         <button
           className={'product-tabs__tab' + (tab === 'docs' ? ' is-active' : '')}
-          onClick={() => setTab('docs')}
+          onClick={() => switchTab('docs')}
         >
           Документи
         </button>
