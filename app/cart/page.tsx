@@ -607,9 +607,16 @@ export default function CartPage() {
                               <Plus size={10} />
                             </button>
                           </div>
-                          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                            {item.price > 0 ? `${(item.price * item.qty).toFixed(2)} грн` : '—'}
-                          </span>
+                          <div style={{ textAlign: 'right' }}>
+                            {item.price > 0 && item.qty > 1 && (
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>
+                                {item.price.toFixed(2)} × {item.qty}
+                              </div>
+                            )}
+                            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                              {item.price > 0 ? `${(item.price * item.qty).toFixed(2)} грн` : '—'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                       <button
