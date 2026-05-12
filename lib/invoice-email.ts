@@ -15,22 +15,33 @@ export type CustomerOrderEmailData = {
 
 export function buildCustomerOrderEmail(d: CustomerOrderEmailData): string {
   const date = new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const isCod = d.paymentType === 'cod';
+  const isCod  = d.paymentType === 'cod';
+  const isCard = d.paymentType === 'card';
   const isGuest = d.userId === null;
   const accountUrl = `${d.siteUrl}/account`;
   const registerUrl = `${d.siteUrl}/login`;
   const telegramSection = d.telegramBotUsername
     ? `<div style="padding:24px 32px;border-bottom:1px solid #F1F5F9;text-align:center;">
         <div style="font-size:12px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">Сповіщення в Telegram</div>
-        <div style="font-size:13px;color:#374151;line-height:1.6;margin-bottom:16px;">Отримуйте миттєві оновлення про статус замовлення прямо в Telegram — без пошти.</div>
+        <div style="font-size:13px;color:#374151;line-height:1.6;margin-bottom:16px;">Натисніть кнопку нижче — отримайте підтвердження замовлення в Telegram і слідкуйте за його статусом.</div>
         <a href="https://t.me/${d.telegramBotUsername}?start=${d.orderId}"
            style="display:inline-block;background:#2AABEE;color:#fff;font-size:13px;font-weight:700;padding:11px 24px;border-radius:8px;text-decoration:none;">
-          Підписатися на сповіщення →
+          Отримати підтвердження в Telegram →
         </a>
       </div>`
     : '';
 
-  const paymentSection = isCod
+  const paymentSection = isCard
+    ? `<div style="padding:24px 32px;border-bottom:1px solid #F1F5F9;">
+        <div style="background:#F0FDF4;border-radius:12px;padding:20px;border:1px solid #BBF7D0;">
+          <div style="font-size:12px;font-weight:700;color:#15803D;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Оплата</div>
+          <div style="font-size:14px;font-weight:700;color:#0F172A;margin-bottom:6px;">✅ Платіж підтверджено</div>
+          <div style="font-size:13px;color:#374151;line-height:1.6;">
+            Ваш платіж успішно прийнято. Замовлення <strong>№${d.orderNumber}</strong> передано в обробку — ми повідомимо вас, коли відправимо товар.
+          </div>
+        </div>
+      </div>`
+    : isCod
     ? `<div style="padding:24px 32px;border-bottom:1px solid #F1F5F9;">
         <div style="background:#F0FDF4;border-radius:12px;padding:20px;border:1px solid #BBF7D0;">
           <div style="font-size:12px;font-weight:700;color:#15803D;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Спосіб оплати</div>
@@ -130,13 +141,13 @@ export function buildCustomerOrderEmail(d: CustomerOrderEmailData): string {
       </table>
     </div>
 
-    <!-- Invoice link -->
-    <div style="padding:24px 32px;border-bottom:1px solid #F1F5F9;text-align:center;">
+    <!-- Invoice link (only for non-card payments) -->
+    ${!isCard ? `<div style="padding:24px 32px;border-bottom:1px solid #F1F5F9;text-align:center;">
       <div style="font-size:13px;color:#64748B;margin-bottom:16px;">Рахунок доступний за посиланням:</div>
       <a href="${d.invoiceUrl}" style="display:inline-block;background:#1E3A5F;color:#fff;font-size:14px;font-weight:700;padding:13px 30px;border-radius:10px;text-decoration:none;">
         📄 Переглянути рахунок
       </a>
-    </div>
+    </div>` : ''}
 
     ${paymentSection}
     ${telegramSection}

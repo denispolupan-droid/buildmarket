@@ -32,7 +32,9 @@ export function notifyAdminNewOrder(order: {
   if (!ADMIN_CHAT_ID) return;
   const company = order.company ? ` (${order.company})` : '';
   const city = order.delivery_city_name ? `\n📦 ${order.delivery_city_name}` : '';
-  const payment = order.payment_type === 'cod' ? 'Накладений платіж' : 'Безготівковий';
+  const payment = order.payment_type === 'cod' ? 'Накладений платіж'
+                : order.payment_type === 'card' ? '💳 Картка — оплачено'
+                : 'Безготівковий';
   sendTelegram(
     ADMIN_CHAT_ID,
     `🛒 <b>Нове замовлення №${order.order_number}</b>\n👤 ${order.contact}${company}\n📱 ${order.phone}\n💰 ${order.total_price} грн (${payment})${city}`,
@@ -48,6 +50,36 @@ export function notifyAdminStatusChange(order: {
   sendTelegram(
     ADMIN_CHAT_ID,
     `🔄 <b>Замовлення №${order.order_number}</b> → ${STATUS_UA[newStatus] ?? newStatus}\n👤 ${order.contact} | ${order.phone}`,
+  );
+}
+
+export async function notifyCustomerNewOrder(
+  chatId: string,
+  order: {
+    order_number: number;
+    items: Array<{ name: string; brand: string; qty: number; price: number }>;
+    total_price: number;
+    payment_type: string;
+    delivery_city_name?: string | null;
+    invoice_url?: string;
+  },
+) {
+  const PAYMENT_UA: Record<string, string> = {
+    cod: 'Накладений платіж',
+    invoice: 'Безготівковий розрахунок',
+  };
+  const itemLines = order.items
+    .map(i => `▪️ ${i.brand} ${i.name} × ${i.qty} — ${(i.price * i.qty).toFixed(0)} ₴`)
+    .join('\n');
+  const city = order.delivery_city_name ? `\n📍 ${order.delivery_city_name}` : '';
+  const payment = PAYMENT_UA[order.payment_type] ?? order.payment_type;
+  const invoiceLine = order.payment_type === 'invoice' && order.invoice_url
+    ? `\n\n📄 <a href="${order.invoice_url}">Переглянути рахунок</a>`
+    : '';
+
+  await sendTelegram(
+    chatId,
+    `✅ <b>Дякуємо за замовлення №${order.order_number}!</b>\n\n${itemLines}\n\n💰 <b>Сума: ${Number(order.total_price).toFixed(0)} ₴</b>\n💳 ${payment}${city}${invoiceLine}\n\nМи повідомимо вас, коли підтвердимо та відправимо замовлення.`,
   );
 }
 
