@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Check, Bell, Heart } from 'lucide-react';
 import { useCart } from '../../../lib/cart';
 import { useWishlist } from '../../../lib/wishlist';
+import { getSupabaseBrowser } from '../../../lib/supabase-browser';
 
 type Props = {
   priceUnit: number;
   minOrder: number;
+  isRetailPage?: boolean;
   inStock: boolean;
   sku: string;
   name: string;
@@ -20,16 +22,25 @@ type Props = {
   imgType: 'tube' | 'canister';
 };
 
-export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, name, brand, volume, nl1, nl2, bc, ac, imgType }: Props) {
+export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, name, brand, volume, nl1, nl2, bc, ac, imgType, isRetailPage }: Props) {
   const [qty, setQty]           = useState(minOrder);
   const [added, setAdded]       = useState(false);
   const [notified,   setNotified]   = useState(false);
   const [notifyEmail, setNotifyEmail] = useState('');
   const [showInput,   setShowInput]   = useState(false);
   const [sending,     setSending]     = useState(false);
+  const [isWholesale, setIsWholesale] = useState(false);
+  const [showModal,   setShowModal]   = useState(false);
   const { addItem } = useCart();
   const { isLiked, toggle: toggleWish } = useWishlist();
   const liked = isLiked(sku);
+
+  useEffect(() => {
+    getSupabaseBrowser().auth.getUser().then(({ data }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
+      const type = data.user?.user_metadata?.account_type as string | undefined;
+      setIsWholesale(['dealer', 'wholesale', 'contractor', 'shop_owner'].includes(type ?? ''));
+    });
+  }, []);
 
   function dec() { setQty(q => Math.max(minOrder, q - 1)); }
   function inc() { setQty(q => q + 1); }
@@ -39,6 +50,7 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
   }
 
   function handleAddToCart() {
+    if (isWholesale && isRetailPage) { setShowModal(true); return; }
     addItem({ sku, name, brand, volume, price: priceUnit, min_order: minOrder, nl1: nl1 ?? '', nl2: nl2 ?? undefined, bc, ac, img_type: imgType }, qty);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
@@ -62,7 +74,7 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
   const subtotal = (priceUnit * qty).toLocaleString('uk-UA');
 
   return (
-    <div>
+    <>
       {inStock ? (
         <>
           <div style={{ fontSize: '13px', color: '#64748B', marginBottom: '8px' }}>Кількість:</div>
@@ -195,6 +207,44 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
           </div>
         </div>
       )}
-    </div>
+
+    {showModal && (
+      <div onClick={() => setShowModal(false)} style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.5)', display: 'flex',
+        alignItems: 'center', justifyContent: 'center', padding: '24px',
+      }}>
+        <div onClick={e => e.stopPropagation()} style={{
+          background: 'var(--bg-card)', borderRadius: '16px',
+          padding: '36px 32px', maxWidth: '420px', width: '100%',
+          textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+        }}>
+          <div style={{ fontSize: '36px', marginBottom: '12px' }}>🏢</div>
+          <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '10px' }}>
+            Ви увійшли як оптовий клієнт
+          </h2>
+          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '24px' }}>
+            У магазині вказані роздрібні ціни. Для замовлення за вашими цінами перейдіть до оптового каталогу.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <a href="/catalog" style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              height: '44px', borderRadius: '10px', background: '#1E3A5F', color: '#fff',
+              fontSize: '14px', fontWeight: 700, textDecoration: 'none',
+            }}>
+              Перейти до оптового каталогу →
+            </a>
+            <button onClick={() => setShowModal(false)} style={{
+              height: '40px', borderRadius: '10px', border: '1px solid var(--border)',
+              background: 'transparent', color: 'var(--text-secondary)',
+              fontSize: '13px', cursor: 'pointer',
+            }}>
+              Залишитись і переглянути магазин
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
