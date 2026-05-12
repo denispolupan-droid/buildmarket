@@ -79,22 +79,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Bad request' }, { status: 400 });
   }
 
-  // Унікальні характеристики — для конкретної категорії або для всіх
-  const categorySlug = req.nextUrl.searchParams.get('category');
-
-  const labelsQuery = serviceClient
-    .from('products')
-    .select('characteristics:product_characteristics(label)');
-
-  if (categorySlug) labelsQuery.eq('category_slug', categorySlug);
-
-  const { data: productsForLabels } = await labelsQuery;
+  // Унікальні характеристики — з УСІХ товарів (щоб шаблон завжди мав усі колонки)
+  const { data: allChars } = await serviceClient
+    .from('product_characteristics')
+    .select('label');
 
   const labelFreq: Record<string, number> = {};
-  (productsForLabels ?? []).forEach((p: { characteristics: { label: string }[] }) => {
-    (p.characteristics ?? []).forEach(c => {
-      labelFreq[c.label] = (labelFreq[c.label] ?? 0) + 1;
-    });
+  (allChars ?? []).forEach((c: { label: string }) => {
+    labelFreq[c.label] = (labelFreq[c.label] ?? 0) + 1;
   });
   const uniqueLabels = Object.entries(labelFreq)
     .sort((a, b) => b[1] - a[1])
