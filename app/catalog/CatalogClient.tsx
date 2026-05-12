@@ -2,26 +2,38 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal } from 'lucide-react';
+import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal } from 'lucide-react';
+import SearchAutocomplete from '../components/SearchAutocomplete';
 import Link from 'next/link';
 import ProductImage from '../components/ProductImage';
 import ScrollToTop from '../components/ScrollToTop';
 import type { ProductFull, Category } from '../../lib/supabase';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
+import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import Footer from '../components/Footer';
+
+const WHOLESALE_MIN = 3000;
 import { getCategoryMeta } from '../../lib/category-descriptions';
 import './catalog.css';
 
 type Props = { products: ProductFull[]; categories: Category[]; initialSearch?: string; initialCategory?: string; initialSaleOnly?: boolean };
 
 export default function CatalogClient({ products, categories, initialSearch = '', initialCategory = '', initialSaleOnly = false }: Props) {
+  const [isWholesale, setIsWholesale] = useState(false);
   const [search,        setSearch]        = useState(initialSearch);
   const [selCat,        setSelCat]        = useState(initialCategory);
   const router = useRouter();
   const catsListRef = useRef<HTMLDivElement>(null);
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sidebarRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    getSupabaseBrowser().auth.getUser().then(({ data }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
+      const type = data.user?.user_metadata?.account_type as string | undefined;
+      setIsWholesale(['dealer', 'wholesale', 'contractor', 'shop_owner'].includes(type ?? ''));
+    });
+  }, []);
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -315,6 +327,23 @@ export default function CatalogClient({ products, categories, initialSearch = ''
             );
           })()}
         </nav>
+
+        {isWholesale && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            padding: '10px 16px', margin: '12px 0 0',
+            background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '10px',
+            fontSize: '13px', color: '#1E40AF',
+          }}>
+            <span style={{ fontSize: '16px' }}>ℹ️</span>
+            <span>
+              Мінімальна сума оптового замовлення — <strong>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong>.
+              Перевірити поточну суму можна у{' '}
+              <a href="/cart" style={{ color: '#1E3A5F', fontWeight: 700 }}>кошику</a>.
+            </span>
+          </div>
+        )}
+
         <div className="catalog-page">
 
           {/* Sidebar */}
@@ -511,15 +540,13 @@ export default function CatalogClient({ products, categories, initialSearch = ''
             </div>
 
             {/* Search */}
-            <div className="search-bar">
-              <Search size={16} className="search-icon" />
-              <input
-                type="text"
-                placeholder="Пошук за назвою, артикулом, брендом..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
-            </div>
+            <SearchAutocomplete
+              value={search}
+              onChange={setSearch}
+              placeholder="Пошук за назвою, артикулом, брендом..."
+              wrapperClassName="search-bar"
+              iconClassName="search-icon"
+            />
 
 
             {/* Table */}

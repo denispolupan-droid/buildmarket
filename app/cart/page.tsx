@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Trash2, ShoppingCart, ArrowLeft, Plus, Minus, Check, ChevronDown, ChevronUp, User, Truck, CreditCard, MessageSquare } from 'lucide-react';
+import { Trash2, ShoppingCart, ArrowLeft, Plus, Minus, Check, ChevronDown, ChevronUp, User, Truck, CreditCard, MessageSquare, AlertCircle } from 'lucide-react';
+
+const WHOLESALE_MIN = 3000;
 import { useCart } from '../../lib/cart';
 import { trackBeginCheckout, trackPurchase } from '../../lib/analytics';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
@@ -646,6 +648,31 @@ export default function CartPage() {
                   <span style={{ color: 'var(--text-primary)' }}>Разом</span>
                   <span style={{ color: 'var(--text-primary)' }}>{totalPrice.toFixed(2)} грн</span>
                 </div>
+                {role === 'wholesale' && (() => {
+                  const pct     = Math.min(100, Math.round((totalPrice / WHOLESALE_MIN) * 100));
+                  const metMin  = totalPrice >= WHOLESALE_MIN;
+                  const need    = WHOLESALE_MIN - totalPrice;
+                  return (
+                    <div style={{ marginBottom: '14px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
+                        <span style={{ color: metMin ? '#15803D' : 'var(--text-secondary)', fontWeight: 600 }}>
+                          {metMin ? '✓ Мінімум досягнуто' : `Мін. замовлення: ${WHOLESALE_MIN.toLocaleString('uk-UA')} ₴`}
+                        </span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+                          {metMin ? '' : `ще ${need.toFixed(0)} ₴`}
+                        </span>
+                      </div>
+                      <div style={{ height: '6px', borderRadius: '4px', background: 'var(--bg-soft)', overflow: 'hidden' }}>
+                        <div style={{
+                          height: '100%', borderRadius: '4px', transition: 'width 0.3s ease',
+                          width: `${pct}%`,
+                          background: metMin ? '#15803D' : '#4880B8',
+                        }} />
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {role === 'guest' && (
                   <div style={{
                     background: '#F0F9FF', border: '1px solid #BAE6FD',
@@ -655,13 +682,29 @@ export default function CartPage() {
                     💡 Можна оформити замовлення без реєстрації — просто заповніть форму.
                   </div>
                 )}
+
+                {role === 'wholesale' && totalPrice < WHOLESALE_MIN && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    background: '#FEF3C7', border: '1px solid #FCD34D',
+                    borderRadius: '10px', padding: '10px 14px', marginBottom: '12px',
+                    fontSize: '13px', color: '#92400E',
+                  }}>
+                    <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                    Додайте товарів ще на {(WHOLESALE_MIN - totalPrice).toFixed(0)} ₴ для оформлення замовлення
+                  </div>
+                )}
+
                 <button
                   onClick={handleSubmit}
-                  disabled={submitting}
+                  disabled={submitting || (role === 'wholesale' && totalPrice < WHOLESALE_MIN)}
                   style={{
                     width: '100%', height: '48px', borderRadius: '10px',
-                    border: 'none', background: submitting ? '#94A3B8' : '#1E3A5F', color: '#fff',
-                    fontSize: '15px', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer',
+                    border: 'none',
+                    background: submitting || (role === 'wholesale' && totalPrice < WHOLESALE_MIN) ? '#94A3B8' : '#1E3A5F',
+                    color: '#fff',
+                    fontSize: '15px', fontWeight: 700,
+                    cursor: submitting || (role === 'wholesale' && totalPrice < WHOLESALE_MIN) ? 'not-allowed' : 'pointer',
                     transition: 'background 0.15s',
                   }}
                 >

@@ -23,6 +23,13 @@ export async function POST(req: NextRequest) {
   if (!Array.isArray(items) || items.length === 0) return NextResponse.json({ error: 'Кошик порожній' }, { status: 400 });
   if (typeof totalPrice !== 'number' || totalPrice < 0) return NextResponse.json({ error: 'Невірна сума' }, { status: 400 });
 
+  // Мінімальне замовлення для оптових клієнтів
+  const WHOLESALE_TYPES = ['dealer', 'wholesale', 'contractor', 'shop_owner'];
+  const accountType = user?.user_metadata?.account_type as string | undefined;
+  if (WHOLESALE_TYPES.includes(accountType ?? '') && totalPrice < 3000) {
+    return NextResponse.json({ error: 'Мінімальна сума оптового замовлення — 3 000 ₴' }, { status: 400 });
+  }
+
   const admin = createSupabaseAdmin();
   const { data, error } = await admin
     .from('orders')
