@@ -86,7 +86,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
               Ви увійшли як оптовий клієнт
             </h1>
             <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '28px' }}>
-              Магазин роздрібних цін недоступний для оптових покупців. Перейдіть до каталогу зі своїми цінами або вийдіть і зайдіть як роздрібний покупець.
+              Розділ «Магазин» призначений для роздрібних покупців. Ваші ціни та асортимент — у оптовому каталозі.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <Link href="/catalog" style={{
@@ -94,14 +94,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
                 height: '46px', borderRadius: '10px', background: '#1E3A5F', color: '#fff',
                 fontSize: '14px', fontWeight: 700, textDecoration: 'none',
               }}>
-                Перейти до оптового каталогу →
-              </Link>
-              <Link href="/api/auth/signout" style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                height: '40px', borderRadius: '10px', border: '1px solid var(--border)',
-                color: 'var(--text-secondary)', fontSize: '13px', textDecoration: 'none',
-              }}>
-                Вийти з акаунту
+                ← Повернутись до каталогу
               </Link>
             </div>
           </div>
