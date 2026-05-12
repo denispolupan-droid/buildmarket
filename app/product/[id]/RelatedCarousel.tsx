@@ -8,20 +8,25 @@ import { useCart } from '../../../lib/cart';
 import { useWishlist } from '../../../lib/wishlist';
 import type { ProductFull } from '../../../lib/supabase';
 
-const VISIBLE = 4;
+const VISIBLE = 5;
 const GAP = 16;
 
 export default function RelatedCarousel({ products, retail = false }: { products: ProductFull[]; retail?: boolean }) {
   const [cur, setCur] = useState(0);
   const [offset, setOffset] = useState(0);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [inputVals,  setInputVals]  = useState<Record<string, string>>({});
   const wrapRef = useRef<HTMLDivElement>(null);
   const { addItem } = useCart();
   const { toggle, isLiked } = useWishlist();
 
   function getQty(sku: string, min: number) { return quantities[sku] ?? min; }
-  function setQty(sku: string, min: number, val: number) {
-    setQuantities(prev => ({ ...prev, [sku]: Math.max(min, val) }));
+  function getInputVal(sku: string, min: number) { return inputVals[sku] ?? String(min); }
+  function commitInput(sku: string, min: number) {
+    const v = parseInt(inputVals[sku] ?? '', 10);
+    const safe = isNaN(v) || v < min ? min : v;
+    setQuantities(prev => ({ ...prev, [sku]: safe }));
+    setInputVals(prev => ({ ...prev, [sku]: String(safe) }));
   }
 
   const maxIndex = Math.max(0, products.length - VISIBLE);
@@ -134,10 +139,12 @@ export default function RelatedCarousel({ products, retail = false }: { products
                 <div className="pc-actions">
                   <input
                     type="number"
-                    value={getQty(p.sku, relMinOrder)}
+                    value={getInputVal(p.sku, relMinOrder)}
                     min={relMinOrder}
                     disabled={!inStock}
-                    onChange={e => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setQty(p.sku, relMinOrder, v); }}
+                    onChange={e => setInputVals(prev => ({ ...prev, [p.sku]: e.target.value }))}
+                    onBlur={() => commitInput(p.sku, relMinOrder)}
+                    onKeyDown={e => e.key === 'Enter' && commitInput(p.sku, relMinOrder)}
                     style={{ width: '48px', height: '38px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#fff', textAlign: 'center', fontSize: '13px', fontWeight: 700, color: '#0F172A', outline: 'none' }}
                   />
                   <button
