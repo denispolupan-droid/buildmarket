@@ -387,7 +387,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                               router.replace(`?category=${cat.slug}`, { scroll: false } as never);
                               setVisibleCount(50);
                               // Скролимо тільки сайдбар після завершення анімації
-                              setTimeout(() => scrollCatToTop(cat.slug), 50);
+                              setTimeout(() => scrollCatToTop(cat.slug), 200);
                             }
                           } else {
                             selectCat(selCat === cat.slug ? '' : cat.slug);

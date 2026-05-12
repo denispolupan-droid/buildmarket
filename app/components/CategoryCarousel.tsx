@@ -163,7 +163,7 @@ export default function CategoryCarousel({ categories, selectedSlug, onSelect, r
       </button>
 
       {/* Track */}
-      <div ref={wrapRef} style={{ overflow: 'hidden', paddingTop: '4px', marginTop: '-4px' }}>
+      <div ref={wrapRef} style={{ overflowX: 'hidden', overflowY: 'visible', paddingTop: '4px', marginTop: '-4px', paddingBottom: '8px', marginBottom: '-8px' }}>
         <div style={{
           display: 'flex', gap: `${GAP}px`,
           transform: `translateX(-${offset}px)`,

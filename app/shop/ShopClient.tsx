@@ -421,7 +421,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                         router.replace(`?category=${cat.slug}`, { scroll: false } as never);
                         setVisibleCount(24);
                         // Тільки сайдбар — після анімації
-                        setTimeout(() => scrollCatToTop(cat.slug), 50);
+                        setTimeout(() => scrollCatToTop(cat.slug), 200);
                       }
                     } else {
                       selectCat(selCat === cat.slug ? null : cat.slug);
