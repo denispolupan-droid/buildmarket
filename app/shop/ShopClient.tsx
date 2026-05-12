@@ -9,28 +9,24 @@ import ProductImage from '../components/ProductImage';
 import ScrollToTop from '../components/ScrollToTop';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
-import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import type { ProductFull, Category } from '../../lib/supabase';
 
 type CardProps = {
   p: ProductFull;
   price: number | null;
   priceOld: number | null;
-  wholesalePrice: number | null;
-  isWholesale: boolean;
   inStock: boolean;
   salePercent: number | null;
   isWished: boolean;
   onToggleWish: () => void;
 };
 
-function ShopCard({ p, price, priceOld, wholesalePrice, isWholesale, inStock, salePercent, isWished, onToggleWish }: CardProps) {
+function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggleWish }: CardProps) {
   const [qty, setQty] = useState(1);
   const [inputVal, setInputVal] = useState('1');
   const [copied, setCopied] = useState(false);
   const { addItem, items } = useCart();
   const inCart = items.some(i => i.sku === p.sku);
-  const cartPrice = isWholesale && wholesalePrice ? wholesalePrice : (price ?? 0);
 
   function handleCopySku(e: React.MouseEvent) {
     e.preventDefault();
@@ -44,7 +40,7 @@ function ShopCard({ p, price, priceOld, wholesalePrice, isWholesale, inStock, sa
   function handleAdd() {
     addItem({
       sku: p.sku, name: p.name, brand: p.brand, volume: p.volume ?? null,
-      price: cartPrice, min_order: 1,
+      price: price ?? 0, min_order: 1,
       nl1: p.nl1 ?? '', nl2: p.nl2 ?? undefined,
       bc: p.bc, ac: p.ac, img_type: p.img_type, imageUrl: p.image ?? undefined,
     }, qty);
@@ -98,19 +94,10 @@ function ShopCard({ p, price, priceOld, wholesalePrice, isWholesale, inStock, sa
             </div>
             <div className="shop-card__price-wrap" style={{ textAlign: 'right' }}>
               {priceOld && <span className="shop-card__price-old">{priceOld} грн</span>}
-              {isWholesale && wholesalePrice && price && wholesalePrice < price ? (
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', justifyContent: 'flex-end' }}>
-                  <div className="shop-card__price" style={{ color: '#15803D' }}>{wholesalePrice} <span>грн</span></div>
-                  <span style={{ fontSize: '11px', color: '#94A3B8', whiteSpace: 'nowrap' }}>{price} грн</span>
-                </div>
-              ) : (
-                <>
-                  {price
-                    ? <div className="shop-card__price">{price} <span>грн</span></div>
-                    : <div className="shop-card__price-na">Ціна за запитом</div>
-                  }
-                </>
-              )}
+              {price
+                ? <div className="shop-card__price">{price} <span>грн</span></div>
+                : <div className="shop-card__price-na">Ціна за запитом</div>
+              }
             </div>
           </div>
         </div>
@@ -162,7 +149,6 @@ type Props = {
 };
 
 export default function ShopClient({ products, categories, initialSaleOnly = false, initialCategory, initialBrand }: Props) {
-  const [isWholesale, setIsWholesale] = useState(false);
   const [search,       setSearch]       = useState('');
   const [selCat,       setSelCat]       = useState<string | null>(initialCategory ?? null);
   const [saleOnly,     setSaleOnly]     = useState(initialSaleOnly);
@@ -213,13 +199,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     };
     document.addEventListener('wheel', handleWheel, { passive: false });
     return () => document.removeEventListener('wheel', handleWheel);
-  }, []);
-
-  useEffect(() => {
-    getSupabaseBrowser().auth.getUser().then(({ data }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
-      const type = data.user?.user_metadata?.account_type as string | undefined;
-      setIsWholesale(['dealer', 'wholesale', 'contractor', 'shop_owner'].includes(type ?? ''));
-    });
   }, []);
 
   useEffect(() => {
@@ -622,7 +601,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           {filtered.slice(0, visibleCount).map(p => {
             const price = p.stock?.price_retail ?? null;
             const priceOld = p.stock?.price_retail_old ?? null;
-            const wholesalePrice = p.stock?.price_unit ?? null;
             const inStock = (p.stock?.stock_qty ?? 0) >= 1;
             const salePercent = price && priceOld
               ? Math.round((1 - price / priceOld) * 100)
@@ -633,8 +611,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                 p={p}
                 price={price}
                 priceOld={priceOld}
-                wholesalePrice={wholesalePrice}
-                isWholesale={isWholesale}
                 inStock={inStock}
                 salePercent={salePercent}
                 isWished={wishSkus.has(p.sku)}
