@@ -200,7 +200,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       if (filterVolumeKg && p.volume !== filterVolumeKg) return false;
       if (inStockOnly) {
         const s = p.stock;
-        const available = s?.stock_status === 'in_stock' || (s?.stock_qty ?? 0) >= p.min_order;
+        const available = s?.stock_status === 'in_stock' || (s?.stock_qty ?? 0) >= 1;
         if (!available) return false;
       }
       if (saleOnly) {
@@ -227,7 +227,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       'Назва':           p.name,
       'Бренд':           p.brand,
       'Обʼєм':           p.volume ?? '',
-      'Мін. замовлення': p.min_order,
+      'Мін. замовлення': 1,
       'Ціна, грн':       p.stock?.price_unit ?? '',
     }));
 
@@ -286,7 +286,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   function handleAddToCart(p: ProductFull, qty: number) {
     addItem({
       sku: p.sku, name: p.name, brand: p.brand, volume: p.volume,
-      price: p.stock?.price_unit ?? 0, min_order: p.min_order,
+      price: p.stock?.price_unit ?? 0, min_order: 1,
       nl1: p.nl1 ?? '', nl2: p.nl2 ?? undefined,
       bc: p.bc, ac: p.ac, img_type: p.img_type, imageUrl: p.image ?? undefined,
     }, qty);
@@ -588,9 +588,9 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                       const priceOld  = p.stock?.price_old  ?? null;
                       const stockQty  = p.stock?.stock_qty    ?? 0;
                       const stockSt   = p.stock?.stock_status;
-                      const inStock   = stockSt === 'in_stock' || stockQty >= p.min_order;
+                      const inStock   = stockSt === 'in_stock' || stockQty >= 1;
                       const isSale    = priceOld != null && priceUnit > 0 && priceUnit < priceOld;
-                      const qty       = getQty(p.sku, p.min_order);
+                      const qty       = getQty(p.sku, 1);
                       const packStr   = `${p.pack_qty} шт`;
 
                       return (
@@ -643,11 +643,11 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                             <input
                               className="qty-input"
                               type="number"
-                              value={getInputVal(p.sku, p.min_order)}
-                              min={p.min_order}
+                              value={getInputVal(p.sku, 1)}
+                              min={1}
                               placeholder="Мін."
                               onChange={e => setInputVals(prev => ({ ...prev, [p.sku]: e.target.value }))}
-                              onBlur={() => commitInputVal(p.sku, p.min_order)}
+                              onBlur={() => commitInputVal(p.sku, 1)}
                             />
                           </td>
                           <td style={{ position: 'relative', zIndex: 1, paddingLeft: '10px', paddingRight: '14px' }}>
