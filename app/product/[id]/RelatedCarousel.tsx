@@ -8,7 +8,7 @@ import { useCart } from '../../../lib/cart';
 import { useWishlist } from '../../../lib/wishlist';
 import type { ProductFull } from '../../../lib/supabase';
 
-const VISIBLE = 5;
+const VISIBLE = 4;
 const GAP = 16;
 
 export default function RelatedCarousel({ products, retail = false }: { products: ProductFull[]; retail?: boolean }) {

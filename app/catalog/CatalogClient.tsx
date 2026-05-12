@@ -403,8 +403,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                       </div>
                       <div style={{
                         overflow: 'hidden',
-                        maxHeight: isExpanded ? `${children.length * 40}px` : '0',
-                        transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                        maxHeight: isExpanded ? '2000px' : '0',
+                        transition: 'max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
                       }}>
                         {children.map(child => (
                           <div

@@ -435,7 +435,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                       : <ChevronRight size={12} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.5 }} />
                   )}
                 </button>
-                <div style={{ overflow: 'hidden', maxHeight: isExpanded ? `${children.length * 80}px` : '0', transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+                <div style={{ overflow: 'hidden', maxHeight: isExpanded ? '2000px' : '0', transition: 'max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1)' }}>
                 {children.map(child => {
                   const grandchildren = childrenOf[child.slug] ?? [];
                   const childExpanded = expandedCats.has(child.slug);
@@ -458,7 +458,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                           : <ChevronRight size={11} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.4 }} />
                         )}
                       </button>
-                      <div style={{ overflow: 'hidden', maxHeight: childExpanded ? `${grandchildren.length * 36}px` : '0', transition: 'max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+                      <div style={{ overflow: 'hidden', maxHeight: childExpanded ? '1000px' : '0', transition: 'max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1)' }}>
                         {grandchildren.map(gc => (
                           <button
                             key={gc.slug}
