@@ -77,18 +77,6 @@ export default function ProductOrderPanel({ priceUnit, priceWholesale, priceReta
 
   return (
     <div>
-      {showDualPrice && (
-        <div style={{ marginBottom: '12px', padding: '12px 16px', background: '#F0FDF4', borderRadius: '10px', border: '1px solid #BBF7D0' }}>
-          <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '4px' }}>
-            Роздріб: {priceRetail} грн / шт
-          </div>
-          <div style={{ fontSize: '11px', color: '#15803D', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Ваша ціна</div>
-          <div style={{ fontSize: '26px', fontWeight: 800, color: '#15803D', lineHeight: 1 }}>
-            {priceWholesale} <span style={{ fontSize: '14px', fontWeight: 500, color: '#15803D' }}>грн / шт</span>
-          </div>
-        </div>
-      )}
-
       {inStock ? (
         <>
           <div style={{ fontSize: '13px', color: '#64748B', marginBottom: '8px' }}>Кількість:</div>

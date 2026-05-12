@@ -11,6 +11,7 @@ import RelatedCarousel from './RelatedCarousel';
 import BackButton from './BackButton';
 import Footer from '../../components/Footer';
 import ProductReviews from './ProductReviews';
+import ProductPriceDisplay from './ProductPriceDisplay';
 import { createClient } from '@supabase/supabase-js';
 import './product.css';
 
@@ -196,17 +197,14 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
             <hr className="product-info__divider" />
 
             {priceUnit > 0 ? (
-              <>
-                <div className="product-info__price-unit">{priceUnit} грн / шт</div>
-                <div className="product-info__price-row-sub">
-                  {priceOld && <span className="product-info__price-old">{priceOld} грн</span>}
-                  {!isRetail && (
-                    <span className="product-info__price-pack">
-                      {pricePack.toLocaleString('uk-UA')} грн / уп ({product.pack_qty} шт)
-                    </span>
-                  )}
-                </div>
-              </>
+              <ProductPriceDisplay
+                priceUnit={priceUnit}
+                priceRetail={product.stock?.price_retail ?? null}
+                priceOld={priceOld}
+                pricePack={pricePack}
+                packQty={product.pack_qty}
+                isRetailPage={isRetail}
+              />
             ) : (
               <div className="product-info__price-unit" style={{fontSize:'20px',color:'var(--text-muted)'}}>Ціна за запитом</div>
             )}

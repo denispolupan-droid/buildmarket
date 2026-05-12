@@ -49,8 +49,13 @@ const PAYMENT_LABEL: Record<string, string> = {
 };
 
 const FILTER_TABS = [
-  { value: '', label: 'Всі' },
-  ...STATUSES,
+  { value: 'new',             label: 'Нові' },
+  { value: 'pending_payment', label: 'Очікує оплати' },
+  { value: 'confirmed',       label: 'Підтверджено' },
+  { value: 'shipped',         label: 'Відправлено' },
+  { value: 'delivered',       label: 'Доставлено' },
+  { value: 'cancelled',       label: 'Скасовано' },
+  { value: '',                label: 'Всі' },
 ];
 
 export default function AdminOrders({ initialOrders, currentPage = 1, totalPages = 1 }: { initialOrders: Order[]; currentPage?: number; totalPages?: number }) {
