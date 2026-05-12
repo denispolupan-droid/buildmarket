@@ -78,23 +78,18 @@ function ShopCard({ p, price, priceOld, wholesalePrice, isWholesale, inStock, sa
               </>);
             })()}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '4px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '11px', color: '#94A3B8' }}>Арт. {p.sku}</span>
-              <button
-                onClick={handleCopySku}
-                title="Копіювати артикул"
-                style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: copied ? '#16A34A' : '#CBD5E1', lineHeight: 1, display: 'flex', alignItems: 'center' }}
-              >
-                {copied
-                  ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                }
-              </button>
-            </div>
-            {isWholesale && wholesalePrice && price && wholesalePrice < price && (
-              <span style={{ fontSize: '11px', color: '#94A3B8' }}>Роздріб: {price} грн</span>
-            )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+            <span style={{ fontSize: '11px', color: '#94A3B8' }}>Арт. {p.sku}</span>
+            <button
+              onClick={handleCopySku}
+              title="Копіювати артикул"
+              style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: copied ? '#16A34A' : '#CBD5E1', lineHeight: 1, display: 'flex', alignItems: 'center' }}
+            >
+              {copied
+                ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              }
+            </button>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
             <div className={'shop-card__stock' + (inStock ? '' : ' out')}>
@@ -102,14 +97,14 @@ function ShopCard({ p, price, priceOld, wholesalePrice, isWholesale, inStock, sa
               {inStock ? 'В наявності' : 'Немає'}
             </div>
             <div className="shop-card__price-wrap" style={{ textAlign: 'right' }}>
+              {priceOld && <span className="shop-card__price-old">{priceOld} грн</span>}
               {isWholesale && wholesalePrice && price && wholesalePrice < price ? (
-                <>
-                  <div style={{ fontSize: '10px', color: '#15803D', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Ваша ціна</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', justifyContent: 'flex-end' }}>
                   <div className="shop-card__price" style={{ color: '#15803D' }}>{wholesalePrice} <span>грн</span></div>
-                </>
+                  <span style={{ fontSize: '11px', color: '#94A3B8', whiteSpace: 'nowrap' }}>{price} грн</span>
+                </div>
               ) : (
                 <>
-                  {priceOld && <span className="shop-card__price-old">{priceOld} грн</span>}
                   {price
                     ? <div className="shop-card__price">{price} <span>грн</span></div>
                     : <div className="shop-card__price-na">Ціна за запитом</div>

@@ -40,6 +40,11 @@ function LoginForm() {
       await fetch('/api/auth/sync-partner', { method: 'POST' });
     }
 
+    // Очищаємо кошик при вході оптовика — гість міг додати товари з роздрібними цінами
+    if (role === 'wholesale') {
+      localStorage.removeItem('fixline_cart');
+    }
+
     if (role === 'dropship') {
       router.push('/cabinet');
     } else {
