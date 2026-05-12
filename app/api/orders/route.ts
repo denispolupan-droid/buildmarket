@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createSupabaseServer, createSupabaseAdmin } from '../../../lib/supabase-server';
 import { buildAdminNotificationHtml, buildCustomerOrderEmail } from '../../../lib/invoice-email';
-import { notifyAdminNewOrder } from '../../../lib/telegram';
+import { notifyAdminNewOrder, notifyCustomerNewOrder } from '../../../lib/telegram';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
       delivery_city_name: deliveryCityName ?? null,
       delivery_warehouse_ref: deliveryWarehouseRef ?? null,
       payment_type: paymentType,
+      status: paymentType === 'card' ? 'pending_payment' : 'new',
       comment: comment ?? null,
       items,
       total_price: totalPrice,
@@ -100,30 +101,93 @@ export async function POST(req: NextRequest) {
     console.error('[admin email]', e);
   }
 
-  const customerSubject = paymentType === 'cod'
-    ? `Замовлення №${data.order_number} оформлено — FIXLINE`
-    : `Рахунок №${data.order_number} — FIXLINE`;
+  // Check if customer already has Telegram linked from a previous order
+  const { data: prevOrder } = await admin
+    .from('orders')
+    .select('telegram_chat_id')
+    .eq('email', email)
+    .neq('id', data.id)
+    .not('telegram_chat_id', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  try {
-    await resend.emails.send({
-      from: FROM,
-      to: email,
-      subject: customerSubject,
-      html: buildCustomerOrderEmail({
-        orderNumber: data.order_number,
-        orderId: data.id,
-        company: company ?? '',
-        contact,
-        totalPrice,
-        paymentType,
-        userId: user?.id ?? null,
-        invoiceUrl,
-        siteUrl,
-        telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME,
-      }),
+  const existingChatId = prevOrder?.telegram_chat_id ?? null;
+
+  if (existingChatId) {
+    // Repeat customer with Telegram — update new order and send via Telegram only
+    await admin
+      .from('orders')
+      .update({ telegram_chat_id: existingChatId })
+      .eq('id', data.id);
+
+    notifyCustomerNewOrder(existingChatId, {
+      order_number: data.order_number,
+      items,
+      total_price: totalPrice,
+      payment_type: paymentType,
+      delivery_city_name: deliveryCityName ?? null,
+      invoice_url: paymentType === 'invoice' ? invoiceUrl : undefined,
     });
-  } catch (e) {
-    console.error('[customer email]', e);
+  } else {
+    // First order or no Telegram — send email with Telegram subscribe button
+    const customerSubject = paymentType === 'cod'
+      ? `Замовлення №${data.order_number} оформлено — FIXLINE`
+      : `Рахунок №${data.order_number} — FIXLINE`;
+
+    try {
+      await resend.emails.send({
+        from: FROM,
+        to: email,
+        subject: customerSubject,
+        html: buildCustomerOrderEmail({
+          orderNumber: data.order_number,
+          orderId: data.id,
+          company: company ?? '',
+          contact,
+          totalPrice,
+          paymentType,
+          userId: user?.id ?? null,
+          invoiceUrl,
+          siteUrl,
+          telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME,
+        }),
+      });
+    } catch (e) {
+      console.error('[customer email]', e);
+    }
+  }
+
+  // Card payment — create Monobank invoice and return pageUrl
+  if (paymentType === 'card') {
+    try {
+      const token = (process.env.MONOBANK_API_TOKEN ?? '').replace(/[^\x20-\x7E]/g, '').trim();
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua';
+      const reference = `order_${data.id}_${Date.now()}`;
+      const monoRes = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
+        method: 'POST',
+        headers: { 'X-Token': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount:   Math.round(totalPrice * 100),
+          ccy:      980,
+          merchantPaymInfo: {
+            reference,
+            destination: `Замовлення №${data.order_number} — FIXLINE`,
+            comment:     `Замовлення №${data.order_number}`,
+          },
+          redirectUrl: `${siteUrl}/order-success?id=${data.id}&num=${data.order_number}&paid=1`,
+          webHookUrl:  `${siteUrl}/api/webhooks/monobank`,
+        }),
+      });
+      const monoData = await monoRes.json();
+      if (monoRes.ok && monoData.pageUrl) {
+        return NextResponse.json({ id: data.id, orderNumber: data.order_number, pageUrl: monoData.pageUrl });
+      }
+      // If Monobank fails, still return order (user can pay later by invoice)
+      console.error('[monobank invoice]', monoData);
+    } catch (e) {
+      console.error('[monobank invoice]', e);
+    }
   }
 
   return NextResponse.json({ id: data.id, orderNumber: data.order_number });

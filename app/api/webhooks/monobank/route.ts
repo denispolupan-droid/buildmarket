@@ -31,37 +31,47 @@ export async function POST(req: NextRequest) {
   }
 
   const { reference, amount, ccy } = body;
-  if (ccy !== 980) return NextResponse.json({ ok: true }); // тільки UAH
+  if (ccy !== 980) return NextResponse.json({ ok: true });
 
-  // reference: topup_{customer_id}_{timestamp}
-  const match = reference?.match(/^topup_([a-f0-9-]+)_\d+$/);
-  if (!match) return NextResponse.json({ ok: true });
+  const amountUah = amount / 100;
 
-  const customerId = match[1];
-  const amountUah  = amount / 100; // копійки → гривні
+  // ── Поповнення балансу партнера ─────────────────────────────────────────
+  const topupMatch = reference?.match(/^topup_([a-f0-9-]+)_\d+$/);
+  if (topupMatch) {
+    const customerId = topupMatch[1];
 
-  const { data: customer } = await serviceClient
-    .from('customers')
-    .select('id, name')
-    .eq('id', customerId)
-    .single();
+    const { data: customer } = await serviceClient
+      .from('customers').select('id').eq('id', customerId).single();
 
-  if (!customer) return NextResponse.json({ ok: true });
+    if (customer) {
+      await serviceClient
+        .from('partner_balance_transactions')
+        .delete()
+        .eq('customer_id', customerId)
+        .eq('created_by', 'monobank_pending');
 
-  // Видаляємо pending-запис і зараховуємо реальну суму через тригер
-  await serviceClient
-    .from('partner_balance_transactions')
-    .delete()
-    .eq('customer_id', customerId)
-    .eq('created_by', 'monobank_pending');
+      await serviceClient.from('partner_balance_transactions').insert({
+        customer_id: customerId,
+        tx_type:     'top_up',
+        amount:      amountUah,
+        description: `Поповнення карткою онлайн — ${amountUah.toFixed(2)} ₴`,
+        created_by:  'monobank_webhook',
+      });
+    }
+    return NextResponse.json({ ok: true });
+  }
 
-  await serviceClient.from('partner_balance_transactions').insert({
-    customer_id: customerId,
-    tx_type:     'top_up',
-    amount:      amountUah,
-    description: `Поповнення карткою онлайн — ${amountUah.toFixed(2)} ₴`,
-    created_by:  'monobank_webhook',
-  });
+  // ── Оплата замовлення з кошика ──────────────────────────────────────────
+  const orderMatch = reference?.match(/^order_([a-f0-9-]+)_\d+$/);
+  if (orderMatch) {
+    const orderId = orderMatch[1];
+
+    await serviceClient
+      .from('orders')
+      .update({ status: 'confirmed', payment_type: 'card' })
+      .eq('id', orderId)
+      .eq('status', 'pending_payment');
+  }
 
   return NextResponse.json({ ok: true });
 }

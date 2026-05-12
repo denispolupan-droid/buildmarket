@@ -36,9 +36,15 @@ function formatPhone(localDigits: string): string {
   return r + '-' + d.slice(8, 10);
 }
 
-const PAYMENT_OPTIONS = [
-  { value: 'invoice',  label: 'Безготівковий розрахунок (рахунок-фактура)' },
-  { value: 'cod',      label: 'Оплата при отриманні' },
+const PAYMENT_OPTIONS_RETAIL = [
+  { value: 'card',    label: 'Оплата карткою онлайн',                      sub: 'Visa · Mastercard · Apple Pay · Google Pay' },
+  { value: 'cod',     label: 'Накладний платіж (оплата при отриманні)',     sub: null },
+];
+
+const PAYMENT_OPTIONS_WHOLESALE = [
+  { value: 'card',    label: 'Оплата карткою онлайн',                      sub: 'Visa · Mastercard · Apple Pay · Google Pay' },
+  { value: 'cod',     label: 'Накладний платіж (оплата при отриманні)',     sub: null },
+  { value: 'invoice', label: 'Безготівковий розрахунок по рахунку (IBAN)', sub: 'Для ФОП та юридичних осіб · без РРО' },
 ];
 
 const inputStyle: React.CSSProperties = {
@@ -234,7 +240,11 @@ export default function CartPage() {
       if (!res.ok) throw new Error(data.error ?? 'Помилка сервера');
       trackPurchase(String(data.id), items, totalPrice);
       clearCart();
-      router.push(`/order-success?id=${data.id}&num=${data.orderNumber}${isRetail ? '&from=shop' : ''}`);
+      if (payment === 'card' && data.pageUrl) {
+        window.location.href = data.pageUrl;
+      } else {
+        router.push(`/order-success?id=${data.id}&num=${data.orderNumber}${isRetail ? '&from=shop' : ''}`);
+      }
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : 'Невідома помилка');
     } finally {
@@ -246,9 +256,10 @@ export default function CartPage() {
     return errors.has(field) ? '1.5px solid #EF4444' : undefined;
   }
 
-  const isRetail = role !== 'wholesale';
-  const backHref = isRetail ? '/shop' : '/catalog';
-  const backLabel = isRetail ? 'До магазину' : 'До каталогу';
+  const isRetail     = role !== 'wholesale';
+  const backHref     = isRetail ? '/shop' : '/catalog';
+  const backLabel    = isRetail ? 'До магазину' : 'До каталогу';
+  const PAYMENT_OPTIONS = isRetail ? PAYMENT_OPTIONS_RETAIL : PAYMENT_OPTIONS_WHOLESALE;
 
   if (!loaded) return (
     <div style={{ background: 'var(--bg-soft)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -483,7 +494,10 @@ export default function CartPage() {
                         {payment === opt.value && <Check size={10} color="#fff" strokeWidth={3} />}
                       </div>
                       <input type="radio" name="payment" value={opt.value} checked={payment === opt.value} onChange={() => { setPayment(opt.value); setErrors(s => { const n = new Set(s); n.delete('payment'); return n; }); }} style={{ display: 'none' }} />
-                      <span style={{ fontSize: '14px', fontWeight: payment === opt.value ? 600 : 500, color: 'var(--text-primary)', flex: 1 }}>{opt.label}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '14px', fontWeight: payment === opt.value ? 600 : 500, color: 'var(--text-primary)' }}>{opt.label}</div>
+                        {opt.sub && <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{opt.sub}</div>}
+                      </div>
                       {payment === opt.value && (
                         <button
                           onClick={e => { e.preventDefault(); setPayment(''); }}
@@ -643,7 +657,7 @@ export default function CartPage() {
                     transition: 'background 0.15s',
                   }}
                 >
-                  {submitting ? 'Відправляємо...' : 'Підтвердити замовлення →'}
+                  {submitting ? 'Завантаження...' : payment === 'card' ? 'Перейти до оплати →' : 'Підтвердити замовлення →'}
                 </button>
                 {submitError && (
                   <p style={{ fontSize: '12px', color: '#EF4444', textAlign: 'center', marginTop: '8px' }}>{submitError}</p>
