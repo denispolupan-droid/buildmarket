@@ -412,24 +412,19 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                   className={'shop-cat-item' + (isDirectActive ? ' active' : isParentActive ? ' parent-active' : '')}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
                   onClick={() => {
-                    if (children.length > 0 && window.innerWidth <= 768) {
+                    const expanding = !expandedCats.has(cat.slug);
+                    if (children.length > 0) {
                       setExpandedCats(prev => { const next = new Set(prev); next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug); return next; });
-                      setTimeout(() => scrollCatToTop(cat.slug), 320);
-                    } else if (children.length > 0 && !expandedCats.has(cat.slug)) {
-                      setExpandedCats(prev => { const next = new Set(prev); next.add(cat.slug); return next; });
-                      selectCat(cat.slug);
-                      setTimeout(() => scrollCatToTop(cat.slug), 320);
-                    } else {
-                      selectCat(selCat === cat.slug ? null : cat.slug);
-                      if (children.length > 0) {
-                        setExpandedCats(prev => {
-                          const next = new Set(prev);
-                          next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug);
-                          return next;
-                        });
+                      if (expanding) {
+                        // Оновлюємо фільтр БЕЗ скролу сторінки
+                        setSelCat(cat.slug);
+                        router.replace(`?category=${cat.slug}`, { scroll: false } as never);
+                        setVisibleCount(24);
+                        // Тільки сайдбар — після анімації
                         setTimeout(() => scrollCatToTop(cat.slug), 320);
                       }
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    } else {
+                      selectCat(selCat === cat.slug ? null : cat.slug);
                     }
                   }}
                 >
