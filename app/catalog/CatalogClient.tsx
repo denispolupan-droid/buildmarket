@@ -70,12 +70,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     const catEl = catRefs.current[slug];
     const container = catsListRef.current;
     if (!catEl || !container) return;
-    if (container.scrollHeight > container.clientHeight + 4) {
-      const offset = catEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-      container.scrollTo({ top: container.scrollTop + offset, behavior: 'smooth' });
-    } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    const offset = catEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+    container.scrollTo({ top: container.scrollTop + offset, behavior: 'smooth' });
   }, []);
 
   const selectCat = (slug: string, scrollSlug?: string) => {
