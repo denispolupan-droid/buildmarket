@@ -577,7 +577,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                       <th>Об&apos;єм</th>
                       <th>Наявність</th>
                       <th>Ціна</th>
-                      <th>Мін. к-ть</th>
+                      <th>Уп-ка</th>
                       <th>К-ть</th>
                       <th>Дії</th>
                     </tr>
@@ -591,10 +591,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                       const inStock   = stockSt === 'in_stock' || stockQty >= p.min_order;
                       const isSale    = priceOld != null && priceUnit > 0 && priceUnit < priceOld;
                       const qty       = getQty(p.sku, p.min_order);
-                      const packFrac  = p.min_order / p.pack_qty;
-                      const packStr   = Number.isInteger(packFrac)
-                        ? `${p.min_order} рс / ${packFrac} уп`
-                        : `${p.min_order} рс / ${packFrac.toFixed(1)} уп`;
+                      const packStr   = `${p.pack_qty} шт`;
 
                       return (
                         <tr key={p.sku} style={{ position: 'relative' }}>
