@@ -2,17 +2,25 @@
 
 export const dynamic = 'force-dynamic';
 
+import { useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle, ShoppingBag, Phone } from 'lucide-react';
-import { Suspense } from 'react';
+import { CheckCircle, ShoppingBag } from 'lucide-react';
+import { useCart } from '../../lib/cart';
 import Footer from '../components/Footer';
 
 function SuccessContent() {
-  const params = useSearchParams();
-  const orderNum = params.get('num');
-  const short = orderNum ? `#${orderNum}` : '—';
+  const params      = useSearchParams();
+  const orderNum    = params.get('num');
+  const isPaid      = params.get('paid') === '1';
+  const short       = orderNum ? `#${orderNum}` : '—';
   const continuePath = params.get('from') === 'shop' ? '/shop' : '/catalog';
+  const { clearCart } = useCart();
+
+  useEffect(() => {
+    if (isPaid) clearCart();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPaid]);
 
   return (
     <>
@@ -27,17 +35,20 @@ function SuccessContent() {
         }}>
           <div style={{
             width: '72px', height: '72px', borderRadius: '50%',
-            background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: isPaid ? '#DCFCE7' : '#DCFCE7',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 24px',
           }}>
             <CheckCircle size={36} color="#16A34A" strokeWidth={1.5} />
           </div>
 
           <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>
-            Замовлення прийнято!
+            {isPaid ? 'Оплату підтверджено!' : 'Замовлення прийнято!'}
           </h1>
           <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '24px', lineHeight: 1.6 }}>
-            Дякуємо за замовлення. Наш менеджер зв&apos;яжеться з вами найближчим часом для підтвердження.
+            {isPaid
+              ? 'Ваш платіж успішно прийнято. Замовлення передано в обробку — ми повідомимо вас про відправку.'
+              : 'Дякуємо за замовлення. Наш менеджер зв\'яжеться з вами найближчим часом для підтвердження.'}
           </p>
 
           <div style={{
@@ -50,15 +61,14 @@ function SuccessContent() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <Link href={continuePath} style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-              height: '46px', borderRadius: '10px', background: '#1E3A5F', color: '#fff',
-              fontSize: '14px', fontWeight: 700, textDecoration: 'none',
-            }}>
-              <ShoppingBag size={16} />Продовжити покупки
-            </Link>
-          </div>
+          <Link href={continuePath} style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            height: '46px', padding: '0 28px', borderRadius: '10px',
+            background: '#1E3A5F', color: '#fff',
+            fontSize: '14px', fontWeight: 700, textDecoration: 'none',
+          }}>
+            <ShoppingBag size={16} />Продовжити покупки
+          </Link>
         </div>
       </div>
       <Footer />

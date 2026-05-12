@@ -239,10 +239,11 @@ export default function CartPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Помилка сервера');
       trackPurchase(String(data.id), items, totalPrice);
-      clearCart();
       if (payment === 'card' && data.pageUrl) {
+        // Кошик очищається на success-сторінці після підтвердження оплати
         window.location.href = data.pageUrl;
       } else {
+        clearCart();
         router.push(`/order-success?id=${data.id}&num=${data.orderNumber}${isRetail ? '&from=shop' : ''}`);
       }
     } catch (e) {
