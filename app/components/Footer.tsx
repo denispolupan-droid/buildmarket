@@ -79,12 +79,12 @@ export default function Footer() {
           <div>
             <p style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '18px' }}>Контакти</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <a href="mailto:sales@fixline.com.ua" style={{
+              <a href="mailto:info@fixline.com.ua" style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
                 fontSize: '14px', color: '#94A3B8', textDecoration: 'none',
               }}>
                 <Mail size={15} strokeWidth={2} color="#7B90B2" />
-                sales@fixline.com.ua
+                info@fixline.com.ua
               </a>
               <a href="tel:+380991997788" style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
