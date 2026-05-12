@@ -252,7 +252,9 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
     setTtnSaving(null);
   }
 
-  const filtered = filter ? orders.filter(o => o.status === filter) : orders;
+  const filtered = filter
+    ? orders.filter(o => o.status === filter)
+    : orders.filter(o => o.status !== 'pending_payment');
 
   return (
     <>
@@ -618,7 +620,11 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
                       <div className="admin-text-primary" style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '13px', color: '#374151' }}>
                         <MapPin size={13} color="#64748B" style={{ flexShrink: 0, marginTop: '2px' }} />
-                        <span>{delivery}{subtype}{order.delivery_address ? `: ${order.delivery_address}` : ''}</span>
+                        <span>
+                          {delivery}{subtype}
+                          {order.delivery_city_name && <strong> · {order.delivery_city_name}</strong>}
+                          {order.delivery_address && ` · ${order.delivery_address}`}
+                        </span>
                       </div>
                       {/* Payment badge */}
                       {isCod ? (
@@ -628,6 +634,17 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                           background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC',
                         }}>
                           <CreditCard size={12} /> Накладений платіж
+                        </div>
+                      ) : order.payment_type === 'card' ? (
+                        <div style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '6px',
+                          padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
+                          background: order.status === 'confirmed' ? '#DCFCE7' : '#EFF6FF',
+                          color: order.status === 'confirmed' ? '#15803D' : '#1E3A5F',
+                          border: `1px solid ${order.status === 'confirmed' ? '#86EFAC' : '#BFDBFE'}`,
+                        }}>
+                          <CreditCard size={12} />
+                          {order.status === 'confirmed' ? '💳 Оплата карткою — підтверджено' : '💳 Картка онлайн'}
                         </div>
                       ) : (
                         <div>
@@ -639,7 +656,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                             border: `1px solid ${paymentConfirmed ? '#86EFAC' : '#FCD34D'}`,
                           }}>
                             <CreditCard size={12} />
-                            {paymentConfirmed ? '✓ Оплата підтверджена' : '⏳ Очікуємо оплату за рахунком'}
+                            {paymentConfirmed ? '✓ Оплата за рахунком підтверджена' : '⏳ Очікуємо оплату за рахунком'}
                           </div>
                           <label style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '6px', cursor: 'pointer' }}
                             onClick={() => toggleFlag(order.id, 'payment_confirmed', !paymentConfirmed)}>

@@ -80,8 +80,7 @@ export default function ProductOrderPanel({ priceUnit, priceWholesale, priceReta
       {showDualPrice && (
         <div style={{ marginBottom: '12px', padding: '12px 16px', background: '#F0FDF4', borderRadius: '10px', border: '1px solid #BBF7D0' }}>
           <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '4px' }}>
-            <span style={{ textDecoration: 'line-through' }}>{priceRetail} грн / шт</span>
-            {' '}<span style={{ color: '#94A3B8', fontSize: '11px' }}>(роздріб)</span>
+            Роздріб: {priceRetail} грн / шт
           </div>
           <div style={{ fontSize: '11px', color: '#15803D', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Ваша ціна</div>
           <div style={{ fontSize: '26px', fontWeight: 800, color: '#15803D', lineHeight: 1 }}>

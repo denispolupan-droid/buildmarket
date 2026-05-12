@@ -100,8 +100,7 @@ function ShopCard({ p, price, priceOld, wholesalePrice, isWholesale, inStock, sa
               {isWholesale && wholesalePrice && price && wholesalePrice < price ? (
                 <>
                   <div style={{ fontSize: '11px', color: '#94A3B8', lineHeight: 1.4 }}>
-                    <span style={{ textDecoration: 'line-through' }}>{price} грн</span>{' '}
-                    <span style={{ color: '#CBD5E1', fontSize: '10px' }}>(роздріб)</span>
+                    Роздріб: {price} грн
                   </div>
                   <div style={{ fontSize: '10px', color: '#15803D', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Ваша ціна</div>
                   <div className="shop-card__price" style={{ color: '#15803D' }}>{wholesalePrice} <span>грн</span></div>
