@@ -9,6 +9,7 @@ import ProductImage from '../components/ProductImage';
 import ScrollToTop from '../components/ScrollToTop';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
+import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import type { ProductFull, Category } from '../../lib/supabase';
 
 type CardProps = {
@@ -19,9 +20,11 @@ type CardProps = {
   salePercent: number | null;
   isWished: boolean;
   onToggleWish: () => void;
+  onWholesaleBlock: () => void;
+  isWholesale: boolean;
 };
 
-function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggleWish }: CardProps) {
+function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggleWish, onWholesaleBlock, isWholesale }: CardProps) {
   const [qty, setQty] = useState(1);
   const [inputVal, setInputVal] = useState('1');
   const [copied, setCopied] = useState(false);
@@ -38,6 +41,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
   }
 
   function handleAdd() {
+    if (isWholesale) { onWholesaleBlock(); return; }
     addItem({
       sku: p.sku, name: p.name, brand: p.brand, volume: p.volume ?? null,
       price: price ?? 0, min_order: 1,
@@ -149,6 +153,8 @@ type Props = {
 };
 
 export default function ShopClient({ products, categories, initialSaleOnly = false, initialCategory, initialBrand }: Props) {
+  const [isWholesale,   setIsWholesale]   = useState(false);
+  const [showWholesaleModal, setShowWholesaleModal] = useState(false);
   const [search,       setSearch]       = useState('');
   const [selCat,       setSelCat]       = useState<string | null>(initialCategory ?? null);
   const [saleOnly,     setSaleOnly]     = useState(initialSaleOnly);
@@ -199,6 +205,13 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     };
     document.addEventListener('wheel', handleWheel, { passive: false });
     return () => document.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  useEffect(() => {
+    getSupabaseBrowser().auth.getUser().then(({ data }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
+      const type = data.user?.user_metadata?.account_type as string | undefined;
+      setIsWholesale(['dealer', 'wholesale', 'contractor', 'shop_owner'].includes(type ?? ''));
+    });
   }, []);
 
   useEffect(() => {
@@ -613,6 +626,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                 priceOld={priceOld}
                 inStock={inStock}
                 salePercent={salePercent}
+                isWholesale={isWholesale}
+                onWholesaleBlock={() => setShowWholesaleModal(true)}
                 isWished={wishSkus.has(p.sku)}
                 onToggleWish={() => toggleWish(p.sku)}
               />
@@ -637,6 +652,54 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       </div>
     </div>
     <ScrollToTop />
+
+    {/* Wholesale block modal */}
+    {showWholesaleModal && (
+      <div
+        onClick={() => setShowWholesaleModal(false)}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0,0,0,0.5)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', padding: '24px',
+        }}
+      >
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            background: 'var(--bg-card)', borderRadius: '16px',
+            padding: '36px 32px', maxWidth: '420px', width: '100%',
+            textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+          }}
+        >
+          <div style={{ fontSize: '36px', marginBottom: '12px' }}>🏢</div>
+          <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '10px' }}>
+            Ви увійшли як оптовий клієнт
+          </h2>
+          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '24px' }}>
+            У магазині вказані роздрібні ціни. Для замовлення за вашими цінами перейдіть до оптового каталогу.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <a href="/catalog" style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              height: '44px', borderRadius: '10px', background: '#1E3A5F', color: '#fff',
+              fontSize: '14px', fontWeight: 700, textDecoration: 'none',
+            }}>
+              Перейти до оптового каталогу →
+            </a>
+            <button
+              onClick={() => setShowWholesaleModal(false)}
+              style={{
+                height: '40px', borderRadius: '10px', border: '1px solid var(--border)',
+                background: 'transparent', color: 'var(--text-secondary)',
+                fontSize: '13px', cursor: 'pointer',
+              }}
+            >
+              Залишитись і переглянути магазин
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 }

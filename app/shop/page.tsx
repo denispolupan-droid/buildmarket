@@ -4,8 +4,6 @@ import Footer from '../components/Footer';
 import ShopLoader from './ShopLoader';
 import { getCategoriesCached, getProductsCached } from '../../lib/supabase';
 import { getCategoryMeta } from '../../lib/category-descriptions';
-import { createSupabaseServer } from '../../lib/supabase-server';
-import { getRole } from '../../lib/user-role';
 import './shop.css';
 
 const BASE = 'https://fixline.com.ua';
@@ -66,44 +64,6 @@ export async function generateMetadata(
 }
 
 export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; sale?: string; brand?: string }> }) {
-  // Блокуємо доступ для оптових клієнтів
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  const role = getRole(user);
-  if (role === 'wholesale') {
-    return (
-      <>
-        <div style={{
-          minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '40px 24px', background: 'var(--bg-soft)',
-        }}>
-          <div style={{
-            background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px',
-            padding: '48px 40px', maxWidth: '480px', width: '100%', textAlign: 'center',
-          }}>
-            <div style={{ fontSize: '40px', marginBottom: '16px' }}>🏢</div>
-            <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '12px' }}>
-              Ви увійшли як оптовий клієнт
-            </h1>
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '28px' }}>
-              Розділ «Магазин» призначений для роздрібних покупців. Ваші ціни та асортимент — у оптовому каталозі.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <Link href="/catalog" style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                height: '46px', borderRadius: '10px', background: '#1E3A5F', color: '#fff',
-                fontSize: '14px', fontWeight: 700, textDecoration: 'none',
-              }}>
-                ← Повернутись до каталогу
-              </Link>
-            </div>
-          </div>
-        </div>
-        <Footer />
-      </>
-    );
-  }
-
   const { category, sale, brand } = await searchParams;
   const categories = await getCategoriesCached();
   const cat = category ? categories.find(c => c.slug === category) : null;
