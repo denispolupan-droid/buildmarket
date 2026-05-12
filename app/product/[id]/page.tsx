@@ -199,6 +199,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
             {priceUnit > 0 ? (
               <ProductPriceDisplay
                 priceUnit={priceUnit}
+                priceWholesale={product.stock?.price_unit ?? null}
                 priceRetail={product.stock?.price_retail ?? null}
                 priceOld={priceOld}
                 pricePack={pricePack}

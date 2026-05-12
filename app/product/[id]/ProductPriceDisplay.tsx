@@ -4,15 +4,16 @@ import { useState, useEffect } from 'react';
 import { getSupabaseBrowser } from '../../../lib/supabase-browser';
 
 type Props = {
-  priceUnit:    number;
-  priceRetail:  number | null;
-  priceOld:     number | null;
-  pricePack:    number;
-  packQty:      number;
-  isRetailPage: boolean;
+  priceUnit:       number;   // ціна для відображення (вже з урахуванням контексту)
+  priceWholesale:  number | null;  // завжди price_unit з БД
+  priceRetail:     number | null;  // завжди price_retail з БД
+  priceOld:        number | null;
+  pricePack:       number;
+  packQty:         number;
+  isRetailPage:    boolean;
 };
 
-export default function ProductPriceDisplay({ priceUnit, priceRetail, priceOld, pricePack, packQty, isRetailPage }: Props) {
+export default function ProductPriceDisplay({ priceUnit, priceWholesale, priceRetail, priceOld, pricePack, packQty, isRetailPage }: Props) {
   const [isWholesale, setIsWholesale] = useState(false);
 
   useEffect(() => {
@@ -22,45 +23,30 @@ export default function ProductPriceDisplay({ priceUnit, priceRetail, priceOld, 
     });
   }, []);
 
-  const hasRetailRef = priceRetail && priceRetail > priceUnit;
+  const showDual = isWholesale && priceWholesale && priceRetail && priceRetail > priceWholesale;
+  const displayPrice = showDual ? priceWholesale! : priceUnit;
+  const packPrice    = showDual ? priceWholesale! * packQty : pricePack;
 
-  if (isWholesale && hasRetailRef) {
-    return (
-      <>
-        {/* Оптова ціна — зелена */}
-        <div className="product-info__price-unit" style={{ color: '#15803D' }}>
-          {priceUnit} грн / шт
-        </div>
-
-        {/* Пак-ціна — як стандартно */}
-        <div className="product-info__price-row-sub">
-          {!isRetailPage && packQty > 1 && (
-            <span className="product-info__price-pack">
-              {pricePack.toLocaleString('uk-UA')} грн / уп ({packQty} шт)
-            </span>
-          )}
-        </div>
-
-        {/* Роздрібна — сірим під оптовою */}
-        <div style={{ fontSize: '13px', color: '#94A3B8', marginTop: '2px' }}>
-          Роздріб: {priceRetail} грн / шт
-        </div>
-      </>
-    );
-  }
-
-  // Стандартне відображення (роздріб або однакові ціни)
   return (
     <>
-      <div className="product-info__price-unit">{priceUnit} грн / шт</div>
+      <div className="product-info__price-unit" style={showDual ? { color: '#15803D' } : undefined}>
+        {displayPrice} грн / шт
+      </div>
+
       <div className="product-info__price-row-sub">
-        {priceOld && <span className="product-info__price-old">{priceOld} грн</span>}
+        {!showDual && priceOld && <span className="product-info__price-old">{priceOld} грн</span>}
         {!isRetailPage && packQty > 1 && (
           <span className="product-info__price-pack">
-            {pricePack.toLocaleString('uk-UA')} грн / уп ({packQty} шт)
+            {packPrice.toLocaleString('uk-UA')} грн / уп ({packQty} шт)
           </span>
         )}
       </div>
+
+      {showDual && (
+        <div style={{ fontSize: '13px', color: '#94A3B8', marginTop: '2px' }}>
+          Роздріб: {priceRetail} грн / шт
+        </div>
+      )}
     </>
   );
 }
