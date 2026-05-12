@@ -85,20 +85,30 @@ export async function GET(req: NextRequest) {
   let charsData: { label: string }[] = [];
 
   if (categorySlug) {
-    // Отримуємо SKU товарів в категорії
-    const { data: productsInCat } = await serviceClient
-      .from('products')
-      .select('sku')
-      .eq('category_slug', categorySlug);
+    // Збираємо slug самої категорії + всіх підкатегорій (1 рівень)
+    const { data: allCats } = await serviceClient
+      .from('categories')
+      .select('slug, parent_slug');
 
-    const skus = (productsInCat ?? []).map((p: { sku: string }) => p.sku);
+    const slugs = (allCats ?? [])
+      .filter(c => c.slug === categorySlug || c.parent_slug === categorySlug)
+      .map(c => c.slug);
 
-    if (skus.length > 0) {
-      const { data } = await serviceClient
-        .from('product_characteristics')
-        .select('label')
-        .in('product_sku', skus);
-      charsData = data ?? [];
+    if (slugs.length > 0) {
+      const { data: productsInCat } = await serviceClient
+        .from('products')
+        .select('sku')
+        .in('category_slug', slugs);
+
+      const skus = (productsInCat ?? []).map((p: { sku: string }) => p.sku);
+
+      if (skus.length > 0) {
+        const { data } = await serviceClient
+          .from('product_characteristics')
+          .select('label')
+          .in('product_sku', skus);
+        charsData = data ?? [];
+      }
     }
   } else {
     // Загальний шаблон — всі характеристики
