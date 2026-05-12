@@ -33,18 +33,19 @@ type Order = {
 };
 
 const STATUSES = [
-  { value: 'new',       label: 'Нове',         color: '#1E3A5F', bg: '#EFF4FF' },
-  { value: 'confirmed', label: 'Підтверджено',  color: '#15803D', bg: '#DCFCE7' },
-  { value: 'shipped',   label: 'Відправлено',   color: '#B45309', bg: '#FEF3C7' },
-  { value: 'delivered', label: 'Доставлено',    color: '#15803D', bg: '#DCFCE7' },
-  { value: 'cancelled', label: 'Скасовано',     color: '#DC2626', bg: '#FEE2E2' },
+  { value: 'pending_payment', label: 'Очікує оплати', color: '#B45309', bg: '#FEF3C7' },
+  { value: 'new',             label: 'Нове',           color: '#1E3A5F', bg: '#EFF4FF' },
+  { value: 'confirmed',       label: 'Підтверджено',   color: '#15803D', bg: '#DCFCE7' },
+  { value: 'shipped',         label: 'Відправлено',    color: '#B45309', bg: '#FEF3C7' },
+  { value: 'delivered',       label: 'Доставлено',     color: '#15803D', bg: '#DCFCE7' },
+  { value: 'cancelled',       label: 'Скасовано',      color: '#DC2626', bg: '#FEE2E2' },
 ];
 
 const DELIVERY_LABEL: Record<string, string> = {
   nova: 'Нова Пошта', kharkiv: 'Харків і область', pickup: 'Самовивіз',
 };
 const PAYMENT_LABEL: Record<string, string> = {
-  invoice: 'Безготівковий', cod: 'Оплата при отриманні',
+  invoice: 'Безготівковий', cod: 'Оплата при отриманні', card: '💳 Картка онлайн',
 };
 
 const FILTER_TABS = [
