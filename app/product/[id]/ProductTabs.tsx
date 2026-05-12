@@ -33,7 +33,11 @@ export default function ProductTabs({ description, descriptionFull, characterist
   function switchTab(t: 'desc' | 'chars' | 'docs') {
     setTab(t);
     setTimeout(() => {
-      tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (!tabsRef.current) return;
+      const header = document.querySelector('header') ?? document.querySelector('nav');
+      const headerH = header ? header.getBoundingClientRect().height : 72;
+      const top = tabsRef.current.getBoundingClientRect().top + window.scrollY - headerH - 16;
+      window.scrollTo({ top, behavior: 'smooth' });
     }, 50);
   }
 
