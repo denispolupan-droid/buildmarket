@@ -380,17 +380,21 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                         onClick={() => {
                           if (children.length > 0 && window.innerWidth <= 768) {
                             setExpandedCats(prev => { const next = new Set(prev); next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug); return next; });
-                            setTimeout(() => scrollCatToTop(cat.slug), 50);
+                            setTimeout(() => scrollCatToTop(cat.slug), 320);
                           } else if (children.length > 0 && !expandedCats.has(cat.slug)) {
                             setExpandedCats(prev => { const next = new Set(prev); next.add(cat.slug); return next; });
                             selectCat(cat.slug);
+                            setTimeout(() => scrollCatToTop(cat.slug), 320);
                           } else {
                             selectCat(selCat === cat.slug ? '' : cat.slug);
-                            if (children.length > 0) setExpandedCats(prev => {
-                              const next = new Set(prev);
-                              next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug);
-                              return next;
-                            });
+                            if (children.length > 0) {
+                              setExpandedCats(prev => {
+                                const next = new Set(prev);
+                                next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug);
+                                return next;
+                              });
+                              setTimeout(() => scrollCatToTop(cat.slug), 320);
+                            }
                           }
                         }}
                       >
