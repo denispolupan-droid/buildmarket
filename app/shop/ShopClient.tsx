@@ -390,7 +390,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           style={{
             maxHeight: catsOpen ? 'calc(100vh - 220px)' : '370px',
             overflowY: 'auto',
-            transition: 'max-height 0.2s ease',
+            transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
             scrollbarWidth: 'none',
           }}
           className="shop-cats-list"
@@ -421,7 +421,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                         router.replace(`?category=${cat.slug}`, { scroll: false } as never);
                         setVisibleCount(24);
                         // Тільки сайдбар — після анімації
-                        setTimeout(() => scrollCatToTop(cat.slug), 320);
+                        setTimeout(() => scrollCatToTop(cat.slug), 50);
                       }
                     } else {
                       selectCat(selCat === cat.slug ? null : cat.slug);
@@ -435,7 +435,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                       : <ChevronRight size={12} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.5 }} />
                   )}
                 </button>
-                <div style={{ overflow: 'hidden', maxHeight: isExpanded ? `${children.length * 80}px` : '0', transition: 'max-height 0.3s ease' }}>
+                <div style={{ overflow: 'hidden', maxHeight: isExpanded ? `${children.length * 80}px` : '0', transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}>
                 {children.map(child => {
                   const grandchildren = childrenOf[child.slug] ?? [];
                   const childExpanded = expandedCats.has(child.slug);
@@ -458,7 +458,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                           : <ChevronRight size={11} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.4 }} />
                         )}
                       </button>
-                      <div style={{ overflow: 'hidden', maxHeight: childExpanded ? `${grandchildren.length * 36}px` : '0', transition: 'max-height 0.25s ease' }}>
+                      <div style={{ overflow: 'hidden', maxHeight: childExpanded ? `${grandchildren.length * 36}px` : '0', transition: 'max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1)' }}>
                         {grandchildren.map(gc => (
                           <button
                             key={gc.slug}

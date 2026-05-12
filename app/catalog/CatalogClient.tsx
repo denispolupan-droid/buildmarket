@@ -387,7 +387,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                               router.replace(`?category=${cat.slug}`, { scroll: false } as never);
                               setVisibleCount(50);
                               // Скролимо тільки сайдбар після завершення анімації
-                              setTimeout(() => scrollCatToTop(cat.slug), 320);
+                              setTimeout(() => scrollCatToTop(cat.slug), 50);
                             }
                           } else {
                             selectCat(selCat === cat.slug ? '' : cat.slug);
@@ -404,7 +404,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                       <div style={{
                         overflow: 'hidden',
                         maxHeight: isExpanded ? `${children.length * 40}px` : '0',
-                        transition: 'max-height 0.3s ease',
+                        transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                       }}>
                         {children.map(child => (
                           <div
