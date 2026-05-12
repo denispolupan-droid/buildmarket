@@ -230,7 +230,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const selectCat = (slug: string | null, scrollSlug?: string) => {
     setSelCat(slug);
     router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     sidebarRef.current?.scrollTo({ top: 0 });
     setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup('');
     setVisibleCount(24);
@@ -427,7 +427,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                           return next;
                         });
                       }
-                      window.scrollTo(0, 0);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }
                   }}
                 >
@@ -438,7 +438,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                       : <ChevronRight size={12} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.5 }} />
                   )}
                 </button>
-                {isExpanded && children.map(child => {
+                <div style={{ overflow: 'hidden', maxHeight: isExpanded ? `${children.length * 80}px` : '0', transition: 'max-height 0.3s ease' }}>
+                {children.map(child => {
                   const grandchildren = childrenOf[child.slug] ?? [];
                   const childExpanded = expandedCats.has(child.slug);
                   const isChildDirectActive = selCat === child.slug;
@@ -451,7 +452,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                         onClick={() => {
                           selectCat(selCat === child.slug ? null : child.slug, cat.slug);
                           if (grandchildren.length > 0) setExpandedCats(prev => { const n = new Set(prev); n.has(child.slug) ? n.delete(child.slug) : n.add(child.slug); return n; });
-                          window.scrollTo(0, 0);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
                         }}
                       >
                         <span>{child.name}</span>
@@ -460,20 +461,23 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                           : <ChevronRight size={11} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.4 }} />
                         )}
                       </button>
-                      {childExpanded && grandchildren.map(gc => (
-                        <button
-                          key={gc.slug}
-                          ref={el => { catRefs.current[gc.slug] = el as unknown as HTMLDivElement; }}
-                          className={'shop-cat-item' + (selCat === gc.slug ? ' active' : '')}
-                          style={{ paddingLeft: '36px', fontSize: '12px', width: '100%', textAlign: 'left' }}
-                          onClick={() => selectCat(selCat === gc.slug ? null : gc.slug, cat.slug)}
-                        >
-                          {gc.name}
-                        </button>
-                      ))}
+                      <div style={{ overflow: 'hidden', maxHeight: childExpanded ? `${grandchildren.length * 36}px` : '0', transition: 'max-height 0.25s ease' }}>
+                        {grandchildren.map(gc => (
+                          <button
+                            key={gc.slug}
+                            ref={el => { catRefs.current[gc.slug] = el as unknown as HTMLDivElement; }}
+                            className={'shop-cat-item' + (selCat === gc.slug ? ' active' : '')}
+                            style={{ paddingLeft: '36px', fontSize: '12px', width: '100%', textAlign: 'left' }}
+                            onClick={() => selectCat(selCat === gc.slug ? null : gc.slug, cat.slug)}
+                          >
+                            {gc.name}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   );
                 })}
+                </div>
               </div>
             );
           })}

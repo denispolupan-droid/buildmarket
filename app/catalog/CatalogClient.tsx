@@ -77,7 +77,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const selectCat = (slug: string, scrollSlug?: string) => {
     setSelCat(slug);
     router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     sidebarRef.current?.scrollTo({ top: 0 });
     setVisibleCount(50);
     setMobilePanel(null);
@@ -401,17 +401,23 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                             : <ChevronRight size={13} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.5 }} />
                         )}
                       </div>
-                      {isExpanded && children.map(child => (
-                        <div
-                          key={child.slug}
-                          ref={el => { catRefs.current[child.slug] = el; }}
-                          className={'cat-item' + (selCat === child.slug ? ' active' : '')}
-                          style={{ paddingLeft: '20px', fontSize: '13px' }}
-                          onClick={() => selectCat(selCat === child.slug ? '' : child.slug, cat.slug)}
-                        >
-                          {child.name}
-                        </div>
-                      ))}
+                      <div style={{
+                        overflow: 'hidden',
+                        maxHeight: isExpanded ? `${children.length * 40}px` : '0',
+                        transition: 'max-height 0.3s ease',
+                      }}>
+                        {children.map(child => (
+                          <div
+                            key={child.slug}
+                            ref={el => { catRefs.current[child.slug] = el; }}
+                            className={'cat-item' + (selCat === child.slug ? ' active' : '')}
+                            style={{ paddingLeft: '20px', fontSize: '13px' }}
+                            onClick={() => selectCat(selCat === child.slug ? '' : child.slug, cat.slug)}
+                          >
+                            {child.name}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   );
                 })}
