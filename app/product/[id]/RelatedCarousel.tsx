@@ -94,7 +94,7 @@ export default function RelatedCarousel({ products, retail = false }: { products
               <div
                 key={p.sku}
                 className="product-card"
-                style={{ flex: `0 0 calc((100% - ${(VISIBLE - 1) * GAP}px) / ${VISIBLE})` }}
+                style={{ flex: `0 0 calc((100% - ${(VISIBLE - 1) * GAP + 2}px) / ${VISIBLE})` }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px', marginBottom: '10px' }}>
                   <Link href={`/product/${p.sku}${retail ? '?from=shop' : ''}`} className="pc-name" style={{ textDecoration: 'none', color: 'inherit' }} title={p.name}>{p.name}</Link>
