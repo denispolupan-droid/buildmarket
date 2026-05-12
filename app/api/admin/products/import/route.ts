@@ -79,13 +79,37 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Bad request' }, { status: 400 });
   }
 
-  // Унікальні характеристики — з УСІХ товарів (щоб шаблон завжди мав усі колонки)
-  const { data: allChars } = await serviceClient
-    .from('product_characteristics')
-    .select('label');
+  // Унікальні характеристики — для конкретної категорії або для всіх
+  const categorySlug = req.nextUrl.searchParams.get('category');
+
+  let charsData: { label: string }[] = [];
+
+  if (categorySlug) {
+    // Отримуємо SKU товарів в категорії
+    const { data: productsInCat } = await serviceClient
+      .from('products')
+      .select('sku')
+      .eq('category_slug', categorySlug);
+
+    const skus = (productsInCat ?? []).map((p: { sku: string }) => p.sku);
+
+    if (skus.length > 0) {
+      const { data } = await serviceClient
+        .from('product_characteristics')
+        .select('label')
+        .in('product_sku', skus);
+      charsData = data ?? [];
+    }
+  } else {
+    // Загальний шаблон — всі характеристики
+    const { data } = await serviceClient
+      .from('product_characteristics')
+      .select('label');
+    charsData = data ?? [];
+  }
 
   const labelFreq: Record<string, number> = {};
-  (allChars ?? []).forEach((c: { label: string }) => {
+  charsData.forEach(c => {
     labelFreq[c.label] = (labelFreq[c.label] ?? 0) + 1;
   });
   const uniqueLabels = Object.entries(labelFreq)
