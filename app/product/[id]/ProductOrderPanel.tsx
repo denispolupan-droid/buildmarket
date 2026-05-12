@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Check, Bell, Heart } from 'lucide-react';
 import { useCart } from '../../../lib/cart';
 import { useWishlist } from '../../../lib/wishlist';
+import { getSupabaseBrowser } from '../../../lib/supabase-browser';
 
 type Props = {
   priceUnit: number;
+  priceWholesale?: number;
+  priceRetail?: number;
   minOrder: number;
   inStock: boolean;
   sku: string;
@@ -20,16 +23,27 @@ type Props = {
   imgType: 'tube' | 'canister';
 };
 
-export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, name, brand, volume, nl1, nl2, bc, ac, imgType }: Props) {
+export default function ProductOrderPanel({ priceUnit, priceWholesale, priceRetail, minOrder, inStock, sku, name, brand, volume, nl1, nl2, bc, ac, imgType }: Props) {
   const [qty, setQty]           = useState(minOrder);
   const [added, setAdded]       = useState(false);
   const [notified,   setNotified]   = useState(false);
   const [notifyEmail, setNotifyEmail] = useState('');
   const [showInput,   setShowInput]   = useState(false);
   const [sending,     setSending]     = useState(false);
+  const [isWholesale, setIsWholesale] = useState(false);
   const { addItem } = useCart();
   const { isLiked, toggle: toggleWish } = useWishlist();
   const liked = isLiked(sku);
+
+  useEffect(() => {
+    getSupabaseBrowser().auth.getUser().then(({ data }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
+      const type = data.user?.user_metadata?.account_type as string | undefined;
+      setIsWholesale(['dealer', 'wholesale', 'contractor', 'shop_owner'].includes(type ?? ''));
+    });
+  }, []);
+
+  const showDualPrice = isWholesale && priceWholesale && priceRetail && priceWholesale < priceRetail;
+  const cartPrice = showDualPrice ? priceWholesale! : priceUnit;
 
   function dec() { setQty(q => Math.max(minOrder, q - 1)); }
   function inc() { setQty(q => q + 1); }
@@ -39,7 +53,7 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
   }
 
   function handleAddToCart() {
-    addItem({ sku, name, brand, volume, price: priceUnit, min_order: minOrder, nl1: nl1 ?? '', nl2: nl2 ?? undefined, bc, ac, img_type: imgType }, qty);
+    addItem({ sku, name, brand, volume, price: cartPrice, min_order: minOrder, nl1: nl1 ?? '', nl2: nl2 ?? undefined, bc, ac, img_type: imgType }, qty);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   }
@@ -59,10 +73,23 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
     }
   }
 
-  const subtotal = (priceUnit * qty).toLocaleString('uk-UA');
+  const subtotal = (cartPrice * qty).toLocaleString('uk-UA');
 
   return (
     <div>
+      {showDualPrice && (
+        <div style={{ marginBottom: '12px', padding: '12px 16px', background: '#F0FDF4', borderRadius: '10px', border: '1px solid #BBF7D0' }}>
+          <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '4px' }}>
+            <span style={{ textDecoration: 'line-through' }}>{priceRetail} грн / шт</span>
+            {' '}<span style={{ color: '#94A3B8', fontSize: '11px' }}>(роздріб)</span>
+          </div>
+          <div style={{ fontSize: '11px', color: '#15803D', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Ваша ціна</div>
+          <div style={{ fontSize: '26px', fontWeight: 800, color: '#15803D', lineHeight: 1 }}>
+            {priceWholesale} <span style={{ fontSize: '14px', fontWeight: 500, color: '#15803D' }}>грн / шт</span>
+          </div>
+        </div>
+      )}
+
       {inStock ? (
         <>
           <div style={{ fontSize: '13px', color: '#64748B', marginBottom: '8px' }}>Кількість:</div>

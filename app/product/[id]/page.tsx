@@ -215,6 +215,8 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
 
             <ProductOrderPanel
               priceUnit={priceUnit}
+              priceWholesale={product.stock?.price_unit ?? undefined}
+              priceRetail={product.stock?.price_retail ?? undefined}
               minOrder={minOrder}
               inStock={inStock}
               sku={product.sku}
