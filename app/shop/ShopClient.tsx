@@ -221,12 +221,12 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   }, []);
 
   const scrollCatToTop = useCallback((slug: string) => {
-    if (catsOpenRef.current) return; // коли всі категорії розгорнуті — скрол не потрібен
     const catEl = catRefs.current[slug];
     const container = catsListRef.current;
     if (!catEl || !container) return;
     const offset = catEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-    container.scrollTo({ top: container.scrollTop + offset, behavior: 'smooth' });
+    const target = Math.max(0, container.scrollTop + offset - 8);
+    container.scrollTo({ top: target, behavior: 'smooth' });
   }, []);
 
   const selectCat = (slug: string | null, scrollSlug?: string) => {
@@ -423,7 +423,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                         router.replace(`?category=${cat.slug}`, { scroll: false } as never);
                         setVisibleCount(24);
                         // Тільки сайдбар — після анімації
-                        setTimeout(() => scrollCatToTop(cat.slug), 200);
+                        setTimeout(() => scrollCatToTop(cat.slug), 450);
                       }
                     } else {
                       selectCat(selCat === cat.slug ? null : cat.slug);

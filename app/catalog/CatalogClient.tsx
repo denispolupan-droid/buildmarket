@@ -67,12 +67,12 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   }, []);
 
   const scrollCatToTop = useCallback((slug: string) => {
-    if (catsOpenRef.current) return;
     const catEl = catRefs.current[slug];
     const container = catsListRef.current;
     if (!catEl || !container) return;
     const offset = catEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-    container.scrollTo({ top: container.scrollTop + offset, behavior: 'smooth' });
+    const target = Math.max(0, container.scrollTop + offset - 8);
+    container.scrollTo({ top: target, behavior: 'smooth' });
   }, []);
 
   const selectCat = (slug: string, scrollSlug?: string) => {
@@ -389,7 +389,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                               router.replace(`?category=${cat.slug}`, { scroll: false } as never);
                               setVisibleCount(50);
                               // Скролимо тільки сайдбар після завершення анімації
-                              setTimeout(() => scrollCatToTop(cat.slug), 200);
+                              setTimeout(() => scrollCatToTop(cat.slug), 450);
                             }
                           } else {
                             selectCat(selCat === cat.slug ? '' : cat.slug);
