@@ -165,6 +165,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const [inStockOnly,  setInStockOnly]  = useState(false);
   const [visibleCount,  setVisibleCount]  = useState(24);
   const [catsOpen,      setCatsOpen]      = useState(false);
+  const catsOpenRef = useRef(false);
   const [mobilePanel,   setMobilePanel]   = useState<'cats' | 'filters' | null>(null);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(() => {
     if (!initialCategory) return new Set<string>();
@@ -220,6 +221,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   }, []);
 
   const scrollCatToTop = useCallback((slug: string) => {
+    if (catsOpenRef.current) return; // коли всі категорії розгорнуті — скрол не потрібен
     const catEl = catRefs.current[slug];
     const container = catsListRef.current;
     if (!catEl || !container) return;
@@ -482,7 +484,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
 
         {parentCats.length > 10 && (
           <button
-            onClick={() => setCatsOpen(o => !o)}
+            onClick={() => { setCatsOpen(o => { catsOpenRef.current = !o; return !o; }); }}
             style={{
               display: 'flex', alignItems: 'center', gap: '4px',
               width: '100%', background: 'none', border: 'none', cursor: 'pointer',

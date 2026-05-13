@@ -67,6 +67,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   }, []);
 
   const scrollCatToTop = useCallback((slug: string) => {
+    if (catsOpenRef.current) return;
     const catEl = catRefs.current[slug];
     const container = catsListRef.current;
     if (!catEl || !container) return;
@@ -103,6 +104,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     return expanded;
   });
   const [catsOpen,      setCatsOpen]      = useState(false);
+  const catsOpenRef = useRef(false);
   const [mobilePanel,   setMobilePanel]   = useState<'cats' | 'filters' | null>(null);
   const [quantities,    setQuantities]    = useState<Record<string, number>>({});
   const [inputVals,     setInputVals]     = useState<Record<string, string>>({});
@@ -424,7 +426,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
               </div>
               {parentCats.length > 10 && (
                 <button
-                  onClick={() => setCatsOpen(o => !o)}
+                  onClick={() => { setCatsOpen(o => { catsOpenRef.current = !o; return !o; }); }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '4px',
                     width: '100%', background: 'none', border: 'none', cursor: 'pointer',
