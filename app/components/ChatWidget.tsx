@@ -41,6 +41,19 @@ export default function ChatWidget() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, open]);
 
+  // Poll for new messages (manager replies) every 5s when chat is open
+  useEffect(() => {
+    if (!open || !sessionId) return;
+    const interval = setInterval(async () => {
+      try {
+        const r = await fetch(`/api/chat?sessionId=${sessionId}`);
+        const { messages: hist } = await r.json();
+        if (hist?.length) setMessages([WELCOME, ...hist]);
+      } catch { /* ignore */ }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [open, sessionId]);
+
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);

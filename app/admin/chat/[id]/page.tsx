@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { notFound } from 'next/navigation';
-import { Bot, User } from 'lucide-react';
+import { Bot, User, UserCheck } from 'lucide-react';
 import ResolveButton from './ResolveButton';
+import ReplyBox from './ReplyBox';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -44,7 +45,9 @@ export default async function ChatSessionPage({ params }: { params: Promise<{ id
             )}
           </p>
         </div>
-        {session.status === 'open' && <ResolveButton sessionId={id} />}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {session.status === 'open' && <ResolveButton sessionId={id} />}
+        </div>
       </div>
 
       <div style={{
@@ -57,36 +60,44 @@ export default async function ChatSessionPage({ params }: { params: Promise<{ id
             Повідомлень немає
           </p>
         )}
-        {(messages ?? []).map(m => (
-          <div key={m.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-            <div style={{
-              width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0,
-              background: m.role === 'user' ? '#EFF6FF' : '#F0FDF4',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {m.role === 'user'
-                ? <User size={15} color="#3B82F6" />
-                : <Bot size={15} color="#22C55E" />
-              }
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#0F172A' }}>
-                  {m.role === 'user' ? 'Відвідувач' : 'AI-помічник'}
-                </span>
-                <span style={{ fontSize: '11px', color: '#94A3B8' }}>{formatTime(m.created_at)}</span>
-              </div>
+        {(messages ?? []).map(m => {
+          const isUser = m.role === 'user';
+          const isAI = m.role === 'assistant' && m.content.includes('AI-помічник недоступний');
+          return (
+            <div key={m.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
               <div style={{
-                fontSize: '13.5px', color: '#334155', lineHeight: '1.6',
-                background: '#F8FAFC', borderRadius: '8px', padding: '10px 12px',
-                whiteSpace: 'pre-wrap',
+                width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0,
+                background: isUser ? '#EFF6FF' : isAI ? '#FEF9C3' : '#F0FDF4',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                {m.content}
+                {isUser
+                  ? <User size={15} color="#3B82F6" />
+                  : isAI
+                    ? <Bot size={15} color="#CA8A04" />
+                    : <UserCheck size={15} color="#22C55E" />
+                }
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#0F172A' }}>
+                    {isUser ? 'Відвідувач' : isAI ? 'AI-помічник' : 'Менеджер'}
+                  </span>
+                  <span style={{ fontSize: '11px', color: '#94A3B8' }}>{formatTime(m.created_at)}</span>
+                </div>
+                <div style={{
+                  fontSize: '13.5px', color: '#334155', lineHeight: '1.6',
+                  background: '#F8FAFC', borderRadius: '8px', padding: '10px 12px',
+                  whiteSpace: 'pre-wrap',
+                }}>
+                  {m.content}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
+      {session.status === 'open' && <ReplyBox sessionId={id} />}
     </div>
   );
 }
