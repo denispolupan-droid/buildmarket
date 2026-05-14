@@ -57,9 +57,12 @@ export async function GET(
     Page:         '1',
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allDocs: any[] = Array.isArray(docsRes.data) ? docsRes.data : [];
   const documents = allDocs
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .filter((d: any) => String(d.ScanSheetNumber ?? '') === sheetNumber)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((d: any) => ({
       num:       String(d.IntDocNumber ?? ''),
       recipient: String(d.RecipientContactPerson ?? d.RecipientDescription ?? '').trim(),

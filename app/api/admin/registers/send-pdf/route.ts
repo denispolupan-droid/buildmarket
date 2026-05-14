@@ -35,10 +35,8 @@ export async function POST(req: NextRequest) {
         </div>
       </div>`,
     attachments: [{
-      filename:    `register-${registerNumber}.pdf`,
-      content:     pdfBase64,
-      type:        'application/pdf' as const,
-      disposition: 'attachment' as const,
+      filename: `register-${registerNumber}.pdf`,
+      content:  pdfBase64,
     }],
   });
 

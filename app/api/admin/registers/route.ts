@@ -43,6 +43,7 @@ async function resolveTtnRef(apiKey: string, ttnNumber: string): Promise<string 
     GetFullList:  '0',
     Page:         '1',
   });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const found = (docRes.data ?? []).find((d: any) => d.IntDocNumber === ttnNumber);
   if (found?.Ref) return found.Ref;
 
@@ -55,6 +56,7 @@ async function resolveTtnRef(apiKey: string, ttnNumber: string): Promise<string 
     GetFullList:  '0',
     Page:         '1',
   });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const foundWide = (wideRes.data ?? []).find((d: any) => d.IntDocNumber === ttnNumber);
   return foundWide?.Ref ?? null;
 }
@@ -89,13 +91,17 @@ export async function GET(req: NextRequest) {
       Page:         '1',
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const allDocs: any[] = docsRes.data ?? [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filtered = allDocs.filter((d: any) => d.ScanSheetNumber === sheetNumber);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ttns = filtered.map((d: any) => ({
       ttn:     d.IntDocNumber ?? '',
       contact: d.RecipientContactPerson ?? d.RecipientDescription ?? '',
       amount:  parseFloat(d.BackwardDeliverySum ?? d.CostOnSite ?? '0') || 0,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     })).filter((t: any) => t.ttn);
 
     return NextResponse.json({ number: sheetNumber, ttns });

@@ -139,9 +139,12 @@ export async function POST(req: NextRequest) {
         GetFullList:  '1',
         Page:         '1',
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const allDocs: any[] = Array.isArray(docsRes.data) ? docsRes.data : [];
       const fromNP = allDocs
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .filter((d: any) => String(d.ScanSheetNumber ?? '') === registerNumber)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((d: any) => ({
           ttn:    String(d.IntDocNumber ?? ''),
           contact: String(d.RecipientContactPerson ?? d.RecipientDescription ?? '').trim(),
@@ -179,10 +182,8 @@ export async function POST(req: NextRequest) {
     subject: `Реєстр НП #${registerNumber} — ${ttns.length} посилок`,
     html,
     attachments: [{
-      filename:    `register-${registerNumber}.pdf`,
-      content:     pdfBuffer.toString('base64'),
-      type:        'application/pdf' as const,
-      disposition: 'attachment' as const,
+      filename: `register-${registerNumber}.pdf`,
+      content:  pdfBuffer.toString('base64'),
     }],
   });
 

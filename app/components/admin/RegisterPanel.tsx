@@ -27,6 +27,7 @@ export default function RegisterPanel() {
       const res = await fetch(`/api/admin/registers?ref=${ref}`);
       const data = await res.json();
       if (data.ttns?.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setTtns(data.ttns.map((t: any) => ({ ttn: t.ttn, orderId: '', contact: t.contact, amount: Number(t.amount) || 0 })));
       }
     } catch {}
