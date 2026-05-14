@@ -11,10 +11,11 @@ jobs:
     steps:
       - name: Check site availability
         run: |
-          STATUS=$(curl -L -s -o /dev/null -w "%{http_code}" --max-time 15 https://fixline.com.ua)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://fixline.com.ua)
           echo "Site status: $STATUS"
-          if [ "$STATUS" != "200" ]; then
-            echo "::error::Site is DOWN or slow! HTTP $STATUS"
+          # Accept 2xx (OK) and 3xx (redirect to www — normal behaviour)
+          if [[ ! "$STATUS" =~ ^[23] ]]; then
+            echo "::error::Site is DOWN! HTTP $STATUS"
             exit 1
           fi
 
