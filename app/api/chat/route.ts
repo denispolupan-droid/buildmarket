@@ -64,14 +64,21 @@ export async function POST(req: NextRequest) {
       .order('created_at', { ascending: true })
       .limit(30);
 
-    const aiResponse = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: (history ?? []).map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-    });
+    let reply: string;
+    let mode: 'ai' | 'manager' = 'ai';
 
-    const reply = aiResponse.content[0]?.type === 'text' ? aiResponse.content[0].text : '';
+    try {
+      const aiResponse = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system: SYSTEM_PROMPT,
+        messages: (history ?? []).map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+      });
+      reply = aiResponse.content[0]?.type === 'text' ? aiResponse.content[0].text : '';
+    } catch {
+      mode = 'manager';
+      reply = 'Зараз AI-помічник недоступний — передаю вас до менеджера. Ми відповімо найближчим часом у цьому чаті.';
+    }
 
     await Promise.all([
       db.from('chat_messages').insert({ session_id: session!.id, role: 'assistant', content: reply }),
@@ -81,9 +88,14 @@ export async function POST(req: NextRequest) {
       }).eq('id', session!.id),
     ]);
 
-    if (isNew) {
-      const adminId = process.env.TELEGRAM_ADMIN_CHAT_ID;
-      if (adminId) {
+    const adminId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+    if (adminId) {
+      if (mode === 'manager') {
+        sendTelegram(
+          adminId,
+          `🔴 <b>Потрібна відповідь менеджера!</b>\n\n💬 ${message}\n\n🔗 fixline.com.ua/admin/chat/${session!.id}`,
+        );
+      } else if (isNew) {
         sendTelegram(
           adminId,
           `💬 <b>Новий чат на сайті</b>\n\n💬 ${message}\n\n🔗 fixline.com.ua/admin/chat/${session!.id}`,
@@ -91,7 +103,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ sessionId: session!.id, reply });
+    return NextResponse.json({ sessionId: session!.id, reply, mode });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[chat]', msg);

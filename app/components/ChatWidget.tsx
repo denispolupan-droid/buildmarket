@@ -20,6 +20,7 @@ export default function ChatWidget() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [mode, setMode] = useState<'ai' | 'manager'>('ai');
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -65,6 +66,7 @@ export default function ChatWidget() {
         setSessionId(data.sessionId);
         localStorage.setItem(SESSION_KEY, data.sessionId);
       }
+      if (data.mode === 'manager') setMode('manager');
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
     } catch (err) {
       setMessages(prev => [...prev, { role: 'assistant', content: `Помилка: ${err instanceof Error ? err.message : 'невідома'}` }]);
@@ -105,7 +107,9 @@ export default function ChatWidget() {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>Підтримка FIXLINE</div>
-              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginTop: '1px' }}>AI-помічник • відповідає одразу</div>
+              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginTop: '1px' }}>
+                {mode === 'manager' ? 'Менеджер • відповість найближчим часом' : 'AI-помічник • відповідає одразу'}
+              </div>
             </div>
             <button
               onClick={() => setOpen(false)}
@@ -139,7 +143,9 @@ export default function ChatWidget() {
                   background: '#F1F5F9', display: 'flex', alignItems: 'center', gap: '6px',
                 }}>
                   <Loader2 size={14} color="#64748B" style={{ animation: 'spin 1s linear infinite' }} />
-                  <span style={{ fontSize: '13px', color: '#64748B' }}>Відповідаю…</span>
+                  <span style={{ fontSize: '13px', color: '#64748B' }}>
+                    {mode === 'manager' ? 'Передаємо менеджеру…' : 'Відповідаю…'}
+                  </span>
                 </div>
               </div>
             )}
