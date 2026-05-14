@@ -123,7 +123,7 @@ export default function ProductReviews({ sku, productName }: { sku: string; prod
 
       {submitted && (
         <div style={{ padding: '16px 20px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '10px', marginBottom: '20px', fontSize: '14px', color: '#16A34A' }}>
-          Дякуємо за відгук! Він з'явиться після перевірки.
+          Дякуємо за відгук! Він з&apos;явиться після перевірки.
         </div>
       )}
 
@@ -142,7 +142,7 @@ export default function ProductReviews({ sku, productName }: { sku: string; prod
 
           <div style={{ marginBottom: '14px' }}>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
-              Ваше ім'я *
+              Ваше ім&apos;я *
             </label>
             <input
               type="text"
@@ -156,7 +156,7 @@ export default function ProductReviews({ sku, productName }: { sku: string; prod
 
           <div style={{ marginBottom: '14px' }}>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
-              Коментар (необов'язково)
+              Коментар (необов&apos;язково)
             </label>
             <textarea
               value={text}

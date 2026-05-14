@@ -35,7 +35,7 @@ async function findCity(name: string): Promise<{ ref: string; name: string } | n
   });
   const addresses = results[0]?.Addresses ?? [];
   // Пріоритет: місто (м.) над селом
-  const city = addresses.find((a: any) => a.SettlementTypeCode === 'м.')
+  const city = addresses.find((a: Record<string, unknown>) => a.SettlementTypeCode === 'м.')
     ?? addresses[0];
   return city ? { ref: city.Ref, name: city.Present } : null;
 }
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
   const productMap = new Map((productsData ?? []).map(p => [p.sku, p]));
 
   // ── Батч-пошук міст (дедуплікація) ────────────────────────────────────────────
-  const cityNames = [...new Set(dataRows.map((r: any[]) => String(r[7] ?? '').trim()).filter(Boolean))];
+  const cityNames = [...new Set(dataRows.map((r: unknown[]) => String(r[7] ?? '').trim()).filter(Boolean))];
   const cityCache = new Map<string, { ref: string; name: string } | null>();
   await Promise.all(cityNames.map(async n => {
     cityCache.set(n.toLowerCase(), await findCity(n));
@@ -129,7 +129,8 @@ export async function POST(req: NextRequest) {
   const parsed: ParsedRow[] = [];
 
   for (let i = 0; i < dataRows.length; i++) {
-    const r: any = dataRows[i];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r: any[] = dataRows[i] as any[];
     const rowNum  = i + 2; // +2 бо рядок 1 = заголовок
     const errors: string[] = [];
 

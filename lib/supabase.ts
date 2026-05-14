@@ -26,7 +26,8 @@ export function getSupabase() {
 
 // Зворотня сумісність — використовуй getSupabase() для нових викликів
 export const supabase = new Proxy({} as ReturnType<typeof createClient>, {
-  get(_, prop) { return (getSupabase() as any)[prop]; },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  get(_, prop) { return (getSupabase() as any)[prop as string]; },
 });
 
 // ── Клієнт з service role — тільки для серверних скриптів ─────────────────────

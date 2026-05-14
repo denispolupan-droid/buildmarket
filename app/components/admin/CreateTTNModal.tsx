@@ -8,7 +8,12 @@ type Warehouse  = { Ref: string; Description: string; Number: string; CityRef: s
 type SenderWH   = { ref: string; cityRef: string; description: string; number: string };
 
 type SenderInfo = {
-  ref: string; cityRef: string; contactRef: string; phone: string; warehouses: SenderWH[];
+  ref: string; cityRef: string; contactRef: string; phone: string;
+  warehouses: SenderWH[];
+  senderType: 'warehouse' | 'address';
+  senderStreet: string;
+  addressRef: string;
+  addressDesc: string;
 };
 
 type WeightLine = { sku: string; volume: string | null; weightKg: number; qty: number; totalKg: number };
@@ -201,26 +206,30 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
     if (!selectedCity)    { setError('Оберіть місто одержувача'); return; }
     if (!selectedWH)      { setError('Оберіть відділення одержувача'); return; }
     if (!senderInfo)      { setError('Дані відправника не завантажені'); return; }
-    if (!senderWH && senderInfo.warehouses.length > 0) { setError('Оберіть відділення відправника'); return; }
+    if (senderInfo.senderType === 'warehouse' && !senderWH && senderInfo.warehouses.length > 0) { setError('Оберіть відділення відправника'); return; }
     if (!lastName || !firstName) { setError('Вкажіть прізвище та ім\'я одержувача'); return; }
     if (!weight || parseFloat(weight) <= 0) { setError('Вкажіть вагу відправлення'); return; }
     if (codEnabled && (!codAmount || parseFloat(codAmount) <= 0)) { setError('Вкажіть суму накладеного платежу'); return; }
 
     setSubmitting(true); setError('');
 
+    const isAddress = senderInfo.senderType === 'address';
+    const serviceType = isAddress ? 'DoorsWarehouse' : 'WarehouseWarehouse';
+
     const res = await fetch('/api/admin/create-ttn', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         orderId: order.id,
-        senderRef: senderInfo.ref,
-        senderCityRef: senderWH?.cityRef ?? senderInfo.warehouses[0]?.cityRef ?? senderInfo.cityRef,
-        senderWarehouseRef: senderWH?.ref ?? senderInfo.warehouses[0]?.ref,
-        senderContactRef: senderInfo.contactRef, senderPhone: senderInfo.phone,
+        senderRef:          senderInfo.ref,
+        senderCityRef:      senderWH?.cityRef ?? senderInfo.warehouses[0]?.cityRef ?? senderInfo.cityRef,
+        senderWarehouseRef: isAddress ? senderInfo.addressRef : (senderWH?.ref ?? senderInfo.warehouses[0]?.ref),
+        senderContactRef:   senderInfo.contactRef,
+        senderPhone:        senderInfo.phone,
         lastName, firstName, middleName, recipientPhone: phone,
         cityRecipientRef: selectedWH.CityRef || selectedCity.Ref, recipientAddressRef: selectedWH.Ref,
         weight: parseFloat(weight), seatsAmount: parseInt(seats) || 1,
         cost: parseFloat(cost) || 0, description,
-        payerType, paymentMethod,
+        serviceType, payerType, paymentMethod,
         codEnabled, codAmount: codEnabled ? parseFloat(codAmount) : 0,
       }),
     });
@@ -278,7 +287,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
             <div style={secTitle}><span>Одержувач</span></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
               <div><label style={lbl}>Прізвище</label><input style={inp} value={lastName}   onChange={e => setLastName(e.target.value)}   placeholder="Іванов" /></div>
-              <div><label style={lbl}>Ім'я</label>    <input style={inp} value={firstName}  onChange={e => setFirstName(e.target.value)}  placeholder="Іван" /></div>
+              <div><label style={lbl}>Ім&apos;я</label>    <input style={inp} value={firstName}  onChange={e => setFirstName(e.target.value)}  placeholder="Іван" /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               <div><label style={lbl}>По батькові</label><input style={inp} value={middleName} onChange={e => setMiddleName(e.target.value)} placeholder="Іванович" /></div>
@@ -338,8 +347,22 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
             </div>
           </section>
 
-          {/* Sender warehouse */}
-          {senderInfo && senderInfo.warehouses.length > 1 && (
+          {/* Sender warehouse or address info */}
+          {senderInfo && senderInfo.senderType === 'address' && (
+            <section>
+              {senderInfo.addressRef ? (
+                <div style={{ padding: '10px 14px', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: '8px', fontSize: '13px', color: '#15803D' }}>
+                  🏭 Забір зі складу: <strong>{senderInfo.addressDesc || senderInfo.addressRef}</strong>
+                  <div style={{ fontSize: '11px', color: '#16A34A', marginTop: '2px' }}>НП приїде за товаром на вашу зареєстровану адресу</div>
+                </div>
+              ) : (
+                <div style={{ padding: '10px 14px', background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '8px', fontSize: '13px', color: '#92400E' }}>
+                  ⚠ Адреса забору не налаштована. Перейдіть у Налаштування → НП Відправник.
+                </div>
+              )}
+            </section>
+          )}
+          {senderInfo && senderInfo.senderType === 'warehouse' && senderInfo.warehouses.length > 1 && (
             <section>
               <div style={secTitle}><Package size={11} /><span>Відділення відправника</span></div>
               <div ref={senderWhRef} style={{ position: 'relative' }}>

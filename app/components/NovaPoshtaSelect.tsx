@@ -217,7 +217,7 @@ export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange
         .np-input::placeholder { color: var(--text-secondary); }
         .np-input:focus { border-color: var(--accent, #4880B8); }
         .np-dropdown {
-          position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50;
+          position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 200;
           background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
           box-shadow: 0 8px 24px rgba(0,0,0,0.15); max-height: 260px; overflow-y: auto;
         }

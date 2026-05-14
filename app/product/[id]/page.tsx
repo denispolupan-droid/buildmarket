@@ -121,9 +121,8 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   };
 
   const productFullName = `${product.brand} ${product.name}${product.volume ? ' ' + product.volume : ''}`;
-  const productImage = (product as any).image
-    ? (product as any).image
-    : `${BASE}/product/${product.sku}/opengraph-image`;
+  const productImage = (product as { image?: string }).image
+    || `${BASE}/product/${product.sku}/opengraph-image`;
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',

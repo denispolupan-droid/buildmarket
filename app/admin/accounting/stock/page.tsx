@@ -83,7 +83,7 @@ export default async function StockPage() {
               <span style={{ textAlign: 'right' }}>Доступно</span><span style={{ textAlign: 'right' }}>Собів.</span>
             </div>
             {(ownBalance ?? []).map((row, idx) => (
-              <div key={`${row.sku}-${(row as any).warehouse_id}`} style={{
+              <div key={`${row.sku}-${(row as { warehouse_id?: number }).warehouse_id}`} style={{
                 display: 'grid', gridTemplateColumns: 'auto 1fr 100px 100px 100px 100px',
                 padding: '10px 16px', alignItems: 'center',
                 borderBottom: idx < (ownBalance?.length ?? 0) - 1 ? '1px solid var(--border-light)' : 'none',

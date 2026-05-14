@@ -125,7 +125,7 @@ export default function ReturnsPage() {
           <div style={{ background: '#1E3A5F', borderRadius: '16px', padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>Маєте питання щодо повернення?</div>
-              <div style={{ fontSize: '13px', color: '#94A3B8' }}>Зв'яжіться з нами — вирішимо будь-яку ситуацію</div>
+              <div style={{ fontSize: '13px', color: '#94A3B8' }}>Зв&apos;яжіться з нами — вирішимо будь-яку ситуацію</div>
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
               <a href="tel:+380991997788" style={{ height: '40px', padding: '0 20px', borderRadius: '8px', background: '#4880B8', color: '#fff', fontSize: '13px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>

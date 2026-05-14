@@ -167,7 +167,7 @@ export default function AboutPage() {
                 </h2>
                 <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.8, display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <p>
-                    <strong style={{ color: 'var(--text-primary)' }}>FIX</strong> — від англійського "fix": фіксувати, кріпити, усувати. Це суть будівельної хімії: клей тримає, герметик захищає, піна фіксує.
+                    <strong style={{ color: 'var(--text-primary)' }}>FIX</strong> — від англійського {'"'}fix{'"'}: фіксувати, кріпити, усувати. Це суть будівельної хімії: клей тримає, герметик захищає, піна фіксує.
                   </p>
                   <p>
                     <strong style={{ color: 'var(--text-primary)' }}>LINE</strong> — лінія, асортимент, система. Не один продукт, а повна лінійка матеріалів для будь-якого завдання на будмайданчику або в ремонті.
@@ -214,7 +214,7 @@ export default function AboutPage() {
                     будівельних магазинів та дропшиперів по всій Україні.
                   </p>
                   <p>
-                    Ми не виробник — ми зв'язуємо клієнтів з перевіреними виробниками та
+                    Ми не виробник — ми зв&apos;язуємо клієнтів з перевіреними виробниками та
                     брендами. Наша задача: широкий асортимент, актуальні ціни та швидка
                     доставка Новою Поштою в будь-яку точку України.
                   </p>
@@ -307,7 +307,7 @@ export default function AboutPage() {
                 Зареєструватись
               </Link>
               <Link href="/contacts" style={{ height: '48px', padding: '0 28px', borderRadius: '10px', border: '1.5px solid rgba(255,255,255,0.2)', color: '#E2E8F0', fontSize: '14px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', textDecoration: 'none', background: 'transparent' }}>
-                Зв'язатися з нами
+                Зв&apos;язатися з нами
               </Link>
             </div>
           </div>

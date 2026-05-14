@@ -45,18 +45,27 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
     orderId,
-    senderRef, senderCityRef, senderWarehouseRef, senderContactRef, senderPhone,
+    senderRef, senderCityRef, senderWarehouseRef, senderStreet, senderContactRef, senderPhone,
     lastName, firstName, middleName, recipientPhone,
     cityRecipientRef, recipientAddressRef,
     weight, seatsAmount, cost, description,
-    payerType, paymentMethod,
+    serviceType, payerType, paymentMethod,
     codEnabled, codAmount,
   } = body;
+
+  const resolvedServiceType = serviceType ?? 'WarehouseWarehouse';
+
+  if (!senderRef) {
+    return NextResponse.json(
+      { error: 'Не знайдено контрагента-відправника в НП. Перейдіть у Налаштування → НП Відправник і перевірте дані.' },
+      { status: 400 },
+    );
+  }
 
   const normalizedSenderPhone = normalizePhone(senderPhone);
   if (!normalizedSenderPhone) {
     return NextResponse.json(
-      { error: 'Телефон відправника порожній. Додайте номер телефону у налаштуваннях акаунту Нової Пошти.' },
+      { error: 'Телефон відправника порожній. Перейдіть у Налаштування → НП Відправник.' },
       { status: 400 },
     );
   }
@@ -89,7 +98,7 @@ export async function POST(req: NextRequest) {
     DateTime: todayStr(),
     CargoType: 'Cargo',
     Weight: String(weight),
-    ServiceType: 'WarehouseWarehouse',
+    ServiceType: resolvedServiceType,
     SeatsAmount: String(seatsAmount),
     Description: description,
     Cost: String(cost),
@@ -107,9 +116,9 @@ export async function POST(req: NextRequest) {
 
   if (codEnabled && codAmount > 0) {
     ttnPayload.BackwardDeliveryData = [{
-      PayerType: 'Recipient',
-      CargoType: 'Money',
-      RedeliveryString: String(parseFloat(codAmount).toFixed(2)),
+      PayerType:        'Sender',
+      CargoType:        'Money',
+      RedeliveryString: String(Math.round(parseFloat(codAmount))),
     }];
   }
 

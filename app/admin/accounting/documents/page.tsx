@@ -44,7 +44,7 @@ export default async function DocumentsPage() {
 
   return (
     <DocumentsClient
-      initialDocs={normalizedDocs as any}
+      initialDocs={normalizedDocs as Parameters<typeof DocumentsClient>[0]['initialDocs']}
       warehouses={warehouses ?? []}
       suppliers={suppliers ?? []}
       docTypes={docTypes ?? []}

@@ -167,10 +167,10 @@ export default function PartnersClient({
                       <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{partner.name}</span>
                       <span style={{
                         fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '20px',
-                        background: (partner as any).type === 'dropship_partner' ? '#EFF6FF' : '#F0FDF4',
-                        color:      (partner as any).type === 'dropship_partner' ? '#4880B8' : '#15803D',
+                        background: (partner as { type?: string }).type === 'dropship_partner' ? '#EFF6FF' : '#F0FDF4',
+                        color:      (partner as { type?: string }).type === 'dropship_partner' ? '#4880B8' : '#15803D',
                       }}>
-                        {(partner as any).type === 'dropship_partner' ? 'Дроп' : 'Опт'}
+                        {(partner as { type?: string }).type === 'dropship_partner' ? 'Дроп' : 'Опт'}
                       </span>
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{partner.email}</div>
@@ -228,7 +228,7 @@ export default function PartnersClient({
 }
 
 function PartnerTransactions({ partnerId }: { partnerId: string }) {
-  const [txs,     setTxs]     = useState<any[] | null>(null);
+  const [txs,     setTxs]     = useState<Record<string, unknown>[] | null>(null);
   const [loading, setLoading] = useState(false);
 
   if (!txs && !loading) {
@@ -252,6 +252,7 @@ function PartnerTransactions({ partnerId }: { partnerId: string }) {
       </div>
       {loading && <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Завантаження...</div>}
       {txs?.length === 0 && <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Транзакцій немає</div>}
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       {txs?.map((tx: any) => (
         <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border-light)', fontSize: '12px' }}>
           <div>

@@ -81,5 +81,13 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Also run abandoned cart reminders (piggybacked on this daily cron)
+  try {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua';
+    await fetch(`${siteUrl}/api/cron/abandoned-cart`, {
+      headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
+    });
+  } catch {}
+
   return NextResponse.json({ updated, checked: orders.length });
 }

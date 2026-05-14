@@ -29,6 +29,20 @@ type ProductOverride = {
 
 type SheetInfo = { name: string; hidden: boolean; skuRows: number; totalRows: number; headers: string[] };
 
+type SupplierPromotion = {
+  name: string;
+  our_sku: string | null;
+  brand: string | null;
+  promo_type: string;
+  value: string | number;
+  apply_retail: boolean;
+  apply_wholesale: boolean;
+  apply_drop: boolean;
+  starts_at: string;
+  ends_at: string;
+  is_active: boolean;
+};
+
 type Supplier = {
   id: number;
   slug: string;
@@ -50,6 +64,7 @@ type Supplier = {
   last_synced_at: string | null;
   brand_discounts: BrandDiscount[];
   product_overrides?: ProductOverride[];
+  promotions?: SupplierPromotion[];
   last_sync?: { rows_updated: number; rows_unmapped: number; error_message: string | null }[];
 };
 
@@ -418,9 +433,9 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                 {brands.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
               <input style={{ ...input, textAlign: 'center' }} type="number" step="0.1" placeholder="0" value={d.discount_pct ?? ''} onChange={ev => updateDiscount(i, 'discount_pct', ev.target.value)} />
-              <input style={{ ...input, textAlign: 'center' }} type="number" step="0.1" placeholder="глоб." value={(d as any).markup_retail ?? ''} onChange={ev => updateDiscount(i, 'markup_retail' as any, ev.target.value)} />
-              <input style={{ ...input, textAlign: 'center' }} type="number" step="0.1" placeholder="глоб." value={(d as any).markup_wholesale ?? ''} onChange={ev => updateDiscount(i, 'markup_wholesale' as any, ev.target.value)} />
-              <input style={{ ...input, textAlign: 'center' }} type="number" step="0.1" placeholder="глоб." value={(d as any).markup_drop ?? ''} onChange={ev => updateDiscount(i, 'markup_drop' as any, ev.target.value)} />
+              <input style={{ ...input, textAlign: 'center' }} type="number" step="0.1" placeholder="глоб." value={d.markup_retail ?? ''} onChange={ev => updateDiscount(i, 'markup_retail', ev.target.value)} />
+              <input style={{ ...input, textAlign: 'center' }} type="number" step="0.1" placeholder="глоб." value={d.markup_wholesale ?? ''} onChange={ev => updateDiscount(i, 'markup_wholesale', ev.target.value)} />
+              <input style={{ ...input, textAlign: 'center' }} type="number" step="0.1" placeholder="глоб." value={d.markup_drop ?? ''} onChange={ev => updateDiscount(i, 'markup_drop', ev.target.value)} />
               <label
                 title="Ціна продажу рахується від оригінальної вхідної ціни (без знижки). Знижка зменшує лише собівартість — маржа зростає, клієнт ціни не бачить."
                 style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '12px', color: d.keep_price ? '#15803D' : 'var(--text-muted)' }}
@@ -428,7 +443,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                 <input
                   type="checkbox"
                   checked={d.keep_price ?? false}
-                  onChange={ev => updateDiscount(i, 'keep_price' as any, ev.target.checked)}
+                  onChange={ev => updateDiscount(i, 'keep_price', ev.target.checked)}
                 />
                 {d.keep_price ? '✓ Активно' : 'Вимкнено'}
               </label>
@@ -514,7 +529,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
             </div>
             <button style={btn('#E11D48')} onClick={() => setEditing(prev => ({
               ...prev,
-              promotions: [...((prev as any).promotions ?? []), {
+              promotions: [...(prev?.promotions ?? []), {
                 name: '', our_sku: null, brand: null, promo_type: 'percent', value: '',
                 apply_retail: true, apply_wholesale: false, apply_drop: false,
                 starts_at: '', ends_at: '', is_active: true,
@@ -522,12 +537,12 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
             }))}>+ Акція</button>
           </div>
 
-          {((e as any).promotions ?? []).length > 0 && (
+          {(e.promotions ?? []).length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-              {((e as any).promotions as any[]).map((p: any, i: number) => {
+              {(e.promotions ?? []).map((p, i) => {
                 const setP = (field: string, val: unknown) => setEditing(prev => ({
                   ...prev,
-                  promotions: ((prev as any).promotions ?? []).map((x: any, xi: number) =>
+                  promotions: (prev?.promotions ?? []).map((x, xi) =>
                     xi === i ? { ...x, [field]: val } : x
                   ),
                 }));
@@ -552,7 +567,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                       </div>
                       <button onClick={() => setEditing(prev => ({
                         ...prev,
-                        promotions: ((prev as any).promotions ?? []).filter((_: any, xi: number) => xi !== i),
+                        promotions: (prev?.promotions ?? []).filter((_, xi) => xi !== i),
                       }))} style={{ height: '36px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end' }}>
                         ✕
                       </button>
@@ -584,7 +599,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                         { field: 'apply_drop', label: 'Дроп' },
                       ].map(({ field, label: lbl }) => (
                         <label key={field} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', cursor: 'pointer', color: 'var(--text-primary)' }}>
-                          <input type="checkbox" checked={p[field] ?? false} onChange={ev => setP(field, ev.target.checked)} />
+                          <input type="checkbox" checked={(p as Record<string, unknown>)[field] as boolean ?? false} onChange={ev => setP(field, ev.target.checked)} />
                           {lbl}
                         </label>
                       ))}
@@ -598,7 +613,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
               })}
             </div>
           )}
-          {((e as any).promotions ?? []).length === 0 && (
+          {(e.promotions ?? []).length === 0 && (
             <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>Немає активних акцій</p>
           )}
         </div>
@@ -616,15 +631,15 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '20px', fontSize: '13px', cursor: 'pointer' }}>
           <input
             type="checkbox"
-            checked={(e as any).qty_is_flag ?? false}
-            onChange={ev => set('qty_is_flag' as any, ev.target.checked)}
+            checked={e.qty_is_flag ?? false}
+            onChange={ev => set('qty_is_flag', ev.target.checked)}
             style={{ marginTop: '2px' }}
           />
           <span>
             <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Залишки — флаг наявності</span>
             <span style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
               Постачальник вказує умовне число (10, 5...) замість реального залишку.
-              При синку зберігаємо 0, наявність визначається тільки через статус "є / немає".
+              При синку зберігаємо 0, наявність визначається тільки через статус {'"'}є / немає{'"'}.
               Замовлення будь-якої кількості не блокується.
             </span>
           </span>

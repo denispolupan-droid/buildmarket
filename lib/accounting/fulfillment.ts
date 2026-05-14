@@ -73,7 +73,7 @@ export async function resolveOrderFulfillment(
   const physicalWarehouseIds = [
     ...new Set(
       rules
-        .filter(r => (r.warehouses as any)?.warehouse_type === 'physical')
+        .filter(r => (r.warehouses as { warehouse_type?: string })?.warehouse_type === 'physical')
         .map(r => r.warehouse_id),
     ),
   ];
@@ -109,7 +109,7 @@ export async function resolveOrderFulfillment(
   // 4. Маппинг склад → supplier_id
   const warehouseSupplierMap = new Map<number, number | null>();
   for (const rule of rules) {
-    const wh = rule.warehouses as any;
+    const wh = rule.warehouses as { warehouse_type?: string; supplier_id?: number; is_active?: boolean };
     warehouseSupplierMap.set(rule.warehouse_id, wh?.supplier_id ?? null);
   }
 
@@ -126,7 +126,7 @@ export async function resolveOrderFulfillment(
     );
 
     for (const rule of applicableRules) {
-      const wh = rule.warehouses as any;
+      const wh = rule.warehouses as { warehouse_type?: string; supplier_id?: number; is_active?: boolean };
       if (!wh?.is_active) continue;
 
       const isPhysical = wh.warehouse_type === 'physical';

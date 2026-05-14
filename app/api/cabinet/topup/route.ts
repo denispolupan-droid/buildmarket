@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     const siteUrl   = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua';
 
     let monoRes: Response;
-    let monoData: any;
+    let monoData: Record<string, unknown>;
 
     try {
       monoRes = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {

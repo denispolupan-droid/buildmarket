@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, ChevronRight } from 'lucide-react';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,14 +55,18 @@ export default async function CabinetOrdersPage() {
           </div>
         ) : (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr auto 120px 110px', padding: '10px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              <span>№</span><span>Товари</span><span>Сума</span><span>ТТН</span><span style={{ textAlign: 'center' }}>Статус</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 100px 160px 110px 32px', padding: '10px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <span>№</span><span>Товари</span><span>Сума</span><span>ТТН</span><span style={{ textAlign: 'center' }}>Статус</span><span />
             </div>
             {orders.map((order, i) => {
               const st = STATUS[order.status] ?? { label: order.status, color: '#64748B', bg: '#F1F5F9' };
               const items = order.items as { name: string; qty: number }[] ?? [];
               return (
-                <div key={order.id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr auto 120px 110px', padding: '14px 20px', borderBottom: i < orders.length - 1 ? '1px solid var(--border-light)' : 'none', alignItems: 'center' }}>
+                <Link
+                  key={order.id}
+                  href={`/cabinet/orders/${order.id}`}
+                  style={{ display: 'grid', gridTemplateColumns: '80px 1fr 100px 160px 110px 32px', padding: '14px 20px', borderBottom: i < orders.length - 1 ? '1px solid var(--border-light)' : 'none', alignItems: 'center', textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}
+                >
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>#{order.order_number}</div>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{new Date(order.created_at).toLocaleDateString('uk-UA')}</div>
@@ -75,14 +79,17 @@ export default async function CabinetOrdersPage() {
                     ))}
                     {items.length > 2 && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>+{items.length - 2} поз.</div>}
                   </div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', paddingRight: '16px' }}>{order.total_price} ₴</div>
-                  <div style={{ fontSize: '12px', color: order.tracking_number ? '#4880B8' : 'var(--text-muted)', fontFamily: 'monospace' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>{order.total_price} ₴</div>
+                  <div style={{ fontSize: '12px', fontFamily: 'monospace', color: order.tracking_number ? '#4880B8' : 'var(--text-muted)' }}>
                     {order.tracking_number ?? '—'}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
                     <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, color: st.color, background: st.bg }}>{st.label}</span>
                   </div>
-                </div>
+                  <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                    <ChevronRight size={15} />
+                  </div>
+                </Link>
               );
             })}
           </>

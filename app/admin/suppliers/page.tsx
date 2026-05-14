@@ -44,7 +44,7 @@ export default async function SuppliersPage() {
 
   return (
     <div style={{ padding: '32px 36px 64px' }}>
-      <SuppliersClient initial={suppliersWithSync as any} brands={brands} />
+      <SuppliersClient initial={suppliersWithSync as Parameters<typeof SuppliersClient>[0]['initial']} brands={brands} />
     </div>
   );
 }

@@ -318,7 +318,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
             <input type="text" value={color} onChange={e => setColor(e.target.value)} style={inputStyle} placeholder="напр. Білий" />
           </div>
           <div>
-            <label style={labelStyle}>Об'єм / Вага</label>
+            <label style={labelStyle}>Об&apos;єм / Вага</label>
             <input type="text" value={volume} onChange={e => setVolume(e.target.value)} style={inputStyle} placeholder="напр. 280 мл" />
           </div>
           <div>
@@ -515,7 +515,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
         </div>
 
         {chars.length === 0 ? (
-          <p style={{ color: '#94A3B8', fontSize: '14px' }}>Характеристик немає. Натисніть "Додати" щоб створити.</p>
+          <p style={{ color: '#94A3B8', fontSize: '14px' }}>Характеристик немає. Натисніть {'"'}Додати{'"'} щоб створити.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {chars.map((char, i) => (

@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  let { product, stock, characteristics } = body;
+  const { product, stock, characteristics } = body;
 
   if (!product.sku || product.sku === 'auto') {
     product.sku = await generateSku(product.category_slug);

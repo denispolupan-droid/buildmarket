@@ -56,6 +56,7 @@ export default function NewDocumentClient({
         .select('sku, name, brand, stock:product_stock(price_unit, price_cost)')
         .or(`name.ilike.%${prodSearch}%,sku.ilike.%${prodSearch}%`)
         .limit(8);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setProdResults((data ?? []).map((p: any) => ({
         sku: p.sku, name: `${p.brand} ${p.name}`,
         price: p.stock?.[0]?.price_unit ?? 0,

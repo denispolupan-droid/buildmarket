@@ -287,7 +287,7 @@ export default function ImportClient({ categories }: Props) {
           Формат файлу
         </h2>
         <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '8px' }}>
-          Обов'язкові колонки: <strong>SKU</strong>, <strong>Назва</strong>, <strong>Бренд</strong>
+          Обов&apos;язкові колонки: <strong>SKU</strong>, <strong>Назва</strong>, <strong>Бренд</strong>
         </p>
         <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '8px' }}>
           Формат такий самий як у <strong>catalog-export.xlsx</strong> — можна брати його як основу,

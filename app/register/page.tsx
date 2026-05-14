@@ -111,7 +111,7 @@ function RegisterForm() {
           }}>
             <strong>Що робити:</strong><br />
             1. Відкрийте листа від <strong>noreply@fixline.com.ua</strong><br />
-            2. Натисніть кнопку <strong>"Підтвердити email"</strong><br />
+            2. Натисніть кнопку <strong>{'"'}Підтвердити email{'"'}</strong><br />
             3. {isDropship
               ? 'Після підтвердження Ви потрапите до особистого кабінету'
               : 'Після підтвердження Ви зможете увійти в акаунт'}

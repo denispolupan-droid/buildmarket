@@ -80,7 +80,7 @@ export default function BalanceClient({ customerId, transactions, payoutRequests
 
             <div style={{ display: 'flex', gap: '8px' }}>
               {[{ v: 'bank', l: 'Банківський переказ' }, { v: 'goods_offset', l: 'Товарний залік' }].map(opt => (
-                <button key={opt.v} type="button" onClick={() => setMethod(opt.v as any)} style={{
+                <button key={opt.v} type="button" onClick={() => setMethod(opt.v as 'bank' | 'goods_offset')} style={{
                   flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                   border: `1.5px solid ${method === opt.v ? '#4880B8' : 'var(--border)'}`,
                   background: method === opt.v ? '#EFF6FF' : 'var(--bg-soft)',
@@ -109,7 +109,7 @@ export default function BalanceClient({ customerId, transactions, payoutRequests
 
             {method === 'goods_offset' && (
               <p style={{ fontSize: '12px', color: 'var(--text-muted)', background: 'var(--bg-soft)', padding: '10px', borderRadius: '8px' }}>
-                Баланс буде використано для оплати товарів за вашими дроп-цінами. Менеджер зв'яжеться для уточнення деталей.
+                Баланс буде використано для оплати товарів за вашими дроп-цінами. Менеджер зв&apos;яжеться для уточнення деталей.
               </p>
             )}
 

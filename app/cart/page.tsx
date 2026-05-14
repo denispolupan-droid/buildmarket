@@ -338,12 +338,12 @@ export default function CartPage() {
                     {errors.has('lastName') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Вкажіть прізвище</p>}
                   </div>
                   <div id="field-firstName">
-                    <label style={{ ...labelStyle, color: errors.has('firstName') ? '#EF4444' : undefined }}>Ім'я</label>
+                    <label style={{ ...labelStyle, color: errors.has('firstName') ? '#EF4444' : undefined }}>Ім&apos;я</label>
                     <input style={{ ...inputStyle, border: err('firstName') ?? inputStyle.border }} placeholder="Іван" value={firstName} onChange={e => { setFirstName(e.target.value); setErrors(s => { const n = new Set(s); n.delete('firstName'); return n; }); }} />
-                    {errors.has('firstName') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Вкажіть ім'я</p>}
+                    {errors.has('firstName') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Вкажіть ім&apos;я</p>}
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={labelStyle}>По батькові <span style={{ fontWeight: 400, color: '#94A3B8' }}>(необов'язково)</span></label>
+                    <label style={labelStyle}>По батькові <span style={{ fontWeight: 400, color: '#94A3B8' }}>(необов&apos;язково)</span></label>
                     <input style={inputStyle} placeholder="Іванович" value={middleName} onChange={e => setMiddleName(e.target.value)} />
                   </div>
                   <div id="field-phone">
@@ -472,7 +472,7 @@ export default function CartPage() {
                   ))}
                 </div>
                 {errors.has('delivery') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>Оберіть спосіб доставки</p>}
-                {errors.has('novaSubtype') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>Оберіть відділення або кур'єр</p>}
+                {errors.has('novaSubtype') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>Оберіть відділення або кур&apos;єр</p>}
                 {errors.has('address') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>Оберіть місто та відділення Нової Пошти</p>}
               </Section>
 

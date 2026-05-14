@@ -18,17 +18,20 @@ export default async function SettingsPage() {
   (rows ?? []).forEach(r => { cfg[r.key] = r.value; });
 
   return (
-    <div style={{ padding: '32px 36px 64px', maxWidth: '680px' }}>
+    <div style={{ padding: '32px 36px 64px', maxWidth: '640px' }}>
       <div style={{ marginBottom: '28px' }}>
         <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', margin: 0 }}>Налаштування</h1>
-        <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>Конфігурація інтеграцій</p>
+        <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>Нова Пошта — конфігурація відправлення</p>
       </div>
       <NpSenderSettings
+        initialApiKey={cfg.np_api_key ?? ''}
         initialCityRef={cfg.np_sender_city_ref ?? (process.env.NP_SENDER_CITY_REF ?? '')}
         initialCityName={cfg.np_sender_city_name ?? ''}
+        initialSenderType={(cfg.np_sender_type as 'warehouse' | 'address') ?? 'warehouse'}
         initialWarehouseRef={cfg.np_sender_warehouse_ref ?? (process.env.NP_SENDER_WAREHOUSE_REF ?? '')}
-        initialWarehouseDesc={cfg.np_sender_warehouse_desc ?? (process.env.NP_SENDER_WAREHOUSE_DESC ?? '')}
-        initialPhone={cfg.np_sender_phone ?? (process.env.NP_SENDER_PHONE ?? '')}
+        initialWarehouseDesc={cfg.np_sender_warehouse_desc ?? ''}
+        initialAddressRef={cfg.np_sender_address_ref ?? ''}
+        initialAddressDesc={cfg.np_sender_address_desc ?? ''}
       />
     </div>
   );

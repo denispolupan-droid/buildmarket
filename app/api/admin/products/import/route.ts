@@ -362,10 +362,13 @@ export async function POST(req: NextRequest) {
   }
 
   // Скидаємо кеш продуктів одразу після імпорту
-  // @ts-ignore — Next.js 16 requires second arg 'max', type definitions lag behind
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
   revalidateTag('products', 'max');
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   revalidateTag('categories', 'max');
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   revalidateTag('brands', 'max');
 

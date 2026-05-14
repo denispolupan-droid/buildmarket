@@ -56,7 +56,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if (Array.isArray(promotions)) {
     await serviceClient.from('supplier_promotions').delete().eq('supplier_id', id);
     const promoInsert = promotions
-      .filter((p: any) => p.name && p.value)
+      .filter((p: { name?: string; value?: string }) => p.name && p.value)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((p: any) => ({
         supplier_id:     Number(id),
         name:            p.name,

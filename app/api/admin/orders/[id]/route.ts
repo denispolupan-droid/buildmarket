@@ -14,7 +14,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { status, tracking_number, payment_confirmed, callback_done } = body;
+  const { status, tracking_number, payment_confirmed, callback_done, items: bodyItems, total_price: bodyTotalPrice } = body;
 
   const db = createServiceClient();
   const update: Record<string, unknown> = {};
@@ -30,11 +30,37 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (tracking_number !== undefined) update.tracking_number = tracking_number;
   if (payment_confirmed !== undefined) update.payment_confirmed = payment_confirmed;
   if (callback_done !== undefined) update.callback_done = callback_done;
-  if (body.items !== undefined) update.items = body.items;
-  if (body.total_price !== undefined) update.total_price = body.total_price;
+  if (bodyItems !== undefined) update.items = bodyItems;
+  if (bodyTotalPrice !== undefined) update.total_price = bodyTotalPrice;
 
   const { error } = await db.from('orders').update(update).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // cancelled + dropship → повертаємо закупочну вартість на баланс партнера
+  if (status === 'cancelled') {
+    try {
+      const { data: order } = await db
+        .from('orders')
+        .select('channel_code, partner_code, items, status')
+        .eq('id', id)
+        .single();
+
+      if (order?.channel_code === 'dropship' && order.partner_code) {
+        const orderItems = (order.items ?? []) as { qty: number; cost_price?: number; price?: number }[];
+        const totalCost = orderItems.reduce((s, i) => s + (i.cost_price ?? 0) * i.qty, 0);
+        if (totalCost > 0) {
+          await db.rpc('refund_partner_balance', {
+            p_customer_id: order.partner_code,
+            p_amount:      totalCost,
+            p_order_id:    id,
+            p_description: 'Повернення: замовлення скасовано',
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[balance] refund on cancel failed:', err);
+    }
+  }
 
   // shipped → фіксуємо продаж в обліку (для не-дропшип замовлень сайту)
   if (status === 'shipped') {
@@ -82,6 +108,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             p_customer_id: customer.id,
             p_cod_amount:  order.total_price,
             p_order_id:    order.id,
+            p_np_fee_pct:  2,
           });
           if (creditErr) console.error('[balance] credit_cod_to_partner failed:', creditErr);
         }

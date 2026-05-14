@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { monitoring } from '../lib/monitoring';
 
 export default function Error({
@@ -45,7 +46,7 @@ export default function Error({
           >
             Спробувати знову
           </button>
-          <a
+          <Link
             href="/"
             style={{
               height: '44px', padding: '0 24px', borderRadius: '10px',
@@ -55,7 +56,7 @@ export default function Error({
             }}
           >
             На головну
-          </a>
+          </Link>
         </div>
       </div>
     </div>

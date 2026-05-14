@@ -9,11 +9,11 @@ const serviceClient = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-async function npCall(modelName: string, calledMethod: string, methodProperties: object) {
+async function npCall(apiKey: string, modelName: string, calledMethod: string, methodProperties: object) {
   const res = await fetch(NP_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ apiKey: process.env.NOVA_POSHTA_API_KEY, modelName, calledMethod, methodProperties }),
+    body: JSON.stringify({ apiKey, modelName, calledMethod, methodProperties }),
   });
   return res.json();
 }
@@ -25,51 +25,46 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // Read saved sender config from DB
   const { data: rows } = await serviceClient.from('app_settings').select('key, value');
   const cfg: Record<string, string> = {};
   (rows ?? []).forEach(r => { cfg[r.key] = r.value; });
 
-  // Merge: DB takes priority, then env vars
-  const cityRef      = cfg.np_sender_city_ref      || process.env.NP_SENDER_CITY_REF      || '';
-  const warehouseRef = cfg.np_sender_warehouse_ref  || process.env.NP_SENDER_WAREHOUSE_REF  || '';
-  const warehouseDesc = cfg.np_sender_warehouse_desc || process.env.NP_SENDER_WAREHOUSE_DESC || '';
+  // API key: app_settings takes priority over env var
+  const apiKey      = cfg.np_api_key || process.env.NOVA_POSHTA_API_KEY || '';
+  const cityRef     = cfg.np_sender_city_ref     || process.env.NP_SENDER_CITY_REF     || '';
+  const senderType  = (cfg.np_sender_type as 'warehouse' | 'address') ?? 'warehouse';
+  const warehouseRef  = cfg.np_sender_warehouse_ref  || process.env.NP_SENDER_WAREHOUSE_REF  || '';
+  const warehouseDesc = cfg.np_sender_warehouse_desc || '';
+  const addressRef  = cfg.np_sender_address_ref  ?? '';
+  const addressDesc = cfg.np_sender_address_desc ?? '';
 
-  // Sender ref + contact + phone: try DB, then env, then NP API
-  let senderRef    = cfg.np_sender_ref         || process.env.NP_SENDER_REF         || '';
-  let contactRef   = cfg.np_sender_contact_ref  || process.env.NP_SENDER_CONTACT_REF  || '';
-  let phone        = cfg.np_sender_phone        || process.env.NP_SENDER_PHONE        || '';
+  if (!apiKey) return NextResponse.json({ error: 'API ключ НП не налаштовано' }, { status: 404 });
+  if (!cityRef) return NextResponse.json({ error: 'Місто відправника не налаштовано. Перейдіть у Налаштування.' }, { status: 404 });
+  if (senderType === 'warehouse' && !warehouseRef) return NextResponse.json({ error: 'Відділення відправника не налаштовано. Перейдіть у Налаштування.' }, { status: 404 });
+  if (senderType === 'address' && !addressRef) return NextResponse.json({ error: 'Адреса забору не налаштована. Перейдіть у Налаштування.' }, { status: 404 });
 
-  // Always fetch sender/contact/phone from NP API if any are missing
-  if (!senderRef || !contactRef || !phone) {
-    const counterRes = await npCall('Counterparty', 'getCounterparties', { CounterpartyProperty: 'Sender', Page: '1' });
-    const sender = counterRes.data?.[0];
-    if (sender) {
-      senderRef = senderRef || sender.Ref;
-      const contactsRes = await npCall('ContactPerson', 'getContactPersonsList', { CounterpartyRef: sender.Ref, Page: '1' });
-      const contact = contactsRes.data?.[0];
-      contactRef = contactRef || contact?.Ref || sender.Ref;
-      phone      = phone      || contact?.Phones || contact?.Phone || sender.Phone || '';
-    }
-  }
+  // Auto-fetch sender ref + contact + phone from NP API
+  const counterRes = await npCall(apiKey, 'Counterparty', 'getCounterparties', { CounterpartyProperty: 'Sender', Page: '1' });
+  const sender = counterRes.data?.[0];
 
-  if (!cityRef || !warehouseRef) {
-    return NextResponse.json(
-      { error: 'Не налаштовано відділення відправника. Перейдіть у Налаштування → НП Відправник.' },
-      { status: 404 },
-    );
-  }
+  if (!sender) return NextResponse.json({ error: 'Відправника не знайдено в НП. Перевірте API ключ.' }, { status: 404 });
+
+  const contactsRes = await npCall(apiKey, 'ContactPerson', 'getContactPersonsList', { CounterpartyRef: sender.Ref, Page: '1' });
+  const contact = contactsRes.data?.[0];
 
   return NextResponse.json({
-    ref: senderRef,
+    ref:         sender.Ref,
     cityRef,
-    contactRef,
-    phone,
-    warehouses: [{
-      ref: warehouseRef,
+    contactRef:  contact?.Ref ?? sender.Ref,
+    phone:       contact?.Phones ?? contact?.Phone ?? sender.Phone ?? '',
+    senderType,
+    addressRef,
+    addressDesc,
+    warehouses: warehouseRef ? [{
+      ref:         warehouseRef,
       cityRef,
       description: warehouseDesc || 'Відділення відправника',
-      number: '',
-    }],
+      number:      '',
+    }] : [],
   });
 }

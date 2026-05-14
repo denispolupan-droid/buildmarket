@@ -2,15 +2,11 @@
   "crons": [
     {
       "path": "/api/cron/sync-suppliers",
-      "schedule": "0 7 * * *"
+      "schedule": "0 8 * * *"
     },
     {
       "path": "/api/cron/sync-delivery-status",
       "schedule": "0 19 * * *"
-    },
-    {
-      "path": "/api/cron/abandoned-cart",
-      "schedule": "0 * * * *"
     }
   ]
 }

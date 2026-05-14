@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
 
   if (!customer) return NextResponse.json({ error: 'Партнера не знайдено' }, { status: 404 });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { rows } = await req.json() as { rows: any[] };
   if (!rows?.length) return NextResponse.json({ error: 'Немає рядків для обробки' }, { status: 400 });
 

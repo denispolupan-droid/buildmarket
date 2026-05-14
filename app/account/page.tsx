@@ -152,7 +152,7 @@ export default async function AccountPage({
                     <Link href="/contacts" style={{
                       fontSize: '13px', fontWeight: 600, color: '#4880B8', textDecoration: 'none',
                     }}>
-                      Зв'язатись →
+                      Зв&apos;язатись →
                     </Link>
                   </div>
                 </div>

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, Merge, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import CreateTTNModal from '../components/admin/CreateTTNModal';
+import RegisterPanel from '../components/admin/RegisterPanel';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number };
@@ -29,7 +30,18 @@ type Order = {
   tracking_number: string | null;
   payment_confirmed: boolean;
   callback_done: boolean;
+  channel_code: string | null;
   items: OrderItem[];
+};
+
+const CHANNEL_LABEL: Record<string, { label: string; color: string; bg: string }> = {
+  website:  { label: 'Магазин',  color: '#1E3A5F', bg: '#EFF4FF' },
+  b2b:      { label: 'Опт',      color: '#6B21A8', bg: '#FAF5FF' },
+  dropship: { label: 'Дроп',     color: '#0E7490', bg: '#ECFEFF' },
+  retail:   { label: 'Роздріб',  color: '#B45309', bg: '#FEF3C7' },
+  phone:    { label: 'Телефон',  color: '#374151', bg: '#F3F4F6' },
+  prom:     { label: 'Prom',     color: '#C2410C', bg: '#FFF7ED' },
+  rozetka:  { label: 'Rozetka',  color: '#15803D', bg: '#DCFCE7' },
 };
 
 const STATUSES = [
@@ -59,9 +71,11 @@ const FILTER_TABS = [
 ];
 
 export default function AdminOrders({ initialOrders, currentPage = 1, totalPages = 1 }: { initialOrders: Order[]; currentPage?: number; totalPages?: number }) {
-  const [orders, setOrders]     = useState<Order[]>(initialOrders);
-  const [filter, setFilter]     = useState('');
-  const [loading, setLoading]   = useState<string | null>(null);
+  const [orders, setOrders]         = useState<Order[]>(initialOrders);
+  const [filter, setFilter]         = useState('new');
+  const [channelFilter, setChannelFilter] = useState('');
+  const [search, setSearch]         = useState('');
+  const [loading, setLoading]       = useState<string | null>(null);
   const [ttnValues, setTtnValues] = useState<Record<string, string>>(
     Object.fromEntries(initialOrders.map(o => [o.id, o.tracking_number ?? '']))
   );
@@ -257,9 +271,21 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
     setTtnSaving(null);
   }
 
-  const filtered = filter
-    ? orders.filter(o => o.status === filter)
-    : orders.filter(o => o.status !== 'pending_payment');
+  const q = search.trim().toLowerCase();
+  const filtered = orders.filter(o => {
+    if (filter && o.status !== filter) return false;
+    if (!filter && o.status === 'pending_payment') return false;
+    if (channelFilter && (o.channel_code ?? 'website') !== channelFilter) return false;
+    if (q) {
+      const num = String(o.order_number);
+      const contact = (o.contact ?? '').toLowerCase();
+      const phone = (o.phone ?? '').replace(/\D/g, '');
+      const company = (o.company ?? '').toLowerCase();
+      const ttn = (o.tracking_number ?? '').toLowerCase();
+      if (!num.includes(q) && !contact.includes(q) && !phone.includes(q.replace(/\D/g, '')) && !company.includes(q) && !ttn.includes(q)) return false;
+    }
+    return true;
+  });
 
   return (
     <>
@@ -287,62 +313,130 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
               fontSize: '13px', fontWeight: 700, cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: '6px',
             }}>
-              <Truck size={14} /> Об'єднати в ТТН
+              <Truck size={14} /> Об&apos;єднати в ТТН
             </button>
           </div>
         </div>
       )}
 
-      {/* Filter tabs + sync button */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', gap: '12px', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-        {FILTER_TABS.map(tab => (
-          <button
-            key={tab.value}
-            onClick={() => setFilter(tab.value)}
-            style={{
-              height: '34px', padding: '0 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
-              border: `1.5px solid ${filter === tab.value ? '#1E3A5F' : '#E2E8F0'}`,
-              background: filter === tab.value ? '#1E3A5F' : '#fff',
-              color: filter === tab.value ? '#fff' : '#475569',
-              cursor: 'pointer', transition: 'all 0.15s',
-            }}
-          >
-            {tab.label}
-            <span style={{
-              marginLeft: '6px', fontSize: '11px', opacity: 0.7,
-            }}>
-              {tab.value ? orders.filter(o => o.status === tab.value).length : orders.length}
-            </span>
-          </button>
-        ))}
+      {/* Register panel */}
+      <RegisterPanel />
+
+      {/* Filters + search */}
+      <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+        {/* Row 1: Status tabs + sync */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {FILTER_TABS.map(tab => (
+              <button
+                key={tab.value}
+                onClick={() => setFilter(tab.value)}
+                style={{
+                  height: '32px', padding: '0 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+                  border: `1.5px solid ${filter === tab.value ? '#1E3A5F' : '#E2E8F0'}`,
+                  background: filter === tab.value ? '#1E3A5F' : '#fff',
+                  color: filter === tab.value ? '#fff' : '#475569',
+                  cursor: 'pointer', transition: 'all 0.15s',
+                }}
+              >
+                {tab.label}
+                <span style={{ marginLeft: '5px', fontSize: '11px', opacity: 0.7 }}>
+                  {tab.value ? orders.filter(o => o.status === tab.value).length : orders.length}
+                </span>
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+            {syncResult && (
+              <span style={{ fontSize: '12px', color: syncResult.updated > 0 ? '#15803D' : '#64748B' }}>
+                {syncResult.updated > 0
+                  ? `✓ Оновлено: ${syncResult.updated} з ${syncResult.checked}`
+                  : `Перевірено: ${syncResult.checked}, змін немає`}
+              </span>
+            )}
+            <button
+              onClick={syncDeliveryStatus}
+              disabled={syncing}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                height: '32px', padding: '0 12px', borderRadius: '8px',
+                border: '1.5px solid #E2E8F0', background: '#fff',
+                fontSize: '13px', fontWeight: 600, color: '#475569',
+                cursor: syncing ? 'wait' : 'pointer', opacity: syncing ? 0.6 : 1,
+              }}
+            >
+              <RefreshCw size={13} style={{ animation: syncing ? 'spin 1s linear infinite' : 'none' }} />
+              {syncing ? 'Синхронізую...' : 'Синхронізувати НП'}
+            </button>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-          {syncResult && (
-            <span style={{ fontSize: '12px', color: syncResult.updated > 0 ? '#15803D' : '#64748B' }}>
-              {syncResult.updated > 0
-                ? `✓ Оновлено: ${syncResult.updated} з ${syncResult.checked}`
-                : `Перевірено: ${syncResult.checked}, змін немає`}
-            </span>
-          )}
-          <button
-            onClick={syncDeliveryStatus}
-            disabled={syncing}
-            title="Синхронізувати статуси доставки НП"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '6px',
-              height: '34px', padding: '0 14px', borderRadius: '8px',
-              border: '1.5px solid #E2E8F0', background: '#fff',
-              fontSize: '13px', fontWeight: 600, color: '#475569',
-              cursor: syncing ? 'wait' : 'pointer',
-              opacity: syncing ? 0.6 : 1,
-            }}
-          >
-            <RefreshCw size={13} style={{ animation: syncing ? 'spin 1s linear infinite' : 'none' }} />
-            {syncing ? 'Синхронізую...' : 'Синхронізувати НП'}
-          </button>
+        {/* Row 2: Channel filter + search */}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Channel pills */}
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {[
+              { value: '',         label: 'Всі канали' },
+              { value: 'website',  label: 'Магазин' },
+              { value: 'b2b',      label: 'Опт' },
+              { value: 'dropship', label: 'Дроп' },
+              { value: 'prom',     label: 'Prom' },
+              { value: 'rozetka',  label: 'Rozetka' },
+            ].map(ch => {
+              const active = channelFilter === ch.value;
+              const cfg = ch.value ? CHANNEL_LABEL[ch.value] : null;
+              return (
+                <button
+                  key={ch.value}
+                  onClick={() => setChannelFilter(ch.value)}
+                  style={{
+                    height: '30px', padding: '0 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
+                    border: `1.5px solid ${active ? (cfg?.color ?? '#1E3A5F') : '#E2E8F0'}`,
+                    background: active ? (cfg?.bg ?? '#EFF4FF') : '#fff',
+                    color: active ? (cfg?.color ?? '#1E3A5F') : '#64748B',
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}
+                >
+                  {ch.label}
+                  <span style={{ marginLeft: '4px', fontSize: '10px', opacity: 0.7 }}>
+                    {orders.filter(o => !ch.value || (o.channel_code ?? 'website') === ch.value).length}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search */}
+          <div style={{ position: 'relative', flex: 1, minWidth: '200px', maxWidth: '320px', marginLeft: 'auto' }}>
+            <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+            <input
+              placeholder="№ замовлення, ФІО, телефон, ТТН..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{
+                width: '100%', height: '32px', paddingLeft: '32px', paddingRight: search ? '30px' : '10px',
+                border: '1.5px solid #E2E8F0', borderRadius: '8px', fontSize: '13px',
+                outline: 'none', boxSizing: 'border-box', background: '#fff', color: '#0F172A',
+              }}
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0, display: 'flex' }}
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Result count when filtering */}
+        {(q || channelFilter) && (
+          <div style={{ fontSize: '12px', color: '#64748B' }}>
+            Знайдено: <strong>{filtered.length}</strong> замовлень
+          </div>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -367,6 +461,8 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
             const paymentConfirmed = order.payment_confirmed ?? false;
             const noCallback = order.comment?.includes('Не передзвонювати') ?? false;
             const callbackDone = order.callback_done ?? false;
+            const isDropship = order.channel_code === 'dropship';
+            const channel = CHANNEL_LABEL[order.channel_code ?? 'website'] ?? CHANNEL_LABEL.website;
 
             return (
               <div key={order.id} className="admin-order-card" style={{
@@ -398,6 +494,12 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                       color: status.color, background: status.bg,
                     }}>
                       {status.label}
+                    </span>
+                    <span style={{
+                      fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px',
+                      color: channel.color, background: channel.bg, letterSpacing: '0.02em',
+                    }}>
+                      {channel.label}
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -678,8 +780,8 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                         </div>
                       )}
 
-                      {/* Callback badge */}
-                      {noCallback ? (
+                      {/* Callback badge — не показуємо для дропшипу */}
+                      {!isDropship && (noCallback ? (
                         <div style={{
                           display: 'inline-flex', alignItems: 'center', gap: '6px',
                           padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
@@ -711,7 +813,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                             <span style={{ fontSize: '12px', color: '#475569' }}>Зателефонували</span>
                           </label>
                         </div>
-                      )}
+                      ))}
 
                       {(() => {
                         const displayComment = order.comment
@@ -768,6 +870,25 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                                 }}
                               >
                                 <Truck size={14} />
+                              </button>
+                            )}
+                            {order.tracking_number && (
+                              <button
+                                onClick={() => (window as unknown as { __addToRegister?: (...a: unknown[]) => void }).__addToRegister?.(
+                                  order.tracking_number,
+                                  order.id,
+                                  order.contact,
+                                  order.total_price,
+                                )}
+                                title="Додати ТТН до реєстру"
+                                style={{
+                                  height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
+                                  background: '#F0FDF4', color: '#15803D', border: '1.5px solid #86EFAC',
+                                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  fontSize: '14px',
+                                }}
+                              >
+                                📋
                               </button>
                             )}
                           </div>
