@@ -60,6 +60,7 @@ type Supplier = {
   markup_drop: number;
   is_active: boolean;
   qty_is_flag: boolean;
+  email: string | null;
   notes: string | null;
   last_synced_at: string | null;
   brand_discounts: BrandDiscount[];
@@ -72,7 +73,7 @@ const EMPTY: Omit<Supplier, 'id' | 'last_synced_at' | 'last_sync'> = {
   slug: '', name: '', source_url: '', file_format: 'csv',
   sheet_name: null, col_sku: null, col_price: null, col_qty: null, col_name: null,
   sync_interval_h: 24, markup_retail: 22, markup_wholesale: 10,
-  markup_drop: 15, is_active: true, qty_is_flag: false, notes: '', brand_discounts: [],
+  markup_drop: 15, is_active: true, qty_is_flag: false, email: '', notes: '', brand_discounts: [],
 };
 
 const FORMAT_LABELS: Record<string, string> = {
@@ -616,6 +617,12 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
           {(e.promotions ?? []).length === 0 && (
             <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>Немає активних акцій</p>
           )}
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <span style={label}>Email для замовлень</span>
+          <input style={input} type="email" placeholder="orders@supplier.com" value={e.email ?? ''} onChange={ev => set('email', ev.target.value)} />
+          <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>На цей email надсилатиметься замовлення товарів</p>
         </div>
 
         <div style={{ marginBottom: '20px' }}>

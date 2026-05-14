@@ -12,8 +12,6 @@ const serviceClient = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-// Верифікація підпису Monobank
-// https://api.monobank.ua/docs/acquiring.html#/paths/api-merchant-webhook/post
 function verifySignature(body: string, signature: string | null): boolean {
   if (!signature) return false;
   const token = process.env.MONOBANK_API_TOKEN!;
@@ -39,6 +37,9 @@ export async function POST(req: NextRequest) {
   if (ccy !== 980) return NextResponse.json({ ok: true });
 
   const amountUah = amount / 100;
+  const siteUrl    = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua';
+  const FROM       = 'FIXLINE <noreply@fixline.com.ua>';
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'denis.polupan@gmail.com';
 
   // ── Поповнення балансу партнера ─────────────────────────────────────────
   const topupMatch = reference?.match(/^topup_([a-f0-9-]+)_\d+$/);
@@ -66,7 +67,66 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // ── Оплата замовлення з кошика ──────────────────────────────────────────
+  // ── Оплата замовлення (нова схема: pending draft → orders) ──────────────
+  const pendingMatch = reference?.match(/^pending_([a-f0-9-]+)_\d+$/);
+  if (pendingMatch) {
+    const pendingId = pendingMatch[1];
+
+    const { data: draft } = await serviceClient
+      .from('pending_card_orders')
+      .delete()
+      .eq('id', pendingId)
+      .select('payload, user_id, email')
+      .single();
+
+    if (draft) {
+      const { data: order } = await serviceClient
+        .from('orders')
+        .insert({ ...draft.payload, status: 'confirmed' })
+        .select('id, order_number, contact, company, phone, email, items, total_price, delivery_type, delivery_address, delivery_city_name, comment')
+        .single();
+
+      if (order) {
+        const invoiceUrl = `${siteUrl}/invoice/${order.id}`;
+
+        notifyAdminNewOrder({
+          order_number:       order.order_number,
+          contact:            order.contact,
+          company:            order.company ?? null,
+          phone:              order.phone,
+          total_price:        order.total_price,
+          payment_type:       'card',
+          delivery_city_name: order.delivery_city_name ?? null,
+        });
+
+        resend.emails.send({
+          from: FROM, to: ADMIN_EMAIL,
+          subject: `✅ Оплачено! Замовлення №${order.order_number} — ${order.contact} (${order.phone})`,
+          html: buildAdminNotificationHtml({
+            orderNumber: order.order_number, company: order.company ?? '',
+            contact: order.contact, phone: order.phone, email: order.email,
+            items: order.items, totalPrice: order.total_price,
+            deliveryType: order.delivery_type, deliveryAddress: order.delivery_address ?? '',
+            paymentType: 'card', comment: order.comment,
+          }),
+        }).catch(() => {});
+
+        resend.emails.send({
+          from: FROM, to: order.email,
+          subject: `✅ Оплату підтверджено! Замовлення №${order.order_number} — FIXLINE`,
+          html: buildCustomerOrderEmail({
+            orderNumber: order.order_number, orderId: order.id,
+            company: order.company ?? '', contact: order.contact,
+            totalPrice: order.total_price, paymentType: 'card',
+            userId: null, invoiceUrl, siteUrl,
+          }),
+        }).catch(() => {});
+      }
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  // ── Оплата замовлення (стара схема: order_<uuid> — зворотна сумісність) ─
   const orderMatch = reference?.match(/^order_([a-f0-9-]+)_\d+$/);
   if (orderMatch) {
     const orderId = orderMatch[1];
@@ -80,12 +140,8 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (order) {
-      const siteUrl    = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua';
       const invoiceUrl = `${siteUrl}/invoice/${order.id}`;
-      const FROM       = 'FIXLINE <noreply@fixline.com.ua>';
-      const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'denis.polupan@gmail.com';
 
-      // Telegram admin notification
       notifyAdminNewOrder({
         order_number:       order.order_number,
         contact:            order.contact,
@@ -96,7 +152,6 @@ export async function POST(req: NextRequest) {
         delivery_city_name: order.delivery_city_name ?? null,
       });
 
-      // Admin email
       resend.emails.send({
         from: FROM, to: ADMIN_EMAIL,
         subject: `✅ Оплачено! Замовлення №${order.order_number} — ${order.contact} (${order.phone})`,
@@ -109,7 +164,6 @@ export async function POST(req: NextRequest) {
         }),
       }).catch(() => {});
 
-      // Customer confirmation email
       resend.emails.send({
         from: FROM, to: order.email,
         subject: `✅ Оплату підтверджено! Замовлення №${order.order_number} — FIXLINE`,

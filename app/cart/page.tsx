@@ -240,11 +240,11 @@ export default function CartPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Помилка сервера');
-      trackPurchase(String(data.id), items, totalPrice);
       if (payment === 'card' && data.pageUrl) {
-        // Кошик очищається на success-сторінці після підтвердження оплати
+        // Заказ создаётся только после подтверждения оплаты вебхуком — корзина очищается на success-странице
         window.location.href = data.pageUrl;
       } else {
+        trackPurchase(String(data.id), items, totalPrice);
         clearCart();
         router.push(`/order-success?id=${data.id}&num=${data.orderNumber}${isRetail ? '&from=shop' : ''}`);
       }

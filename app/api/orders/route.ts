@@ -23,14 +23,90 @@ export async function POST(req: NextRequest) {
   if (!Array.isArray(items) || items.length === 0) return NextResponse.json({ error: 'Кошик порожній' }, { status: 400 });
   if (typeof totalPrice !== 'number' || totalPrice < 0) return NextResponse.json({ error: 'Невірна сума' }, { status: 400 });
 
-  // Мінімальне замовлення для оптових клієнтів
   const WHOLESALE_TYPES = ['dealer', 'wholesale', 'contractor', 'shop_owner'];
   const accountType = user?.user_metadata?.account_type as string | undefined;
   if (WHOLESALE_TYPES.includes(accountType ?? '') && totalPrice < 3000) {
     return NextResponse.json({ error: 'Мінімальна сума оптового замовлення — 3 000 ₴' }, { status: 400 });
   }
 
-  const admin = createSupabaseAdmin();
+  const admin  = createSupabaseAdmin();
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;
+  const FROM    = 'FIXLINE <noreply@fixline.com.ua>';
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'denis.polupan@gmail.com';
+
+  // ── Card payment: save draft, create Monobank invoice, DO NOT insert into orders ──
+  if (paymentType === 'card') {
+    const pendingId = crypto.randomUUID();
+    const reference = `pending_${pendingId}_${Date.now()}`;
+
+    const token = (process.env.MONOBANK_API_TOKEN ?? '').replace(/[^\x20-\x7E]/g, '').trim();
+    let pageUrl: string | null = null;
+    try {
+      const monoRes  = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
+        method: 'POST',
+        headers: { 'X-Token': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount:   Math.round(totalPrice * 100),
+          ccy:      980,
+          merchantPaymInfo: {
+            reference,
+            destination: `Замовлення — FIXLINE`,
+            comment:     `Замовлення — FIXLINE`,
+          },
+          redirectUrl: `${siteUrl}/order-success?paid=1`,
+          webHookUrl:  `${siteUrl}/api/webhooks/monobank`,
+        }),
+      });
+      const monoData = await monoRes.json();
+      if (monoRes.ok && monoData.pageUrl) {
+        pageUrl = monoData.pageUrl;
+      } else {
+        console.error('[monobank invoice]', monoData);
+      }
+    } catch (e) {
+      console.error('[monobank invoice]', e);
+    }
+
+    if (!pageUrl) {
+      return NextResponse.json({ error: 'Не вдалось ініціювати оплату. Спробуйте ще раз або оберіть інший спосіб оплати.' }, { status: 500 });
+    }
+
+    // Save pending draft — order only materialises after webhook confirms payment
+    const payload = {
+      user_id:               user?.id ?? null,
+      company:               company ?? null,
+      contact,
+      phone,
+      email,
+      delivery_type:         deliveryType,
+      delivery_subtype:      deliverySubtype ?? null,
+      delivery_address:      deliveryAddress ?? null,
+      delivery_city_ref:     deliveryCityRef ?? null,
+      delivery_city_name:    deliveryCityName ?? null,
+      delivery_warehouse_ref: deliveryWarehouseRef ?? null,
+      payment_type:          'card',
+      comment:               comment ?? null,
+      items,
+      total_price:           totalPrice,
+    };
+
+    await admin.from('pending_card_orders').insert({
+      id:          pendingId,
+      user_id:     user?.id ?? null,
+      payload,
+      reference,
+      total_price: totalPrice,
+      email,
+    });
+
+    admin.from('abandoned_carts')
+      .update({ recovered_at: new Date().toISOString() })
+      .eq('email', email).is('recovered_at', null).then(() => {});
+
+    return NextResponse.json({ pageUrl });
+  }
+
+  // ── COD / Invoice: insert order immediately ───────────────────────────────
   const { data, error } = await admin
     .from('orders')
     .insert({
@@ -46,7 +122,7 @@ export async function POST(req: NextRequest) {
       delivery_city_name:    deliveryCityName ?? null,
       delivery_warehouse_ref: deliveryWarehouseRef ?? null,
       payment_type:  paymentType,
-      status:        paymentType === 'card' ? 'pending_payment' : 'new',
+      status:        'new',
       comment:       comment ?? null,
       items,
       total_price:   totalPrice,
@@ -59,14 +135,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Mark abandoned cart as recovered
   admin.from('abandoned_carts')
     .update({ recovered_at: new Date().toISOString() })
     .eq('email', email).is('recovered_at', null).then(() => {});
 
-  const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'denis.polupan@gmail.com';
-  const FROM       = 'FIXLINE <noreply@fixline.com.ua>';
-  const siteUrl    = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;
   const invoiceUrl = `${siteUrl}/invoice/${data.id}`;
 
   const orderData = {
@@ -75,47 +147,6 @@ export async function POST(req: NextRequest) {
     deliveryAddress: deliveryAddress ?? '', paymentType, comment,
   };
 
-  // ── Card payment: create Monobank invoice ─────────────────────────────────
-  if (paymentType === 'card') {
-    // Admin email (awaiting payment)
-    resend.emails.send({
-      from: FROM, to: ADMIN_EMAIL,
-      subject: `⏳ Замовлення №${data.order_number} — очікує оплати (${contact})`,
-      html: buildAdminNotificationHtml(orderData),
-    }).catch(e => console.error('[admin email card]', e));
-
-    // Monobank invoice
-    try {
-      const token = (process.env.MONOBANK_API_TOKEN ?? '').replace(/[^\x20-\x7E]/g, '').trim();
-      const reference = `order_${data.id}_${Date.now()}`;
-      const monoRes  = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
-        method: 'POST',
-        headers: { 'X-Token': token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount:   Math.round(totalPrice * 100),
-          ccy:      980,
-          merchantPaymInfo: {
-            reference,
-            destination: `Замовлення №${data.order_number} — FIXLINE`,
-            comment:     `Замовлення №${data.order_number}`,
-          },
-          redirectUrl: `${siteUrl}/order-success?id=${data.id}&num=${data.order_number}&paid=1`,
-          webHookUrl:  `${siteUrl}/api/webhooks/monobank`,
-        }),
-      });
-      const monoData = await monoRes.json();
-      if (monoRes.ok && monoData.pageUrl) {
-        return NextResponse.json({ id: data.id, orderNumber: data.order_number, pageUrl: monoData.pageUrl });
-      }
-      console.error('[monobank invoice]', monoData);
-    } catch (e) {
-      console.error('[monobank invoice]', e);
-    }
-    // Monobank failed — return order anyway (client goes to success page)
-    return NextResponse.json({ id: data.id, orderNumber: data.order_number });
-  }
-
-  // ── COD / Invoice: standard notifications ─────────────────────────────────
   notifyAdminNewOrder({
     order_number:       data.order_number,
     contact,
@@ -126,14 +157,12 @@ export async function POST(req: NextRequest) {
     delivery_city_name: body.deliveryCityName ?? null,
   });
 
-  // Admin email
   resend.emails.send({
     from: FROM, to: ADMIN_EMAIL,
     subject: `🛒 Нове замовлення №${data.order_number} — ${contact} (${phone})`,
     html: buildAdminNotificationHtml(orderData),
   }).catch(e => console.error('[admin email]', e));
 
-  // Customer: Telegram (repeat) or email (first order)
   const { data: prevOrder } = await admin
     .from('orders').select('telegram_chat_id')
     .eq('email', email).neq('id', data.id)

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../lib/supabase-server';
 import AdminOrders from './AdminOrders';
+import Link from 'next/link';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,6 +10,15 @@ const serviceClient = createClient(
 );
 
 const PAGE_SIZE = 50;
+
+const STATUS_LABELS: Record<string, string> = {
+  new:             'Нові',
+  pending_payment: 'Очікує оплати',
+  confirmed:       'Підтверджено',
+  shipped:         'Відправлено',
+  delivered:       'Доставлено',
+  cancelled:       'Скасовано',
+};
 
 export default async function AdminPage({
   searchParams,
@@ -42,19 +52,31 @@ export default async function AdminPage({
 
   return (
     <div style={{ padding: '32px 36px 64px' }}>
-      <div style={{ marginBottom: '28px' }}>
-        <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', margin: 0 }}>Замовлення</h1>
-        <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>
-          Всього: {count ?? 0}
-          {(newCount ?? 0) > 0 && (
-            <span style={{ marginLeft: '10px', color: '#DC2626', fontWeight: 700 }}>· Нових: {newCount}</span>
-          )}
-          {totalPages > 1 && (
-            <span style={{ marginLeft: '10px' }}>· Сторінка {page} з {totalPages}</span>
-          )}
-        </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
+        <div>
+          <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+            {status ? STATUS_LABELS[status] ?? status : 'Замовлення'}
+          </h1>
+          <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>
+            Всього: {count ?? 0}
+            {(newCount ?? 0) > 0 && (
+              <span style={{ marginLeft: '10px', color: '#DC2626', fontWeight: 700 }}>· Нових: {newCount}</span>
+            )}
+            {totalPages > 1 && (
+              <span style={{ marginLeft: '10px' }}>· Сторінка {page} з {totalPages}</span>
+            )}
+          </p>
+        </div>
+        <Link href="/admin/orders/new" style={{
+          display: 'inline-flex', alignItems: 'center', gap: '6px',
+          height: '36px', padding: '0 16px', borderRadius: '9px',
+          background: '#1E3A5F', color: '#fff', textDecoration: 'none',
+          fontSize: '13px', fontWeight: 700, flexShrink: 0,
+        }}>
+          + Нове замовлення
+        </Link>
       </div>
-      <AdminOrders initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} />
+      <AdminOrders key={status ?? ''} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} />
     </div>
   );
 }

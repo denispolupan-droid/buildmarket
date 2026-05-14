@@ -46,20 +46,24 @@ function SuccessContent() {
             {isPaid ? 'Оплату підтверджено!' : 'Замовлення прийнято!'}
           </h1>
           <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '24px', lineHeight: 1.6 }}>
-            {isPaid
-              ? 'Ваш платіж успішно прийнято. Замовлення передано в обробку — ми повідомимо вас про відправку.'
-              : 'Дякуємо за замовлення. Наш менеджер зв\'яжеться з вами найближчим часом для підтвердження.'}
+            {isPaid && !orderNum
+              ? 'Ваш платіж успішно прийнято. Деталі замовлення та підтвердження надіслано на ваш email.'
+              : isPaid
+                ? 'Ваш платіж успішно прийнято. Замовлення передано в обробку — ми повідомимо вас про відправку.'
+                : 'Дякуємо за замовлення. Наш менеджер зв\'яжеться з вами найближчим часом для підтвердження.'}
           </p>
 
-          <div style={{
-            background: '#F8FAFC', borderRadius: '12px', padding: '16px 20px',
-            marginBottom: '32px', border: '1px solid #E2E8F0',
-          }}>
-            <div style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '4px' }}>Номер замовлення</div>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: '#1E3A5F', letterSpacing: '0.05em' }}>
-              {short}
+          {orderNum && (
+            <div style={{
+              background: '#F8FAFC', borderRadius: '12px', padding: '16px 20px',
+              marginBottom: '32px', border: '1px solid #E2E8F0',
+            }}>
+              <div style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '4px' }}>Номер замовлення</div>
+              <div style={{ fontSize: '20px', fontWeight: 800, color: '#1E3A5F', letterSpacing: '0.05em' }}>
+                {short}
+              </div>
             </div>
-          </div>
+          )}
 
           <Link href={continuePath} style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',

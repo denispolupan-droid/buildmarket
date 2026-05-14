@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Header from "./components/Header";
+import ChatWidget from "./components/ChatWidget";
 import GoogleAnalytics from "./components/GoogleAnalytics";
 import { CartProvider } from "../lib/cart";
 import { WishlistProvider } from "../lib/wishlist";
@@ -71,6 +72,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <main style={{minHeight:'100vh'}}>
                 {children}
               </main>
+              <ChatWidget />
             </WishlistProvider>
           </CartProvider>
         </ThemeProvider>

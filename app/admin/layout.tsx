@@ -13,14 +13,23 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.user_metadata?.role !== 'admin') redirect('/');
 
-  const { count } = await serviceClient
-    .from('orders')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'new');
+  const STATUS_KEYS = ['new', 'confirmed', 'shipped', 'delivered', 'cancelled'] as const;
+
+  const [orderResults, { count: chatUnread }] = await Promise.all([
+    Promise.all(
+      STATUS_KEYS.map(s =>
+        serviceClient.from('orders').select('*', { count: 'exact', head: true }).eq('status', s)
+      )
+    ),
+    serviceClient.from('chat_sessions').select('*', { count: 'exact', head: true }).gt('unread_count', 0),
+  ]);
+
+  const statusCounts: Record<string, number> = {};
+  STATUS_KEYS.forEach((s, i) => { statusCounts[s] = orderResults[i].count ?? 0; });
 
   return (
     <div className="admin-layout" style={{ display: 'flex', minHeight: '100vh', background: '#F8FAFC' }}>
-      <AdminSidebar newOrdersCount={count ?? 0} />
+      <AdminSidebar newOrdersCount={statusCounts.new ?? 0} statusCounts={statusCounts} chatUnreadCount={chatUnread ?? 0} />
       <main style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
         {children}
       </main>

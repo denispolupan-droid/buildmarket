@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
 import { recordDropshipSale } from '../../../../../lib/accounting/dropship';
+import { releaseReservation } from '../../../../../lib/accounting/reservations';
 import { notifyAdminStatusChange, notifyCustomerStatus } from '../../../../../lib/telegram';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -20,7 +21,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const update: Record<string, unknown> = {};
 
   if (status !== undefined) {
-    const VALID = ['new', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+    const VALID = ['new', 'confirmed', 'awaiting_stock', 'shipped', 'delivered', 'cancelled'];
     if (!VALID.includes(status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
@@ -36,8 +37,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { error } = await db.from('orders').update(update).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // cancelled + dropship → повертаємо закупочну вартість на баланс партнера
+  // Note: reservation on confirm is now handled by /confirm endpoint (fulfillment decision)
+
+  // cancelled → знімаємо резерв + повертаємо баланс партнера
   if (status === 'cancelled') {
+    try {
+      await releaseReservation(id, 'cancelled');
+    } catch (err) {
+      console.error('[reservation] release on cancel failed:', err);
+    }
+
     try {
       const { data: order } = await db
         .from('orders')
@@ -62,7 +71,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  // shipped → фіксуємо продаж в обліку (для не-дропшип замовлень сайту)
+  // shipped → фіксуємо продаж в обліку + знімаємо резерв
   if (status === 'shipped') {
     try {
       const { data: order } = await db
@@ -71,7 +80,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         .eq('id', id)
         .single();
 
-      // Для замовлень сайту (не дропшип партнерів) — фіксуємо в acc_documents
       if (order?.items?.length && order.channel_code !== 'dropship') {
         await recordDropshipSale({
           order_id:     order.id,
@@ -83,6 +91,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     } catch (err) {
       console.error('[accounting] recordDropshipSale failed:', err);
+    }
+
+    try {
+      await releaseReservation(id, 'shipped');
+    } catch (err) {
+      console.error('[reservation] release on ship failed:', err);
     }
   }
 
@@ -96,7 +110,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         .single();
 
       if (order?.channel_code === 'dropship' && order.partner_code && order.payment_type === 'cod') {
-        // Знаходимо customers.id партнера (partner_code = customers.id)
         const { data: customer } = await db
           .from('customers')
           .select('id')
