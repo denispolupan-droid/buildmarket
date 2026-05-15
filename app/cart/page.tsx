@@ -695,29 +695,11 @@ export default function CartPage() {
                   </div>
                 )}
 
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting || (role === 'wholesale' && totalPrice < WHOLESALE_MIN)}
-                  style={{
-                    width: '100%', height: '48px', borderRadius: '10px',
-                    border: 'none',
-                    background: submitting || (role === 'wholesale' && totalPrice < WHOLESALE_MIN) ? '#94A3B8' : '#1E3A5F',
-                    color: '#fff',
-                    fontSize: '15px', fontWeight: 700,
-                    cursor: submitting || (role === 'wholesale' && totalPrice < WHOLESALE_MIN) ? 'not-allowed' : 'pointer',
-                    transition: 'background 0.15s',
-                  }}
-                >
-                  {submitting ? 'Завантаження...' : payment === 'card' ? 'Перейти до оплати →' : 'Підтвердити замовлення →'}
-                </button>
-                {submitError && (
-                  <p style={{ fontSize: '12px', color: '#EF4444', textAlign: 'center', marginTop: '8px' }}>{submitError}</p>
-                )}
                 <div
                   onClick={() => setNoCallback(v => !v)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '12px',
-                    marginTop: '12px', cursor: 'pointer', userSelect: 'none',
+                    marginBottom: '12px', cursor: 'pointer', userSelect: 'none',
                     padding: '12px 14px', borderRadius: '10px',
                     background: noCallback ? '#F0FDF4' : '#F8FAFC',
                     border: `1.5px solid ${noCallback ? '#86EFAC' : '#E2E8F0'}`,
@@ -741,6 +723,24 @@ export default function CartPage() {
                     Не передзвонювати для підтвердження замовлення
                   </span>
                 </div>
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting || (role === 'wholesale' && totalPrice < WHOLESALE_MIN)}
+                  style={{
+                    width: '100%', height: '48px', borderRadius: '10px',
+                    border: 'none',
+                    background: submitting || (role === 'wholesale' && totalPrice < WHOLESALE_MIN) ? '#94A3B8' : '#1E3A5F',
+                    color: '#fff',
+                    fontSize: '15px', fontWeight: 700,
+                    cursor: submitting || (role === 'wholesale' && totalPrice < WHOLESALE_MIN) ? 'not-allowed' : 'pointer',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  {submitting ? 'Завантаження...' : payment === 'card' ? 'Перейти до оплати →' : 'Підтвердити замовлення →'}
+                </button>
+                {submitError && (
+                  <p style={{ fontSize: '12px', color: '#EF4444', textAlign: 'center', marginTop: '8px' }}>{submitError}</p>
+                )}
               </div>
 
             </div>
