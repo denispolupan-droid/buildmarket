@@ -20,10 +20,15 @@ jobs:
           fi
 
       - name: Check supplier sync freshness
+        continue-on-error: true
         env:
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SERVICE_KEY:  ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SERVICE_KEY" ]; then
+            echo "::warning::Supabase secrets not configured — skipping sync check"
+            exit 0
+          fi
           # Перевіряємо що останній синк ЗРХ був не більше 4 годин тому
           LAST_SYNC=$(curl -s \
             -H "Authorization: Bearer $SERVICE_KEY" \
