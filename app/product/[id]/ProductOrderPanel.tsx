@@ -31,7 +31,8 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
   const [sending,     setSending]     = useState(false);
   const [isWholesale, setIsWholesale] = useState(false);
   const [showModal,   setShowModal]   = useState(false);
-  const { addItem } = useCart();
+  const { addItem, items } = useCart();
+  const inCart = items.some(i => i.sku === sku);
   const { isLiked, toggle: toggleWish } = useWishlist();
   const liked = isLiked(sku);
 
@@ -97,17 +98,22 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
 
             <button
               onClick={handleAddToCart}
-              className={!added ? 'btn-primary' : undefined}
+              className={!added && !inCart ? 'btn-primary' : undefined}
               style={{
                 height: '44px', padding: '0 28px', border: 'none', borderRadius: '10px',
-                background: added ? '#16A34A' : '#4880B8', color: '#fff',
+                background: added ? '#16A34A' : inCart ? '#0D9488' : '#4880B8', color: '#fff',
                 fontSize: '14px', fontWeight: 700, cursor: 'pointer',
                 whiteSpace: 'nowrap', flexShrink: 0, marginLeft: '32px',
                 display: 'flex', alignItems: 'center', gap: '6px',
                 transition: 'background 0.2s',
               }}
             >
-              {added ? <><Check size={15} strokeWidth={2.5} /> Додано</> : <><Plus size={15} strokeWidth={2.5} /> В кошик</>}
+              {added
+                ? <><Check size={15} strokeWidth={2.5} /> Додано</>
+                : inCart
+                  ? <><Check size={15} strokeWidth={2.5} /> В кошику</>
+                  : <><Plus size={15} strokeWidth={2.5} /> В кошик</>
+              }
             </button>
 
             <button
