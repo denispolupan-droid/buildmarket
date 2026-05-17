@@ -232,7 +232,7 @@ export default function NpSenderSettings({
       </div>
 
       {/* ── Крок 2: Місто ─────────────────────────────────────────────── */}
-      <div style={{ background: 'var(--bg-card)', border: `1.5px solid ${step2Active ? '#E2E8F0' : '#F1F5F9'}`, borderRadius: '14px', overflow: 'hidden', opacity: step2Active ? 1 : 0.5 }}>
+      <div style={{ background: 'var(--bg-card)', border: `1.5px solid ${step2Active ? 'var(--border)' : 'var(--border-light)'}`, borderRadius: '14px', overflow: 'hidden', opacity: step2Active ? 1 : 0.5 }}>
         <div style={{ padding: '14px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
           2. Місто відправлення
         </div>
@@ -243,7 +243,7 @@ export default function NpSenderSettings({
                 {cityLoading ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Search size={15} />}
               </div>
               <input
-                style={{ ...inp, paddingLeft: '38px', border: selectedCity ? '1.5px solid #86EFAC' : '1.5px solid var(--border)', background: selectedCity ? '#F0FDF4' : '#fff' }}
+                style={{ ...inp, paddingLeft: '38px', border: selectedCity ? '1.5px solid #86EFAC' : '1.5px solid var(--border)', background: selectedCity ? 'rgba(134,239,172,0.08)' : 'var(--bg-soft)' }}
                 placeholder="Введіть назву міста..."
                 value={cityQuery}
                 disabled={!step2Active}
@@ -270,7 +270,7 @@ export default function NpSenderSettings({
       </div>
 
       {/* ── Крок 3: Звідки відправляємо ───────────────────────────────── */}
-      <div style={{ background: 'var(--bg-card)', border: `1.5px solid ${step3Active ? '#E2E8F0' : '#F1F5F9'}`, borderRadius: '14px', overflow: 'hidden', opacity: step3Active ? 1 : 0.5 }}>
+      <div style={{ background: 'var(--bg-card)', border: `1.5px solid ${step3Active ? 'var(--border)' : 'var(--border-light)'}`, borderRadius: '14px', overflow: 'hidden', opacity: step3Active ? 1 : 0.5 }}>
         <div style={{ padding: '14px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
           3. Звідки відправляємо
         </div>
@@ -285,9 +285,9 @@ export default function NpSenderSettings({
                 onClick={() => { setSenderType(t); setSelectedWH(null); setWhQuery(''); setSelectedAddr(null); }}
                 style={{
                   flex: 1, height: '40px', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: step3Active ? 'pointer' : 'not-allowed',
-                  border: `1.5px solid ${senderType === t ? '#1E3A5F' : '#E2E8F0'}`,
-                  background: senderType === t ? '#EFF4FF' : '#fff',
-                  color: senderType === t ? '#1E3A5F' : '#64748B',
+                  border: `1.5px solid ${senderType === t ? '#1E3A5F' : 'var(--border)'}`,
+                  background: senderType === t ? '#1E3A5F' : 'var(--bg-soft)',
+                  color: senderType === t ? '#fff' : 'var(--text-secondary)',
                 }}
               >
                 {t === 'warehouse' ? '📦 Відділення НП' : '🏭 Адресний забір'}
@@ -306,7 +306,7 @@ export default function NpSenderSettings({
                 <div style={{ position: 'relative' }}>
                   <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}><Search size={15} /></div>
                   <input
-                    style={{ ...inp, paddingLeft: '38px', paddingRight: '36px', border: selectedWH ? '1.5px solid #86EFAC' : '1.5px solid var(--border)', background: selectedWH ? '#F0FDF4' : '#fff' }}
+                    style={{ ...inp, paddingLeft: '38px', paddingRight: '36px', border: selectedWH ? '1.5px solid #86EFAC' : '1.5px solid var(--border)', background: selectedWH ? 'rgba(134,239,172,0.08)' : 'var(--bg-soft)' }}
                     placeholder={selectedCity ? 'Номер або адреса відділення...' : 'Спочатку оберіть місто'}
                     value={whQuery}
                     disabled={!selectedCity}
@@ -342,7 +342,7 @@ export default function NpSenderSettings({
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {npAddresses.map(addr => (
-                  <label key={addr.Ref} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', border: `1.5px solid ${selectedAddr?.Ref === addr.Ref ? '#1E3A5F' : '#E2E8F0'}`, borderRadius: '10px', cursor: 'pointer', background: selectedAddr?.Ref === addr.Ref ? '#EFF4FF' : '#fff' }}>
+                  <label key={addr.Ref} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', border: `1.5px solid ${selectedAddr?.Ref === addr.Ref ? '#1E3A5F' : 'var(--border)'}`, borderRadius: '10px', cursor: 'pointer', background: selectedAddr?.Ref === addr.Ref ? 'var(--brand-blue-light)' : 'var(--bg-soft)' }}>
                     <input type="radio" name="np_address" checked={selectedAddr?.Ref === addr.Ref} onChange={() => setSelectedAddr(addr)} style={{ accentColor: '#1E3A5F', width: '16px', height: '16px' }} />
                     <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: selectedAddr?.Ref === addr.Ref ? 600 : 400 }}>{addr.Description}</span>
                   </label>

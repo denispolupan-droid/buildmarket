@@ -23,10 +23,10 @@ export default async function StockHubPage() {
   return (
     <div style={{ padding: '28px 32px', maxWidth: '960px' }}>
       <style>{`
-        .stock-card { transition: box-shadow 0.15s; }
-        .stock-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.10); }
+        .stock-card { transition: box-shadow 0.15s, border-color 0.15s; }
+        .stock-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.18); border-color: var(--brand-blue) !important; }
         .supplier-row { transition: border-color 0.15s, box-shadow 0.15s; }
-        .supplier-row:hover { border-color: #BFDBFE !important; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        .supplier-row:hover { border-color: var(--brand-blue) !important; box-shadow: 0 2px 12px rgba(0,0,0,0.10); }
       `}</style>
 
       <div style={{ marginBottom: '32px' }}>
@@ -41,7 +41,7 @@ export default async function StockHubPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
         <Link href="/admin/accounting/stock/suppliers" style={{ textDecoration: 'none' }}>
           <div className="stock-card" style={{
-            background: '#EFF4FF', border: '1.5px solid #BFDBFE',
+            background: 'var(--bg-card)', border: '1.5px solid var(--border)',
             borderRadius: '16px', padding: '28px 24px',
             display: 'flex', flexDirection: 'column', gap: '16px', cursor: 'pointer',
           }}>
@@ -70,7 +70,7 @@ export default async function StockHubPage() {
 
         <Link href="/admin/accounting/stock/own" style={{ textDecoration: 'none' }}>
           <div className="stock-card" style={{
-            background: '#F0FDF4', border: '1.5px solid #86EFAC',
+            background: 'var(--bg-card)', border: '1.5px solid var(--border)',
             borderRadius: '16px', padding: '28px 24px',
             display: 'flex', flexDirection: 'column', gap: '16px', cursor: 'pointer',
           }}>

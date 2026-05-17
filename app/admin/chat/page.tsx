@@ -72,14 +72,14 @@ export default async function AdminChatPage() {
               style={{
                 display: 'flex', alignItems: 'center', gap: '14px',
                 padding: '14px 16px', borderRadius: '10px',
-                background: s.unread_count > 0 ? '#EFF6FF' : '#fff',
-                border: `1px solid ${s.unread_count > 0 ? '#BFDBFE' : '#E2E8F0'}`,
+                background: s.unread_count > 0 ? 'var(--brand-blue-light)' : 'var(--bg-card)',
+                border: `1px solid ${s.unread_count > 0 ? '#4880B840' : 'var(--border)'}`,
                 textDecoration: 'none', transition: 'border-color 0.12s',
               }}
             >
               <div style={{
                 width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
-                background: s.status === 'resolved' ? '#F1F5F9' : '#1E3A5F',
+                background: s.status === 'resolved' ? 'var(--bg-soft)' : '#1E3A5F',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 <MessageSquare size={16} color={s.status === 'resolved' ? '#94A3B8' : '#fff'} />
