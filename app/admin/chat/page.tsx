@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+﻿import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import { MessageSquare } from 'lucide-react';
 
@@ -46,8 +46,8 @@ export default async function AdminChatPage() {
   return (
     <div style={{ padding: '32px 36px 64px' }}>
       <div style={{ marginBottom: '28px' }}>
-        <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', margin: 0 }}>Чат підтримки</h1>
-        <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>
+        <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Чат підтримки</h1>
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
           Всього: {sessions?.length ?? 0}
           {totalUnread > 0 && (
             <span style={{ marginLeft: '10px', color: '#DC2626', fontWeight: 700 }}>· Непрочитаних: {totalUnread}</span>
@@ -58,7 +58,7 @@ export default async function AdminChatPage() {
       {!sessions?.length ? (
         <div style={{
           padding: '48px', textAlign: 'center', borderRadius: '12px',
-          border: '1px dashed #CBD5E1', color: '#94A3B8',
+          border: '1px dashed #CBD5E1', color: 'var(--text-muted)',
         }}>
           <MessageSquare size={32} style={{ margin: '0 auto 12px', opacity: 0.4 }} />
           <p style={{ margin: 0, fontSize: '14px' }}>Повідомлень поки немає</p>
@@ -87,18 +87,18 @@ export default async function AdminChatPage() {
 
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
                     Розмова
                   </span>
                   {s.status === 'resolved' && (
                     <span style={{
-                      fontSize: '10px', fontWeight: 600, color: '#64748B',
-                      background: '#F1F5F9', borderRadius: '4px', padding: '1px 6px',
+                      fontSize: '10px', fontWeight: 600, color: 'var(--text-secondary)',
+                      background: 'var(--border-light)', borderRadius: '4px', padding: '1px 6px',
                     }}>вирішено</span>
                   )}
                 </div>
                 <p style={{
-                  margin: 0, fontSize: '12.5px', color: '#64748B',
+                  margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>
                   {lastMessages[s.id] ?? '—'}
@@ -106,7 +106,7 @@ export default async function AdminChatPage() {
               </div>
 
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontSize: '11px', color: '#94A3B8', marginBottom: '4px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>
                   {timeAgo(s.last_message_at)}
                 </div>
                 {s.unread_count > 0 && (

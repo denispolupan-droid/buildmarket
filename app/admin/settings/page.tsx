@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+﻿import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import NpSenderSettings from './NpSenderSettings';
@@ -21,8 +21,8 @@ export default async function SettingsPage() {
   return (
     <div style={{ padding: '32px 36px 64px', maxWidth: '640px' }}>
       <div style={{ marginBottom: '28px' }}>
-        <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', margin: 0 }}>Налаштування</h1>
-        <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>Нова Пошта — конфігурація відправлення</p>
+        <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Налаштування</h1>
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>Нова Пошта — конфігурація відправлення</p>
       </div>
       <NpSenderSettings
         initialApiKey={cfg.np_api_key ?? ''}

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+﻿import { createClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import ProductsTable from './ProductsTable';
@@ -35,8 +35,8 @@ export default async function AdminProductsPage() {
     <div style={{ padding: '32px 36px 64px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
         <div>
-          <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', margin: 0 }}>Товари</h1>
-          <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Товари</h1>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
             {products?.length ?? 0} товарів у базі
           </p>
         </div>
@@ -46,7 +46,7 @@ export default async function AdminProductsPage() {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '8px',
               height: '40px', padding: '0 18px', borderRadius: '10px',
-              background: '#fff', border: '1px solid #E2E8F0', color: '#475569',
+              background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)',
               fontSize: '13px', fontWeight: 600, textDecoration: 'none',
             }}
           >
@@ -57,7 +57,7 @@ export default async function AdminProductsPage() {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '8px',
               height: '40px', padding: '0 18px', borderRadius: '10px',
-              background: '#fff', border: '1px solid #E2E8F0', color: '#475569',
+              background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)',
               fontSize: '13px', fontWeight: 600, textDecoration: 'none',
             }}
           >

@@ -64,7 +64,7 @@ export default function ProductsTable({ products, categories }: Props) {
     <div>
       <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: '1 1 300px' }}>
-          <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+          <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <input
             type="text"
             placeholder="Пошук за назвою, SKU, брендом..."
@@ -72,7 +72,7 @@ export default function ProductsTable({ products, categories }: Props) {
             onChange={e => { setSearch(e.target.value); resetVisible(); }}
             style={{
               width: '100%', height: '44px', paddingLeft: '42px', paddingRight: '16px',
-              borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '14px',
+              borderRadius: '10px', border: '1px solid var(--border)', fontSize: '14px',
               outline: 'none',
             }}
           />
@@ -83,8 +83,8 @@ export default function ProductsTable({ products, categories }: Props) {
           onChange={e => { setFilterCategory(e.target.value); resetVisible(); }}
           style={{
             height: '44px', padding: '0 16px', borderRadius: '10px',
-            border: '1px solid #E2E8F0', fontSize: '14px', minWidth: '180px',
-            background: filterCategory ? '#EFF6FF' : '#fff',
+            border: '1px solid var(--border)', fontSize: '14px', minWidth: '180px',
+            background: filterCategory ? 'var(--brand-blue-light)' : 'var(--bg-card)',
           }}
         >
           <option value="">Всі категорії</option>
@@ -98,8 +98,8 @@ export default function ProductsTable({ products, categories }: Props) {
           onChange={e => { setFilterStatus(e.target.value); resetVisible(); }}
           style={{
             height: '44px', padding: '0 16px', borderRadius: '10px',
-            border: '1px solid #E2E8F0', fontSize: '14px', minWidth: '160px',
-            background: filterStatus ? '#EFF6FF' : '#fff',
+            border: '1px solid var(--border)', fontSize: '14px', minWidth: '160px',
+            background: filterStatus ? 'var(--brand-blue-light)' : 'var(--bg-card)',
           }}
         >
           <option value="">Всі статуси</option>
@@ -110,47 +110,47 @@ export default function ProductsTable({ products, categories }: Props) {
         </select>
       </div>
 
-      <div style={{ fontSize: '13px', color: '#64748B', marginBottom: '12px' }}>
+      <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
         Знайдено: {filtered.length} товарів
       </div>
 
-      <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
           <thead>
-            <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>SKU</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Назва</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Бренд</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Категорія</th>
-              <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#475569' }}>Опт</th>
-              <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#475569' }}>Роздріб</th>
-              <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#475569' }}>Залишок</th>
-              <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: '#475569' }}>Статус</th>
-              <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: '#475569' }}></th>
+            <tr style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)' }}>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>SKU</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Назва</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Бренд</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Категорія</th>
+              <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Опт</th>
+              <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Роздріб</th>
+              <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Залишок</th>
+              <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}>Статус</th>
+              <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}></th>
             </tr>
           </thead>
           <tbody>
             {filtered.slice(0, visibleCount).map(p => {
               const hasIssue = !p.stock?.price_retail || (p.stock?.stock_qty ?? 0) < 1;
               return (
-                <tr key={p.sku} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                  <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '12px', color: '#64748B' }}>
+                <tr key={p.sku} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                  <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-secondary)' }}>
                     {p.sku}
                   </td>
                   <td style={{ padding: '12px 16px', maxWidth: '300px' }}>
-                    <div style={{ fontWeight: 500, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {p.name}
                     </div>
-                    {p.volume && <div style={{ fontSize: '12px', color: '#94A3B8' }}>{p.volume}</div>}
+                    {p.volume && <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{p.volume}</div>}
                   </td>
-                  <td style={{ padding: '12px 16px', color: '#475569' }}>{p.brand}</td>
-                  <td style={{ padding: '12px 16px', color: '#475569', fontSize: '13px' }}>
+                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>{p.brand}</td>
+                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)', fontSize: '13px' }}>
                     {categoryMap[p.category_slug ?? ''] ?? '—'}
                   </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#0F172A' }}>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-primary)' }}>
                     {p.stock?.price_unit ? `${p.stock.price_unit} ₴` : '—'}
                   </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#0F172A' }}>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-primary)' }}>
                     {p.stock?.price_retail ? `${p.stock.price_retail} ₴` : '—'}
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'right', color: (p.stock?.stock_qty ?? 0) < 1 ? '#EF4444' : '#475569' }}>
@@ -162,7 +162,7 @@ export default function ProductsTable({ products, categories }: Props) {
                     ) : p.is_active ? (
                       <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#22C55E' }} />
                     ) : (
-                      <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#CBD5E1' }} />
+                      <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--border)' }} />
                     )}
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
@@ -171,7 +171,7 @@ export default function ProductsTable({ products, categories }: Props) {
                       style={{
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                         width: '36px', height: '36px', borderRadius: '8px',
-                        border: '1px solid #E2E8F0', background: '#fff', color: '#475569',
+                        border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)',
                         textDecoration: 'none',
                       }}
                     >
@@ -203,7 +203,7 @@ export default function ProductsTable({ products, categories }: Props) {
         )}
 
         {filtered.length === 0 && (
-          <div style={{ padding: '48px', textAlign: 'center', color: '#94A3B8' }}>
+          <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
             <Package size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
             <div>Товарів не знайдено</div>
           </div>

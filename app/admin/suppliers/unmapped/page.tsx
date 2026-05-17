@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+﻿import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import UnmappedClient from './UnmappedClient';
@@ -29,14 +29,14 @@ export default async function UnmappedPage() {
   }));
 
   return (
-    <div style={{ background: '#F8FAFC', minHeight: '100vh' }}>
+    <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 32px 64px' }}>
         <div style={{ marginBottom: '20px' }}>
-          <a href="/admin/suppliers" style={{ fontSize: '13px', color: '#64748B', textDecoration: 'none' }}>← Постачальники</a>
+          <a href="/admin/suppliers" style={{ fontSize: '13px', color: 'var(--text-secondary)', textDecoration: 'none' }}>← Постачальники</a>
         </div>
         <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0F172A', margin: 0 }}>Немаплені артикули</h1>
-          <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>
+          <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Немаплені артикули</h1>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
             Артикули постачальників, для яких не знайдено відповідного товару в каталозі.
           </p>
         </div>

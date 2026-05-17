@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+﻿import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Package } from 'lucide-react';
@@ -61,7 +61,7 @@ export default async function SupplierStockPage({ params }: { params: Promise<{ 
     <div style={{ padding: '28px 32px', maxWidth: '1400px' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-        <Link href="/admin/accounting/stock/suppliers" style={{ display: 'flex', alignItems: 'center', color: '#64748B', textDecoration: 'none' }}>
+        <Link href="/admin/accounting/stock/suppliers" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
           <ArrowLeft size={16} />
         </Link>
         <Package size={18} color="#1E3A5F" />

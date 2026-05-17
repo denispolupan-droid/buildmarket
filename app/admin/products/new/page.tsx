@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+﻿import { createClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import ProductForm from '../[sku]/ProductForm';
@@ -21,19 +21,19 @@ export default async function NewProductPage() {
     .order('sort_order');
 
   return (
-    <div style={{ background: '#F8FAFC', minHeight: '100vh' }}>
+    <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
       <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '32px' }}>
         <div style={{ marginBottom: '24px' }}>
-          <Link href="/admin/products" style={{ color: '#64748B', fontSize: '14px', textDecoration: 'none' }}>
+          <Link href="/admin/products" style={{ color: 'var(--text-secondary)', fontSize: '14px', textDecoration: 'none' }}>
             ← Назад до списку товарів
           </Link>
         </div>
 
         <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
             Новий товар
           </h1>
-          <p style={{ fontSize: '14px', color: '#64748B', marginTop: '4px' }}>
+          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>
             Заповніть інформацію про новий товар
           </p>
         </div>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -63,12 +63,12 @@ export default function ReviewsModerationClient({ reviews: initial }: { reviews:
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F8FAFC', padding: '32px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-soft)', padding: '32px' }}>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
           <div>
-            <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0F172A', margin: '0 0 4px' }}>
+            <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>
               Відгуки
             </h1>
             {pendingCount > 0 && (
@@ -77,7 +77,7 @@ export default function ReviewsModerationClient({ reviews: initial }: { reviews:
               </p>
             )}
           </div>
-          <Link href="/admin" style={{ fontSize: '13px', color: '#64748B', textDecoration: 'none' }}>
+          <Link href="/admin" style={{ fontSize: '13px', color: 'var(--text-secondary)', textDecoration: 'none' }}>
             ← Адмінка
           </Link>
         </div>
@@ -89,7 +89,7 @@ export default function ReviewsModerationClient({ reviews: initial }: { reviews:
               key={f}
               onClick={() => setFilter(f)}
               style={{
-                height: '34px', padding: '0 16px', borderRadius: '8px', border: '1px solid #E2E8F0',
+                height: '34px', padding: '0 16px', borderRadius: '8px', border: '1px solid var(--border)',
                 fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                 background: filter === f ? '#0F172A' : '#fff',
                 color: filter === f ? '#fff' : '#64748B',
@@ -101,34 +101,34 @@ export default function ReviewsModerationClient({ reviews: initial }: { reviews:
         </div>
 
         {filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px', color: '#94A3B8', fontSize: '14px' }}>
+          <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)', fontSize: '14px' }}>
             {filter === 'pending' ? 'Нових відгуків немає' : 'Відгуків не знайдено'}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {filtered.map(r => (
               <div key={r.id} style={{
-                background: '#fff', border: `1px solid ${r.is_approved ? '#E2E8F0' : '#FED7AA'}`,
+                background: 'var(--bg-card)', border: `1px solid ${r.is_approved ? '#E2E8F0' : '#FED7AA'}`,
                 borderRadius: '12px', padding: '16px 20px',
                 borderLeft: `4px solid ${r.is_approved ? '#22C55E' : '#F97316'}`,
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>{r.author_name}</span>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>{r.author_name}</span>
                       <Stars rating={r.rating} />
-                      <span style={{ fontSize: '12px', color: '#94A3B8' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                         {new Date(r.created_at).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' })}
                       </span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '12px', color: '#64748B' }}>Товар:</span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Товар:</span>
                       <Link href={`/product/${r.product_sku}`} target="_blank" style={{ fontSize: '12px', color: '#4880B8', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                         {r.product_sku} <ExternalLink size={11} />
                       </Link>
                     </div>
                     {r.review_text && (
-                      <p style={{ fontSize: '14px', color: '#475569', lineHeight: 1.6, margin: 0 }}>
+                      <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
                         {r.review_text}
                       </p>
                     )}

@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+﻿import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../lib/supabase-server';
 import AdminOrders from './AdminOrders';
@@ -56,10 +56,10 @@ export default async function AdminPage({
     <div style={{ padding: '32px 36px 64px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
         <div>
-          <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+          <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
             {status ? STATUS_LABELS[status] ?? status : 'Замовлення'}
           </h1>
-          <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
             Всього: {count ?? 0}
             {(newCount ?? 0) > 0 && (
               <span style={{ marginLeft: '10px', color: '#DC2626', fontWeight: 700 }}>· Нових: {newCount}</span>

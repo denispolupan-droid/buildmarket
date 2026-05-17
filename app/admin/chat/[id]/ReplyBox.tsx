@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { Send, Loader2 } from 'lucide-react';
@@ -32,7 +32,7 @@ export default function ReplyBox({ sessionId }: { sessionId: string }) {
   return (
     <div style={{
       maxWidth: '720px', marginTop: '16px',
-      background: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0',
+      background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)',
       padding: '12px', display: 'flex', gap: '10px', alignItems: 'flex-end',
     }}>
       <textarea
@@ -42,7 +42,7 @@ export default function ReplyBox({ sessionId }: { sessionId: string }) {
         placeholder="Напишіть відповідь клієнту… (Enter — надіслати, Shift+Enter — новий рядок)"
         rows={2}
         style={{
-          flex: 1, resize: 'none', border: '1px solid #E2E8F0', borderRadius: '8px',
+          flex: 1, resize: 'none', border: '1px solid var(--border)', borderRadius: '8px',
           padding: '8px 12px', fontSize: '13.5px', outline: 'none',
           fontFamily: 'inherit', lineHeight: '1.4', maxHeight: '120px', overflowY: 'auto',
         }}

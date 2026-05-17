@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+﻿import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import { Package, Warehouse, ChevronRight } from 'lucide-react';
 
@@ -46,7 +46,7 @@ export default async function StockHubPage() {
             display: 'flex', flexDirection: 'column', gap: '16px', cursor: 'pointer',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div style={{ padding: '10px', background: '#fff', borderRadius: '12px', display: 'inline-flex' }}>
+              <div style={{ padding: '10px', background: 'var(--bg-card)', borderRadius: '12px', display: 'inline-flex' }}>
                 <Package size={28} color="#1E3A5F" />
               </div>
               <ChevronRight size={20} color="#94A3B8" />
@@ -75,7 +75,7 @@ export default async function StockHubPage() {
             display: 'flex', flexDirection: 'column', gap: '16px', cursor: 'pointer',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div style={{ padding: '10px', background: '#fff', borderRadius: '12px', display: 'inline-flex' }}>
+              <div style={{ padding: '10px', background: 'var(--bg-card)', borderRadius: '12px', display: 'inline-flex' }}>
                 <Warehouse size={28} color="#15803D" />
               </div>
               <ChevronRight size={20} color="#94A3B8" />

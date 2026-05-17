@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, MapPin, Loader2, Check, AlertCircle, Eye, EyeOff } from 'lucide-react';
@@ -28,16 +28,16 @@ type Props = {
 };
 
 const inp: React.CSSProperties = {
-  height: '42px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '10px',
-  fontSize: '14px', outline: 'none', boxSizing: 'border-box', width: '100%', color: '#0F172A',
-  background: '#fff',
+  height: '42px', padding: '0 12px', border: '1.5px solid var(--border)', borderRadius: '10px',
+  fontSize: '14px', outline: 'none', boxSizing: 'border-box', width: '100%', color: 'var(--text-primary)',
+  background: 'var(--bg-card)',
 };
 const lbl: React.CSSProperties = {
-  fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px', display: 'block',
+  fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px', display: 'block',
 };
 const drop: React.CSSProperties = {
   position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 50,
-  background: '#fff', border: '1.5px solid #E2E8F0', borderRadius: '10px',
+  background: 'var(--bg-card)', border: '1.5px solid var(--border)', borderRadius: '10px',
   boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxHeight: '240px', overflowY: 'auto',
 };
 
@@ -188,8 +188,8 @@ export default function NpSenderSettings({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
       {/* ── Крок 1: API ключ ──────────────────────────────────────────── */}
-      <div style={{ background: '#fff', border: '1.5px solid #E2E8F0', borderRadius: '14px', overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>
+      <div style={{ background: 'var(--bg-card)', border: '1.5px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
           1. API ключ Нової Пошти
         </div>
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -203,14 +203,14 @@ export default function NpSenderSettings({
                 onChange={e => { setApiKey(e.target.value); setKeyStatus('idle'); setSenderName(''); }}
                 placeholder="Вставте API ключ з кабінету НП"
               />
-              <button onClick={() => setShowKey(v => !v)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0, display: 'flex' }}>
+              <button onClick={() => setShowKey(v => !v)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}>
                 {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
             <button
               onClick={() => checkApiKey(apiKey)}
               disabled={!apiKey.trim() || keyStatus === 'checking'}
-              style={{ height: '42px', padding: '0 16px', borderRadius: '10px', border: '1.5px solid #E2E8F0', background: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', color: '#374151', opacity: !apiKey.trim() ? 0.5 : 1 }}
+              style={{ height: '42px', padding: '0 16px', borderRadius: '10px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', color: 'var(--text-primary)', opacity: !apiKey.trim() ? 0.5 : 1 }}
             >
               {keyStatus === 'checking' ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : 'Перевірити'}
             </button>
@@ -225,25 +225,25 @@ export default function NpSenderSettings({
               <AlertCircle size={15} /> Невірний ключ або немає відправника в кабінеті НП
             </div>
           )}
-          <div style={{ fontSize: '12px', color: '#94A3B8' }}>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
             Знайти в: my.novaposhta.ua → Особистий кабінет → Налаштування → API
           </div>
         </div>
       </div>
 
       {/* ── Крок 2: Місто ─────────────────────────────────────────────── */}
-      <div style={{ background: '#fff', border: `1.5px solid ${step2Active ? '#E2E8F0' : '#F1F5F9'}`, borderRadius: '14px', overflow: 'hidden', opacity: step2Active ? 1 : 0.5 }}>
-        <div style={{ padding: '14px 20px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>
+      <div style={{ background: 'var(--bg-card)', border: `1.5px solid ${step2Active ? '#E2E8F0' : '#F1F5F9'}`, borderRadius: '14px', overflow: 'hidden', opacity: step2Active ? 1 : 0.5 }}>
+        <div style={{ padding: '14px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
           2. Місто відправлення
         </div>
         <div style={{ padding: '20px' }}>
           <div ref={cityRef} style={{ position: 'relative' }}>
             <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }}>
+              <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}>
                 {cityLoading ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Search size={15} />}
               </div>
               <input
-                style={{ ...inp, paddingLeft: '38px', border: selectedCity ? '1.5px solid #86EFAC' : '1.5px solid #E2E8F0', background: selectedCity ? '#F0FDF4' : '#fff' }}
+                style={{ ...inp, paddingLeft: '38px', border: selectedCity ? '1.5px solid #86EFAC' : '1.5px solid var(--border)', background: selectedCity ? '#F0FDF4' : '#fff' }}
                 placeholder="Введіть назву міста..."
                 value={cityQuery}
                 disabled={!step2Active}
@@ -255,11 +255,11 @@ export default function NpSenderSettings({
             {cityDropOpen && settlements.length > 0 && (
               <div style={drop}>
                 {settlements.map(s => (
-                  <button key={s.Ref} onMouseDown={() => selectCity(s)} style={{ width: '100%', display: 'flex', gap: '8px', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid #F8FAFC', alignItems: 'flex-start' }}>
+                  <button key={s.Ref} onMouseDown={() => selectCity(s)} style={{ width: '100%', display: 'flex', gap: '8px', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--border-light)', alignItems: 'flex-start' }}>
                     <MapPin size={14} color="#94A3B8" style={{ flexShrink: 0, marginTop: '2px' }} />
                     <div>
-                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0F172A' }}>{s.MainDescription}</div>
-                      <div style={{ fontSize: '12px', color: '#94A3B8' }}>{s.RegionsDescription ? `${s.RegionsDescription} р-н, ` : ''}{s.Area} обл.</div>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{s.MainDescription}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{s.RegionsDescription ? `${s.RegionsDescription} р-н, ` : ''}{s.Area} обл.</div>
                     </div>
                   </button>
                 ))}
@@ -270,8 +270,8 @@ export default function NpSenderSettings({
       </div>
 
       {/* ── Крок 3: Звідки відправляємо ───────────────────────────────── */}
-      <div style={{ background: '#fff', border: `1.5px solid ${step3Active ? '#E2E8F0' : '#F1F5F9'}`, borderRadius: '14px', overflow: 'hidden', opacity: step3Active ? 1 : 0.5 }}>
-        <div style={{ padding: '14px 20px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>
+      <div style={{ background: 'var(--bg-card)', border: `1.5px solid ${step3Active ? '#E2E8F0' : '#F1F5F9'}`, borderRadius: '14px', overflow: 'hidden', opacity: step3Active ? 1 : 0.5 }}>
+        <div style={{ padding: '14px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
           3. Звідки відправляємо
         </div>
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -299,14 +299,14 @@ export default function NpSenderSettings({
           {senderType === 'warehouse' && (
             <div ref={whRef} style={{ position: 'relative' }}>
               {whLoading ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', ...inp, paddingLeft: '12px', color: '#94A3B8' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', ...inp, paddingLeft: '12px', color: 'var(--text-muted)' }}>
                   <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Завантаження відділень...
                 </div>
               ) : (
                 <div style={{ position: 'relative' }}>
-                  <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }}><Search size={15} /></div>
+                  <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}><Search size={15} /></div>
                   <input
-                    style={{ ...inp, paddingLeft: '38px', paddingRight: '36px', border: selectedWH ? '1.5px solid #86EFAC' : '1.5px solid #E2E8F0', background: selectedWH ? '#F0FDF4' : '#fff' }}
+                    style={{ ...inp, paddingLeft: '38px', paddingRight: '36px', border: selectedWH ? '1.5px solid #86EFAC' : '1.5px solid var(--border)', background: selectedWH ? '#F0FDF4' : '#fff' }}
                     placeholder={selectedCity ? 'Номер або адреса відділення...' : 'Спочатку оберіть місто'}
                     value={whQuery}
                     disabled={!selectedCity}
@@ -320,7 +320,7 @@ export default function NpSenderSettings({
                 <div style={drop}>
                   {filteredWH.slice(0, 50).map(w => (
                     <button key={w.Ref} onMouseDown={() => { setSelectedWH(w); setWhQuery(w.Description); setWhDropOpen(false); }}
-                      style={{ width: '100%', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid #F8FAFC', fontSize: '13px', color: '#374151' }}>
+                      style={{ width: '100%', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--border-light)', fontSize: '13px', color: 'var(--text-primary)' }}>
                       {w.Description}
                     </button>
                   ))}
@@ -332,7 +332,7 @@ export default function NpSenderSettings({
           {/* Address pickup */}
           {senderType === 'address' && (
             addrLoading ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#94A3B8', fontSize: '13px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '13px' }}>
                 <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Завантаження адрес з НП...
               </div>
             ) : npAddresses.length === 0 ? (
@@ -344,7 +344,7 @@ export default function NpSenderSettings({
                 {npAddresses.map(addr => (
                   <label key={addr.Ref} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', border: `1.5px solid ${selectedAddr?.Ref === addr.Ref ? '#1E3A5F' : '#E2E8F0'}`, borderRadius: '10px', cursor: 'pointer', background: selectedAddr?.Ref === addr.Ref ? '#EFF4FF' : '#fff' }}>
                     <input type="radio" name="np_address" checked={selectedAddr?.Ref === addr.Ref} onChange={() => setSelectedAddr(addr)} style={{ accentColor: '#1E3A5F', width: '16px', height: '16px' }} />
-                    <span style={{ fontSize: '13px', color: '#0F172A', fontWeight: selectedAddr?.Ref === addr.Ref ? 600 : 400 }}>{addr.Description}</span>
+                    <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: selectedAddr?.Ref === addr.Ref ? 600 : 400 }}>{addr.Description}</span>
                   </label>
                 ))}
               </div>

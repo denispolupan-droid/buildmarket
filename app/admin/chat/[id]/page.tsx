@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+﻿import { createClient } from '@supabase/supabase-js';
 import { notFound } from 'next/navigation';
 import { Bot, User, UserCheck } from 'lucide-react';
 import ResolveButton from './ResolveButton';
@@ -33,14 +33,14 @@ export default async function ChatSessionPage({ params }: { params: Promise<{ id
     <div style={{ padding: '32px 36px 64px' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px' }}>
         <div>
-          <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', margin: 0 }}>Чат</h1>
-          <p style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px', fontFamily: 'monospace' }}>{id}</p>
-          <p style={{ fontSize: '13px', color: '#64748B', marginTop: '2px' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Чат</h1>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', fontFamily: 'monospace' }}>{id}</p>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>
             Розпочато: {formatTime(session.created_at)}
             {session.status === 'resolved' && (
               <span style={{
-                marginLeft: '10px', fontSize: '12px', fontWeight: 600, color: '#64748B',
-                background: '#F1F5F9', borderRadius: '4px', padding: '2px 8px',
+                marginLeft: '10px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)',
+                background: 'var(--border-light)', borderRadius: '4px', padding: '2px 8px',
               }}>вирішено</span>
             )}
           </p>
@@ -51,12 +51,12 @@ export default async function ChatSessionPage({ params }: { params: Promise<{ id
       </div>
 
       <div style={{
-        background: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0',
+        background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)',
         padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px',
         maxWidth: '720px',
       }}>
         {(messages ?? []).length === 0 && (
-          <p style={{ color: '#94A3B8', fontSize: '14px', textAlign: 'center', padding: '24px 0', margin: 0 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px', textAlign: 'center', padding: '24px 0', margin: 0 }}>
             Повідомлень немає
           </p>
         )}
@@ -79,14 +79,14 @@ export default async function ChatSessionPage({ params }: { params: Promise<{ id
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#0F172A' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
                     {isUser ? 'Відвідувач' : isAI ? 'AI-помічник' : 'Менеджер'}
                   </span>
-                  <span style={{ fontSize: '11px', color: '#94A3B8' }}>{formatTime(m.created_at)}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{formatTime(m.created_at)}</span>
                 </div>
                 <div style={{
                   fontSize: '13.5px', color: '#334155', lineHeight: '1.6',
-                  background: '#F8FAFC', borderRadius: '8px', padding: '10px 12px',
+                  background: 'var(--bg-soft)', borderRadius: '8px', padding: '10px 12px',
                   whiteSpace: 'pre-wrap',
                 }}>
                   {m.content}

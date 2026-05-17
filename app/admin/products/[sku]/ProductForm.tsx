@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -14,17 +14,17 @@ type Props = {
 
 const inputStyle: React.CSSProperties = {
   width: '100%', height: '44px', padding: '0 14px',
-  borderRadius: '8px', border: '1px solid #E2E8F0',
+  borderRadius: '8px', border: '1px solid var(--border)',
   fontSize: '14px', outline: 'none',
 };
 
 const labelStyle: React.CSSProperties = {
   display: 'block', fontSize: '13px', fontWeight: 600,
-  color: '#475569', marginBottom: '6px',
+  color: 'var(--text-secondary)', marginBottom: '6px',
 };
 
 const sectionStyle: React.CSSProperties = {
-  background: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0',
+  background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)',
   padding: '24px', marginBottom: '20px',
 };
 
@@ -254,7 +254,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
 
       {/* Basic Info */}
       <div style={sectionStyle}>
-        <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', marginBottom: '20px' }}>Основна інформація</h2>
+        <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '20px' }}>Основна інформація</h2>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px', marginBottom: '16px' }}>
           <div>
@@ -268,7 +268,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
                   placeholder="Авто"
                   style={{ ...inputStyle, flex: 1 }}
                 />
-                <span style={{ fontSize: '12px', color: '#64748B', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                   або залиште пустим
                 </span>
               </div>
@@ -277,7 +277,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
                 type="text"
                 value={sku}
                 disabled
-                style={{ ...inputStyle, background: '#F8FAFC' }}
+                style={{ ...inputStyle, background: 'var(--bg-soft)' }}
               />
             )}
           </div>
@@ -376,10 +376,10 @@ export default function ProductForm({ product, categories, isNew }: Props) {
         <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
             <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
-            <span style={{ fontSize: '14px', color: '#475569' }}>Активний (відображається на сайті)</span>
+            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Активний (відображається на сайті)</span>
           </label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label style={{ fontSize: '13px', color: '#64748B' }}>Сортування:</label>
+            <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Сортування:</label>
             <input type="number" value={sortOrder} onChange={e => setSortOrder(Number(e.target.value))} style={{ ...inputStyle, width: '80px' }} />
           </div>
         </div>
@@ -387,7 +387,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
 
       {/* Pricing & Stock */}
       <div style={sectionStyle}>
-        <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', marginBottom: '20px' }}>Ціни та залишки</h2>
+        <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '20px' }}>Ціни та залишки</h2>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
           <div>
@@ -441,14 +441,14 @@ export default function ProductForm({ product, categories, isNew }: Props) {
 
       {/* Image Settings */}
       <div style={sectionStyle}>
-        <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', marginBottom: '20px' }}>Зображення</h2>
+        <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '20px' }}>Зображення</h2>
 
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>URL зображення (якщо є)</label>
           <input type="text" value={imageUrl} onChange={e => setImageUrl(e.target.value)} style={inputStyle} placeholder="https://..." />
         </div>
 
-        <p style={{ fontSize: '13px', color: '#64748B', marginBottom: '16px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
           Або налаштуйте автогенероване зображення:
         </p>
 
@@ -485,7 +485,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
       {/* Characteristics */}
       <div style={sectionStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', margin: 0 }}>Характеристики</h2>
+          <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Характеристики</h2>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
               onClick={loadCategoryDefaults}
@@ -505,8 +505,8 @@ export default function ProductForm({ product, categories, isNew }: Props) {
               onClick={addChar}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '6px',
-                padding: '8px 14px', borderRadius: '8px', border: '1px solid #E2E8F0',
-                background: '#fff', fontSize: '13px', fontWeight: 600, color: '#475569', cursor: 'pointer',
+                padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border)',
+                background: 'var(--bg-card)', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer',
               }}
             >
               <Plus size={14} /> Додати
@@ -515,7 +515,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
         </div>
 
         {chars.length === 0 ? (
-          <p style={{ color: '#94A3B8', fontSize: '14px' }}>Характеристик немає. Натисніть {'"'}Додати{'"'} щоб створити.</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Характеристик немає. Натисніть {'"'}Додати{'"'} щоб створити.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {chars.map((char, i) => (

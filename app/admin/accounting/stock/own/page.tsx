@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+﻿import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import { ArrowLeft, Warehouse } from 'lucide-react';
 
@@ -35,7 +35,7 @@ export default async function OwnStockPage() {
   return (
     <div style={{ padding: '28px 32px', maxWidth: '1400px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <Link href="/admin/accounting/stock" style={{ display: 'flex', alignItems: 'center', color: '#64748B', textDecoration: 'none' }}>
+        <Link href="/admin/accounting/stock" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
           <ArrowLeft size={16} />
         </Link>
         <Warehouse size={18} color="#15803D" />

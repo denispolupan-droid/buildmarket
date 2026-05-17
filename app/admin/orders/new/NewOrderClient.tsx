@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -140,25 +140,25 @@ export default function NewOrderClient() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%', height: '36px', padding: '0 10px',
-    border: '1.5px solid #E2E8F0', borderRadius: '8px',
-    fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#fff',
+    border: '1.5px solid var(--border)', borderRadius: '8px',
+    fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: 'var(--bg-card)',
   };
-  const labelStyle: React.CSSProperties = { fontSize: '12px', fontWeight: 600, color: '#64748B', marginBottom: '4px', display: 'block' };
-  const sectionStyle: React.CSSProperties = { background: '#fff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '20px', marginBottom: '16px' };
+  const labelStyle: React.CSSProperties = { fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' };
+  const sectionStyle: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px', marginBottom: '16px' };
 
   return (
     <div style={{ maxWidth: '760px', margin: '0 auto', padding: '32px 24px 64px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <Link href="/admin" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: '#64748B', textDecoration: 'none' }}>
+        <Link href="/admin" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: 'var(--text-secondary)', textDecoration: 'none' }}>
           <ChevronLeft size={14} /> Замовлення
         </Link>
-        <span style={{ color: '#CBD5E1' }}>/</span>
-        <h1 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: 0 }}>Нове замовлення</h1>
+        <span style={{ color: 'var(--text-muted)' }}>/</span>
+        <h1 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Нове замовлення</h1>
       </div>
 
       {/* Channel */}
       <div style={sectionStyle}>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: '#374151', marginBottom: '12px' }}>Канал</div>
+        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>Канал</div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {CHANNEL_OPTIONS.map(ch => (
             <button key={ch.value} onClick={() => setChannelCode(ch.value)}
@@ -174,7 +174,7 @@ export default function NewOrderClient() {
 
       {/* Customer */}
       <div style={sectionStyle}>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: '#374151', marginBottom: '12px' }}>Клієнт</div>
+        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>Клієнт</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <div>
             <label style={labelStyle}>Контактна особа *</label>
@@ -197,17 +197,17 @@ export default function NewOrderClient() {
 
       {/* Items */}
       <div style={sectionStyle}>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: '#374151', marginBottom: '12px' }}>Товари</div>
+        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>Товари</div>
 
         {items.length > 0 && (
           <div style={{ marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {items.map((item, idx) => (
-              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', padding: '8px 10px', background: '#F8FAFC', borderRadius: '8px' }}>
-                <span style={{ flex: 1, color: '#374151' }}>{item.name}</span>
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', padding: '8px 10px', background: 'var(--bg-soft)', borderRadius: '8px' }}>
+                <span style={{ flex: 1, color: 'var(--text-primary)' }}>{item.name}</span>
                 <input type="number" min={1} value={item.qty}
                   onChange={e => setItems(prev => prev.map((it, i) => i === idx ? { ...it, qty: Math.max(1, parseInt(e.target.value) || 1) } : it))}
-                  style={{ width: '50px', height: '28px', border: '1px solid #E2E8F0', borderRadius: '6px', textAlign: 'center', fontSize: '12px', outline: 'none' }} />
-                <span style={{ color: '#64748B', minWidth: '80px', textAlign: 'right' }}>{(item.price * item.qty).toFixed(0)} грн</span>
+                  style={{ width: '50px', height: '28px', border: '1px solid var(--border)', borderRadius: '6px', textAlign: 'center', fontSize: '12px', outline: 'none' }} />
+                <span style={{ color: 'var(--text-secondary)', minWidth: '80px', textAlign: 'right' }}>{(item.price * item.qty).toFixed(0)} грн</span>
                 <button onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))}
                   style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#EF4444', padding: '2px', display: 'flex' }}>
                   <Trash2 size={14} />
@@ -230,13 +230,13 @@ export default function NewOrderClient() {
             style={{ ...inputStyle, paddingLeft: '32px' }}
           />
           {prodOpen && prodResults.length > 0 && (
-            <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 50, background: '#fff', border: '1px solid #E2E8F0', borderRadius: '10px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto' }}>
+            <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 50, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto' }}>
               {prodResults.map(p => (
                 <button key={p.sku} onMouseDown={() => {
                   setSelectedProd(p); setAddPrice(String(p.price));
                   setProdSearch(`${p.brand} ${p.name}`); setProdOpen(false);
-                }} style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '13px', borderBottom: '1px solid #F8FAFC', display: 'flex', justifyContent: 'space-between' }}>
-                  <span><span style={{ color: '#94A3B8', marginRight: '6px', fontSize: '11px' }}>{p.sku}</span>{p.brand} {p.name}</span>
+                }} style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '13px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between' }}>
+                  <span><span style={{ color: 'var(--text-muted)', marginRight: '6px', fontSize: '11px' }}>{p.sku}</span>{p.brand} {p.name}</span>
                   {p.price > 0 && <span style={{ color: '#1E3A5F', fontWeight: 700 }}>{p.price} грн</span>}
                 </button>
               ))}
@@ -245,11 +245,11 @@ export default function NewOrderClient() {
         </div>
         {selectedProd && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 60px 90px auto', gap: '6px', alignItems: 'center' }}>
-            <span style={{ fontSize: '13px', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedProd.brand} {selectedProd.name}</span>
+            <span style={{ fontSize: '13px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedProd.brand} {selectedProd.name}</span>
             <input placeholder="К-сть" type="number" min={1} value={addQty} onChange={e => setAddQty(parseInt(e.target.value) || 1)}
-              style={{ height: '34px', padding: '0 8px', border: '1.5px solid #E2E8F0', borderRadius: '8px', fontSize: '13px', textAlign: 'center', outline: 'none' }} />
+              style={{ height: '34px', padding: '0 8px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', textAlign: 'center', outline: 'none' }} />
             <input placeholder="Ціна" type="number" min={0} value={addPrice} onChange={e => setAddPrice(e.target.value)}
-              style={{ height: '34px', padding: '0 8px', border: '1.5px solid #E2E8F0', borderRadius: '8px', fontSize: '13px', outline: 'none' }} />
+              style={{ height: '34px', padding: '0 8px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none' }} />
             <button onClick={addItem}
               style={{ height: '34px', width: '34px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Plus size={15} />
@@ -260,7 +260,7 @@ export default function NewOrderClient() {
 
       {/* Delivery */}
       <div style={sectionStyle}>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: '#374151', marginBottom: '12px' }}>Доставка та оплата</div>
+        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>Доставка та оплата</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: delivery === 'nova' ? '16px' : 0 }}>
           <div>
             <label style={labelStyle}>Спосіб доставки</label>
@@ -316,8 +316,8 @@ export default function NewOrderClient() {
         <div style={{ marginTop: '14px' }}>
           <label style={labelStyle}>Коментар</label>
           <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Додаткові примітки..."
-            style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E2E8F0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', resize: 'vertical', minHeight: '60px' }} />
-          <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>
+            style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', resize: 'vertical', minHeight: '60px' }} />
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
             ⛔ Мітка «не передзвонювати» додається автоматично для всіх ручних замовлень
           </div>
         </div>

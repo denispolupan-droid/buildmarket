@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 
@@ -72,7 +72,7 @@ export default function CharValueInput({ label, value, onChange, style }: Props)
       {showDropdown && filtered.length > 0 && (
         <div style={{
           position: 'absolute', top: '100%', left: 0, right: 0,
-          background: '#fff', border: '1px solid #E2E8F0', borderRadius: '8px',
+          background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px',
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 50,
           maxHeight: '200px', overflowY: 'auto', marginTop: '4px',
         }}>
@@ -82,7 +82,7 @@ export default function CharValueInput({ label, value, onChange, style }: Props)
               onClick={() => { onChange(s); setShowDropdown(false); }}
               style={{
                 padding: '10px 14px', cursor: 'pointer', fontSize: '14px',
-                borderBottom: i < filtered.length - 1 ? '1px solid #F1F5F9' : 'none',
+                borderBottom: i < filtered.length - 1 ? '1px solid var(--border-light)' : 'none',
                 background: s === value ? '#EFF6FF' : '#fff',
               }}
               onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}

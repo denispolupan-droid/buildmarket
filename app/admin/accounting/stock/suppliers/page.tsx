@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+﻿import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import { ArrowLeft, Package, ChevronRight, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 
@@ -38,7 +38,7 @@ export default async function SuppliersStockPage() {
       <style>{`.supplier-row:hover { border-color: #BFDBFE !important; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }`}</style>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <Link href="/admin/accounting/stock" style={{ display: 'flex', alignItems: 'center', color: '#64748B', textDecoration: 'none' }}>
+        <Link href="/admin/accounting/stock" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
           <ArrowLeft size={16} />
         </Link>
         <Package size={18} color="#1E3A5F" />
@@ -80,7 +80,7 @@ export default async function SuppliersStockPage() {
 
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   {!sync ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#94A3B8', fontSize: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-muted)', fontSize: '12px' }}>
                       <Clock size={13} /> Не синхронізовано
                     </div>
                   ) : hasError ? (

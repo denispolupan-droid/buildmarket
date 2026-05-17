@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -237,8 +237,8 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
         </div>
 
         {/* Contact block */}
-        <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '14px 16px', marginBottom: '16px' }}>
-          <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '10px' }}>
+        <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 16px', marginBottom: '16px' }}>
+          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '10px' }}>
             Контакти постачальника
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '10px' }}>
@@ -285,7 +285,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
               <Layers size={15} color="#3B82F6" />
               <span style={{ fontSize: '13px', fontWeight: 700, color: '#1D4ED8' }}>Аркуш Excel</span>
             </div>
-            <p style={{ fontSize: '12px', color: '#475569', marginBottom: '10px' }}>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
               Якщо файл містить кілька аркушів — вкажіть назву того, де знаходиться весь асортимент.
               Залиште порожнім, щоб система обрала аркуш з найбільшою кількістю товарів автоматично.
             </p>
@@ -315,7 +315,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
             )}
 
             {sheets && (
-              <div style={{ border: '1px solid #BFDBFE', borderRadius: '7px', overflow: 'hidden', background: '#fff' }}>
+              <div style={{ border: '1px solid #BFDBFE', borderRadius: '7px', overflow: 'hidden', background: 'var(--bg-card)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                   <thead>
                     <tr style={{ background: '#EFF6FF' }}>
@@ -329,7 +329,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                   <tbody>
                     {sheets.map(s => (
                       <tr key={s.name} style={{ borderTop: '1px solid #DBEAFE', background: e.sheet_name === s.name ? '#EFF6FF' : '#fff' }}>
-                        <td style={{ padding: '7px 10px', fontWeight: e.sheet_name === s.name ? 700 : 400, color: '#0F172A' }}>
+                        <td style={{ padding: '7px 10px', fontWeight: e.sheet_name === s.name ? 700 : 400, color: 'var(--text-primary)' }}>
                           {s.name}
                         </td>
                         <td style={{ padding: '7px 10px' }}>
@@ -340,7 +340,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                         <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: s.skuRows > 0 ? '#1D4ED8' : '#94A3B8' }}>
                           {s.skuRows > 0 ? s.skuRows : '—'}
                         </td>
-                        <td style={{ padding: '7px 10px', textAlign: 'right', color: '#64748B' }}>
+                        <td style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--text-secondary)' }}>
                           {s.totalRows}
                         </td>
                         <td style={{ padding: '7px 10px', textAlign: 'right' }}>
@@ -703,7 +703,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
       </div>
 
       {suppliers.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: '#94A3B8', fontSize: '14px' }}>
+        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)', fontSize: '14px' }}>
           Постачальників ще немає. Додайте першого.
         </div>
       ) : (
@@ -734,7 +734,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                         </div>
                       )}
                       {s.file_format === 'xls' && !s.sheet_name && (
-                        <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>авто-вибір аркушу</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>авто-вибір аркушу</div>
                       )}
                     </td>
                     <td style={cell}>кожні {s.sync_interval_h} год</td>
@@ -743,7 +743,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                         {s.markup_retail}% / {s.markup_wholesale}% / {s.markup_drop}%
                       </span>
                       {(s.brand_discounts ?? []).length > 0 && (
-                        <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                           {s.brand_discounts.length} знижок на бренди
                         </div>
                       )}

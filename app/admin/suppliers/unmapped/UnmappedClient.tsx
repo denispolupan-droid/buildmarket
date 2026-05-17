@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useCallback } from 'react';
 
@@ -13,7 +13,7 @@ type UnmappedRow = {
 
 type ProductHit = { sku: string; name: string; brand: string; volume: string | null };
 
-const cell: React.CSSProperties = { padding: '10px 12px', borderBottom: '1px solid #E2E8F0', fontSize: '13px', verticalAlign: 'middle' };
+const cell: React.CSSProperties = { padding: '10px 12px', borderBottom: '1px solid var(--border)', fontSize: '13px', verticalAlign: 'middle' };
 const btn = (color: string): React.CSSProperties => ({ padding: '5px 12px', background: color, color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 });
 
 function SearchBox({ supplierId, supplierSku, onMapped }: {
@@ -55,23 +55,23 @@ function SearchBox({ supplierId, supplierSku, onMapped }: {
         value={query}
         onChange={e => search(e.target.value)}
       />
-      {loading && <p style={{ fontSize: '11px', color: '#94A3B8', margin: '4px 0 0' }}>Пошук...</p>}
+      {loading && <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '4px 0 0' }}>Пошук...</p>}
       {hits.length > 0 && (
-        <div style={{ border: '1px solid #E2E8F0', borderRadius: '6px', marginTop: '4px', background: '#fff', maxHeight: '200px', overflowY: 'auto' }}>
+        <div style={{ border: '1px solid var(--border)', borderRadius: '6px', marginTop: '4px', background: 'var(--bg-card)', maxHeight: '200px', overflowY: 'auto' }}>
           {hits.map(h => (
             <div
               key={h.sku}
-              style={{ padding: '8px 10px', borderBottom: '1px solid #F1F5F9', cursor: saving ? 'default' : 'pointer' }}
+              style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-light)', cursor: saving ? 'default' : 'pointer' }}
               onClick={() => !saving && map(h.sku)}
             >
-              <div style={{ fontSize: '12px', fontWeight: 600, color: '#0F172A' }}>{h.name}</div>
-              <div style={{ fontSize: '11px', color: '#64748B' }}>{h.sku} · {h.brand}{h.volume ? ` · ${h.volume}` : ''}</div>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>{h.name}</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{h.sku} · {h.brand}{h.volume ? ` · ${h.volume}` : ''}</div>
             </div>
           ))}
         </div>
       )}
       {!loading && query.length >= 2 && hits.length === 0 && (
-        <p style={{ fontSize: '11px', color: '#94A3B8', margin: '4px 0 0' }}>Нічого не знайдено</p>
+        <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '4px 0 0' }}>Нічого не знайдено</p>
       )}
     </div>
   );
@@ -99,7 +99,7 @@ export default function UnmappedClient({ initial }: { initial: UnmappedRow[] }) 
 
   if (rows.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: '60px 0', color: '#94A3B8', fontSize: '14px' }}>
+      <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)', fontSize: '14px' }}>
         Всі артикули замаплено — чудово!
       </div>
     );
@@ -117,18 +117,18 @@ export default function UnmappedClient({ initial }: { initial: UnmappedRow[] }) 
     <>
       {Object.entries(grouped).map(([supplierId, group]) => (
         <div key={supplierId} style={{ marginBottom: '32px' }}>
-          <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A', marginBottom: '12px' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>
             {group.name}
-            <span style={{ marginLeft: '8px', fontSize: '13px', color: '#64748B', fontWeight: 400 }}>
+            <span style={{ marginLeft: '8px', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 400 }}>
               {group.rows.length} немаплених
             </span>
           </h2>
-          <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: '10px', overflow: 'hidden' }}>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: '#F8FAFC' }}>
+                <tr style={{ background: 'var(--bg-soft)' }}>
                   {['Артикул постач.', 'Назва з файлу', 'Ціна вхід', 'Перший раз', 'Прив\'язати до нашого товару', ''].map(h => (
-                    <th key={h} style={{ ...cell, fontWeight: 700, fontSize: '12px', color: '#374151' }}>{h}</th>
+                    <th key={h} style={{ ...cell, fontWeight: 700, fontSize: '12px', color: 'var(--text-primary)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -138,13 +138,13 @@ export default function UnmappedClient({ initial }: { initial: UnmappedRow[] }) 
                   return (
                     <tr key={key}>
                       <td style={cell}>
-                        <code style={{ fontSize: '12px', background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px' }}>
+                        <code style={{ fontSize: '12px', background: 'var(--border-light)', padding: '2px 6px', borderRadius: '4px' }}>
                           {r.supplier_sku}
                         </code>
                       </td>
-                      <td style={{ ...cell, color: '#475569' }}>{r.sample_name ?? '—'}</td>
+                      <td style={{ ...cell, color: 'var(--text-secondary)' }}>{r.sample_name ?? '—'}</td>
                       <td style={cell}>{r.price_in ? `${r.price_in} грн` : '—'}</td>
-                      <td style={{ ...cell, color: '#94A3B8', fontSize: '12px' }}>
+                      <td style={{ ...cell, color: 'var(--text-muted)', fontSize: '12px' }}>
                         {new Date(r.first_seen_at).toLocaleDateString('uk-UA')}
                       </td>
                       <td style={cell}>

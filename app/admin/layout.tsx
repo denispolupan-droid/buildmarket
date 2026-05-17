@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+﻿import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../lib/supabase-server';
 import AdminSidebar from '../components/admin/AdminSidebar';
@@ -28,7 +28,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   STATUS_KEYS.forEach((s, i) => { statusCounts[s] = orderResults[i].count ?? 0; });
 
   return (
-    <div className="admin-layout" style={{ display: 'flex', minHeight: '100vh', background: '#F8FAFC' }}>
+    <div className="admin-layout" style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-soft)' }}>
       <AdminSidebar newOrdersCount={statusCounts.new ?? 0} statusCounts={statusCounts} chatUnreadCount={chatUnread ?? 0} />
       <main style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
         {children}

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useRef } from 'react';
 import { Upload, FileSpreadsheet, Check, AlertCircle, Loader2, Download } from 'lucide-react';
@@ -15,8 +15,8 @@ type Props = {
 
 const inputStyle: React.CSSProperties = {
   width: '100%', height: '40px', padding: '0 12px',
-  borderRadius: '8px', border: '1px solid #E2E8F0',
-  fontSize: '13px', outline: 'none', background: '#fff',
+  borderRadius: '8px', border: '1px solid var(--border)',
+  fontSize: '13px', outline: 'none', background: 'var(--bg-card)',
 };
 
 export default function ImportClient({ categories }: Props) {
@@ -86,16 +86,16 @@ export default function ImportClient({ categories }: Props) {
     <div>
       {/* Template download */}
       <div style={{
-        background: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0',
+        background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)',
         padding: '24px', marginBottom: '20px',
       }}>
-        <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', marginBottom: '16px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '16px' }}>
           Шаблон для заповнення
         </h2>
 
         <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
           <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
               Категорія
             </label>
             <select
@@ -119,8 +119,8 @@ export default function ImportClient({ categories }: Props) {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
               height: '40px', padding: '0 16px', borderRadius: '8px',
-              border: '1px solid #E2E8F0', background: '#fff',
-              fontSize: '13px', fontWeight: 600, color: '#475569', cursor: 'pointer',
+              border: '1px solid var(--border)', background: 'var(--bg-card)',
+              fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer',
               whiteSpace: 'nowrap',
             }}
           >
@@ -129,7 +129,7 @@ export default function ImportClient({ categories }: Props) {
         </div>
 
         {selectedCategory && (
-          <p style={{ fontSize: '12px', color: '#64748B', marginTop: '8px', margin: '8px 0 0' }}>
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px', margin: '8px 0 0' }}>
             Шаблон міститиме тільки характеристики категорії <strong>{selectedCatName}</strong>
           </p>
         )}
@@ -137,10 +137,10 @@ export default function ImportClient({ categories }: Props) {
 
       {/* File upload */}
       <div style={{
-        background: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0',
+        background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)',
         padding: '24px', marginBottom: '20px',
       }}>
-        <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', marginBottom: '20px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '20px' }}>
           Завантаження файлу
         </h2>
 
@@ -163,18 +163,18 @@ export default function ImportClient({ categories }: Props) {
           {file ? (
             <>
               <FileSpreadsheet size={48} color="#22C55E" style={{ marginBottom: '12px' }} />
-              <div style={{ fontSize: '16px', fontWeight: 600, color: '#0F172A' }}>{file.name}</div>
-              <div style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>
+              <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>{file.name}</div>
+              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                 Натисніть щоб вибрати інший файл
               </div>
             </>
           ) : (
             <>
               <Upload size={48} color="#94A3B8" style={{ marginBottom: '12px' }} />
-              <div style={{ fontSize: '16px', fontWeight: 600, color: '#0F172A' }}>
+              <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>
                 Перетягніть файл або натисніть для вибору
               </div>
-              <div style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>
+              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                 Підтримуються формати: .xlsx, .xls, .csv
               </div>
             </>
@@ -183,15 +183,15 @@ export default function ImportClient({ categories }: Props) {
 
         {preview && preview.length > 0 && (
           <div style={{ marginTop: '20px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#475569', marginBottom: '12px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '12px' }}>
               Попередній перегляд (перші 5 рядків):
             </h3>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                 <thead>
-                  <tr style={{ background: '#F8FAFC' }}>
+                  <tr style={{ background: 'var(--bg-soft)' }}>
                     {Object.keys(preview[0]).slice(0, 8).map(key => (
-                      <th key={key} style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid #E2E8F0', fontWeight: 600 }}>
+                      <th key={key} style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
                         {key}
                       </th>
                     ))}
@@ -201,7 +201,7 @@ export default function ImportClient({ categories }: Props) {
                   {preview.slice(0, 5).map((row, i) => (
                     <tr key={i}>
                       {Object.values(row).slice(0, 8).map((val, j) => (
-                        <td key={j} style={{ padding: '8px 12px', borderBottom: '1px solid #F1F5F9', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <td key={j} style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-light)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {String(val ?? '')}
                         </td>
                       ))}
@@ -234,10 +234,10 @@ export default function ImportClient({ categories }: Props) {
       {/* Result */}
       {result && (
         <div style={{
-          background: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0',
+          background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)',
           padding: '24px', marginBottom: '20px',
         }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '16px' }}>
             Результат імпорту
           </h2>
           <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
@@ -280,25 +280,25 @@ export default function ImportClient({ categories }: Props) {
 
       {/* Format hint */}
       <div style={{
-        background: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0',
+        background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)',
         padding: '24px',
       }}>
-        <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', marginBottom: '16px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '16px' }}>
           Формат файлу
         </h2>
-        <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '8px' }}>
+        <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
           Обов&apos;язкові колонки: <strong>SKU</strong>, <strong>Назва</strong>, <strong>Бренд</strong>
         </p>
-        <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '8px' }}>
+        <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
           Формат такий самий як у <strong>catalog-export.xlsx</strong> — можна брати його як основу,
           додавати нові рядки і завантажувати сюди.
         </p>
-        <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '8px' }}>
+        <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
           <strong>Характеристики</strong> — окремі колонки після стандартних полів.
           Назва колонки = назва характеристики, значення = що відображається на сайті.
           Порожня клітинка — не відображається. Нова колонка — нова характеристика.
         </p>
-        <p style={{ fontSize: '13px', color: '#94A3B8' }}>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
           Якщо товар з таким SKU вже існує — він буде оновлений.
           Характеристики замінюються тільки якщо хоча б одна заповнена.
           Аркуш «Довідка» у шаблоні містить опис усіх полів.

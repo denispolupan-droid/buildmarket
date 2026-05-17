@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { Wallet, CheckCircle, XCircle, Plus, ChevronDown, ChevronUp, Users } from 'lucide-react';
@@ -119,12 +119,12 @@ export default function PartnersClient({
           {payouts.map(payout => {
             const partner = partnersData.find(p => p.id === payout.customer_id);
             return (
-              <div key={payout.id} style={{ background: '#fff', border: '1px solid #FDE68A', borderRadius: '8px', padding: '14px 16px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div key={payout.id} style={{ background: 'var(--bg-card)', border: '1px solid #FDE68A', borderRadius: '8px', padding: '14px 16px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
                     {partner?.name ?? payout.customer_id} — {payout.amount.toFixed(2)} ₴
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                     {payout.method === 'bank' ? `Переказ: ${payout.bank_details ?? '—'}` : 'Товарний залік'}
                     {' · '}{new Date(payout.requested_at).toLocaleDateString('uk-UA')}
                   </div>
