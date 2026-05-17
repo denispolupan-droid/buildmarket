@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { ShoppingBag, Package, Truck, Store, ChevronLeft, ChevronDown, ChevronUp, Settings, BookOpen, Warehouse, BarChart3, Users, Star, MessageSquare } from 'lucide-react';
+import { ShoppingBag, Package, Truck, Store, ChevronLeft, ChevronDown, ChevronUp, Settings, BookOpen, Warehouse, BarChart3, Users, Star, MessageSquare, Send } from 'lucide-react';
 
 const ORDER_STATUSES = [
   { value: 'new',             label: 'Нові' },
   { value: 'confirmed',       label: 'Підтверджено' },
+  { value: 'awaiting_stock',  label: 'Очікуємо товар' },
+  { value: 'picking',         label: 'Збирається' },
   { value: 'shipped',         label: 'Відправлено' },
   { value: 'delivered',       label: 'Доставлено' },
   { value: 'cancelled',       label: 'Скасовано' },
@@ -16,6 +18,7 @@ const ORDER_STATUSES = [
 ];
 
 const NAV = [
+  { href: '/admin/dispatch',             label: 'Відправлення',  icon: Send,          exact: false },
   { href: '/admin/products',             label: 'Товари',        icon: Package,       exact: false },
   { href: '/admin/suppliers',            label: 'Постачальники', icon: Truck,         exact: false },
   { href: '/admin/partners',             label: 'Партнери',      icon: Users,         exact: false },

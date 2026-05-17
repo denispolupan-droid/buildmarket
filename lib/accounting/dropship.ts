@@ -75,6 +75,17 @@ export async function getOrderFulfillmentInfo(
     .from('suppliers')
     .select('id, name');
 
+  // Fallback: match by supplier_sku value from product_stock
+  const supplierSkusFromStock = (stockRows ?? []).map(r => r.supplier_sku).filter(Boolean);
+  const { data: fallbackMaps } = supplierSkusFromStock.length
+    ? await db.from('supplier_sku_map')
+        .select('supplier_sku, supplier_id')
+        .in('supplier_sku', supplierSkusFromStock)
+    : { data: [] };
+  const fallbackBySupplierSku = new Map(
+    (fallbackMaps ?? []).map(r => [r.supplier_sku, r.supplier_id]),
+  );
+
   // Индексы для быстрого поиска
   const stockMap = new Map(
     (stockRows ?? []).map(r => [r.sku, r]),
@@ -91,9 +102,12 @@ export async function getOrderFulfillmentInfo(
     const stock      = stockMap.get(item.sku);
     const skuMapping = skuMapByOurSku.get(item.sku);
 
-    const costPrice    = stock?.price_cost ?? 0;
-    const supplierId   = skuMapping?.supplier_id ?? null;
-    const supplierSku  = skuMapping?.supplier_sku ?? stock?.supplier_sku ?? null;
+    const costPrice   = stock?.price_cost ?? 0;
+    const supplierSku = skuMapping?.supplier_sku ?? stock?.supplier_sku ?? null;
+    const supplierId  = skuMapping?.supplier_id
+      ?? (supplierSku ? (fallbackBySupplierSku.get(supplierSku) ?? null) : null)
+      // Last resort: if only one supplier exists and product has a supplier_sku, use it
+      ?? (supplierSku && (supplierRows ?? []).length === 1 ? (supplierRows![0].id) : null);
     const supplierName = supplierId ? (supplierNameMap.get(supplierId) ?? null) : null;
     const revenue      = item.qty * item.price;
     const cost         = item.qty * costPrice;

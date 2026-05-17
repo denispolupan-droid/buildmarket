@@ -18,8 +18,9 @@ type Warehouse = {
   Number: string;
 };
 
+
 type Props = {
-  mode: 'warehouse' | 'courier';
+  mode: 'warehouse' | 'courier' | 'postomat';
   onCityChange?: (city: string) => void;
   onWarehouseChange?: (warehouse: string) => void;
   onAddressChange?: (address: string) => void;
@@ -98,10 +99,15 @@ export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange
     onCityChange?.(s.Present);
     onCityRefChange?.(s.Ref);
 
-    if (mode === 'warehouse') {
+    if (mode === 'warehouse' || mode === 'postomat') {
       setWhLoading(true);
-      npRequest('Address', 'getWarehouses', { SettlementRef: s.Ref, Limit: 200, Page: 1 })
-        .then((data: Warehouse[]) => setWarehouses(data))
+      npRequest('Address', 'getWarehouses', { SettlementRef: s.Ref, Limit: 500, Page: 1 })
+        .then((data: Warehouse[]) => {
+          const filtered = mode === 'postomat'
+            ? data.filter(w => w.Description.toLowerCase().includes('поштомат'))
+            : data;
+          setWarehouses(filtered);
+        })
         .finally(() => setWhLoading(false));
     }
   }
@@ -152,10 +158,10 @@ export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange
         )}
       </div>
 
-      {/* Warehouse select */}
-      {mode === 'warehouse' && selectedCity && (
+      {/* Warehouse / Postomat select */}
+      {(mode === 'warehouse' || mode === 'postomat') && selectedCity && (
         <div ref={whRef} style={{ position: 'relative' }}>
-          <label className="np-label">Відділення Нової Пошти</label>
+          <label className="np-label">{mode === 'postomat' ? 'Поштомат Нової Пошти' : 'Відділення Нової Пошти'}</label>
           {whLoading ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 14px', border: '1px solid var(--border)', borderRadius: '10px', fontSize: '14px', color: 'var(--text-secondary)' }}>
               <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
@@ -168,7 +174,7 @@ export default function NovaPoshtaSelect({ mode, onCityChange, onWarehouseChange
               </div>
               <input
                 className="np-input"
-                placeholder="Пошук відділення або номер..."
+                placeholder={mode === 'postomat' ? 'Пошук поштомату або номер...' : 'Пошук відділення або номер...'}
                 value={warehouseQuery}
                 onChange={e => { setWarehouseQuery(e.target.value); setWhDropOpen(true); setSelectedWH(null); }}
                 onFocus={() => setWhDropOpen(true)}

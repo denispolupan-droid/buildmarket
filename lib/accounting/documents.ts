@@ -273,7 +273,7 @@ export async function cancelDocument(
   if (cancelError) throw cancelError;
 }
 
-// ── Построение движений (внутренняя функция) ──────────────────────────────────
+// ── Побудова рухів (внутрішня функція) ───────────────────────────────────────
 
 async function buildMovements(
   db: ReturnType<typeof createServiceClient>,
@@ -283,15 +283,9 @@ async function buildMovements(
 ): Promise<MovementInsert[]> {
   const movements: MovementInsert[] = [];
 
-  // Для расходных движений берём avg_cost из stock_balance
-  const physicalLines = lines.filter(l => l.fulfillment_type !== 'dropship');
-  const avgCostMap    = await fetchAvgCosts(db, doc.warehouse_id, physicalLines.map(l => l.sku));
-
   for (const line of lines) {
-    // qty_in_base — из вычисляемого поля БД; fallback на qty * uom_factor
     const qtyInBase = line.qty_in_base ?? (line.qty * (line.uom_factor ?? 1));
 
-    // Дропшип-строки: только финансы, физических движений нет
     if (line.fulfillment_type === 'dropship') continue;
     if (qtyInBase === 0) continue;
 
@@ -309,73 +303,91 @@ async function buildMovements(
         ...base,
         warehouse_id: lineWarehouseId,
         sku:          line.sku,
-        qty:          qtyInBase,                              // + = приход, – = сторно прихода
+        qty:          qtyInBase,
         cost_price:   line.cost_price ?? null,
         sale_price:   null,
       });
 
+      // FIFO: create batch for incoming stock
+      if (qtyInBase > 0) {
+        await db.rpc('create_stock_batch', {
+          p_sku:          line.sku,
+          p_warehouse_id: lineWarehouseId,
+          p_supplier_id:  doc.supplier_id ?? line.supplier_id ?? null,
+          p_document_id:  doc.id,
+          p_qty:          qtyInBase,
+          p_cost_price:   line.cost_price ?? 0,
+          p_received_at:  doc.doc_date ?? new Date().toISOString(),
+        });
+      }
+
     } else if (direction === 'out') {
-      const avgCost = avgCostMap.get(line.sku) ?? line.cost_price ?? null;
+      // FIFO: consume from oldest batches
+      const { data: fifoCost } = await db.rpc('consume_stock_fifo', {
+        p_sku:          line.sku,
+        p_warehouse_id: lineWarehouseId,
+        p_qty:          Math.abs(qtyInBase),
+      });
+      const costPerUnit = Math.abs(qtyInBase) > 0
+        ? ((fifoCost as number) ?? 0) / Math.abs(qtyInBase)
+        : (line.cost_price ?? 0);
+
       movements.push({
         ...base,
         warehouse_id: lineWarehouseId,
         sku:          line.sku,
-        qty:          -qtyInBase,                             // – = расход, + = сторно расхода
-        cost_price:   avgCost,
+        qty:          -Math.abs(qtyInBase),
+        cost_price:   costPerUnit,
         sale_price:   line.price,
+        batch_cost:   (fifoCost as number) ?? null,
       });
 
     } else if (direction === 'transfer') {
-      const avgCost = avgCostMap.get(line.sku) ?? null;
-      // Расход с исходного склада
-      movements.push({
-        ...base,
-        warehouse_id: doc.warehouse_id,
-        sku:          line.sku,
-        qty:          -qtyInBase,
-        cost_price:   avgCost,
-        sale_price:   null,
+      const { data: fifoCost } = await db.rpc('consume_stock_fifo', {
+        p_sku:          line.sku,
+        p_warehouse_id: doc.warehouse_id,
+        p_qty:          Math.abs(qtyInBase),
       });
-      // Приход на целевой склад
-      movements.push({
-        ...base,
-        warehouse_id: doc.warehouse_to_id!,
-        sku:          line.sku,
-        qty:          qtyInBase,
-        cost_price:   avgCost,
-        sale_price:   null,
+      const costPerUnit = Math.abs(qtyInBase) > 0
+        ? ((fifoCost as number) ?? 0) / Math.abs(qtyInBase)
+        : 0;
+
+      movements.push({ ...base, warehouse_id: doc.warehouse_id,      sku: line.sku, qty: -Math.abs(qtyInBase), cost_price: costPerUnit, sale_price: null });
+      movements.push({ ...base, warehouse_id: doc.warehouse_to_id!,   sku: line.sku, qty:  Math.abs(qtyInBase), cost_price: costPerUnit, sale_price: null });
+
+      // Create batch on destination warehouse
+      await db.rpc('create_stock_batch', {
+        p_sku: line.sku, p_warehouse_id: doc.warehouse_to_id!,
+        p_supplier_id: null, p_document_id: doc.id,
+        p_qty: Math.abs(qtyInBase), p_cost_price: costPerUnit,
+        p_received_at: doc.doc_date ?? new Date().toISOString(),
       });
 
     } else if (direction === 'inventory') {
-      // qty уже знаковый (может быть отрицательным при недостаче)
-      const avgCost = avgCostMap.get(line.sku) ?? line.cost_price ?? null;
+      const { data: fifoCost } = qtyInBase < 0
+        ? await db.rpc('consume_stock_fifo', { p_sku: line.sku, p_warehouse_id: lineWarehouseId, p_qty: Math.abs(qtyInBase) })
+        : { data: (line.cost_price ?? 0) * qtyInBase };
+
       movements.push({
         ...base,
         warehouse_id: lineWarehouseId,
         sku:          line.sku,
-        qty:          qtyInBase,                              // знак определён в строке
-        cost_price:   avgCost,
+        qty:          qtyInBase,
+        cost_price:   line.cost_price ?? null,
         sale_price:   null,
+        batch_cost:   qtyInBase < 0 ? (fifoCost as number) ?? null : null,
       });
+
+      if (qtyInBase > 0) {
+        await db.rpc('create_stock_batch', {
+          p_sku: line.sku, p_warehouse_id: lineWarehouseId,
+          p_supplier_id: null, p_document_id: doc.id,
+          p_qty: qtyInBase, p_cost_price: line.cost_price ?? 0,
+          p_received_at: doc.doc_date ?? new Date().toISOString(),
+        });
+      }
     }
   }
 
   return movements;
-}
-
-// Загружает avg_cost из stock_balance для набора SKU
-async function fetchAvgCosts(
-  db: ReturnType<typeof createServiceClient>,
-  warehouseId: number,
-  skus: string[],
-): Promise<Map<string, number>> {
-  if (skus.length === 0) return new Map();
-
-  const { data } = await db
-    .from('stock_balance')
-    .select('sku, avg_cost')
-    .eq('warehouse_id', warehouseId)
-    .in('sku', skus);
-
-  return new Map((data ?? []).map(b => [b.sku, b.avg_cost]));
 }

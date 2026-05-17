@@ -16,19 +16,15 @@ export default function CabinetSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside style={{
-      width: '220px', flexShrink: 0, background: '#1E3A5F',
-      display: 'flex', flexDirection: 'column',
-      height: '100vh', position: 'sticky', top: 0,
-    }}>
+    <aside className="cabinet-sidebar">
       {/* Logo */}
-      <div style={{ padding: '22px 18px 18px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="cabinet-sidebar-logo" style={{ padding: '22px 18px 18px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div style={{ fontSize: '14px', fontWeight: 800, color: '#fff' }}>FIXLINE</div>
         <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.38)', marginTop: '2px' }}>Кабінет партнера</div>
       </div>
 
       {/* New order button + pricelist */}
-      <div style={{ padding: '12px 10px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <div className="cabinet-sidebar-actions" style={{ padding: '12px 10px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <Link href="/cabinet/orders/new" style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
           height: '38px', borderRadius: '8px', background: '#4880B8',
@@ -46,7 +42,7 @@ export default function CabinetSidebar() {
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: '10px 10px 0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      <nav className="cabinet-sidebar-nav" style={{ flex: 1, padding: '10px 10px 0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
         {NAV.map(({ href, label, icon: Icon, exact }) => {
           const moreSpecificActive = NAV.some(n => n.href !== href && n.exact && pathname === n.href);
           const active = exact ? pathname === href : pathname.startsWith(href) && !moreSpecificActive;
@@ -66,7 +62,7 @@ export default function CabinetSidebar() {
       </nav>
 
       {/* Back to site */}
-      <div style={{ padding: '8px 10px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="cabinet-sidebar-footer" style={{ padding: '8px 10px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
         <Link href="/" style={{
           display: 'flex', alignItems: 'center', gap: '8px',
           padding: '8px 12px', borderRadius: '8px', textDecoration: 'none',

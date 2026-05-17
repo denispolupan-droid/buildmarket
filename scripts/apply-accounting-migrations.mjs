@@ -28,6 +28,10 @@ const MIGRATIONS = [
   '009_channels_marketplaces.sql',
   '010_customers_webhooks_promo.sql',
   '011_uom_prices_currency.sql',
+  '027_payout_atomic.sql',
+  '028_stock_balance_constraints.sql',
+  '029_reserve_atomic.sql',
+  '030_payout_race_and_rls.sql',
 ];
 
 // ── Проверка переменных окружения ─────────────────────────────────────────────

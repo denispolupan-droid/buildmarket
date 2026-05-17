@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import NpSenderSettings from './NpSenderSettings';
+import EmailSettings from './EmailSettings';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,6 +33,13 @@ export default async function SettingsPage() {
         initialWarehouseDesc={cfg.np_sender_warehouse_desc ?? ''}
         initialAddressRef={cfg.np_sender_address_ref ?? ''}
         initialAddressDesc={cfg.np_sender_address_desc ?? ''}
+      />
+      <EmailSettings
+        initialFromEmail={cfg.orders_from_email       ?? 'orders@fixline.com.ua'}
+        initialFromName={cfg.orders_from_name         ?? 'FIXLINE'}
+        initialAdminEmail={cfg.admin_email            ?? ''}
+        initialContactName={cfg.company_contact_name  ?? ''}
+        initialContactPhone={cfg.company_contact_phone ?? ''}
       />
     </div>
   );

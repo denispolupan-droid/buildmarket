@@ -61,6 +61,8 @@ type Supplier = {
   is_active: boolean;
   qty_is_flag: boolean;
   email: string | null;
+  contact_name: string | null;
+  contact_phone: string | null;
   notes: string | null;
   last_synced_at: string | null;
   brand_discounts: BrandDiscount[];
@@ -73,7 +75,7 @@ const EMPTY: Omit<Supplier, 'id' | 'last_synced_at' | 'last_sync'> = {
   slug: '', name: '', source_url: '', file_format: 'csv',
   sheet_name: null, col_sku: null, col_price: null, col_qty: null, col_name: null,
   sync_interval_h: 24, markup_retail: 22, markup_wholesale: 10,
-  markup_drop: 15, is_active: true, qty_is_flag: false, email: '', notes: '', brand_discounts: [],
+  markup_drop: 15, is_active: true, qty_is_flag: false, email: '', contact_name: '', contact_phone: '', notes: '', brand_discounts: [],
 };
 
 const FORMAT_LABELS: Record<string, string> = {
@@ -231,6 +233,30 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
           <div>
             <span style={label}>Slug *</span>
             <input style={input} value={e.slug ?? ''} onChange={ev => set('slug', ev.target.value)} placeholder="ceresit" />
+          </div>
+        </div>
+
+        {/* Contact block */}
+        <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '14px 16px', marginBottom: '16px' }}>
+          <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '10px' }}>
+            Контакти постачальника
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '10px' }}>
+            <div>
+              <span style={label}>Менеджер (ім&apos;я)</span>
+              <input style={input} value={e.contact_name ?? ''} onChange={ev => set('contact_name', ev.target.value)} placeholder="Іван Петренко" />
+            </div>
+            <div>
+              <span style={label}>Телефон менеджера</span>
+              <input style={input} value={e.contact_phone ?? ''} onChange={ev => set('contact_phone', ev.target.value)} placeholder="+380671234567" />
+            </div>
+          </div>
+          <div>
+            <span style={label}>Email для замовлень *</span>
+            <input style={input} type="email" value={e.email ?? ''} onChange={ev => set('email', ev.target.value)} placeholder="orders@supplier.com" />
+            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', margin: '4px 0 0' }}>
+              На цю адресу надсилатиметься замовлення товарів
+            </p>
           </div>
         </div>
 
@@ -619,11 +645,6 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
           )}
         </div>
 
-        <div style={{ marginBottom: '20px' }}>
-          <span style={label}>Email для замовлень</span>
-          <input style={input} type="email" placeholder="orders@supplier.com" value={e.email ?? ''} onChange={ev => set('email', ev.target.value)} />
-          <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>На цей email надсилатиметься замовлення товарів</p>
-        </div>
 
         <div style={{ marginBottom: '20px' }}>
           <span style={label}>Нотатки</span>

@@ -90,7 +90,7 @@ export default async function CabinetPage() {
       )}
 
       {/* Summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '28px' }}>
+      <div className="cabinet-grid-3">
         {[
           {
             label: 'Доступний баланс',
@@ -131,7 +131,7 @@ export default async function CabinetPage() {
         })}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+      <div className="cabinet-grid-2">
 
         {/* Recent orders */}
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>

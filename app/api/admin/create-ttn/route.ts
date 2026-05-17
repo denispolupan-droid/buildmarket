@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
     weight, seatsAmount, cost, description,
     serviceType, payerType, paymentMethod,
     codEnabled, codAmount,
+    dimensions,
   } = body;
 
   const resolvedServiceType = serviceType ?? 'WarehouseWarehouse';
@@ -114,6 +115,15 @@ export async function POST(req: NextRequest) {
     RecipientsPhone: normalizePhone(recipientPhone),
   };
 
+  if (dimensions?.width && dimensions?.height && dimensions?.length) {
+    ttnPayload.OptionsSeat = [{
+      volumetricWidth:  String(Math.round(dimensions.width)),
+      volumetricHeight: String(Math.round(dimensions.height)),
+      volumetricLength: String(Math.round(dimensions.length)),
+      weight:           String(weight),
+    }];
+  }
+
   if (codEnabled && codAmount > 0) {
     ttnPayload.BackwardDeliveryData = [{
       PayerType:        'Sender',
@@ -132,6 +142,7 @@ export async function POST(req: NextRequest) {
   }
 
   const ttn = ttnRes.data?.[0]?.IntDocNumber;
+  const ref = ttnRes.data?.[0]?.Ref;
   if (!ttn) {
     return NextResponse.json(
       { error: 'ТТН не повернуто від API Нової Пошти' },
@@ -139,11 +150,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Step 3: Save TTN to order, mark as shipped
+  // Step 3: Save TTN + Ref to order (status unchanged — changes only on confirm)
   await serviceClient
     .from('orders')
-    .update({ tracking_number: ttn, status: 'shipped' })
+    .update({ tracking_number: ttn, tracking_ref: ref ?? null })
     .eq('id', orderId);
 
-  return NextResponse.json({ ttn });
+  return NextResponse.json({ ttn, ref });
 }

@@ -15,7 +15,6 @@ type FulfillmentData = OrderFulfillmentInfo & {
   reservations?: { sku: string; qty: number; warehouse_id: number; reservation_status: string }[];
 };
 import CreateTTNModal from '../components/admin/CreateTTNModal';
-import RegisterPanel from '../components/admin/RegisterPanel';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number };
@@ -47,19 +46,20 @@ type Order = {
 };
 
 const CHANNEL_LABEL: Record<string, { label: string; color: string; bg: string }> = {
-  website:  { label: 'Магазин',  color: '#1E3A5F', bg: '#EFF4FF' },
+  website:  { label: 'Магазин',  color: 'var(--brand-blue)', bg: '#EFF4FF' },
   b2b:      { label: 'Опт',      color: '#6B21A8', bg: '#FAF5FF' },
   dropship: { label: 'Дроп',     color: '#0E7490', bg: '#ECFEFF' },
   retail:   { label: 'Роздріб',  color: '#B45309', bg: '#FEF3C7' },
-  phone:    { label: 'Телефон',  color: '#374151', bg: '#F3F4F6' },
+  phone:    { label: 'Телефон',  color: 'var(--text-primary)', bg: '#F3F4F6' },
   prom:     { label: 'Prom',     color: '#C2410C', bg: '#FFF7ED' },
   rozetka:  { label: 'Rozetka',  color: '#15803D', bg: '#DCFCE7' },
 };
 
 const STATUSES = [
-  { value: 'new',            label: 'Нове',            color: '#1E3A5F', bg: '#EFF4FF' },
+  { value: 'new',            label: 'Нове',            color: 'var(--brand-blue)', bg: '#EFF4FF' },
   { value: 'confirmed',      label: 'Підтверджено',    color: '#15803D', bg: '#DCFCE7' },
   { value: 'awaiting_stock', label: 'Очікуємо товар',  color: '#7C3AED', bg: '#F5F3FF' },
+  { value: 'picking',        label: 'Збирається',      color: '#0E7490', bg: '#ECFEFF' },
   { value: 'shipped',        label: 'Відправлено',     color: '#B45309', bg: '#FEF3C7' },
   { value: 'delivered',      label: 'Доставлено',      color: '#15803D', bg: '#DCFCE7' },
   { value: 'cancelled',      label: 'Скасовано',       color: '#DC2626', bg: '#FEE2E2' },
@@ -81,6 +81,10 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
     Object.fromEntries(initialOrders.map(o => [o.id, o.tracking_number ?? '']))
   );
   const [ttnSaving,      setTtnSaving]      = useState<string | null>(null);
+  const [ttnDeleting,    setTtnDeleting]    = useState<string | null>(null);
+  const [supplierModal,  setSupplierModal]  = useState<{ orderIds: string[]; comment: string } | null>(null);
+  const [supplierSending, setSupplierSending] = useState(false);
+  const [supplierResult, setSupplierResult] = useState<{ supplier_name: string; emailed: boolean }[] | null>(null);
   const [ttnModalOrder,  setTtnModalOrder]  = useState<Order | null>(null);
   const [syncing,        setSyncing]        = useState(false);
   const [syncResult,     setSyncResult]     = useState<{ updated: number; checked: number } | null>(null);
@@ -90,6 +94,8 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
   const [reserving, setReserving] = useState<string | null>(null);
   const [selectedMode, setSelectedMode] = useState<Record<string, 'supplier' | 'own' | 'mixed'>>({});
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [confirmErrors, setConfirmErrors] = useState<Record<string, { error: string; insufficient?: { sku: string; requested: number; available: number }[] }>>({});
+  const [copiedSku, setCopiedSku] = useState<string | null>(null);
   const [orderingSupplier, setOrderingSupplier] = useState<string | null>(null);
 
   // Edit order items
@@ -134,6 +140,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
   async function confirmOrder(orderId: string) {
     const mode = selectedMode[orderId] ?? 'supplier';
     setConfirming(orderId);
+    setConfirmErrors(prev => { const n = { ...prev }; delete n[orderId]; return n; });
     try {
       const res = await fetch(`/api/admin/orders/${orderId}/confirm`, {
         method: 'POST',
@@ -145,12 +152,65 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
         setOrders(prev => prev.map(o => o.id === orderId
           ? { ...o, status: data.status, fulfillment_mode: data.fulfillment_mode }
           : o));
-        // Refresh fulfillment data
         setFulfillmentData(prev => { const n = { ...prev }; delete n[orderId]; return n; });
         loadFulfillment(orderId);
+      } else {
+        setConfirmErrors(prev => ({ ...prev, [orderId]: { error: data?.error ?? 'Помилка підтвердження', insufficient: data?.insufficient } }));
       }
+    } catch (err) {
+      console.error('[confirmOrder] fetch failed:', err);
+      setConfirmErrors(prev => ({ ...prev, [orderId]: { error: 'Помилка мережі' } }));
     } finally {
       setConfirming(null);
+    }
+  }
+
+  async function confirmAndSend(orderId: string) {
+    const mode = selectedMode[orderId] ?? 'supplier';
+    setConfirming(orderId);
+    setConfirmErrors(prev => { const n = { ...prev }; delete n[orderId]; return n; });
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fulfillment_mode: mode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setConfirmErrors(prev => ({ ...prev, [orderId]: { error: data?.error ?? 'Помилка підтвердження', insufficient: data?.insufficient } }));
+        return;
+      }
+      setOrders(prev => prev.map(o => o.id === orderId
+        ? { ...o, status: data.status, fulfillment_mode: data.fulfillment_mode }
+        : o));
+      setFulfillmentData(prev => { const n = { ...prev }; delete n[orderId]; return n; });
+      loadFulfillment(orderId);
+      setSupplierModal({ orderIds: [orderId], comment: '' });
+    } catch (err) {
+      console.error('[confirmAndSend] failed:', err);
+      setConfirmErrors(prev => ({ ...prev, [orderId]: { error: 'Помилка мережі' } }));
+    } finally {
+      setConfirming(null);
+    }
+  }
+
+  async function sendSupplierModal() {
+    if (!supplierModal) return;
+    setSupplierSending(true);
+    setSupplierResult(null);
+    try {
+      const res = await fetch('/api/admin/supplier-orders/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderIds: supplierModal.orderIds, comment: supplierModal.comment }),
+      });
+      const data = await res.json();
+      setSupplierResult(data.results ?? []);
+    } catch (err) {
+      console.error('[sendSupplierModal] failed:', err);
+      setSupplierResult([]);
+    } finally {
+      setSupplierSending(false);
     }
   }
 
@@ -353,6 +413,24 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
     setTtnSaving(null);
   }
 
+  async function deleteTTN(id: string) {
+    if (!confirm('Видалити ТТН з бази та з кабінету Нової Пошти?')) return;
+    setTtnDeleting(id);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}/ttn`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok) {
+        setOrders(prev => prev.map(o => o.id === id ? { ...o, tracking_number: null } : o));
+        setTtnValues(prev => { const n = { ...prev }; delete n[id]; return n; });
+        if (data.np_error) alert(`ТТН видалено з бази, але помилка в НП: ${data.np_error}`);
+      } else {
+        alert(`Помилка: ${data.error}`);
+      }
+    } finally {
+      setTtnDeleting(null);
+    }
+  }
+
   const q = search.trim().toLowerCase();
   const filtered = orders.filter(o => {
     if (channelFilter && (o.channel_code ?? 'website') !== channelFilter) return false;
@@ -387,9 +465,14 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
               border: '1px solid rgba(255,255,255,0.2)', background: 'transparent',
               color: '#fff', fontSize: '13px', cursor: 'pointer',
             }}>Скасувати</button>
+            <button
+              onClick={() => setSupplierModal({ orderIds: [...selectedIds], comment: '' })}
+              style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              📤 Відправити постачальнику
+            </button>
             <button onClick={openMergeModal} style={{
               height: '34px', padding: '0 16px', borderRadius: '8px',
-              border: 'none', background: '#fff', color: '#1E3A5F',
+              border: 'none', background: 'var(--bg-card)', color: 'var(--brand-blue)',
               fontSize: '13px', fontWeight: 700, cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: '6px',
             }}>
@@ -400,7 +483,6 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
       )}
 
       {/* Register panel */}
-      <RegisterPanel />
 
       {/* Filters + search */}
       <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -413,6 +495,8 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
               { value: 'website',  label: 'Магазин' },
               { value: 'b2b',      label: 'Опт' },
               { value: 'dropship', label: 'Дроп' },
+              { value: 'retail',   label: 'Роздріб' },
+              { value: 'phone',    label: 'Телефон' },
               { value: 'prom',     label: 'Prom' },
               { value: 'rozetka',  label: 'Rozetka' },
             ].map(ch => {
@@ -424,9 +508,9 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                   onClick={() => setChannelFilter(ch.value)}
                   style={{
                     height: '30px', padding: '0 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
-                    border: `1.5px solid ${active ? (cfg?.color ?? '#1E3A5F') : '#E2E8F0'}`,
-                    background: active ? (cfg?.bg ?? '#EFF4FF') : '#fff',
-                    color: active ? (cfg?.color ?? '#1E3A5F') : '#64748B',
+                    border: `1.5px solid ${active ? (cfg?.color ?? '#1E3A5F') : 'var(--border)'}`,
+                    background: active ? (cfg?.bg ?? '#EFF4FF') : 'var(--bg-card)',
+                    color: active ? (cfg?.color ?? '#1E3A5F') : 'var(--text-secondary)',
                     cursor: 'pointer', transition: 'all 0.15s',
                   }}
                 >
@@ -440,7 +524,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
             {syncResult && (
-              <span style={{ fontSize: '12px', color: syncResult.updated > 0 ? '#15803D' : '#64748B' }}>
+              <span style={{ fontSize: '12px', color: syncResult.updated > 0 ? '#15803D' : 'var(--text-secondary)' }}>
                 {syncResult.updated > 0
                   ? `✓ Оновлено: ${syncResult.updated} з ${syncResult.checked}`
                   : `Перевірено: ${syncResult.checked}, змін немає`}
@@ -452,8 +536,8 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '6px',
                 height: '32px', padding: '0 12px', borderRadius: '8px',
-                border: '1.5px solid #E2E8F0', background: '#fff',
-                fontSize: '13px', fontWeight: 600, color: '#475569',
+                border: '1.5px solid var(--border)', background: 'var(--bg-card)',
+                fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)',
                 cursor: syncing ? 'wait' : 'pointer', opacity: syncing ? 0.6 : 1,
               }}
             >
@@ -472,14 +556,14 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
             onChange={e => setSearch(e.target.value)}
             style={{
               width: '100%', height: '34px', paddingLeft: '32px', paddingRight: search ? '30px' : '10px',
-              border: '1.5px solid #E2E8F0', borderRadius: '8px', fontSize: '13px',
-              outline: 'none', boxSizing: 'border-box', background: '#fff', color: '#0F172A',
+              border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px',
+              outline: 'none', boxSizing: 'border-box', background: 'var(--bg-card)', color: 'var(--text-primary)',
             }}
           />
           {search && (
             <button
               onClick={() => setSearch('')}
-              style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0, display: 'flex' }}
+              style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}
             >
               <X size={13} />
             </button>
@@ -488,7 +572,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
 
         {/* Result count when filtering */}
         {(q || channelFilter) && (
-          <div style={{ fontSize: '12px', color: '#64748B' }}>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
             Знайдено: <strong>{filtered.length}</strong> замовлень
           </div>
         )}
@@ -499,9 +583,9 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
         <div style={{
           display: 'flex', alignItems: 'center', gap: '10px',
           padding: '5px 15px', marginBottom: '2px',
-          fontSize: '10px', fontWeight: 700, color: '#94A3B8',
+          fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
           textTransform: 'uppercase', letterSpacing: '0.06em',
-          borderBottom: '1px solid #F1F5F9',
+          borderBottom: '1px solid var(--border-light)',
         }}>
           <div style={{ width: '16px', flexShrink: 0 }} />
           <span style={{ width: '70px', flexShrink: 0 }}>№</span>
@@ -519,8 +603,8 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
 
       {filtered.length === 0 ? (
         <div style={{
-          background: '#fff', border: '1px solid #E2E8F0', borderRadius: '14px',
-          padding: '48px', textAlign: 'center', color: '#94A3B8',
+          background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px',
+          padding: '48px', textAlign: 'center', color: 'var(--text-muted)',
         }}>
           <Package size={36} strokeWidth={1} style={{ marginBottom: '10px' }} />
           <p>Замовлень немає</p>
@@ -546,8 +630,8 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
 
             return (
               <div key={order.id} style={{
-                background: isUnpaidInvoice ? '#FFFBF0' : '#fff',
-                border: `1px solid ${isExpanded ? '#CBD5E1' : isUnpaidInvoice ? '#FCD34D' : '#E2E8F0'}`,
+                background: isUnpaidInvoice ? '#FFFBF0' : 'var(--bg-card)',
+                border: `1px solid ${isExpanded ? 'var(--border)' : isUnpaidInvoice ? '#FCD34D' : 'var(--border)'}`,
                 borderRadius: '10px', overflow: 'hidden',
                 boxShadow: isExpanded ? '0 2px 12px rgba(0,0,0,0.06)' : 'none',
                 transition: 'box-shadow 0.15s, border-color 0.15s',
@@ -560,16 +644,16 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                     display: 'flex', alignItems: 'center', gap: '10px',
                     padding: '9px 14px', cursor: 'pointer',
                     background: isExpanded
-                      ? (isUnpaidInvoice ? '#FEF9EC' : '#F8FAFC')
-                      : (isUnpaidInvoice ? '#FFFBF0' : '#fff'),
+                      ? (isUnpaidInvoice ? '#FEF9EC' : 'var(--bg-soft)')
+                      : (isUnpaidInvoice ? '#FFFBF0' : 'var(--bg-card)'),
                   }}
                 >
                   <div
                     onClick={e => { e.stopPropagation(); toggleSelect(order.id); }}
                     style={{
                       width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, cursor: 'pointer',
-                      border: `2px solid ${selectedIds.has(order.id) ? '#1E3A5F' : '#CBD5E1'}`,
-                      background: selectedIds.has(order.id) ? '#1E3A5F' : '#fff',
+                      border: `2px solid ${selectedIds.has(order.id) ? '#1E3A5F' : 'var(--border)'}`,
+                      background: selectedIds.has(order.id) ? '#1E3A5F' : 'var(--bg-card)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
                   >
@@ -577,29 +661,29 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                   </div>
 
                   {/* № */}
-                  <span style={{ width: '70px', flexShrink: 0, fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>#{order.order_number}</span>
+                  <span style={{ width: '70px', flexShrink: 0, fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)' }}>#{order.order_number}</span>
 
                   {/* Дата */}
-                  <span style={{ width: '90px', flexShrink: 0, fontSize: '11px', color: '#94A3B8' }}>{date}</span>
+                  <span style={{ width: '90px', flexShrink: 0, fontSize: '11px', color: 'var(--text-muted)' }}>{date}</span>
 
                   {/* Клієнт / Товар */}
                   <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                    <div style={{ fontSize: '13px', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: '13px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {order.company
-                        ? <><span style={{ fontWeight: 600 }}>{order.company}</span><span style={{ color: '#94A3B8' }}> · {order.contact}</span></>
+                        ? <><span style={{ fontWeight: 600 }}>{order.company}</span><span style={{ color: 'var(--text-muted)' }}> · {order.contact}</span></>
                         : order.contact}
                     </div>
                     {order.items[0] && (
-                      <div style={{ fontSize: '11px', color: '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
                         {order.items[0].brand ? `${order.items[0].brand} ` : ''}{order.items[0].name}
-                        <span style={{ marginLeft: '4px', color: '#CBD5E1' }}>×{order.items[0].qty}</span>
-                        {order.items.length > 1 && <span style={{ marginLeft: '4px', color: '#CBD5E1' }}>+{order.items.length - 1}</span>}
+                        <span style={{ marginLeft: '4px', color: 'var(--text-muted)' }}>×{order.items[0].qty}</span>
+                        {order.items.length > 1 && <span style={{ marginLeft: '4px', color: 'var(--text-muted)' }}>+{order.items.length - 1}</span>}
                       </div>
                     )}
                   </div>
 
                   {/* Доставка */}
-                  <span style={{ width: '130px', flexShrink: 0, fontSize: '12px', color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span style={{ width: '130px', flexShrink: 0, fontSize: '12px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {order.delivery_type === 'pickup' ? 'Самовивіз'
                       : order.delivery_city_name
                         ? `${order.delivery_city_name}${order.delivery_subtype === 'courier' ? ' · кур.' : ''}`
@@ -622,7 +706,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
 
                   {/* Оплата */}
                   <div style={{ width: '46px', flexShrink: 0 }}>
-                    <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '20px', background: '#F1F5F9', color: '#64748B', display: 'inline-block' }}>
+                    <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '20px', background: 'var(--border-light)', color: 'var(--text-secondary)', display: 'inline-block' }}>
                       {order.payment_type === 'cod' ? 'НП' : order.payment_type === 'card' ? '💳' : order.payment_type === 'cash' ? 'Гот.' : 'Рах.'}
                     </span>
                   </div>
@@ -639,7 +723,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                   </div>
 
                   {/* Сума */}
-                  <span style={{ width: '84px', flexShrink: 0, fontSize: '13px', fontWeight: 800, color: '#1E3A5F', textAlign: 'right' }}>
+                  <span style={{ width: '84px', flexShrink: 0, fontSize: '13px', fontWeight: 800, color: 'var(--brand-blue)', textAlign: 'right' }}>
                     {order.total_price.toFixed(0)} ₴
                   </span>
                   {isExpanded
@@ -650,20 +734,21 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
 
                 {/* ── Expanded panel ── */}
                 {isExpanded && (
-                  <div style={{ borderTop: '1px solid #F1F5F9', display: 'grid', gridTemplateColumns: '1.5fr 1fr 200px' }}>
+                  <>
+                  <div style={{ borderTop: '1px solid var(--border-light)', display: 'grid', gridTemplateColumns: '1.5fr 1fr 200px' }}>
 
                     {/* Col 1: Items */}
-                    <div style={{ padding: '14px 16px', borderRight: '1px solid #F1F5F9' }}>
+                    <div style={{ padding: '14px 16px', borderRight: '1px solid var(--border-light)' }}>
                       <div style={{ paddingTop: '0' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Товари</span>
+                          <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Товари</span>
                           <button
                             onClick={() => editingId === order.id ? setEditingId(null) : startEdit(order)}
                             style={{
                               height: '24px', padding: '0 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-                              border: `1.5px solid ${editingId === order.id ? '#EF4444' : '#E2E8F0'}`,
-                              background: editingId === order.id ? '#FEF2F2' : '#fff',
-                              color: editingId === order.id ? '#EF4444' : '#475569',
+                              border: `1.5px solid ${editingId === order.id ? '#EF4444' : 'var(--border)'}`,
+                              background: editingId === order.id ? '#FEF2F2' : 'var(--bg-card)',
+                              color: editingId === order.id ? '#EF4444' : 'var(--text-secondary)',
                               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px',
                             }}
                           >
@@ -675,35 +760,39 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             {editItems.map((item, idx) => (
                               <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
-                                <span style={{ flex: 1, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  <span style={{ color: '#94A3B8', marginRight: '4px' }}>{item.brand}</span>{item.name}
+                                <span style={{ flex: 1, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  <span style={{ color: 'var(--text-muted)', marginRight: '2px' }}>{item.sku}</span>
+                                  <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px 0 0', color: copiedSku === item.sku ? '#15803D' : 'var(--text-muted)', lineHeight: 1, fontSize: '11px' }}>
+                                    {copiedSku === item.sku ? '✓' : '⎘'}
+                                  </button>{item.name}
                                 </span>
                                 <input type="number" min={1} value={item.qty}
                                   onChange={e => setEditItems(prev => prev.map((it, i) => i === idx ? { ...it, qty: Math.max(1, parseInt(e.target.value) || 1) } : it))}
-                                  style={{ width: '46px', height: '26px', border: '1px solid #E2E8F0', borderRadius: '6px', textAlign: 'center', fontSize: '12px', outline: 'none' }} />
-                                <span style={{ color: '#64748B', width: '70px', textAlign: 'right', flexShrink: 0 }}>{(item.price * item.qty).toFixed(0)} грн</span>
+                                  style={{ width: '46px', height: '26px', border: '1px solid var(--border)', borderRadius: '6px', textAlign: 'center', fontSize: '12px', outline: 'none' }} />
+                                <span style={{ color: 'var(--text-secondary)', width: '70px', textAlign: 'right', flexShrink: 0 }}>{(item.price * item.qty).toFixed(0)} грн</span>
                                 <button onClick={() => setEditItems(prev => prev.filter((_, i) => i !== idx))}
                                   style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#EF4444', padding: '2px', flexShrink: 0, display: 'flex' }}>
                                   <Trash2 size={12} />
                                 </button>
                               </div>
                             ))}
-                            <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: '8px', marginTop: '4px' }}>
-                              <div style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', marginBottom: '6px', textTransform: 'uppercase' }}>Додати товар</div>
+                            <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '8px', marginTop: '4px' }}>
+                              <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Додати товар</div>
                               <div ref={prodRef} style={{ position: 'relative', marginBottom: '6px' }}>
                                 <input placeholder="Пошук за назвою або SKU..." value={prodSearch}
                                   onChange={e => setProdSearch(e.target.value)}
                                   onFocus={() => prodResults.length > 0 && setProdOpen(true)}
-                                  style={{ width: '100%', height: '28px', padding: '0 8px', border: '1px solid #E2E8F0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                                  style={{ width: '100%', height: '28px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
                                 {prodOpen && prodResults.length > 0 && (
-                                  <div style={{ position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, zIndex: 50, background: '#fff', border: '1px solid #E2E8F0', borderRadius: '8px', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', maxHeight: '160px', overflowY: 'auto' }}>
+                                  <div style={{ position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, zIndex: 50, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', maxHeight: '160px', overflowY: 'auto' }}>
                                     {prodResults.map(p => (
                                       <button key={p.sku} onMouseDown={() => {
                                         setAddSku(p.sku); setAddName(`${p.brand} ${p.name}`); setAddPrice(String(p.price));
                                         setProdSearch(`${p.brand} ${p.name}`); setProdOpen(false);
-                                      }} style={{ width: '100%', padding: '6px 10px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #F8FAFC' }}>
-                                        <span style={{ color: '#94A3B8', marginRight: '4px' }}>{p.sku}</span>{p.brand} {p.name}
-                                        {p.price > 0 && <span style={{ color: '#1E3A5F', marginLeft: '6px', fontWeight: 600 }}>{p.price} грн</span>}
+                                      }} style={{ width: '100%', padding: '6px 10px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid var(--border-light)' }}>
+                                        <span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>{p.sku}</span>{p.brand} {p.name}
+                                        {p.price > 0 && <span style={{ color: 'var(--brand-blue)', marginLeft: '6px', fontWeight: 600 }}>{p.price} грн</span>}
                                       </button>
                                     ))}
                                   </div>
@@ -711,18 +800,18 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                               </div>
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 50px 70px auto', gap: '4px', alignItems: 'center' }}>
                                 <input placeholder="Назва товару" value={addName} onChange={e => setAddName(e.target.value)}
-                                  style={{ height: '28px', padding: '0 8px', border: '1px solid #E2E8F0', borderRadius: '6px', fontSize: '12px', outline: 'none' }} />
+                                  style={{ height: '28px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', outline: 'none' }} />
                                 <input placeholder="К-сть" type="number" min={1} value={addQty} onChange={e => setAddQty(parseInt(e.target.value) || 1)}
-                                  style={{ height: '28px', padding: '0 6px', border: '1px solid #E2E8F0', borderRadius: '6px', fontSize: '12px', textAlign: 'center', outline: 'none' }} />
+                                  style={{ height: '28px', padding: '0 6px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', textAlign: 'center', outline: 'none' }} />
                                 <input placeholder="Ціна" type="number" min={0} value={addPrice} onChange={e => setAddPrice(e.target.value)}
-                                  style={{ height: '28px', padding: '0 6px', border: '1px solid #E2E8F0', borderRadius: '6px', fontSize: '12px', outline: 'none' }} />
+                                  style={{ height: '28px', padding: '0 6px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', outline: 'none' }} />
                                 <button onClick={addItem} style={{ height: '28px', width: '28px', borderRadius: '6px', border: 'none', background: '#1E3A5F', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   <Plus size={13} />
                                 </button>
                               </div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #F1F5F9' }}>
-                              <span style={{ fontSize: '13px', fontWeight: 700, color: '#1E3A5F' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border-light)' }}>
+                              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-blue)' }}>
                                 Разом: {editItems.reduce((s, i) => s + i.price * i.qty, 0).toFixed(2)} грн
                               </span>
                               <button onClick={() => saveEdit(order.id)} disabled={editSaving}
@@ -736,82 +825,109 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                             {/* Items table */}
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                               <thead>
-                                <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
-                                  <th style={{ textAlign: 'left', padding: '4px 0', color: '#94A3B8', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Назва</th>
-                                  <th style={{ textAlign: 'center', padding: '4px 6px', color: '#94A3B8', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '40px' }}>К-сть</th>
-                                  <th style={{ textAlign: 'right', padding: '4px 0', color: '#94A3B8', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '64px' }}>Сума</th>
-                                  <th style={{ textAlign: 'right', padding: '4px 0 4px 8px', color: '#94A3B8', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '90px' }}>Джерело</th>
+                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                  <th style={{ textAlign: 'left', padding: '4px 0', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Назва</th>
+                                  <th style={{ textAlign: 'center', padding: '4px 6px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '40px', whiteSpace: 'nowrap' }}>К-сть</th>
+                                  <th style={{ textAlign: 'right', padding: '4px 0', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '64px' }}>Сума</th>
+                                  <th style={{ textAlign: 'right', padding: '4px 0 4px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '90px' }}>Джерело</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {order.items.map(item => {
-                                  const planSrc = fulfillmentData[order.id]?.plan?.items.find(s => s.sku === item.sku);
-                                  const effectiveSrc = sourceOverrides[order.id]?.[item.sku] ?? planSrc?.fulfillment_type;
-                                  const supplierName = fulfillmentData[order.id]?.by_supplier?.flatMap(g => g.items).find(i => i.sku === item.sku)?.supplier_name;
-                                  return (
-                                    <tr key={item.sku} style={{ borderBottom: '1px solid #F8FAFC' }}>
-                                      <td style={{ padding: '5px 0', color: '#374151', maxWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                        <span style={{ color: '#94A3B8', marginRight: '4px', fontSize: '11px' }}>{item.brand}</span>{item.name}
-                                      </td>
-                                      <td style={{ padding: '5px 6px', color: '#64748B', textAlign: 'center' }}>{item.qty}</td>
-                                      <td style={{ padding: '5px 0', color: '#374151', textAlign: 'right', fontWeight: 500 }}>{(item.price * item.qty).toFixed(0)} ₴</td>
-                                      <td style={{ padding: '5px 0 5px 8px', textAlign: 'right' }}>
-                                        {fulfillmentLoading.has(order.id) ? (
-                                          <span style={{ color: '#CBD5E1', fontSize: '10px' }}>...</span>
-                                        ) : planSrc ? (
-                                          <select
-                                            value={effectiveSrc ?? planSrc.fulfillment_type}
-                                            onChange={e => setSourceOverrides(prev => ({
-                                              ...prev,
-                                              [order.id]: { ...(prev[order.id] ?? {}), [item.sku]: e.target.value as 'own' | 'dropship' },
-                                            }))}
-                                            style={{ fontSize: '10px', border: '1px solid #E2E8F0', borderRadius: '4px', padding: '1px 3px', background: '#fff', cursor: 'pointer', maxWidth: '86px',
-                                              color: effectiveSrc === 'own' ? '#15803D' : '#1E3A5F' }}
-                                          >
-                                            <option value="dropship">{supplierName ?? 'Постач.'}</option>
-                                            {(planSrc.available_own ?? 0) >= item.qty && (
-                                              <option value="own">Наш ({planSrc.available_own})</option>
-                                            )}
-                                          </select>
-                                        ) : (
-                                          <span style={{ color: '#94A3B8', fontSize: '10px' }}>—</span>
-                                        )}
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
+                                {(() => {
+                                  const planItems = fulfillmentData[order.id]?.plan?.items ?? [];
+                                  const sources = order.items.map(item => {
+                                    const planSrc = planItems.find(s => s.sku === item.sku);
+                                    return sourceOverrides[order.id]?.[item.sku] ?? planSrc?.fulfillment_type;
+                                  }).filter(Boolean);
+                                  const isMixed = new Set(sources).size > 1;
+
+                                  return order.items.map(item => {
+                                    const planSrc = planItems.find(s => s.sku === item.sku);
+                                    const effectiveSrc = sourceOverrides[order.id]?.[item.sku] ?? planSrc?.fulfillment_type;
+                                    const supplierName = fulfillmentData[order.id]?.by_supplier?.flatMap(g => g.items).find(i => i.sku === item.sku)?.supplier_name;
+                                    const srcBg = isMixed
+                                      ? effectiveSrc === 'own' ? '#F0FDF4' : '#EFF4FF'
+                                      : undefined;
+                                    const srcBorder = isMixed
+                                      ? effectiveSrc === 'own' ? '2px solid #86EFAC' : '2px solid #BFDBFE'
+                                      : undefined;
+                                    return (
+                                      <tr key={item.sku} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                                        <td style={{ padding: '5px 0', color: 'var(--text-primary)', maxWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                          <span style={{ color: 'var(--text-muted)', marginRight: '2px', fontSize: '11px' }}>{item.sku}</span>
+                                          <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px 0 0', color: copiedSku === item.sku ? '#15803D' : 'var(--text-muted)', lineHeight: 1, fontSize: '11px' }}>
+                                            {copiedSku === item.sku ? '✓' : '⎘'}
+                                          </button>{item.name}
+                                        </td>
+                                        <td style={{ padding: '5px 6px', color: 'var(--text-secondary)', textAlign: 'center' }}>{item.qty}</td>
+                                        <td style={{ padding: '5px 0', color: 'var(--text-primary)', textAlign: 'right', fontWeight: 500 }}>{(item.price * item.qty).toFixed(0)} ₴</td>
+                                        <td style={{ padding: '5px 0 5px 8px', textAlign: 'right', background: srcBg, borderLeft: srcBorder, borderRadius: isMixed ? '4px' : undefined }}>
+                                          {fulfillmentLoading.has(order.id) ? (
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>...</span>
+                                          ) : planSrc ? (
+                                            <select
+                                              value={effectiveSrc ?? planSrc.fulfillment_type}
+                                              onChange={e => setSourceOverrides(prev => ({
+                                                ...prev,
+                                                [order.id]: { ...(prev[order.id] ?? {}), [item.sku]: e.target.value as 'own' | 'dropship' },
+                                              }))}
+                                              style={{ fontSize: '10px', border: '1px solid var(--border)', borderRadius: '4px', padding: '1px 3px', background: 'transparent', cursor: 'pointer', maxWidth: '86px',
+                                                color: effectiveSrc === 'own' ? '#15803D' : 'var(--brand-blue)', fontWeight: isMixed ? 700 : 400 }}
+                                            >
+                                              <option value="dropship">{supplierName ?? 'Постач.'}</option>
+                                              {(planSrc.available_own ?? 0) >= item.qty && (
+                                                <option value="own">Наш ({planSrc.available_own})</option>
+                                              )}
+                                            </select>
+                                          ) : (
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>—</span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  });
+                                })()}
                               </tbody>
                             </table>
 
-                            {/* Fulfillment decision block — only for new orders */}
-                            {order.status === 'new' && (
-                              <div style={{ marginTop: '12px', padding: '10px 12px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                                <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Спосіб виконання</div>
-                                <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                                  {(['supplier', 'own', 'mixed'] as const).map(mode => {
-                                    const label = mode === 'supplier' ? '📦 Постачальник' : mode === 'own' ? '🏪 Наш склад' : '🔀 Змішаний';
-                                    const active = (selectedMode[order.id] ?? 'supplier') === mode;
-                                    return (
-                                      <button key={mode} onClick={() => setSelectedMode(prev => ({ ...prev, [order.id]: mode }))}
-                                        style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
-                                          border: `1.5px solid ${active ? '#1E3A5F' : '#E2E8F0'}`,
-                                          background: active ? '#1E3A5F' : '#fff',
-                                          color: active ? '#fff' : '#64748B' }}>
-                                        {label}
-                                      </button>
-                                    );
-                                  })}
+                            {/* Fulfillment mode selector — only for new orders */}
+                            {order.status === 'new' && (() => {
+                              const plan = fulfillmentData[order.id]?.plan;
+                              const hasOwn = plan ? plan.has_own : true;
+                              return (
+                                <div style={{ marginTop: '12px', padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                  <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Спосіб виконання</div>
+                                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                    {(['supplier', 'own', 'mixed'] as const).map(mode => {
+                                      const label = mode === 'supplier' ? '📦 Постачальник' : mode === 'own' ? '🏪 Наш склад' : '🔀 Змішаний';
+                                      const active = (selectedMode[order.id] ?? 'supplier') === mode;
+                                      const disabled = !hasOwn && (mode === 'own' || mode === 'mixed');
+                                      return (
+                                        <button key={mode}
+                                          onClick={() => !disabled && setSelectedMode(prev => ({ ...prev, [order.id]: mode }))}
+                                          title={disabled ? 'Немає товару на власному складі' : undefined}
+                                          style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
+                                            cursor: disabled ? 'not-allowed' : 'pointer',
+                                            border: `1.5px solid ${active ? '#1E3A5F' : 'var(--border)'}`,
+                                            background: disabled ? 'var(--bg-soft)' : active ? '#1E3A5F' : 'var(--bg-card)',
+                                            color: disabled ? 'var(--text-muted)' : active ? '#fff' : 'var(--text-secondary)',
+                                            opacity: disabled ? 0.5 : 1 }}>
+                                          {label}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                  {!hasOwn && plan && (
+                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                                      ℹ️ Власний склад недоступний — всі товари у постачальника
+                                    </div>
+                                  )}
                                 </div>
-                                <button
-                                  onClick={() => confirmOrder(order.id)}
-                                  disabled={confirming === order.id}
-                                  style={{ width: '100%', height: '30px', borderRadius: '6px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: confirming === order.id ? 0.6 : 1 }}>
-                                  {confirming === order.id ? '...' : '✅ Підтвердити замовлення'}
-                                </button>
-                              </div>
-                            )}
+                              );
+                            })()}
                             <button onClick={() => toggleFulfillment(order.id)}
-                              style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontSize: '12px', fontWeight: 600, color: fulfillmentOpen.has(order.id) ? '#1E3A5F' : '#64748B' }}>
+                              style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontSize: '12px', fontWeight: 600, color: fulfillmentOpen.has(order.id) ? 'var(--brand-blue)' : 'var(--text-secondary)' }}>
                               <TrendingUp size={12} />
                               {fulfillmentLoading.has(order.id) ? 'Завантаження...'
                                 : fulfillmentOpen.has(order.id)
@@ -820,16 +936,16 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                             </button>
                             {fulfillmentOpen.has(order.id) && fulfillmentData[order.id] && (() => {
                               const fi = fulfillmentData[order.id];
-                              const marginColor = fi.total_margin >= 0 ? '#15803D' : '#DC2626';
-                              const marginBg = fi.total_margin >= 0 ? '#F0FDF4' : '#FEF2F2';
+                              const marginColor = fi.total_margin >= 0 ? 'var(--color-success, #15803D)' : 'var(--color-danger, #DC2626)';
+                              const marginBg = fi.total_margin >= 0 ? 'var(--bg-success, #F0FDF4)' : 'var(--bg-danger, #FEF2F2)';
                               const activeReservations = (fi.reservations ?? []).filter(r => r.reservation_status === 'active');
                               return (
-                                <div style={{ marginTop: '8px', borderRadius: '10px', overflow: 'hidden', border: '1px solid #E2E8F0', fontSize: '12px' }}>
+                                <div style={{ marginTop: '8px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--border)', fontSize: '12px' }}>
                                   {/* Margin summary */}
-                                  <div style={{ display: 'flex', gap: '12px', padding: '8px 12px', background: marginBg, borderBottom: '1px solid #E2E8F0', flexWrap: 'wrap' }}>
+                                  <div style={{ display: 'flex', gap: '12px', padding: '8px 12px', background: marginBg, borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
                                     <span style={{ fontWeight: 700, color: marginColor }}>Маржа: {fi.total_margin.toFixed(0)} грн ({fi.margin_pct}%)</span>
-                                    <span style={{ color: '#64748B' }}>Виручка: {fi.total_revenue.toFixed(0)} грн</span>
-                                    <span style={{ color: '#64748B' }}>Собів.: {fi.total_cost.toFixed(0)} грн</span>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Виручка: {fi.total_revenue.toFixed(0)} грн</span>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Собів.: {fi.total_cost.toFixed(0)} грн</span>
                                     {activeReservations.length > 0 && (
                                       <span style={{ marginLeft: 'auto', background: '#DCFCE7', color: '#15803D', padding: '1px 8px', borderRadius: '20px', fontWeight: 700 }}>
                                         ✓ Зарезервовано: {activeReservations.length} поз.
@@ -837,69 +953,19 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                                     )}
                                   </div>
 
-                                  {/* Fulfillment source selector per item */}
-                                  {fi.plan && fi.plan.items.length > 0 && (
-                                    <div style={{ padding: '8px 12px', borderBottom: '1px solid #F1F5F9' }}>
-                                      <div style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>Виконання</div>
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                        {fi.plan.items.map(src => {
-                                          const effectiveType = (sourceOverrides[order.id]?.[src.sku]) ?? src.fulfillment_type;
-                                          const supplierName = fi.by_supplier.flatMap(g => g.items).find(i => i.sku === src.sku)?.supplier_name ?? 'Постачальник';
-                                          const canUseOwn = src.available_own >= src.qty;
-                                          const itemName = order.items.find(i => i.sku === src.sku)?.name ?? src.sku;
-                                          return (
-                                            <div key={src.sku} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
-                                              <span style={{ flex: 1, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{itemName}</span>
-                                              <select
-                                                value={effectiveType}
-                                                onChange={e => setSourceOverrides(prev => ({
-                                                  ...prev,
-                                                  [order.id]: { ...(prev[order.id] ?? {}), [src.sku]: e.target.value as 'own' | 'dropship' },
-                                                }))}
-                                                style={{ fontSize: '11px', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '2px 6px', background: '#fff', cursor: 'pointer', color: effectiveType === 'own' ? '#15803D' : '#1E3A5F' }}
-                                              >
-                                                <option value="dropship">{supplierName}</option>
-                                                {canUseOwn && <option value="own">Наш склад ({src.available_own} шт)</option>}
-                                              </select>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                      {(() => {
-                                        const overrides = sourceOverrides[order.id] ?? {};
-                                        const hasOwn = fi.plan.items.some(src => (overrides[src.sku] ?? src.fulfillment_type) === 'own');
-                                        return (
-                                          <button
-                                            onClick={() => reserveOrder(order.id)}
-                                            disabled={!hasOwn || reserving === order.id}
-                                            style={{
-                                              marginTop: '8px', width: '100%', height: '28px', borderRadius: '7px',
-                                              border: '1.5px solid #15803D', background: hasOwn ? '#F0FDF4' : '#F8FAFC',
-                                              color: hasOwn ? '#15803D' : '#94A3B8', fontSize: '12px', fontWeight: 600,
-                                              cursor: hasOwn ? 'pointer' : 'not-allowed',
-                                              opacity: reserving === order.id ? 0.6 : 1,
-                                            }}
-                                          >
-                                            {reserving === order.id ? '...' : '🔒 Зарезервувати власний склад'}
-                                          </button>
-                                        );
-                                      })()}
-                                    </div>
-                                  )}
-
                                   {/* Per-supplier margin breakdown */}
                                   {fi.by_supplier.map((group, gi) => (
-                                    <div key={gi} style={{ borderBottom: gi < fi.by_supplier.length - 1 ? '1px solid #F1F5F9' : 'none' }}>
-                                      <div style={{ padding: '6px 12px', background: '#F8FAFC', fontWeight: 600, color: '#374151', fontSize: '11px', display: 'flex', justifyContent: 'space-between' }}>
+                                    <div key={gi} style={{ borderBottom: gi < fi.by_supplier.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
+                                      <div style={{ padding: '6px 12px', background: 'var(--bg-soft)', fontWeight: 600, color: 'var(--text-primary)', fontSize: '11px', display: 'flex', justifyContent: 'space-between' }}>
                                         <span>📦 {group.supplier_name ?? 'Невідомий поставщик'}</span>
-                                        <span style={{ color: '#94A3B8' }}>+{group.total_margin.toFixed(0)} грн</span>
+                                        <span style={{ color: 'var(--text-muted)' }}>+{group.total_margin.toFixed(0)} грн</span>
                                       </div>
                                       {group.items.map((item, ii) => (
-                                        <div key={ii} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto auto', gap: '8px', padding: '5px 12px', alignItems: 'center', borderTop: '1px solid #F8FAFC' }}>
-                                          <span style={{ color: '#94A3B8', fontFamily: 'monospace', fontSize: '11px' }}>{item.supplier_sku ?? item.sku}</span>
-                                          <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
-                                          <span style={{ color: '#64748B', whiteSpace: 'nowrap' }}>{item.qty} шт</span>
-                                          <span style={{ color: '#64748B', whiteSpace: 'nowrap' }}>{item.cost_price.toFixed(0)} → {item.sale_price.toFixed(0)} грн</span>
+                                        <div key={ii} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto auto', gap: '8px', padding: '5px 12px', alignItems: 'center', borderTop: '1px solid var(--border-light)' }}>
+                                          <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: '11px' }}>{item.supplier_sku ?? item.sku}</span>
+                                          <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                                          <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.qty} шт</span>
+                                          <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.cost_price.toFixed(0)} → {item.sale_price.toFixed(0)} грн</span>
                                           <span style={{ whiteSpace: 'nowrap', fontWeight: 600, color: item.margin >= 0 ? '#15803D' : '#DC2626' }}>+{item.margin.toFixed(0)} грн</span>
                                         </div>
                                       ))}
@@ -914,22 +980,22 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                     </div>
 
                     {/* Col 2: Contact + Delivery + payment + callback + TTN */}
-                    <div style={{ padding: '14px 16px', borderRight: '1px solid #F1F5F9', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ padding: '14px 16px', borderRight: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {/* Contact info */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', paddingBottom: '8px', borderBottom: '1px solid #F1F5F9' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', paddingBottom: '8px', borderBottom: '1px solid var(--border-light)' }}>
                         {order.company && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: '#0F172A', fontWeight: 600 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 }}>
                             <Building2 size={12} color="#64748B" />{order.company}
                           </div>
                         )}
-                        <div style={{ fontSize: '13px', color: '#374151' }}>{order.contact}</div>
-                        <a href={`tel:${order.phone}`} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: '#1E3A5F', fontWeight: 600, textDecoration: 'none' }}>
+                        <div style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{order.contact}</div>
+                        <a href={`tel:${order.phone}`} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--brand-blue)', fontWeight: 600, textDecoration: 'none' }}>
                           <Phone size={12} />{order.phone}
                         </a>
-                        <div style={{ fontSize: '12px', color: '#94A3B8' }}>{order.email}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px', fontSize: '13px', color: '#374151' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px', fontSize: '13px', color: 'var(--text-primary)' }}>
                         <MapPin size={13} color="#64748B" style={{ flexShrink: 0, marginTop: '2px' }} />
                         <span>{delivery}{subtype}{order.delivery_city_name && <strong> · {order.delivery_city_name}</strong>}{order.delivery_address && ` · ${order.delivery_address}`}</span>
                       </div>
@@ -939,7 +1005,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                           <CreditCard size={12} /> Накладений платіж
                         </div>
                       ) : order.payment_type === 'card' ? (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: order.status === 'confirmed' ? '#DCFCE7' : '#EFF6FF', color: order.status === 'confirmed' ? '#15803D' : '#1E3A5F', border: `1px solid ${order.status === 'confirmed' ? '#86EFAC' : '#BFDBFE'}` }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: order.status === 'confirmed' ? '#DCFCE7' : '#EFF6FF', color: order.status === 'confirmed' ? '#15803D' : 'var(--brand-blue)', border: `1px solid ${order.status === 'confirmed' ? '#86EFAC' : '#BFDBFE'}` }}>
                           <CreditCard size={12} />{order.status === 'confirmed' ? '💳 Оплата карткою — підтверджено' : '💳 Картка онлайн'}
                         </div>
                       ) : (
@@ -948,10 +1014,10 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                             <CreditCard size={12} />{paymentConfirmed ? '✓ Оплата за рахунком підтверджена' : '⏳ Очікуємо оплату за рахунком'}
                           </div>
                           <label style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '6px', cursor: 'pointer' }} onClick={() => toggleFlag(order.id, 'payment_confirmed', !paymentConfirmed)}>
-                            <div style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, border: `2px solid ${paymentConfirmed ? '#15803D' : '#D97706'}`, background: paymentConfirmed ? '#15803D' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, border: `2px solid ${paymentConfirmed ? '#15803D' : '#D97706'}`, background: paymentConfirmed ? '#15803D' : 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               {paymentConfirmed && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                             </div>
-                            <span style={{ fontSize: '12px', color: '#475569' }}>Оплату отримано</span>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Оплату отримано</span>
                           </label>
                         </div>
                       )}
@@ -966,10 +1032,10 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                             {callbackDone ? '✓ Зателефонували' : '☎ Потрібен дзвінок'}
                           </div>
                           <label style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '6px', cursor: 'pointer' }} onClick={() => toggleFlag(order.id, 'callback_done', !callbackDone)}>
-                            <div style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, border: `2px solid ${callbackDone ? '#15803D' : '#D97706'}`, background: callbackDone ? '#15803D' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, border: `2px solid ${callbackDone ? '#15803D' : '#D97706'}`, background: callbackDone ? '#15803D' : 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               {callbackDone && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                             </div>
-                            <span style={{ fontSize: '12px', color: '#475569' }}>Зателефонували</span>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Зателефонували</span>
                           </label>
                         </div>
                       ))}
@@ -977,47 +1043,109 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                       {(() => {
                         const displayComment = order.comment?.split('\n').filter(line => !line.includes('Не передзвонювати')).join('\n').trim();
                         return displayComment ? (
-                          <div style={{ fontSize: '12px', color: '#64748B', fontStyle: 'italic' }}>«{displayComment}»</div>
+                          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>«{displayComment}»</div>
                         ) : null;
                       })()}
 
                       {order.delivery_type === 'nova' && (
                         <div>
-                          <div style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ТТН Нової Пошти</div>
+                          <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ТТН Нової Пошти</div>
                           <div style={{ display: 'flex', gap: '6px' }}>
                             <div style={{ position: 'relative', flex: 1 }}>
                               <Hash size={12} color="#94A3B8" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }} />
                               <input type="text" value={ttnValues[order.id] ?? ''} onChange={e => setTtnValues(prev => ({ ...prev, [order.id]: e.target.value }))}
                                 placeholder="59000000000000"
-                                style={{ width: '100%', height: '32px', paddingLeft: '26px', paddingRight: '8px', border: '1px solid #E2E8F0', borderRadius: '7px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                                style={{ width: '100%', height: '32px', paddingLeft: '26px', paddingRight: '8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
                             </div>
-                            <button onClick={() => saveTTN(order.id)} disabled={ttnSaving === order.id}
-                              style={{ height: '32px', padding: '0 12px', borderRadius: '7px', background: '#1E3A5F', color: '#fff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer', opacity: ttnSaving === order.id ? 0.5 : 1 }}>
+                            <button onClick={() => saveTTN(order.id)} disabled={ttnSaving === order.id || !!order.tracking_number}
+                              style={{ height: '32px', padding: '0 12px', borderRadius: '7px', background: '#1E3A5F', color: '#fff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: (ttnSaving === order.id || !!order.tracking_number) ? 'default' : 'pointer', opacity: (ttnSaving === order.id || !!order.tracking_number) ? 0.4 : 1 }}>
                               {ttnSaving === order.id ? '...' : 'Зберегти'}
                             </button>
-                            {order.delivery_subtype === 'warehouse' && (
-                              <button onClick={() => setTtnModalOrder(order)} title="Створити ТТН через API Нової Пошти"
-                                style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0, background: '#EFF4FF', color: '#1E3A5F', border: '1.5px solid #C7D7F5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <Truck size={14} />
-                              </button>
+                            {order.delivery_type === 'nova' && (() => {
+                              const hasTtn = !!order.tracking_number;
+                              return (
+                                <button
+                                  onClick={() => !hasTtn && setTtnModalOrder(order)}
+                                  disabled={hasTtn}
+                                  title={hasTtn ? 'ТТН вже створена' : 'Створити ТТН через API Нової Пошти'}
+                                  style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
+                                    background: hasTtn ? 'var(--border-light)' : 'var(--brand-blue-light)',
+                                    color: hasTtn ? 'var(--text-muted)' : 'var(--brand-blue)',
+                                    border: `1.5px solid ${hasTtn ? 'var(--border)' : '#C7D7F5'}`,
+                                    cursor: hasTtn ? 'default' : 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <Truck size={14} />
+                                </button>
+                              );
+                            })()}
+                            {order.tracking_number && (
+                              <a href="/admin/dispatch" title="Перейти до реєстру відправлень"
+                                style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0, background: '#F0FDF4', color: '#15803D', border: '1.5px solid #86EFAC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', textDecoration: 'none' }}>
+                                📋
+                              </a>
                             )}
                             {order.tracking_number && (
-                              <button onClick={() => (window as unknown as { __addToRegister?: (...a: unknown[]) => void }).__addToRegister?.(order.tracking_number, order.id, order.contact, order.total_price)}
-                                title="Додати ТТН до реєстру"
-                                style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0, background: '#F0FDF4', color: '#15803D', border: '1.5px solid #86EFAC', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>
-                                📋
+                              <button onClick={() => deleteTTN(order.id)} disabled={ttnDeleting === order.id}
+                                title="Видалити ТТН з бази та з НП"
+                                style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0, background: '#FEF2F2', color: '#DC2626', border: '1.5px solid #FECACA', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', opacity: ttnDeleting === order.id ? 0.5 : 1 }}>
+                                {ttnDeleting === order.id ? '…' : '🗑'}
                               </button>
                             )}
                           </div>
                         </div>
                       )}
+
+                      {/* Confirm button — under Nova Poshta block, only for new orders */}
+                      {order.status === 'new' && (() => {
+                        const mode = selectedMode[order.id] ?? 'supplier';
+                        const isSupplier = mode === 'supplier';
+                        const busy = confirming === order.id || orderingSupplier === order.id;
+                        const confirmErr = confirmErrors[order.id];
+                        return (
+                          <div style={{ marginTop: '4px' }}>
+                            <button
+                              onClick={() => isSupplier ? confirmAndSend(order.id) : confirmOrder(order.id)}
+                              disabled={busy}
+                              style={{ width: '100%', height: '34px', borderRadius: '8px', border: 'none',
+                                background: busy ? '#94A3B8' : '#15803D', color: '#fff',
+                                fontSize: '12px', fontWeight: 700, cursor: busy ? 'wait' : 'pointer' }}>
+                              {busy ? '⏳ Обробка...' : isSupplier ? '✅ Підтвердити і відправити постачальнику' : '✅ Підтвердити замовлення'}
+                            </button>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', textAlign: 'center' }}>
+                              {isSupplier ? 'Підтвердить + надішле email постачальнику' : mode === 'own' ? 'Зарезервує товар з власного складу' : 'Резерв + замовлення у постачальника'}
+                            </div>
+
+                            {/* Inline error: generic or insufficient stock */}
+                            {confirmErr && (
+                              <div style={{ marginTop: '8px', padding: '8px 10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px' }}>
+                                <div style={{ fontSize: '12px', fontWeight: 600, color: '#DC2626', marginBottom: confirmErr.insufficient?.length ? '6px' : 0 }}>
+                                  ⚠ {confirmErr.error}
+                                </div>
+                                {confirmErr.insufficient?.map(item => {
+                                  const name = order.items.find(i => i.sku === item.sku)?.name;
+                                  return (
+                                    <div key={item.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '2px 0', borderTop: '1px solid #FECACA' }}>
+                                      <span style={{ color: '#7F1D1D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>
+                                        {name ?? item.sku}
+                                      </span>
+                                      <span style={{ color: '#DC2626', fontWeight: 700, flexShrink: 0 }}>
+                                        {item.available} / {item.requested} шт
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Col 3: Status dropdown + context actions */}
                     {(() => {
                       const fMode = order.fulfillment_mode ?? 'supplier';
                       return (
-                        <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px', alignSelf: 'start' }}>
                           {/* Current status badge */}
                           <div style={{ fontSize: '13px', fontWeight: 700, padding: '6px 10px', borderRadius: '8px', color: status.color, background: status.bg, textAlign: 'center' }}>
                             {status.label}
@@ -1025,11 +1153,11 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
 
                           {/* Manual status dropdown */}
                           <div>
-                            <div style={{ fontSize: '10px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>Змінити вручну</div>
+                            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>Змінити вручну</div>
                             <select
                               value={order.status}
                               onChange={e => { if (e.target.value !== order.status) changeStatus(order.id, e.target.value); }}
-                              style={{ width: '100%', height: '30px', padding: '0 8px', border: '1px solid #E2E8F0', borderRadius: '6px', fontSize: '12px', background: '#fff', cursor: 'pointer', color: '#374151' }}
+                              style={{ width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-primary)' }}
                             >
                               {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                             </select>
@@ -1045,7 +1173,15 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                                 {orderingSupplier === order.id ? '...' : '📤 Замовити у постачальника'}
                               </button>
                             )}
-                            {(order.status === 'confirmed' || order.status === 'awaiting_stock') && (
+                            {order.status === 'awaiting_stock' && (
+                              <button
+                                onClick={() => changeStatus(order.id, 'picking')}
+                                disabled={!!loading}
+                                style={{ padding: '7px 10px', borderRadius: '7px', border: '1.5px solid #0E7490', background: '#ECFEFF', color: '#0E7490', fontSize: '11px', fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.6 : 1 }}>
+                                📦 Товар надійшов — збираємо
+                              </button>
+                            )}
+                            {(order.status === 'confirmed' || order.status === 'awaiting_stock' || order.status === 'picking') && (
                               <button
                                 onClick={() => changeStatus(order.id, 'shipped')}
                                 disabled={!!loading}
@@ -1074,6 +1210,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                     })()}
 
                   </div>
+                  </>
                 )}
               </div>
             );
@@ -1087,7 +1224,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
           {currentPage > 1 && (
             <a href={`?page=${currentPage - 1}`} style={{
               height: '36px', padding: '0 16px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center',
-              border: '1.5px solid #E2E8F0', background: '#fff', color: '#475569', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+              border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
             }}>← Попередня</a>
           )}
           {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -1095,17 +1232,82 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
             .map(p => (
               <a key={p} href={`?page=${p}`} style={{
                 height: '36px', width: '36px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                border: `1.5px solid ${p === currentPage ? '#1E3A5F' : '#E2E8F0'}`,
-                background: p === currentPage ? '#1E3A5F' : '#fff',
-                color: p === currentPage ? '#fff' : '#475569', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+                border: `1.5px solid ${p === currentPage ? '#1E3A5F' : 'var(--border)'}`,
+                background: p === currentPage ? '#1E3A5F' : 'var(--bg-card)',
+                color: p === currentPage ? '#fff' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
               }}>{p}</a>
             ))}
           {currentPage < totalPages && (
             <a href={`?page=${currentPage + 1}`} style={{
               height: '36px', padding: '0 16px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center',
-              border: '1.5px solid #E2E8F0', background: '#fff', color: '#475569', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+              border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
             }}>Наступна →</a>
           )}
+        </div>
+      )}
+
+      {/* Supplier order modal */}
+      {supplierModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+          onClick={e => { if (!supplierSending && e.target === e.currentTarget) { setSupplierModal(null); setSupplierResult(null); } }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '480px', boxShadow: '0 24px 80px rgba(0,0,0,0.22)', overflow: 'hidden' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-light)' }}>
+              <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                📤 Відправити замовлення постачальнику
+              </div>
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                {supplierModal.orderIds.length === 1
+                  ? `Замовлення #${orders.find(o => o.id === supplierModal.orderIds[0])?.order_number ?? ''}`
+                  : `${supplierModal.orderIds.length} замовлень: ${supplierModal.orderIds.map(id => `#${orders.find(o => o.id === id)?.order_number ?? ''}`).join(', ')}`}
+              </div>
+            </div>
+            {supplierResult ? (
+              <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {supplierResult.length === 0 ? (
+                  <div style={{ padding: '12px 14px', background: '#FEF2F2', borderRadius: '10px', fontSize: '13px', color: '#DC2626' }}>
+                    ⚠ Постачальника не знайдено. Перевірте маппінг SKU у розділі Постачальники.
+                  </div>
+                ) : supplierResult.map((r, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', background: r.emailed ? '#F0FDF4' : '#FEF3C7', border: `1px solid ${r.emailed ? '#86EFAC' : '#FCD34D'}` }}>
+                    <span style={{ fontSize: '16px' }}>{r.emailed ? '✅' : '⚠️'}</span>
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: r.emailed ? '#15803D' : '#B45309' }}>{r.supplier_name}</div>
+                      <div style={{ fontSize: '12px', color: r.emailed ? '#16A34A' : '#92400E' }}>
+                        {r.emailed ? 'Email відправлено успішно' : 'Email не налаштовано — додайте email у картці постачальника'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ padding: '12px 14px', background: 'var(--brand-blue-light)', borderRadius: '10px', fontSize: '13px', color: 'var(--brand-blue)' }}>
+                  Система автоматично визначить постачальника і надішле email з переліком товарів.
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Коментар постачальнику (необов&apos;язково)</label>
+                  <textarea
+                    value={supplierModal.comment}
+                    onChange={e => setSupplierModal(prev => prev ? { ...prev, comment: e.target.value } : null)}
+                    placeholder="Термінове замовлення, потрібна доставка до п'ятниці..."
+                    style={{ width: '100%', height: '80px', padding: '10px 12px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                  />
+                </div>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', padding: '14px 24px', borderTop: '1px solid var(--border-light)' }}>
+              <button onClick={() => { setSupplierModal(null); setSupplierResult(null); }} disabled={supplierSending}
+                style={{ height: '36px', padding: '0 18px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                {supplierResult ? 'Закрити' : 'Пропустити'}
+              </button>
+              {!supplierResult && (
+                <button onClick={sendSupplierModal} disabled={supplierSending}
+                  style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: supplierSending ? 0.7 : 1 }}>
+                  {supplierSending ? '⏳ Відправлення...' : '📤 Відправити'}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -1122,12 +1324,13 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
             delivery_city_ref: ttnModalOrder.delivery_city_ref,
             delivery_city_name: ttnModalOrder.delivery_city_name,
             delivery_warehouse_ref: ttnModalOrder.delivery_warehouse_ref,
+            delivery_subtype: ttnModalOrder.delivery_subtype,
           }}
           onClose={() => setTtnModalOrder(null)}
           onCreated={ttn => {
             setTtnValues(prev => ({ ...prev, [ttnModalOrder.id]: ttn }));
             setOrders(prev => prev.map(o =>
-              o.id === ttnModalOrder.id ? { ...o, tracking_number: ttn, status: 'shipped' } : o
+              o.id === ttnModalOrder.id ? { ...o, tracking_number: ttn } : o
             ));
             setTtnModalOrder(null);
           }}
@@ -1141,7 +1344,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
           onCreated={ttn => {
             const ids = mergeModal.mergedIds ?? [mergeModal.id];
             setOrders(prev => prev.map(o =>
-              ids.includes(o.id) ? { ...o, tracking_number: ttn, status: 'shipped' } : o
+              ids.includes(o.id) ? { ...o, tracking_number: ttn } : o
             ));
             ids.forEach(id => setTtnValues(prev => ({ ...prev, [id]: ttn })));
             setSelectedIds(new Set());

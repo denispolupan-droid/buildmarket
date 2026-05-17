@@ -21,32 +21,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ pa
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
 
-  const newStatus = action === 'approve' ? 'approved' : 'rejected';
-
-  // Якщо підтверджуємо — списуємо з балансу
-  if (action === 'approve') {
-    const { data: payout } = await db
+  if (action === 'reject') {
+    const { error } = await db
       .from('partner_payout_requests')
-      .select('customer_id, amount, method')
+      .update({ status: 'rejected', processed_at: new Date().toISOString(), processed_by: user.email })
       .eq('id', payoutId)
-      .single();
+      .eq('status', 'pending');
 
-    if (payout) {
-      await db.from('partner_balance_transactions').insert({
-        customer_id: payout.customer_id,
-        tx_type:     payout.method === 'goods_offset' ? 'goods_offset' : 'payout',
-        amount:      -payout.amount,
-        description: `Виплата підтверджена адміном`,
-        created_by:  user.email ?? 'admin',
-      });
-    }
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
   }
 
-  const { error } = await db
-    .from('partner_payout_requests')
-    .update({ status: newStatus, processed_at: new Date().toISOString(), processed_by: user.email })
-    .eq('id', payoutId);
+  // approve — атомарно через SQL-функцію (списання балансу + зміна статусу в одній транзакції)
+  const { data, error } = await db.rpc('approve_payout', {
+    p_payout_id:   payoutId,
+    p_admin_email: user.email ?? 'admin',
+  });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const result = data as { success: boolean; error?: string };
+  if (!result.success) {
+    return NextResponse.json({ error: result.error }, { status: 409 });
+  }
+
   return NextResponse.json({ ok: true });
 }

@@ -3,74 +3,53 @@
  *
  * Управление резервами товара.
  *
- * Резерв — это «мягкая блокировка» qty_available без физического движения.
+ * Резерв — «мягкая блокировка» qty_available без физического движения.
  * Триггер trg_stock_reserved_update автоматически обновляет stock_balance.qty_reserved.
  *
  * Жизненный цикл:
  *   createReservation  — заказ оформлен, товар зарезервирован
  *   releaseReservation — заказ отгружен или отменён, резерв снимается
  *   expireReservations — просроченные резервы (cron)
+ *
+ * Атомарность:
+ *   createReservation вызывает SQL-функцию reserve_order_items(), которая
+ *   блокирует строки stock_balance через SELECT FOR UPDATE перед проверкой
+ *   доступного остатка. Параллельные вызовы для одного склада/SKU
+ *   выполняются последовательно — oversell невозможен.
  */
 
 import { createServiceClient } from '../supabase';
-import type { CreateReservationInput, ReservationResult, ReservationItem } from './types';
+import type { CreateReservationInput, ReservationResult } from './types';
 
-// ── Создание резерва ──────────────────────────────────────────────────────────
+// ── Создание резерва (атомарное, через SQL-функцию) ───────────────────────────
 
 export async function createReservation(
   input: CreateReservationInput,
 ): Promise<ReservationResult> {
   const db = createServiceClient();
 
-  const skus = input.items.map(i => i.sku);
+  const { data, error } = await db.rpc('reserve_order_items', {
+    p_order_id:     input.order_id,
+    p_warehouse_id: input.warehouse_id,
+    p_items:        input.items,  // [{sku, qty}]
+  });
 
-  // Проверяем доступный остаток по всем SKU
-  const { data: balances } = await db
-    .from('stock_balance')
-    .select('sku, qty_available')
-    .eq('warehouse_id', input.warehouse_id)
-    .in('sku', skus);
+  if (error) throw error;
 
-  const availableMap = new Map(
-    (balances ?? []).map(b => [b.sku, Number(b.qty_available)]),
-  );
-
-  const toReserve: ReservationItem[] = [];
-  const reserved:  ReservationItem[] = [];
-  const insufficient: ReservationResult['insufficient'] = [];
-
-  for (const item of input.items) {
-    const available = availableMap.get(item.sku) ?? 0;
-    if (available >= item.qty) {
-      toReserve.push(item);
-      reserved.push({ sku: item.sku, qty: item.qty });
-    } else {
-      insufficient.push({ sku: item.sku, requested: item.qty, available });
-    }
-  }
-
-  if (toReserve.length > 0) {
-    const records = toReserve.map(item => ({
-      order_id:            input.order_id,
-      sku:                 item.sku,
-      warehouse_id:        input.warehouse_id,
-      qty:                 item.qty,
-      reservation_status:  'active',
-      expires_at:          input.expires_at ?? null,
-    }));
-
-    const { error } = await db.from('stock_reservations').insert(records);
-    if (error) throw error;
-  }
+  const result = data as {
+    success:      boolean;
+    reserved:     { sku: string; qty: number }[];
+    insufficient: { sku: string; requested: number; available: number }[];
+  };
 
   return {
-    success:      insufficient.length === 0,
-    reserved,
-    insufficient,
+    success:      result.success,
+    reserved:     result.reserved     ?? [],
+    insufficient: result.insufficient ?? [],
   };
 }
 
-// ── Снятие резерва ────────────────────────────────────────────────────────────
+// ── Снятие резерва (атомарное, через SQL-функцию) ────────────────────────────
 
 export async function releaseReservation(
   orderId: string,
@@ -78,15 +57,10 @@ export async function releaseReservation(
 ): Promise<void> {
   const db = createServiceClient();
 
-  const { error } = await db
-    .from('stock_reservations')
-    .update({
-      released_at:        new Date().toISOString(),
-      reservation_status: 'released',
-      release_reason:     reason,
-    })
-    .eq('order_id', orderId)
-    .is('released_at', null);  // только активные резервы
+  const { error } = await db.rpc('release_order_reservations', {
+    p_order_id: orderId,
+    p_reason:   reason,
+  });
 
   if (error) throw error;
 }
@@ -126,7 +100,6 @@ export async function hasActiveReservation(orderId: string): Promise<boolean> {
 export async function expireReservations(): Promise<number> {
   const db = createServiceClient();
 
-  // Вызываем функцию из БД (атомарно обновляет и balance)
   const { data, error } = await db.rpc('expire_stock_reservations');
   if (error) throw error;
 

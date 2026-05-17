@@ -4,7 +4,7 @@ import { createServiceClient } from '../../../../../../lib/supabase';
 import { resolveOrderFulfillment } from '../../../../../../lib/accounting/fulfillment';
 import { createReservation } from '../../../../../../lib/accounting/reservations';
 import { createDocument } from '../../../../../../lib/accounting/documents';
-import { notifyAdminStatusChange, notifyCustomerStatus } from '../../../../../../lib/telegram';
+import { notifyAdminStatusChange } from '../../../../../../lib/telegram';
 
 export async function POST(
   req: NextRequest,
@@ -25,111 +25,161 @@ export async function POST(
 
   const db = createServiceClient();
 
-  const { data: order } = await db
+  const { data: order, error: orderError } = await db
     .from('orders')
-    .select('id, order_number, items, channel_code, telegram_chat_id, tracking_number, contact, phone')
+    .select('id, order_number, status, items, channel_code, tracking_number, contact, phone')
     .eq('id', id)
     .single();
 
-  if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (orderError || !order) {
+    return NextResponse.json({ error: orderError?.message ?? 'Not found' }, { status: 404 });
+  }
+
+  // Idempotency: не підтверджувати вже підтверджене
+  if (order.status === 'confirmed' || order.status === 'picking' || order.status === 'shipped') {
+    return NextResponse.json(
+      { error: `Замовлення вже має статус "${order.status}"` },
+      { status: 409 },
+    );
+  }
 
   const items = (order.items ?? []) as { sku: string; qty: number }[];
   let newStatus = 'confirmed';
   let purchaseOrderId: string | undefined;
 
+  // ── Supplier: чиста відправка, без складських операцій ───────────────────────
   if (fulfillment_mode === 'supplier') {
-    // Pure dropship — no stock operations
     await db.from('orders').update({ status: 'confirmed', fulfillment_mode }).eq('id', id);
 
+  // ── Own: резервуємо весь товар зі свого складу ────────────────────────────────
   } else if (fulfillment_mode === 'own') {
-    // Reserve all items from own warehouse
-    try {
-      const plan = await resolveOrderFulfillment(
-        items.map(i => ({ sku: i.sku, qty: i.qty })),
-        { channel_code: order.channel_code ?? 'website' },
+    const plan = await resolveOrderFulfillment(
+      items.map(i => ({ sku: i.sku, qty: i.qty })),
+      { channel_code: order.channel_code ?? 'website' },
+    );
+
+    if (!plan.has_own) {
+      return NextResponse.json(
+        { error: 'На власному складі немає товару для виконання цього замовлення' },
+        { status: 422 },
       );
-      if (plan.has_own) {
-        const byWarehouse = new Map<number, { sku: string; qty: number }[]>();
-        for (const src of plan.items.filter(s => s.fulfillment_type === 'own')) {
-          if (!byWarehouse.has(src.warehouse_id)) byWarehouse.set(src.warehouse_id, []);
-          byWarehouse.get(src.warehouse_id)!.push({ sku: src.sku, qty: src.qty });
-        }
-        for (const [warehouseId, warehouseItems] of byWarehouse) {
-          await createReservation({ order_id: id, warehouse_id: warehouseId, items: warehouseItems });
-        }
-      }
-    } catch (err) {
-      console.error('[confirm/own] reservation failed:', err);
     }
+
+    // Групуємо по складах
+    const byWarehouse = new Map<number, { sku: string; qty: number }[]>();
+    for (const src of plan.items.filter(s => s.fulfillment_type === 'own')) {
+      if (!byWarehouse.has(src.warehouse_id)) byWarehouse.set(src.warehouse_id, []);
+      byWarehouse.get(src.warehouse_id)!.push({ sku: src.sku, qty: src.qty });
+    }
+
+    // Резервуємо (атомарно через SQL-функцію з FOR UPDATE)
+    const allInsufficient: { sku: string; requested: number; available: number }[] = [];
+
+    for (const [warehouseId, warehouseItems] of byWarehouse) {
+      const result = await createReservation({
+        order_id:     id,
+        warehouse_id: warehouseId,
+        items:        warehouseItems,
+      });
+      allInsufficient.push(...result.insufficient);
+    }
+
+    // Якщо є нестача — повертаємо помилку, замовлення не підтверджуємо
+    if (allInsufficient.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'Недостатньо товару на складі для резервування',
+          insufficient: allInsufficient,
+        },
+        { status: 422 },
+      );
+    }
+
     await db.from('orders').update({ status: 'confirmed', fulfillment_mode }).eq('id', id);
 
+  // ── Mixed: резервуємо своє + purchase_order для постачальника ────────────────
   } else {
-    // Mixed: reserve own stock + create purchase_order for supplier items
     newStatus = 'awaiting_stock';
-    try {
-      const plan = await resolveOrderFulfillment(
-        items.map(i => ({ sku: i.sku, qty: i.qty })),
-        { channel_code: order.channel_code ?? 'website' },
-      );
 
-      // Reserve what we have
-      if (plan.has_own) {
-        const byWarehouse = new Map<number, { sku: string; qty: number }[]>();
-        for (const src of plan.items.filter(s => s.fulfillment_type === 'own')) {
-          if (!byWarehouse.has(src.warehouse_id)) byWarehouse.set(src.warehouse_id, []);
-          byWarehouse.get(src.warehouse_id)!.push({ sku: src.sku, qty: src.qty });
-        }
-        for (const [warehouseId, warehouseItems] of byWarehouse) {
-          await createReservation({ order_id: id, warehouse_id: warehouseId, items: warehouseItems });
-        }
+    const plan = await resolveOrderFulfillment(
+      items.map(i => ({ sku: i.sku, qty: i.qty })),
+      { channel_code: order.channel_code ?? 'website' },
+    );
+
+    // Резервуємо те що є на складі
+    if (plan.has_own) {
+      const byWarehouse = new Map<number, { sku: string; qty: number }[]>();
+      for (const src of plan.items.filter(s => s.fulfillment_type === 'own')) {
+        if (!byWarehouse.has(src.warehouse_id)) byWarehouse.set(src.warehouse_id, []);
+        byWarehouse.get(src.warehouse_id)!.push({ sku: src.sku, qty: src.qty });
       }
 
-      // Create purchase_order document for supplier items
-      if (plan.has_dropship) {
-        const supplierItems = plan.items.filter(s => s.fulfillment_type === 'dropship');
-        const supplierId = supplierItems[0]?.supplier_id;
-        const warehouseId = supplierItems[0]?.warehouse_id;
+      const allInsufficient: { sku: string; requested: number; available: number }[] = [];
 
-        if (supplierId && warehouseId) {
-          const orderItemMap = new Map((order.items as { sku: string; qty: number; price: number }[]).map(i => [i.sku, i]));
-          const doc = await createDocument({
-            doc_type:    'purchase_order',
-            warehouse_id: warehouseId,
-            supplier_id: supplierId,
-            order_id:    id,
-            notes:       `Замовлення #${order.order_number} — змішане виконання`,
-            created_by:  user.email ?? 'admin',
-            lines: supplierItems.map(src => ({
-              sku:         src.sku,
-              qty:         src.qty,
-              price:       orderItemMap.get(src.sku)?.price ?? 0,
-              cost_price:  0,
-              fulfillment_type: 'dropship' as const,
-              supplier_id: supplierId,
-              warehouse_id: warehouseId,
-            })),
-          });
-          purchaseOrderId = doc.id;
-        }
+      for (const [warehouseId, warehouseItems] of byWarehouse) {
+        const result = await createReservation({
+          order_id:     id,
+          warehouse_id: warehouseId,
+          items:        warehouseItems,
+        });
+        allInsufficient.push(...result.insufficient);
       }
-    } catch (err) {
-      console.error('[confirm/mixed] failed:', err);
+
+      if (allInsufficient.length > 0) {
+        // При mixed: товарів зі свого складу немає — перекидаємо всіх на постачальника
+        console.warn(
+          `[confirm/mixed] ownstock insufficient for order ${id}:`,
+          allInsufficient.map(i => `${i.sku}: ${i.available}/${i.requested}`).join(', '),
+        );
+      }
     }
+
+    // Створюємо purchase_order для товарів постачальника
+    if (plan.has_dropship) {
+      const supplierItems = plan.items.filter(s => s.fulfillment_type === 'dropship');
+      const supplierId   = supplierItems[0]?.supplier_id;
+      const warehouseId  = supplierItems[0]?.warehouse_id;
+
+      if (supplierId && warehouseId) {
+        const orderItemMap = new Map(
+          (order.items as { sku: string; qty: number; price: number }[]).map(i => [i.sku, i]),
+        );
+        const doc = await createDocument({
+          doc_type:     'purchase_order',
+          warehouse_id: warehouseId,
+          supplier_id:  supplierId,
+          order_id:     id,
+          notes:        `Замовлення #${order.order_number} — змішане виконання`,
+          created_by:   user.email ?? 'admin',
+          lines: supplierItems.map(src => ({
+            sku:              src.sku,
+            qty:              src.qty,
+            price:            orderItemMap.get(src.sku)?.price ?? 0,
+            cost_price:       0,
+            fulfillment_type: 'dropship' as const,
+            supplier_id:      supplierId,
+            warehouse_id:     warehouseId,
+          })),
+        });
+        purchaseOrderId = doc.id;
+      }
+    }
+
     await db.from('orders').update({ status: newStatus, fulfillment_mode }).eq('id', id);
   }
 
-  // Telegram notifications
+  // Telegram (best-effort, не впливає на результат)
   try {
     notifyAdminStatusChange(
       { order_number: order.order_number, contact: order.contact, phone: order.phone },
       newStatus,
     );
-    if (order.telegram_chat_id) {
-      notifyCustomerStatus(order.telegram_chat_id, order.order_number, newStatus, order.tracking_number);
-    }
-  } catch (err) {
-    console.error('[confirm] telegram failed:', err);
-  }
+  } catch { /* не критично */ }
 
-  return NextResponse.json({ ok: true, status: newStatus, fulfillment_mode, purchase_order_id: purchaseOrderId });
+  return NextResponse.json({
+    ok: true,
+    status: newStatus,
+    fulfillment_mode,
+    purchase_order_id: purchaseOrderId,
+  });
 }

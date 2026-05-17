@@ -15,13 +15,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { status, tracking_number, payment_confirmed, callback_done, items: bodyItems, total_price: bodyTotalPrice } = body;
+  const { status, tracking_number, tracking_ref, payment_confirmed, callback_done, items: bodyItems, total_price: bodyTotalPrice } = body;
 
   const db = createServiceClient();
   const update: Record<string, unknown> = {};
 
   if (status !== undefined) {
-    const VALID = ['new', 'confirmed', 'awaiting_stock', 'shipped', 'delivered', 'cancelled'];
+    const VALID = ['new', 'confirmed', 'awaiting_stock', 'picking', 'shipped', 'delivered', 'cancelled'];
     if (!VALID.includes(status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
@@ -29,6 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   if (tracking_number !== undefined) update.tracking_number = tracking_number;
+  if (tracking_ref    !== undefined) update.tracking_ref    = tracking_ref;
   if (payment_confirmed !== undefined) update.payment_confirmed = payment_confirmed;
   if (callback_done !== undefined) update.callback_done = callback_done;
   if (bodyItems !== undefined) update.items = bodyItems;

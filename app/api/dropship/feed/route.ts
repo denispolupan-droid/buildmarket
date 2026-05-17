@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
   // Load catalog
   const [{ data: products }, { data: stock }, { data: categories }] = await Promise.all([
-    serviceClient.from('products').select('sku, name, brand, category_slug, volume, color, product_type, description').eq('is_active', true).order('sort_order'),
+    serviceClient.from('products').select('sku, name, brand, category_slug, volume, color, product_type, description, image').eq('is_active', true).order('sort_order'),
     serviceClient.from('product_stock').select('sku, price_drop, stock_status'),
     serviceClient.from('categories').select('slug, name, parent_slug').order('sort_order'),
   ]);
@@ -46,11 +46,13 @@ export async function GET(request: NextRequest) {
     .map(p => {
       const price = stockMap.get(p.sku)!.price_drop;
       const desc  = p.description ?? `${p.brand} ${p.name}`;
+      const img   = p.image ?? `${BASE_URL}/product/${p.sku}/opengraph-image`;
       return `    <offer id="${p.sku}" available="true">
       <url>${BASE_URL}/product/${p.sku}</url>
       <price>${price}</price>
       <currencyId>UAH</currencyId>
       <categoryId>${p.category_slug ?? 'other'}</categoryId>
+      <picture>${img}</picture>
       <name>${x(p.name)}${p.volume ? ` ${x(p.volume)}` : ''}</name>
       <vendor>${x(p.brand)}</vendor>
       <vendorCode>${x(p.sku)}</vendorCode>

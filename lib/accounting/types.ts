@@ -137,4 +137,5 @@ export type MovementInsert = {
   sale_price: number | null;
   order_id: string | null;
   supplier_id: number | null;
+  batch_cost?: number | null;  // total FIFO cost for this movement
 };

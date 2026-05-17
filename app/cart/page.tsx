@@ -168,7 +168,7 @@ export default function CartPage() {
   }, [email, items, totalPrice, loaded]);
 
   const [delivery,          setDelivery]          = useState('');
-  const [novaSubtype,       setNovaSubtype]       = useState<'warehouse' | 'courier' | ''>('');
+  const [novaSubtype,       setNovaSubtype]       = useState<'warehouse' | 'courier' | 'postomat' | ''>('');
   const [address,           setAddress]           = useState('');
   const [novaCityRef,       setNovaCityRef]       = useState('');
   const [novaCityName,      setNovaCityName]      = useState('');
@@ -188,7 +188,7 @@ export default function CartPage() {
     if (!email.trim())    e.add('email');
     if (!delivery)        e.add('delivery');
     if (delivery === 'nova' && !novaSubtype) e.add('novaSubtype');
-    if (delivery === 'nova' && novaSubtype === 'warehouse' && !novaWarehouseRef) e.add('address');
+    if (delivery === 'nova' && (novaSubtype === 'warehouse' || novaSubtype === 'postomat') && !novaWarehouseRef) e.add('address');
     if (delivery === 'nova' && novaSubtype === 'courier' && !address.trim()) e.add('address');
     if (!payment)         e.add('payment');
     setErrors(e);
@@ -231,7 +231,7 @@ export default function CartPage() {
           deliveryAddress: address || null,
           deliveryCityRef: delivery === 'nova' && novaCityRef ? novaCityRef : null,
           deliveryCityName: delivery === 'nova' && novaCityName ? novaCityName : null,
-          deliveryWarehouseRef: delivery === 'nova' && novaSubtype === 'warehouse' && novaWarehouseRef ? novaWarehouseRef : null,
+          deliveryWarehouseRef: delivery === 'nova' && (novaSubtype === 'warehouse' || novaSubtype === 'postomat') && novaWarehouseRef ? novaWarehouseRef : null,
           paymentType: payment,
           comment: [comment, noCallback ? '⛔ Не передзвонювати для підтвердження' : ''].filter(Boolean).join('\n') || null,
           items,
@@ -410,7 +410,7 @@ export default function CartPage() {
                       {/* Nova Poshta sub-options */}
                       {opt.value === 'nova' && delivery === 'nova' && (
                         <div style={{ marginTop: '10px', paddingLeft: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {(['warehouse', 'courier'] as const).filter(sub => !novaSubtype || novaSubtype === sub).map(sub => (
+                          {(['warehouse', 'postomat', 'courier'] as const).filter(sub => !novaSubtype || novaSubtype === sub).map(sub => (
                             <label key={sub} style={{
                               display: 'flex', alignItems: 'center', gap: '10px',
                               padding: '10px 14px', borderRadius: '8px', cursor: novaSubtype === sub ? 'default' : 'pointer',
@@ -428,7 +428,7 @@ export default function CartPage() {
                               </div>
                               <input type="radio" name="nova_sub" value={sub} checked={novaSubtype === sub} onChange={() => { setNovaSubtype(sub); setErrors(s => { const n = new Set(s); n.delete('novaSubtype'); return n; }); }} style={{ display: 'none' }} />
                               <span style={{ fontSize: '13px', fontWeight: novaSubtype === sub ? 600 : 500, color: 'var(--text-primary)', flex: 1 }}>
-                                {sub === 'warehouse' ? 'Відділення' : 'Кур\'єр'}
+                                {sub === 'warehouse' ? 'Відділення' : sub === 'postomat' ? 'Поштомат' : 'Кур\'єр'}
                               </span>
                               {novaSubtype === sub && (
                                 <button

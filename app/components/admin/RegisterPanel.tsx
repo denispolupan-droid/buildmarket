@@ -55,10 +55,10 @@ export default function RegisterPanel() {
 
   // Exposed globally so orders can call it
   useEffect(() => {
-    (window as unknown as { __addToRegister: unknown }).__addToRegister = async (ttnNumber: string, orderId: string, contact: string, amount: number) => {
+    (window as unknown as { __addToRegister: unknown }).__addToRegister = async (ttnNumber: string, orderId: string, contact: string, amount: number): Promise<boolean> => {
       if (ttns.find(t => t.ttn === ttnNumber)) {
         setError(`ТТН ${ttnNumber} вже в реєстрі`);
-        return;
+        return true; // already added — treat as success
       }
       setAdding(ttnNumber);
       setError('');
@@ -69,15 +69,16 @@ export default function RegisterPanel() {
           body: JSON.stringify({ ttnNumber, registerRef: currentRef }),
         });
         const data = await res.json();
-        if (!res.ok) { setError(data.error ?? 'Помилка'); return; }
+        if (!res.ok) { setError(data.error ?? 'Помилка'); return false; }
         if (!currentRef) {
           setCurrentRef(data.ref);
           setCurrentNumber(data.number ?? '');
         }
         setTtns(prev => [...prev, { ttn: ttnNumber, orderId, contact, amount }]);
         setOpen(true);
-      } catch { setError('Мережева помилка'); }
-      setAdding(null);
+        return true;
+      } catch { setError('Мережева помилка'); return false; }
+      finally { setAdding(null); }
     };
     return () => { delete (window as unknown as { __addToRegister?: unknown }).__addToRegister; };
   }, [currentRef, ttns]);

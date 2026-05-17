@@ -49,6 +49,12 @@
   --status-instock:  #16A34A;
   --status-outstock: #DC2626;
   --status-order:    #D97706;
+
+  /* Semantic colors */
+  --color-success: #15803D;
+  --color-danger:  #DC2626;
+  --bg-success:    #F0FDF4;
+  --bg-danger:     #FEF2F2;
 }
 
 /* ── Dark theme (soft slate) ── */
@@ -69,6 +75,11 @@
 
   --brand-blue-light: #4880B822;
   --brand-teal-light: #3DBFB822;
+
+  --color-success: #4ade80;
+  --color-danger:  #f87171;
+  --bg-success:    #14291e;
+  --bg-danger:     #2d1515;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -667,4 +678,84 @@ input, select { font-family: inherit; }
 /* ── About stats — hide on mobile ─────────────────────────────────────────── */
 @media (max-width: 768px) {
   .about-stats-grid { display: none !important; }
+}
+
+/* ── Cabinet (dropship partner) responsive ─────────────────────────────────── */
+.cabinet-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: #1E3A5F;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.cabinet-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.cabinet-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .cabinet-grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .cabinet-sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 10px;
+    gap: 4px;
+    align-items: center;
+  }
+  .cabinet-sidebar-logo {
+    width: 100%;
+    padding: 8px 10px 6px !important;
+    border-bottom: none !important;
+  }
+  .cabinet-sidebar-actions {
+    display: none !important;
+  }
+  .cabinet-sidebar-nav {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    gap: 2px !important;
+    padding: 0 !important;
+    width: 100%;
+    scrollbar-width: none;
+  }
+  .cabinet-sidebar-nav::-webkit-scrollbar { display: none; }
+  .cabinet-sidebar-nav a, .cabinet-sidebar-nav button {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 7px 12px !important;
+    font-size: 13px !important;
+    border-radius: 20px !important;
+  }
+  .cabinet-sidebar-footer { display: none !important; }
+
+  .cabinet-layout-main {
+    overflow: visible !important;
+  }
+  .cabinet-layout-main > div {
+    padding: 16px !important;
+  }
+  .cabinet-grid-3 { grid-template-columns: 1fr; }
+  .cabinet-grid-2 { grid-template-columns: 1fr; }
 }

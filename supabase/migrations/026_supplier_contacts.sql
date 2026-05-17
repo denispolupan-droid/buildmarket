@@ -1,0 +1,2 @@
+ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS contact_name  TEXT;
+ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS contact_phone TEXT;

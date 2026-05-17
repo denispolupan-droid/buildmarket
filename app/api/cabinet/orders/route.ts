@@ -7,7 +7,7 @@ const serviceClient = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-type Item = { sku: string; name: string; brand: string; qty: number; selling_price: number; cost_price: number };
+type Item = { sku: string; name: string; brand: string; qty: number; selling_price: number };
 
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer();
@@ -22,6 +22,11 @@ export async function POST(req: NextRequest) {
   if (!recipient?.last_name)     return NextResponse.json({ error: 'Введіть прізвище' }, { status: 400 });
   if (!recipient?.phone)         return NextResponse.json({ error: 'Введіть телефон' }, { status: 400 });
 
+  const skus: string[] = (items as Item[]).map(i => i.sku);
+  if (skus.some(s => !s || typeof s !== 'string')) {
+    return NextResponse.json({ error: 'Некоректні SKU' }, { status: 400 });
+  }
+
   const { data: customer } = await serviceClient
     .from('customers')
     .select('id, name, email')
@@ -30,13 +35,39 @@ export async function POST(req: NextRequest) {
 
   if (!customer) return NextResponse.json({ error: 'Партнера не знайдено. Зверніться до адміністратора.' }, { status: 404 });
 
+  // ── Беремо drop-ціни з БД (НЕ від клієнта) ──────────────────────────────────
+  const { data: prices, error: priceErr } = await serviceClient
+    .from('product_stock')
+    .select('sku, price_drop')
+    .in('sku', skus);
+
+  if (priceErr || !prices) {
+    return NextResponse.json({ error: 'Не вдалось завантажити ціни' }, { status: 500 });
+  }
+
+  const priceMap = new Map(prices.map(p => [p.sku, Number(p.price_drop ?? 0)]));
+
+  // Перевіряємо що всі SKU існують і мають ціну
+  for (const sku of skus) {
+    if (!priceMap.has(sku)) {
+      return NextResponse.json({ error: `Товар ${sku} не знайдений` }, { status: 400 });
+    }
+    if ((priceMap.get(sku) ?? 0) <= 0) {
+      return NextResponse.json({ error: `Для товару ${sku} не встановлена дропшип-ціна` }, { status: 400 });
+    }
+  }
+
   const useCod    = has_cod !== false;
-  const totalCost = (items as Item[]).reduce((s, i) => s + i.cost_price * i.qty, 0);
+  const itemsWithCost = (items as Item[]).map(i => ({
+    ...i,
+    cost_price: priceMap.get(i.sku) ?? 0,
+  }));
+  const totalCost = itemsWithCost.reduce((s, i) => s + i.cost_price * i.qty, 0);
   const totalSell = parseFloat(cod_amount) || totalCost;
 
   // ── Списуємо закупочну вартість з балансу ───────────────────────────────────
   if (totalCost > 0) {
-    const itemsList = (items as Item[]).map(i => `${i.brand} ${i.name} × ${i.qty}`).join(', ');
+    const itemsList = itemsWithCost.map(i => `${i.brand} ${i.name} × ${i.qty}`).join(', ');
     const { data: chargeResult, error: chargeErr } = await serviceClient.rpc('charge_partner_balance', {
       p_customer_id: customer.id,
       p_amount:      totalCost,
@@ -51,7 +82,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Зберігаємо замовлення (з cost_price в items) ────────────────────────────
+  // ── Зберігаємо замовлення ────────────────────────────────────────────────────
   const { data: order, error: orderErr } = await serviceClient
     .from('orders')
     .insert({
@@ -70,7 +101,7 @@ export async function POST(req: NextRequest) {
       delivery_warehouse_ref: recipient.warehouse_ref,
       payment_type:    useCod ? 'cod' : 'prepaid',
       comment:         comment || null,
-      items: (items as Item[]).map(i => ({
+      items: itemsWithCost.map(i => ({
         sku: i.sku, name: `${i.brand} ${i.name}`, brand: i.brand,
         qty: i.qty, price: i.selling_price, cost_price: i.cost_price,
       })),

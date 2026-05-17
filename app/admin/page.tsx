@@ -15,6 +15,8 @@ const STATUS_LABELS: Record<string, string> = {
   new:             'Нові',
   pending_payment: 'Очікує оплати',
   confirmed:       'Підтверджено',
+  awaiting_stock:  'Очікуємо товар',
+  picking:         'Збирається',
   shipped:         'Відправлено',
   delivered:       'Доставлено',
   cancelled:       'Скасовано',

@@ -35,7 +35,7 @@ export default function NewOrderClient() {
   const [email,             setEmail]             = useState('');
   const [company,           setCompany]           = useState('');
   const [delivery,          setDelivery]          = useState('pickup');
-  const [novaSubtype,       setNovaSubtype]       = useState<'warehouse' | 'courier' | ''>('');
+  const [novaSubtype,       setNovaSubtype]       = useState<'warehouse' | 'courier' | 'postomat' | ''>('');
   const [novaCityRef,       setNovaCityRef]       = useState('');
   const [novaCityName,      setNovaCityName]      = useState('');
   const [novaWarehouseRef,  setNovaWarehouseRef]  = useState('');
@@ -120,7 +120,7 @@ export default function NewOrderClient() {
           deliveryAddress:      delivery === 'nova' && novaSubtype === 'courier' ? address : (delivery === 'kharkiv' ? address : null),
           deliveryCityRef:      delivery === 'nova' ? novaCityRef : null,
           deliveryCityName:     delivery === 'nova' ? novaCityName : null,
-          deliveryWarehouseRef: delivery === 'nova' && novaSubtype === 'warehouse' ? novaWarehouseRef : null,
+          deliveryWarehouseRef: delivery === 'nova' && (novaSubtype === 'warehouse' || novaSubtype === 'postomat') ? novaWarehouseRef : null,
           paymentType:          payment,
           comment:              fullComment,
           items,
@@ -282,13 +282,13 @@ export default function NewOrderClient() {
         {delivery === 'nova' && (
           <div>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-              {(['warehouse', 'courier'] as const).map(sub => (
+              {(['warehouse', 'postomat', 'courier'] as const).map(sub => (
                 <button key={sub} onClick={() => setNovaSubtype(sub)}
                   style={{ flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                     border: `1.5px solid ${novaSubtype === sub ? '#1E3A5F' : '#E2E8F0'}`,
                     background: novaSubtype === sub ? '#EFF4FF' : '#fff',
                     color: novaSubtype === sub ? '#1E3A5F' : '#64748B' }}>
-                  {sub === 'warehouse' ? '📦 Відділення' : '🚚 Кур\'єр'}
+                  {sub === 'warehouse' ? '📦 Відділення' : sub === 'postomat' ? '🏧 Поштомат' : '🚚 Кур\'єр'}
                 </button>
               ))}
             </div>
