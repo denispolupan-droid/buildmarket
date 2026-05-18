@@ -2,8 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../lib/supabase-server';
 import AdminSidebar from '../components/admin/AdminSidebar';
-import dynamic from 'next/dynamic';
-const PoDraftManager = dynamic(() => import('./PoDraftManager'), { ssr: false });
+import PoDraftManagerLoader from './PoDraftManagerLoader';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -35,7 +34,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <main style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
         {children}
       </main>
-      <PoDraftManager />
+      <PoDraftManagerLoader />
     </div>
   );
 }
