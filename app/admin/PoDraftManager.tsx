@@ -57,9 +57,11 @@ export default function PoDraftManager() {
     setMounted(true);
   }, []);
 
-  // Зберігаємо в sessionStorage при кожній зміні
+  // Зберігаємо в sessionStorage і повідомляємо sidebar при кожній зміні
   useEffect(() => {
-    if (mounted) saveDrafts(drafts);
+    if (!mounted) return;
+    saveDrafts(drafts);
+    window.dispatchEvent(new CustomEvent('po-drafts-changed', { detail: { count: drafts.length } }));
   }, [drafts, mounted]);
 
   // Слухаємо подію від кнопок "Нове замовлення"

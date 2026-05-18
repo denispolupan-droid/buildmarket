@@ -243,9 +243,14 @@ export default function NewPOModal({ initialData, onMinimize, onClose, onDraftCh
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-      onClick={e => { if (e.target === e.currentTarget) onMinimize(); }}>
-      <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '820px', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.22)' }}>
+    <>
+    {/* Overlay — клік згортає */}
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.35)', zIndex: 1000 }}
+      onClick={onMinimize} />
+
+    {/* Side panel справа */}
+    <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 1001, width: 'min(860px, 62vw)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', boxShadow: '-8px 0 40px rgba(0,0,0,0.28)', borderLeft: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
         {/* Header */}
         <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -409,12 +414,8 @@ export default function NewPOModal({ initialData, onMinimize, onClose, onDraftCh
           </div>
         </div>
       </div>
-      <style>{`
-        @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-        @keyframes pulse-bar{0%,100%{opacity:1}50%{opacity:0.4}}
-        .po-draft-pulse{animation:pulse-bar 2s ease-in-out infinite}
-        .po-draft-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#F59E0B;animation:pulse-bar 2s ease-in-out infinite;flex-shrink:0}
-      `}</style>
     </div>
+    <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+    </>
   );
 }

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { ShoppingBag, Package, Truck, Store, ChevronLeft, ChevronDown, ChevronUp, Settings, BookOpen, Warehouse, BarChart3, Users, Star, MessageSquare, Send } from 'lucide-react';
+import { ShoppingBag, Package, Truck, Store, ChevronLeft, ChevronDown, ChevronUp, Settings, BookOpen, Warehouse, BarChart3, Users, Star, MessageSquare, Send, FileText, ShoppingCart } from 'lucide-react';
 
 const ORDER_STATUSES = [
   { value: 'new',             label: 'Нові' },
@@ -18,10 +18,11 @@ const ORDER_STATUSES = [
 ];
 
 const NAV = [
-  { href: '/admin/dispatch',             label: 'Відправлення',  icon: Send,          exact: false },
   { href: '/admin/products',             label: 'Товари',        icon: Package,       exact: false },
   { href: '/admin/suppliers',            label: 'Постачальники', icon: Truck,         exact: false },
   { href: '/admin/partners',             label: 'Партнери',      icon: Users,         exact: false },
+  { href: '/admin/procurement',          label: 'Закупівля',     icon: ShoppingCart,  exact: false },
+  { href: '/admin/contracts',            label: 'Договори',      icon: FileText,      exact: false },
   { href: '/admin/finance',              label: 'Фінанси',       icon: BarChart3,     exact: false },
   { href: '/admin/accounting/documents', label: 'Облік',         icon: BookOpen,      exact: false },
   { href: '/admin/accounting/stock',     label: 'Залишки',       icon: Warehouse,     exact: false },
@@ -38,11 +39,31 @@ function SidebarInner({ newOrdersCount, statusCounts = {}, chatUnreadCount = 0 }
   const currentStatus = searchParams.get('status') ?? '';
   const isOrders = pathname === '/admin';
 
-  const [ordersOpen, setOrdersOpen] = useState(true);
+  const [ordersOpen,    setOrdersOpen]    = useState(true);
+  const isProcurement = pathname.startsWith('/admin/procurement');
+  const [procOpen,      setProcOpen]      = useState(isProcurement);
+  const [poDraftCount,  setPoDraftCount]  = useState(0);
 
   useEffect(() => {
     if (isOrders) setOrdersOpen(true);
   }, [isOrders]);
+
+  // Читаємо кількість відкритих чернеток замовлень
+  useEffect(() => {
+    function readCount() {
+      try {
+        const drafts = JSON.parse(sessionStorage.getItem('admin_po_drafts') ?? '[]');
+        setPoDraftCount(Array.isArray(drafts) ? drafts.length : 0);
+      } catch { setPoDraftCount(0); }
+    }
+    readCount();
+    const handler = (e: Event) => {
+      const count = (e as CustomEvent<{ count: number }>).detail?.count ?? 0;
+      setPoDraftCount(count);
+    };
+    window.addEventListener('po-drafts-changed', handler);
+    return () => window.removeEventListener('po-drafts-changed', handler);
+  }, []);
 
   return (
     <aside style={{
@@ -128,33 +149,73 @@ function SidebarInner({ newOrdersCount, statusCounts = {}, chatUnreadCount = 0 }
                   </Link>
                 );
               })}
+              {/* Відправлення — підпункт замовлень */}
+              {(() => {
+                const active = pathname.startsWith('/admin/dispatch');
+                return (
+                  <Link href="/admin/dispatch" style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    padding: '6px 10px 6px 14px', borderRadius: '6px', textDecoration: 'none',
+                    background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
+                    color: active ? '#fff' : 'rgba(255,255,255,0.45)',
+                    fontSize: '13px', fontWeight: active ? 600 : 400,
+                    borderLeft: `2px solid ${active ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                    transition: 'all 0.12s', marginTop: '4px',
+                  }}>
+                    <Send size={12} />
+                    <span>Відправлення</span>
+                  </Link>
+                );
+              })()}
             </div>
           )}
         </div>
 
         {/* Other nav items */}
         {NAV.map(({ href, label, icon: Icon, exact }) => {
+          // Закупівля — розкривний блок
+          if (href === '/admin/procurement') {
+            return (
+              <div key={href}>
+                <button onClick={() => setProcOpen(o => !o)}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '8px', background: isProcurement ? 'rgba(255,255,255,0.12)' : 'transparent', color: isProcurement ? '#fff' : 'rgba(255,255,255,0.5)', fontSize: '14px', fontWeight: isProcurement ? 600 : 400, border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                  <Icon size={16} strokeWidth={isProcurement ? 2.5 : 2} />
+                  <span style={{ flex: 1 }}>{label}</span>
+                  {poDraftCount > 0 && (
+                    <span style={{ background: '#F59E0B', color: '#fff', fontSize: '10px', fontWeight: 700, borderRadius: '20px', padding: '1px 6px', minWidth: '18px', textAlign: 'center' }}>
+                      {poDraftCount}
+                    </span>
+                  )}
+                  {procOpen ? <ChevronUp size={13} style={{ opacity: 0.5 }} /> : <ChevronDown size={13} style={{ opacity: 0.5 }} />}
+                </button>
+                {procOpen && (
+                  <div style={{ paddingLeft: '10px', marginTop: '2px', display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                    {[
+                      { href: '/admin/procurement',          label: 'Замовлення постачальнику' },
+                      { href: '/admin/procurement/receipts', label: 'Приходи товару' },
+                    ].map(sub => {
+                      const subActive = pathname === sub.href || (sub.href !== '/admin/procurement' && pathname.startsWith(sub.href));
+                      return (
+                        <Link key={sub.href} href={sub.href} style={{ display: 'flex', alignItems: 'center', padding: '6px 10px 6px 14px', borderRadius: '6px', textDecoration: 'none', background: subActive ? 'rgba(255,255,255,0.1)' : 'transparent', color: subActive ? '#fff' : 'rgba(255,255,255,0.45)', fontSize: '13px', fontWeight: subActive ? 600 : 400, borderLeft: `2px solid ${subActive ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.1)'}` }}>
+                          {sub.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
           const active = exact ? pathname === href : pathname.startsWith(href);
           const badge = href === '/admin/chat' && chatUnreadCount > 0 ? chatUnreadCount : null;
           return (
-            <Link
-              key={href}
-              href={href}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '9px 12px', borderRadius: '8px', textDecoration: 'none',
-                background: active ? 'rgba(255,255,255,0.12)' : 'transparent',
-                color: active ? '#fff' : 'rgba(255,255,255,0.5)',
-                fontSize: '14px', fontWeight: active ? 600 : 400,
-              }}
-            >
+            <Link key={href} href={href}
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '8px', textDecoration: 'none', background: active ? 'rgba(255,255,255,0.12)' : 'transparent', color: active ? '#fff' : 'rgba(255,255,255,0.5)', fontSize: '14px', fontWeight: active ? 600 : 400 }}>
               <Icon size={16} strokeWidth={active ? 2.5 : 2} />
               <span style={{ flex: 1 }}>{label}</span>
               {badge !== null && (
-                <span style={{
-                  background: '#EF4444', color: '#fff', fontSize: '11px', fontWeight: 700,
-                  borderRadius: '20px', padding: '1px 7px',
-                }}>
+                <span style={{ background: '#EF4444', color: '#fff', fontSize: '11px', fontWeight: 700, borderRadius: '20px', padding: '1px 7px' }}>
                   {badge}
                 </span>
               )}
