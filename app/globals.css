@@ -286,7 +286,7 @@ input, select { font-family: inherit; }
 
 /* Scroll-to-top button */
 .scroll-to-top-btn {
-  position: fixed; bottom: 24px; right: 20px; z-index: 1000;
+  position: fixed; bottom: 90px; right: 24px; z-index: 1000;
   width: 44px; height: 44px; border-radius: 50%;
   background: rgba(72,128,184,0.38); color: #fff;
   border: 1px solid rgba(72,128,184,0.3);
@@ -312,7 +312,7 @@ input, select { font-family: inherit; }
 @media (max-width: 768px) {
   .theme-toggle-btn { bottom: 78px; right: 16px; width: 40px; height: 40px; }
   .scroll-to-top-btn {
-    bottom: 24px !important; right: 16px !important;
+    bottom: 90px !important; right: 16px !important;
     width: 40px !important; height: 40px !important;
     background: #4880B8 !important; border: none !important;
     box-shadow: 0 4px 16px rgba(0,0,0,0.25) !important;
