@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { X, Upload, Loader2, Trash2, Plus, AlertCircle, Minus, ChevronUp } from 'lucide-react';
+import { X, Upload, Loader2, Trash2, Plus, AlertCircle, Minus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 
@@ -79,21 +79,32 @@ function parseExcel(buffer: ArrayBuffer): { sku: string; name: string; qty: numb
 
 function fmt(n: number) { return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
-export default function NewPOModal({ suppliers, onClose }: { suppliers: Supplier[]; onClose: () => void }) {
+import type { PoDraft, PoLine } from '../PoDraftManager';
+
+type Props = {
+  initialData:    PoDraft;
+  onMinimize:     () => void;
+  onClose:        () => void;
+  onDraftChange:  (data: Partial<PoDraft>) => void;
+  onSubmitted:    () => void;
+};
+
+export default function NewPOModal({ initialData, onMinimize, onClose, onDraftChange, onSubmitted }: Props) {
   const router  = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [supplierId,   setSupplierId]   = useState<number>(suppliers[0]?.id ?? 0);
-  const [expectedDate, setExpectedDate] = useState('');
-  const [notes,        setNotes]        = useState('');
-  const [lines,        setLines]        = useState<Line[]>([
-    { sku: '', name: '', qty: 1, cost_price: 0, matched: false },
-  ]);
+  const suppliers  = initialData.suppliers as Supplier[];
+
+  const [supplierId,   setSupplierId]   = useState<number>(initialData.supplierId || suppliers[0]?.id || 0);
+  const [expectedDate, setExpectedDate] = useState(initialData.expectedDate || '');
+  const [notes,        setNotes]        = useState(initialData.notes || '');
+  const [lines,        setLines]        = useState<Line[]>(
+    initialData.lines?.length ? initialData.lines as Line[] : [{ sku: '', name: '', qty: 1, cost_price: 0, matched: false }]
+  );
   const [dragging,   setDragging]   = useState(false);
   const [parsing,    setParsing]    = useState(false);
   const [saving,     setSaving]     = useState(false);
   const [error,      setError]      = useState('');
-  const [minimized,  setMinimized]  = useState(false);
   const lookupTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
   // Debounced lookup — спрацьовує через 600мс після завершення друку
@@ -200,21 +211,12 @@ export default function NewPOModal({ suppliers, onClose }: { suppliers: Supplier
   // Щойно введений SKU (matched=false але ще не шукали) — не рахуємо
   const unmatchedCount = lines.filter(l => l.sku && !l.matched && l.sku.length >= 3).length;
   const filledLines    = lines.filter(l => l.sku || l.name).length;
-  const hasData        = filledLines > 0 || notes.trim().length > 0;
-  const supplierName   = suppliers.find(s => s.id === supplierId)?.name ?? '';
 
-  // Попередження при закритті вкладки якщо є дані
+  // Синхронізуємо зміни в глобальний менеджер чернеток
   useEffect(() => {
-    if (!hasData) return;
-    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [hasData]);
-
-  function handleClose() {
-    if (hasData && !window.confirm('Документ не збережено. Закрити?')) return;
-    onClose();
-  }
+    onDraftChange({ supplierId, expectedDate, notes, lines: lines as PoLine[] });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supplierId, expectedDate, notes, lines]);
 
   async function handleSubmit() {
     const valid = lines.filter(l => l.sku.trim() && l.qty > 0);
@@ -233,71 +235,16 @@ export default function NewPOModal({ suppliers, onClose }: { suppliers: Supplier
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Помилка'); return; }
+      onSubmitted(); // видаляємо чернетку з менеджера
       router.push(`/admin/procurement/${data.id}`);
       router.refresh();
-      onClose();
     } catch { setError('Мережева помилка'); }
     finally { setSaving(false); }
   }
 
-  // ── Мінімізована панель (Gmail-style) ────────────────────────────────────────
-  if (minimized) {
-    return (
-      <>
-        <div style={{
-          position: 'fixed', bottom: 0, right: '88px', zIndex: 1001,
-          background: '#1E3A5F', borderRadius: '10px 10px 0 0',
-          padding: '0', display: 'flex', alignItems: 'stretch',
-          boxShadow: '0 -4px 24px rgba(0,0,0,0.35)', minWidth: '340px',
-          border: '1px solid rgba(255,255,255,0.1)', borderBottom: 'none',
-        }}>
-          {/* Pulsing indicator */}
-          <div style={{ width: '4px', background: '#F59E0B', borderRadius: '10px 0 0 0', flexShrink: 0 }} className="po-draft-pulse" />
-
-          {/* Content */}
-          <div style={{ flex: 1, padding: '10px 14px', minWidth: 0 }}>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span className="po-draft-dot" />
-              Нове замовлення
-              {supplierName && <span style={{ color: 'rgba(255,255,255,0.6)', fontWeight: 400 }}>· {supplierName}</span>}
-            </div>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>
-              {filledLines > 0 ? `${filledLines} поз. · ${fmt(total)} ₴ · ` : ''}не збережено
-            </div>
-          </div>
-
-          {/* Restore */}
-          <button
-            onClick={() => setMinimized(false)}
-            title="Відновити"
-            style={{ padding: '10px 14px', background: 'none', border: 'none', borderLeft: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', color: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap' }}
-          >
-            <ChevronUp size={14} /> Відновити
-          </button>
-
-          {/* Close */}
-          <button
-            onClick={handleClose}
-            title="Закрити"
-            style={{ padding: '10px 12px', background: 'none', border: 'none', borderLeft: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', borderRadius: '0 10px 0 0' }}
-          >
-            <X size={14} />
-          </button>
-        </div>
-
-        <style>{`
-          @keyframes pulse-bar { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
-          .po-draft-pulse { animation: pulse-bar 2s ease-in-out infinite; }
-          .po-draft-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:#F59E0B; animation: pulse-bar 2s ease-in-out infinite; flex-shrink:0; }
-        `}</style>
-      </>
-    );
-  }
-
-  // ── Повний модал ──────────────────────────────────────────────────────────────
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-      onClick={e => { if (e.target === e.currentTarget) setMinimized(true); }}>
+      onClick={e => { if (e.target === e.currentTarget) onMinimize(); }}>
       <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '820px', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.22)' }}>
 
         {/* Header */}
@@ -306,8 +253,8 @@ export default function NewPOModal({ suppliers, onClose }: { suppliers: Supplier
             Нове замовлення постачальнику
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <button onClick={() => setMinimized(true)} title="Згорнути" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px', borderRadius: '6px' }}><Minus size={18} /></button>
-            <button onClick={handleClose} title="Закрити" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px', borderRadius: '6px' }}><X size={18} /></button>
+            <button onClick={onMinimize} title="Згорнути" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px', borderRadius: '6px' }}><Minus size={18} /></button>
+            <button onClick={onClose} title="Закрити" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px', borderRadius: '6px' }}><X size={18} /></button>
           </div>
         </div>
 
@@ -451,7 +398,7 @@ export default function NewPOModal({ suppliers, onClose }: { suppliers: Supplier
             {lines.filter(l => l.sku).length} позицій · {fmt(total)} ₴
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={() => setMinimized(true)}
+            <button onClick={onMinimize}
               style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Minus size={13} /> Згорнути
             </button>
