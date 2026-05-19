@@ -227,86 +227,57 @@ export default function PoDraftManager() {
             const filledLines  = draft.lines.filter(l => l.sku || l.name).length;
             const total        = draft.lines.reduce((s, l) => s + l.qty * l.cost_price, 0);
 
-            return (
-              <div
-                key={draft.id}
-                onClick={() => isActive ? minimizeDraft(draft.id) : bringToFront(draft.id)}
-                className="po-tab"
-                style={{
-                  height: isActive ? '46px' : '38px',
-                  width:  '210px',
-                  background: isActive
-                    ? '#3a4256'
-                    : isOpenStack
-                      ? '#323848'
-                      : '#2b3040',
-                  backdropFilter: 'blur(8px)',
-                  borderRadius: '10px 10px 0 0',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  borderTop: isActive ? '2px solid #4880B8' : '1px solid rgba(255,255,255,0.06)',
-                  borderBottom: 'none',
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '0 8px 0 12px',
-                  cursor: 'pointer',
-                  boxShadow: isActive
-                    ? '0 -4px 16px rgba(72,128,184,0.25)'
-                    : '0 -1px 6px rgba(0,0,0,0.15)',
-                  transition: 'background 0.18s, height 0.15s ease-out, box-shadow 0.18s, border-color 0.18s',
-                  flexShrink: 0,
-                  alignSelf: 'flex-end', // підйом від нижнього краю
-                }}
-              >
-                {/* Dot */}
-                <span className="po-dot" style={{
-                  opacity: isActive ? 1 : 0.6,
-                  flexShrink: 0,
-                }} />
+            const tabStyle: React.CSSProperties = {
+              height: isActive ? '46px' : '38px',
+              width:  '210px',
+              background: isActive ? '#3a4256' : isOpenStack ? '#323848' : '#2b3040',
+              backdropFilter: 'blur(8px)',
+              borderRadius: '10px 10px 0 0',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderTop: isActive ? '2px solid #4880B8' : '1px solid rgba(255,255,255,0.06)',
+              borderBottom: 'none',
+              display: 'flex', alignItems: 'center',
+              boxShadow: isActive ? '0 -4px 16px rgba(72,128,184,0.25)' : '0 -1px 6px rgba(0,0,0,0.15)',
+              transition: 'background 0.18s, height 0.15s ease-out, box-shadow 0.18s, border-color 0.18s',
+              flexShrink: 0,
+              alignSelf: 'flex-end',
+              overflow: 'hidden',
+            };
 
-                {/* Title */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: '12px', fontWeight: isActive ? 700 : 500,
-                    color: isActive ? '#E2E8F0' : '#94A3B8',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    {supplierName || 'Нове замовлення'}
-                  </div>
-                  {filledLines > 0 && (
-                    <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.28)', lineHeight: 1 }}>
-                      {filledLines} поз · {fmt(total)} ₴
+            return (
+              <div key={draft.id} className="po-tab" style={tabStyle}>
+
+                {/* Кліковна зона (dot + title) */}
+                <div
+                  onClick={() => isActive ? minimizeDraft(draft.id) : bringToFront(draft.id)}
+                  style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px 0 12px', height: '100%', cursor: 'pointer' }}
+                >
+                  <span className="po-dot" style={{ opacity: isActive ? 1 : 0.6, flexShrink: 0 }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '12px', fontWeight: isActive ? 700 : 500, color: isActive ? '#E2E8F0' : '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {supplierName || 'Нове замовлення'}
                     </div>
-                  )}
+                    {filledLines > 0 && (
+                      <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.28)', lineHeight: 1 }}>
+                        {filledLines} поз · {fmt(total)} ₴
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Minimize */}
-                {!draft.minimized && (
-                  <button
-                    onClick={e => { e.stopPropagation(); minimizeDraft(draft.id); }}
-                    title="Згорнути"
-                    style={{
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      color: 'rgba(255,255,255,0.3)', display: 'flex', padding: '3px',
-                      borderRadius: '4px', flexShrink: 0,
-                    }}
-                    className="po-close-btn"
-                  >
-                    <Minus size={11} />
+                {/* Кнопки — окремо від кліковної зони, без stopPropagation */}
+                <div style={{ display: 'flex', alignItems: 'center', padding: '0 6px 0 0', gap: '2px', flexShrink: 0 }}>
+                  {!draft.minimized && (
+                    <button onClick={() => minimizeDraft(draft.id)} title="Згорнути" className="po-close-btn"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', display: 'flex', padding: '3px', borderRadius: '4px' }}>
+                      <Minus size={11} />
+                    </button>
+                  )}
+                  <button onClick={() => closeDraft(draft.id)} title="Закрити" className="po-close-btn"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', display: 'flex', padding: '3px', borderRadius: '4px' }}>
+                    <X size={12} />
                   </button>
-                )}
-
-                {/* Close */}
-                <button
-                  onClick={e => { e.stopPropagation(); closeDraft(draft.id); }}
-                  title="Закрити"
-                  style={{
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: 'rgba(255,255,255,0.25)', display: 'flex', padding: '3px',
-                    borderRadius: '4px', flexShrink: 0,
-                  }}
-                  className="po-close-btn"
-                >
-                  <X size={12} />
-                </button>
+                </div>
               </div>
             );
           })}
