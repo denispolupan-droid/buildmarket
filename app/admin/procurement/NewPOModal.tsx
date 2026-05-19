@@ -219,7 +219,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supplierId, expectedDate, notes, lines]);
 
-  async function handleSubmit() {
+  async function save(post = false) {
     const valid = lines.filter(l => l.sku.trim() && l.qty > 0);
     if (!supplierId) { setError('Оберіть постачальника'); return; }
     if (!valid.length) { setError('Додайте хоча б один товар з артикулом'); return; }
@@ -236,7 +236,16 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Помилка'); return; }
-      onSubmitted(); // видаляємо чернетку з менеджера
+
+      // "Провести" — одразу виставляємо статус "Відправлено постачальнику"
+      if (post) {
+        await fetch(`/api/admin/procurement/${data.id}/status`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ procurement_status: 'sent' }),
+        });
+      }
+
+      onSubmitted();
       router.push(`/admin/procurement/${data.id}`);
       router.refresh();
     } catch { setError('Мережева помилка'); }
@@ -399,20 +408,15 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
           <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
             {lines.filter(l => l.sku).length} позицій · {fmt(total)} ₴
           </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <button onClick={onMinimize}
-              style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Minus size={13} /> Згорнути
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => save(false)} disabled={saving}
+              style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: saving ? 0.6 : 1 }}>
+              💾 Чернетка
             </button>
-            <div>
-              <button onClick={handleSubmit} disabled={saving}
-                style={{ height: '38px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: saving ? 0.7 : 1 }}>
-                {saving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Збереження...</> : '💾 Зберегти чернетку'}
-              </button>
-              <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '3px', textAlign: 'right' }}>
-                відправити постачальнику можна пізніше
-              </div>
-            </div>
+            <button onClick={() => save(true)} disabled={saving}
+              style={{ height: '38px', padding: '0 22px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: saving ? 0.7 : 1 }}>
+              {saving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Збереження...</> : '✅ Провести'}
+            </button>
           </div>
         </div>
       </div>
