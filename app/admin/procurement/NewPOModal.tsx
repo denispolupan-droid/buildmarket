@@ -83,13 +83,14 @@ import type { PoDraft, PoLine } from '../PoDraftManager';
 
 type Props = {
   initialData:    PoDraft;
+  zIndex?:        number;
   onMinimize:     () => void;
   onClose:        () => void;
   onDraftChange:  (data: Partial<PoDraft>) => void;
   onSubmitted:    () => void;
 };
 
-export default function NewPOModal({ initialData, onMinimize, onClose, onDraftChange, onSubmitted }: Props) {
+export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onClose, onDraftChange, onSubmitted }: Props) {
   const router  = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -244,12 +245,8 @@ export default function NewPOModal({ initialData, onMinimize, onClose, onDraftCh
 
   return (
     <>
-    {/* Overlay — клік згортає */}
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.35)', zIndex: 1000 }}
-      onClick={onMinimize} />
-
-    {/* Side panel справа */}
-    <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 1001, width: 'min(860px, 62vw)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', boxShadow: '-8px 0 40px rgba(0,0,0,0.28)', borderLeft: '1px solid var(--border)' }}>
+    {/* Side panel ЛІВОРУЧ — після sidebar (220px) */}
+    <div style={{ position: 'fixed', top: 0, left: '220px', bottom: 0, zIndex, width: 'min(800px, 56vw)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', boxShadow: '8px 0 32px rgba(0,0,0,0.22)', borderRight: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
         {/* Header */}

@@ -1,12 +1,15 @@
 'use client';
 
 /**
- * Глобальний менеджер чернеток замовлень постачальнику.
- * Живе в admin layout — не зникає при навігації між сторінками.
- * Зберігає стан у sessionStorage для відновлення після переходів.
+ * Менеджер чернеток замовлень постачальнику.
+ * Живе в admin layout — переживає навігацію між сторінками.
  *
- * Взаємодія з сторінками:
- *   window.dispatchEvent(new CustomEvent('open-po-draft', { detail: { suppliers } }))
+ * Поведінка карт (card stack):
+ *   - Всі незгорнуті документи = відкриті панелі (stack)
+ *   - Остання у масиві = активна (зверху)
+ *   - Попередні = видно тільки правий край (peek strip)
+ *   - Клік на edge → bringToFront
+ *   - Згорнуті → таб-бар внизу
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -31,18 +34,19 @@ export interface PoDraft {
   createdAt:    number;
 }
 
-const SESSION_KEY = 'admin_po_drafts';
+const SESSION_KEY  = 'admin_po_drafts';
+const SIDEBAR_W    = 220;   // ширина сайдбару
+const PANEL_W      = 'min(800px, 56vw)';
+const PEEK_PER_CARD = 24;   // ширина видимого краю кожної фонової карти
 
 function loadDrafts(): PoDraft[] {
   try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? '[]'); }
   catch { return []; }
 }
-
 function saveDrafts(drafts: PoDraft[]) {
   try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(drafts)); }
-  catch { /* quota exceeded — ignore */ }
+  catch { /* quota */ }
 }
-
 function fmt(n: number) {
   return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
 }
@@ -51,24 +55,18 @@ export default function PoDraftManager() {
   const [drafts,  setDrafts]  = useState<PoDraft[]>([]);
   const [mounted, setMounted] = useState(false);
 
-  // Читаємо з sessionStorage після монтування (уникаємо гідратаційних помилок)
-  useEffect(() => {
-    setDrafts(loadDrafts());
-    setMounted(true);
-  }, []);
+  useEffect(() => { setDrafts(loadDrafts()); setMounted(true); }, []);
 
-  // Зберігаємо в sessionStorage і повідомляємо sidebar при кожній зміні
   useEffect(() => {
     if (!mounted) return;
     saveDrafts(drafts);
     window.dispatchEvent(new CustomEvent('po-drafts-changed', { detail: { count: drafts.length } }));
   }, [drafts, mounted]);
 
-  // Слухаємо подію від кнопок "Нове замовлення"
+  // Нове замовлення — додаємо зверху стеку (не згортаємо існуючі)
   useEffect(() => {
     function handler(e: Event) {
       const suppliers = (e as CustomEvent<{ suppliers: { id: number; name: string }[] }>).detail?.suppliers ?? [];
-
       const draft: PoDraft = {
         id:           `po_${Date.now()}`,
         suppliers,
@@ -79,31 +77,29 @@ export default function PoDraftManager() {
         minimized:    false,
         createdAt:    Date.now(),
       };
-
-      setDrafts(prev => [
-        // Згортаємо всі розгорнуті
-        ...prev.map(d => d.minimized ? d : { ...d, minimized: true }),
-        draft,
-      ]);
+      setDrafts(prev => [...prev, draft]); // додаємо в кінець = зверху стеку
     }
-
     window.addEventListener('open-po-draft', handler);
     return () => window.removeEventListener('open-po-draft', handler);
   }, []);
 
-  const updateDraft  = useCallback((id: string, data: Partial<PoDraft>) =>
-    setDrafts(prev => prev.map(d => d.id === id ? { ...d, ...data } : d)), []);
+  // Принести карту вгору стеку (unminimaize + move to end)
+  const bringToFront = useCallback((id: string) => {
+    setDrafts(prev => {
+      const draft = prev.find(d => d.id === id);
+      if (!draft) return prev;
+      return [...prev.filter(d => d.id !== id), { ...draft, minimized: false }];
+    });
+  }, []);
 
-  const removeDraft  = useCallback((id: string) =>
-    setDrafts(prev => prev.filter(d => d.id !== id)), []);
+  const updateDraft   = useCallback((id: string, data: Partial<PoDraft>) =>
+    setDrafts(prev => prev.map(d => d.id === id ? { ...d, ...data } : d)), []);
 
   const minimizeDraft = useCallback((id: string) =>
     updateDraft(id, { minimized: true }), [updateDraft]);
 
-  const restoreDraft  = useCallback((id: string) =>
-    setDrafts(prev => prev.map(d =>
-      d.id === id ? { ...d, minimized: false } : { ...d, minimized: true }
-    )), []);
+  const removeDraft   = useCallback((id: string) =>
+    setDrafts(prev => prev.filter(d => d.id !== id)), []);
 
   const closeDraft = useCallback((id: string) => {
     setDrafts(prev => {
@@ -117,30 +113,96 @@ export default function PoDraftManager() {
 
   if (!mounted) return null;
 
-  const expanded     = drafts.find(d => !d.minimized);
-  const minimized    = drafts.filter(d => d.minimized);
+  const stack           = drafts.filter(d => !d.minimized);  // відкриті карти
+  const minimizedDrafts = drafts.filter(d => d.minimized);   // таби внизу
+  const topCard         = stack[stack.length - 1];
+  const bgCards         = stack.slice(0, -1);                 // фонові карти
 
   return (
     <>
-      {/* Розгорнутий модал */}
-      {expanded && (
+      {/* ── Фонові карти (видно тільки правий peek-край) ─────────────────────── */}
+      {bgCards.map((draft, idx) => {
+        // depth: 1 = одразу за активною, 2 = далі і т.д.
+        const depth        = bgCards.length - idx;
+        const supplierName = draft.suppliers.find(s => s.id === draft.supplierId)?.name ?? '';
+        const peekWidth    = PEEK_PER_CARD * depth;
+        const topOffset    = depth * 5; // кожна наступна трохи нижче
+
+        return (
+          <div
+            key={draft.id}
+            onClick={() => bringToFront(draft.id)}
+            title={`Відкрити: ${supplierName || 'Нове замовлення'}`}
+            style={{
+              position: 'fixed',
+              left:   `${SIDEBAR_W}px`,
+              top:    `${topOffset}px`,
+              bottom: 0,
+              width:  `calc(${PANEL_W} + ${peekWidth}px)`,
+              zIndex: 1000 + idx,
+              background:   'var(--bg-card)',
+              borderLeft:   '1px solid var(--border)',
+              borderTop:    `1px solid var(--border)`,
+              borderRadius: '0 12px 0 0',
+              boxShadow:    '6px -6px 20px rgba(0,0,0,0.18)',
+              cursor:       'pointer',
+              overflow:     'hidden',
+            }}
+          >
+            {/* Видимий правий edge зі слабким hover */}
+            <div
+              className="po-bg-edge"
+              style={{
+                position: 'absolute', right: 0, top: 0, bottom: 0,
+                width:       `${peekWidth}px`,
+                background:  'var(--bg-soft)',
+                borderLeft:  '1px solid var(--border)',
+                display:     'flex',
+                flexDirection: 'column',
+                alignItems:  'center',
+                paddingTop:  '20px',
+                gap:         '4px',
+                transition:  'background 0.15s',
+              }}
+            >
+              <div style={{
+                writingMode:     'vertical-rl',
+                textOrientation: 'mixed',
+                transform:       'rotate(180deg)',
+                fontSize: '11px', fontWeight: 600,
+                color: 'var(--text-secondary)',
+                maxHeight: '120px',
+                overflow: 'hidden',
+              }}>
+                {supplierName || 'Замовлення'}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* ── Активна карта (top of stack) ─────────────────────────────────────── */}
+      {topCard && (
         <NewPOModal
-          key={expanded.id}
-          initialData={expanded}
-          onMinimize={() => minimizeDraft(expanded.id)}
-          onClose={() => closeDraft(expanded.id)}
-          onDraftChange={data => updateDraft(expanded.id, data)}
-          onSubmitted={() => removeDraft(expanded.id)}
+          key={topCard.id}
+          initialData={topCard}
+          zIndex={1000 + stack.length}
+          onMinimize={() => minimizeDraft(topCard.id)}
+          onClose={() => closeDraft(topCard.id)}
+          onDraftChange={data => updateDraft(topCard.id, data)}
+          onSubmitted={() => removeDraft(topCard.id)}
         />
       )}
 
-      {/* Таби чернеток — flex-рядок, прилягають до правого краю */}
-      {minimized.length > 0 && (
+      {/* ── Таб-бар внизу: всі чернетки (відкриті + згорнуті) ───────────────── */}
+      {drafts.length > 0 && (
         <div style={{
-          position: 'fixed', bottom: 0, right: '84px', zIndex: 1001,
+          position: 'fixed', bottom: 0, right: '84px', zIndex: 1010,
           display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '2px',
         }}>
-          {minimized.map(draft => {
+          {drafts.map(draft => {
+            const isActive    = !draft.minimized && draft.id === topCard?.id;
+            const isOpenStack = !draft.minimized && !isActive;
             const supplierName = draft.suppliers.find(s => s.id === draft.supplierId)?.name ?? '';
             const filledLines  = draft.lines.filter(l => l.sku || l.name).length;
             const total        = draft.lines.reduce((s, l) => s + l.qty * l.cost_price, 0);
@@ -148,45 +210,57 @@ export default function PoDraftManager() {
             return (
               <div
                 key={draft.id}
-                onClick={() => restoreDraft(draft.id)}
+                onClick={() => bringToFront(draft.id)}
+                className="po-tab"
                 style={{
-                  height: '40px', width: '220px',
-                  background: 'rgba(20, 35, 60, 0.96)',
+                  height: isActive ? '44px' : '40px',
+                  width:  '210px',
+                  background: isActive
+                    ? 'rgba(30, 58, 95, 1)'
+                    : isOpenStack
+                      ? 'rgba(25, 45, 75, 0.92)'
+                      : 'rgba(20, 35, 60, 0.96)',
                   backdropFilter: 'blur(12px)',
                   borderRadius: '10px 10px 0 0',
-                  border: '1px solid rgba(255,255,255,0.1)', borderBottom: 'none',
+                  border: `1px solid ${isActive ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.09)'}`,
+                  borderBottom: 'none',
                   display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '0 10px 0 12px',
+                  padding: '0 8px 0 12px',
                   cursor: 'pointer',
-                  boxShadow: '0 -3px 14px rgba(0,0,0,0.25)',
-                  transition: 'background 0.15s',
+                  boxShadow: isActive ? '0 -2px 12px rgba(0,0,0,0.3)' : '0 -1px 6px rgba(0,0,0,0.15)',
+                  transition: 'background 0.15s, height 0.1s',
                   flexShrink: 0,
                 }}
-                className="po-tab"
               >
-                {/* Пульсуюча точка */}
-                <span className="po-dot" style={{ flexShrink: 0 }} />
+                {/* Dot */}
+                <span className="po-dot" style={{
+                  opacity: isActive ? 1 : 0.6,
+                  flexShrink: 0,
+                }} />
 
-                {/* Назва + деталі */}
+                {/* Title */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#CBD5E0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{
+                    fontSize: '12px', fontWeight: isActive ? 700 : 500,
+                    color: isActive ? '#E2E8F0' : '#94A3B8',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
                     {supplierName || 'Нове замовлення'}
                   </div>
                   {filledLines > 0 && (
-                    <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', lineHeight: 1 }}>
+                    <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.28)', lineHeight: 1 }}>
                       {filledLines} поз · {fmt(total)} ₴
                     </div>
                   )}
                 </div>
 
-                {/* Закрити */}
+                {/* Close */}
                 <button
                   onClick={e => { e.stopPropagation(); closeDraft(draft.id); }}
                   style={{
                     background: 'none', border: 'none', cursor: 'pointer',
-                    color: 'rgba(255,255,255,0.3)', display: 'flex', padding: '4px',
+                    color: 'rgba(255,255,255,0.25)', display: 'flex', padding: '3px',
                     borderRadius: '4px', flexShrink: 0,
-                    transition: 'color 0.15s',
                   }}
                   className="po-close-btn"
                 >
@@ -201,8 +275,9 @@ export default function PoDraftManager() {
       <style>{`
         @keyframes po-pulse-anim { 0%,100%{opacity:1} 50%{opacity:0.3} }
         .po-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#F59E0B; animation:po-pulse-anim 2s ease-in-out infinite; }
-        .po-tab:hover { background: rgba(30,50,85,0.98) !important; }
-        .po-tab:hover .po-close-btn { color: rgba(255,255,255,0.65) !important; }
+        .po-tab:hover { background: rgba(35,58,100,0.98) !important; }
+        .po-tab:hover .po-close-btn { color: rgba(255,255,255,0.6) !important; }
+        .po-bg-edge:hover { background: var(--bg-card) !important; }
       `}</style>
     </>
   );
