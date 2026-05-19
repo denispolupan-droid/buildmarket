@@ -61,15 +61,11 @@ export default function PoDraftManager() {
 
   useEffect(() => { setDrafts(loadDrafts()); setMounted(true); }, []);
 
-  // Автозгортання при виході з розділу закупівлі
+  // Автозгортання при кожному переході поза розділом закупівлі
   useEffect(() => {
     if (!mounted) return;
     if (!pathname.startsWith('/admin/procurement')) {
-      setDrafts(prev => {
-        const hasOpen = prev.some(d => !d.minimized);
-        if (!hasOpen) return prev;
-        return prev.map(d => d.minimized ? d : { ...d, minimized: true });
-      });
+      setDrafts(prev => prev.map(d => d.minimized ? d : { ...d, minimized: true }));
     }
   }, [pathname, mounted]);
 
