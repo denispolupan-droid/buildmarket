@@ -106,6 +106,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
   const [parsing,    setParsing]    = useState(false);
   const [saving,     setSaving]     = useState(false);
   const [error,      setError]      = useState('');
+  const [sendOnPost, setSendOnPost] = useState(false);
   const lookupTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
   // Debounced lookup — спрацьовує через 600мс після завершення друку
@@ -237,12 +238,20 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Помилка'); return; }
 
-      // "Провести" — одразу виставляємо статус "Відправлено постачальнику"
+      // "Провести" — надсилаємо постачальнику або просто змінюємо статус
       if (post) {
-        await fetch(`/api/admin/procurement/${data.id}/status`, {
-          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ procurement_status: 'sent' }),
-        });
+        if (sendOnPost) {
+          // Відправляємо email постачальнику (API також оновлює статус на 'sent')
+          await fetch('/api/admin/procurement/send', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: [data.id] }),
+          });
+        } else {
+          await fetch(`/api/admin/procurement/${data.id}/status`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ procurement_status: 'sent' }),
+          });
+        }
       }
 
       onSubmitted();
@@ -408,6 +417,16 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
           <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
             {lines.filter(l => l.sku).length} позицій · {fmt(total)} ₴
           </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '7px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-secondary)' }}>
+            <input
+              type="checkbox"
+              checked={sendOnPost}
+              onChange={e => setSendOnPost(e.target.checked)}
+              style={{ width: '14px', height: '14px', accentColor: '#15803D', cursor: 'pointer' }}
+            />
+            Відправити постачальнику при проведенні
+          </label>
+
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={() => save(false)} disabled={saving}
               style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: saving ? 0.6 : 1 }}>
