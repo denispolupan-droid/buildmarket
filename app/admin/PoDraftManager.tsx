@@ -13,7 +13,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { X } from 'lucide-react';
 
@@ -57,17 +57,21 @@ export default function PoDraftManager() {
   const [drafts,  setDrafts]  = useState<PoDraft[]>([]);
   const [mounted, setMounted] = useState(false);
 
-  const pathname = usePathname();
+  const pathname     = usePathname();
+  const searchParams = useSearchParams();
+  // Унікальний ключ маршруту — змінюється і при pathname, і при searchParams
+  const routeKey     = pathname + '?' + searchParams.toString();
 
   useEffect(() => { setDrafts(loadDrafts()); setMounted(true); }, []);
 
-  // Автозгортання при кожному переході поза розділом закупівлі
+  // Автозгортання при будь-якій навігації поза розділом закупівлі
   useEffect(() => {
     if (!mounted) return;
     if (!pathname.startsWith('/admin/procurement')) {
       setDrafts(prev => prev.map(d => d.minimized ? d : { ...d, minimized: true }));
     }
-  }, [pathname, mounted]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeKey, mounted]);
 
   useEffect(() => {
     if (!mounted) return;
