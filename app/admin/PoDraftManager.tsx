@@ -54,8 +54,9 @@ function fmt(n: number) {
 }
 
 export default function PoDraftManager() {
-  const [drafts,  setDrafts]  = useState<PoDraft[]>([]);
-  const [mounted, setMounted] = useState(false);
+  const [drafts,         setDrafts]         = useState<PoDraft[]>([]);
+  const [mounted,        setMounted]        = useState(false);
+  const [confirmClose,   setConfirmClose]   = useState<string | null>(null);
 
   const pathname     = usePathname();
   const searchParams = useSearchParams();
@@ -117,15 +118,16 @@ export default function PoDraftManager() {
   const removeDraft   = useCallback((id: string) =>
     setDrafts(prev => prev.filter(d => d.id !== id)), []);
 
-  const closeDraft = useCallback((id: string) => {
-    setDrafts(prev => {
-      const draft = prev.find(d => d.id === id);
-      if (!draft) return prev;
+  const closeDraft = useCallback((id: string, force = false) => {
+    if (!force) {
+      const draft = drafts.find(d => d.id === id);
+      if (!draft) return;
       const hasData = draft.lines.some(l => l.sku || l.name) || draft.notes.trim();
-      if (hasData && !window.confirm('Документ не збережено. Закрити?')) return prev;
-      return prev.filter(d => d.id !== id);
-    });
-  }, []);
+      if (hasData) { setConfirmClose(id); return; }
+    }
+    setConfirmClose(null);
+    setDrafts(prev => prev.filter(d => d.id !== id));
+  }, [drafts]);
 
   if (!mounted) return null;
 
@@ -227,6 +229,8 @@ export default function PoDraftManager() {
             const filledLines  = draft.lines.filter(l => l.sku || l.name).length;
             const total        = draft.lines.reduce((s, l) => s + l.qty * l.cost_price, 0);
 
+            const isConfirming = confirmClose === draft.id;
+
             const tabStyle: React.CSSProperties = {
               height: isActive ? '46px' : '38px',
               width:  '210px',
@@ -245,39 +249,66 @@ export default function PoDraftManager() {
             };
 
             return (
-              <div key={draft.id} className="po-tab" style={tabStyle}>
+              <div key={draft.id} style={{ position: 'relative', alignSelf: 'flex-end', flexShrink: 0 }}>
 
-                {/* Кліковна зона (dot + title) */}
-                <div
-                  onClick={() => isActive ? minimizeDraft(draft.id) : bringToFront(draft.id)}
-                  style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px 0 12px', height: '100%', cursor: 'pointer' }}
-                >
-                  <span className="po-dot" style={{ opacity: isActive ? 1 : 0.6, flexShrink: 0 }} />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '12px', fontWeight: isActive ? 700 : 500, color: isActive ? '#E2E8F0' : '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {supplierName || 'Нове замовлення'}
+                {isConfirming && (
+                  <div style={{
+                    position: 'absolute', bottom: '100%', left: 0, right: 0,
+                    background: 'var(--bg-card)', borderRadius: '10px 10px 0 0',
+                    border: '1px solid var(--border)', borderBottom: 'none',
+                    padding: '12px 14px', zIndex: 1020,
+                    boxShadow: '0 -6px 20px rgba(0,0,0,0.3)',
+                  }}>
+                    <div style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: 600, marginBottom: '4px' }}>
+                      Закрити без збереження?
                     </div>
-                    {filledLines > 0 && (
-                      <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.28)', lineHeight: 1 }}>
-                        {filledLines} поз · {fmt(total)} ₴
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                      Незбережені дані будуть видалені
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button onClick={() => closeDraft(draft.id, true)}
+                        style={{ flex: 1, height: '28px', borderRadius: '6px', border: 'none', background: '#DC2626', color: '#fff', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                        Так, закрити
+                      </button>
+                      <button onClick={() => setConfirmClose(null)}
+                        style={{ flex: 1, height: '28px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+                        Скасувати
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="po-tab" style={{ ...tabStyle, alignSelf: undefined }}>
+                  <div
+                    onClick={() => isActive ? minimizeDraft(draft.id) : bringToFront(draft.id)}
+                    style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px 0 12px', height: '100%', cursor: 'pointer' }}
+                  >
+                    <span className="po-dot" style={{ opacity: isActive ? 1 : 0.6, flexShrink: 0 }} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '12px', fontWeight: isActive ? 700 : 500, color: isActive ? '#E2E8F0' : '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {supplierName || 'Нове замовлення'}
                       </div>
+                      {filledLines > 0 && (
+                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.28)', lineHeight: 1 }}>
+                          {filledLines} поз · {fmt(total)} ₴
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', padding: '0 6px 0 0', gap: '2px', flexShrink: 0 }}>
+                    {!draft.minimized && (
+                      <button onClick={() => minimizeDraft(draft.id)} title="Згорнути" className="po-close-btn"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', display: 'flex', padding: '3px', borderRadius: '4px' }}>
+                        <Minus size={11} />
+                      </button>
                     )}
+                    <button onClick={() => closeDraft(draft.id)} title="Закрити" className="po-close-btn"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', display: 'flex', padding: '3px', borderRadius: '4px' }}>
+                      <X size={12} />
+                    </button>
                   </div>
                 </div>
 
-                {/* Кнопки — окремо від кліковної зони, без stopPropagation */}
-                <div style={{ display: 'flex', alignItems: 'center', padding: '0 6px 0 0', gap: '2px', flexShrink: 0 }}>
-                  {!draft.minimized && (
-                    <button onClick={() => minimizeDraft(draft.id)} title="Згорнути" className="po-close-btn"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', display: 'flex', padding: '3px', borderRadius: '4px' }}>
-                      <Minus size={11} />
-                    </button>
-                  )}
-                  <button onClick={() => closeDraft(draft.id)} title="Закрити" className="po-close-btn"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', display: 'flex', padding: '3px', borderRadius: '4px' }}>
-                    <X size={12} />
-                  </button>
-                </div>
               </div>
             );
           })}

@@ -399,15 +399,20 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
           <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
             {lines.filter(l => l.sku).length} позицій · {fmt(total)} ₴
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button onClick={onMinimize}
               style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Minus size={13} /> Згорнути
             </button>
-            <button onClick={handleSubmit} disabled={saving}
-              style={{ height: '38px', padding: '0 24px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: saving ? 0.7 : 1 }}>
-              {saving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Створення...</> : '📋 Створити замовлення'}
-            </button>
+            <div>
+              <button onClick={handleSubmit} disabled={saving}
+                style={{ height: '38px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: saving ? 0.7 : 1 }}>
+                {saving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Збереження...</> : '💾 Зберегти чернетку'}
+              </button>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '3px', textAlign: 'right' }}>
+                відправити постачальнику можна пізніше
+              </div>
+            </div>
           </div>
         </div>
       </div>
