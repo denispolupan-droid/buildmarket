@@ -24,14 +24,15 @@ export interface PoLine {
 }
 
 export interface PoDraft {
-  id:           string;
-  suppliers:    { id: number; name: string }[];
-  supplierId:   number;
-  expectedDate: string;
-  notes:        string;
-  lines:        PoLine[];
-  minimized:    boolean;
-  createdAt:    number;
+  id:            string;
+  suppliers:     { id: number; name: string }[];
+  supplierId:    number;
+  expectedDate:  string;
+  notes:         string;
+  lines:         PoLine[];
+  minimized:     boolean;
+  createdAt:     number;
+  lastActivated: number; // визначає хто зверху стеку без зміни порядку масиву
 }
 
 const SESSION_KEY  = 'admin_po_drafts';
@@ -67,29 +68,29 @@ export default function PoDraftManager() {
   useEffect(() => {
     function handler(e: Event) {
       const suppliers = (e as CustomEvent<{ suppliers: { id: number; name: string }[] }>).detail?.suppliers ?? [];
+      const now = Date.now();
       const draft: PoDraft = {
-        id:           `po_${Date.now()}`,
+        id:            `po_${now}`,
         suppliers,
-        supplierId:   suppliers[0]?.id ?? 0,
-        expectedDate: '',
-        notes:        '',
-        lines:        [{ sku: '', name: '', qty: 1, cost_price: 0, matched: false }],
-        minimized:    false,
-        createdAt:    Date.now(),
+        supplierId:    suppliers[0]?.id ?? 0,
+        expectedDate:  '',
+        notes:         '',
+        lines:         [{ sku: '', name: '', qty: 1, cost_price: 0, matched: false }],
+        minimized:     false,
+        createdAt:     now,
+        lastActivated: now,
       };
-      setDrafts(prev => [...prev, draft]); // додаємо в кінець = зверху стеку
+      setDrafts(prev => [...prev, draft]);
     }
     window.addEventListener('open-po-draft', handler);
     return () => window.removeEventListener('open-po-draft', handler);
   }, []);
 
-  // Принести карту вгору стеку (unminimaize + move to end)
+  // Принести карту вгору стеку — лише оновлюємо lastActivated, порядок масиву не міняється
   const bringToFront = useCallback((id: string) => {
-    setDrafts(prev => {
-      const draft = prev.find(d => d.id === id);
-      if (!draft) return prev;
-      return [...prev.filter(d => d.id !== id), { ...draft, minimized: false }];
-    });
+    setDrafts(prev => prev.map(d =>
+      d.id === id ? { ...d, minimized: false, lastActivated: Date.now() } : d
+    ));
   }, []);
 
   const updateDraft   = useCallback((id: string, data: Partial<PoDraft>) =>
@@ -113,10 +114,13 @@ export default function PoDraftManager() {
 
   if (!mounted) return null;
 
-  const stack           = drafts.filter(d => !d.minimized);  // відкриті карти
-  const minimizedDrafts = drafts.filter(d => d.minimized);   // таби внизу
-  const topCard         = stack[stack.length - 1];
-  const bgCards         = stack.slice(0, -1);                 // фонові карти
+  // Таби завжди у порядку створення (не переміщуються)
+  const tabOrder = [...drafts].sort((a, b) => a.createdAt - b.createdAt);
+
+  // Стек: відкриті карти, відсортовані по lastActivated (найвища = активна)
+  const stack   = [...drafts.filter(d => !d.minimized)].sort((a, b) => a.lastActivated - b.lastActivated);
+  const topCard = stack[stack.length - 1];
+  const bgCards = stack.slice(0, -1);
 
   return (
     <>
@@ -201,7 +205,7 @@ export default function PoDraftManager() {
           position: 'fixed', bottom: 0, right: '84px', zIndex: 1010,
           display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '2px',
         }}>
-          {drafts.map(draft => {
+          {tabOrder.map(draft => {
             const isActive    = !draft.minimized && draft.id === topCard?.id;
             const isOpenStack = !draft.minimized && !isActive;
             const supplierName = draft.suppliers.find(s => s.id === draft.supplierId)?.name ?? '';

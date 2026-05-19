@@ -414,8 +414,8 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
     </div>
     <style>{`
       @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-      @keyframes po-panel-enter { from{opacity:0.4;transform:translateX(-14px)} to{opacity:1;transform:translateX(0)} }
-      .po-panel-enter { animation: po-panel-enter 0.2s cubic-bezier(0.25,0.46,0.45,0.94); }
+      @keyframes po-panel-enter { from{opacity:0;transform:scale(0.985)} to{opacity:1;transform:scale(1)} }
+      .po-panel-enter { animation: po-panel-enter 0.25s ease-out; }
     `}</style>
     </>
   );
