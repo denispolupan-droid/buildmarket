@@ -166,6 +166,15 @@ input, select { font-family: inherit; }
 [data-theme="dark"] .action-icon-btn:hover { border-color: #4880B8 !important; }
 [data-theme="dark"] .empty-state h3 { color: var(--text-primary) !important; }
 
+/* ── Admin page transitions ── */
+@keyframes admin-page-enter {
+  0%   { opacity: 0; transform: translateY(5px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.admin-page-enter {
+  animation: admin-page-enter 0.22s ease-out both;
+}
+
 /* ── Admin panel dark mode ── */
 
 [data-theme="dark"] .admin-layout {

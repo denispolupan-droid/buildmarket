@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../lib/supabase-server';
 import AdminSidebar from '../components/admin/AdminSidebar';
 import PoDraftManagerLoader from './PoDraftManagerLoader';
+import PageTransition from './PageTransition';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,9 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="admin-layout" style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-soft)' }}>
       <AdminSidebar newOrdersCount={statusCounts.new ?? 0} statusCounts={statusCounts} chatUnreadCount={chatUnread ?? 0} />
-      <main style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
-        {children}
-      </main>
+      <PageTransition>{children}</PageTransition>
       <PoDraftManagerLoader />
     </div>
   );
