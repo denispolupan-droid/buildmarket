@@ -5,6 +5,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Header from "./components/Header";
 import ChatWidget from "./components/ChatWidget";
+import PageTransition from "./components/PageTransition";
 import GoogleAnalytics from "./components/GoogleAnalytics";
 import { CartProvider } from "../lib/cart";
 import { WishlistProvider } from "../lib/wishlist";
@@ -70,7 +71,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <WishlistProvider>
               <Header />
               <main style={{minHeight:'100vh'}}>
-                {children}
+                <PageTransition style={{ minHeight: '100vh' }}>{children}</PageTransition>
               </main>
               <ChatWidget />
             </WishlistProvider>

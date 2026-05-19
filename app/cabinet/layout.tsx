@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../lib/supabase-server';
 import { getRole } from '../../lib/user-role';
 import CabinetSidebar from './CabinetSidebar';
+import PageTransition from '../components/PageTransition';
 
 export default async function CabinetLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createSupabaseServer();
@@ -16,7 +17,7 @@ export default async function CabinetLayout({ children }: { children: React.Reac
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-page)', flexDirection: 'row', flexWrap: 'wrap' }}>
       <CabinetSidebar />
       <main className="cabinet-layout-main" style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
-        {children}
+        <PageTransition style={{ flex: 1 }}>{children}</PageTransition>
       </main>
     </div>
   );
