@@ -39,14 +39,14 @@ function SidebarInner({ newOrdersCount, statusCounts = {}, chatUnreadCount = 0 }
   const currentStatus = searchParams.get('status') ?? '';
   const isOrders = pathname === '/admin';
 
-  const [ordersOpen,    setOrdersOpen]    = useState(true);
+  const [ordersOpen,    setOrdersOpen]    = useState(isOrders);
   const isProcurement = pathname.startsWith('/admin/procurement');
   const [procOpen,      setProcOpen]      = useState(isProcurement);
   const [poDraftCount,  setPoDraftCount]  = useState(0);
 
-  useEffect(() => {
-    if (isOrders) setOrdersOpen(true);
-  }, [isOrders]);
+  // Автоматично розгортати/згортати при зміні активного розділу
+  useEffect(() => { setOrdersOpen(isOrders); }, [isOrders]);
+  useEffect(() => { setProcOpen(isProcurement); }, [isProcurement]);
 
   // Читаємо кількість відкритих чернеток замовлень
   useEffect(() => {
