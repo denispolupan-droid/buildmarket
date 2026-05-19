@@ -221,14 +221,14 @@ export default function PoDraftManager() {
                   height: isActive ? '46px' : '38px',
                   width:  '210px',
                   background: isActive
-                    ? 'rgba(30, 58, 95, 1)'
+                    ? '#3a4256'
                     : isOpenStack
-                      ? 'rgba(25, 45, 75, 0.92)'
-                      : 'rgba(20, 35, 60, 0.96)',
-                  backdropFilter: 'blur(12px)',
+                      ? '#323848'
+                      : '#2b3040',
+                  backdropFilter: 'blur(8px)',
                   borderRadius: '10px 10px 0 0',
-                  border: '1px solid rgba(255,255,255,0.09)',
-                  borderTop: isActive ? '2px solid #4880B8' : '1px solid rgba(255,255,255,0.09)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderTop: isActive ? '2px solid #4880B8' : '1px solid rgba(255,255,255,0.06)',
                   borderBottom: 'none',
                   display: 'flex', alignItems: 'center', gap: '8px',
                   padding: '0 8px 0 12px',
@@ -284,7 +284,7 @@ export default function PoDraftManager() {
       <style>{`
         @keyframes po-pulse-anim { 0%,100%{opacity:1} 50%{opacity:0.3} }
         .po-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#F59E0B; animation:po-pulse-anim 2s ease-in-out infinite; }
-        .po-tab:hover { background: rgba(35,58,100,0.98) !important; }
+        .po-tab:hover { background: #424d64 !important; }
         .po-tab:hover .po-close-btn { color: rgba(255,255,255,0.6) !important; }
         .po-bg-edge:hover { background: var(--bg-card) !important; }
       `}</style>
