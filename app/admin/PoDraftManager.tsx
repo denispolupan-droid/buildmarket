@@ -141,7 +141,7 @@ export default function PoDraftManager() {
               position: 'fixed',
               left:   `${SIDEBAR_W}px`,
               top:    `${topOffset}px`,
-              bottom: 0,
+              bottom: '46px',
               width:  `calc(${PANEL_W} + ${peekWidth}px)`,
               zIndex: 1000 + idx,
               background:   'var(--bg-card)',
@@ -202,7 +202,7 @@ export default function PoDraftManager() {
       {/* ── Таб-бар внизу: всі чернетки (відкриті + згорнуті) ───────────────── */}
       {drafts.length > 0 && (
         <div style={{
-          position: 'fixed', bottom: 0, right: '84px', zIndex: 1010,
+          position: 'fixed', bottom: 0, left: '220px', zIndex: 1010,
           display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '2px',
         }}>
           {tabOrder.map(draft => {
