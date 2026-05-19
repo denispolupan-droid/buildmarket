@@ -11,7 +11,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { ChevronUp, X } from 'lucide-react';
+import { X } from 'lucide-react';
 
 const NewPOModal = dynamic(() => import('./procurement/NewPOModal'), { ssr: false });
 
@@ -134,65 +134,75 @@ export default function PoDraftManager() {
         />
       )}
 
-      {/* Згорнуті панелі (стекуються справа) */}
-      {minimized.map((draft, idx) => {
-        const supplierName = draft.suppliers.find(s => s.id === draft.supplierId)?.name ?? '';
-        const filledLines  = draft.lines.filter(l => l.sku || l.name).length;
-        const total        = draft.lines.reduce((s, l) => s + l.qty * l.cost_price, 0);
-        const right        = 88 + idx * 352; // стек зліва від кнопки чату
+      {/* Таби чернеток — flex-рядок, прилягають до правого краю */}
+      {minimized.length > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 0, right: '84px', zIndex: 1001,
+          display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '2px',
+        }}>
+          {minimized.map(draft => {
+            const supplierName = draft.suppliers.find(s => s.id === draft.supplierId)?.name ?? '';
+            const filledLines  = draft.lines.filter(l => l.sku || l.name).length;
+            const total        = draft.lines.reduce((s, l) => s + l.qty * l.cost_price, 0);
 
-        return (
-          <div key={draft.id} style={{
-            position: 'fixed', bottom: 0, right: `${right}px`, zIndex: 1001,
-            background: '#1E3A5F', borderRadius: '10px 10px 0 0',
-            display: 'flex', alignItems: 'stretch',
-            boxShadow: '0 -4px 24px rgba(0,0,0,0.35)', minWidth: '320px',
-            border: '1px solid rgba(255,255,255,0.1)', borderBottom: 'none',
-          }}>
-            {/* Пульсуючий акцент */}
-            <div style={{ width: '4px', background: '#F59E0B', borderRadius: '10px 0 0 0', flexShrink: 0 }} className="po-pulse" />
+            return (
+              <div
+                key={draft.id}
+                onClick={() => restoreDraft(draft.id)}
+                style={{
+                  height: '40px', width: '220px',
+                  background: 'rgba(20, 35, 60, 0.96)',
+                  backdropFilter: 'blur(12px)',
+                  borderRadius: '10px 10px 0 0',
+                  border: '1px solid rgba(255,255,255,0.1)', borderBottom: 'none',
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '0 10px 0 12px',
+                  cursor: 'pointer',
+                  boxShadow: '0 -3px 14px rgba(0,0,0,0.25)',
+                  transition: 'background 0.15s',
+                  flexShrink: 0,
+                }}
+                className="po-tab"
+              >
+                {/* Пульсуюча точка */}
+                <span className="po-dot" style={{ flexShrink: 0 }} />
 
-            {/* Інфо */}
-            <div style={{ flex: 1, padding: '10px 14px', minWidth: 0, overflow: 'hidden' }}>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
-                <span className="po-dot" />
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  Замовлення{supplierName ? ` · ${supplierName}` : ''}
-                </span>
+                {/* Назва + деталі */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#CBD5E0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {supplierName || 'Нове замовлення'}
+                  </div>
+                  {filledLines > 0 && (
+                    <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', lineHeight: 1 }}>
+                      {filledLines} поз · {fmt(total)} ₴
+                    </div>
+                  )}
+                </div>
+
+                {/* Закрити */}
+                <button
+                  onClick={e => { e.stopPropagation(); closeDraft(draft.id); }}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'rgba(255,255,255,0.3)', display: 'flex', padding: '4px',
+                    borderRadius: '4px', flexShrink: 0,
+                    transition: 'color 0.15s',
+                  }}
+                  className="po-close-btn"
+                >
+                  <X size={12} />
+                </button>
               </div>
-              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>
-                {filledLines > 0 ? `${filledLines} поз. · ${fmt(total)} ₴ · ` : ''}чернетка
-              </div>
-            </div>
-
-            {/* Відновити */}
-            <button onClick={() => restoreDraft(draft.id)} style={{
-              padding: '10px 12px', background: 'none', border: 'none',
-              borderLeft: '1px solid rgba(255,255,255,0.1)',
-              cursor: 'pointer', color: 'rgba(255,255,255,0.8)',
-              display: 'flex', alignItems: 'center', gap: '4px',
-              fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap',
-            }}>
-              <ChevronUp size={13} /> Відкрити
-            </button>
-
-            {/* Закрити */}
-            <button onClick={() => closeDraft(draft.id)} style={{
-              padding: '10px 10px', background: 'none', border: 'none',
-              borderLeft: '1px solid rgba(255,255,255,0.1)',
-              cursor: 'pointer', color: 'rgba(255,255,255,0.4)',
-              display: 'flex', alignItems: 'center', borderRadius: '0 10px 0 0',
-            }}>
-              <X size={13} />
-            </button>
-          </div>
-        );
-      })}
+            );
+          })}
+        </div>
+      )}
 
       <style>{`
-        @keyframes po-pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
-        .po-pulse { animation: po-pulse 2s ease-in-out infinite; }
-        .po-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#F59E0B; flex-shrink:0; animation: po-pulse 2s ease-in-out infinite; }
+        @keyframes po-pulse-anim { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        .po-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#F59E0B; animation:po-pulse-anim 2s ease-in-out infinite; }
+        .po-tab:hover { background: rgba(30,50,85,0.98) !important; }
+        .po-tab:hover .po-close-btn { color: rgba(255,255,255,0.65) !important; }
       `}</style>
     </>
   );
