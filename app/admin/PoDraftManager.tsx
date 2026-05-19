@@ -13,6 +13,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { X } from 'lucide-react';
 
@@ -56,7 +57,21 @@ export default function PoDraftManager() {
   const [drafts,  setDrafts]  = useState<PoDraft[]>([]);
   const [mounted, setMounted] = useState(false);
 
+  const pathname = usePathname();
+
   useEffect(() => { setDrafts(loadDrafts()); setMounted(true); }, []);
+
+  // Автозгортання при виході з розділу закупівлі
+  useEffect(() => {
+    if (!mounted) return;
+    if (!pathname.startsWith('/admin/procurement')) {
+      setDrafts(prev => {
+        const hasOpen = prev.some(d => !d.minimized);
+        if (!hasOpen) return prev;
+        return prev.map(d => d.minimized ? d : { ...d, minimized: true });
+      });
+    }
+  }, [pathname, mounted]);
 
   useEffect(() => {
     if (!mounted) return;
