@@ -1,0 +1,519 @@
+/**
+ * Integration tests — повний цикл облікових документів.
+ *
+ * Запуск:  npm run test:integration
+ * Вимоги:  .env.local з NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
+ *
+ * Після кожного тесту запускається check_invariants() — якщо хоча б один
+ * інваріант FAIL, тест провалюється.
+ *
+ * Дані маркуються meta.test=true і прибираються в afterAll через
+ * reset_accounting_test_data() (безпечна SQL-функція).
+ */
+
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createDocument, confirmDocument, cancelDocument } from '../../lib/accounting/documents';
+import { createReservation, releaseReservation } from '../../lib/accounting/reservations';
+import { recordSupplierPayment } from '../../lib/accounting/money';
+
+// ── Фікстури (знаходяться динамічно в beforeAll) ──────────────────────────────
+
+let db:           SupabaseClient;
+let warehouseId:  number;
+let warehouseId2: number;
+let supplierId:   number;
+let testSku:      string;
+let customerId:   string;
+
+// IDs документів, що створюються в тестах
+let poDocId:      string;
+let receiptDocId: string;
+let saleDocId:    string;
+
+// ── Допоміжні функції ─────────────────────────────────────────────────────────
+
+async function assertInvariants() {
+  const { data, error } = await db.rpc('check_invariants');
+  expect(error, `check_invariants RPC error: ${error?.message}`).toBeNull();
+  const failures = (data ?? []).filter((r: { status: string }) => r.status === 'FAIL');
+  expect(
+    failures,
+    `Invariant violations:\n${failures.map((f: { invariant: string; details: string }) => `  ${f.invariant}: ${f.details}`).join('\n')}`,
+  ).toHaveLength(0);
+}
+
+async function getStockBalance(sku: string, whId: number) {
+  const { data } = await db
+    .from('stock_balance')
+    .select('qty_total, qty_reserved, qty_available')
+    .eq('sku', sku)
+    .eq('warehouse_id', whId)
+    .maybeSingle();
+  return data;
+}
+
+async function getMoneyEntries(docId: string) {
+  const { data } = await db
+    .from('money_entries')
+    .select('account_type, amount, txn_id')
+    .eq('doc_id', docId);
+  return data ?? [];
+}
+
+// ── Setup / Teardown ──────────────────────────────────────────────────────────
+
+beforeAll(async () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error(
+    'Missing env vars: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY required',
+  );
+
+  db = createClient(url, key, { auth: { persistSession: false } });
+
+  // Знаходимо реальний склад, постачальника та SKU
+  const [{ data: wh }, { data: sup }, { data: prod }, { data: cust }] = await Promise.all([
+    db.from('warehouses').select('id').order('id').limit(1).single(),
+    db.from('suppliers').select('id').order('id').limit(1).single(),
+    db.from('products').select('sku').order('sort_order').limit(1).single(),
+    db.from('customers').select('id').order('created_at').limit(1).maybeSingle(),
+  ]);
+
+  if (!wh)   throw new Error('No warehouses found in DB');
+  if (!sup)  throw new Error('No suppliers found in DB');
+  if (!prod) throw new Error('No products found in DB');
+
+  warehouseId = wh.id;
+  supplierId  = sup.id;
+  testSku     = prod.sku;
+  customerId  = cust?.id ?? '';
+
+  // Знаходимо другий склад (для тестів transfer)
+  const { data: wh2 } = await db
+    .from('warehouses').select('id').order('id').neq('id', warehouseId).limit(1).maybeSingle();
+  warehouseId2 = wh2?.id ?? 0;
+
+  console.log(`Fixtures: wh=${warehouseId} wh2=${warehouseId2} sup=${supplierId} sku=${testSku} cust=${customerId}`);
+});
+
+afterAll(async () => {
+  if (!db) return;
+  const { data, error } = await db.rpc('reset_accounting_test_data');
+  if (error) console.error('Cleanup error:', error.message);
+  else       console.log('Cleanup:', data);
+});
+
+// ── Тести ─────────────────────────────────────────────────────────────────────
+
+describe('Purchase Order', () => {
+  it('creates PO as draft — no stock movements', async () => {
+    const doc = await createDocument({
+      doc_type:    'purchase_order',
+      warehouse_id: warehouseId,
+      supplier_id:  supplierId,
+      notes:        '[TEST] PO smoke test',
+      meta:         { test: true },
+      lines: [{
+        sku:        testSku,
+        qty:        10,
+        price:      100,
+        cost_price: 100,
+      }],
+    });
+
+    poDocId = doc.id;
+    expect(doc.status).toBe('draft');
+
+    // PO не рухає склад
+    const { count } = await db
+      .from('stock_movements')
+      .select('id', { count: 'exact', head: true })
+      .eq('document_id', doc.id);
+    expect(count).toBe(0);
+  });
+});
+
+describe('Receipt — товар приходить на склад', () => {
+  it('confirms receipt: stock +10, FIFO batch created, supplier debt recorded', async () => {
+    const balanceBefore = await getStockBalance(testSku, warehouseId);
+    const qtyBefore = balanceBefore?.qty_total ?? 0;
+
+    const doc = await createDocument({
+      doc_type:     'receipt',
+      warehouse_id:  warehouseId,
+      supplier_id:   supplierId,
+      parent_doc_id: poDocId,
+      notes:         '[TEST] Receipt from PO',
+      meta:          { test: true },
+      lines: [{
+        sku:        testSku,
+        qty:        10,
+        price:      100,
+        cost_price: 100,
+      }],
+    });
+    receiptDocId = doc.id;
+
+    await confirmDocument(receiptDocId, 'test-user');
+
+    // Склад збільшився на 10
+    const balanceAfter = await getStockBalance(testSku, warehouseId);
+    expect(balanceAfter?.qty_total).toBe(qtyBefore + 10);
+
+    // FIFO партія створена
+    const { data: batches } = await db
+      .from('stock_batches')
+      .select('initial_qty, remaining_qty, cost_price')
+      .eq('document_id', receiptDocId);
+    expect(batches).toHaveLength(1);
+    expect(Number(batches![0].initial_qty)).toBe(10);
+    expect(Number(batches![0].remaining_qty)).toBe(10);
+    expect(Number(batches![0].cost_price)).toBe(100);
+
+    // Борг перед постачальником записаний в леджер
+    const entries = await getMoneyEntries(receiptDocId);
+    const debit  = entries.find(e => e.account_type === 'inventory_asset');
+    const credit = entries.find(e => e.account_type === 'supplier');
+    expect(debit,  'inventory_asset debit missing').toBeTruthy();
+    expect(credit, 'supplier credit missing').toBeTruthy();
+    expect(Number(debit!.amount)).toBe(1000);   // 10 * 100
+    expect(Number(credit!.amount)).toBe(-1000);
+
+    await assertInvariants();
+  });
+});
+
+describe('Sale — товар іде з складу', () => {
+  it('confirms sale: stock -5, FIFO consumed, revenue + COGS recorded', async () => {
+    const balanceBefore = await getStockBalance(testSku, warehouseId);
+    const qtyBefore = balanceBefore?.qty_total ?? 0;
+
+    const doc = await createDocument({
+      doc_type:    'sale',
+      warehouse_id: warehouseId,
+      customer_id:  customerId || undefined,
+      notes:        '[TEST] Sale test',
+      meta:         { test: true },
+      lines: [{
+        sku:        testSku,
+        qty:        5,
+        price:      200,
+        cost_price: 100,
+      }],
+    });
+    saleDocId = doc.id;
+
+    await confirmDocument(saleDocId, 'test-user');
+
+    // Склад зменшився на 5
+    const balanceAfter = await getStockBalance(testSku, warehouseId);
+    expect(balanceAfter?.qty_total).toBe(qtyBefore - 5);
+
+    // FIFO партія списана на 5
+    const { data: batches } = await db
+      .from('stock_batches')
+      .select('remaining_qty')
+      .eq('document_id', receiptDocId);
+    expect(Number(batches![0].remaining_qty)).toBe(5); // залишилось 5 з 10
+
+    // Виручка та COGS записані
+    const entries = await getMoneyEntries(saleDocId);
+    const revenue = entries.find(e => e.account_type === 'revenue');
+    const cogs    = entries.find(e => e.account_type === 'cogs');
+    expect(revenue, 'revenue entry missing').toBeTruthy();
+    expect(cogs,    'cogs entry missing').toBeTruthy();
+    expect(Number(revenue!.amount)).toBe(-1000); // credit revenue: 5 * 200
+    expect(Number(cogs!.amount)).toBe(500);      // debit cogs: 5 * 100 FIFO
+
+    await assertInvariants();
+  });
+});
+
+describe('Storno — відміна підтвердженого документу', () => {
+  // Порядок важливий: спочатку сторнуємо продаж (+5 назад),
+  // потім прихід (–10). Інакше баланс піде в мінус.
+
+  it('cancels sale: stock +5 restored, revenue reversed', async () => {
+    const balanceBefore = await getStockBalance(testSku, warehouseId);
+    const qtyBefore = balanceBefore?.qty_total ?? 0;  // = 5 після продажу
+
+    await cancelDocument(saleDocId, 'test-user', 'Тест сторно продажу');
+
+    const balanceAfter = await getStockBalance(testSku, warehouseId);
+    expect(balanceAfter?.qty_total).toBe(qtyBefore + 5);  // 5 + 5 = 10
+
+    const { data: reversal } = await db
+      .from('acc_documents')
+      .select('id, status')
+      .eq('reversal_of', saleDocId)
+      .single();
+    expect(reversal?.status).toBe('confirmed');
+
+    if (customerId) {
+      const reversalEntries = await getMoneyEntries(reversal!.id);
+      const revenueDebit = reversalEntries.find(e => e.account_type === 'revenue' && Number(e.amount) > 0);
+      expect(revenueDebit, 'revenue debit (storno) missing').toBeTruthy();
+    }
+
+    await assertInvariants();
+  });
+
+  it('cancels receipt: stock –10, supplier debt reversed', async () => {
+    // На цей момент баланс = 10 (після сторно продажу)
+    const balanceBefore = await getStockBalance(testSku, warehouseId);
+    const qtyBefore = balanceBefore?.qty_total ?? 0;  // = 10
+
+    await cancelDocument(receiptDocId, 'test-user', 'Тест сторно приходу');
+
+    const balanceAfter = await getStockBalance(testSku, warehouseId);
+    expect(balanceAfter?.qty_total ?? 0).toBe(qtyBefore - 10);  // 10 – 10 = 0
+
+    const { data: orig } = await db
+      .from('acc_documents').select('status').eq('id', receiptDocId).single();
+    expect(orig?.status).toBe('cancelled');
+
+    const { data: reversal } = await db
+      .from('acc_documents')
+      .select('id, status')
+      .eq('reversal_of', receiptDocId)
+      .single();
+    expect(reversal?.status).toBe('confirmed');
+
+    const reversalEntries = await getMoneyEntries(reversal!.id);
+    const supplierDebit = reversalEntries.find(e => e.account_type === 'supplier' && Number(e.amount) > 0);
+    expect(supplierDebit, 'supplier debit (storno) missing').toBeTruthy();
+
+    await assertInvariants();
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Reservations — резервування та захист від oversell
+// ══════════════════════════════════════════════════════════════════════════════
+
+describe('Reservations', () => {
+  let reservationOrderId: string;
+
+  beforeAll(async () => {
+    // Попередні тести скинули баланс в 0 — поповнюємо
+    const doc = await createDocument({
+      doc_type:    'receipt',
+      warehouse_id: warehouseId,
+      supplier_id:  supplierId,
+      notes:        '[TEST] Receipt for reservation tests',
+      meta:         { test: true },
+      lines: [{ sku: testSku, qty: 20, price: 80, cost_price: 80 }],
+    });
+    await confirmDocument(doc.id, 'test-user');
+  });
+
+  it('reserves 7 units: qty_reserved=7, qty_available=13', async () => {
+    reservationOrderId = crypto.randomUUID();
+
+    const result = await createReservation({
+      order_id:     reservationOrderId,
+      warehouse_id: warehouseId,
+      items:        [{ sku: testSku, qty: 7 }],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.reserved).toHaveLength(1);
+    expect(result.insufficient).toHaveLength(0);
+
+    const bal = await getStockBalance(testSku, warehouseId);
+    expect(Number(bal?.qty_reserved)).toBe(7);
+    expect(Number(bal?.qty_available)).toBe(13);
+
+    await assertInvariants();
+  });
+
+  it('refuses oversell: request 15 with only 13 available', async () => {
+    const result = await createReservation({
+      order_id:     crypto.randomUUID(),
+      warehouse_id: warehouseId,
+      items:        [{ sku: testSku, qty: 15 }],
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.insufficient).toHaveLength(1);
+    expect(result.insufficient[0].sku).toBe(testSku);
+    expect(Number(result.insufficient[0].requested)).toBe(15);
+    expect(Number(result.insufficient[0].available)).toBe(13);
+
+    // Баланс не змінився після невдалої спроби
+    const bal = await getStockBalance(testSku, warehouseId);
+    expect(Number(bal?.qty_reserved)).toBe(7);
+
+    await assertInvariants();
+  });
+
+  it('sale with order_id: reservation released on confirm', async () => {
+    const balBefore = await getStockBalance(testSku, warehouseId);
+
+    const doc = await createDocument({
+      doc_type:    'sale',
+      warehouse_id: warehouseId,
+      customer_id:  customerId || undefined,
+      order_id:     reservationOrderId,
+      notes:        '[TEST] Sale of reserved stock',
+      meta:         { test: true },
+      lines: [{ sku: testSku, qty: 7, price: 160, cost_price: 80 }],
+    });
+    await confirmDocument(doc.id, 'test-user');
+
+    const balAfter = await getStockBalance(testSku, warehouseId);
+    expect(Number(balAfter?.qty_total)).toBe(Number(balBefore?.qty_total) - 7);
+
+    // Резерв знято
+    const { data: res } = await db
+      .from('stock_reservations')
+      .select('reservation_status, release_reason')
+      .eq('order_id', reservationOrderId)
+      .limit(1).single();
+    expect(res?.reservation_status).toBe('released');
+    expect(res?.release_reason).toBe('shipped');
+
+    // qty_reserved = 0
+    expect(Number((await getStockBalance(testSku, warehouseId))?.qty_reserved)).toBe(0);
+
+    await assertInvariants();
+  });
+
+  it('cancel reservation: qty_available restored without stock movement', async () => {
+    const orderId = crypto.randomUUID();
+    await createReservation({
+      order_id: orderId, warehouse_id: warehouseId, items: [{ sku: testSku, qty: 3 }],
+    });
+    expect(Number((await getStockBalance(testSku, warehouseId))?.qty_reserved)).toBe(3);
+
+    // Відміна резерву не створює рухів складу
+    await releaseReservation(orderId, 'cancelled');
+    const balAfter = await getStockBalance(testSku, warehouseId);
+    expect(Number(balAfter?.qty_reserved)).toBe(0);
+
+    const { count } = await db
+      .from('stock_movements')
+      .select('id', { count: 'exact', head: true })
+      .eq('order_id', orderId);
+    expect(count).toBe(0);  // резерв — не рух
+
+    await assertInvariants();
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Transfer — переміщення між складами з FIFO
+// ══════════════════════════════════════════════════════════════════════════════
+
+describe('Transfer between warehouses', () => {
+  beforeAll(async () => {
+    if (!warehouseId2) return;
+    const doc = await createDocument({
+      doc_type:    'receipt',
+      warehouse_id: warehouseId,
+      supplier_id:  supplierId,
+      notes:        '[TEST] Receipt for transfer test',
+      meta:         { test: true },
+      lines: [{ sku: testSku, qty: 12, price: 90, cost_price: 90 }],
+    });
+    await confirmDocument(doc.id, 'test-user');
+  });
+
+  it('transfers 4 units wh1→wh2: balances correct, FIFO cost preserved', async () => {
+    if (!warehouseId2) {
+      console.log('Only 1 warehouse — skipping transfer test');
+      return;
+    }
+
+    const [wh1Before, wh2Before] = await Promise.all([
+      getStockBalance(testSku, warehouseId),
+      getStockBalance(testSku, warehouseId2),
+    ]);
+
+    // FIFO спише найстарішу партію — запам'ятовуємо її собівартість до трансферу
+    const { data: oldestBatch } = await db
+      .from('stock_batches')
+      .select('cost_price')
+      .eq('sku', testSku)
+      .eq('warehouse_id', warehouseId)
+      .gt('remaining_qty', 0)
+      .order('received_at', { ascending: true })
+      .limit(1)
+      .single();
+    const expectedCost = Number(oldestBatch?.cost_price ?? 0);
+
+    const doc = await createDocument({
+      doc_type:        'transfer',
+      warehouse_id:     warehouseId,
+      warehouse_to_id:  warehouseId2,
+      notes:            '[TEST] Transfer wh1→wh2',
+      meta:             { test: true },
+      lines: [{ sku: testSku, qty: 4, price: 90, cost_price: 90 }],
+    });
+    await confirmDocument(doc.id, 'test-user');
+
+    const [wh1After, wh2After] = await Promise.all([
+      getStockBalance(testSku, warehouseId),
+      getStockBalance(testSku, warehouseId2),
+    ]);
+
+    expect(Number(wh1After?.qty_total)).toBe(Number(wh1Before?.qty_total) - 4);
+    expect(Number(wh2After?.qty_total)).toBe((Number(wh2Before?.qty_total) || 0) + 4);
+
+    // FIFO партія на wh2 — собівартість рівна найстарішій партії wh1
+    const { data: batches } = await db
+      .from('stock_batches')
+      .select('remaining_qty, cost_price')
+      .eq('sku', testSku)
+      .eq('warehouse_id', warehouseId2)
+      .gt('remaining_qty', 0)
+      .order('received_at', { ascending: false })
+      .limit(1);
+    expect(batches?.length).toBeGreaterThan(0);
+    expect(Number(batches![0].cost_price)).toBe(expectedCost);
+
+    await assertInvariants();
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Supplier payment — оплата постачальнику закриває борг
+// ══════════════════════════════════════════════════════════════════════════════
+
+describe('Supplier payment', () => {
+  it('pays half the debt: supplier balance reduces, I2+I3 hold', async () => {
+    const { data: before } = await db
+      .from('counterparty_balances')
+      .select('balance')
+      .eq('counterparty_id', String(supplierId))
+      .eq('account_type', 'supplier')
+      .maybeSingle();
+
+    const debt = Math.abs(Number(before?.balance ?? 0));
+    if (debt === 0) {
+      console.log('No supplier debt found — skipping');
+      return;
+    }
+
+    const payAmount = Math.round(debt / 2 * 100) / 100;
+    await recordSupplierPayment({
+      supplierId:    String(supplierId),
+      amount:        payAmount,
+      paymentMethod: 'bank',
+      description:   '[TEST] Partial supplier payment',
+    });
+
+    const { data: after } = await db
+      .from('counterparty_balances')
+      .select('balance')
+      .eq('counterparty_id', String(supplierId))
+      .eq('account_type', 'supplier')
+      .maybeSingle();
+
+    // Борг зменшився
+    expect(Math.abs(Number(after?.balance ?? 0))).toBeLessThan(debt);
+
+    await assertInvariants();
+  });
+});

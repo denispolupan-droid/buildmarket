@@ -1,24 +1,9 @@
-/**
- * lib/accounting/documents.ts
- *
- * Бизнес-логика документов учётной системы.
- *
- * Принципы:
- *   - Только подтверждённый документ создаёт stock_movements
- *   - Движения всегда в base_uom (qty_in_base)
- *   - Дропшип-строки: финансы фиксируются, физических движений нет
- *   - Отмена confirmed = создаёт сторно-документ (не удаляет движения)
- *   - Отмена draft = просто меняет статус
- *
- * Знак qty в движениях:
- *   'in'  direction: movement.qty = +qtyInBase (или –qtyInBase для сторно)
- *   'out' direction: movement.qty = –qtyInBase (или +qtyInBase для сторно)
- *
- * Это позволяет сторнировать одним и тем же кодом — строки сторно-документа
- * имеют qty = –original_qty, что автоматически даёт правильный знак движения.
- */
-
 import { createServiceClient } from '../supabase';
+import {
+  recordShipment, recordCOGS, recordPurchase,
+  recordReturn, recordSupplierReturn, recordTxn,
+} from './money';
+import { releaseReservation } from './reservations';
 import type {
   AccDocument,
   AccDocumentLine,
@@ -30,14 +15,18 @@ import type {
 
 // Направление движения по типу документа
 const DIRECTION = {
-  purchase_order: 'none',    // заказ поставщику — склад не трогаем
-  receipt:        'in',
-  sale:           'out',
-  return_in:      'in',
-  return_out:     'out',
-  write_off:      'out',
-  transfer:       'transfer',
-  inventory:      'inventory',
+  purchase_order:            'none',
+  purchase_order_adjustment: 'none',
+  receipt:                   'in',
+  stock_in:                  'in',
+  supplier_invoice:          'none',
+  supplier_return:           'out',
+  sale:                      'out',
+  return_in:                 'in',
+  return_out:                'out',
+  write_off:                 'out',
+  transfer:                  'transfer',
+  inventory:                 'inventory',
 } as const satisfies Record<DocType, string>;
 
 type Direction = (typeof DIRECTION)[DocType];
@@ -73,6 +62,7 @@ export async function createDocument(
       currency:         input.currency           ?? 'UAH',
       exchange_rate:    input.exchange_rate      ?? 1,
       created_by:       input.created_by         ?? null,
+      parent_doc_id:    input.parent_doc_id      ?? null,
       meta:             input.meta               ?? {},
     })
     .select()
@@ -128,7 +118,6 @@ export async function confirmDocument(
 ): Promise<void> {
   const db = createServiceClient();
 
-  // Загружаем документ со строками
   const doc = await getDocument(documentId);
   if (!doc) throw new Error('Document not found');
   if (doc.status !== 'draft') {
@@ -139,9 +128,23 @@ export async function confirmDocument(
   if (lines.length === 0) throw new Error('Document has no lines');
 
   const direction: Direction = DIRECTION[doc.doc_type as DocType] ?? 'none';
+  const isReversal = !!doc.reversal_of;
 
-  // Idempotency: если движения уже созданы (прошлый вызов упал после insert) —
-  // пропускаем создание движений и только обновляем статус
+  // P1: перевірка overreceipt для receipts що мають parent PO
+  if ((doc.doc_type === 'receipt' || doc.doc_type === 'stock_in') && doc.parent_doc_id && !isReversal) {
+    const { data: check } = await db.rpc('check_receipt_quantities', { p_receipt_id: documentId });
+    const violations = (check ?? []).filter((r: { would_exceed: boolean }) => r.would_exceed);
+    if (violations.length > 0) {
+      const skus = violations.map((v: {
+        sku: string; effective: number; already_received: number; this_receipt: number
+      }) =>
+        `${v.sku}: ефективно замовлено ${v.effective}, вже отримано ${v.already_received}, цей прихід ${v.this_receipt}`
+      ).join('; ');
+      throw new Error(`[P1] Перевищення замовленої кількості: ${skus}`);
+    }
+  }
+
+  // Idempotency: якщо рухи вже є — пропускаємо їх побудову
   const { count: existingMoves } = await db
     .from('stock_movements')
     .select('id', { count: 'exact', head: true })
@@ -149,17 +152,23 @@ export async function confirmDocument(
 
   let totalAmount = 0;
   let totalCost   = 0;
+  let fifoCost    = 0;
 
   if (direction !== 'none' && (existingMoves ?? 0) === 0) {
-    const movements = await buildMovements(db, doc, lines, direction);
-
-    if (movements.length > 0) {
-      const { error } = await db.from('stock_movements').insert(movements);
+    const result = await buildMovements(db, doc, lines, direction);
+    if (result.movements.length > 0) {
+      const { error } = await db.from('stock_movements').insert(result.movements);
       if (error) throw error;
     }
+    fifoCost = result.fifoCost;
+  } else if ((existingMoves ?? 0) > 0 && (direction === 'out' || direction === 'transfer')) {
+    const { data: existingMovs } = await db
+      .from('stock_movements')
+      .select('batch_cost')
+      .eq('document_id', documentId);
+    fifoCost = (existingMovs ?? []).reduce((s, m) => s + (Number(m.batch_cost) || 0), 0);
   }
 
-  // Пересчёт итогов по строкам
   for (const line of lines) {
     totalAmount += Math.abs(line.amount ?? 0);
     totalCost   += Math.abs((line.cost_price ?? 0) * (line.qty_in_base ?? line.qty));
@@ -176,6 +185,115 @@ export async function confirmDocument(
     })
     .eq('id', documentId);
   if (error) throw error;
+
+  // ── Записи в грошовому леджері (подвійний запис) ──────────────────────────
+  // Для сторно-документів (reversal_of != null) напрямок проводок обернений.
+  const bizDate = doc.doc_date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
+
+  if (doc.doc_type === 'receipt' || doc.doc_type === 'stock_in') {
+    if (doc.supplier_id && totalCost > 0) {
+      if (isReversal) {
+        // Сторно приходу: дебет supplier (зменшуємо борг), кредит inventory_asset
+        await recordSupplierReturn({
+          supplierId:     String(doc.supplier_id),
+          docId:          documentId,
+          amount:         totalCost,
+          businessDate:   bizDate,
+          createdBy:      confirmedBy,
+          idempotencyKey: `storno-purchase:${documentId}`,
+        });
+      } else {
+        await recordPurchase({
+          supplierId:     String(doc.supplier_id),
+          docId:          documentId,
+          amount:         totalCost,
+          businessDate:   bizDate,
+          createdBy:      confirmedBy,
+          idempotencyKey: `purchase:${documentId}`,
+        });
+      }
+    }
+
+  } else if (doc.doc_type === 'sale') {
+    if (isReversal) {
+      // Сторно продажу: сторно виручки + сторно COGS
+      if (doc.customer_id && totalAmount > 0) {
+        await recordReturn({
+          customerId:     doc.customer_id,
+          orderId:        doc.order_id ?? undefined,
+          docId:          documentId,
+          amount:         totalAmount,
+          businessDate:   bizDate,
+          createdBy:      confirmedBy,
+          idempotencyKey: `storno-shipment:${documentId}`,
+        });
+      }
+      if (fifoCost > 0) {
+        // Сторно COGS: дебет inventory_asset, кредит cogs (обернено до recordCOGS)
+        await recordTxn({
+          debitAccount:   'inventory_asset',
+          creditAccount:  'cogs',
+          amount:         fifoCost,
+          businessDate:   bizDate,
+          docId:          documentId,
+          docType:        'sale',
+          orderId:        doc.order_id ?? undefined,
+          createdBy:      confirmedBy,
+          idempotencyKey: `storno-cogs:${documentId}`,
+        });
+      }
+    } else {
+      if (doc.customer_id && totalAmount > 0) {
+        await recordShipment({
+          customerId:     doc.customer_id,
+          orderId:        doc.order_id ?? undefined,
+          docId:          documentId,
+          amount:         totalAmount,
+          businessDate:   bizDate,
+          createdBy:      confirmedBy,
+          idempotencyKey: `shipment:${documentId}`,
+        });
+      }
+      if (fifoCost > 0) {
+        await recordCOGS({
+          amount:         fifoCost,
+          docId:          documentId,
+          orderId:        doc.order_id ?? undefined,
+          businessDate:   bizDate,
+          createdBy:      confirmedBy,
+          idempotencyKey: `cogs:${documentId}`,
+        });
+      }
+      if (doc.order_id) {
+        await releaseReservation(doc.order_id, 'shipped');
+      }
+    }
+
+  } else if (doc.doc_type === 'return_out') {
+    if (doc.customer_id && totalAmount > 0) {
+      await recordReturn({
+        customerId:     doc.customer_id,
+        orderId:        doc.order_id ?? undefined,
+        docId:          documentId,
+        amount:         totalAmount,
+        businessDate:   bizDate,
+        createdBy:      confirmedBy,
+        idempotencyKey: `return:${documentId}`,
+      });
+    }
+
+  } else if (doc.doc_type === 'supplier_return') {
+    if (doc.supplier_id && totalCost > 0) {
+      await recordSupplierReturn({
+        supplierId:     String(doc.supplier_id),
+        docId:          documentId,
+        amount:         totalCost,
+        businessDate:   bizDate,
+        createdBy:      confirmedBy,
+        idempotencyKey: `sup-return:${documentId}`,
+      });
+    }
+  }
 }
 
 // ── Отмена документа ──────────────────────────────────────────────────────────
@@ -191,14 +309,13 @@ export async function cancelDocument(
   if (!doc)                       throw new Error('Document not found');
   if (doc.status === 'cancelled') throw new Error('Document already cancelled');
 
-  // Черновик — просто отменяем без сторно
   if (doc.status === 'draft') {
     const { error } = await db
       .from('acc_documents')
       .update({
-        status:       'cancelled',
-        cancelled_at: new Date().toISOString(),
-        cancelled_by: cancelledBy,
+        status:        'cancelled',
+        cancelled_at:  new Date().toISOString(),
+        cancelled_by:  cancelledBy,
         cancel_reason: reason ?? null,
       })
       .eq('id', documentId);
@@ -235,7 +352,7 @@ export async function cancelDocument(
     .single();
   if (reversalError) throw reversalError;
 
-  // Строки сторно: qty = –original_qty (это даёт обратное движение автоматически)
+  // Строки сторно: qty = –original_qty
   const reversalLines = doc.lines.map((l: AccDocumentLine, i: number) => ({
     document_id:      reversal.id,
     sku:              l.sku,
@@ -257,10 +374,8 @@ export async function cancelDocument(
     .insert(reversalLines);
   if (linesError) throw linesError;
 
-  // Проводим сторно — создаёт обратные движения
   await confirmDocument(reversal.id, cancelledBy);
 
-  // Отмечаем оригинал как отменённый
   const { error: cancelError } = await db
     .from('acc_documents')
     .update({
@@ -273,15 +388,21 @@ export async function cancelDocument(
   if (cancelError) throw cancelError;
 }
 
-// ── Побудова рухів (внутрішня функція) ───────────────────────────────────────
+// ── Побудова рухів ────────────────────────────────────────────────────────────
+//
+// Знак qty визначається напрямком та тим, чи це сторно (qtyInBase < 0):
+//   'in'  + qty>0: +qty  (приход)       'in'  + qty<0: -|qty| (сторно приходу — consume FIFO)
+//   'out' + qty>0: -qty  (витрата)      'out' + qty<0: +|qty| (сторно витрати — create batch)
+// 'transfer' аналогічно: обидва напрямки обертаються при сторно.
 
 async function buildMovements(
   db: ReturnType<typeof createServiceClient>,
   doc: AccDocumentWithLines,
   lines: AccDocumentLine[],
   direction: Direction,
-): Promise<MovementInsert[]> {
+): Promise<{ movements: MovementInsert[]; fifoCost: number }> {
   const movements: MovementInsert[] = [];
+  let totalFifoCost = 0;
 
   for (const line of lines) {
     const qtyInBase = line.qty_in_base ?? (line.qty * (line.uom_factor ?? 1));
@@ -299,17 +420,16 @@ async function buildMovements(
     };
 
     if (direction === 'in') {
-      movements.push({
-        ...base,
-        warehouse_id: lineWarehouseId,
-        sku:          line.sku,
-        qty:          qtyInBase,
-        cost_price:   line.cost_price ?? null,
-        sale_price:   null,
-      });
-
-      // FIFO: create batch for incoming stock
       if (qtyInBase > 0) {
+        // Нормальний приход — створюємо FIFO-партію
+        movements.push({
+          ...base,
+          warehouse_id: lineWarehouseId,
+          sku:          line.sku,
+          qty:          qtyInBase,
+          cost_price:   line.cost_price ?? null,
+          sale_price:   null,
+        });
         await db.rpc('create_stock_batch', {
           p_sku:          line.sku,
           p_warehouse_id: lineWarehouseId,
@@ -319,66 +439,128 @@ async function buildMovements(
           p_cost_price:   line.cost_price ?? 0,
           p_received_at:  doc.doc_date ?? new Date().toISOString(),
         });
+      } else {
+        // Сторно приходу — consume FIFO, рух від'ємний (склад зменшується)
+        const absQty = Math.abs(qtyInBase);
+        const { data: batchCost } = await db.rpc('consume_stock_fifo', {
+          p_sku:          line.sku,
+          p_warehouse_id: lineWarehouseId,
+          p_qty:          absQty,
+        });
+        movements.push({
+          ...base,
+          warehouse_id: lineWarehouseId,
+          sku:          line.sku,
+          qty:          -absQty,
+          cost_price:   absQty > 0 ? ((batchCost as number) ?? 0) / absQty : (line.cost_price ?? 0),
+          sale_price:   null,
+          batch_cost:   (batchCost as number) ?? null,
+        });
       }
 
     } else if (direction === 'out') {
-      // FIFO: consume from oldest batches
-      const { data: fifoCost } = await db.rpc('consume_stock_fifo', {
-        p_sku:          line.sku,
-        p_warehouse_id: lineWarehouseId,
-        p_qty:          Math.abs(qtyInBase),
-      });
-      const costPerUnit = Math.abs(qtyInBase) > 0
-        ? ((fifoCost as number) ?? 0) / Math.abs(qtyInBase)
-        : (line.cost_price ?? 0);
-
-      movements.push({
-        ...base,
-        warehouse_id: lineWarehouseId,
-        sku:          line.sku,
-        qty:          -Math.abs(qtyInBase),
-        cost_price:   costPerUnit,
-        sale_price:   line.price,
-        batch_cost:   (fifoCost as number) ?? null,
-      });
+      if (qtyInBase > 0) {
+        // Нормальний розхід — consume FIFO
+        const { data: lineBatchCost } = await db.rpc('consume_stock_fifo', {
+          p_sku:          line.sku,
+          p_warehouse_id: lineWarehouseId,
+          p_qty:          qtyInBase,
+        });
+        const costPerUnit = ((lineBatchCost as number) ?? 0) / qtyInBase;
+        movements.push({
+          ...base,
+          warehouse_id: lineWarehouseId,
+          sku:          line.sku,
+          qty:          -qtyInBase,
+          cost_price:   costPerUnit,
+          sale_price:   line.price,
+          batch_cost:   (lineBatchCost as number) ?? null,
+        });
+        totalFifoCost += (lineBatchCost as number) ?? 0;
+      } else {
+        // Сторно розходу — повертаємо товар на склад як нову FIFO-партію
+        const absQty = Math.abs(qtyInBase);
+        const costPerUnit = line.cost_price ?? 0;
+        await db.rpc('create_stock_batch', {
+          p_sku:          line.sku,
+          p_warehouse_id: lineWarehouseId,
+          p_supplier_id:  doc.supplier_id ?? null,
+          p_document_id:  doc.id,
+          p_qty:          absQty,
+          p_cost_price:   costPerUnit,
+          p_received_at:  doc.doc_date ?? new Date().toISOString(),
+        });
+        movements.push({
+          ...base,
+          warehouse_id: lineWarehouseId,
+          sku:          line.sku,
+          qty:          absQty,
+          cost_price:   costPerUnit,
+          sale_price:   null,
+          batch_cost:   null,
+        });
+      }
 
     } else if (direction === 'transfer') {
-      const { data: fifoCost } = await db.rpc('consume_stock_fifo', {
-        p_sku:          line.sku,
-        p_warehouse_id: doc.warehouse_id,
-        p_qty:          Math.abs(qtyInBase),
-      });
-      const costPerUnit = Math.abs(qtyInBase) > 0
-        ? ((fifoCost as number) ?? 0) / Math.abs(qtyInBase)
-        : 0;
-
-      movements.push({ ...base, warehouse_id: doc.warehouse_id,      sku: line.sku, qty: -Math.abs(qtyInBase), cost_price: costPerUnit, sale_price: null });
-      movements.push({ ...base, warehouse_id: doc.warehouse_to_id!,   sku: line.sku, qty:  Math.abs(qtyInBase), cost_price: costPerUnit, sale_price: null });
-
-      // Create batch on destination warehouse
-      await db.rpc('create_stock_batch', {
-        p_sku: line.sku, p_warehouse_id: doc.warehouse_to_id!,
-        p_supplier_id: null, p_document_id: doc.id,
-        p_qty: Math.abs(qtyInBase), p_cost_price: costPerUnit,
-        p_received_at: doc.doc_date ?? new Date().toISOString(),
-      });
+      const absQty = Math.abs(qtyInBase);
+      if (qtyInBase > 0) {
+        // Нормальне переміщення: списати з source, оприбуткувати на dest
+        const { data: lineBatchCost } = await db.rpc('consume_stock_fifo', {
+          p_sku:          line.sku,
+          p_warehouse_id: doc.warehouse_id,
+          p_qty:          absQty,
+        });
+        const costPerUnit = absQty > 0 ? ((lineBatchCost as number) ?? 0) / absQty : 0;
+        movements.push({ ...base, warehouse_id: doc.warehouse_id,      sku: line.sku, qty: -absQty, cost_price: costPerUnit, sale_price: null });
+        movements.push({ ...base, warehouse_id: doc.warehouse_to_id!,  sku: line.sku, qty:  absQty, cost_price: costPerUnit, sale_price: null });
+        await db.rpc('create_stock_batch', {
+          p_sku: line.sku, p_warehouse_id: doc.warehouse_to_id!,
+          p_supplier_id: null, p_document_id: doc.id,
+          p_qty: absQty, p_cost_price: costPerUnit,
+          p_received_at: doc.doc_date ?? new Date().toISOString(),
+        });
+      } else {
+        // Сторно переміщення: consume з dest, відновити source
+        const { data: lineBatchCost } = await db.rpc('consume_stock_fifo', {
+          p_sku:          line.sku,
+          p_warehouse_id: doc.warehouse_to_id!,
+          p_qty:          absQty,
+        });
+        const costPerUnit = absQty > 0 ? ((lineBatchCost as number) ?? 0) / absQty : 0;
+        movements.push({ ...base, warehouse_id: doc.warehouse_id,      sku: line.sku, qty:  absQty, cost_price: costPerUnit, sale_price: null });
+        movements.push({ ...base, warehouse_id: doc.warehouse_to_id!,  sku: line.sku, qty: -absQty, cost_price: costPerUnit, sale_price: null });
+        await db.rpc('create_stock_batch', {
+          p_sku: line.sku, p_warehouse_id: doc.warehouse_id,
+          p_supplier_id: null, p_document_id: doc.id,
+          p_qty: absQty, p_cost_price: costPerUnit,
+          p_received_at: doc.doc_date ?? new Date().toISOString(),
+        });
+      }
 
     } else if (direction === 'inventory') {
-      const { data: fifoCost } = qtyInBase < 0
-        ? await db.rpc('consume_stock_fifo', { p_sku: line.sku, p_warehouse_id: lineWarehouseId, p_qty: Math.abs(qtyInBase) })
-        : { data: (line.cost_price ?? 0) * qtyInBase };
-
-      movements.push({
-        ...base,
-        warehouse_id: lineWarehouseId,
-        sku:          line.sku,
-        qty:          qtyInBase,
-        cost_price:   line.cost_price ?? null,
-        sale_price:   null,
-        batch_cost:   qtyInBase < 0 ? (fifoCost as number) ?? null : null,
-      });
-
-      if (qtyInBase > 0) {
+      if (qtyInBase < 0) {
+        const absQty = Math.abs(qtyInBase);
+        const { data: lineInventoryCost } = await db.rpc('consume_stock_fifo', {
+          p_sku: line.sku, p_warehouse_id: lineWarehouseId, p_qty: absQty,
+        });
+        movements.push({
+          ...base,
+          warehouse_id: lineWarehouseId,
+          sku:          line.sku,
+          qty:          -absQty,
+          cost_price:   line.cost_price ?? null,
+          sale_price:   null,
+          batch_cost:   (lineInventoryCost as number) ?? null,
+        });
+      } else {
+        movements.push({
+          ...base,
+          warehouse_id: lineWarehouseId,
+          sku:          line.sku,
+          qty:          qtyInBase,
+          cost_price:   line.cost_price ?? null,
+          sale_price:   null,
+        });
         await db.rpc('create_stock_batch', {
           p_sku: line.sku, p_warehouse_id: lineWarehouseId,
           p_supplier_id: null, p_document_id: doc.id,
@@ -389,5 +571,5 @@ async function buildMovements(
     }
   }
 
-  return movements;
+  return { movements, fifoCost: totalFifoCost };
 }

@@ -10,12 +10,21 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:all": "npm run test:run && npm run test:integration",
+    "test:watch": "vitest --watch",
+    "test:watch:integration": "vitest --watch --config vitest.integration.config.ts",
     "db:template": "tsx scripts/supabase/generate-template.ts",
     "db:import": "tsx --env-file=.env.local scripts/supabase/import-from-excel.ts",
     "db:sync-xml": "tsx --env-file=.env.local scripts/supabase/sync-stock.ts --format=1c_xml",
     "db:sync-csv": "tsx --env-file=.env.local scripts/supabase/sync-stock.ts --format=1c_csv",
     "db:migrate": "node --env-file=.env.local scripts/apply-accounting-migrations.mjs",
-    "db:migrate:dry": "node --env-file=.env.local scripts/apply-accounting-migrations.mjs --dry-run"
+    "db:migrate:dry": "node --env-file=.env.local scripts/apply-accounting-migrations.mjs --dry-run",
+    "prepare": "simple-git-hooks"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npx tsc --noEmit",
+    "pre-push": "npm run test:run"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
@@ -44,6 +53,7 @@
     "eslint-config-next": "16.2.3",
     "iconv-lite": "^0.7.2",
     "jsdom": "^29.1.1",
+    "simple-git-hooks": "^2.13.1",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5",

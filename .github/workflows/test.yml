@@ -1,0 +1,85 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ── Unit tests + type check — на кожен push/PR ───────────────────────────────
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm run test:run
+
+  # ── Integration tests — автоматично при push в main, вручну на PR ─────────────
+  integration:
+    name: Integration tests (DB)
+    runs-on: ubuntu-latest
+    needs: unit
+    # На push в main — завжди. На PR — тільки якщо є секрети (не fork).
+    if: |
+      github.event_name == 'push' && github.ref == 'refs/heads/main' ||
+      github.event_name == 'workflow_dispatch'
+    concurrency:
+      group: integration-tests
+      cancel-in-progress: false   # не скасовуємо — чекаємо завершення (БД спільна)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Integration tests
+        env:
+          NEXT_PUBLIC_SUPABASE_URL:      ${{ secrets.TEST_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY:     ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+        run: npm run test:integration
+
+      - name: Verify DB invariants
+        if: always()
+        env:
+          SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+          SERVICE_KEY:  ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          RESULT=$(curl -s \
+            -H "Authorization: Bearer $SERVICE_KEY" \
+            -H "apikey: $SERVICE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "$SUPABASE_URL/rest/v1/rpc/check_invariants")
+          echo "$RESULT" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          print('\nDB Invariants:')
+          for r in data:
+              icon = '✓' if r['status'] == 'OK' else '✗'
+              print(f'  {icon} {r[\"invariant\"]}')
+              if r['status'] != 'OK':
+                  print(f'    → {r[\"details\"]}')
+          fails = [r for r in data if r['status'] == 'FAIL']
+          sys.exit(len(fails))
+          "

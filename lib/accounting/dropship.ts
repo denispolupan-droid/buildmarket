@@ -16,6 +16,7 @@
  */
 
 import { createServiceClient } from '../supabase';
+import { recordShipment, recordCOGS } from './money';
 import { createDocument, confirmDocument } from './documents';
 import { resolveOrderFulfillment } from './fulfillment';
 import type { OrderItem } from '../../types';
@@ -173,6 +174,9 @@ export type RecordDropshipSaleInput = {
   order_items:   OrderItem[];
   channel_code?: string;
   confirmed_by?: string;
+  customer_id?:  string;
+  contract_id?:  string;
+  business_date?: string;
 };
 
 export async function recordDropshipSale(
@@ -239,8 +243,36 @@ export async function recordDropshipSale(
     }),
   });
 
-  // Проводим — движений нет, только финансовая фиксация
+  // Проводим документ
   await confirmDocument(doc.id, input.confirmed_by ?? 'system');
+
+  // Записуємо в грошовий леджер (I5: виручка і COGS разом)
+  const totalRevenue = input.order_items.reduce((s, i) => s + i.qty * i.price, 0);
+  const totalCOGS    = input.order_items.reduce((s, i) => s + i.qty * (costMap.get(i.sku) ?? 0), 0);
+
+  if (totalRevenue > 0 && input.customer_id) {
+    await recordShipment({
+      customerId:     input.customer_id,
+      contractId:     input.contract_id,
+      orderId:        input.order_id,
+      docId:          doc.id,
+      amount:         totalRevenue,
+      businessDate:   input.business_date,
+      createdBy:      input.confirmed_by,
+      idempotencyKey: `shipment:${input.order_id}`,
+    });
+  }
+
+  if (totalCOGS > 0) {
+    await recordCOGS({
+      amount:         totalCOGS,
+      docId:          doc.id,
+      orderId:        input.order_id,
+      businessDate:   input.business_date,
+      createdBy:      input.confirmed_by,
+      idempotencyKey: `cogs:${input.order_id}`,
+    });
+  }
 
   return doc.id;
 }

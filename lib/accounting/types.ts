@@ -1,12 +1,20 @@
 export type DocType =
   | 'purchase_order'
+  | 'purchase_order_adjustment'  // корекція підтвердженого PO (P6)
   | 'receipt'
+  | 'stock_in'
+  | 'supplier_invoice'           // рахунок-фактура від постачальника (окремо від receipt)
+  | 'supplier_return'            // повернення товару постачальнику
   | 'sale'
   | 'return_in'
   | 'return_out'
   | 'write_off'
   | 'transfer'
   | 'inventory';
+
+export type POStatus =
+  | 'draft' | 'sent' | 'confirmed_by_supplier'
+  | 'partially_received' | 'received' | 'closed' | 'cancelled';
 
 export type DocStatus = 'draft' | 'confirmed' | 'cancelled';
 
@@ -36,6 +44,15 @@ export type AccDocument = {
   cancelled_by: string | null;
   cancel_reason: string | null;
   reversal_of: string | null;
+  parent_doc_id: string | null;
+  po_status: POStatus | null;
+  procurement_status: string | null;
+  marketplace_order_id: string | null;
+  supplier_invoice_number: string | null;
+  supplier_invoice_date: string | null;
+  supplier_invoice_amount: number | null;
+  landed_cost_method: string | null;
+  landed_cost_total: number | null;
   created_at: string;
   created_by: string | null;
   currency: string;
@@ -62,6 +79,11 @@ export type AccDocumentLine = {
   qty_system: number | null;
   exchange_rate: number;
   price_uah: number;        // GENERATED: price * exchange_rate
+  po_line_id: number | null;
+  manual_reason: string | null;
+  overreceipt_reason: string | null;
+  original_qty: number | null;
+  adjusted_qty: number | null;
   meta: Record<string, unknown>;
 };
 
@@ -102,6 +124,7 @@ export type CreateDocumentInput = {
   notes?: string;
   currency?: string;
   exchange_rate?: number;
+  parent_doc_id?: string;
   lines: CreateDocumentLineInput[];
   created_by?: string;
   meta?: Record<string, unknown>;
