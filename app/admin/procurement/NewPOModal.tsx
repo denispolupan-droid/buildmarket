@@ -246,7 +246,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
   return (
     <>
     {/* Side panel ЛІВОРУЧ — після sidebar (220px) */}
-    <div style={{ position: 'fixed', top: 0, left: '220px', bottom: 0, zIndex, width: 'min(800px, 56vw)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', boxShadow: '8px 0 32px rgba(0,0,0,0.22)', borderRight: '1px solid var(--border)' }}>
+    <div className="po-panel-enter" style={{ position: 'fixed', top: 0, left: '220px', bottom: 0, zIndex, width: 'min(800px, 56vw)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', boxShadow: '8px 0 32px rgba(0,0,0,0.22)', borderRight: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
         {/* Header */}
@@ -412,7 +412,11 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
         </div>
       </div>
     </div>
-    <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+    <style>{`
+      @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+      @keyframes po-panel-enter { from{opacity:0.4;transform:translateX(-14px)} to{opacity:1;transform:translateX(0)} }
+      .po-panel-enter { animation: po-panel-enter 0.2s cubic-bezier(0.25,0.46,0.45,0.94); }
+    `}</style>
     </>
   );
 }

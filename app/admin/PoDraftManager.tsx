@@ -147,6 +147,7 @@ export default function PoDraftManager() {
               boxShadow:    '6px -6px 20px rgba(0,0,0,0.18)',
               cursor:       'pointer',
               overflow:     'hidden',
+              transition:   'top 0.2s ease-out, width 0.2s ease-out',
             }}
           >
             {/* Видимий правий edge зі слабким hover */}
@@ -213,7 +214,7 @@ export default function PoDraftManager() {
                 onClick={() => bringToFront(draft.id)}
                 className="po-tab"
                 style={{
-                  height: isActive ? '44px' : '40px',
+                  height: isActive ? '46px' : '38px',
                   width:  '210px',
                   background: isActive
                     ? 'rgba(30, 58, 95, 1)'
@@ -222,14 +223,18 @@ export default function PoDraftManager() {
                       : 'rgba(20, 35, 60, 0.96)',
                   backdropFilter: 'blur(12px)',
                   borderRadius: '10px 10px 0 0',
-                  border: `1px solid ${isActive ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.09)'}`,
+                  border: '1px solid rgba(255,255,255,0.09)',
+                  borderTop: isActive ? '2px solid #4880B8' : '1px solid rgba(255,255,255,0.09)',
                   borderBottom: 'none',
                   display: 'flex', alignItems: 'center', gap: '8px',
                   padding: '0 8px 0 12px',
                   cursor: 'pointer',
-                  boxShadow: isActive ? '0 -2px 12px rgba(0,0,0,0.3)' : '0 -1px 6px rgba(0,0,0,0.15)',
-                  transition: 'background 0.15s, height 0.1s',
+                  boxShadow: isActive
+                    ? '0 -4px 16px rgba(72,128,184,0.25)'
+                    : '0 -1px 6px rgba(0,0,0,0.15)',
+                  transition: 'background 0.18s, height 0.15s ease-out, box-shadow 0.18s, border-color 0.18s',
                   flexShrink: 0,
+                  alignSelf: 'flex-end', // підйом від нижнього краю
                 }}
               >
                 {/* Dot */}
