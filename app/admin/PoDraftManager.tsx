@@ -158,7 +158,7 @@ export default function PoDraftManager() {
               position: 'fixed',
               left:   `${SIDEBAR_W}px`,
               top:    `${topOffset}px`,
-              bottom: '46px',
+              bottom: '42px',
               width:  `calc(${PANEL_W} + ${peekWidth}px)`,
               zIndex: 1000 + idx,
               background:   'var(--bg-card)',
@@ -220,7 +220,7 @@ export default function PoDraftManager() {
       {drafts.length > 0 && (
         <div style={{
           position: 'fixed', bottom: 0, left: '220px', zIndex: 1010,
-          display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '2px',
+          display: 'flex', flexDirection: 'row', alignItems: 'stretch', gap: '2px',
         }}>
           {tabOrder.map(draft => {
             const isActive    = !draft.minimized && draft.id === topCard?.id;
@@ -232,19 +232,19 @@ export default function PoDraftManager() {
             const isConfirming = confirmClose === draft.id;
 
             const tabStyle: React.CSSProperties = {
-              height: isActive ? '46px' : '38px',
+              height: '42px',
               width:  '210px',
-              background: isActive ? '#3a4256' : isOpenStack ? '#323848' : '#2b3040',
+              background: '#323848',
               backdropFilter: 'blur(8px)',
               borderRadius: '10px 10px 0 0',
               border: '1px solid rgba(255,255,255,0.08)',
               borderTop: isActive ? '2px solid #4880B8' : '1px solid rgba(255,255,255,0.06)',
               borderBottom: 'none',
               display: 'flex', alignItems: 'center',
-              boxShadow: isActive ? '0 -4px 16px rgba(72,128,184,0.25)' : '0 -1px 6px rgba(0,0,0,0.15)',
-              transition: 'background 0.18s, height 0.15s ease-out, box-shadow 0.18s, border-color 0.18s',
+              boxShadow: isActive ? '0 -3px 14px rgba(72,128,184,0.2)' : 'none',
+              opacity: isActive ? 1 : 0.5,
+              transition: 'opacity 0.18s, box-shadow 0.18s, border-color 0.18s',
               flexShrink: 0,
-              alignSelf: 'flex-end',
               overflow: 'hidden',
             };
 
