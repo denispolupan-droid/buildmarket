@@ -15,7 +15,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { X } from 'lucide-react';
+import { X, Minus } from 'lucide-react';
 
 const NewPOModal = dynamic(() => import('./procurement/NewPOModal'), { ssr: false });
 
@@ -230,7 +230,7 @@ export default function PoDraftManager() {
             return (
               <div
                 key={draft.id}
-                onClick={() => bringToFront(draft.id)}
+                onClick={() => isActive ? minimizeDraft(draft.id) : bringToFront(draft.id)}
                 className="po-tab"
                 style={{
                   height: isActive ? '46px' : '38px',
@@ -278,9 +278,26 @@ export default function PoDraftManager() {
                   )}
                 </div>
 
+                {/* Minimize */}
+                {!draft.minimized && (
+                  <button
+                    onClick={e => { e.stopPropagation(); minimizeDraft(draft.id); }}
+                    title="Згорнути"
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: 'rgba(255,255,255,0.3)', display: 'flex', padding: '3px',
+                      borderRadius: '4px', flexShrink: 0,
+                    }}
+                    className="po-close-btn"
+                  >
+                    <Minus size={11} />
+                  </button>
+                )}
+
                 {/* Close */}
                 <button
                   onClick={e => { e.stopPropagation(); closeDraft(draft.id); }}
+                  title="Закрити"
                   style={{
                     background: 'none', border: 'none', cursor: 'pointer',
                     color: 'rgba(255,255,255,0.25)', display: 'flex', padding: '3px',
