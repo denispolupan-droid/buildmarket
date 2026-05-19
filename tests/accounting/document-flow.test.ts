@@ -73,26 +73,27 @@ beforeAll(async () => {
   db = createClient(url, key, { auth: { persistSession: false } });
 
   // Знаходимо реальний склад, постачальника та SKU
-  const [
-    { data: wh,   error: whErr  },
-    { data: sup,  error: supErr },
-    { data: prod, error: prodErr },
-    { data: cust },
-  ] = await Promise.all([
-    db.from('warehouses').select('id').order('id').limit(1).single(),
-    db.from('suppliers').select('id').order('id').limit(1).single(),
-    db.from('products').select('sku').order('sort_order').limit(1).single(),
-    db.from('customers').select('id').order('created_at').limit(1).maybeSingle(),
+  // Використовуємо limit(1) замість .single() — стійкіше до PostgREST помилок
+  const [whRes, supRes, prodRes, custRes] = await Promise.all([
+    db.from('warehouses').select('id').order('id').limit(1),
+    db.from('suppliers').select('id').order('id').limit(1),
+    db.from('products').select('sku').order('sort_order').limit(1),
+    db.from('customers').select('id').order('created_at').limit(1),
   ]);
 
   console.log('DB URL:', url);
-  if (whErr)   console.error('warehouses error:', whErr);
-  if (supErr)  console.error('suppliers error:', supErr);
-  if (prodErr) console.error('products error:', prodErr);
+  console.log('warehouses:', whRes.data?.length, whRes.error?.message);
+  console.log('suppliers:', supRes.data?.length, supRes.error?.message);
+  console.log('products:', prodRes.data?.length, prodRes.error?.message);
 
-  if (!wh)   throw new Error(`No warehouses found in DB: ${whErr?.message}`);
-  if (!sup)  throw new Error(`No suppliers found in DB: ${supErr?.message}`);
-  if (!prod) throw new Error(`No products found in DB: ${prodErr?.message}`);
+  const wh   = whRes.data?.[0]   ?? null;
+  const sup  = supRes.data?.[0]  ?? null;
+  const prod = prodRes.data?.[0] ?? null;
+  const cust = custRes.data?.[0] ?? null;
+
+  if (!wh)   throw new Error(`No warehouses: ${whRes.error?.message}`);
+  if (!sup)  throw new Error(`No suppliers: ${supRes.error?.message}`);
+  if (!prod) throw new Error(`No products: ${prodRes.error?.message}`);
 
   warehouseId = wh.id;
   supplierId  = sup.id;
