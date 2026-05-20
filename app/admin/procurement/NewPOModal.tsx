@@ -527,6 +527,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
               <div key={s.sku}
                 onMouseDown={() => selectNameSuggestion(suggestionAnchor.idx, s)}
                 onMouseEnter={() => setActiveDropdownIdx(i)}
+                title={`${s.brand} ${s.name}`.trim()}
                 style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'baseline', gap: '8px', whiteSpace: 'nowrap', overflow: 'hidden', background: isActive ? '#EFF4FF' : 'transparent', transition: 'background 0.1s' }}>
                 <span style={{ color: isActive ? '#1E3A5F' : 'var(--text-muted)', fontSize: '11px', fontFamily: 'monospace', flexShrink: 0 }}>{s.sku}</span>
                 <span style={{ fontWeight: 700, color: '#1E3A5F', flexShrink: 0 }}>{s.brand}</span>
