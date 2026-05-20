@@ -108,6 +108,8 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
   const [error,      setError]      = useState('');
   const [sendOnPost, setSendOnPost] = useState(false);
   const lookupTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+  const nameTimers   = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+  const [nameSuggestions, setNameSuggestions] = useState<Record<number, { sku: string; name: string; brand: string }[]>>({});
 
   // Debounced lookup — спрацьовує через 600мс після завершення друку
   function handleSkuChange(idx: number, val: string) {
@@ -121,8 +123,37 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
 
   useEffect(() => {
     const timers = lookupTimers.current;
-    return () => { Object.values(timers).forEach(clearTimeout); };
+    const ntimers = nameTimers.current;
+    return () => {
+      Object.values(timers).forEach(clearTimeout);
+      Object.values(ntimers).forEach(clearTimeout);
+    };
   }, []);
+
+  function handleNameChange(idx: number, val: string) {
+    setLineField(idx, 'name', val);
+    clearTimeout(nameTimers.current[idx]);
+    if (val.trim().length >= 2) {
+      nameTimers.current[idx] = setTimeout(async () => {
+        const res = await fetch(`/api/admin/products/search?q=${encodeURIComponent(val.trim())}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        setNameSuggestions(prev => ({ ...prev, [idx]: data.slice(0, 8) }));
+      }, 300);
+    } else {
+      setNameSuggestions(prev => ({ ...prev, [idx]: [] }));
+    }
+  }
+
+  async function selectNameSuggestion(idx: number, s: { sku: string; name: string; brand: string }) {
+    setNameSuggestions(prev => ({ ...prev, [idx]: [] }));
+    setLines(prev => prev.map((l, i) => i === idx
+      ? { ...l, sku: s.sku, name: `${s.brand} ${s.name}`.trim(), matched: true }
+      : l
+    ));
+    // підтягуємо ціну
+    await lookupSku(idx, s.sku);
+  }
 
   // Resolve SKUs against DB — підтримує і наші артикули і артикули постачальника
   async function resolveLines(raw: { sku: string; name: string; qty: number; price: number }[]): Promise<Line[]> {
@@ -139,7 +170,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
     const data = await res.json();
 
     // input_sku → resolved product info
-    const byInput = new Map<string, { sku: string; name: string; brand: string; price_cost: number | null; matched: boolean; via_supplier: boolean }>();
+    const byInput = new Map<string, { sku: string; name: string; brand: string; price_cost: number | null; price_unit: number | null; matched: boolean; via_supplier: boolean }>();
     for (const p of (data.products ?? [])) {
       byInput.set(p.input_sku, p);
     }
@@ -151,7 +182,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
         name:          found ? `${found.brand ?? ''} ${found.name ?? ''}`.trim() : r.name,
         qty:           r.qty,
         cost_price:    found?.price_cost ?? r.price,
-        catalog_price: found?.price_cost ?? undefined,
+        catalog_price: found?.price_cost ?? found?.price_unit ?? undefined,
         matched:       found?.matched ?? false,
       };
     });
@@ -200,7 +231,8 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
         sku:           found.sku,
         name:          `${found.brand ?? ''} ${found.name ?? ''}`.trim(),
         cost_price:    found.price_cost ?? l.cost_price,
-        catalog_price: found.price_cost ?? undefined,
+        // якщо немає price_cost — показуємо price_unit як орієнтир
+        catalog_price: found.price_cost ?? found.price_unit ?? undefined,
         matched:       true,
       } : l));
     } else {
@@ -359,13 +391,37 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
                         }
                       }} />
 
-                    <input style={inp} placeholder="Назва товару"
-                      value={line.name}
-                      onChange={e => setLineField(idx, 'name', e.target.value)} />
+                    <div style={{ position: 'relative' }}>
+                      <input style={inp} placeholder="Назва товару або пошук..."
+                        value={line.name}
+                        onChange={e => handleNameChange(idx, e.target.value)}
+                        onBlur={() => setTimeout(() => setNameSuggestions(prev => ({ ...prev, [idx]: [] })), 150)}
+                        onFocus={() => { if (line.name.length >= 2 && !nameSuggestions[idx]?.length) handleNameChange(idx, line.name); }}
+                      />
+                      {(nameSuggestions[idx]?.length ?? 0) > 0 && (
+                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', maxHeight: '220px', overflowY: 'auto', marginTop: '2px' }}>
+                          {nameSuggestions[idx].map(s => (
+                            <div key={s.sku}
+                              onMouseDown={() => selectNameSuggestion(idx, s)}
+                              style={{ padding: '7px 10px', cursor: 'pointer', fontSize: '12px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span>
+                                <span style={{ color: 'var(--text-muted)', marginRight: '5px', fontSize: '11px', fontFamily: 'monospace' }}>{s.sku}</span>
+                                <span style={{ fontWeight: 600, color: '#1E3A5F', marginRight: '4px' }}>{s.brand}</span>
+                                <span style={{ color: 'var(--text-primary)' }}>{s.name}</span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
 
                     <input style={{ ...inp, textAlign: 'right' }} type="number" min="1" step="1"
-                      value={line.qty}
-                      onChange={e => setLineField(idx, 'qty', Math.max(1, parseInt(e.target.value) || 1))} />
+                      value={line.qty || ''}
+                      onChange={e => {
+                        const n = parseInt(e.target.value);
+                        setLineField(idx, 'qty', isNaN(n) ? 0 : n);
+                      }}
+                      onBlur={() => { if (!line.qty || line.qty < 1) setLineField(idx, 'qty', 1); }} />
 
                     <div style={{ position: 'relative' }}>
                       <input style={{ ...inp, textAlign: 'right', paddingRight: '18px' }} type="number" min="0" step="0.01"
@@ -374,8 +430,8 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
                         onChange={e => setLineField(idx, 'cost_price', parseFloat(e.target.value) || 0)} />
                       <span style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
                       {line.catalog_price != null && line.catalog_price !== line.cost_price && (
-                        <div style={{ fontSize: '9px', color: '#94A3B8', position: 'absolute', bottom: '-13px', right: 0, whiteSpace: 'nowrap' }}>
-                          прайс: {fmt(line.catalog_price)} ₴
+                        <div style={{ fontSize: '9px', color: line.cost_price === 0 ? '#F59E0B' : '#94A3B8', position: 'absolute', bottom: '-13px', right: 0, whiteSpace: 'nowrap' }}>
+                          {line.cost_price === 0 ? '⚠ роздріб' : 'прайс'}: {fmt(line.catalog_price)} ₴
                         </div>
                       )}
                     </div>
