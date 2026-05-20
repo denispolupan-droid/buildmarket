@@ -34,7 +34,8 @@ export default async function ProcurementPage() {
   }
 
   const orders = pos ?? [];
-  const totalPending = orders.filter(p => !p.has_receipt).length;
+  const totalDrafts   = orders.filter(p => p.procurement_status === 'draft').length;
+  const totalPending  = orders.filter(p => !p.has_receipt && p.procurement_status !== 'draft').length;
   const totalReceived = orders.filter(p => p.has_receipt && p.procurement_status !== 'paid').length;
   const totalAmount = orders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
 
@@ -51,7 +52,13 @@ export default async function ProcurementPage() {
       </div>
 
       {/* Stats — клікабельні картки */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '12px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginBottom: '20px' }}>
+        <a href="/admin/procurement?filter=draft" style={{ textDecoration: 'none' }}>
+          <div style={{ padding: '14px 18px', borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: '3px solid #94A3B8', cursor: 'pointer' }}>
+            <div style={{ fontSize: '22px', fontWeight: 800, color: '#64748B' }}>{totalDrafts}</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>Чернетки</div>
+          </div>
+        </a>
         <a href="/admin/procurement?filter=pending" style={{ textDecoration: 'none' }}>
           <div style={{ padding: '14px 18px', borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: '3px solid #4880B8', cursor: 'pointer' }}>
             <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--brand-blue)' }}>{totalPending}</div>

@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ChevronDown, ChevronUp, Send, Loader2 } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp, Send, Loader2, X, Mail } from 'lucide-react';
 
 type Receipt = {
   id: string; doc_number: string; doc_date: string;
@@ -12,7 +12,8 @@ type Receipt = {
 type PO = {
   id: string; doc_number: string; doc_date: string;
   procurement_status: string | null; expected_date: string | null;
-  supplier_name: string | null; order_id: string | null;
+  supplier_name: string | null; supplier_email: string | null;
+  order_id: string | null;
   total_amount: number | null; total_cost: number | null;
   notes: string | null; has_receipt: boolean;
   supplier_invoice_number: string | null;
@@ -44,9 +45,10 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
   const [expanded, setExpanded] = useState<Set<string>>(
     orders.length === 1 && orders[0].receipts.length > 0 ? new Set([orders[0].id]) : new Set()
   );
-  const [selected,  setSelected]  = useState<Set<string>>(new Set());
-  const [sending,   setSending]   = useState<Set<string>>(new Set());
-  const [sendResult, setSendResult] = useState<{ ok: number; fails: number } | null>(null);
+  const [selected,     setSelected]     = useState<Set<string>>(new Set());
+  const [sending,      setSending]      = useState<Set<string>>(new Set());
+  const [sendResult,   setSendResult]   = useState<{ ok: number; fails: number } | null>(null);
+  const [sendConfirm,  setSendConfirm]  = useState<{ po: PO; email: string } | null>(null);
 
   function toggle(id: string) {
     setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -149,7 +151,9 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                 {po.total_cost ? `${fmt(Number(po.total_cost))} ₴` : '—'}
               </span>
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px' }}>
-                {hasReceipts ? (
+                {statusKey === 'draft' ? (
+                  <span style={{ fontSize: '11px', color: '#CBD5E1' }}>—</span>
+                ) : hasReceipts ? (
                   <button onClick={() => toggle(po.id)}
                     style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: '6px', color: '#15803D', fontSize: '11px', fontWeight: 700 }}>
                     ✅ {po.receipts.length} прихід{po.receipts.length > 1 ? 'и' : ''}
@@ -166,10 +170,10 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
                 <button
-                  onClick={() => sendOrders([po.id])}
-                  disabled={isSending}
-                  title="Відправити постачальнику"
-                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px 6px', opacity: isSending ? 0.5 : 1 }}>
+                  onClick={() => statusKey !== 'draft' && setSendConfirm({ po, email: po.supplier_email ?? '' })}
+                  disabled={isSending || statusKey === 'draft'}
+                  title={statusKey === 'draft' ? 'Спочатку проведіть замовлення' : 'Відправити постачальнику'}
+                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: statusKey === 'draft' ? 'not-allowed' : 'pointer', color: statusKey === 'draft' ? '#CBD5E1' : 'var(--text-muted)', display: 'flex', padding: '4px 6px', opacity: isSending ? 0.5 : 1 }}>
                   {isSending ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={13} />}
                 </button>
                 <Link href={`/admin/procurement/${po.id}`}
@@ -209,7 +213,62 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
         );
       })}
     </div>
+    {/* Діалог підтвердження відправки */}
+    {sendConfirm && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
+              Відправити замовлення
+            </h3>
+            <button onClick={() => setSendConfirm(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}>
+              <X size={18} />
+            </button>
+          </div>
+
+          <div style={{ marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Постачальник</div>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '20px' }}>
+            {sendConfirm.po.supplier_name ?? '—'} · {sendConfirm.po.doc_number}
+          </div>
+
+          <div style={{ marginBottom: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+            <Mail size={13} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
+            Email отримувача
+          </div>
+          <input
+            value={sendConfirm.email}
+            onChange={e => setSendConfirm(prev => prev ? { ...prev, email: e.target.value } : null)}
+            placeholder="email@supplier.com"
+            style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid var(--border)', fontSize: '13px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', marginBottom: '8px', outline: 'none' }}
+          />
+          {!sendConfirm.po.supplier_email && (
+            <div style={{ fontSize: '11px', color: '#B45309', marginBottom: '16px' }}>
+              ⚠ Email не заповнено у картці постачальника — введіть вручну або налаштуйте у розділі Постачальники
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+            <button onClick={() => setSendConfirm(null)}
+              style={{ flex: 1, height: '40px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '14px', color: 'var(--text-primary)', fontWeight: 600 }}>
+              Скасувати
+            </button>
+            <button
+              disabled={!sendConfirm.email.includes('@') || sending.has(sendConfirm.po.id)}
+              onClick={async () => {
+                const { po, email } = sendConfirm;
+                setSendConfirm(null);
+                // Якщо email відрізняється від збереженого — можна передати його в API (майбутнє)
+                await sendOrders([po.id]);
+              }}
+              style={{ flex: 1, height: '40px', borderRadius: '8px', border: 'none', background: sendConfirm.email.includes('@') ? '#1E3A5F' : '#94A3B8', color: '#fff', cursor: sendConfirm.email.includes('@') ? 'pointer' : 'not-allowed', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <Send size={15} /> Відправити
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
-    </>
+</>
   );
 }

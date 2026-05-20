@@ -215,6 +215,7 @@ async function main() {
         sku:           ourSku,
         supplier_sku:  row.supplier_sku,
         price_unit:    row.price_unit,
+        price_cost:    row.price_unit,   // ціна постачальника = наша закупівельна ціна
         price_old:     row.price_old ?? null,
         stock_qty:     row.stock_qty,
         stock_status:  row.stock_status,
