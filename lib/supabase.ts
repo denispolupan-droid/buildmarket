@@ -89,7 +89,15 @@ export async function getProducts(opts?: {
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []) as ProductFull[];
+
+  // Товари без наявності — в кінець
+  const sorted = (data ?? []).sort((a, b) => {
+    const aOut = (a as { stock?: { stock_status?: string } }).stock?.stock_status !== 'in_stock' ? 1 : 0;
+    const bOut = (b as { stock?: { stock_status?: string } }).stock?.stock_status !== 'in_stock' ? 1 : 0;
+    return aOut - bOut;
+  });
+
+  return sorted as ProductFull[];
 }
 
 export async function getProductsLight(opts?: {
@@ -120,7 +128,14 @@ export async function getProductsLight(opts?: {
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []) as ProductListItem[];
+
+  const sorted = (data ?? []).sort((a, b) => {
+    const aOut = (a as { stock?: { stock_status?: string } }).stock?.stock_status !== 'in_stock' ? 1 : 0;
+    const bOut = (b as { stock?: { stock_status?: string } }).stock?.stock_status !== 'in_stock' ? 1 : 0;
+    return aOut - bOut;
+  });
+
+  return sorted as ProductListItem[];
 }
 
 export async function getProductBySku(sku: string): Promise<ProductFull | null> {
