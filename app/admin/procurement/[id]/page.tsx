@@ -37,6 +37,11 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
 
   if (!poBase) notFound();
 
+  // Чернетка — редіректимо до списку (відкривається через модаль)
+  if (poBase.procurement_status === 'draft') {
+    redirect('/admin/procurement');
+  }
+
   const { count: receiptCount } = await db
     .from('acc_documents')
     .select('*', { count: 'exact', head: true })

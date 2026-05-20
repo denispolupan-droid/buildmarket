@@ -2,6 +2,53 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
 
+// GET /api/admin/procurement/[id] — повертає PO з лініями (для відкриття чернетки в модалі)
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || user.user_metadata?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const db = createServiceClient();
+
+  const [{ data: doc }, { data: lines }, { data: products }] = await Promise.all([
+    db.from('acc_documents')
+      .select('id, doc_number, procurement_status, supplier_id, expected_date, notes, total_cost')
+      .eq('id', id).single(),
+    db.from('acc_document_lines')
+      .select('sku, qty, cost_price')
+      .eq('document_id', id)
+      .order('sort_order'),
+    db.from('suppliers').select('id, name').eq('is_active', true).order('name'),
+  ]);
+
+  if (!doc) return NextResponse.json({ error: 'Не знайдено' }, { status: 404 });
+
+  const skus = (lines ?? []).map(l => l.sku);
+  const { data: productNames } = skus.length
+    ? await db.from('products').select('sku, name, brand').in('sku', skus)
+    : { data: [] };
+  const nameMap = new Map((productNames ?? []).map(p => [p.sku, p]));
+
+  return NextResponse.json({
+    ...doc,
+    suppliers: products ?? [],
+    lines: (lines ?? []).map(l => ({
+      sku:        l.sku,
+      name:       nameMap.get(l.sku)?.name  ?? '',
+      brand:      nameMap.get(l.sku)?.brand ?? '',
+      qty:        l.qty,
+      cost_price: Number(l.cost_price ?? 0),
+      matched:    nameMap.has(l.sku),
+    })),
+  });
+}
+
 // PUT /api/admin/procurement/[id] — оновлює існуючу чернетку PO
 export async function PUT(
   req: NextRequest,

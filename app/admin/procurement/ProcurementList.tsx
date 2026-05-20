@@ -12,7 +12,7 @@ type Receipt = {
 type PO = {
   id: string; doc_number: string; doc_date: string;
   procurement_status: string | null; expected_date: string | null;
-  supplier_name: string | null; supplier_email: string | null;
+  supplier_id: number | null; supplier_name: string | null; supplier_email: string | null;
   order_id: string | null;
   total_amount: number | null; total_cost: number | null;
   notes: string | null; has_receipt: boolean;
@@ -49,6 +49,29 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
   const [sending,      setSending]      = useState<Set<string>>(new Set());
   const [sendResult,   setSendResult]   = useState<{ ok: number; fails: number } | null>(null);
   const [sendConfirm,  setSendConfirm]  = useState<{ po: PO; email: string } | null>(null);
+  const [openingDraft, setOpeningDraft] = useState<string | null>(null);
+
+  async function openDraftInModal(po: PO) {
+    setOpeningDraft(po.id);
+    try {
+      const res  = await fetch(`/api/admin/procurement/${po.id}`);
+      const data = await res.json();
+      window.dispatchEvent(new CustomEvent('open-po-draft', {
+        detail: {
+          suppliers: data.suppliers ?? [{ id: po.supplier_id, name: po.supplier_name }],
+          prefill: {
+            dbId:         po.id,
+            supplierId:   data.supplier_id ?? po.supplier_id,
+            expectedDate: data.expected_date ?? '',
+            notes:        data.notes ?? '',
+            lines:        data.lines ?? [],
+          },
+        },
+      }));
+    } finally {
+      setOpeningDraft(null);
+    }
+  }
 
   function toggle(id: string) {
     setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -169,17 +192,29 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
-                <button
-                  onClick={() => statusKey !== 'draft' && setSendConfirm({ po, email: po.supplier_email ?? '' })}
-                  disabled={isSending || statusKey === 'draft'}
-                  title={statusKey === 'draft' ? 'Спочатку проведіть замовлення' : 'Відправити постачальнику'}
-                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: statusKey === 'draft' ? 'not-allowed' : 'pointer', color: statusKey === 'draft' ? '#CBD5E1' : 'var(--text-muted)', display: 'flex', padding: '4px 6px', opacity: isSending ? 0.5 : 1 }}>
-                  {isSending ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={13} />}
-                </button>
-                <Link href={`/admin/procurement/${po.id}`}
-                  style={{ display: 'flex', alignItems: 'center', color: 'var(--text-muted)', textDecoration: 'none', padding: '4px' }}>
-                  <ArrowRight size={16} />
-                </Link>
+                {statusKey !== 'draft' && (
+                  <button
+                    onClick={() => setSendConfirm({ po, email: po.supplier_email ?? '' })}
+                    disabled={isSending}
+                    title="Відправити постачальнику"
+                    style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px 6px', opacity: isSending ? 0.5 : 1 }}>
+                    {isSending ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={13} />}
+                  </button>
+                )}
+                {statusKey === 'draft' ? (
+                  <button
+                    onClick={() => openDraftInModal(po)}
+                    disabled={openingDraft === po.id}
+                    title="Відкрити чернетку для редагування"
+                    style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px', opacity: openingDraft === po.id ? 0.5 : 1 }}>
+                    {openingDraft === po.id ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <ArrowRight size={16} />}
+                  </button>
+                ) : (
+                  <Link href={`/admin/procurement/${po.id}`}
+                    style={{ display: 'flex', alignItems: 'center', color: 'var(--text-muted)', textDecoration: 'none', padding: '4px' }}>
+                    <ArrowRight size={16} />
+                  </Link>
+                )}
               </div>
             </div>
 
