@@ -63,6 +63,14 @@ type Supplier = {
   email: string | null;
   contact_name: string | null;
   contact_phone: string | null;
+  bank_iban: string | null;
+  bank_name: string | null;
+  bank_swift: string | null;
+  legal_name: string | null;
+  edrpou: string | null;
+  payment_terms: number;
+  payment_days: number;
+  priority: number;
   notes: string | null;
   last_synced_at: string | null;
   brand_discounts: BrandDiscount[];
@@ -75,7 +83,8 @@ const EMPTY: Omit<Supplier, 'id' | 'last_synced_at' | 'last_sync'> = {
   slug: '', name: '', source_url: '', file_format: 'csv',
   sheet_name: null, col_sku: null, col_price: null, col_qty: null, col_name: null,
   sync_interval_h: 24, markup_retail: 22, markup_wholesale: 10,
-  markup_drop: 15, is_active: true, qty_is_flag: false, email: '', contact_name: '', contact_phone: '', notes: '', brand_discounts: [],
+  markup_drop: 15, is_active: true, qty_is_flag: false, email: '', contact_name: '', contact_phone: '',
+  bank_iban: '', bank_name: '', bank_swift: '', legal_name: '', edrpou: '', payment_terms: 0, payment_days: 0, priority: 10, notes: '', brand_discounts: [],
 };
 
 const FORMAT_LABELS: Record<string, string> = {
@@ -257,6 +266,47 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
             <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', margin: '4px 0 0' }}>
               На цю адресу надсилатиметься замовлення товарів
             </p>
+          </div>
+        </div>
+
+        {/* Bank details */}
+        <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 16px', marginBottom: '16px' }}>
+          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '10px' }}>
+            Банківські реквізити
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '10px' }}>
+            <div>
+              <span style={label}>Юридична назва</span>
+              <input style={input} value={e.legal_name ?? ''} onChange={ev => set('legal_name', ev.target.value)} placeholder="ТОВ Постачальник" />
+            </div>
+            <div>
+              <span style={label}>ЄДРПОУ / ІПН</span>
+              <input style={input} value={e.edrpou ?? ''} onChange={ev => set('edrpou', ev.target.value)} placeholder="12345678" />
+            </div>
+          </div>
+          <div style={{ marginBottom: '10px' }}>
+            <span style={label}>IBAN</span>
+            <input style={input} value={e.bank_iban ?? ''} onChange={ev => set('bank_iban', ev.target.value)} placeholder="UA123456789012345678901234567" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 120px', gap: '12px' }}>
+            <div>
+              <span style={label}>Назва банку</span>
+              <input style={input} value={e.bank_name ?? ''} onChange={ev => set('bank_name', ev.target.value)} placeholder="АТ КБ ПриватБанк" />
+            </div>
+            <div>
+              <span style={label}>SWIFT</span>
+              <input style={input} value={e.bank_swift ?? ''} onChange={ev => set('bank_swift', ev.target.value)} placeholder="PBANUA2X" />
+            </div>
+            <div>
+              <span style={label}>Відстрочка платежу (днів)</span>
+              <input style={input} type="number" min="0" value={e.payment_days ?? 0} onChange={ev => set('payment_days', parseInt(ev.target.value) || 0)} placeholder="0" />
+              <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', margin: '4px 0 0' }}>0 = без відстрочки (передоплата)</p>
+            </div>
+            <div>
+              <span style={label}>Пріоритет постачальника</span>
+              <input style={input} type="number" min="1" max="99" value={e.priority ?? 10} onChange={ev => set('priority', parseInt(ev.target.value) || 10)} placeholder="10" />
+              <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', margin: '4px 0 0' }}>1 = найвищий · 10 = стандарт · якщо однаковий товар у кількох постачальників</p>
+            </div>
           </div>
         </div>
 

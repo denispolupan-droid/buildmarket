@@ -178,76 +178,138 @@ async function main() {
   }
 
   const supabase = createServiceClient();
-  const startedAt = new Date().toISOString();
+  const startedAt = new Date();
+  const startedAtIso = startedAt.toISOString();
 
-  // Завантажуємо поточний маппінг supplier_sku → наш sku
+  // Постачальник (обов'язково для multi-supplier логіки)
+  const supplierIdArg = getArg('supplier');
+  const supplierId = supplierIdArg ? parseInt(supplierIdArg) : null;
+
+  if (!supplierId) {
+    console.error('❌  Вкажіть постачальника: --supplier=<id>');
+    console.error('    Список постачальників: SELECT id, name FROM suppliers;');
+    process.exit(1);
+  }
+
+  console.log(`   Постачальник ID: ${supplierId}`);
+
+  // Попередній синк — для перевірки повноти файлу
+  const { data: prevSync } = await supabase
+    .from('sync_log')
+    .select('rows_total')
+    .eq('supplier_id', supplierId)
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const prevRows: number | null = (prevSync as { rows_total?: number } | null)?.rows_total ?? null;
+
+  // Маппінг: supplier_sku → наш SKU (з supplier_sku_map для цього постачальника)
+  const { data: mapRows } = await supabase
+    .from('supplier_sku_map')
+    .select('supplier_sku, our_sku')
+    .eq('supplier_id', supplierId);
+
+  const skuBySupplier: Record<string, string> = {};
+  (mapRows ?? []).forEach((r: { supplier_sku: string; our_sku: string }) => {
+    skuBySupplier[r.supplier_sku] = r.our_sku;
+  });
+
+  // Fallback: product_stock.supplier_sku (для сумісності)
   const { data: stockMap } = await supabase
     .from('product_stock')
     .select('sku, supplier_sku');
-
-  const skuBySupplier: Record<string, string> = {};
   (stockMap ?? []).forEach((r: { sku: string; supplier_sku: string | null }) => {
-    if (r.supplier_sku) skuBySupplier[r.supplier_sku] = r.sku;
+    if (r.supplier_sku && !skuBySupplier[r.supplier_sku]) {
+      skuBySupplier[r.supplier_sku] = r.sku;
+    }
   });
 
-  // Також беремо всі наші SKU (для першого запуску, коли supplier_sku = наш sku)
-  const { data: allProducts } = await supabase
-    .from('products')
-    .select('sku');
+  // Всі наші SKU (для прямого співпадіння)
+  const { data: allProducts } = await supabase.from('products').select('sku');
   const ourSkus = new Set((allProducts ?? []).map((p: { sku: string }) => p.sku));
 
   let updated = 0, skipped = 0;
   const errors: string[] = [];
+  const syncTime = new Date().toISOString();
 
   for (const row of rows) {
-    // Шукаємо наш SKU: спочатку через маппінг, потім напряму
-    const ourSku = skuBySupplier[row.supplier_sku] ?? (ourSkus.has(row.supplier_sku) ? row.supplier_sku : null);
+    const ourSku = skuBySupplier[row.supplier_sku]
+      ?? (ourSkus.has(row.supplier_sku) ? row.supplier_sku : null);
 
     if (!ourSku) {
-      errors.push(`supplier_sku=${row.supplier_sku}: відповідного товару не знайдено`);
+      errors.push(`supplier_sku=${row.supplier_sku}: не знайдено`);
       skipped++;
       continue;
     }
 
-    const { error } = await supabase
-      .from('product_stock')
+    // ── Записуємо в supplier_stock (основна таблиця) ──────────────────────────
+    const { error: ssError } = await supabase
+      .from('supplier_stock')
       .upsert({
-        sku:           ourSku,
-        supplier_sku:  row.supplier_sku,
-        price_unit:    row.price_unit,
-        price_cost:    row.price_unit,   // ціна постачальника = наша закупівельна ціна
-        price_old:     row.price_old ?? null,
-        stock_qty:     row.stock_qty,
-        stock_status:  row.stock_status,
-        updated_at:    new Date().toISOString(),
-      }, { onConflict: 'sku' });
+        sku:            ourSku,
+        supplier_id:    supplierId,
+        supplier_sku:   row.supplier_sku,
+        stock_qty:      row.stock_qty,
+        stock_status:   row.stock_status,
+        price_unit:     row.price_unit,
+        price_cost:     row.price_unit,   // ціна постачальника = наша закупівельна
+        last_synced_at: syncTime,
+        updated_at:     syncTime,
+      }, { onConflict: 'sku,supplier_id' });
 
-    if (error) {
-      errors.push(`sku=${ourSku}: ${error.message}`);
-      skipped++;
-    } else {
-      updated++;
+    if (ssError) {
+      // ── Fallback: product_stock (якщо supplier_stock не підтримується) ───────
+      const { error: psError } = await supabase
+        .from('product_stock')
+        .upsert({
+          sku:          ourSku,
+          supplier_sku: row.supplier_sku,
+          price_unit:   row.price_unit,
+          price_cost:   row.price_unit,
+          price_old:    row.price_old ?? null,
+          stock_qty:    row.stock_qty,
+          stock_status: row.stock_status,
+          updated_at:   syncTime,
+        }, { onConflict: 'sku' });
+
+      if (psError) { errors.push(`sku=${ourSku}: ${psError.message}`); skipped++; continue; }
     }
+
+    updated++;
     process.stdout.write(`\r   ✅  Оброблено: ${updated + skipped} / ${rows.length}`);
   }
 
   console.log('\n');
 
-  // Лог
+  // ── Позначаємо відсутні товари як out_of_stock (якщо повний файл) ────────────
+  let markedAbsent = 0;
+  const { data: markResult } = await supabase.rpc('mark_absent_supplier_stock', {
+    p_supplier_id:  supplierId,
+    p_sync_started: startedAtIso,
+    p_rows_in_file: rows.length,
+    p_prev_rows:    prevRows,
+  });
+  markedAbsent = (markResult as number) ?? 0;
+  if (markedAbsent > 0) {
+    console.log(`   ⚠️  Позначено як out_of_stock (відсутні у файлі): ${markedAbsent}`);
+  }
+
+  // ── Лог ──────────────────────────────────────────────────────────────────────
   await supabase.from('sync_log').insert({
+    supplier_id:     supplierId,
     source:          format,
     status:          errors.length === 0 ? 'success' : updated > 0 ? 'partial' : 'error',
-    records_total:   rows.length,
-    records_updated: updated,
-    records_skipped: skipped,
-    error_details:   errors.length > 0 ? errors.slice(0, 20).join('\n') : null,
-    started_at:      startedAt,
+    rows_total:      rows.length,
+    rows_updated:    updated,
+    rows_skipped:    skipped,
+    rows_unmapped:   skipped,
+    error_message:   errors.length > 0 ? errors.slice(0, 20).join('\n') : null,
+    started_at:      startedAtIso,
     finished_at:     new Date().toISOString(),
   });
 
   console.log('📊  Результат:');
-  console.log(`    Оновлено: ${updated}`);
-  console.log(`    Пропущено: ${skipped}`);
+  console.log(`    Оновлено: ${updated}  |  Пропущено: ${skipped}  |  Out_of_stock: ${markedAbsent}`);
   if (errors.length > 0) {
     console.log(`\n⚠️  Попередження (${errors.length}):`);
     errors.slice(0, 10).forEach((e) => console.log(`    ${e}`));

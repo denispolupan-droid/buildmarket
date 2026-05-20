@@ -16,8 +16,8 @@
     "test:watch:integration": "vitest --watch --config vitest.integration.config.ts",
     "db:template": "tsx scripts/supabase/generate-template.ts",
     "db:import": "tsx --env-file=.env.local scripts/supabase/import-from-excel.ts",
-    "db:sync-xml": "tsx --env-file=.env.local scripts/supabase/sync-stock.ts --format=1c_xml",
-    "db:sync-csv": "tsx --env-file=.env.local scripts/supabase/sync-stock.ts --format=1c_csv",
+    "db:sync-xml": "tsx --env-file=.env.local scripts/supabase/sync-stock.ts --format=1c_xml --supplier=1",
+    "db:sync-csv": "tsx --env-file=.env.local scripts/supabase/sync-stock.ts --format=1c_csv --supplier=1",
     "db:migrate": "node --env-file=.env.local scripts/apply-accounting-migrations.mjs",
     "db:migrate:dry": "node --env-file=.env.local scripts/apply-accounting-migrations.mjs --dry-run",
     "prepare": "simple-git-hooks"
