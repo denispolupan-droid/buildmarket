@@ -39,6 +39,11 @@ export default async function ProcurementPage() {
   const totalReceived = orders.filter(p => p.has_receipt && p.procurement_status !== 'paid').length;
   const totalAmount = orders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
 
+  // Розбивка суми по статусах
+  const amountDrafts   = orders.filter(p => p.procurement_status === 'draft').reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
+  const amountPending  = orders.filter(p => !p.has_receipt && p.procurement_status !== 'draft').reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
+  const amountReceived = orders.filter(p => p.has_receipt && p.procurement_status !== 'paid').reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
+
   return (
     <div style={{ padding: '28px 32px', maxWidth: '1200px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
@@ -73,7 +78,28 @@ export default async function ProcurementPage() {
         </a>
         <div style={{ padding: '14px 18px', borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: '3px solid #7C3AED' }}>
           <div style={{ fontSize: '22px', fontWeight: 800, color: '#7C3AED' }}>{fmt(totalAmount)} ₴</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>Загальна сума</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px', marginBottom: '8px' }}>Загальна сума</div>
+          {/* Розбивка по статусах */}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+            {amountDrafts > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                <span style={{ color: '#94A3B8' }}>📝 Чернетки</span>
+                <span style={{ color: '#64748B', fontWeight: 600 }}>{fmt(amountDrafts)} ₴</span>
+              </div>
+            )}
+            {amountPending > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                <span style={{ color: '#94A3B8' }}>⏳ Очікуємо</span>
+                <span style={{ color: '#4880B8', fontWeight: 600 }}>{fmt(amountPending)} ₴</span>
+              </div>
+            )}
+            {amountReceived > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                <span style={{ color: '#94A3B8' }}>📦 Отримано</span>
+                <span style={{ color: '#D97706', fontWeight: 600 }}>{fmt(amountReceived)} ₴</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
