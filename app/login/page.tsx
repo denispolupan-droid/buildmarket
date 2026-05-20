@@ -45,12 +45,15 @@ function LoginForm() {
       localStorage.removeItem('fixline_cart');
     }
 
+    // Повна навігація (window.location) замість router.push + router.refresh
+    // щоб уникнути race condition в Next.js App Router при логіні
     if (role === 'dropship') {
-      router.push('/cabinet');
+      window.location.href = '/cabinet';
+    } else if (data.user?.user_metadata?.role === 'admin') {
+      window.location.href = '/admin';
     } else {
-      router.push(nextUrl);
+      window.location.href = nextUrl;
     }
-    router.refresh();
   }
 
   return (
