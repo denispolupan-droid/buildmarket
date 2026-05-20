@@ -302,7 +302,12 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
       }
 
       onSubmitted();
-      router.push(`/admin/procurement/${data.id}`);
+      // Чернетка → журнал, Провести → деталь замовлення
+      if (post) {
+        router.push(`/admin/procurement/${data.id}`);
+      } else {
+        router.push('/admin/procurement');
+      }
       router.refresh();
     } catch { setError('Мережева помилка'); }
     finally { setSaving(false); }
