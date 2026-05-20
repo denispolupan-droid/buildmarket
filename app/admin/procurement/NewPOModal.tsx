@@ -136,7 +136,8 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
     const el = nameInputRefs.current[idx];
     if (!el) return;
     const r = el.getBoundingClientRect();
-    setSuggestionAnchor({ idx, top: r.bottom + 2, left: r.left, width: r.width });
+    // +8 щоб дропдаун не перекривав рядок з полем вводу
+    setSuggestionAnchor({ idx, top: r.top + r.height + 8, left: r.left, width: r.width });
   }
 
   function handleNameChange(idx: number, val: string) {
