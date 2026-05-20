@@ -495,6 +495,9 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
     p_prev_rows:    prevRows,
   });
 
+  // Знімаємо in_stock з товарів що не мають ні постачальника, ні фізичного залишку
+  await supabase.rpc('reconcile_orphan_stock');
+
   // 6. Зберігаємо немаплені артикули (upsert — щоб не дублювати)
   if (unmappedBatch.length > 0) {
     await supabase
