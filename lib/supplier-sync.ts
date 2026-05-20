@@ -280,7 +280,8 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
   if (parsed.length === 0) throw new Error('Файл порожній або не вдалось розпізнати формат');
 
   // 3. Завантажуємо маппінг артикулів + дані для цін
-  const now = new Date().toISOString();
+  const syncStartedAt = new Date().toISOString();
+  const now = syncStartedAt;
   const [
     { data: skuMapRows },
     { data: stockRows },
@@ -437,32 +438,71 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
     // Реальна наявність визначається через stock_status
     const stockQty = supplier.qty_is_flag ? 0 : row.stock_qty;
 
+    const rowTime = new Date().toISOString();
+
+    // ── product_stock (ціни + публічна наявність) ─────────────────────────────
     const { error } = await supabase
       .from('product_stock')
       .upsert({
-        sku:             ourSku,
-        price_cost:      parseFloat(priceCost.toFixed(2)),
-        price_unit:      priceUnit,
-        price_old:       priceOld,
-        price_retail:    priceRetail,
+        sku:              ourSku,
+        price_cost:       parseFloat(priceCost.toFixed(2)),
+        price_unit:       priceUnit,
+        price_old:        priceOld,
+        price_retail:     priceRetail,
         price_retail_old: priceRetailOld,
-        price_drop:      priceDrop,
-        stock_qty:       stockQty,
-        stock_status:    stockStatus,
-        updated_at:      new Date().toISOString(),
+        price_drop:       priceDrop,
+        stock_qty:        stockQty,
+        stock_status:     stockStatus,
+        updated_at:       rowTime,
       }, { onConflict: 'sku' });
+
+    // ── supplier_stock (наявність per-supplier для multi-supplier логіки) ──────
+    await supabase
+      .from('supplier_stock')
+      .upsert({
+        sku:            ourSku,
+        supplier_id:    supplierId,
+        supplier_sku:   row.supplier_sku,
+        stock_qty:      stockQty,
+        stock_status:   stockStatus,
+        price_unit:     priceUnit,
+        price_cost:     parseFloat(priceCost.toFixed(2)),
+        last_synced_at: syncStartedAt,
+        updated_at:     rowTime,
+      }, { onConflict: 'sku,supplier_id' });
 
     if (error) { skipped++; } else { updated++; }
   }
 
-  // 5. Зберігаємо немаплені артикули (upsert — щоб не дублювати)
+  // 5. Позначаємо відсутні товари як out_of_stock (multi-supplier логіка)
+  //    Захист від неповного файлу: якщо < 60% від попереднього → пропускаємо
+  const { data: prevSyncData } = await supabase
+    .from('supplier_sync_log')
+    .select('rows_total')
+    .eq('supplier_id', supplierId)
+    .not('rows_total', 'is', null)
+    .order('started_at', { ascending: false })
+    .limit(2);  // беремо 2: перший — поточний (ще не завершений), другий — попередній
+
+  const prevRows = (prevSyncData ?? []).length >= 2
+    ? (prevSyncData![1] as { rows_total: number }).rows_total
+    : null;
+
+  await supabase.rpc('mark_absent_supplier_stock', {
+    p_supplier_id:  supplierId,
+    p_sync_started: syncStartedAt,
+    p_rows_in_file: parsed.length,
+    p_prev_rows:    prevRows,
+  });
+
+  // 6. Зберігаємо немаплені артикули (upsert — щоб не дублювати)
   if (unmappedBatch.length > 0) {
     await supabase
       .from('supplier_unmapped_skus')
       .upsert(unmappedBatch, { onConflict: 'supplier_id,supplier_sku' });
   }
 
-  // 6. Оновлюємо лог і last_synced_at
+  // 7. Оновлюємо лог і last_synced_at
   const finishedAt = new Date().toISOString();
   await Promise.all([
     logId && supabase
