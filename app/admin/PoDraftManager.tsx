@@ -26,6 +26,7 @@ export interface PoLine {
 
 export interface PoDraft {
   id:            string;
+  dbId?:         string;   // UUID в acc_documents (для редагування існуючого PO)
   suppliers:     { id: number; name: string }[];
   supplierId:    number;
   expectedDate:  string;
@@ -33,7 +34,7 @@ export interface PoDraft {
   lines:         PoLine[];
   minimized:     boolean;
   createdAt:     number;
-  lastActivated: number; // визначає хто зверху стеку без зміни порядку масиву
+  lastActivated: number;
 }
 
 const SESSION_KEY  = 'admin_po_drafts';
@@ -80,18 +81,26 @@ export default function PoDraftManager() {
     window.dispatchEvent(new CustomEvent('po-drafts-changed', { detail: { count: drafts.length } }));
   }, [drafts, mounted]);
 
-  // Нове замовлення — додаємо зверху стеку (не згортаємо існуючі)
+  // Нове або відредаговане замовлення — відкриваємо панель
   useEffect(() => {
     function handler(e: Event) {
-      const suppliers = (e as CustomEvent<{ suppliers: { id: number; name: string }[] }>).detail?.suppliers ?? [];
+      const detail = (e as CustomEvent<{
+        suppliers: { id: number; name: string }[];
+        prefill?: Partial<PoDraft>;  // для редагування існуючої чернетки
+      }>).detail;
+      const suppliers = detail?.suppliers ?? [];
+      const prefill   = detail?.prefill;
       const now = Date.now();
       const draft: PoDraft = {
         id:            `po_${now}`,
+        dbId:          prefill?.dbId,
         suppliers,
-        supplierId:    suppliers[0]?.id ?? 0,
-        expectedDate:  '',
-        notes:         '',
-        lines:         [{ sku: '', name: '', qty: 1, cost_price: 0, matched: false }],
+        supplierId:    prefill?.supplierId ?? suppliers[0]?.id ?? 0,
+        expectedDate:  prefill?.expectedDate ?? '',
+        notes:         prefill?.notes ?? '',
+        lines:         prefill?.lines?.length
+                         ? prefill.lines
+                         : [{ sku: '', name: '', qty: 1, cost_price: 0, matched: false }],
         minimized:     false,
         createdAt:     now,
         lastActivated: now,

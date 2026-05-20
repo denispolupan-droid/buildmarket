@@ -273,8 +273,13 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
     if (!valid.length) { setError('Додайте хоча б один товар з артикулом'); return; }
     setSaving(true); setError('');
     try {
-      const res = await fetch('/api/admin/procurement', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+      // Якщо є dbId — оновлюємо існуючу чернетку (PUT), інакше створюємо нову (POST)
+      const isEdit = !!initialData.dbId;
+      const url    = isEdit ? `/api/admin/procurement/${initialData.dbId}` : '/api/admin/procurement';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method, headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           supplier_id:   supplierId,
           expected_date: expectedDate || undefined,
@@ -284,6 +289,8 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Помилка'); return; }
+      // При редагуванні зберігаємо той же ID документа
+      if (isEdit) data.id = initialData.dbId;
 
       // "Провести" — надсилаємо постачальнику або просто змінюємо статус
       if (post) {
