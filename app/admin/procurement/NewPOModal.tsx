@@ -311,7 +311,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
   return (
     <>
     {/* Side panel ЛІВОРУЧ — після sidebar (220px) */}
-    <div className="po-panel-enter" style={{ position: 'fixed', top: 0, left: '220px', bottom: '42px', zIndex, width: 'min(800px, 56vw)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', boxShadow: '8px 0 32px rgba(0,0,0,0.22)', borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+    <div className="po-panel-enter" style={{ position: 'fixed', top: 0, left: '220px', bottom: '42px', zIndex, width: 'min(1040px, 74vw)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', boxShadow: '8px 0 32px rgba(0,0,0,0.22)', borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
         {/* Header */}
@@ -377,7 +377,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
           {/* Table */}
           <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
             {/* Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 80px 120px 110px 32px', padding: '8px 12px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '130px 2fr 80px 120px 110px 32px', padding: '8px 12px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', gap: '8px' }}>
               <span>Наш артикул</span>
               <span>Найменування</span>
               <span style={{ textAlign: 'right' }}>Кількість</span>
@@ -392,7 +392,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
                 const rowSum = line.qty * line.cost_price;
                 const warn = line.sku && !line.matched;
                 return (
-                  <div key={idx} style={{ display: 'grid', gridTemplateColumns: '130px 1fr 80px 120px 110px 32px', padding: '6px 12px', gap: '8px', alignItems: 'center', borderBottom: '1px solid var(--border-light)', background: warn ? '#FFFBEB' : 'transparent' }}>
+                  <div key={idx} style={{ display: 'grid', gridTemplateColumns: '130px 2fr 80px 120px 110px 32px', padding: '6px 12px', gap: '8px', alignItems: 'center', borderBottom: '1px solid var(--border-light)', background: warn ? '#FFFBEB' : 'transparent' }}>
 
                     <input style={{ ...inp, fontFamily: 'monospace', fontSize: '11px', borderColor: warn ? '#FCD34D' : undefined }}
                       placeholder="1300-014"
@@ -409,6 +409,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
                     <input
                       ref={el => { nameInputRefs.current[idx] = el; }}
                       style={inp} placeholder="Назва товару або пошук..."
+                      title={line.name || undefined}
                       value={line.name}
                       onChange={e => { handleNameChange(idx, e.target.value); setActiveDropdownIdx(-1); }}
                       onBlur={() => setTimeout(() => { setNameSuggestions(prev => ({ ...prev, [idx]: [] })); setSuggestionAnchor(null); setActiveDropdownIdx(-1); }, 150)}
@@ -469,7 +470,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
             </div>
 
             {/* Footer: add + total */}
-            <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 80px 120px 110px 32px', padding: '8px 12px', gap: '8px', borderTop: '2px solid var(--border)', background: 'var(--bg-soft)', alignItems: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '130px 2fr 80px 120px 110px 32px', padding: '8px 12px', gap: '8px', borderTop: '2px solid var(--border)', background: 'var(--bg-soft)', alignItems: 'center' }}>
               <button onClick={addLine}
                 style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#1E3A5F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, gridColumn: '1 / 3', padding: 0 }}>
                 <Plus size={13} /> Додати рядок
