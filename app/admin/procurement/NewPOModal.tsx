@@ -112,6 +112,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
   const nameInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const [nameSuggestions, setNameSuggestions] = useState<Record<number, { sku: string; name: string; brand: string }[]>>({});
   const [suggestionAnchor, setSuggestionAnchor] = useState<{ idx: number; top: number; left: number; width: number } | null>(null);
+  const [activeDropdownIdx, setActiveDropdownIdx] = useState<number>(-1);
 
   // Debounced lookup — спрацьовує через 600мс після завершення друку
   function handleSkuChange(idx: number, val: string) {
@@ -154,12 +155,14 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
     } else {
       setNameSuggestions(prev => ({ ...prev, [idx]: [] }));
       setSuggestionAnchor(null);
+      setActiveDropdownIdx(-1);
     }
   }
 
   async function selectNameSuggestion(idx: number, s: { sku: string; name: string; brand: string }) {
     setNameSuggestions(prev => ({ ...prev, [idx]: [] }));
     setSuggestionAnchor(null);
+    setActiveDropdownIdx(-1);
     setLines(prev => prev.map((l, i) => i === idx
       ? { ...l, sku: s.sku, name: `${s.brand} ${s.name}`.trim(), matched: true }
       : l
@@ -407,9 +410,27 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
                       ref={el => { nameInputRefs.current[idx] = el; }}
                       style={inp} placeholder="Назва товару або пошук..."
                       value={line.name}
-                      onChange={e => handleNameChange(idx, e.target.value)}
-                      onBlur={() => setTimeout(() => { setNameSuggestions(prev => ({ ...prev, [idx]: [] })); setSuggestionAnchor(null); }, 150)}
+                      onChange={e => { handleNameChange(idx, e.target.value); setActiveDropdownIdx(-1); }}
+                      onBlur={() => setTimeout(() => { setNameSuggestions(prev => ({ ...prev, [idx]: [] })); setSuggestionAnchor(null); setActiveDropdownIdx(-1); }, 150)}
                       onFocus={() => { if (line.name.length >= 2 && !nameSuggestions[idx]?.length) handleNameChange(idx, line.name); }}
+                      onKeyDown={e => {
+                        const suggestions = nameSuggestions[idx] ?? [];
+                        if (!suggestions.length) return;
+                        if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          setActiveDropdownIdx(prev => Math.min(prev + 1, suggestions.length - 1));
+                        } else if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          setActiveDropdownIdx(prev => Math.max(prev - 1, 0));
+                        } else if (e.key === 'Enter' && activeDropdownIdx >= 0) {
+                          e.preventDefault();
+                          selectNameSuggestion(idx, suggestions[activeDropdownIdx]);
+                        } else if (e.key === 'Escape') {
+                          setNameSuggestions(prev => ({ ...prev, [idx]: [] }));
+                          setSuggestionAnchor(null);
+                          setActiveDropdownIdx(-1);
+                        }
+                      }}
                     />
 
                     <input style={{ ...inp, textAlign: 'right' }} type="number" min="1" step="1"
@@ -500,15 +521,19 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
       const left = Math.min(suggestionAnchor.left, window.innerWidth - dropW - 12);
       return (
         <div style={{ position: 'fixed', top: suggestionAnchor.top, left, width: dropW, zIndex: 9999, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.18)', maxHeight: '280px', overflowY: 'auto' }}>
-          {nameSuggestions[suggestionAnchor.idx].map(s => (
-            <div key={s.sku}
-              onMouseDown={() => selectNameSuggestion(suggestionAnchor.idx, s)}
-              style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'baseline', gap: '8px', whiteSpace: 'nowrap', overflow: 'hidden' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontFamily: 'monospace', flexShrink: 0 }}>{s.sku}</span>
-              <span style={{ fontWeight: 700, color: '#1E3A5F', flexShrink: 0 }}>{s.brand}</span>
-              <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</span>
-            </div>
-          ))}
+          {nameSuggestions[suggestionAnchor.idx].map((s, i) => {
+            const isActive = i === activeDropdownIdx;
+            return (
+              <div key={s.sku}
+                onMouseDown={() => selectNameSuggestion(suggestionAnchor.idx, s)}
+                onMouseEnter={() => setActiveDropdownIdx(i)}
+                style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'baseline', gap: '8px', whiteSpace: 'nowrap', overflow: 'hidden', background: isActive ? '#EFF4FF' : 'transparent', transition: 'background 0.1s' }}>
+                <span style={{ color: isActive ? '#1E3A5F' : 'var(--text-muted)', fontSize: '11px', fontFamily: 'monospace', flexShrink: 0 }}>{s.sku}</span>
+                <span style={{ fontWeight: 700, color: '#1E3A5F', flexShrink: 0 }}>{s.brand}</span>
+                <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</span>
+              </div>
+            );
+          })}
         </div>
       );
     })()}
