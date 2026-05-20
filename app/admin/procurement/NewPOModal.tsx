@@ -492,20 +492,25 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
         </div>
       </div>
     </div>
-    {/* Дропдаун пошуку по назві — position:fixed щоб не обрізатись overflow контейнером */}
-    {suggestionAnchor && (nameSuggestions[suggestionAnchor.idx]?.length ?? 0) > 0 && (
-      <div style={{ position: 'fixed', top: suggestionAnchor.top, left: suggestionAnchor.left, width: suggestionAnchor.width, zIndex: 9999, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.18)', maxHeight: '240px', overflowY: 'auto' }}>
-        {nameSuggestions[suggestionAnchor.idx].map(s => (
-          <div key={s.sku}
-            onMouseDown={() => selectNameSuggestion(suggestionAnchor.idx, s)}
-            style={{ padding: '7px 10px', cursor: 'pointer', fontSize: '12px', borderBottom: '1px solid var(--border-light)' }}>
-            <span style={{ color: 'var(--text-muted)', marginRight: '6px', fontSize: '11px', fontFamily: 'monospace' }}>{s.sku}</span>
-            <span style={{ fontWeight: 600, color: '#1E3A5F', marginRight: '4px' }}>{s.brand}</span>
-            <span style={{ color: 'var(--text-primary)' }}>{s.name}</span>
-          </div>
-        ))}
-      </div>
-    )}
+    {/* Дропдаун пошуку — position:fixed, ширина 500px від лівого краю input */}
+    {suggestionAnchor && (nameSuggestions[suggestionAnchor.idx]?.length ?? 0) > 0 && (() => {
+      const dropW = 500;
+      // Не виходимо за правий край екрану
+      const left = Math.min(suggestionAnchor.left, window.innerWidth - dropW - 12);
+      return (
+        <div style={{ position: 'fixed', top: suggestionAnchor.top, left, width: dropW, zIndex: 9999, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.18)', maxHeight: '280px', overflowY: 'auto' }}>
+          {nameSuggestions[suggestionAnchor.idx].map(s => (
+            <div key={s.sku}
+              onMouseDown={() => selectNameSuggestion(suggestionAnchor.idx, s)}
+              style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'baseline', gap: '8px', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontFamily: 'monospace', flexShrink: 0 }}>{s.sku}</span>
+              <span style={{ fontWeight: 700, color: '#1E3A5F', flexShrink: 0 }}>{s.brand}</span>
+              <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</span>
+            </div>
+          ))}
+        </div>
+      );
+    })()}
 
     <style>{`
       @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
