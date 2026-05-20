@@ -109,7 +109,9 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
   const [sendOnPost, setSendOnPost] = useState(false);
   const lookupTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const nameTimers   = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+  const nameInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const [nameSuggestions, setNameSuggestions] = useState<Record<number, { sku: string; name: string; brand: string }[]>>({});
+  const [suggestionAnchor, setSuggestionAnchor] = useState<{ idx: number; top: number; left: number; width: number } | null>(null);
 
   // Debounced lookup — спрацьовує через 600мс після завершення друку
   function handleSkuChange(idx: number, val: string) {
@@ -130,6 +132,13 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
     };
   }, []);
 
+  function updateAnchor(idx: number) {
+    const el = nameInputRefs.current[idx];
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setSuggestionAnchor({ idx, top: r.bottom + 2, left: r.left, width: r.width });
+  }
+
   function handleNameChange(idx: number, val: string) {
     setLineField(idx, 'name', val);
     clearTimeout(nameTimers.current[idx]);
@@ -139,19 +148,21 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
         if (!res.ok) return;
         const data = await res.json();
         setNameSuggestions(prev => ({ ...prev, [idx]: data.slice(0, 8) }));
+        updateAnchor(idx);
       }, 300);
     } else {
       setNameSuggestions(prev => ({ ...prev, [idx]: [] }));
+      setSuggestionAnchor(null);
     }
   }
 
   async function selectNameSuggestion(idx: number, s: { sku: string; name: string; brand: string }) {
     setNameSuggestions(prev => ({ ...prev, [idx]: [] }));
+    setSuggestionAnchor(null);
     setLines(prev => prev.map((l, i) => i === idx
       ? { ...l, sku: s.sku, name: `${s.brand} ${s.name}`.trim(), matched: true }
       : l
     ));
-    // підтягуємо ціну
     await lookupSku(idx, s.sku);
   }
 
@@ -391,29 +402,14 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
                         }
                       }} />
 
-                    <div style={{ position: 'relative' }}>
-                      <input style={inp} placeholder="Назва товару або пошук..."
-                        value={line.name}
-                        onChange={e => handleNameChange(idx, e.target.value)}
-                        onBlur={() => setTimeout(() => setNameSuggestions(prev => ({ ...prev, [idx]: [] })), 150)}
-                        onFocus={() => { if (line.name.length >= 2 && !nameSuggestions[idx]?.length) handleNameChange(idx, line.name); }}
-                      />
-                      {(nameSuggestions[idx]?.length ?? 0) > 0 && (
-                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', maxHeight: '220px', overflowY: 'auto', marginTop: '2px' }}>
-                          {nameSuggestions[idx].map(s => (
-                            <div key={s.sku}
-                              onMouseDown={() => selectNameSuggestion(idx, s)}
-                              style={{ padding: '7px 10px', cursor: 'pointer', fontSize: '12px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span>
-                                <span style={{ color: 'var(--text-muted)', marginRight: '5px', fontSize: '11px', fontFamily: 'monospace' }}>{s.sku}</span>
-                                <span style={{ fontWeight: 600, color: '#1E3A5F', marginRight: '4px' }}>{s.brand}</span>
-                                <span style={{ color: 'var(--text-primary)' }}>{s.name}</span>
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <input
+                      ref={el => { nameInputRefs.current[idx] = el; }}
+                      style={inp} placeholder="Назва товару або пошук..."
+                      value={line.name}
+                      onChange={e => handleNameChange(idx, e.target.value)}
+                      onBlur={() => setTimeout(() => { setNameSuggestions(prev => ({ ...prev, [idx]: [] })); setSuggestionAnchor(null); }, 150)}
+                      onFocus={() => { if (line.name.length >= 2 && !nameSuggestions[idx]?.length) handleNameChange(idx, line.name); }}
+                    />
 
                     <input style={{ ...inp, textAlign: 'right' }} type="number" min="1" step="1"
                       value={line.qty || ''}
@@ -496,6 +492,21 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
         </div>
       </div>
     </div>
+    {/* Дропдаун пошуку по назві — position:fixed щоб не обрізатись overflow контейнером */}
+    {suggestionAnchor && (nameSuggestions[suggestionAnchor.idx]?.length ?? 0) > 0 && (
+      <div style={{ position: 'fixed', top: suggestionAnchor.top, left: suggestionAnchor.left, width: suggestionAnchor.width, zIndex: 9999, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.18)', maxHeight: '240px', overflowY: 'auto' }}>
+        {nameSuggestions[suggestionAnchor.idx].map(s => (
+          <div key={s.sku}
+            onMouseDown={() => selectNameSuggestion(suggestionAnchor.idx, s)}
+            style={{ padding: '7px 10px', cursor: 'pointer', fontSize: '12px', borderBottom: '1px solid var(--border-light)' }}>
+            <span style={{ color: 'var(--text-muted)', marginRight: '6px', fontSize: '11px', fontFamily: 'monospace' }}>{s.sku}</span>
+            <span style={{ fontWeight: 600, color: '#1E3A5F', marginRight: '4px' }}>{s.brand}</span>
+            <span style={{ color: 'var(--text-primary)' }}>{s.name}</span>
+          </div>
+        ))}
+      </div>
+    )}
+
     <style>{`
       @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
       @keyframes po-panel-enter {
