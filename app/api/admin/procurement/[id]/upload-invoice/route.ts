@@ -44,7 +44,7 @@ export async function POST(
   // Підписане посилання на 7 днів (приватний bucket)
   const { data: signed } = await db.storage
     .from(BUCKET)
-    .createSignedUrl(path, 60 * 60 * 24 * 7);
+    .createSignedUrl(path, 60 * 60 * 24 * 30); // 30 днів
 
   // Зберігаємо шлях у meta документа
   const existingMeta = (doc.meta as Record<string, unknown>) ?? {};
@@ -111,7 +111,7 @@ export async function GET(
 
   const { data: signed } = await db.storage
     .from(BUCKET)
-    .createSignedUrl(path, 60 * 60); // 1 година
+    .createSignedUrl(path, 60 * 60 * 24 * 30); // 30 днів
 
   return NextResponse.json({
     url:  signed?.signedUrl ?? null,

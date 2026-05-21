@@ -21,14 +21,20 @@ type PO = {
   lines: Line[];
 };
 
+// Спрощений ланцюжок — 3 кроки
 const STATUS_STEPS = [
-  { key: 'sent',      label: 'Відправлено постачальнику', icon: '📤' },
-  { key: 'confirmed', label: 'Підтверджено постачальником', icon: '✅' },
-  { key: 'in_transit',label: 'Товар в дорозі', icon: '🚚' },
-  { key: 'received',  label: 'Отримано на склад', icon: '📦' },
-  { key: 'invoiced',  label: 'Рахунок-фактура', icon: '🧾' },
-  { key: 'paid',      label: 'Оплачено', icon: '💳' },
+  { key: 'sent',                  label: 'Відправлено постачальнику',  icon: '📤', manual: true  },
+  { key: 'confirmed_by_supplier', label: 'Підтверджено постачальником', icon: '✅', manual: true  },
+  { key: 'received',              label: 'Отримано на склад',          icon: '📦', manual: false }, // авто через прихід
 ];
+
+// Маппінг всіх статусів на індекс кроку в прогрес-барі
+function statusToStep(status: string): number {
+  if (['paid', 'received', 'partially_received'].includes(status)) return 2;
+  if (['confirmed_by_supplier', 'invoiced'].includes(status))       return 1;
+  if (status === 'sent')                                             return 0;
+  return -1;
+}
 
 const inp: React.CSSProperties = { height: '36px', padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', color: 'var(--text-primary)', background: 'var(--bg-soft)', width: '100%' };
 const lbl: React.CSSProperties = { fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' };
@@ -130,7 +136,7 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
   const [error,   setError]   = useState('');
   const [success, setSuccess] = useState('');
 
-  const currentStepIdx = STATUS_STEPS.findIndex(s => s.key === (po.procurement_status ?? ''));
+  const currentStepIdx = statusToStep(newStatus || po.procurement_status || '');
 
   async function handleReceive() {
     setReceiving(true); setError(''); setSuccess('');
@@ -166,17 +172,30 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
       const res = await fetch(`/api/admin/procurement/${po.id}/status`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          procurement_status:      'invoiced',
+          // Не змінюємо procurement_status — просто зберігаємо реквізити рахунку
           supplier_invoice_number: invoiceNum,
           supplier_invoice_date:   invoiceDate,
           supplier_invoice_amount: parseFloat(invoiceAmt) || undefined,
         }),
       });
       if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Помилка'); return; }
-      setSuccess('✅ Рахунок-фактуру збережено');
-      setNewStatus('invoiced');
+      setSuccess('✅ Реквізити рахунку збережено');
     } catch { setError('Мережева помилка'); }
     finally { setSavingInvoice(false); }
+  }
+
+  async function handleConfirmWithoutInvoice() {
+    setUpdatingStatus(true); setError('');
+    try {
+      const res = await fetch(`/api/admin/procurement/${po.id}/status`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ procurement_status: 'confirmed_by_supplier' }),
+      });
+      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Помилка'); return; }
+      setNewStatus('confirmed_by_supplier');
+      setSuccess('✅ Підтверджено без рахунку-фактури');
+    } catch { setError('Мережева помилка'); }
+    finally { setUpdatingStatus(false); }
   }
 
   async function handlePay() {
@@ -216,29 +235,45 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
 
       {/* Progress bar */}
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px 20px', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0' }}>
           {STATUS_STEPS.map((step, i) => {
-            const done = STATUS_STEPS.findIndex(s => s.key === activeStatus) >= i;
-            const active = step.key === activeStatus;
+            const done   = currentStepIdx >= i;
+            const active = currentStepIdx === i;
             return (
               <div key={step.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
                 {i > 0 && <div style={{ position: 'absolute', left: '-50%', top: '14px', width: '100%', height: '2px', background: done ? '#1E3A5F' : 'var(--border)', zIndex: 0 }} />}
-                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: done ? '#1E3A5F' : 'var(--bg-soft)', border: `2px solid ${done ? '#1E3A5F' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', zIndex: 1, position: 'relative' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: done ? '#1E3A5F' : 'var(--bg-soft)', border: `2px solid ${done ? '#1E3A5F' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1, position: 'relative' }}>
                   {done ? <CheckCircle size={14} color="#fff" /> : <span style={{ fontSize: '10px' }}>{i + 1}</span>}
                 </div>
-                <div style={{ fontSize: '10px', fontWeight: active ? 700 : 400, color: active ? '#1E3A5F' : 'var(--text-muted)', marginTop: '4px', textAlign: 'center', maxWidth: '80px' }}>
+                <div style={{ fontSize: '10px', fontWeight: active ? 700 : 400, color: done ? '#1E3A5F' : 'var(--text-muted)', marginTop: '4px', textAlign: 'center', maxWidth: '80px' }}>
                   {step.icon} {step.label}
                 </div>
-                {!done && !active && (
+                {/* Кнопка ручного підтвердження — тільки для manual-кроків */}
+                {!done && step.manual && (
                   <button onClick={() => handleStatusUpdate(step.key)} disabled={updatingStatus}
                     style={{ marginTop: '4px', fontSize: '10px', padding: '1px 6px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-soft)', cursor: 'pointer', color: 'var(--text-secondary)' }}>
                     ✓ Так
                   </button>
                 )}
+                {/* Крок "Отримано" — автоматично через прихід */}
+                {!done && !step.manual && (
+                  <div style={{ marginTop: '4px', fontSize: '9px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                    авто
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
+
+        {/* Badge "Оплачено" — окремо від ланцюжка */}
+        {activeStatus === 'paid' && (
+          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '3px 10px', borderRadius: '20px' }}>
+              💳 Оплачено
+            </span>
+          </div>
+        )}
       </div>
 
       {error   && <div style={{ padding: '10px 14px', background: '#FEF2F2', borderRadius: '8px', color: '#DC2626', fontSize: '13px', marginBottom: '12px' }}>{error}</div>}
@@ -315,10 +350,24 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
               <div><label style={lbl}>Номер рахунку</label><input style={inp} value={invoiceNum} onChange={e => setInvoiceNum(e.target.value)} placeholder="СФ-2026-001" /></div>
               <div><label style={lbl}>Дата</label><input style={{ ...inp }} type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} /></div>
               <div><label style={lbl}>Сума</label><input style={inp} type="number" value={invoiceAmt} onChange={e => setInvoiceAmt(e.target.value)} /></div>
-              <button onClick={handleSaveInvoice} disabled={savingInvoice || !invoiceNum}
-                style={{ height: '34px', borderRadius: '8px', border: 'none', background: invoiceNum ? '#EA580C' : '#E2E8F0', color: invoiceNum ? '#fff' : '#94A3B8', fontSize: '12px', fontWeight: 700, cursor: invoiceNum ? 'pointer' : 'default', opacity: savingInvoice ? 0.7 : 1 }}>
-                {savingInvoice ? '...' : '🧾 Зберегти рахунок'}
-              </button>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button onClick={handleSaveInvoice} disabled={savingInvoice || !invoiceNum}
+                  style={{ flex: 1, height: '34px', borderRadius: '8px', border: 'none', background: invoiceNum ? '#EA580C' : '#E2E8F0', color: invoiceNum ? '#fff' : '#94A3B8', fontSize: '12px', fontWeight: 700, cursor: invoiceNum ? 'pointer' : 'default', opacity: savingInvoice ? 0.7 : 1 }}>
+                  {savingInvoice ? '...' : '🧾 Зберегти рахунок'}
+                </button>
+                <button onClick={handleConfirmWithoutInvoice} disabled={updatingStatus || activeStatus === 'confirmed_by_supplier' || activeStatus === 'received' || activeStatus === 'paid'}
+                  title="Постачальник не виставляє рахунок (ринок тощо)"
+                  style={{ height: '34px', padding: '0 10px', borderRadius: '8px', border: '1.5px solid #94A3B8', background: 'none', color: '#64748B', fontSize: '11px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', opacity: updatingStatus ? 0.6 : 1 }}>
+                  ✓ Без рахунку
+                </button>
+              </div>
+
+              {/* Статус оплати */}
+              {activeStatus === 'paid' && (
+                <div style={{ padding: '8px 10px', background: '#F0FDF4', borderRadius: '8px', border: '1px solid #BBF7D0', fontSize: '12px', fontWeight: 700, color: '#15803D', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  💳 Оплачено
+                </div>
+              )}
 
               {/* Файл рахунку */}
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: '10px', marginTop: '2px' }}>
