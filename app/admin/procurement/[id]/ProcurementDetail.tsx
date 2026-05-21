@@ -53,6 +53,8 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
   const [invoiceDate,   setInvoiceDate]   = useState(po.supplier_invoice_date ?? '');
   const [invoiceAmt,    setInvoiceAmt]    = useState(String(po.supplier_invoice_amount ?? po.total_cost ?? ''));
   const [savingInvoice, setSavingInvoice] = useState(false);
+  const [invoiceSaved,  setInvoiceSaved]  = useState(!!po.supplier_invoice_number);
+  const [editingInvoice,setEditingInvoice]= useState(!po.supplier_invoice_number);
 
   const [payAmount,   setPayAmount]   = useState(String(po.supplier_invoice_amount ?? po.total_cost ?? ''));
   const [payDate,     setPayDate]     = useState(new Date().toISOString().slice(0, 10));
@@ -180,6 +182,8 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
       });
       if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Помилка'); return; }
       setSuccess('✅ Реквізити рахунку збережено');
+      setInvoiceSaved(true);
+      setEditingInvoice(false);
     } catch { setError('Мережева помилка'); }
     finally { setSavingInvoice(false); }
   }
@@ -347,20 +351,51 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
               <FileText size={15} /> Рахунок-фактура
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div><label style={lbl}>Номер рахунку</label><input style={inp} value={invoiceNum} onChange={e => setInvoiceNum(e.target.value)} placeholder="СФ-2026-001" /></div>
-              <div><label style={lbl}>Дата</label><input style={{ ...inp }} type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} /></div>
-              <div><label style={lbl}>Сума</label><input style={inp} type="number" value={invoiceAmt} onChange={e => setInvoiceAmt(e.target.value)} /></div>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <button onClick={handleSaveInvoice} disabled={savingInvoice || !invoiceNum}
-                  style={{ flex: 1, height: '34px', borderRadius: '8px', border: 'none', background: invoiceNum ? '#EA580C' : '#E2E8F0', color: invoiceNum ? '#fff' : '#94A3B8', fontSize: '12px', fontWeight: 700, cursor: invoiceNum ? 'pointer' : 'default', opacity: savingInvoice ? 0.7 : 1 }}>
-                  {savingInvoice ? '...' : '🧾 Зберегти рахунок'}
-                </button>
-                <button onClick={handleConfirmWithoutInvoice} disabled={updatingStatus || activeStatus === 'confirmed_by_supplier' || activeStatus === 'received' || activeStatus === 'paid'}
-                  title="Постачальник не виставляє рахунок (ринок тощо)"
-                  style={{ height: '34px', padding: '0 10px', borderRadius: '8px', border: '1.5px solid #94A3B8', background: 'none', color: '#64748B', fontSize: '11px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', opacity: updatingStatus ? 0.6 : 1 }}>
-                  ✓ Без рахунку
-                </button>
-              </div>
+              {invoiceSaved && !editingInvoice ? (
+                /* Режим перегляду */
+                <>
+                  <div style={{ padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Номер: </span><strong>{invoiceNum}</strong></div>
+                    {invoiceDate && <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Дата: </span><strong>{new Date(invoiceDate).toLocaleDateString('uk-UA')}</strong></div>}
+                    {invoiceAmt && <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Сума: </span><strong>{Number(invoiceAmt).toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</strong></div>}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button onClick={() => setEditingInvoice(true)}
+                      style={{ flex: 1, height: '32px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+                      ✏️ Редагувати
+                    </button>
+                    <button onClick={handleConfirmWithoutInvoice} disabled={updatingStatus || ['confirmed_by_supplier','received','paid'].includes(activeStatus)}
+                      title="Постачальник не виставляє рахунок"
+                      style={{ height: '32px', padding: '0 10px', borderRadius: '8px', border: '1.5px solid #94A3B8', background: 'none', color: '#64748B', fontSize: '11px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', opacity: updatingStatus ? 0.6 : 1 }}>
+                      ✓ Без рахунку
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* Режим редагування */
+                <>
+                  <div><label style={lbl}>Номер рахунку</label><input style={inp} value={invoiceNum} onChange={e => setInvoiceNum(e.target.value)} placeholder="СФ-2026-001" /></div>
+                  <div><label style={lbl}>Дата</label><input style={{ ...inp }} type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} /></div>
+                  <div><label style={lbl}>Сума</label><input style={inp} type="number" value={invoiceAmt} onChange={e => setInvoiceAmt(e.target.value)} /></div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {invoiceSaved && (
+                      <button onClick={() => setEditingInvoice(false)}
+                        style={{ height: '34px', padding: '0 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+                        Скасувати
+                      </button>
+                    )}
+                    <button onClick={handleSaveInvoice} disabled={savingInvoice || !invoiceNum}
+                      style={{ flex: 1, height: '34px', borderRadius: '8px', border: 'none', background: invoiceNum ? '#EA580C' : '#E2E8F0', color: invoiceNum ? '#fff' : '#94A3B8', fontSize: '12px', fontWeight: 700, cursor: invoiceNum ? 'pointer' : 'default', opacity: savingInvoice ? 0.7 : 1 }}>
+                      {savingInvoice ? '...' : '🧾 Зберегти рахунок'}
+                    </button>
+                    <button onClick={handleConfirmWithoutInvoice} disabled={updatingStatus || ['confirmed_by_supplier','received','paid'].includes(activeStatus)}
+                      title="Постачальник не виставляє рахунок"
+                      style={{ height: '34px', padding: '0 10px', borderRadius: '8px', border: '1.5px solid #94A3B8', background: 'none', color: '#64748B', fontSize: '11px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', opacity: updatingStatus ? 0.6 : 1 }}>
+                      ✓ Без рахунку
+                    </button>
+                  </div>
+                </>
+              )}
 
               {/* Статус оплати */}
               {activeStatus === 'paid' && (
