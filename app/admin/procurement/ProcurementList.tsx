@@ -56,16 +56,23 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
   // Черга підтверджень відправки — обробляємо по одному
   type QueueItem = { po: PO; email: string };
   const [sendQueue,       setSendQueue]       = useState<QueueItem[]>([]);
-  const [sendQueueResult, setSendQueueResult] = useState<{ ok: number; skipped: number } | null>(null);
+  const [sendQueueResult, setSendQueueResult] = useState<{ ok: number; skipped: number; draftsExcluded?: number } | null>(null);
   const [sendingCurrent,  setSendingCurrent]  = useState(false);
 
   function startSendQueue(ids: string[]) {
-    const items = orders
-      .filter(po => ids.includes(po.id) && po.procurement_status !== 'draft')
-      .map(po => ({ po, email: po.supplier_email ?? '' }));
-    if (!items.length) return;
+    const selected   = orders.filter(po => ids.includes(po.id));
+    const sendable   = selected.filter(po => po.procurement_status !== 'draft');
+    const draftCount = selected.length - sendable.length;
+
+    if (!sendable.length) {
+      // Всі вибрані — чернетки
+      alert(`Неможливо відправити: всі вибрані замовлення є чернетками.\nСпочатку проведіть замовлення (натисніть "Провести" в чернетці).`);
+      return;
+    }
+
+    const items = sendable.map(po => ({ po, email: po.supplier_email ?? '' }));
     setSendQueue(items);
-    setSendQueueResult(null);
+    setSendQueueResult({ ok: 0, skipped: 0, draftsExcluded: draftCount });
   }
 
   async function confirmCurrentSend() {
@@ -79,17 +86,15 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
       });
       const remaining = sendQueue.slice(1);
       setSendQueue(remaining);
-      setSendQueueResult(prev => ({ ok: (prev?.ok ?? 0) + 1, skipped: prev?.skipped ?? 0 }));
-      if (remaining.length === 0) {
-        setSelected(new Set());
-      }
+      setSendQueueResult(prev => ({ ...prev, ok: (prev?.ok ?? 0) + 1, skipped: prev?.skipped ?? 0 }));
+      if (remaining.length === 0) setSelected(new Set());
     } finally { setSendingCurrent(false); }
   }
 
   function skipCurrentSend() {
     const remaining = sendQueue.slice(1);
     setSendQueue(remaining);
-    setSendQueueResult(prev => ({ ok: prev?.ok ?? 0, skipped: (prev?.skipped ?? 0) + 1 }));
+    setSendQueueResult(prev => ({ ...prev, ok: prev?.ok ?? 0, skipped: (prev?.skipped ?? 0) + 1 }));
   }
 
   async function deleteDraft(po: PO) {
@@ -416,6 +421,12 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
           <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 800 }}>Результат відправки</h3>
           {sendQueueResult.ok > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: '#15803D' }}>✓ Відправлено: {sendQueueResult.ok}</p>}
           {sendQueueResult.skipped > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: '#B45309' }}>→ Пропущено: {sendQueueResult.skipped}</p>}
+          {(sendQueueResult.draftsExcluded ?? 0) > 0 && (
+            <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748B', background: '#F1F5F9', padding: '6px 10px', borderRadius: '6px' }}>
+              📝 Чернетки не відправлено: {sendQueueResult.draftsExcluded}<br/>
+              <span style={{ fontSize: '11px' }}>Спочатку проведіть замовлення</span>
+            </p>
+          )}
           <button onClick={() => setSendQueueResult(null)}
             style={{ marginTop: '20px', height: '38px', padding: '0 24px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
             Закрити
