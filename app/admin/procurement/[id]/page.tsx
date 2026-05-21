@@ -70,7 +70,11 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
   };
 
   const poLines = (lines ?? []).map((l: { sku: string; qty: number; cost_price: number }) => ({
-    sku: l.sku, qty: l.qty, cost_price: Number(l.cost_price ?? 0),
+    sku:        l.sku,
+    qty:        l.qty,
+    cost_price: Number(l.cost_price ?? 0),
+    name:       nameMap.get(l.sku)?.name  ?? '',
+    brand:      nameMap.get(l.sku)?.brand ?? '',
   }));
 
   const isDraft = po.procurement_status === 'draft';
