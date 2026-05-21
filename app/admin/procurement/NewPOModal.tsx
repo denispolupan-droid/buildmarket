@@ -5,7 +5,7 @@ import { X, Upload, Loader2, Trash2, Plus, AlertCircle, Minus } from 'lucide-rea
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 
-type Supplier = { id: number; name: string };
+type Supplier = { id: number; name: string; email?: string | null };
 type Line = {
   sku: string; name: string; qty: number;
   cost_price: number;        // ціна закупки
@@ -102,11 +102,12 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
   const [lines,        setLines]        = useState<Line[]>(
     initialData.lines?.length ? initialData.lines as Line[] : [{ sku: '', name: '', qty: 1, cost_price: 0, matched: false }]
   );
-  const [dragging,   setDragging]   = useState(false);
-  const [parsing,    setParsing]    = useState(false);
-  const [saving,     setSaving]     = useState(false);
-  const [error,      setError]      = useState('');
-  const [sendOnPost, setSendOnPost] = useState(false);
+  const [dragging,     setDragging]     = useState(false);
+  const [parsing,      setParsing]      = useState(false);
+  const [saving,       setSaving]       = useState(false);
+  const [error,        setError]        = useState('');
+  const [sendOnPost,   setSendOnPost]   = useState(false);
+  const [sendConfirm,  setSendConfirm]  = useState<{ docId: string; email: string } | null>(null);
   const lookupTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const nameTimers   = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const nameInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
@@ -292,14 +293,13 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
       // При редагуванні зберігаємо той же ID документа
       if (isEdit) data.id = initialData.dbId;
 
-      // "Провести" — надсилаємо постачальнику або просто змінюємо статус
       if (post) {
         if (sendOnPost) {
-          // Відправляємо email постачальнику (API також оновлює статус на 'sent')
-          await fetch('/api/admin/procurement/send', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids: [data.id] }),
-          });
+          // Показуємо діалог підтвердження email перед відправкою
+          const currentSupplier = suppliers.find(s => s.id === supplierId);
+          setSendConfirm({ docId: data.id, email: currentSupplier?.email ?? '' });
+          setSaving(false);
+          return; // чекаємо підтвердження в діалозі
         } else {
           await fetch(`/api/admin/procurement/${data.id}/status`, {
             method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -309,7 +309,6 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
       }
 
       onSubmitted();
-      // Чернетка → журнал, Провести → деталь замовлення
       if (post) {
         router.push(`/admin/procurement/${data.id}`);
       } else {
@@ -320,8 +319,64 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
     finally { setSaving(false); }
   }
 
+  async function confirmAndSend() {
+    if (!sendConfirm) return;
+    setSaving(true);
+    try {
+      await fetch('/api/admin/procurement/send', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [sendConfirm.docId], overrideEmail: sendConfirm.email }),
+      });
+      setSendConfirm(null);
+      onSubmitted();
+      router.push(`/admin/procurement/${sendConfirm.docId}`);
+      router.refresh();
+    } catch { setError('Помилка відправки'); }
+    finally { setSaving(false); }
+  }
+
   return (
     <>
+    {/* Діалог підтвердження email перед відправкою */}
+    {sendConfirm && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: zIndex + 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+          <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
+            Підтвердження відправки
+          </div>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>
+            Замовлення буде відправлено постачальнику на вказаний email. Перевірте адресу перед відправкою.
+          </p>
+          <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>
+            Email постачальника
+          </label>
+          <input
+            value={sendConfirm.email}
+            onChange={e => setSendConfirm(prev => prev ? { ...prev, email: e.target.value } : null)}
+            placeholder="email@supplier.com"
+            style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid var(--border)', fontSize: '14px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', marginBottom: '6px' }}
+          />
+          {!sendConfirm.email && (
+            <p style={{ fontSize: '11px', color: '#B45309', marginBottom: '8px' }}>
+              ⚠ Email не заповнено — налаштуйте його в картці постачальника
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+            <button
+              onClick={() => setSendConfirm(null)}
+              style={{ flex: 1, height: '40px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}>
+              Скасувати
+            </button>
+            <button
+              onClick={confirmAndSend}
+              disabled={saving || !sendConfirm.email.includes('@')}
+              style={{ flex: 1, height: '40px', borderRadius: '8px', border: 'none', background: sendConfirm.email.includes('@') ? '#15803D' : '#94A3B8', color: '#fff', cursor: sendConfirm.email.includes('@') ? 'pointer' : 'not-allowed', fontSize: '14px', fontWeight: 700 }}>
+              {saving ? '...' : '📤 Відправити'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     {/* Side panel ЛІВОРУЧ — після sidebar (220px) */}
     <div className="po-panel-enter" style={{ position: 'fixed', top: 0, left: '220px', bottom: '42px', zIndex, width: 'min(1040px, 74vw)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', boxShadow: '8px 0 32px rgba(0,0,0,0.22)', borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

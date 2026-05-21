@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { ids, comment } = await req.json() as { ids: string[]; comment?: string };
+  const { ids, comment, overrideEmail } = await req.json() as { ids: string[]; comment?: string; overrideEmail?: string };
   if (!ids?.length) return NextResponse.json({ error: 'ids required' }, { status: 400 });
 
   // Налаштування відправника
@@ -42,6 +42,17 @@ export async function POST(req: NextRequest) {
     .select('document_id, sku, qty, cost_price, product:sku ( name, brand )')
     .in('document_id', ids);
 
+  // Маппінг наш SKU → артикул постачальника
+  const allSkus = [...new Set((lines ?? []).map(l => l.sku))];
+  const { data: skuMaps } = allSkus.length
+    ? await db.from('supplier_sku_map').select('our_sku, supplier_sku, supplier_id').in('our_sku', allSkus)
+    : { data: [] };
+  // our_sku+supplier_id → supplier_sku
+  const supplierSkuMap = new Map<string, string>();
+  for (const m of skuMaps ?? []) {
+    supplierSkuMap.set(`${m.our_sku}:${m.supplier_id}`, m.supplier_sku);
+  }
+
   const linesByDoc = new Map<string, typeof lines>();
   for (const line of lines ?? []) {
     if (!linesByDoc.has(line.document_id)) linesByDoc.set(line.document_id, []);
@@ -53,7 +64,9 @@ export async function POST(req: NextRequest) {
   for (const doc of docs) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supplier = doc.supplier as any;
-    const supplierEmail = supplier?.email
+    // Email: overrideEmail з діалогу → поле email → з notes
+    const supplierEmail = (overrideEmail && overrideEmail.includes('@') ? overrideEmail : null)
+      ?? supplier?.email
       ?? (supplier?.notes ?? '').match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)?.[0]
       ?? null;
 
@@ -66,9 +79,11 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tableRows = docLines.map((l: any) => {
       const name = l.product ? `${l.product.brand ?? ''} ${l.product.name ?? ''}`.trim() : l.sku;
+      // Використовуємо артикул постачальника якщо є, інакше наш
+      const displaySku = supplierSkuMap.get(`${l.sku}:${supplier?.id}`) ?? l.sku;
       return `
         <tr>
-          <td style="padding:7px 10px;border-bottom:1px solid #eee;font-family:monospace;font-size:12px;color:#555">${l.sku}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #eee;font-family:monospace;font-size:12px;color:#555">${displaySku}</td>
           <td style="padding:7px 10px;border-bottom:1px solid #eee;font-size:13px">${name}</td>
           <td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:center;font-weight:700">${l.qty} шт</td>
           <td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;color:#1E3A5F;font-weight:600">${Number(l.cost_price ?? 0).toFixed(2)} ₴</td>

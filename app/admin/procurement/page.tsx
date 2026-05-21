@@ -16,7 +16,7 @@ export default async function ProcurementPage() {
 
   const [{ data: pos }, { data: suppliers }, { data: receipts }] = await Promise.all([
     db.from('open_purchase_orders').select('*').limit(200),
-    db.from('suppliers').select('id, name').eq('is_active', true).order('name'),
+    db.from('suppliers').select('id, name, email').eq('is_active', true).order('name'),
     db.from('acc_documents')
       .select('id, doc_number, doc_date, status, total_cost, parent_doc_id, notes')
       .in('doc_type', ['receipt', 'stock_in'])
