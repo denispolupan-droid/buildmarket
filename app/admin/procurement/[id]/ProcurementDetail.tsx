@@ -63,11 +63,17 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
   const [payConfirm,   setPayConfirm]   = useState(false);
 
   type PayMode = 'transfer' | 'deferred' | 'cash';
-  const [payMode,    setPayMode]    = useState<PayMode>(payTermsDays > 0 ? 'deferred' : 'transfer');
-  const [copied,     setCopied]     = useState(false);
-  const [editingIban,setEditingIban]= useState(false);
-  const [ibanDraft,  setIbanDraft]  = useState({ iban: '', legal_name: '', edrpou: '', bank_name: '' });
-  const [savingIban, setSavingIban] = useState(false);
+  const [payMode,       setPayMode]       = useState<PayMode>(payTermsDays > 0 ? 'deferred' : 'transfer');
+  const [copied,        setCopied]        = useState(false);
+  const [editingIban,   setEditingIban]   = useState(false);
+  const [ibanDraft,     setIbanDraft]     = useState({ iban: '', legal_name: '', edrpou: '', bank_name: '' });
+  const [savingIban,    setSavingIban]    = useState(false);
+  const [paymentSaved,  setPaymentSaved]  = useState(
+    ['paid', 'invoiced'].includes(po.procurement_status ?? '')
+  );
+  const [editingPayment,setEditingPayment]= useState(
+    !['paid', 'invoiced'].includes(po.procurement_status ?? '')
+  );
   const [deferDate2, setDeferDate2] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() + (payTermsDays || 30));
     return d.toISOString().slice(0, 10);
@@ -261,6 +267,8 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
       if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Помилка'); return; }
       setSuccess('✅ Оплату зафіксовано в леджері');
       setNewStatus('paid');
+      setPaymentSaved(true);
+      setEditingPayment(false);
     } catch { setError('Мережева помилка'); }
     finally { setPaying(false); }
   }
@@ -565,6 +573,26 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
               <div style={{ padding: '10px 12px', background: '#F0FDF4', borderRadius: '8px', fontSize: '13px', color: '#15803D', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <CheckCircle size={16} /> Оплачено
               </div>
+            ) : paymentSaved && !editingPayment ? (
+              /* ── Режим перегляду оплати ── */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Спосіб: </span>
+                    <strong>{payMode === 'transfer' ? '🏦 Банківський переказ' : payMode === 'deferred' ? '📅 Відстрочка' : '💵 Готівка'}</strong>
+                  </div>
+                  {payAmount && <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Сума: </span>
+                    <strong style={{ color: '#15803D' }}>{Number(payAmount).toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</strong>
+                  </div>}
+                  {payMode === 'deferred'
+                    ? <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Оплатити до: </span><strong>{new Date(deferDate2).toLocaleDateString('uk-UA')}</strong></div>
+                    : payDate && <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Дата оплати: </span><strong>{new Date(payDate).toLocaleDateString('uk-UA')}</strong></div>
+                  }
+                </div>
+                <button onClick={() => setEditingPayment(true)}
+                  style={{ height: '32px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                  ✏️ Редагувати
+                </button>
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
@@ -665,7 +693,11 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                             method: 'PATCH', headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ procurement_status: 'invoiced' }),
                           });
-                          if (res.ok) setSuccess(`✅ Відстрочку зафіксовано до ${new Date(deferDate2).toLocaleDateString('uk-UA')}`);
+                          if (res.ok) {
+                            setSuccess(`✅ Відстрочку зафіксовано до ${new Date(deferDate2).toLocaleDateString('uk-UA')}`);
+                            setPaymentSaved(true);
+                            setEditingPayment(false);
+                          }
                           setNewStatus('invoiced');
                         } catch { setError('Помилка'); }
                         finally { setUpdatingStatus(false); }
@@ -692,6 +724,14 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                     </button>
                   </>
                 )}
+
+              {/* Кнопка "Скасувати" при редагуванні */}
+              {paymentSaved && editingPayment && (
+                <button onClick={() => setEditingPayment(false)}
+                  style={{ height: '32px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-muted)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+                  Скасувати редагування
+                </button>
+              )}
 
               </div>
             )}
