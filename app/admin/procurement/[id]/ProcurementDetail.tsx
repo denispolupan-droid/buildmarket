@@ -352,31 +352,63 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {invoiceSaved && !editingInvoice ? (
-                /* Режим перегляду */
+                /* ── Режим перегляду: все заблоковано ── */
                 <>
                   <div style={{ padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                     <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Номер: </span><strong>{invoiceNum}</strong></div>
                     {invoiceDate && <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Дата: </span><strong>{new Date(invoiceDate).toLocaleDateString('uk-UA')}</strong></div>}
                     {invoiceAmt && <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Сума: </span><strong>{Number(invoiceAmt).toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</strong></div>}
                   </div>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <button onClick={() => setEditingInvoice(true)}
-                      style={{ flex: 1, height: '32px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-                      ✏️ Редагувати
-                    </button>
-                    <button onClick={handleConfirmWithoutInvoice} disabled={updatingStatus || ['confirmed_by_supplier','received','paid'].includes(activeStatus)}
-                      title="Постачальник не виставляє рахунок"
-                      style={{ height: '32px', padding: '0 10px', borderRadius: '8px', border: '1.5px solid #94A3B8', background: 'none', color: '#64748B', fontSize: '11px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', opacity: updatingStatus ? 0.6 : 1 }}>
-                      ✓ Без рахунку
-                    </button>
-                  </div>
+
+                  {/* Файл — тільки перегляд/скачування (без видалення) */}
+                  {invoiceFile?.url && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', background: '#F0FDF4', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
+                      <FileText size={14} color="#15803D" style={{ flexShrink: 0 }} />
+                      <span style={{ fontSize: '12px', color: '#15803D', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{invoiceFile.name}</span>
+                      <a href={invoiceFile.url} target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'flex', padding: '3px', color: '#15803D', flexShrink: 0 }} title="Завантажити">
+                        <Download size={13} />
+                      </a>
+                    </div>
+                  )}
+
+                  <button onClick={() => setEditingInvoice(true)}
+                    style={{ height: '34px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                    ✏️ Редагувати
+                  </button>
                 </>
               ) : (
-                /* Режим редагування */
+                /* ── Режим редагування ── */
                 <>
                   <div><label style={lbl}>Номер рахунку</label><input style={inp} value={invoiceNum} onChange={e => setInvoiceNum(e.target.value)} placeholder="СФ-2026-001" /></div>
                   <div><label style={lbl}>Дата</label><input style={{ ...inp }} type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} /></div>
                   <div><label style={lbl}>Сума</label><input style={inp} type="number" value={invoiceAmt} onChange={e => setInvoiceAmt(e.target.value)} /></div>
+
+                  {/* Файл рахунку — перший перед кнопками */}
+                  <div>
+                    <label style={lbl}>Файл рахунку (PDF / Excel)</label>
+                    {invoiceFile?.url ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', background: '#F0FDF4', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
+                        <FileText size={14} color="#15803D" style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: '12px', color: '#15803D', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{invoiceFile.name}</span>
+                        <a href={invoiceFile.url} target="_blank" rel="noopener noreferrer"
+                          style={{ display: 'flex', padding: '3px', color: '#15803D', flexShrink: 0 }} title="Завантажити">
+                          <Download size={13} />
+                        </a>
+                        <button onClick={handleDeleteInvoiceFile} disabled={deletingInvoiceFile}
+                          style={{ display: 'flex', padding: '3px', background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', flexShrink: 0 }} title="Видалити файл">
+                          {deletingInvoiceFile ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Trash2 size={13} />}
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => fileRef.current?.click()} disabled={uploadingInvoice}
+                        style={{ width: '100%', height: '34px', borderRadius: '8px', border: '1.5px dashed var(--border)', background: 'var(--bg-soft)', cursor: 'pointer', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                        {uploadingInvoice ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Завантаження...</> : <><Upload size={13} /> Прикріпити файл</>}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Кнопки дій */}
                   <div style={{ display: 'flex', gap: '6px' }}>
                     {invoiceSaved && (
                       <button onClick={() => setEditingInvoice(false)}
@@ -386,7 +418,7 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                     )}
                     <button onClick={handleSaveInvoice} disabled={savingInvoice || !invoiceNum}
                       style={{ flex: 1, height: '34px', borderRadius: '8px', border: 'none', background: invoiceNum ? '#EA580C' : '#E2E8F0', color: invoiceNum ? '#fff' : '#94A3B8', fontSize: '12px', fontWeight: 700, cursor: invoiceNum ? 'pointer' : 'default', opacity: savingInvoice ? 0.7 : 1 }}>
-                      {savingInvoice ? '...' : '🧾 Зберегти рахунок'}
+                      {savingInvoice ? '...' : '🧾 Зберегти'}
                     </button>
                     <button onClick={handleConfirmWithoutInvoice} disabled={updatingStatus || ['confirmed_by_supplier','received','paid'].includes(activeStatus)}
                       title="Постачальник не виставляє рахунок"
@@ -404,37 +436,9 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                 </div>
               )}
 
-              {/* Файл рахунку */}
-              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '10px', marginTop: '2px' }}>
-                <label style={lbl}>Файл рахунку (PDF / Excel)</label>
-                {invoiceFile?.url ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', background: '#F0FDF4', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
-                    <FileText size={14} color="#15803D" style={{ flexShrink: 0 }} />
-                    <span style={{ fontSize: '12px', color: '#15803D', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {invoiceFile.name}
-                    </span>
-                    <a href={invoiceFile.url} target="_blank" rel="noopener noreferrer"
-                      style={{ display: 'flex', padding: '3px', color: '#15803D', flexShrink: 0 }} title="Завантажити">
-                      <Download size={13} />
-                    </a>
-                    <button onClick={handleDeleteInvoiceFile} disabled={deletingInvoiceFile}
-                      style={{ display: 'flex', padding: '3px', background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', flexShrink: 0 }} title="Видалити файл">
-                      {deletingInvoiceFile ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Trash2 size={13} />}
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => fileRef.current?.click()}
-                    disabled={uploadingInvoice}
-                    style={{ width: '100%', height: '34px', borderRadius: '8px', border: '1.5px dashed var(--border)', background: 'var(--bg-soft)', cursor: 'pointer', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                    {uploadingInvoice
-                      ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Завантаження...</>
-                      : <><Upload size={13} /> Прикріпити файл</>}
-                  </button>
-                )}
-                <input ref={fileRef} type="file" accept=".pdf,.xlsx,.xls,.jpg,.jpeg,.png" style={{ display: 'none' }}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) handleInvoiceUpload(f); e.target.value = ''; }} />
-              </div>
+              {/* Hidden file input */}
+              <input ref={fileRef} type="file" accept=".pdf,.xlsx,.xls,.jpg,.jpeg,.png" style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleInvoiceUpload(f); e.target.value = ''; }} />
             </div>
           </div>
 
