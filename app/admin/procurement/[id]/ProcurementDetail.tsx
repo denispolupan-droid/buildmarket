@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, Truck, Plus, X, Upload, Download, Trash2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, Truck, Plus, X, Upload, Download, Trash2, Copy, Check } from 'lucide-react';
 import Link from 'next/link';
 
 type Line = { id: number; sku: string; name?: string; brand?: string; qty: number; cost_price: number; supplier_id?: number };
@@ -61,6 +61,50 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
   const payTermsDays = po.supplier_bank?.payment_days ?? 0;
   const [payDeferred,  setPayDeferred]  = useState(payTermsDays > 0);
   const [payConfirm,   setPayConfirm]   = useState(false);
+
+  type PayMode = 'transfer' | 'deferred' | 'cash';
+  const [payMode,    setPayMode]    = useState<PayMode>(payTermsDays > 0 ? 'deferred' : 'transfer');
+  const [copied,     setCopied]     = useState(false);
+  const [editingIban,setEditingIban]= useState(false);
+  const [ibanDraft,  setIbanDraft]  = useState({ iban: '', legal_name: '', edrpou: '', bank_name: '' });
+  const [savingIban, setSavingIban] = useState(false);
+  const [deferDate2, setDeferDate2] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() + (payTermsDays || 30));
+    return d.toISOString().slice(0, 10);
+  });
+
+  function copyPaymentDetails() {
+    const lines = [
+      `Отримувач: ${po.supplier_bank?.legal_name ?? po.supplier_name}`,
+      `IBAN: ${po.supplier_bank?.bank_iban}`,
+      po.supplier_bank?.edrpou  ? `ЄДРПОУ: ${po.supplier_bank.edrpou}`   : '',
+      po.supplier_bank?.bank_name ? `Банк: ${po.supplier_bank.bank_name}` : '',
+      `Призначення: Оплата за замовленням ${po.doc_number} від ${new Date(po.doc_date).toLocaleDateString('uk-UA')}`,
+      `Сума: ${Number(payAmount).toFixed(2)} грн`,
+    ].filter(Boolean).join('\n');
+    navigator.clipboard.writeText(lines);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function saveIban() {
+    if (!ibanDraft.iban) return;
+    setSavingIban(true);
+    try {
+      await fetch(`/api/admin/suppliers/${po.supplier_id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bank_iban:    ibanDraft.iban,
+          legal_name:   ibanDraft.legal_name || undefined,
+          edrpou:       ibanDraft.edrpou     || undefined,
+          bank_name:    ibanDraft.bank_name  || undefined,
+        }),
+      });
+      setSuccess('✅ Реквізити збережено. Оновіть сторінку.');
+      setEditingIban(false);
+    } catch { setError('Помилка збереження реквізитів'); }
+    finally { setSavingIban(false); }
+  }
   const [deferDate,   setDeferDate]   = useState(() => {
     const d = new Date(); d.setDate(d.getDate() + (payTermsDays || 14));
     return d.toISOString().slice(0, 10);
@@ -518,66 +562,118 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
             )}
 
             {activeStatus === 'paid' ? (
-              <div style={{ fontSize: '13px', color: '#15803D', fontWeight: 700 }}>✅ Оплачено</div>
+              <div style={{ padding: '10px 12px', background: '#F0FDF4', borderRadius: '8px', fontSize: '13px', color: '#15803D', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <CheckCircle size={16} /> Оплачено
+              </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-                {/* Таби вибору способу — чітко позначені як "Спосіб оплати" */}
+                {/* Вибір способу оплати */}
                 <div>
                   <label style={lbl}>Спосіб оплати</label>
                   <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                    <button onClick={() => setPayDeferred(false)}
-                      style={{ flex: 1, height: '34px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: 'none', borderRight: '1px solid var(--border)', background: !payDeferred ? '#1E3A5F' : 'var(--bg-soft)', color: !payDeferred ? '#fff' : 'var(--text-secondary)', transition: 'all 0.15s' }}>
-                      💳 Оплата зараз
-                    </button>
-                    <button onClick={() => setPayDeferred(true)}
-                      style={{ flex: 1, height: '34px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: 'none', background: payDeferred ? '#B45309' : 'var(--bg-soft)', color: payDeferred ? '#fff' : 'var(--text-secondary)', transition: 'all 0.15s' }}>
-                      📅 Відстрочка
-                    </button>
-                  </div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px' }}>
-                    {!payDeferred ? 'Оплата вже здійснена або здійснюється сьогодні' : 'Оплата буде здійснена пізніше'}
+                    {([
+                      { key: 'transfer', label: '🏦 Рахунок' },
+                      { key: 'deferred', label: '📅 Відстрочка' },
+                      { key: 'cash',     label: '💵 Готівка' },
+                    ] as { key: PayMode; label: string }[]).map((m, i) => (
+                      <button key={m.key} onClick={() => setPayMode(m.key)}
+                        style={{ flex: 1, height: '34px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', border: 'none', borderLeft: i > 0 ? '1px solid var(--border)' : 'none', background: payMode === m.key ? '#1E3A5F' : 'var(--bg-soft)', color: payMode === m.key ? '#fff' : 'var(--text-secondary)', transition: 'all 0.15s' }}>
+                        {m.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                <div><label style={lbl}>Сума, ₴</label>
-                  <input style={inp} type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" /></div>
+                {/* ── РАХУНОК (банківський переказ) ── */}
+                {payMode === 'transfer' && (
+                  <>
+                    {!po.supplier_bank?.bank_iban && !editingIban ? (
+                      <div style={{ padding: '12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: '#92400E' }}>
+                        ⚠ IBAN постачальника не заповнено — без нього неможливо зробити банківський переказ.
+                        <button onClick={() => setEditingIban(true)}
+                          style={{ display: 'block', marginTop: '8px', height: '30px', padding: '0 12px', borderRadius: '6px', border: 'none', background: '#92400E', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                          + Додати реквізити
+                        </button>
+                      </div>
+                    ) : editingIban ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', padding: '12px', background: 'var(--bg-soft)', borderRadius: '8px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Реквізити постачальника</div>
+                        <input style={{ ...inp, fontSize: '12px' }} placeholder="IBAN (UA...)" value={ibanDraft.iban} onChange={e => setIbanDraft(p => ({ ...p, iban: e.target.value }))} />
+                        <input style={{ ...inp, fontSize: '12px' }} placeholder="Юридична назва" value={ibanDraft.legal_name} onChange={e => setIbanDraft(p => ({ ...p, legal_name: e.target.value }))} />
+                        <input style={{ ...inp, fontSize: '12px' }} placeholder="ЄДРПОУ" value={ibanDraft.edrpou} onChange={e => setIbanDraft(p => ({ ...p, edrpou: e.target.value }))} />
+                        <input style={{ ...inp, fontSize: '12px' }} placeholder="Назва банку" value={ibanDraft.bank_name} onChange={e => setIbanDraft(p => ({ ...p, bank_name: e.target.value }))} />
+                        <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                          <button onClick={() => setEditingIban(false)} style={{ flex: 1, height: '30px', borderRadius: '6px', border: '1px solid var(--border)', background: 'none', fontSize: '12px', cursor: 'pointer', color: 'var(--text-secondary)', fontWeight: 600 }}>Скасувати</button>
+                          <button onClick={saveIban} disabled={savingIban || !ibanDraft.iban}
+                            style={{ flex: 2, height: '30px', borderRadius: '6px', border: 'none', background: ibanDraft.iban ? '#1E3A5F' : '#E2E8F0', color: ibanDraft.iban ? '#fff' : '#94A3B8', fontSize: '12px', fontWeight: 700, cursor: ibanDraft.iban ? 'pointer' : 'default' }}>
+                            {savingIban ? '...' : '💾 Зберегти реквізити'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>{po.supplier_bank?.legal_name ?? po.supplier_name}</div>
+                        {po.supplier_bank?.edrpou  && <div style={{ color: 'var(--text-muted)' }}>ЄДРПОУ: {po.supplier_bank.edrpou}</div>}
+                        <div style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-primary)' }}>{po.supplier_bank?.bank_iban}</div>
+                        {po.supplier_bank?.bank_name && <div style={{ color: 'var(--text-muted)' }}>{po.supplier_bank.bank_name}</div>}
+                      </div>
+                    )}
 
-                {payDeferred ? (
-                  <div><label style={lbl}>Оплатити до</label>
-                    <input style={inp} type="date" value={deferDate}
-                      min={new Date().toISOString().slice(0, 10)}
-                      onChange={e => setDeferDate(e.target.value)} />
-                  </div>
-                ) : (
-                  <div><label style={lbl}>Дата оплати</label>
-                    <input style={inp} type="date" value={payDate} onChange={e => setPayDate(e.target.value)} /></div>
+                    {po.supplier_bank?.bank_iban && !editingIban && (
+                      <>
+                        <div><label style={lbl}>Сума, ₴</label><input style={inp} type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" /></div>
+                        <div><label style={lbl}>Дата оплати</label><input style={inp} type="date" value={payDate} onChange={e => setPayDate(e.target.value)} /></div>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button onClick={copyPaymentDetails}
+                            style={{ flex: 1, height: '36px', borderRadius: '8px', border: '1px solid var(--border)', background: copied ? '#F0FDF4' : 'var(--bg-soft)', color: copied ? '#15803D' : 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                            {copied ? <><Check size={12} /> Скопійовано</> : <><Copy size={12} /> Копіювати реквізити</>}
+                          </button>
+                          <button onClick={() => { if (!payAmount || parseFloat(payAmount) <= 0) { setError('Вкажіть суму'); return; } setPayConfirm(true); }}
+                            disabled={paying || !payAmount || parseFloat(payAmount) <= 0}
+                            style={{ flex: 2, height: '36px', borderRadius: '8px', border: 'none', background: !payAmount || parseFloat(payAmount) <= 0 ? '#E2E8F0' : '#15803D', color: !payAmount || parseFloat(payAmount) <= 0 ? '#94A3B8' : '#fff', fontSize: '13px', fontWeight: 700, cursor: !payAmount || parseFloat(payAmount) <= 0 ? 'not-allowed' : 'pointer' }}>
+                            💳 Підтвердити переказ
+                          </button>
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                          Перекажіть кошти через свій інтернет-банкінг і натисніть "Підтвердити"
+                        </div>
+                      </>
+                    )}
+                  </>
                 )}
 
-                {/* Попередження про IBAN прямо біля кнопки */}
-                {!payDeferred && !po.supplier_bank?.bank_iban && (
-                  <div style={{ fontSize: '11px', color: '#92400E', background: '#FEF3C7', padding: '6px 10px', borderRadius: '6px' }}>
-                    ⚠ IBAN не заповнено — буде зафіксовано як готівкову або іншу форму оплати.{' '}
-                    <a href={`/admin/suppliers`} style={{ color: '#92400E', fontWeight: 700 }}>Додати IBAN →</a>
-                  </div>
+                {/* ── ВІДСТРОЧКА ── */}
+                {payMode === 'deferred' && (
+                  <>
+                    <div><label style={lbl}>Сума, ₴</label><input style={inp} type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" /></div>
+                    <div><label style={lbl}>Оплатити до</label>
+                      <input style={inp} type="date" value={deferDate2} min={new Date().toISOString().slice(0, 10)} onChange={e => setDeferDate2(e.target.value)} />
+                    </div>
+                    <button onClick={() => { if (!payAmount || parseFloat(payAmount) <= 0) { setError('Вкажіть суму'); return; } handleStatusUpdate('confirmed_by_supplier'); setSuccess(`✅ Відстрочку зафіксовано до ${new Date(deferDate2).toLocaleDateString('uk-UA')}`); }}
+                      disabled={updatingStatus || !payAmount || parseFloat(payAmount) <= 0}
+                      style={{ height: '36px', borderRadius: '8px', border: 'none', background: !payAmount || parseFloat(payAmount) <= 0 ? '#E2E8F0' : '#B45309', color: !payAmount || parseFloat(payAmount) <= 0 ? '#94A3B8' : '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                      📅 Зафіксувати відстрочку до {new Date(deferDate2).toLocaleDateString('uk-UA')}
+                    </button>
+                  </>
                 )}
 
-                <button
-                  onClick={() => {
-                    if (!payAmount || parseFloat(payAmount) <= 0) {
-                      setError('Вкажіть суму оплати');
-                      return;
-                    }
-                    if (payDeferred) {
-                      handleStatusUpdate('confirmed_by_supplier');
-                    } else {
-                      setPayConfirm(true);
-                    }
-                  }}
-                  disabled={paying || !payAmount || parseFloat(payAmount) <= 0}
-                  style={{ height: '38px', borderRadius: '8px', border: 'none', background: !payAmount || parseFloat(payAmount) <= 0 ? '#E2E8F0' : payDeferred ? '#B45309' : '#15803D', color: !payAmount || parseFloat(payAmount) <= 0 ? '#94A3B8' : '#fff', fontSize: '13px', fontWeight: 700, cursor: !payAmount || parseFloat(payAmount) <= 0 ? 'not-allowed' : 'pointer', opacity: paying ? 0.7 : 1 }}>
-                  {paying ? '...' : payDeferred ? `📅 Зафіксувати відстрочку до ${new Date(deferDate).toLocaleDateString('uk-UA')}` : '💳 Зафіксувати оплату'}
-                </button>
+                {/* ── ГОТІВКА ── */}
+                {payMode === 'cash' && (
+                  <>
+                    <div style={{ padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      💵 Оплата готівкою — підходить для постачальників типу "ринок", де розрахунок відбувається при отриманні товару.
+                    </div>
+                    <div><label style={lbl}>Сума, ₴</label><input style={inp} type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" /></div>
+                    <div><label style={lbl}>Дата оплати</label><input style={inp} type="date" value={payDate} onChange={e => setPayDate(e.target.value)} /></div>
+                    <button onClick={() => { if (!payAmount || parseFloat(payAmount) <= 0) { setError('Вкажіть суму'); return; } setPayConfirm(true); }}
+                      disabled={paying || !payAmount || parseFloat(payAmount) <= 0}
+                      style={{ height: '36px', borderRadius: '8px', border: 'none', background: !payAmount || parseFloat(payAmount) <= 0 ? '#E2E8F0' : '#15803D', color: !payAmount || parseFloat(payAmount) <= 0 ? '#94A3B8' : '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                      💵 Підтвердити готівкову оплату
+                    </button>
+                  </>
+                )}
+
               </div>
             )}
           </div>
