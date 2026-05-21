@@ -437,7 +437,7 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                       placeholder={String(line.qty)}
                       value={actualQties[line.sku] ?? ''}
                       onChange={e => setActualQties(prev => ({ ...prev, [line.sku]: parseFloat(e.target.value) }))}
-                      style={{ ...inp, textAlign: 'right', height: '30px', fontSize: '12px', border: diff < 0 ? '1.5px solid #EF4444' : undefined }} />
+                      style={{ textAlign: 'right', height: '24px', fontSize: '12px', padding: '0 6px', border: `1.5px solid ${diff < 0 ? '#EF4444' : 'var(--border)'}`, borderRadius: '6px', outline: 'none', width: '100%', background: 'var(--bg-soft)', color: 'var(--text-primary)' }} />
                   )}
 
                   {/* Ціна фактична (input) */}
@@ -446,7 +446,7 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                       placeholder={line.cost_price ? String(line.cost_price) : '0'}
                       value={actualPrices[line.sku] ?? ''}
                       onChange={e => setActualPrices(prev => ({ ...prev, [line.sku]: parseFloat(e.target.value) }))}
-                      style={{ ...inp, textAlign: 'right', height: '30px', fontSize: '12px' }} />
+                      style={{ textAlign: 'right', height: '24px', fontSize: '12px', padding: '0 6px', border: '1.5px solid var(--border)', borderRadius: '6px', outline: 'none', width: '100%', background: 'var(--bg-soft)', color: 'var(--text-primary)' }} />
                   )}
 
                   {/* Ціна PO */}
