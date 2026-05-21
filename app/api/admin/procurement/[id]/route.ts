@@ -49,6 +49,40 @@ export async function GET(
   });
 }
 
+// DELETE /api/admin/procurement/[id] — видаляє чернетку PO
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || user.user_metadata?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const db = createServiceClient();
+
+  const { data: doc } = await db
+    .from('acc_documents')
+    .select('procurement_status, doc_type')
+    .eq('id', id)
+    .single();
+
+  if (!doc) return NextResponse.json({ error: 'Не знайдено' }, { status: 404 });
+  if (doc.doc_type !== 'purchase_order') {
+    return NextResponse.json({ error: 'Можна видаляти тільки PO' }, { status: 400 });
+  }
+  if (doc.procurement_status !== 'draft') {
+    return NextResponse.json({ error: 'Видалити можна тільки чернетку. Проведений документ — скасуйте через Облік' }, { status: 400 });
+  }
+
+  await db.from('acc_document_lines').delete().eq('document_id', id);
+  await db.from('acc_documents').delete().eq('id', id);
+
+  return NextResponse.json({ ok: true });
+}
+
 // PUT /api/admin/procurement/[id] — оновлює існуючу чернетку PO
 export async function PUT(
   req: NextRequest,

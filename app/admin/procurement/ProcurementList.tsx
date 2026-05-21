@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ChevronDown, ChevronUp, Send, Loader2, X, Mail } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp, Send, Loader2, X, Mail, Trash2 } from 'lucide-react';
 
 type Receipt = {
   id: string; doc_number: string; doc_date: string;
@@ -49,7 +49,23 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
   const [sending,      setSending]      = useState<Set<string>>(new Set());
   const [sendResult,   setSendResult]   = useState<{ ok: number; fails: number } | null>(null);
   const [sendConfirm,  setSendConfirm]  = useState<{ po: PO; email: string } | null>(null);
-  const [openingDraft, setOpeningDraft] = useState<string | null>(null);
+  const [openingDraft,  setOpeningDraft]  = useState<string | null>(null);
+  const [deletingDraft, setDeletingDraft] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<PO | null>(null);
+
+  async function deleteDraft(po: PO) {
+    setDeletingDraft(po.id);
+    try {
+      const res = await fetch(`/api/admin/procurement/${po.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        // Прибираємо з локального стану без перезавантаження
+        window.location.reload();
+      }
+    } finally {
+      setDeletingDraft(null);
+      setDeleteConfirm(null);
+    }
+  }
 
   async function openDraftInModal(po: PO) {
     setOpeningDraft(po.id);
@@ -202,13 +218,21 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                   </button>
                 )}
                 {statusKey === 'draft' ? (
-                  <button
-                    onClick={() => openDraftInModal(po)}
-                    disabled={openingDraft === po.id}
-                    title="Відкрити чернетку для редагування"
-                    style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px', opacity: openingDraft === po.id ? 0.5 : 1 }}>
-                    {openingDraft === po.id ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <ArrowRight size={16} />}
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setDeleteConfirm(po)}
+                      title="Видалити чернетку"
+                      style={{ background: 'none', border: '1px solid #FCA5A5', borderRadius: '6px', cursor: 'pointer', color: '#EF4444', display: 'flex', padding: '4px 6px' }}>
+                      <Trash2 size={13} />
+                    </button>
+                    <button
+                      onClick={() => openDraftInModal(po)}
+                      disabled={openingDraft === po.id}
+                      title="Відкрити чернетку для редагування"
+                      style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px', opacity: openingDraft === po.id ? 0.5 : 1 }}>
+                      {openingDraft === po.id ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <ArrowRight size={16} />}
+                    </button>
+                  </>
                 ) : (
                   <Link href={`/admin/procurement/${po.id}`}
                     style={{ display: 'flex', alignItems: 'center', color: 'var(--text-muted)', textDecoration: 'none', padding: '4px' }}>
@@ -248,6 +272,40 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
         );
       })}
     </div>
+    {/* Діалог підтвердження видалення чернетки */}
+    {deleteConfirm && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '380px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+            <Trash2 size={20} color="#EF4444" />
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
+              Видалити чернетку?
+            </h3>
+          </div>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+            <strong>{deleteConfirm.doc_number}</strong> · {deleteConfirm.supplier_name ?? '—'}
+          </p>
+          <p style={{ fontSize: '12px', color: '#B45309', background: '#FEF3C7', padding: '8px 12px', borderRadius: '8px', marginBottom: '20px' }}>
+            Видалення незворотне. Чернетку буде повністю видалено.
+          </p>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={() => setDeleteConfirm(null)}
+              style={{ flex: 1, height: '40px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Скасувати
+            </button>
+            <button
+              onClick={() => deleteDraft(deleteConfirm)}
+              disabled={deletingDraft === deleteConfirm.id}
+              style={{ flex: 1, height: '40px', borderRadius: '8px', border: 'none', background: '#EF4444', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              {deletingDraft === deleteConfirm.id ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Trash2 size={14} />}
+              Видалити
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     {/* Діалог підтвердження відправки */}
     {sendConfirm && (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
