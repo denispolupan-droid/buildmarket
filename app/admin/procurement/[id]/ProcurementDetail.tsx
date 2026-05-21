@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, Truck, Plus, X } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, Truck, Plus, X, Upload, Download, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 type Line = { id: number; sku: string; name?: string; brand?: string; qty: number; cost_price: number; supplier_id?: number };
@@ -57,6 +57,37 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
     return d.toISOString().slice(0, 10);
   });
   const [paying,      setPaying]      = useState(false);
+
+  // Invoice file upload
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [invoiceFile,        setInvoiceFile]        = useState<{ url: string | null; name: string | null } | null>(null);
+  const [uploadingInvoice,   setUploadingInvoice]   = useState(false);
+  const [deletingInvoiceFile,setDeletingInvoiceFile]= useState(false);
+
+  useEffect(() => {
+    fetch(`/api/admin/procurement/${po.id}/upload-invoice`)
+      .then(r => r.json())
+      .then(d => setInvoiceFile({ url: d.url, name: d.name }))
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [po.id]);
+
+  async function handleInvoiceUpload(file: File) {
+    setUploadingInvoice(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(`/api/admin/procurement/${po.id}/upload-invoice`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (res.ok) setInvoiceFile({ url: data.signed_url, name: data.name });
+    setUploadingInvoice(false);
+  }
+
+  async function handleDeleteInvoiceFile() {
+    setDeletingInvoiceFile(true);
+    await fetch(`/api/admin/procurement/${po.id}/upload-invoice`, { method: 'DELETE' });
+    setInvoiceFile(null);
+    setDeletingInvoiceFile(false);
+  }
 
   // Landed cost
   type CostLine = { cost_type: string; description: string; amount: string };
@@ -288,6 +319,38 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                 style={{ height: '34px', borderRadius: '8px', border: 'none', background: invoiceNum ? '#EA580C' : '#E2E8F0', color: invoiceNum ? '#fff' : '#94A3B8', fontSize: '12px', fontWeight: 700, cursor: invoiceNum ? 'pointer' : 'default', opacity: savingInvoice ? 0.7 : 1 }}>
                 {savingInvoice ? '...' : '🧾 Зберегти рахунок'}
               </button>
+
+              {/* Файл рахунку */}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '10px', marginTop: '2px' }}>
+                <label style={lbl}>Файл рахунку (PDF / Excel)</label>
+                {invoiceFile?.url ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', background: '#F0FDF4', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
+                    <FileText size={14} color="#15803D" style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: '12px', color: '#15803D', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {invoiceFile.name}
+                    </span>
+                    <a href={invoiceFile.url} target="_blank" rel="noopener noreferrer"
+                      style={{ display: 'flex', padding: '3px', color: '#15803D', flexShrink: 0 }} title="Завантажити">
+                      <Download size={13} />
+                    </a>
+                    <button onClick={handleDeleteInvoiceFile} disabled={deletingInvoiceFile}
+                      style={{ display: 'flex', padding: '3px', background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', flexShrink: 0 }} title="Видалити файл">
+                      {deletingInvoiceFile ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Trash2 size={13} />}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    disabled={uploadingInvoice}
+                    style={{ width: '100%', height: '34px', borderRadius: '8px', border: '1.5px dashed var(--border)', background: 'var(--bg-soft)', cursor: 'pointer', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                    {uploadingInvoice
+                      ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Завантаження...</>
+                      : <><Upload size={13} /> Прикріпити файл</>}
+                  </button>
+                )}
+                <input ref={fileRef} type="file" accept=".pdf,.xlsx,.xls,.jpg,.jpeg,.png" style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleInvoiceUpload(f); e.target.value = ''; }} />
+              </div>
             </div>
           </div>
 
