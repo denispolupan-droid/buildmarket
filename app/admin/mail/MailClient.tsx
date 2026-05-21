@@ -21,14 +21,39 @@ type MessageContent = Message & { content: string };
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const FOLDER_ICONS: Record<string, React.ReactNode> = {
-  inbox:   <Inbox size={15} />,
-  sent:    <Send size={15} />,
-  drafts:  <FileText size={15} />,
-  trash:   <Trash2 size={15} />,
+  inbox:        <Inbox size={15} />,
+  sent:         <Send size={15} />,
+  drafts:       <FileText size={15} />,
+  trash:        <Trash2 size={15} />,
+  spam:         <Trash2 size={15} />,
+  outbox:       <Send size={15} />,
+  templates:    <FileText size={15} />,
+  archive:      <FileText size={15} />,
+  notification: <Mail size={15} />,
+  newsletter:   <Mail size={15} />,
+  snoozed:      <Mail size={15} />,
+};
+
+const FOLDER_NAMES_UK: Record<string, string> = {
+  inbox:        'Вхідні',
+  sent:         'Надіслані',
+  drafts:       'Чернетки',
+  trash:        'Кошик',
+  spam:         'Спам',
+  outbox:       'Відправлення',
+  templates:    'Шаблони',
+  archive:      'Архів',
+  notification: 'Сповіщення',
+  newsletter:   'Розсилки',
+  snoozed:      'Відкладені',
 };
 
 function folderIcon(name: string) {
   return FOLDER_ICONS[name.toLowerCase()] ?? <Mail size={15} />;
+}
+
+function folderName(name: string) {
+  return FOLDER_NAMES_UK[name.toLowerCase()] ?? name;
 }
 
 function formatDate(ts: string) {
@@ -230,7 +255,7 @@ export default function MailClient() {
             }}
           >
             <span style={{ opacity: 0.6 }}>{folderIcon(f.folderName)}</span>
-            <span style={{ flex: 1 }}>{f.folderName}</span>
+            <span style={{ flex: 1 }}>{folderName(f.folderName)}</span>
             {f.unreadCount > 0 && (
               <span style={{ background: '#1E3A5F', color: '#fff', fontSize: '11px', fontWeight: 700, borderRadius: '20px', padding: '1px 7px' }}>
                 {f.unreadCount}
@@ -249,7 +274,7 @@ export default function MailClient() {
       {/* Message list */}
       <div style={{ width: '320px', flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--bg-card)', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>
-          {selFolder?.folderName ?? 'Пошта'}
+          {selFolder ? folderName(selFolder.folderName) : 'Пошта'}
         </div>
 
         {loading && (
