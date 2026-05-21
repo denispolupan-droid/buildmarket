@@ -53,6 +53,45 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
   const [deletingDraft, setDeletingDraft] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<PO | null>(null);
 
+  // Черга підтверджень відправки — обробляємо по одному
+  type QueueItem = { po: PO; email: string };
+  const [sendQueue,       setSendQueue]       = useState<QueueItem[]>([]);
+  const [sendQueueResult, setSendQueueResult] = useState<{ ok: number; skipped: number } | null>(null);
+  const [sendingCurrent,  setSendingCurrent]  = useState(false);
+
+  function startSendQueue(ids: string[]) {
+    const items = orders
+      .filter(po => ids.includes(po.id) && po.procurement_status !== 'draft')
+      .map(po => ({ po, email: po.supplier_email ?? '' }));
+    if (!items.length) return;
+    setSendQueue(items);
+    setSendQueueResult(null);
+  }
+
+  async function confirmCurrentSend() {
+    const item = sendQueue[0];
+    if (!item) return;
+    setSendingCurrent(true);
+    try {
+      await fetch('/api/admin/procurement/send', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [item.po.id], overrideEmail: item.email }),
+      });
+      const remaining = sendQueue.slice(1);
+      setSendQueue(remaining);
+      setSendQueueResult(prev => ({ ok: (prev?.ok ?? 0) + 1, skipped: prev?.skipped ?? 0 }));
+      if (remaining.length === 0) {
+        setSelected(new Set());
+      }
+    } finally { setSendingCurrent(false); }
+  }
+
+  function skipCurrentSend() {
+    const remaining = sendQueue.slice(1);
+    setSendQueue(remaining);
+    setSendQueueResult(prev => ({ ok: prev?.ok ?? 0, skipped: (prev?.skipped ?? 0) + 1 }));
+  }
+
   async function deleteDraft(po: PO) {
     setDeletingDraft(po.id);
     try {
@@ -132,10 +171,10 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
         <div style={{ padding: '10px 16px', background: '#1E3A5F', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '13px', color: '#fff', fontWeight: 600 }}>Вибрано: {selected.size}</span>
           <button
-            onClick={() => sendOrders([...selected])}
+            onClick={() => startSendQueue([...selected])}
             disabled={sending.size > 0}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '30px', padding: '0 14px', borderRadius: '7px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: sending.size > 0 ? 0.6 : 1 }}>
-            {sending.size > 0 ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={13} />}
+            <Send size={13} />
             Відправити постачальникам
           </button>
           <button onClick={() => setSelected(new Set())} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '12px' }}>
@@ -210,11 +249,10 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
                 {statusKey !== 'draft' && (
                   <button
-                    onClick={() => setSendConfirm({ po, email: po.supplier_email ?? '' })}
-                    disabled={isSending}
+                    onClick={() => startSendQueue([po.id])}
                     title="Відправити постачальнику"
-                    style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px 6px', opacity: isSending ? 0.5 : 1 }}>
-                    {isSending ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={13} />}
+                    style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px 6px' }}>
+                    <Send size={13} />
                   </button>
                 )}
                 {statusKey === 'draft' ? (
@@ -306,57 +344,82 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
       </div>
     )}
 
-    {/* Діалог підтвердження відправки */}
-    {sendConfirm && (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
-              Відправити замовлення
-            </h3>
-            <button onClick={() => setSendConfirm(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}>
-              <X size={18} />
-            </button>
-          </div>
+    {/* Черга підтверджень відправки */}
+    {sendQueue.length > 0 && (() => {
+      const item = sendQueue[0];
+      const total = (sendQueueResult?.ok ?? 0) + (sendQueueResult?.skipped ?? 0) + sendQueue.length;
+      const current = (sendQueueResult?.ok ?? 0) + (sendQueueResult?.skipped ?? 0) + 1;
+      return (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '440px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
 
-          <div style={{ marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Постачальник</div>
-          <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '20px' }}>
-            {sendConfirm.po.supplier_name ?? '—'} · {sendConfirm.po.doc_number}
-          </div>
+            {/* Прогрес */}
+            {total > 1 && (
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Замовлення {current} з {total}
+              </div>
+            )}
 
-          <div style={{ marginBottom: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-            <Mail size={13} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
-            Email отримувача
-          </div>
-          <input
-            value={sendConfirm.email}
-            onChange={e => setSendConfirm(prev => prev ? { ...prev, email: e.target.value } : null)}
-            placeholder="email@supplier.com"
-            style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid var(--border)', fontSize: '13px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', marginBottom: '8px', outline: 'none' }}
-          />
-          {!sendConfirm.po.supplier_email && (
-            <div style={{ fontSize: '11px', color: '#B45309', marginBottom: '16px' }}>
-              ⚠ Email не заповнено у картці постачальника — введіть вручну або налаштуйте у розділі Постачальники
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                  Відправити замовлення
+                </h3>
+                <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  <strong>{item.po.doc_number}</strong> · {item.po.supplier_name ?? '—'}
+                </div>
+              </div>
+              <button onClick={() => { setSendQueue([]); setSendQueueResult(null); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '2px' }}>
+                <X size={18} />
+              </button>
             </div>
-          )}
 
-          <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-            <button onClick={() => setSendConfirm(null)}
-              style={{ flex: 1, height: '40px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '14px', color: 'var(--text-primary)', fontWeight: 600 }}>
-              Скасувати
-            </button>
-            <button
-              disabled={!sendConfirm.email.includes('@') || sending.has(sendConfirm.po.id)}
-              onClick={async () => {
-                const { po, email } = sendConfirm;
-                setSendConfirm(null);
-                // Якщо email відрізняється від збереженого — можна передати його в API (майбутнє)
-                await sendOrders([po.id]);
-              }}
-              style={{ flex: 1, height: '40px', borderRadius: '8px', border: 'none', background: sendConfirm.email.includes('@') ? '#1E3A5F' : '#94A3B8', color: '#fff', cursor: sendConfirm.email.includes('@') ? 'pointer' : 'not-allowed', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-              <Send size={15} /> Відправити
-            </button>
+            <div style={{ marginBottom: '6px', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '5px', textTransform: 'uppercase' }}>
+              <Mail size={12} /> Email отримувача
+            </div>
+            <input
+              value={item.email}
+              onChange={e => setSendQueue(prev => prev.map((it, i) => i === 0 ? { ...it, email: e.target.value } : it))}
+              placeholder="email@supplier.com"
+              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1.5px solid ${item.email ? 'var(--border)' : '#FCA5A5'}`, fontSize: '14px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', outline: 'none', marginBottom: '6px' }}
+            />
+            {!item.po.supplier_email && (
+              <div style={{ fontSize: '11px', color: '#B45309', background: '#FEF3C7', padding: '6px 10px', borderRadius: '6px', marginBottom: '4px' }}>
+                ⚠ Email не заповнено в картці постачальника
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
+              <button onClick={skipCurrentSend}
+                style={{ flex: 1, height: '40px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                {sendQueue.length > 1 ? 'Пропустити →' : 'Скасувати'}
+              </button>
+              <button
+                onClick={confirmCurrentSend}
+                disabled={sendingCurrent || !item.email.includes('@')}
+                style={{ flex: 2, height: '40px', borderRadius: '8px', border: 'none', background: item.email.includes('@') ? '#1E3A5F' : '#94A3B8', color: '#fff', cursor: item.email.includes('@') ? 'pointer' : 'not-allowed', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}>
+                {sendingCurrent ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={14} />}
+                {sendQueue.length > 1 ? `Відправити та далі →` : 'Відправити'}
+              </button>
+            </div>
           </div>
+        </div>
+      );
+    })()}
+
+    {/* Підсумок відправки */}
+    {sendQueue.length === 0 && sendQueueResult && (sendQueueResult.ok > 0 || sendQueueResult.skipped > 0) && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '360px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', textAlign: 'center' }}>
+          <div style={{ fontSize: '32px', marginBottom: '12px' }}>{sendQueueResult.ok > 0 ? '✅' : '⚠️'}</div>
+          <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 800 }}>Результат відправки</h3>
+          {sendQueueResult.ok > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: '#15803D' }}>✓ Відправлено: {sendQueueResult.ok}</p>}
+          {sendQueueResult.skipped > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: '#B45309' }}>→ Пропущено: {sendQueueResult.skipped}</p>}
+          <button onClick={() => setSendQueueResult(null)}
+            style={{ marginTop: '20px', height: '38px', padding: '0 24px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+            Закрити
+          </button>
         </div>
       </div>
     )}
