@@ -650,7 +650,26 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                     <div><label style={lbl}>Оплатити до</label>
                       <input style={inp} type="date" value={deferDate2} min={new Date().toISOString().slice(0, 10)} onChange={e => setDeferDate2(e.target.value)} />
                     </div>
-                    <button onClick={() => { if (!payAmount || parseFloat(payAmount) <= 0) { setError('Вкажіть суму'); return; } handleStatusUpdate('confirmed_by_supplier'); setSuccess(`✅ Відстрочку зафіксовано до ${new Date(deferDate2).toLocaleDateString('uk-UA')}`); }}
+                    <button onClick={async () => {
+                        if (!payAmount || parseFloat(payAmount) <= 0) { setError('Вкажіть суму'); return; }
+                        setUpdatingStatus(true); setError('');
+                        try {
+                          const res = await fetch(`/api/admin/procurement/${po.id}/status`, {
+                            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              supplier_invoice_amount: parseFloat(payAmount),
+                            }),
+                          });
+                          // Зберігаємо дату відстрочки в meta через окремий PATCH
+                          await fetch(`/api/admin/procurement/${po.id}/status`, {
+                            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ procurement_status: 'invoiced' }),
+                          });
+                          if (res.ok) setSuccess(`✅ Відстрочку зафіксовано до ${new Date(deferDate2).toLocaleDateString('uk-UA')}`);
+                          setNewStatus('invoiced');
+                        } catch { setError('Помилка'); }
+                        finally { setUpdatingStatus(false); }
+                      }}
                       disabled={updatingStatus || !payAmount || parseFloat(payAmount) <= 0}
                       style={{ height: '36px', borderRadius: '8px', border: 'none', background: !payAmount || parseFloat(payAmount) <= 0 ? '#E2E8F0' : '#B45309', color: !payAmount || parseFloat(payAmount) <= 0 ? '#94A3B8' : '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
                       📅 Зафіксувати відстрочку до {new Date(deferDate2).toLocaleDateString('uk-UA')}
