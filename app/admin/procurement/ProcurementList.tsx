@@ -19,6 +19,7 @@ type PO = {
   supplier_invoice_number: string | null;
   supplier_invoice_date: string | null;
   supplier_invoice_amount: string | null;
+  meta?: Record<string, unknown> | null;
   receipts: Receipt[];
 };
 
@@ -208,7 +209,15 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
       {orders.map((po, idx) => {
         // Пріоритет: po_status (новий) → procurement_status (старий) → default
         const statusKey = (po as { po_status?: string }).po_status ?? po.procurement_status ?? '';
-        const st = PO_STATUS_CFG[statusKey] ?? DEFAULT_STATUS;
+        const meta = (po.meta ?? {}) as Record<string, string | undefined>;
+        // Відстрочка: invoiced + payment_mode=deferred → спеціальний лейбл
+        const isDeferred = statusKey === 'invoiced' && meta.payment_mode === 'deferred';
+        const deferUntil = isDeferred && meta.payment_defer_date
+          ? new Date(meta.payment_defer_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' })
+          : null;
+        const st = isDeferred
+          ? { label: deferUntil ? `до ${deferUntil}` : 'Відстрочка', color: '#B45309', bg: '#FEF3C7', emoji: '📅' }
+          : (PO_STATUS_CFG[statusKey] ?? DEFAULT_STATUS);
         const hasReceipts = po.receipts.length > 0;
         const isExpanded  = expanded.has(po.id);
 
