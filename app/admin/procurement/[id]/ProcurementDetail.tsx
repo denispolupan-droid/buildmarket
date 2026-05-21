@@ -19,6 +19,7 @@ type PO = {
   supplier_invoice_amount: number | null;
   supplier_bank: SupplierBank | null;
   lines: Line[];
+  meta?: Record<string, unknown> | null;
 };
 
 // Спрощений ланцюжок — 3 кроки
@@ -63,7 +64,10 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
   const [payConfirm,   setPayConfirm]   = useState(false);
 
   type PayMode = 'transfer' | 'deferred' | 'cash';
-  const [payMode,       setPayMode]       = useState<PayMode>(payTermsDays > 0 ? 'deferred' : 'transfer');
+  const savedPayMode = (po.meta?.payment_mode as PayMode | undefined);
+  const [payMode,       setPayMode]       = useState<PayMode>(
+    savedPayMode ?? (payTermsDays > 0 ? 'deferred' : 'transfer')
+  );
   const [copied,        setCopied]        = useState(false);
   const [editingIban,   setEditingIban]   = useState(false);
   const [ibanDraft,     setIbanDraft]     = useState({ iban: '', legal_name: '', edrpou: '', bank_name: '' });
@@ -75,6 +79,7 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
     !['paid', 'invoiced'].includes(po.procurement_status ?? '')
   );
   const [deferDate2, setDeferDate2] = useState(() => {
+    if (po.meta?.payment_defer_date) return po.meta.payment_defer_date as string;
     const d = new Date(); d.setDate(d.getDate() + (payTermsDays || 30));
     return d.toISOString().slice(0, 10);
   });
@@ -687,7 +692,8 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                             body: JSON.stringify({
                               procurement_status:      'invoiced',
                               supplier_invoice_amount: parseFloat(payAmount),
-                              payment_defer_date:      deferDate2,  // зберігаємо дату
+                              payment_defer_date:      deferDate2,
+                              payment_mode:            'deferred',
                             }),
                           });
                           if (res.ok) {
