@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { ShoppingBag, Package, Truck, Store, ChevronLeft, ChevronDown, ChevronUp, Settings, BookOpen, Warehouse, BarChart3, Users, Star, MessageSquare, Send, FileText, ShoppingCart } from 'lucide-react';
+import { ShoppingBag, Package, Truck, Store, ChevronLeft, ChevronDown, ChevronUp, Settings, BookOpen, Warehouse, BarChart3, Users, Star, MessageSquare, Send, FileText, ShoppingCart, Mail } from 'lucide-react';
 
 const ORDER_STATUSES = [
   { value: 'new',             label: 'Нові' },
@@ -26,6 +26,7 @@ const NAV = [
   { href: '/admin/finance',              label: 'Фінанси',       icon: BarChart3,     exact: false },
   { href: '/admin/accounting/documents', label: 'Облік',         icon: BookOpen,      exact: false },
   { href: '/admin/accounting/stock',     label: 'Залишки',       icon: Warehouse,     exact: false },
+  { href: '/admin/mail',                  label: 'Пошта',         icon: Mail,          exact: false },
   { href: '/admin/reviews',              label: 'Відгуки',       icon: Star,          exact: false },
   { href: '/admin/chat',                 label: 'Чат',           icon: MessageSquare, exact: false },
   { href: '/admin/settings',             label: 'Налаштування',  icon: Settings,      exact: false },
@@ -79,7 +80,7 @@ function SidebarInner({ newOrdersCount, statusCounts = {}, chatUnreadCount = 0 }
       </div>
 
       {/* Nav items */}
-      <nav style={{ flex: 1, padding: '10px 10px 0', display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto' }}>
+      <nav className="admin-sidebar-nav" style={{ flex: 1, padding: '10px 10px 0', display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto' }}>
 
         {/* Orders section */}
         <div>
@@ -122,11 +123,10 @@ function SidebarInner({ newOrdersCount, statusCounts = {}, chatUnreadCount = 0 }
                     href={s.value ? `/admin?status=${s.value}` : '/admin'}
                     style={{
                       display: 'flex', alignItems: 'center',
-                      padding: '6px 10px 6px 14px', borderRadius: '6px', textDecoration: 'none',
+                      padding: '6px 10px 6px 16px', borderRadius: '6px', textDecoration: 'none',
                       background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
                       color: active ? '#fff' : 'rgba(255,255,255,0.45)',
                       fontSize: '13px', fontWeight: active ? 600 : 400,
-                      borderLeft: `2px solid ${active ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.1)'}`,
                       transition: 'all 0.12s',
                     }}
                   >
@@ -151,11 +151,10 @@ function SidebarInner({ newOrdersCount, statusCounts = {}, chatUnreadCount = 0 }
                 return (
                   <Link href="/admin/dispatch" style={{
                     display: 'flex', alignItems: 'center', gap: '6px',
-                    padding: '6px 10px 6px 14px', borderRadius: '6px', textDecoration: 'none',
+                    padding: '6px 10px 6px 16px', borderRadius: '6px', textDecoration: 'none',
                     background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
                     color: active ? '#fff' : 'rgba(255,255,255,0.45)',
                     fontSize: '13px', fontWeight: active ? 600 : 400,
-                    borderLeft: `2px solid ${active ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.1)'}`,
                     transition: 'all 0.12s', marginTop: '4px',
                   }}>
                     <Send size={12} />
@@ -192,7 +191,7 @@ function SidebarInner({ newOrdersCount, statusCounts = {}, chatUnreadCount = 0 }
                     ].map(sub => {
                       const subActive = pathname === sub.href || (sub.href !== '/admin/procurement' && pathname.startsWith(sub.href));
                       return (
-                        <Link key={sub.href} href={sub.href} style={{ display: 'flex', alignItems: 'center', padding: '6px 10px 6px 14px', borderRadius: '6px', textDecoration: 'none', background: subActive ? 'rgba(255,255,255,0.1)' : 'transparent', color: subActive ? '#fff' : 'rgba(255,255,255,0.45)', fontSize: '13px', fontWeight: subActive ? 600 : 400, borderLeft: `2px solid ${subActive ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.1)'}` }}>
+                        <Link key={sub.href} href={sub.href} style={{ display: 'flex', alignItems: 'center', padding: '6px 10px 6px 16px', borderRadius: '6px', textDecoration: 'none', background: subActive ? 'rgba(255,255,255,0.1)' : 'transparent', color: subActive ? '#fff' : 'rgba(255,255,255,0.45)', fontSize: '13px', fontWeight: subActive ? 600 : 400 }}>
                           {sub.label}
                         </Link>
                       );
