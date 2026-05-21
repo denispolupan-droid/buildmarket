@@ -279,7 +279,7 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
     <div style={{ padding: '28px 32px', maxWidth: '1300px' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-        <Link href="/admin/procurement" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}><ArrowLeft size={16} /></Link>
+        <Link href="/admin/procurement" prefetch={false} style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}><ArrowLeft size={16} /></Link>
         <div style={{ flex: 1 }}>
           <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{po.doc_number}</h1>
           <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
@@ -685,13 +685,10 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                           const res = await fetch(`/api/admin/procurement/${po.id}/status`, {
                             method: 'PATCH', headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
+                              procurement_status:      'invoiced',
                               supplier_invoice_amount: parseFloat(payAmount),
+                              payment_defer_date:      deferDate2,  // зберігаємо дату
                             }),
-                          });
-                          // Зберігаємо дату відстрочки в meta через окремий PATCH
-                          await fetch(`/api/admin/procurement/${po.id}/status`, {
-                            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ procurement_status: 'invoiced' }),
                           });
                           if (res.ok) {
                             setSuccess(`✅ Відстрочку зафіксовано до ${new Date(deferDate2).toLocaleDateString('uk-UA')}`);
