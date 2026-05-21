@@ -39,10 +39,19 @@ export default async function ProcurementPage() {
   const totalReceived = orders.filter(p => p.has_receipt && p.procurement_status !== 'paid').length;
   const totalAmount = orders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
 
-  // Розбивка суми по статусах
-  const amountDrafts   = orders.filter(p => p.procurement_status === 'draft').reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
-  const amountPending  = orders.filter(p => !p.has_receipt && p.procurement_status !== 'draft').reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
-  const amountReceived = orders.filter(p => p.has_receipt && p.procurement_status !== 'paid').reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
+  // Деталі для карток
+  const draftOrders    = orders.filter(p => p.procurement_status === 'draft');
+  const pendingOrders  = orders.filter(p => !p.has_receipt && p.procurement_status !== 'draft');
+  const receivedOrders = orders.filter(p => p.has_receipt && p.procurement_status !== 'paid');
+
+  const amountDrafts   = draftOrders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
+  const amountPending  = pendingOrders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
+  const amountReceived = receivedOrders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
+
+  function fmtDate(d: string | null) {
+    if (!d) return '';
+    return new Date(d).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' });
+  }
 
   return (
     <div style={{ padding: '28px 32px', maxWidth: '1200px' }}>
@@ -56,55 +65,120 @@ export default async function ProcurementPage() {
         <ProcurementClient suppliers={suppliers ?? []} />
       </div>
 
-      {/* Stats — клікабельні картки */}
+      {/* Stats — 4 однакові картки */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginBottom: '20px' }}>
-        <a href="/admin/procurement?filter=draft" style={{ textDecoration: 'none' }}>
-          <div style={{ padding: '14px 18px', borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: '3px solid #94A3B8', cursor: 'pointer' }}>
-            <div style={{ fontSize: '22px', fontWeight: 800, color: '#64748B' }}>{totalDrafts}</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>Чернетки</div>
-          </div>
-        </a>
-        <a href="/admin/procurement?filter=pending" style={{ textDecoration: 'none' }}>
-          <div style={{ padding: '14px 18px', borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: '3px solid #4880B8', cursor: 'pointer' }}>
-            <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--brand-blue)' }}>{totalPending}</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>Очікуємо товар</div>
-          </div>
-        </a>
-        <a href="/admin/procurement?filter=received" style={{ textDecoration: 'none' }}>
-          <div style={{ padding: '14px 18px', borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: '3px solid #D97706', cursor: 'pointer' }}>
-            <div style={{ fontSize: '22px', fontWeight: 800, color: '#D97706' }}>{totalReceived}</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>Отримано, не оплачено</div>
-          </div>
-        </a>
-        <div style={{ padding: '14px 18px', borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: '3px solid #7C3AED' }}>
-          <div style={{ fontSize: '22px', fontWeight: 800, color: '#7C3AED' }}>{fmt(totalAmount)} ₴</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px', marginBottom: '8px' }}>Загальна сума</div>
-          {/* Розбивка по статусах */}
-          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-            {amountDrafts > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                <span style={{ color: '#94A3B8' }}>📝 Чернетки</span>
-                <span style={{ color: '#64748B', fontWeight: 600 }}>{fmt(amountDrafts)} ₴</span>
-              </div>
-            )}
-            {amountPending > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                <span style={{ color: '#94A3B8' }}>⏳ Очікуємо</span>
-                <span style={{ color: '#4880B8', fontWeight: 600 }}>{fmt(amountPending)} ₴</span>
-              </div>
-            )}
-            {amountReceived > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                <span style={{ color: '#94A3B8' }}>📦 Отримано</span>
-                <span style={{ color: '#D97706', fontWeight: 600 }}>{fmt(amountReceived)} ₴</span>
-              </div>
-            )}
-          </div>
-        </div>
+
+        {/* Чернетки */}
+        <StatCard href="/admin/procurement?filter=draft" accent="#94A3B8">
+          <StatLeft count={totalDrafts} label="Чернетки" color="#64748B" />
+          <StatItems items={draftOrders.slice(-4).reverse().map(p => ({
+            name: p.supplier_name ?? '—',
+            sub:  fmtDate(p.doc_date),
+            amt:  p.total_cost ? fmt(Number(p.total_cost)) + ' ₴' : null,
+          }))} />
+        </StatCard>
+
+        {/* Очікуємо товар */}
+        <StatCard href="/admin/procurement?filter=pending" accent="#4880B8">
+          <StatLeft count={totalPending} label="Очікуємо товар" color="#1E3A5F" />
+          <StatItems items={pendingOrders.slice(-4).reverse().map(p => ({
+            name: p.supplier_name ?? '—',
+            sub:  fmtDate(p.expected_date ?? p.doc_date),
+            amt:  p.total_cost ? fmt(Number(p.total_cost)) + ' ₴' : null,
+          }))} />
+        </StatCard>
+
+        {/* Отримано, не оплачено */}
+        <StatCard href="/admin/procurement?filter=received" accent="#D97706">
+          <StatLeft count={totalReceived} label="Отримано, не оплачено" color="#D97706" />
+          <StatItems items={receivedOrders.slice(-4).reverse().map(p => ({
+            name: p.supplier_name ?? '—',
+            sub:  fmtDate(p.doc_date),
+            amt:  p.total_cost ? fmt(Number(p.total_cost)) + ' ₴' : null,
+          }))} />
+        </StatCard>
+
+        {/* Загальна сума */}
+        <StatCard accent="#7C3AED">
+          <StatLeft label="Загальна сума" color="#7C3AED" amount={`${fmt(totalAmount)} ₴`} />
+          <StatItems items={[
+            amountDrafts   > 0 ? { name: 'Чернетки',  sub: `${totalDrafts} замовл.`,   amt: fmt(amountDrafts)   + ' ₴' } : null,
+            amountPending  > 0 ? { name: 'Очікуємо',  sub: `${totalPending} замовл.`,  amt: fmt(amountPending)  + ' ₴' } : null,
+            amountReceived > 0 ? { name: 'Отримано',  sub: `${totalReceived} замовл.`, amt: fmt(amountReceived) + ' ₴' } : null,
+          ].filter(Boolean) as { name: string; sub: string; amt: string | null }[]} />
+        </StatCard>
       </div>
 
       {/* Table */}
       <ProcurementList orders={orders.map(po => ({ ...po, receipts: receiptMap.get(po.id) ?? [] }))} />
+    </div>
+  );
+}
+
+// ── Допоміжні компоненти карток ───────────────────────────────────────────────
+
+function StatCard({ children, href, accent }: {
+  children: React.ReactNode;
+  href?: string;
+  accent: string;
+}) {
+  const inner = (
+    <div style={{
+      padding: '14px 16px', borderRadius: '10px',
+      background: 'var(--bg-card)', border: '1px solid var(--border)',
+      borderLeft: `3px solid ${accent}`,
+      display: 'flex', gap: '12px', minHeight: '100px',
+      height: '100%', boxSizing: 'border-box',
+    }}>
+      {children}
+    </div>
+  );
+  return href
+    ? <a href={href} style={{ textDecoration: 'none', display: 'block' }}>{inner}</a>
+    : <div>{inner}</div>;
+}
+
+function StatLeft({ count, label, color, amount }: {
+  count?: number; label: string; color: string; amount?: string;
+}) {
+  return (
+    <div style={{ flexShrink: 0, minWidth: '50px' }}>
+      {amount
+        ? <div style={{ fontSize: '20px', fontWeight: 800, color, lineHeight: 1.1 }}>{amount}</div>
+        : <div style={{ fontSize: '26px', fontWeight: 800, color, lineHeight: 1 }}>{count}</div>
+      }
+      <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', lineHeight: 1.3 }}>{label}</div>
+    </div>
+  );
+}
+
+function StatItems({ items }: { items: { name: string; sub: string; amt: string | null }[] }) {
+  if (!items.length) return (
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>—</span>
+    </div>
+  );
+  return (
+    <div style={{
+      flex: 1, borderLeft: '1px solid var(--border)', paddingLeft: '12px',
+      display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '5px',
+      overflow: 'hidden',
+    }}>
+      {items.map((item, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: '4px', minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {item.name}
+            </div>
+            {item.sub && (
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{item.sub}</div>
+            )}
+          </div>
+          {item.amt && (
+            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', flexShrink: 0 }}>{item.amt}</div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
