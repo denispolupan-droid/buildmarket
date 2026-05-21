@@ -56,10 +56,11 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
   const [invoiceSaved,  setInvoiceSaved]  = useState(!!po.supplier_invoice_number);
   const [editingInvoice,setEditingInvoice]= useState(!po.supplier_invoice_number);
 
-  const [payAmount,   setPayAmount]   = useState(String(po.supplier_invoice_amount ?? po.total_cost ?? ''));
-  const [payDate,     setPayDate]     = useState(new Date().toISOString().slice(0, 10));
+  const [payAmount,    setPayAmount]    = useState(String(po.supplier_invoice_amount ?? po.total_cost ?? ''));
+  const [payDate,      setPayDate]      = useState(new Date().toISOString().slice(0, 10));
   const payTermsDays = po.supplier_bank?.payment_days ?? 0;
-  const [payDeferred, setPayDeferred] = useState(payTermsDays > 0);
+  const [payDeferred,  setPayDeferred]  = useState(payTermsDays > 0);
+  const [payConfirm,   setPayConfirm]   = useState(false);
   const [deferDate,   setDeferDate]   = useState(() => {
     const d = new Date(); d.setDate(d.getDate() + (payTermsDays || 14));
     return d.toISOString().slice(0, 10);
@@ -546,11 +547,20 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                     <input style={inp} type="date" value={payDate} onChange={e => setPayDate(e.target.value)} /></div>
                 )}
 
-                <button onClick={payDeferred
-                    ? () => handleStatusUpdate('invoiced')
-                    : handlePay}
-                  disabled={paying || !payAmount}
-                  style={{ height: '34px', borderRadius: '8px', border: 'none', background: payDeferred ? '#B45309' : '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: paying ? 0.7 : 1 }}>
+                <button
+                  onClick={() => {
+                    if (!payAmount || parseFloat(payAmount) <= 0) {
+                      setError('Вкажіть суму оплати');
+                      return;
+                    }
+                    if (payDeferred) {
+                      handleStatusUpdate('confirmed_by_supplier');
+                    } else {
+                      setPayConfirm(true);
+                    }
+                  }}
+                  disabled={paying || !payAmount || parseFloat(payAmount) <= 0}
+                  style={{ height: '34px', borderRadius: '8px', border: 'none', background: payDeferred ? '#B45309' : '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: !payAmount || parseFloat(payAmount) <= 0 ? 'not-allowed' : 'pointer', opacity: paying || !payAmount || parseFloat(payAmount) <= 0 ? 0.5 : 1 }}>
                   {paying ? '...' : payDeferred ? `📅 Зафіксувати відстрочку до ${deferDate}` : '💳 Зафіксувати оплату'}
                 </button>
               </div>
@@ -558,6 +568,64 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
           </div>
         </div>
       </div>
+      {/* Діалог підтвердження оплати */}
+      {payConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '400px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              💳 Підтвердження оплати
+            </div>
+
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Постачальник:</span>
+                <strong>{po.supplier_name}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Замовлення:</span>
+                <strong>{po.doc_number}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Сума:</span>
+                <strong style={{ color: '#15803D', fontSize: '15px' }}>{Number(payAmount).toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Дата оплати:</span>
+                <strong>{new Date(payDate).toLocaleDateString('uk-UA')}</strong>
+              </div>
+            </div>
+
+            {!po.supplier_bank?.bank_iban ? (
+              <div style={{ padding: '10px 12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: '#92400E', marginBottom: '16px' }}>
+                ⚠ IBAN постачальника не заповнено. Оплата буде зафіксована як готівкова або через інший канал.<br/>
+                <span style={{ fontSize: '11px', marginTop: '3px', display: 'block' }}>Щоб додати реквізити — перейдіть у картку постачальника.</span>
+              </div>
+            ) : (
+              <div style={{ padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px', fontFamily: 'monospace' }}>
+                {po.supplier_bank.legal_name && <div style={{ fontFamily: 'sans-serif', fontWeight: 600, marginBottom: '2px' }}>{po.supplier_bank.legal_name}</div>}
+                {po.supplier_bank.bank_iban}
+              </div>
+            )}
+
+            <p style={{ fontSize: '12px', color: '#64748B', marginBottom: '20px' }}>
+              Після підтвердження буде зроблено запис у фінансовому леджері та статус замовлення зміниться на «Оплачено».
+            </p>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setPayConfirm(false)}
+                style={{ flex: 1, height: '40px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Скасувати
+              </button>
+              <button onClick={() => { setPayConfirm(false); handlePay(); }}
+                disabled={paying}
+                style={{ flex: 1, height: '40px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                {paying ? '...' : '💳 Підтвердити оплату'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </div>
   );
