@@ -474,22 +474,38 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
             </div>
           </div>
 
-          {/* Receive block — показуємо поки прихід не оформлено */}
+          {/* Receive block */}
           {!po.has_receipt && (
-            <div style={{ background: 'var(--bg-card)', border: '1.5px solid #BFDBFE', borderRadius: '12px', padding: '16px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#1E3A5F', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '7px' }}>
-                <Truck size={15} /> Оформити прихід на склад
+            <div style={{ background: 'var(--bg-card)', border: '2px solid #BFDBFE', borderRadius: '12px', padding: '16px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 800, color: '#1E3A5F', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '7px' }}><Truck size={15} /> Оформлення приходу</span>
+                <button onClick={() => receiptFileRef.current?.click()} disabled={importingFile}
+                  style={{ display: 'flex', alignItems: 'center', gap: '5px', height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid #BFDBFE', background: '#EFF4FF', color: '#1E3A5F', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                  {importingFile ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={11} />}
+                  Імпорт з Excel
+                </button>
+                <input ref={receiptFileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleImportReceipt(f); e.target.value = ''; }} />
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px' }}>
-                Введіть фактичні кількості якщо відрізняються від замовлення (або залиште порожніми = як замовлено).
+
+              <div style={{ fontSize: '12px', color: '#1E3A5F', background: '#EFF4FF', padding: '8px 12px', borderRadius: '8px', marginBottom: '12px' }}>
+                📋 Заповніть <strong>"Отримано"</strong> і <strong>"Ціна факт."</strong> у таблиці вище якщо є розходження. Порожнє = як в замовленні.
               </div>
+
+              {Object.keys(actualQties).some(sku => actualQties[sku] !== po.lines.find(l => l.sku === sku)?.qty) && (
+                <div style={{ marginBottom: '10px', padding: '8px 12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: '#92400E' }}>
+                  ⚠ Є розходження по {Object.keys(actualQties).filter(sku => actualQties[sku] !== po.lines.find(l => l.sku === sku)?.qty).length} позиціях
+                </div>
+              )}
+
               <div style={{ marginBottom: '10px' }}>
                 <label style={lbl}>Нотатки до приходу</label>
                 <input style={inp} value={receiptNotes} onChange={e => setReceiptNotes(e.target.value)} placeholder="Все відповідно, отримано без зауважень" />
               </div>
+
               <button onClick={handleReceive} disabled={receiving}
-                style={{ width: '100%', height: '38px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: receiving ? 0.7 : 1 }}>
-                {receiving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Оформлюємо...</> : <><Package size={14} />Підтвердити прихід → FIFO</>}
+                style={{ width: '100%', height: '40px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: receiving ? 0.7 : 1 }}>
+                {receiving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Оформлюємо...</> : <><Package size={14} />Оформити прихід на склад (FIFO)</>}
               </button>
             </div>
           )}
