@@ -56,6 +56,24 @@ function folderName(name: string) {
   return FOLDER_NAMES_UK[name.toLowerCase()] ?? name;
 }
 
+function decodeHtml(str: string) {
+  return str
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
+function formatAddress(raw: string) {
+  const decoded = decodeHtml(raw ?? '');
+  const match = decoded.match(/^"?([^"<]+)"?\s*<([^>]+)>/);
+  if (match) {
+    const name = match[1].trim();
+    const email = match[2].trim();
+    return name || email;
+  }
+  return decoded;
+}
+
 function formatDate(ts: string) {
   if (!ts) return '';
   const d = new Date(Number(ts));
@@ -272,7 +290,7 @@ export default function MailClient() {
       </div>
 
       {/* Message list */}
-      <div style={{ width: '320px', flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--bg-card)', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ width: '420px', flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--bg-card)', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>
           {selFolder ? folderName(selFolder.folderName) : 'Пошта'}
         </div>
@@ -291,8 +309,8 @@ export default function MailClient() {
           const isRead = msg.isRead === '1' || msg.isRead === true;
           const isSelected = selMessage?.messageId === msg.messageId;
           const isSentFolder = ['sent', 'outbox', 'drafts'].includes(selFolder?.folderName.toLowerCase() ?? '');
-          const displayAddress = isSentFolder ? (msg.toAddress || msg.fromAddress) : msg.fromAddress;
-          const addressLabel = isSentFolder ? 'Кому: ' : '';
+          const rawAddress = isSentFolder ? (msg.toAddress || msg.fromAddress) : msg.fromAddress;
+          const displayAddress = formatAddress(rawAddress);
           return (
             <button
               key={msg.messageId}
@@ -300,14 +318,14 @@ export default function MailClient() {
               style={{
                 display: 'block', width: '100%', textAlign: 'left',
                 padding: '12px 16px', border: 'none', cursor: 'pointer',
-                background: isSelected ? 'var(--bg-soft)' : 'transparent',
+                background: isSelected ? 'var(--bg-soft)' : !isRead ? 'rgba(72,128,184,0.06)' : 'transparent',
                 borderBottom: '1px solid var(--border-light)',
-                borderLeft: isSelected ? '3px solid #1E3A5F' : '3px solid transparent',
+                borderLeft: isSelected ? '3px solid var(--brand-blue)' : !isRead ? '3px solid var(--brand-blue)' : '3px solid transparent',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                <span style={{ fontSize: '13px', fontWeight: isRead ? 400 : 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>
-                  {addressLabel}{displayAddress}
+                <span style={{ fontSize: '13px', fontWeight: isRead ? 400 : 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '260px' }}>
+                  {displayAddress}
                 </span>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)', flexShrink: 0 }}>
                   {formatDate(msg.sentDateInGMT)}

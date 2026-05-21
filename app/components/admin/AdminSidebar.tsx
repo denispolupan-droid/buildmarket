@@ -44,6 +44,19 @@ function SidebarInner({ newOrdersCount, statusCounts = {}, chatUnreadCount = 0 }
   const isProcurement = pathname.startsWith('/admin/procurement');
   const [procOpen,      setProcOpen]      = useState(false);
   const [poDraftCount,  setPoDraftCount]  = useState(0);
+  const [mailUnread,    setMailUnread]    = useState(0);
+
+  useEffect(() => {
+    fetch('/api/admin/mail/folders')
+      .then(r => r.json())
+      .then(d => {
+        const inbox = (d?.data ?? []).find((f: { folderName: string; unreadCount: number }) =>
+          f.folderName.toLowerCase() === 'inbox'
+        );
+        if (inbox?.unreadCount) setMailUnread(inbox.unreadCount);
+      })
+      .catch(() => {});
+  }, []);
 
   // Читаємо кількість відкритих чернеток замовлень
   useEffect(() => {
@@ -203,14 +216,17 @@ function SidebarInner({ newOrdersCount, statusCounts = {}, chatUnreadCount = 0 }
           }
 
           const active = exact ? pathname === href : pathname.startsWith(href);
-          const badge = href === '/admin/chat' && chatUnreadCount > 0 ? chatUnreadCount : null;
+          const badge = href === '/admin/chat' && chatUnreadCount > 0 ? chatUnreadCount
+            : href === '/admin/mail' && mailUnread > 0 ? mailUnread
+            : null;
+          const badgeColor = href === '/admin/mail' ? '#4880B8' : '#EF4444';
           return (
             <Link key={href} href={href}
               style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '8px', textDecoration: 'none', background: active ? 'rgba(255,255,255,0.12)' : 'transparent', color: active ? '#fff' : 'rgba(255,255,255,0.5)', fontSize: '14px', fontWeight: active ? 600 : 400 }}>
               <Icon size={16} strokeWidth={active ? 2.5 : 2} />
               <span style={{ flex: 1 }}>{label}</span>
               {badge !== null && (
-                <span style={{ background: '#EF4444', color: '#fff', fontSize: '11px', fontWeight: 700, borderRadius: '20px', padding: '1px 7px' }}>
+                <span style={{ background: badgeColor, color: '#fff', fontSize: '11px', fontWeight: 700, borderRadius: '20px', padding: '1px 7px' }}>
                   {badge}
                 </span>
               )}
