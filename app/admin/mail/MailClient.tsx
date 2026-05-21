@@ -367,8 +367,8 @@ export default function MailClient() {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-                  <div><b>Від:</b> {selMessage.fromAddress}</div>
-                  <div><b>Кому:</b> {selMessage.toAddress}</div>
+                  <div><b>Від:</b> {decodeHtml(selMessage.fromAddress)}</div>
+                  <div><b>Кому:</b> {decodeHtml(selMessage.toAddress)}</div>
                   <div><b>Дата:</b> {new Date(Number(selMessage.sentDateInGMT)).toLocaleString('uk-UA')}</div>
                 </div>
                 <button
@@ -380,12 +380,22 @@ export default function MailClient() {
               </div>
 
               {msgLoading && <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Завантаження...</div>}
-              {msgContent && (
-                <div
-                  style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.7 }}
-                  dangerouslySetInnerHTML={{ __html: msgContent.content ?? '' }}
-                />
-              )}
+              {msgContent && (() => {
+                const html = (msgContent as Record<string, unknown>).htmlBody as string
+                  || (msgContent as Record<string, unknown>).content as string
+                  || '';
+                const text = (msgContent as Record<string, unknown>).textBody as string || '';
+                if (html) return (
+                  <div style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.7 }}
+                    dangerouslySetInnerHTML={{ __html: html }} />
+                );
+                if (text) return (
+                  <pre style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.7, whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
+                    {text}
+                  </pre>
+                );
+                return <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Порожній лист</div>;
+              })()}
             </div>
           </div>
         )}
