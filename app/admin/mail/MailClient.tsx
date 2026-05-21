@@ -290,6 +290,9 @@ export default function MailClient() {
         {messages.map(msg => {
           const isRead = msg.isRead === '1' || msg.isRead === true;
           const isSelected = selMessage?.messageId === msg.messageId;
+          const isSentFolder = ['sent', 'outbox', 'drafts'].includes(selFolder?.folderName.toLowerCase() ?? '');
+          const displayAddress = isSentFolder ? (msg.toAddress || msg.fromAddress) : msg.fromAddress;
+          const addressLabel = isSentFolder ? 'Кому: ' : '';
           return (
             <button
               key={msg.messageId}
@@ -304,7 +307,7 @@ export default function MailClient() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
                 <span style={{ fontSize: '13px', fontWeight: isRead ? 400 : 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>
-                  {msg.fromAddress}
+                  {addressLabel}{displayAddress}
                 </span>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)', flexShrink: 0 }}>
                   {formatDate(msg.sentDateInGMT)}
