@@ -521,20 +521,27 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
               <div style={{ fontSize: '13px', color: '#15803D', fontWeight: 700 }}>✅ Оплачено</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {/* Pay now / Deferred toggle */}
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button onClick={() => setPayDeferred(false)}
-                    style={{ flex: 1, height: '32px', borderRadius: '7px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${!payDeferred ? '#15803D' : 'var(--border)'}`, background: !payDeferred ? '#F0FDF4' : 'var(--bg-soft)', color: !payDeferred ? '#15803D' : 'var(--text-secondary)' }}>
-                    💳 Оплата зараз
-                  </button>
-                  <button onClick={() => setPayDeferred(true)}
-                    style={{ flex: 1, height: '32px', borderRadius: '7px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${payDeferred ? '#B45309' : 'var(--border)'}`, background: payDeferred ? '#FEF3C7' : 'var(--bg-soft)', color: payDeferred ? '#B45309' : 'var(--text-secondary)' }}>
-                    📅 Відстрочка
-                  </button>
+
+                {/* Таби вибору способу — чітко позначені як "Спосіб оплати" */}
+                <div>
+                  <label style={lbl}>Спосіб оплати</label>
+                  <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                    <button onClick={() => setPayDeferred(false)}
+                      style={{ flex: 1, height: '34px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: 'none', borderRight: '1px solid var(--border)', background: !payDeferred ? '#1E3A5F' : 'var(--bg-soft)', color: !payDeferred ? '#fff' : 'var(--text-secondary)', transition: 'all 0.15s' }}>
+                      💳 Оплата зараз
+                    </button>
+                    <button onClick={() => setPayDeferred(true)}
+                      style={{ flex: 1, height: '34px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: 'none', background: payDeferred ? '#B45309' : 'var(--bg-soft)', color: payDeferred ? '#fff' : 'var(--text-secondary)', transition: 'all 0.15s' }}>
+                      📅 Відстрочка
+                    </button>
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px' }}>
+                    {!payDeferred ? 'Оплата вже здійснена або здійснюється сьогодні' : 'Оплата буде здійснена пізніше'}
+                  </div>
                 </div>
 
-                <div><label style={lbl}>Сума</label>
-                  <input style={inp} type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} /></div>
+                <div><label style={lbl}>Сума, ₴</label>
+                  <input style={inp} type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" /></div>
 
                 {payDeferred ? (
                   <div><label style={lbl}>Оплатити до</label>
@@ -545,6 +552,14 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                 ) : (
                   <div><label style={lbl}>Дата оплати</label>
                     <input style={inp} type="date" value={payDate} onChange={e => setPayDate(e.target.value)} /></div>
+                )}
+
+                {/* Попередження про IBAN прямо біля кнопки */}
+                {!payDeferred && !po.supplier_bank?.bank_iban && (
+                  <div style={{ fontSize: '11px', color: '#92400E', background: '#FEF3C7', padding: '6px 10px', borderRadius: '6px' }}>
+                    ⚠ IBAN не заповнено — буде зафіксовано як готівкову або іншу форму оплати.{' '}
+                    <a href={`/admin/suppliers`} style={{ color: '#92400E', fontWeight: 700 }}>Додати IBAN →</a>
+                  </div>
                 )}
 
                 <button
@@ -560,8 +575,8 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                     }
                   }}
                   disabled={paying || !payAmount || parseFloat(payAmount) <= 0}
-                  style={{ height: '34px', borderRadius: '8px', border: 'none', background: payDeferred ? '#B45309' : '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: !payAmount || parseFloat(payAmount) <= 0 ? 'not-allowed' : 'pointer', opacity: paying || !payAmount || parseFloat(payAmount) <= 0 ? 0.5 : 1 }}>
-                  {paying ? '...' : payDeferred ? `📅 Зафіксувати відстрочку до ${deferDate}` : '💳 Зафіксувати оплату'}
+                  style={{ height: '38px', borderRadius: '8px', border: 'none', background: !payAmount || parseFloat(payAmount) <= 0 ? '#E2E8F0' : payDeferred ? '#B45309' : '#15803D', color: !payAmount || parseFloat(payAmount) <= 0 ? '#94A3B8' : '#fff', fontSize: '13px', fontWeight: 700, cursor: !payAmount || parseFloat(payAmount) <= 0 ? 'not-allowed' : 'pointer', opacity: paying ? 0.7 : 1 }}>
+                  {paying ? '...' : payDeferred ? `📅 Зафіксувати відстрочку до ${new Date(deferDate).toLocaleDateString('uk-UA')}` : '💳 Зафіксувати оплату'}
                 </button>
               </div>
             )}
