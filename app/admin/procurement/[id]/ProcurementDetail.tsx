@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, Truck, Plus, X, Upload, Download, Trash2, Copy, Check } from 'lucide-react';
 import Link from 'next/link';
 
-type Line = { id: number; sku: string; name?: string; brand?: string; qty: number; cost_price: number; supplier_id?: number };
+type Line = { id: number; sku: string; name?: string; brand?: string; qty: number; cost_price: number; supplier_id?: number; adj_delta?: number; effective_qty?: number };
 type SupplierBank = {
   bank_iban: string | null; bank_name: string | null;
   legal_name: string | null; edrpou: string | null;
@@ -428,8 +428,17 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                     {line.brand && <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{line.brand}</div>}
                   </div>
 
-                  {/* Замовлено */}
-                  <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600 }}>{line.qty}</span>
+                  {/* Замовлено (з коригуванням) */}
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600 }}>
+                      {(line.adj_delta ?? 0) !== 0 ? (line.effective_qty ?? line.qty) : line.qty}
+                    </div>
+                    {(line.adj_delta ?? 0) !== 0 && (
+                      <div style={{ fontSize: '10px', color: (line.adj_delta ?? 0) < 0 ? '#EF4444' : '#15803D' }}>
+                        ({line.adj_delta! > 0 ? '+' : ''}{line.adj_delta} корект.)
+                      </div>
+                    )}
+                  </div>
 
                   {/* Отримано (input) */}
                   {!po.has_receipt && (

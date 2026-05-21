@@ -6,10 +6,12 @@ import Link from 'next/link';
 
 type ChainData = {
   po: { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; total_cost: number | null; procurement_status: string | null; notes: string | null };
-  children: { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; total_cost: number | null; notes: string | null; landed_cost_total: number | null }[];
-  payments: { id: string; txn_id: string; amount: number; business_date: string; description: string | null; account_type: string }[];
+  children:    { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; total_cost: number | null; notes: string | null; landed_cost_total: number | null }[];
+  adjustments: { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; notes: string | null }[];
+  adjLines:    { document_id: string; sku: string; qty: number; cost_price: number | null }[];
+  payments:    { id: string; txn_id: string; amount: number; business_date: string; description: string | null; account_type: string }[];
   landedCosts: { id: string; cost_type: string; description: string | null; amount: number; distributed: boolean; document_id: string }[];
-  batches: { id: string; sku: string; initial_qty: number; cost_price: number; received_at: string }[];
+  batches:     { id: string; sku: string; initial_qty: number; cost_price: number; received_at: string }[];
   relatedDocs: { id: string; doc_number: string; doc_type: string; doc_date: string; total_amount: number | null; total_cost: number | null }[];
 };
 
@@ -141,6 +143,30 @@ export default function DocChain({ poId }: { poId: string }) {
                         amount={`−${fmt(p.amount)} ₴`} amountColor="#B45309"
                       />
                     ))}
+
+                    {/* Коригування */}
+                    {data.adjustments?.map(adj => {
+                      const lines = data.adjLines.filter(l => l.document_id === adj.id);
+                      return (
+                        <TimelineNode key={adj.id}
+                          icon="✏️"
+                          title={`${adj.doc_number} — Коригування замовлення`}
+                          sub={`${fmtDate(adj.doc_date)}${adj.notes ? ` · ${adj.notes}` : ''}`}
+                          href={`/admin/accounting/documents/${adj.id}`}
+                        >
+                          {lines.length > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '4px 0' }}>
+                              {lines.map(l => (
+                                <div key={l.sku} style={{ fontSize: '11px', color: l.qty < 0 ? '#EF4444' : '#15803D', display: 'flex', gap: '6px' }}>
+                                  <span style={{ fontFamily: 'monospace' }}>{l.sku}</span>
+                                  <span>{l.qty > 0 ? `+${l.qty}` : l.qty} шт</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </TimelineNode>
+                      );
+                    })}
 
                     {/* Child documents (receipts) */}
                     {data.children.map(child => (

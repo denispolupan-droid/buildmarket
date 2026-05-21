@@ -19,13 +19,24 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!po) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  // 2. Дочірні документи (приходи, пов'язані з цим PO)
-  const { data: children } = await db
+  // 2. Дочірні документи (приходи + коригування)
+  const { data: allChildren } = await db
     .from('acc_documents')
     .select('id, doc_number, doc_type, doc_date, status, total_cost, notes, landed_cost_total')
     .eq('parent_doc_id', id);
 
-  const childIds = (children ?? []).map(c => c.id);
+  const children    = (allChildren ?? []).filter(c => ['receipt','stock_in'].includes(c.doc_type));
+  const adjustments = (allChildren ?? []).filter(c => c.doc_type === 'purchase_order_adjustment');
+
+  // Рядки коригувань — для відображення змін
+  const adjIds = adjustments.map(a => a.id);
+  const { data: adjLines } = adjIds.length
+    ? await db.from('acc_document_lines')
+        .select('document_id, sku, qty, cost_price')
+        .in('document_id', adjIds)
+    : { data: [] };
+
+  const childIds = children.map(c => c.id);
 
   // 3. Платежі постачальнику (money_entries linked to PO)
   const { data: payments } = await db
@@ -59,7 +70,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({
     po,
-    children:    children ?? [],
+    children:    children,
+    adjustments: adjustments,
+    adjLines:    adjLines ?? [],
     payments:    payments ?? [],
     landedCosts: landedCosts ?? [],
     batches:     batches ?? [],

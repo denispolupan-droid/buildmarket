@@ -16,7 +16,7 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
 
   const { id } = await params;
 
-  const [{ data: poBase }, { data: lines }] = await Promise.all([
+  const [{ data: poBase }, { data: lines }, { data: adjDocs }] = await Promise.all([
     db.from('acc_documents')
       .select('*, supplier:supplier_id(name, email, bank_iban, bank_name, legal_name, edrpou, payment_days)')
       .eq('id', id)
@@ -26,7 +26,25 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
       .select('*')
       .eq('document_id', id)
       .order('sort_order'),
+    // Коригування для цього PO
+    db.from('acc_documents')
+      .select('id')
+      .eq('parent_doc_id', id)
+      .eq('doc_type', 'purchase_order_adjustment')
+      .eq('status', 'confirmed'),
   ]);
+
+  // Рядки коригувань (дельти)
+  const adjIds = (adjDocs ?? []).map((a: { id: string }) => a.id);
+  const { data: adjLines } = adjIds.length
+    ? await db.from('acc_document_lines').select('sku, qty').in('document_id', adjIds)
+    : { data: [] };
+
+  // Ефективна кількість = original + Σ delta
+  const adjDeltaMap: Record<string, number> = {};
+  for (const l of (adjLines ?? []) as { sku: string; qty: number }[]) {
+    adjDeltaMap[l.sku] = (adjDeltaMap[l.sku] ?? 0) + l.qty;
+  }
 
   // Назви товарів
   const skus = (lines ?? []).map((l: { sku: string }) => l.sku).filter(Boolean);
@@ -64,8 +82,10 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
     has_receipt:    (receiptCount ?? 0) > 0,
     lines:          (lines ?? []).map((l: { sku: string; qty: number; cost_price: number; supplier_id?: number; warehouse_id?: number; id: number }) => ({
       ...l,
-      name:  nameMap.get(l.sku)?.name  ?? '',
-      brand: nameMap.get(l.sku)?.brand ?? '',
+      name:         nameMap.get(l.sku)?.name  ?? '',
+      brand:        nameMap.get(l.sku)?.brand ?? '',
+      adj_delta:    adjDeltaMap[l.sku] ?? 0,
+      effective_qty:(l.qty + (adjDeltaMap[l.sku] ?? 0)),
     })),
   };
 
