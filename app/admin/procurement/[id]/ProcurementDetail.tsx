@@ -492,33 +492,44 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
             })}
             {(() => {
               const originalTotal = Number(po.total_cost ?? 0);
-              // Скоригована сума = Σ (effective_qty * cost_price) по всіх рядках
               const adjustedTotal = po.lines.reduce((s, l) => {
                 const effQty = l.effective_qty ?? l.qty;
-                const price  = l.cost_price ?? 0;
-                return s + effQty * price;
+                return s + effQty * (l.cost_price ?? 0);
               }, 0);
-              const hasAdj = po.lines.some(l => (l.adj_delta ?? 0) !== 0);
-              const diff   = adjustedTotal - originalTotal;
+              const lcTotal = (po.lc_lines ?? [])
+                .filter(l => l.distributed)
+                .reduce((s, l) => s + Number(l.amount), 0);
+              const hasAdj   = po.lines.some(l => (l.adj_delta ?? 0) !== 0);
+              const hasLC    = lcTotal > 0;
+              const adjDiff  = adjustedTotal - originalTotal;
+              const grandTotal = adjustedTotal + lcTotal;
 
               return (
-                <div style={{ padding: '11px 20px', borderTop: '2px solid var(--border)', background: hasAdj ? 'var(--bg-soft)' : undefined }}>
-                  {hasAdj ? (
+                <div style={{ padding: '11px 20px', borderTop: '2px solid var(--border)', background: hasAdj || hasLC ? 'var(--bg-soft)' : undefined }}>
+                  {(hasAdj || hasLC) ? (
                     <>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '3px' }}>
                         <span>До коригування</span>
                         <span>{fmt(originalTotal)} ₴</span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                        <span>З урахуванням к-к</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          {diff !== 0 && (
-                            <span style={{ fontSize: '11px', fontWeight: 600, color: diff < 0 ? '#EF4444' : '#15803D' }}>
-                              {diff > 0 ? '+' : ''}{fmt(diff)} ₴
-                            </span>
-                          )}
-                          <span>{fmt(adjustedTotal)} ₴</span>
+                      {hasAdj && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '3px' }}>
+                          <span>З урахуванням к-к</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {adjDiff !== 0 && <span style={{ color: adjDiff < 0 ? '#EF4444' : '#15803D', fontWeight: 600 }}>{adjDiff > 0 ? '+' : ''}{fmt(adjDiff)} ₴</span>}
+                            <span>{fmt(adjustedTotal)} ₴</span>
+                          </div>
                         </div>
+                      )}
+                      {hasLC && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '3px' }}>
+                          <span>Доп. витрати (Landed Cost)</span>
+                          <span style={{ color: '#7C3AED', fontWeight: 600 }}>+{fmt(lcTotal)} ₴</span>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)', borderTop: '1px solid var(--border)', paddingTop: '6px', marginTop: '4px' }}>
+                        <span>Загальна сума</span>
+                        <span>{fmt(grandTotal)} ₴</span>
                       </div>
                     </>
                   ) : (
