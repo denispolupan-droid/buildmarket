@@ -97,7 +97,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
   const curMinOrder = isRetail ? 1 : (product?.min_order ?? 1);
   const packFrac  = product ? (curMinOrder / product.pack_qty) : 0;
   const packStr   = packFrac % 1 === 0 ? `${packFrac}` : packFrac.toFixed(1);
-  const catHref   = isRetail ? `/shop?category=${category?.slug}` : `/catalog?category=${category?.slug}`;
+  const catHref   = isRetail ? `/shop/${category?.slug}` : `/catalog?category=${category?.slug}`;
   const prodHref  = (sku: string) => isRetail ? `/product/${sku}?from=shop` : `/product/${sku}`;
 
   function prev() {

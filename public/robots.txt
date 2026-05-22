@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /cart
+Disallow: /account
+Disallow: /admin
+Disallow: /login
+Disallow: /register
+Disallow: /order-success
+Disallow: /invoice
+
+Sitemap: https://fixline.com.ua/sitemap.xml

@@ -12,6 +12,16 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/shop',
+        has: [{ type: 'query', key: 'category', value: '(?<category>.+)' }],
+        destination: '/shop/:category',
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     return [
       {

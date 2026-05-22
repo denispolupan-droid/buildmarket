@@ -12,7 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: BASE,                  lastModified: new Date(), changeFrequency: 'weekly',  priority: 1.0 },
     { url: `${BASE}/shop`,        lastModified: new Date(), changeFrequency: 'daily',   priority: 0.9 },
-    { url: `${BASE}/catalog`,     lastModified: new Date(), changeFrequency: 'daily',   priority: 0.9 },
+    // /catalog — закритий B2B розділ, noindex, не додаємо в sitemap
     { url: `${BASE}/blog`,        lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.7 },
     { url: `${BASE}/about`,       lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
     { url: `${BASE}/contacts`,    lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
@@ -28,19 +28,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  // /shop — публічний магазин, категорії індексуємо
   const shopCategoryRoutes: MetadataRoute.Sitemap = categories.map(cat => ({
-    url: `${BASE}/shop?category=${cat.slug}`,
+    url: `${BASE}/shop/${cat.slug}`,
     lastModified: new Date(),
     changeFrequency: 'daily',
     priority: 0.8,
   }));
 
-  const catalogCategoryRoutes: MetadataRoute.Sitemap = categories.map(cat => ({
-    url: `${BASE}/catalog?category=${cat.slug}`,
-    lastModified: new Date(),
-    changeFrequency: 'daily',
-    priority: 0.8,
-  }));
+  // /catalog — закритий B2B, не індексуємо
+  const catalogCategoryRoutes: MetadataRoute.Sitemap = [];
 
   const productRoutes: MetadataRoute.Sitemap = products.map(p => ({
     url: `${BASE}/product/${p.sku}`,

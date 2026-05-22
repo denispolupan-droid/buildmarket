@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Minus, Heart, ChevronDown, ChevronUp, ChevronRight, Check, SlidersHorizontal, LayoutList } from 'lucide-react';
+import { Plus, Minus, Heart, ChevronDown, ChevronUp, Check, SlidersHorizontal, LayoutList } from 'lucide-react';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import ProductImage from '../components/ProductImage';
 import ScrollToTop from '../components/ScrollToTop';
@@ -240,7 +240,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
 
   const selectCat = (slug: string | null, scrollSlug?: string) => {
     setSelCat(slug);
-    router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
+    router.replace(slug ? `/shop/${slug}` : '/shop', { scroll: false } as never);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     sidebarRef.current?.scrollTo({ top: 0 });
     setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup('');
@@ -362,7 +362,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     }
     if (filterVolume)   list = list.filter(p => p.volume === filterVolume);
     if (filterVolumeKg) list = list.filter(p => p.volume === filterVolumeKg);
-    if (inStockOnly)    list = list.filter(p => (p.stock?.stock_qty ?? 0) >= 1);
+    if (inStockOnly)    list = list.filter(p => p.stock?.stock_status === 'in_stock' || (p.stock?.stock_qty ?? 0) >= 1);
     for (const [label, val] of Object.entries(filterValues)) {
       if (!val) continue;
       const fv = val.toLowerCase();
@@ -429,7 +429,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                       if (expanding) {
                         // Оновлюємо фільтр БЕЗ скролу сторінки
                         setSelCat(cat.slug);
-                        router.replace(`?category=${cat.slug}`, { scroll: false } as never);
+                        router.replace(`/shop/${cat.slug}`, { scroll: false } as never);
                         setVisibleCount(24);
                         // Тільки сайдбар — після анімації
                         setTimeout(() => scrollCatToTop(cat.slug), 450);
@@ -440,11 +440,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                   }}
                 >
                   <span>{cat.name}</span>
-                  {children.length > 0 && (
-                    isExpanded
-                      ? <ChevronDown size={12} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.5 }} />
-                      : <ChevronRight size={12} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.5 }} />
-                  )}
                 </button>
                 <div style={{ overflow: 'hidden', maxHeight: isExpanded ? '2000px' : '0', transition: 'max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1)' }}>
                 {children.map(child => {
@@ -464,10 +459,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                         }}
                       >
                         <span>{child.name}</span>
-                        {grandchildren.length > 0 && (childExpanded
-                          ? <ChevronDown size={11} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.4 }} />
-                          : <ChevronRight size={11} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.4 }} />
-                        )}
                       </button>
                       <div style={{ overflow: 'hidden', maxHeight: childExpanded ? '1000px' : '0', transition: 'max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1)' }}>
                         {grandchildren.map(gc => (
@@ -626,7 +617,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           {filtered.slice(0, visibleCount).map(p => {
             const price = p.stock?.price_retail ?? null;
             const priceOld = p.stock?.price_retail_old ?? null;
-            const inStock = (p.stock?.stock_qty ?? 0) >= 1;
+            const inStock = p.stock?.stock_status === 'in_stock' || (p.stock?.stock_qty ?? 0) >= 1;
             const salePercent = price && priceOld
               ? Math.round((1 - price / priceOld) * 100)
               : null;

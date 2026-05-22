@@ -115,7 +115,10 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Головна', item: BASE },
-      { '@type': 'ListItem', position: 2, name: categoryName, item: `${BASE}/catalog` },
+      ...(isRetail && productCat
+        ? [{ '@type': 'ListItem', position: 2, name: productCat.name, item: `${BASE}/shop/${productCat.slug}` }]
+        : [{ '@type': 'ListItem', position: 2, name: 'Каталог', item: `${BASE}/catalog` }]
+      ),
       { '@type': 'ListItem', position: 3, name: `${product.brand} ${product.name}`, item: `${BASE}/product/${product.sku}` },
     ],
   };
@@ -165,8 +168,8 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
           <Link href="/">Головна</Link>
           <span>›</span>
           <Link href={isRetail ? '/shop' : '/catalog'}>{isRetail ? 'Магазин' : 'Каталог'}</Link>
-          {parentCat && (<><span>›</span><Link href={`${isRetail ? '/shop' : '/catalog'}?category=${parentCat.slug}`}>{parentCat.name}</Link></>)}
-          {productCat && (<><span>›</span><Link href={`${isRetail ? '/shop' : '/catalog'}?category=${productCat.slug}`}>{categoryName}</Link></>)}
+          {parentCat && (<><span>›</span><Link href={isRetail ? `/shop/${parentCat.slug}` : `/catalog?category=${parentCat.slug}`}>{parentCat.name}</Link></>)}
+          {productCat && (<><span>›</span><Link href={isRetail ? `/shop/${productCat.slug}` : `/catalog?category=${productCat.slug}`}>{categoryName}</Link></>)}
           <span>›</span>
           <span>{product.name}</span>
         </div>
