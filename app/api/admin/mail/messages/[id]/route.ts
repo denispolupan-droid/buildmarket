@@ -2,27 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { zohoFetch, getAccountId } from '../../../../../../lib/zoho-mail';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id } = await params;
-    const accountId = await getAccountId();
+  const { id } = await params;
+  const accountId = await getAccountId();
 
-    // Try /content endpoint first, then fall back to base message endpoint
-    const contentData = await zohoFetch(`/accounts/${accountId}/messages/${id}/content`);
-    const msgData = contentData?.data ?? contentData ?? {};
+  // Повертаємо raw відповідь Zoho без обробки — для діагностики
+  const token = await (await import('../../../../../../lib/zoho-mail')).getAccessToken();
+  const res1 = await fetch(`https://mail.zoho.eu/api/accounts/${accountId}/messages/${id}/content`, {
+    headers: { Authorization: `Zoho-oauthtoken ${token}` },
+  });
+  const raw1 = await res1.json();
 
-    // If content is empty, fetch base message which may have more fields
-    const hasContent = !!(msgData.content || msgData.htmlBody || msgData.textBody || msgData.body);
-    if (!hasContent) {
-      const baseData = await zohoFetch(`/accounts/${accountId}/messages/${id}`);
-      const base = baseData?.data ?? baseData ?? {};
-      // Merge: prefer base fields for content, keep content fields for metadata
-      return NextResponse.json({ data: { ...msgData, ...base, _debug_keys: Object.keys(base) } });
-    }
+  const res2 = await fetch(`https://mail.zoho.eu/api/accounts/${accountId}/messages/${id}`, {
+    headers: { Authorization: `Zoho-oauthtoken ${token}` },
+  });
+  const raw2 = await res2.json();
 
-    return NextResponse.json(contentData);
-  } catch (e: unknown) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
-  }
+  return NextResponse.json({ _content_endpoint: raw1, _message_endpoint: raw2 });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

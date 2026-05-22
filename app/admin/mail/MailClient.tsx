@@ -209,7 +209,8 @@ export default function MailClient() {
     setMsgLoading(true);
     const res = await fetch(`/api/admin/mail/messages/${msg.messageId}`);
     const data = await res.json();
-    setMsgContent(data?.data ?? null);
+    // Тимчасово зберігаємо весь raw response для діагностики
+    setMsgContent(data as unknown as MessageContent);
     setMsgLoading(false);
 
     // Mark as read
@@ -380,31 +381,11 @@ export default function MailClient() {
               </div>
 
               {msgLoading && <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Завантаження...</div>}
-              {msgContent && (() => {
-                const mc = msgContent as Record<string, unknown>;
-                const html = (mc.htmlBody || mc.content || mc.body || mc.html || '') as string;
-                const text = (mc.textBody || mc.text || mc.plainBody || '') as string;
-                const debugKeys = (mc._debug_keys as string[]) ?? Object.keys(mc);
-
-                if (html) return (
-                  <div style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.7 }}
-                    dangerouslySetInnerHTML={{ __html: html }} />
-                );
-                if (text) return (
-                  <pre style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.7, whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
-                    {text}
-                  </pre>
-                );
-                // Тимчасово показуємо доступні поля для діагностики
-                return (
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', background: 'var(--bg-soft)', padding: '12px', borderRadius: '8px' }}>
-                    <div style={{ marginBottom: '4px', fontWeight: 600 }}>Поля відповіді Zoho API:</div>
-                    {debugKeys.map(k => (
-                      <div key={k}><b>{k}:</b> {String(mc[k] ?? '').slice(0, 100)}</div>
-                    ))}
-                  </div>
-                );
-              })()}
+              {msgContent && (
+                <pre style={{ fontSize: '11px', color: 'var(--text-secondary)', background: 'var(--bg-soft)', padding: '12px', borderRadius: '8px', whiteSpace: 'pre-wrap', overflow: 'auto', maxHeight: '400px' }}>
+                  {JSON.stringify(msgContent, null, 2)}
+                </pre>
+              )}
             </div>
           </div>
         )}
