@@ -48,17 +48,9 @@ function SidebarInner({ newOrdersCount, statusCounts = {}, chatUnreadCount = 0 }
 
   useEffect(() => {
     function fetchUnread() {
-      fetch('/api/admin/mail/folders')
+      fetch('/api/admin/mail/unread')
         .then(r => r.json())
-        .then(d => {
-          const folders: Record<string, unknown>[] = d?.data ?? [];
-          const inbox = folders.find(f =>
-            String(f.folderName ?? '').toLowerCase() === 'inbox'
-          );
-          if (!inbox) return;
-          const count = Number(inbox.unreadCount ?? inbox.unreadMsgCount ?? inbox.unread_count ?? 0);
-          setMailUnread(count);
-        })
+        .then(d => setMailUnread(d?.count ?? 0))
         .catch(() => {});
     }
     fetchUnread();
