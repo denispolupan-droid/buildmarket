@@ -1,3 +1,4 @@
+import Image from 'next/image';
 
 export type ProductImageProps = {
   brand?: string
@@ -181,10 +182,12 @@ export default function ProductImage({
 }: ProductImageProps) {
   if (imageUrl) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <Image
         src={imageUrl}
         alt={rest.nl1}
+        width={400}
+        height={400}
+        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
         style={{ height: '100%', width: '100%', objectFit: 'contain', display: 'block' }}
         loading="lazy"
       />

@@ -115,18 +115,19 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
           <Heart size={14} fill={isWished ? '#EF4444' : 'none'} strokeWidth={2} />
         </button>
         <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: '7px', overflow: 'hidden', height: '34px', background: 'var(--bg-card)' }}>
-          <button onClick={() => { const v = Math.max(1, qty - 1); setQty(v); setInputVal(String(v)); }} style={{ width: '26px', height: '34px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+          <button aria-label="Зменшити кількість" onClick={() => { const v = Math.max(1, qty - 1); setQty(v); setInputVal(String(v)); }} style={{ width: '34px', height: '34px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
             <Minus size={11} strokeWidth={2.5} />
           </button>
           <input
             type="number"
+            aria-label="Кількість"
             value={inputVal}
             min={1}
             onChange={e => setInputVal(e.target.value)}
             onBlur={() => { const v = parseInt(inputVal, 10); const valid = !isNaN(v) && v >= 1 ? v : 1; setQty(valid); setInputVal(String(valid)); }}
             style={{ width: '28px', height: '34px', border: 'none', background: 'none', textAlign: 'center', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', outline: 'none', padding: 0 }}
           />
-          <button onClick={() => { const v = qty + 1; setQty(v); setInputVal(String(v)); }} style={{ width: '26px', height: '34px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+          <button aria-label="Збільшити кількість" onClick={() => { const v = qty + 1; setQty(v); setInputVal(String(v)); }} style={{ width: '34px', height: '34px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
             <Plus size={11} strokeWidth={2.5} />
           </button>
         </div>
@@ -503,8 +504,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
 
         {volumesL.length > 0 && (
           <div className="shop-filter-group">
-            <div className="shop-filter-label">Об&apos;єм</div>
-            <select className={'shop-filter-select' + (filterVolume ? ' active' : '')} value={filterVolume} onChange={e => setFilterVolume(e.target.value)}>
+            <label className="shop-filter-label" htmlFor="filter-volume">Об&apos;єм</label>
+            <select id="filter-volume" className={'shop-filter-select' + (filterVolume ? ' active' : '')} value={filterVolume} onChange={e => setFilterVolume(e.target.value)}>
               <option value="">Всі</option>
               {volumesL.map(v => <option key={v} value={v}>{v}</option>)}
             </select>
@@ -512,8 +513,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         )}
         {volumesKg.length > 0 && (
           <div className="shop-filter-group">
-            <div className="shop-filter-label">Вага</div>
-            <select className={'shop-filter-select' + (filterVolumeKg ? ' active' : '')} value={filterVolumeKg} onChange={e => setFilterVolumeKg(e.target.value)}>
+            <label className="shop-filter-label" htmlFor="filter-volume-kg">Вага</label>
+            <select id="filter-volume-kg" className={'shop-filter-select' + (filterVolumeKg ? ' active' : '')} value={filterVolumeKg} onChange={e => setFilterVolumeKg(e.target.value)}>
               <option value="">Всі</option>
               {volumesKg.map(v => <option key={v} value={v}>{v}</option>)}
             </select>
@@ -521,8 +522,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         )}
         {isPlasticCat && (
           <div className="shop-filter-group">
-            <div className="shop-filter-label">Тип</div>
-            <select className={'shop-filter-select' + (filterPlasticGroup ? ' active' : '')} value={filterPlasticGroup} onChange={e => setFilterPlasticGroup(e.target.value)}>
+            <label className="shop-filter-label" htmlFor="filter-plastic">Тип</label>
+            <select id="filter-plastic" className={'shop-filter-select' + (filterPlasticGroup ? ' active' : '')} value={filterPlasticGroup} onChange={e => setFilterPlasticGroup(e.target.value)}>
               <option value="">Всі</option>
               <option value="universal">Універсальний</option>
               <option value="frost">Протиморозний</option>
@@ -532,8 +533,9 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         )}
         {allFilters.filter(f => !(isPlasticCat && f.label === 'Тип')).map(({ label, values }) => (
           <div key={label} className="shop-filter-group">
-            <div className="shop-filter-label">{label}</div>
+            <label className="shop-filter-label" htmlFor={`filter-${label}`}>{label}</label>
             <select
+              id={`filter-${label}`}
               className={'shop-filter-select' + (filterValues[label] ? ' active' : '')}
               value={filterValues[label] ?? ''}
               onChange={e => setFilterValues(prev => ({ ...prev, [label]: e.target.value }))}
