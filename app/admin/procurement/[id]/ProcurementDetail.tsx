@@ -331,7 +331,7 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
   const activeStatus = newStatus || po.procurement_status || '';
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: '1300px' }}>
+    <div style={{ padding: '28px 32px' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
         <Link href="/admin/procurement" prefetch={false} style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}><ArrowLeft size={16} /></Link>
