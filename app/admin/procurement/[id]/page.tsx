@@ -66,6 +66,17 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
     redirect('/admin/procurement');
   }
 
+  // Чи є розподілені Landed Costs для дочірніх документів
+  const { data: receiptDocs } = await db
+    .from('acc_documents').select('id')
+    .eq('parent_doc_id', id).eq('status', 'confirmed').in('doc_type', ['receipt', 'stock_in']);
+  const receiptIds = (receiptDocs ?? []).map((r: { id: string }) => r.id);
+  const { count: lcDistributedCount } = receiptIds.length
+    ? await db.from('landed_cost_lines').select('*', { count: 'exact', head: true })
+        .in('document_id', receiptIds).eq('distributed', true)
+    : { count: 0 };
+  const lcAlreadyDone = (lcDistributedCount ?? 0) > 0;
+
   // Рахуємо тільки приходи (не коригування!)
   const { count: receiptCount } = await db
     .from('acc_documents')
@@ -88,6 +99,7 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
       payment_days: sup.payment_days ?? 0,
     } : null,
     has_receipt:    (receiptCount ?? 0) > 0,
+    lc_done:        lcAlreadyDone,
     lines: [
       // Оригінальні рядки PO
       ...(lines ?? []).map((l: { sku: string; qty: number; cost_price: number; supplier_id?: number; warehouse_id?: number; id: number }) => ({

@@ -208,30 +208,6 @@ export default function DocChain({ poId }: { poId: string }) {
                     ))}
                   </TimelineNode>
 
-                  {/* Summary */}
-                  {(totalPaid > 0 || totalLandedCost > 0) && (
-                    <div style={{ marginTop: '20px', padding: '14px 16px', background: 'var(--bg-soft)', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Підсумок</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        {totalPaid > 0 && (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                            <span style={{ color: 'var(--text-secondary)' }}>Оплачено постачальнику</span>
-                            <span style={{ fontWeight: 700, color: '#DC2626' }}>−{fmt(totalPaid)} ₴</span>
-                          </div>
-                        )}
-                        {totalLandedCost > 0 && (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                            <span style={{ color: 'var(--text-secondary)' }}>Додаткові витрати</span>
-                            <span style={{ fontWeight: 700, color: '#7C3AED' }}>−{fmt(totalLandedCost)} ₴</span>
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 800, borderTop: '1px solid var(--border)', paddingTop: '6px', marginTop: '4px' }}>
-                          <span style={{ color: 'var(--text-primary)' }}>Загальні витрати</span>
-                          <span style={{ color: '#DC2626' }}>−{fmt(totalPaid + totalLandedCost)} ₴</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </>
               )}
             </div>

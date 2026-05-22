@@ -14,7 +14,7 @@ type PO = {
   id: string; doc_number: string; doc_date: string; procurement_status: string | null;
   expected_date: string | null; supplier_id: number | null; supplier_name: string | null;
   supplier_email: string | null; order_id: string | null; total_cost: number | null;
-  notes: string | null; has_receipt: boolean;
+  notes: string | null; has_receipt: boolean; lc_done?: boolean;
   supplier_invoice_number: string | null; supplier_invoice_date: string | null;
   supplier_invoice_amount: number | null;
   supplier_bank: SupplierBank | null;
@@ -167,7 +167,7 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
   const [lcLines,  setLcLines]  = useState<CostLine[]>([{ cost_type: 'delivery', description: '', amount: '' }]);
   const [lcMethod, setLcMethod] = useState<'by_cost'|'by_qty'|'equal'>('by_cost');
   const [lcSaving, setLcSaving] = useState(false);
-  const [lcDone,   setLcDone]   = useState(false);
+  const [lcDone,   setLcDone]   = useState(po.lc_done ?? false);
 
   function addLcLine() { setLcLines(prev => [...prev, { cost_type: 'delivery', description: '', amount: '' }]); }
   function removeLcLine(i: number) { setLcLines(prev => prev.filter((_, idx) => idx !== i)); }
@@ -863,10 +863,13 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                 <Package size={15} /> Додаткові витрати (Landed Cost)
                 <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--text-muted)', marginLeft: 'auto' }}>розподіл по FIFO</span>
               </div>
-              {lcDone ? (
-                <div style={{ fontSize: '13px', color: '#15803D', fontWeight: 600 }}>✅ Розподілено по FIFO партіях</div>
-              ) : (
-                <>
+              {lcDone && (
+                <div style={{ padding: '8px 12px', background: '#F0FDF4', borderRadius: '8px', fontSize: '12px', color: '#15803D', fontWeight: 600, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  ✅ Витрати розподілено по FIFO партіях
+                </div>
+              )}
+              {/* Форма завжди доступна — можна додати ще витрати */}
+              <>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
                     {lcLines.map((line, i) => (
                       <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '6px', alignItems: 'center' }}>
@@ -899,10 +902,9 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                   </div>
                   <button onClick={handleLandedCost} disabled={lcSaving}
                     style={{ width: '100%', height: '36px', borderRadius: '8px', border: 'none', background: '#7C3AED', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', opacity: lcSaving ? 0.7 : 1 }}>
-                    {lcSaving ? '...' : '📊 Розподілити витрати по FIFO'}
+                    {lcSaving ? '...' : lcDone ? '➕ Додати ще витрати по FIFO' : '📊 Розподілити витрати по FIFO'}
                   </button>
-                </>
-              )}
+              </>
             </div>
           )}
 
