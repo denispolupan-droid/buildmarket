@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { Mail, Phone, MapPin, Send, Clock4 } from 'lucide-react';
+import { Mail, Phone, MapPin, Clock4 } from 'lucide-react';
+import { getCategoriesCached } from '../../lib/supabase';
 
 function InstagramIcon() {
   return (
@@ -34,11 +35,14 @@ const serviceLinks = [
   { label: 'Часті питання',       href: '/blog' },
 ];
 
-export default function Footer() {
+export default async function Footer() {
+  const categories = await getCategoriesCached();
+  const parentCats = categories.filter(c => !c.parent_slug);
+
   return (
     <footer style={{ background: '#1A2744' }}>
       <div className="footer-inner" style={{ maxWidth: '1280px', margin: '0 auto', padding: '48px 32px 0' }}>
-        <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1.2fr', gap: '48px', paddingBottom: '40px' }}>
+        <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1.1fr', gap: '40px', paddingBottom: '40px' }}>
 
           {/* Brand */}
           <div>
@@ -59,6 +63,20 @@ export default function Footer() {
                 }}>
                   {icon}
                 </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Categories */}
+          <div>
+            <p style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '18px' }}>
+              Категорії
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {parentCats.slice(0, 10).map(cat => (
+                <Link key={cat.slug} href={`/shop/${cat.slug}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
+                  {cat.name}
+                </Link>
               ))}
             </div>
           </div>

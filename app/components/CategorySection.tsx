@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import CategoryPreview from './CategoryPreview';
 import { getCatIcon, getCatColor } from './CategoryCarousel';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
@@ -55,12 +56,13 @@ export default function CategorySection({ categories, products }: Props) {
           const color = getCatColor(cat.slug, i);
           const isActive = cat.slug === selectedSlug;
           return (
-            <div
+            <Link
               key={cat.slug}
-              onClick={() => setSelectedSlug(cat.slug)}
+              href={`/shop/${cat.slug}`}
+              onClick={e => { e.preventDefault(); setSelectedSlug(cat.slug); }}
               style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '12px 16px', cursor: 'pointer',
+                padding: '12px 16px', cursor: 'pointer', textDecoration: 'none',
                 background: isActive ? 'var(--bg-card)' : 'transparent',
                 borderLeft: isActive ? '3px solid #4880B8' : '3px solid transparent',
                 borderBottom: '1px solid var(--border-light)',
@@ -82,7 +84,7 @@ export default function CategorySection({ categories, products }: Props) {
               }}>
                 {cat.name}
               </span>
-            </div>
+            </Link>
           );
         })}
       </div>
