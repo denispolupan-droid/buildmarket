@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { zohoFetch, getAccountId } from '../../../../../../lib/zoho-mail';
+import { zohoFetch, getAccountId, getAccessToken } from '../../../../../../lib/zoho-mail';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -29,7 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const accountId = await getAccountId();
 
     // Use raw fetch to see Zoho's exact response regardless of status code
-    const token = await (await import('../../../../../../lib/zoho-mail')).getAccessToken();
+    const token = await getAccessToken();
     const res = await fetch(`https://mail.zoho.eu/api/accounts/${accountId}/updatemessage`, {
       method: 'PUT',
       headers: { Authorization: `Zoho-oauthtoken ${token}`, 'Content-Type': 'application/json' },
