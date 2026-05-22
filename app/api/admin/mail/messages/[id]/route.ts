@@ -33,10 +33,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     step = 'token';
     const token = await getAccessToken();
     step = 'fetch';
+    // Try form-encoded (Zoho sometimes requires this instead of JSON)
     const res = await fetch(`https://mail.zoho.eu/api/accounts/${accountId}/updatemessage`, {
       method: 'PUT',
-      headers: { Authorization: `Zoho-oauthtoken ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messageId: [id], isRead: 'true' }),
+      headers: {
+        Authorization: `Zoho-oauthtoken ${token}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ messageId: id, isRead: 'true' }).toString(),
     });
     step = 'text';
     const text = await res.text();
