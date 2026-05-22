@@ -13,7 +13,7 @@ type Message = {
   toAddress: string;
   sentDateInGMT: string;
   summary: string;
-  isRead: '0' | '1' | boolean;
+  status: '0' | '1' | string;
   hasAttachment: string;
   folderId?: string;
 };
@@ -215,13 +215,13 @@ export default function MailClient() {
     setMsgLoading(false);
 
     // Mark as read
-    if (msg.isRead === '0' || msg.isRead === false) {
+    if (msg.status === '0') {
       await fetch(`/api/admin/mail/messages/${msg.messageId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isRead: true }),
       });
-      setMessages(prev => prev.map(m => m.messageId === msg.messageId ? { ...m, isRead: '1' } : m));
+      setMessages(prev => prev.map(m => m.messageId === msg.messageId ? { ...m, status: '1' } : m));
     }
   }
 
@@ -308,7 +308,7 @@ export default function MailClient() {
         )}
 
         {messages.map(msg => {
-          const isRead = msg.isRead === '1' || msg.isRead === true;
+          const isRead = msg.status !== '0';
           const isSelected = selMessage?.messageId === msg.messageId;
           const isSentFolder = ['sent', 'outbox', 'drafts'].includes(selFolder?.folderName.toLowerCase() ?? '');
           const rawAddress = isSentFolder ? (msg.toAddress || msg.fromAddress) : msg.fromAddress;

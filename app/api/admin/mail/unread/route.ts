@@ -21,11 +21,9 @@ export async function GET() {
       `/accounts/${accountId}/messages/view?folderId=${folderId}&limit=50&start=0`
     );
     const messages: Record<string, unknown>[] = msgsData?.data ?? [];
-    const unread = messages.filter(m => m.isRead === '0' || m.isRead === false || m.isRead === 0).length;
-    const firstMsg = messages[0] ?? {};
-    const allKeys = Object.keys(firstMsg).map(k => `${k}=${JSON.stringify(firstMsg[k])}`);
+    const unread = messages.filter(m => m.status === '0' || m.status === 0).length;
 
-    return NextResponse.json({ count: unread, folderId, total: messages.length, firstMsgFields: allKeys });
+    return NextResponse.json({ count: unread });
   } catch {
     return NextResponse.json({ count: 0 });
   }
