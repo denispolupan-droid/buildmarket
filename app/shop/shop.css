@@ -86,6 +86,7 @@
   font-size: 14px; color: var(--text-secondary);
   cursor: pointer; margin-top: 14px; margin-bottom: 6px;
 }
+.shop-filter-check:last-child { margin-bottom: 20px; }
 .shop-filter-check input { accent-color: #4880B8; width: 15px; height: 15px; }
 
 /* Cards grid */
