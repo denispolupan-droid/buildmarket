@@ -33,7 +33,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       method: 'PUT',
       body: JSON.stringify({ messageId: [id], isRead: 'true' }),
     });
-    return NextResponse.json(data);
+    console.log('ZOHO mark-as-read response:', JSON.stringify(data));
+    return NextResponse.json({ zohoResponse: data });
   } catch (e: unknown) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
