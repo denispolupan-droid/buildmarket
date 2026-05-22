@@ -28,13 +28,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     await req.json(); // consume body
     const accountId = await getAccountId();
 
-    // Zoho EU: messageId must be an array
-    const data = await zohoFetch(`/accounts/${accountId}/updatemessage`, {
+    // Use raw fetch to see Zoho's exact response regardless of status code
+    const token = await (await import('../../../../../../lib/zoho-mail')).getAccessToken();
+    const res = await fetch(`https://mail.zoho.eu/api/accounts/${accountId}/updatemessage`, {
       method: 'PUT',
+      headers: { Authorization: `Zoho-oauthtoken ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ messageId: [id], isRead: 'true' }),
     });
-    console.log('ZOHO mark-as-read response:', JSON.stringify(data));
-    return NextResponse.json({ zohoResponse: data });
+    const text = await res.text();
+    return NextResponse.json({ status: res.status, body: text });
   } catch (e: unknown) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
