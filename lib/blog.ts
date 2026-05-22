@@ -21,9 +21,9 @@ export const ARTICLES: Article[] = [
     image: '/blog/covers/gruntivscha-navishcho-i-yaku-vybrat.png',
     keywords: ['ґрунтовка', 'бетоноконтакт', 'антигрибкова ґрунтовка', 'яку ґрунтовку вибрати', 'ґрунтовка глибокого проникнення', 'грунтовка', 'бетонконтакт', 'антигрибковая грунтовка', 'какую грунтовку выбрать', 'грунтовка глубокого проникновения', 'купить грунтовку', 'купити ґрунтовку'],
     relatedLinks: [
-      { label: 'Ґрунтовки глибокого проникнення', href: '/shop?category=gruntivky-gotovi' },
-      { label: 'Бетоноконтакт', href: '/shop?category=betonokontakt' },
-      { label: 'Антигрибкові засоби', href: '/shop?category=antygrybok' },
+      { label: 'Ґрунтовки глибокого проникнення', href: '/shop/gruntivky-gotovi' },
+      { label: 'Бетоноконтакт', href: '/shop/betonokontakt' },
+      { label: 'Антигрибкові засоби', href: '/shop/antygrybok' },
     ],
   },
   {
@@ -36,10 +36,10 @@ export const ARTICLES: Article[] = [
     image: '/blog/covers/kley-dlya-remontu-vybir.png',
     keywords: ['монтажний клей', 'рідкі цвяхи', 'епоксидний клей', 'будівельний клей', 'ПВА', 'монтажный клей', 'жидкие гвозди', 'эпоксидный клей', 'строительный клей', 'купить монтажный клей', 'купити монтажний клей'],
     relatedLinks: [
-      { label: 'Монтажні клеї', href: '/shop?category=montazhnyi-klei' },
-      { label: 'Рідкі цвяхи', href: '/shop?category=ridki-tsvyakhy' },
-      { label: 'Епоксидні клеї', href: '/shop?category=epoksydni-klei' },
-      { label: 'ПВА та столярний клей', href: '/shop?category=pva-ta-stolyarnyi' },
+      { label: 'Монтажні клеї', href: '/shop/montazhnyi-klei' },
+      { label: 'Рідкі цвяхи', href: '/shop/ridki-tsvyakhy' },
+      { label: 'Епоксидні клеї', href: '/shop/epoksydni-klei' },
+      { label: 'ПВА та столярний клей', href: '/shop/pva-ta-stolyarnyi' },
     ],
   },
   {
@@ -52,9 +52,9 @@ export const ARTICLES: Article[] = [
     image: '/blog/covers/hidroizolyatsiya-fundamentu-i-vannoyi.png',
     keywords: ['гідроізоляція фундаменту', 'гідроізоляція ванної', 'бітумна мастика', 'рідка гідроізоляція', 'гидроизоляция фундамента', 'гидроизоляция ванной', 'битумная мастика', 'жидкая гидроизоляция', 'купить гидроизоляцию', 'купити гідроізоляцію'],
     relatedLinks: [
-      { label: 'Гідроізоляційні мастики', href: '/shop?category=hidroizolyatsiyni-mastyky' },
-      { label: 'Бітумні мастики', href: '/shop?category=bitumni-mastyky' },
-      { label: 'Бітумні праймери', href: '/shop?category=praimery' },
+      { label: 'Гідроізоляційні мастики', href: '/shop/hidroizolyatsiyni-mastyky' },
+      { label: 'Бітумні мастики', href: '/shop/bitumni-mastyky' },
+      { label: 'Бітумні праймери', href: '/shop/praimery' },
     ],
   },
   {
@@ -67,9 +67,9 @@ export const ARTICLES: Article[] = [
     image: '/blog/covers/zakhyst-derevyny-antyseptyk-lak-oliya.png',
     keywords: ['антисептик для дерева', 'лак для дерева', 'захист деревини', 'морилка', 'просочення дерева', 'антисептик для древесины', 'лак для дерева купить', 'защита древесины', 'морилка купить', 'пропитка дерева'],
     relatedLinks: [
-      { label: 'Антисептики для дерева', href: '/shop?category=antyseptyki' },
-      { label: 'Морилки та тонуючі засоби', href: '/shop?category=morylky' },
-      { label: 'Захисні покриття', href: '/shop?category=zakhysni-pokryttya' },
+      { label: 'Антисептики для дерева', href: '/shop/antyseptyki' },
+      { label: 'Морилки та тонуючі засоби', href: '/shop/morylky' },
+      { label: 'Захисні покриття', href: '/shop/zakhysni-pokryttya' },
     ],
   },
   {
@@ -82,10 +82,10 @@ export const ARTICLES: Article[] = [
     image: '/blog/covers/yak-vybrat-farbu.png',
     keywords: ['як вибрати фарбу', 'алкідна фарба', 'акрилова фарба', 'фарба 3 в 1', 'фарба для металу', 'фарба для підлоги', 'как выбрать краску', 'алкидная краска', 'акриловая краска', 'краска 3 в 1', 'краска для металла', 'краска для пола', 'купить краску'],
     relatedLinks: [
-      { label: 'Алкідні емалі', href: '/shop?category=alkidni-farby' },
-      { label: 'Фарби 3 в 1', href: '/shop?category=farby-3v1' },
-      { label: 'Фарби для підлоги', href: '/shop?category=farby-dlya-pidlohy' },
-      { label: 'Молоткові фарби', href: '/shop?category=moltkovi-farby' },
+      { label: 'Алкідні емалі', href: '/shop/alkidni-farby' },
+      { label: 'Фарби 3 в 1', href: '/shop/farby-3v1' },
+      { label: 'Фарби для підлоги', href: '/shop/farby-dlya-pidlohy' },
+      { label: 'Молоткові фарби', href: '/shop/moltkovi-farby' },
     ],
   },
   {
@@ -98,10 +98,10 @@ export const ARTICLES: Article[] = [
     image: '/blog/covers/yak-vybrat-hermetyk.png',
     keywords: ['як вибрати герметик', 'силіконовий герметик', 'акриловий герметик', 'поліуретановий герметик', 'как выбрать герметик', 'силиконовый герметик', 'акриловый герметик', 'полиуретановый герметик', 'купить герметик', 'купити герметик'],
     relatedLinks: [
-      { label: 'Силіконові герметики', href: '/shop?category=sylikonovi-germetyky' },
-      { label: 'Акрилові герметики', href: '/shop?category=akrylovi-germetyky' },
-      { label: 'Поліуретанові герметики', href: '/shop?category=poliuretanovi-germetyky' },
-      { label: 'МС-полімерні герметики', href: '/shop?category=ms-polymerni-hermetyky' },
+      { label: 'Силіконові герметики', href: '/shop/sylikonovi-germetyky' },
+      { label: 'Акрилові герметики', href: '/shop/akrylovi-germetyky' },
+      { label: 'Поліуретанові герметики', href: '/shop/poliuretanovi-germetyky' },
+      { label: 'МС-полімерні герметики', href: '/shop/ms-polymerni-hermetyky' },
     ],
   },
   {
@@ -114,9 +114,9 @@ export const ARTICLES: Article[] = [
     image: '/blog/covers/montazhna-pina-yak-vykorystovuvaty.png',
     keywords: ['монтажна піна', 'як використовувати монтажну піну', 'вибір монтажної піни', 'піна для вікон', 'монтажная пена', 'как использовать монтажную пену', 'выбор монтажной пены', 'пена для окон', 'купить монтажную пену', 'купити монтажну піну'],
     relatedLinks: [
-      { label: 'Піна під пістолет', href: '/shop?category=pistoletna-pina' },
-      { label: 'Побутова піна', href: '/shop?category=pobutova-pina' },
-      { label: 'Вогнезахисна піна', href: '/shop?category=vohnezakhysna-pina' },
+      { label: 'Піна під пістолет', href: '/shop/pistoletna-pina' },
+      { label: 'Побутова піна', href: '/shop/pobutova-pina' },
+      { label: 'Вогнезахисна піна', href: '/shop/vohnezakhysna-pina' },
     ],
   },
   {
@@ -129,8 +129,8 @@ export const ARTICLES: Article[] = [
     image: '/blog/covers/shpaklivka-stin-startova-finishna.png',
     keywords: ['шпаклівка', 'стартова шпаклівка', 'фінішна шпаклівка', 'вологостійка шпаклівка', 'як шпаклювати стіни', 'шпаклевка стен', 'стартовая шпаклевка', 'финишная шпаклевка', 'как шпаклевать стены', 'купить шпаклевку', 'купити шпаклівку'],
     relatedLinks: [
-      { label: 'Шпаклівки', href: '/shop?category=shpaklivky' },
-      { label: 'Ґрунтовки', href: '/shop?category=gruntivky' },
+      { label: 'Шпаклівки', href: '/shop/shpaklivky' },
+      { label: 'Ґрунтовки', href: '/shop/gruntivky' },
     ],
   },
   {
@@ -143,8 +143,8 @@ export const ARTICLES: Article[] = [
     image: '/blog/covers/zatyrka-dlya-plytky.png',
     keywords: ['затирка для плитки', 'затирка для швів', 'цементна затирка', 'епоксидна затирка', 'вибір затирки', 'затирка для плитки купити', 'затирка для плитки выбор', 'цементная затирка', 'эпоксидная затирка', 'затирка для швов плитки', 'купить затирку'],
     relatedLinks: [
-      { label: 'Цементні затирки', href: '/shop?category=zamazky-tsementni' },
-      { label: 'Епоксидні затирки', href: '/shop?category=zamazky-epoksydni' },
+      { label: 'Цементні затирки', href: '/shop/zamazky-tsementni' },
+      { label: 'Епоксидні затирки', href: '/shop/zamazky-epoksydni' },
     ],
   },
   {
@@ -157,8 +157,8 @@ export const ARTICLES: Article[] = [
     image: '/blog/covers/peretvoryuvach-irzhi.png',
     keywords: ['перетворювач іржі', 'засіб від іржі', 'антикорозійний захист', 'як видалити іржу', 'преобразователь ржавчины', 'средство от ржавчины', 'антикоррозийная защита металла', 'купить преобразователь ржавчины', 'обезжириватель металла'],
     relatedLinks: [
-      { label: 'Розчинники та очисники', href: '/shop?category=rozchynnyky' },
-      { label: 'Фарби для металу', href: '/shop?category=alkidni-farby' },
+      { label: 'Розчинники та очисники', href: '/shop/rozchynnyky' },
+      { label: 'Фарби для металу', href: '/shop/alkidni-farby' },
     ],
   },
   {
@@ -171,8 +171,8 @@ export const ARTICLES: Article[] = [
     image: '/blog/covers/vologopoglynych.png',
     keywords: ['вологопоглинач', 'від сирості', 'засіб від вологи', 'цвіль у квартирі', 'поглотитель влаги', 'от сырости', 'средство от влаги', 'плесень в квартире', 'осушитель воздуха', 'купить поглотитель влаги'],
     relatedLinks: [
-      { label: 'Вологопоглиначі', href: '/shop?category=vologopoglinachi' },
-      { label: 'Антигрибкові засоби', href: '/shop?category=antygrybok' },
+      { label: 'Вологопоглиначі', href: '/shop/vologopoglinachi' },
+      { label: 'Антигрибкові засоби', href: '/shop/antygrybok' },
     ],
   },
   {
@@ -185,7 +185,7 @@ export const ARTICLES: Article[] = [
     image: '/blog/covers/plastyfikator-dlya-betonu.png',
     keywords: ['пластифікатор для бетону', 'пластифікатор для розчину', 'добавка в бетон', 'протиморозна добавка', 'пластификатор для бетона', 'пластификатор для раствора', 'добавка в бетон', 'противоморозная добавка', 'купити пластифікатор', 'купить пластификатор'],
     relatedLinks: [
-      { label: 'Пластифікатори для бетону', href: '/shop?category=plastyfikatory' },
+      { label: 'Пластифікатори для бетону', href: '/shop/plastyfikatory' },
     ],
   },
   {
@@ -198,8 +198,8 @@ export const ARTICLES: Article[] = [
     image: '/blog/covers/ms-polymer-vs-poliuretan.png',
     keywords: ['МС-полімерний герметик', 'поліуретановий герметик', 'відмінність герметиків', 'який герметик міцніший', 'МС-полимерный герметик', 'полиуретановый герметик', 'отличие герметиков', 'какой герметик прочнее', 'купить МС герметик', 'купити МС герметик'],
     relatedLinks: [
-      { label: 'МС-полімерні герметики', href: '/shop?category=ms-polymerni-hermetyky' },
-      { label: 'Поліуретанові герметики', href: '/shop?category=poliuretanovi-germetyky' },
+      { label: 'МС-полімерні герметики', href: '/shop/ms-polymerni-hermetyky' },
+      { label: 'Поліуретанові герметики', href: '/shop/poliuretanovi-germetyky' },
     ],
   },
   {
@@ -212,9 +212,79 @@ export const ARTICLES: Article[] = [
     image: '/blog/covers/malyarna-strichka-yak-vybrat.png',
     keywords: ['малярна стрічка', 'малярний скотч', 'як вибрати малярну стрічку', 'стрічка для фарбування', 'малярная лента', 'малярный скотч', 'как выбрать малярную ленту', 'лента для покраски', 'купити малярну стрічку', 'купить малярную ленту'],
     relatedLinks: [
-      { label: 'Малярна стрічка', href: '/shop?category=malyarna-strichka' },
-      { label: 'Герметизуючі стрічки', href: '/shop?category=hermetyzuyucha-strichka' },
-      { label: 'Звукоізоляційні стрічки', href: '/shop?category=zvukoizolyatsiyna-strichka' },
+      { label: 'Малярна стрічка', href: '/shop/malyarna-strichka' },
+      { label: 'Герметизуючі стрічки', href: '/shop/hermetyzuyucha-strichka' },
+      { label: 'Звукоізоляційні стрічки', href: '/shop/zvukoizolyatsiyna-strichka' },
+    ],
+  },
+  {
+    slug: 'dyubeli-ta-ankery',
+    title: 'Дюбелі та анкери: як правильно вибрати кріплення',
+    description: 'Який дюбель підходить для бетону, цегли та гіпсокартону. Коли потрібен анкер і як не помилитися з вибором кріплення для важких навантажень.',
+    date: '2026-05-22',
+    category: 'Поради',
+    readTime: 6,
+    image: '/blog/covers/dyubeli-ta-ankery.png',
+    keywords: ['дюбель', 'анкер', 'кріплення', 'дюбель для гіпсокартону', 'анкер для бетону', 'дюбель нейлоновий', 'дюбель вибрати', 'анкер вибрати', 'крепеж', 'дюбель купить', 'анкер купить', 'купити кріплення', 'дюбель-бабочка'],
+    relatedLinks: [
+      { label: 'Кріплення', href: '/shop/kriplennya' },
+    ],
+  },
+  {
+    slug: 'farba-dlya-pidlohy-garazh',
+    title: 'Фарба для підлоги: бетон, дерево, гараж — що вибрати',
+    description: 'Порівняння акрилових, алкідних, поліуретанових та епоксидних фарб для підлоги. Що підходить для гаража, квартири та промислових приміщень.',
+    date: '2026-05-22',
+    category: 'Поради',
+    readTime: 6,
+    image: '/blog/covers/farba-dlya-pidlohy-garazh.png',
+    keywords: ['фарба для підлоги', 'фарба для бетонної підлоги', 'фарба для гаражу', 'поліуретанова фарба', 'краска для пола', 'краска для бетонного пола', 'краска для гаража', 'полиуретановая краска для пола', 'эпоксидная краска', 'купить краску для пола', 'купити фарбу для підлоги'],
+    relatedLinks: [
+      { label: 'Фарби для підлоги', href: '/shop/farby-dlya-pidlohy' },
+      { label: 'Алкідні емалі', href: '/shop/alkidni-farby' },
+    ],
+  },
+  {
+    slug: 'betonokontakt',
+    title: 'Бетоноконтакт: навіщо потрібен і як правильно наносити',
+    description: 'Що таке бетоноконтакт, чим він відрізняється від звичайної ґрунтовки і в яких ситуаціях без нього не обійтися при підготовці поверхонь.',
+    date: '2026-05-22',
+    category: 'Поради',
+    readTime: 5,
+    image: '/blog/covers/betonokontakt.png',
+    keywords: ['бетоноконтакт', 'адгезійна ґрунтовка', 'ґрунтовка для гладких поверхонь', 'бетоноконтакт нанесення', 'бетонконтакт', 'адгезионная грунтовка', 'грунтовка для гладких поверхностей', 'бетонконтакт нанесение', 'купити бетоноконтакт', 'купить бетонконтакт'],
+    relatedLinks: [
+      { label: 'Бетоноконтакт', href: '/shop/betonokontakt' },
+      { label: 'Ґрунтовки готові', href: '/shop/gruntivky-gotovi' },
+    ],
+  },
+  {
+    slug: 'zvukoizolyatsiya-stin',
+    title: 'Звукоізоляція стін і підлоги: матеріали та технологія',
+    description: 'Як зменшити шум від сусідів за допомогою звукоізоляційної стрічки, мембран та правильного монтажу перегородок. Без дорогого ремонту.',
+    date: '2026-05-22',
+    category: 'Поради',
+    readTime: 6,
+    image: '/blog/covers/zvukoizolyatsiya-stin.png',
+    keywords: ['звукоізоляція стін', 'звукоізоляційна стрічка', 'шумоізоляція квартири', 'звукоізоляція перегородок', 'звукоизоляция стен', 'звукоизоляционная лента', 'шумоизоляция квартиры', 'звукоизоляция перегородок', 'купити звукоізоляційну стрічку', 'купить звукоизоляционную ленту'],
+    relatedLinks: [
+      { label: 'Звукоізоляційна стрічка', href: '/shop/zvukoizolyatsiyna-strichka' },
+      { label: 'Стрічки будівельні', href: '/shop/strichky' },
+    ],
+  },
+  {
+    slug: 'bitumna-mastyka',
+    title: 'Бітумна мастика: для покрівлі, фундаменту та гідроізоляції',
+    description: 'Типи бітумних мастик, їх відмінності та сфери застосування. Як правильно наносити та що краще вибрати для покрівлі, фундаменту або ванної.',
+    date: '2026-05-22',
+    category: 'Поради',
+    readTime: 5,
+    image: '/blog/covers/bitumna-mastyka.png',
+    keywords: ['бітумна мастика', 'мастика для покрівлі', 'мастика для фундаменту', 'бітумна гідроізоляція', 'битумная мастика', 'мастика для кровли', 'мастика для фундамента', 'битумная гидроизоляция', 'купити бітумну мастику', 'купить битумную мастику'],
+    relatedLinks: [
+      { label: 'Бітумні мастики', href: '/shop/bitumni-mastyky' },
+      { label: 'Бітумні праймери', href: '/shop/praimery' },
+      { label: 'Гідроізоляція', href: '/shop/hidroizolyatsiya' },
     ],
   },
 ];
