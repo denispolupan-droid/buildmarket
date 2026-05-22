@@ -71,11 +71,12 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
     .from('acc_documents').select('id')
     .eq('parent_doc_id', id).eq('status', 'confirmed').in('doc_type', ['receipt', 'stock_in']);
   const receiptIds = (receiptDocs ?? []).map((r: { id: string }) => r.id);
-  const { count: lcDistributedCount } = receiptIds.length
-    ? await db.from('landed_cost_lines').select('*', { count: 'exact', head: true })
-        .in('document_id', receiptIds).eq('distributed', true)
-    : { count: 0 };
-  const lcAlreadyDone = (lcDistributedCount ?? 0) > 0;
+  const { data: existingLcLines } = receiptIds.length
+    ? await db.from('landed_cost_lines')
+        .select('id, cost_type, description, amount, distributed')
+        .in('document_id', receiptIds)
+    : { data: [] };
+  const lcAlreadyDone = (existingLcLines ?? []).some((l: { distributed: boolean }) => l.distributed);
 
   // Рахуємо тільки приходи (не коригування!)
   const { count: receiptCount } = await db
@@ -100,6 +101,7 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
     } : null,
     has_receipt:    (receiptCount ?? 0) > 0,
     lc_done:        lcAlreadyDone,
+    lc_lines:       existingLcLines ?? [],
     lines: [
       // Оригінальні рядки PO
       ...(lines ?? []).map((l: { sku: string; qty: number; cost_price: number; supplier_id?: number; warehouse_id?: number; id: number }) => ({

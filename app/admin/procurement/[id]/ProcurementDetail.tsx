@@ -15,6 +15,7 @@ type PO = {
   expected_date: string | null; supplier_id: number | null; supplier_name: string | null;
   supplier_email: string | null; order_id: string | null; total_cost: number | null;
   notes: string | null; has_receipt: boolean; lc_done?: boolean;
+  lc_lines?: { id: string; cost_type: string; description: string | null; amount: number; distributed: boolean }[];
   supplier_invoice_number: string | null; supplier_invoice_date: string | null;
   supplier_invoice_amount: number | null;
   supplier_bank: SupplierBank | null;
@@ -863,12 +864,42 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                 <Package size={15} /> Додаткові витрати (Landed Cost)
                 <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--text-muted)', marginLeft: 'auto' }}>розподіл по FIFO</span>
               </div>
-              {lcDone && (
-                <div style={{ padding: '8px 12px', background: '#F0FDF4', borderRadius: '8px', fontSize: '12px', color: '#15803D', fontWeight: 600, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  ✅ Витрати розподілено по FIFO партіях
-                </div>
-              )}
-              {/* Форма завжди доступна — можна додати ще витрати */}
+              {/* Вже розподілені витрати */}
+              {lcDone && (po.lc_lines ?? []).length > 0 && (() => {
+                const distributed = (po.lc_lines ?? []).filter(l => l.distributed);
+                const total = distributed.reduce((s, l) => s + Number(l.amount), 0);
+                const COST_LABELS: Record<string, string> = {
+                  delivery: '🚚 Доставка', loading: '📦 Навант./розвант.',
+                  customs: '🏛 Мито/брокер', packaging: '📦 Пакування', other: '➕ Інше',
+                };
+                return (
+                  <div style={{ marginBottom: '12px', padding: '10px 12px', background: '#F0FDF4', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#15803D', textTransform: 'uppercase', marginBottom: '8px' }}>
+                      ✅ Вже розподілено по FIFO:
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {distributed.map(l => (
+                        <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                          <span style={{ color: 'var(--text-secondary)' }}>
+                            {COST_LABELS[l.cost_type] ?? l.cost_type}
+                            {l.description && ` · ${l.description}`}
+                          </span>
+                          <span style={{ fontWeight: 700, color: '#7C3AED' }}>+{total === 0 ? '—' : Number(l.amount).toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 800, borderTop: '1px solid #BBF7D0', paddingTop: '6px', marginTop: '6px', color: '#7C3AED' }}>
+                      <span>Разом Landed Cost:</span>
+                      <span>+{total.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Форма для нових витрат */}
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                {lcDone ? '+ Додати ще витрати:' : 'Ввести витрати:'}
+              </div>
               <>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
                     {lcLines.map((line, i) => (
