@@ -50,10 +50,13 @@ function SidebarInner({ newOrdersCount, statusCounts = {}, chatUnreadCount = 0 }
     fetch('/api/admin/mail/folders')
       .then(r => r.json())
       .then(d => {
-        const inbox = (d?.data ?? []).find((f: { folderName: string; unreadCount: number }) =>
-          f.folderName.toLowerCase() === 'inbox'
+        const folders: Record<string, unknown>[] = d?.data ?? [];
+        const inbox = folders.find(f =>
+          String(f.folderName ?? '').toLowerCase() === 'inbox'
         );
-        if (inbox?.unreadCount) setMailUnread(inbox.unreadCount);
+        if (!inbox) return;
+        const count = Number(inbox.unreadCount ?? inbox.unreadMsgCount ?? inbox.unread_count ?? 0);
+        if (count > 0) setMailUnread(count);
       })
       .catch(() => {});
   }, []);
@@ -219,7 +222,7 @@ function SidebarInner({ newOrdersCount, statusCounts = {}, chatUnreadCount = 0 }
           const badge = href === '/admin/chat' && chatUnreadCount > 0 ? chatUnreadCount
             : href === '/admin/mail' && mailUnread > 0 ? mailUnread
             : null;
-          const badgeColor = href === '/admin/mail' ? '#4880B8' : '#EF4444';
+          const badgeColor = '#EF4444';
           return (
             <Link key={href} href={href}
               style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '8px', textDecoration: 'none', background: active ? 'rgba(255,255,255,0.12)' : 'transparent', color: active ? '#fff' : 'rgba(255,255,255,0.5)', fontSize: '14px', fontWeight: active ? 600 : 400 }}>
