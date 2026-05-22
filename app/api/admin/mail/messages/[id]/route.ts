@@ -28,21 +28,32 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     await req.json(); // consume body
     const accountId = await getAccountId();
 
-    // Zoho EU: mark as read via folder path
+    // Try 1: folder path with boolean
     if (folderId) {
-      const data = await zohoFetch(
-        `/accounts/${accountId}/folders/${folderId}/messages/${id}`,
-        { method: 'PUT', body: JSON.stringify({ isRead: true }) },
-      );
-      if (!data?.data?.errorCode) return NextResponse.json(data);
+      try {
+        const r1 = await zohoFetch(
+          `/accounts/${accountId}/folders/${folderId}/messages/${id}`,
+          { method: 'PUT', body: JSON.stringify({ isRead: true }) },
+        );
+        if (!r1?.data?.errorCode) return NextResponse.json({ ok: true });
+      } catch { /* try next */ }
     }
 
-    // Fallback: updatemessage endpoint
-    const data = await zohoFetch(`/accounts/${accountId}/updatemessage`, {
+    // Try 2: updatemessage with string "true"
+    try {
+      const r2 = await zohoFetch(`/accounts/${accountId}/updatemessage`, {
+        method: 'PUT',
+        body: JSON.stringify({ messageId: id, isRead: 'true' }),
+      });
+      if (!r2?.data?.errorCode) return NextResponse.json({ ok: true });
+    } catch { /* try next */ }
+
+    // Try 3: updatemessage with mode
+    const r3 = await zohoFetch(`/accounts/${accountId}/updatemessage`, {
       method: 'PUT',
-      body: JSON.stringify({ messageId: id, isRead: true }),
+      body: JSON.stringify({ messageId: id, mode: 'markAsRead' }),
     });
-    return NextResponse.json(data);
+    return NextResponse.json(r3);
   } catch (e: unknown) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }

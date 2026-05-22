@@ -208,22 +208,27 @@ export default function MailClient() {
     setSelMessage(msg);
     setMsgContent(null);
     setMsgLoading(true);
-    const folderId = msg.folderId ?? selFolder?.folderId ?? '';
-    const res = await fetch(`/api/admin/mail/messages/${msg.messageId}?folderId=${folderId}`);
-    const data = await res.json();
-    setMsgContent(data?.data ?? null);
-    setMsgLoading(false);
 
-    // Mark as read
-    if (msg.status === '0') {
-      const fId = msg.folderId ?? selFolder?.folderId ?? '';
-      await fetch(`/api/admin/mail/messages/${msg.messageId}?folderId=${fId}`, {
+    // Одразу позначаємо як прочитане локально (не чекаємо API)
+    const wasUnread = String(msg.status) === '0';
+    if (wasUnread) {
+      setMessages(prev => prev.map(m => m.messageId === msg.messageId ? { ...m, status: '1' } : m));
+      setSelMessage({ ...msg, status: '1' });
+    }
+
+    const folderId = msg.folderId ?? selFolder?.folderId ?? '';
+    const [contentRes] = await Promise.all([
+      fetch(`/api/admin/mail/messages/${msg.messageId}?folderId=${folderId}`),
+      // Паралельно відправляємо mark-as-read
+      wasUnread ? fetch(`/api/admin/mail/messages/${msg.messageId}?folderId=${folderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isRead: true }),
-      });
-      setMessages(prev => prev.map(m => m.messageId === msg.messageId ? { ...m, status: '1' } : m));
-    }
+      }) : Promise.resolve(),
+    ]);
+    const data = await contentRes.json();
+    setMsgContent(data?.data ?? null);
+    setMsgLoading(false);
   }
 
   // ── Not connected screen ───────────────────────────────────────────────────
