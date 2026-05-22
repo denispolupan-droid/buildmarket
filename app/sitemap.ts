@@ -2,12 +2,26 @@ import { MetadataRoute } from 'next';
 import { getProductsCached, getCategoriesCached } from '../lib/supabase';
 import { ARTICLES } from '../lib/blog';
 
+function brandToSlug(brand: string): string {
+  return brand.trim().toLowerCase().replace(/\s+/g, '-');
+}
+
 const BASE = 'https://fixline.com.ua';
 
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [products, categories] = await Promise.all([getProductsCached(), getCategoriesCached()]);
+
+  // Бренди з 5+ продуктів отримуємо з кешованого списку продуктів
+  const brandCounts = new Map<string, number>();
+  for (const p of products) {
+    const b = p.brand?.trim();
+    if (b) brandCounts.set(b, (brandCounts.get(b) ?? 0) + 1);
+  }
+  const significantBrands = [...brandCounts.entries()]
+    .filter(([, count]) => count >= 5)
+    .map(([brand]) => brand);
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: BASE,                  lastModified: new Date(), changeFrequency: 'weekly',  priority: 1.0 },
@@ -46,5 +60,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticRoutes, ...blogRoutes, ...shopCategoryRoutes, ...catalogCategoryRoutes, ...productRoutes];
+  const brandRoutes: MetadataRoute.Sitemap = significantBrands.map(brand => ({
+    url: `${BASE}/shop/brand/${brandToSlug(brand)}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly',
+    priority: 0.75,
+  }));
+
+  return [...staticRoutes, ...blogRoutes, ...shopCategoryRoutes, ...brandRoutes, ...productRoutes];
 }

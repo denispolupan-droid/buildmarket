@@ -1,8 +1,13 @@
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '../components/Footer';
 import ShopLoader from './ShopLoader';
 import './shop.css';
+
+function brandToSlug(brand: string): string {
+  return brand.trim().toLowerCase().replace(/\s+/g, '-');
+}
 
 const BASE = 'https://fixline.com.ua';
 
@@ -21,12 +26,7 @@ export async function generateMetadata(
   }
 
   if (brand) {
-    return {
-      title: `${brand} купити в Україні — офіційний постачальник | FIXLINE`,
-      description: `Купити ${brand} в роздріб та оптом. Широкий асортимент, доставка по всій Україні. Від 1 одиниці.`,
-      alternates: { canonical: `${BASE}/shop?brand=${encodeURIComponent(brand)}`, languages: { 'uk': `${BASE}/shop?brand=${encodeURIComponent(brand)}`, 'x-default': `${BASE}/shop?brand=${encodeURIComponent(brand)}` } },
-      openGraph: { title: `${brand} | Магазин FIXLINE`, url: `${BASE}/shop?brand=${encodeURIComponent(brand)}`, locale: 'uk_UA', type: 'website' },
-    };
+    return { robots: { index: false, follow: false } };
   }
 
   return {
@@ -45,6 +45,8 @@ export async function generateMetadata(
 
 export default async function ShopPage({ searchParams }: { searchParams: Promise<{ sale?: string; brand?: string }> }) {
   const { sale, brand } = await searchParams;
+
+  if (brand) redirect(`/shop/brand/${brandToSlug(brand)}`);
 
   const breadcrumbLd = {
     '@context': 'https://schema.org',

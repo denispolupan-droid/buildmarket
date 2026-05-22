@@ -1,7 +1,11 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Mail, Phone, MapPin, Clock4 } from 'lucide-react';
-import { getCategoriesCached } from '../../lib/supabase';
+import { getCategoriesCached, getBrandsCached, getProductsCached } from '../../lib/supabase';
+
+function brandToSlug(brand: string): string {
+  return brand.trim().toLowerCase().replace(/\s+/g, '-');
+}
 
 function InstagramIcon() {
   return (
@@ -36,13 +40,24 @@ const serviceLinks = [
 ];
 
 export default async function Footer() {
-  const categories = await getCategoriesCached();
+  const [categories, allProducts] = await Promise.all([getCategoriesCached(), getProductsCached()]);
   const parentCats = categories.filter(c => !c.parent_slug);
+
+  const brandCounts = new Map<string, number>();
+  for (const p of allProducts) {
+    const b = p.brand?.trim();
+    if (b) brandCounts.set(b, (brandCounts.get(b) ?? 0) + 1);
+  }
+  const topBrands = [...brandCounts.entries()]
+    .filter(([, count]) => count >= 5)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([brand]) => brand);
 
   return (
     <footer style={{ background: '#1A2744' }}>
       <div className="footer-inner" style={{ maxWidth: '1280px', margin: '0 auto', padding: '48px 32px 0' }}>
-        <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1.1fr', gap: '40px', paddingBottom: '40px' }}>
+        <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr 1fr', gap: '36px', paddingBottom: '40px' }}>
 
           {/* Brand */}
           <div>
@@ -76,6 +91,20 @@ export default async function Footer() {
               {parentCats.slice(0, 10).map(cat => (
                 <Link key={cat.slug} href={`/shop/${cat.slug}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
                   {cat.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Brands */}
+          <div>
+            <p style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '18px' }}>
+              Бренди
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {topBrands.map(brand => (
+                <Link key={brand} href={`/shop/brand/${brandToSlug(brand)}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
+                  {brand}
                 </Link>
               ))}
             </div>
