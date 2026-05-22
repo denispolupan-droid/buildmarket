@@ -70,7 +70,7 @@ export default async function ReceiptsPage() {
             const wh  = (r.warehouse as any)?.name ?? '—';
             const lc  = Number(r.landed_cost_total ?? 0);
             return (
-              <Link key={r.id} href={`/admin/accounting/documents/${r.id}`} style={{
+              <Link key={r.id} href={`/admin/procurement/receipts/${r.id}`} style={{
                 display: 'grid', gridTemplateColumns: '130px 120px 1fr 130px 120px 120px 40px',
                 padding: '11px 16px', alignItems: 'center', textDecoration: 'none',
                 borderBottom: idx < rows.length - 1 ? '1px solid var(--border-light)' : 'none',

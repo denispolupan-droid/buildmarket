@@ -38,15 +38,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if ((count ?? 0) > 0) return NextResponse.json({ error: 'Прихід вже існує для цього PO' }, { status: 409 });
 
   // Create receipt document
-  const lines = (po.lines ?? []).map((l: { sku: string; qty: number; cost_price: number; supplier_id: number; warehouse_id: number }) => ({
+  const lines = (po.lines ?? []).map((l: { sku: string; qty: number; cost_price: number; supplier_id: number; warehouse_id: number }) => {
+    const actualQty   = body.actualQties?.[l.sku];
+    const actualPrice = body.actualPrices?.[l.sku];
+    // Guard against NaN (empty input fields send NaN via parseFloat(''))
+    const qty        = (actualQty  !== undefined && !isNaN(actualQty))  ? actualQty  : l.qty;
+    const cost_price = (actualPrice !== undefined && !isNaN(actualPrice) && actualPrice > 0)
+      ? actualPrice
+      : (l.cost_price ?? 0);
+    return {
     sku:              l.sku,
-    qty:              body.actualQties?.[l.sku]  ?? l.qty,
+    qty,
     price:            0,
-    cost_price:       body.actualPrices?.[l.sku] ?? l.cost_price ?? 0,
+    cost_price,
     fulfillment_type: 'own' as const,
     warehouse_id:     l.warehouse_id ?? po.warehouse_id,
     supplier_id:      l.supplier_id ?? po.supplier_id,
-  }));
+    };
+  });
 
   const receipt = await createDocument({
     doc_type:     'receipt',
