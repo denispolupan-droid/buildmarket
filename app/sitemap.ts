@@ -26,6 +26,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: BASE,                  lastModified: new Date(), changeFrequency: 'weekly',  priority: 1.0 },
     { url: `${BASE}/shop`,        lastModified: new Date(), changeFrequency: 'daily',   priority: 0.9 },
+    { url: `${BASE}/shop/sale`,   lastModified: new Date(), changeFrequency: 'daily',   priority: 0.8 },
     // /catalog — закритий B2B розділ, noindex, не додаємо в sitemap
     { url: `${BASE}/blog`,        lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.7 },
     { url: `${BASE}/about`,       lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },

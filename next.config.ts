@@ -20,6 +20,12 @@ const nextConfig: NextConfig = {
         destination: '/shop/:category',
         permanent: true,
       },
+      {
+        source: '/shop',
+        has: [{ type: 'query', key: 'sale', value: '1' }],
+        destination: '/shop/sale',
+        permanent: true,
+      },
     ];
   },
   async rewrites() {
