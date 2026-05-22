@@ -80,9 +80,12 @@ export default function RelatedCarousel({ products, retail = false }: { products
             const relPrice    = retail ? (p.stock?.price_retail ?? 0)     : (p.stock?.price_unit ?? 0);
             const relPriceOld = retail ? (p.stock?.price_retail_old ?? null) : (p.stock?.price_old  ?? null);
             const relStock    = p.stock?.stock_qty  ?? 0;
+            const stockStatus = p.stock?.stock_status;
             const relMinOrder = retail ? 1 : p.min_order;
             const isSale      = relPriceOld != null && relPrice > 0 && relPrice < relPriceOld;
-            const inStock     = relStock >= relMinOrder;
+            const inStock     = stockStatus === 'in_stock' ? true
+                              : stockStatus === 'out_of_stock' ? false
+                              : relStock >= relMinOrder;
             const packFrac    = relMinOrder / p.pack_qty;
             const packStr     = packFrac % 1 === 0 ? `${packFrac}` : packFrac.toFixed(1);
             const specs: { label: string; value: string }[] = [];
