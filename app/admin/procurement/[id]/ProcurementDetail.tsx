@@ -398,8 +398,11 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '7px' }}>
               <Package size={15} /> Товари
             </div>
-            {/* Заголовок таблиці */}
-            <div style={{ display: 'grid', gridTemplateColumns: po.has_receipt ? '110px minmax(0,1fr) 80px 110px 110px' : '110px minmax(0,1fr) 80px 90px 100px 100px 90px', padding: '8px 16px', background: 'var(--bg-soft)', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', gap: '8px' }}>
+            {/* Заголовок таблиці
+                has_receipt=false : Арт | Назва | Замовл. | Отримано | Ціна факт. | Ціна PO | Різниця | Сума  = 8 cols
+                has_receipt=true  : Арт | Назва | Замовл. | Ціна PO | Сума                              = 5 cols
+            */}
+            <div style={{ display: 'grid', gridTemplateColumns: po.has_receipt ? '110px minmax(0,1fr) 80px 110px 100px' : '110px minmax(0,1fr) 60px 75px 90px 90px 60px 90px', padding: '8px 16px', background: 'var(--bg-soft)', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', gap: '8px' }}>
               <span>Артикул</span>
               <span>Найменування</span>
               <span style={{ textAlign: 'right' }}>Замовлено</span>
@@ -420,7 +423,7 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
 
               const isNew = line.is_adj_new;
               return (
-                <div key={line.id} style={{ display: 'grid', gridTemplateColumns: po.has_receipt ? '110px minmax(0,1fr) 80px 110px 110px' : '110px minmax(0,1fr) 80px 90px 100px 100px 90px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', gap: '8px', background: isNew ? 'rgba(21,128,61,0.05)' : diff < 0 ? '#FFF5F5' : 'transparent' }}>
+                <div key={line.id} style={{ display: 'grid', gridTemplateColumns: po.has_receipt ? '110px minmax(0,1fr) 80px 110px 100px' : '110px minmax(0,1fr) 60px 75px 90px 90px 60px 90px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', gap: '8px', background: isNew ? 'rgba(21,128,61,0.05)' : diff < 0 ? '#FFF5F5' : 'transparent' }}>
                   <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-muted)' }}>{line.sku}</span>
                   <div style={{ overflow: 'hidden', minWidth: 0 }} title={`${line.brand ?? ''} ${line.name ?? ''}`}>
                     <div style={{ fontSize: '12px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
