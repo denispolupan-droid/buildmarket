@@ -27,12 +27,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!po) return NextResponse.json({ error: 'PO не знайдено' }, { status: 404 });
 
-  // Check no receipt yet
+  // Check no receipt yet (only receipt/stock_in, not adjustments!)
   const { count } = await db
     .from('acc_documents')
     .select('*', { count: 'exact', head: true })
     .eq('parent_doc_id', id)
-    .eq('status', 'confirmed');
+    .eq('status', 'confirmed')
+    .in('doc_type', ['receipt', 'stock_in']);
 
   if ((count ?? 0) > 0) return NextResponse.json({ error: 'Прихід вже існує для цього PO' }, { status: 409 });
 
