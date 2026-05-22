@@ -30,6 +30,7 @@
 .filter-select.active { border-color: #1E3A5F; background: #E8EEF5; color: #1E3A5F; font-weight: 600; }
 [data-theme="dark"] .filter-select.active { background: #1E3A5F44; border-color: #4880B8; color: #93C5FD; }
 .filter-check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-secondary); cursor: pointer; margin-top: 14px; }
+.filter-check:last-child { margin-bottom: 20px; }
 .filter-check input { accent-color: #3DBFB8; width: 15px; height: 15px; }
 
 /* ── Main content ── */
