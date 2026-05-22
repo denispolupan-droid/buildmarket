@@ -224,7 +224,7 @@ export const ARTICLES: Article[] = [
     date: '2026-05-22',
     category: 'Поради',
     readTime: 6,
-    image: '/blog/covers/dyubeli-ta-ankery.png',
+    image: '/blog/covers/kley-dlya-remontu-vybir.png',
     keywords: ['дюбель', 'анкер', 'кріплення', 'дюбель для гіпсокартону', 'анкер для бетону', 'дюбель нейлоновий', 'дюбель вибрати', 'анкер вибрати', 'крепеж', 'дюбель купить', 'анкер купить', 'купити кріплення', 'дюбель-бабочка'],
     relatedLinks: [
       { label: 'Кріплення', href: '/shop/kriplennya' },
@@ -237,7 +237,7 @@ export const ARTICLES: Article[] = [
     date: '2026-05-22',
     category: 'Поради',
     readTime: 6,
-    image: '/blog/covers/farba-dlya-pidlohy-garazh.png',
+    image: '/blog/covers/yak-vybrat-farbu.png',
     keywords: ['фарба для підлоги', 'фарба для бетонної підлоги', 'фарба для гаражу', 'поліуретанова фарба', 'краска для пола', 'краска для бетонного пола', 'краска для гаража', 'полиуретановая краска для пола', 'эпоксидная краска', 'купить краску для пола', 'купити фарбу для підлоги'],
     relatedLinks: [
       { label: 'Фарби для підлоги', href: '/shop/farby-dlya-pidlohy' },
@@ -251,7 +251,7 @@ export const ARTICLES: Article[] = [
     date: '2026-05-22',
     category: 'Поради',
     readTime: 5,
-    image: '/blog/covers/betonokontakt.png',
+    image: '/blog/covers/gruntivscha-navishcho-i-yaku-vybrat.png',
     keywords: ['бетоноконтакт', 'адгезійна ґрунтовка', 'ґрунтовка для гладких поверхонь', 'бетоноконтакт нанесення', 'бетонконтакт', 'адгезионная грунтовка', 'грунтовка для гладких поверхностей', 'бетонконтакт нанесение', 'купити бетоноконтакт', 'купить бетонконтакт'],
     relatedLinks: [
       { label: 'Бетоноконтакт', href: '/shop/betonokontakt' },
@@ -265,7 +265,7 @@ export const ARTICLES: Article[] = [
     date: '2026-05-22',
     category: 'Поради',
     readTime: 6,
-    image: '/blog/covers/zvukoizolyatsiya-stin.png',
+    image: '/blog/covers/malyarna-strichka-yak-vybrat.png',
     keywords: ['звукоізоляція стін', 'звукоізоляційна стрічка', 'шумоізоляція квартири', 'звукоізоляція перегородок', 'звукоизоляция стен', 'звукоизоляционная лента', 'шумоизоляция квартиры', 'звукоизоляция перегородок', 'купити звукоізоляційну стрічку', 'купить звукоизоляционную ленту'],
     relatedLinks: [
       { label: 'Звукоізоляційна стрічка', href: '/shop/zvukoizolyatsiyna-strichka' },
@@ -279,7 +279,7 @@ export const ARTICLES: Article[] = [
     date: '2026-05-22',
     category: 'Поради',
     readTime: 5,
-    image: '/blog/covers/bitumna-mastyka.png',
+    image: '/blog/covers/hidroizolyatsiya-fundamentu-i-vannoyi.png',
     keywords: ['бітумна мастика', 'мастика для покрівлі', 'мастика для фундаменту', 'бітумна гідроізоляція', 'битумная мастика', 'мастика для кровли', 'мастика для фундамента', 'битумная гидроизоляция', 'купити бітумну мастику', 'купить битумную мастику'],
     relatedLinks: [
       { label: 'Бітумні мастики', href: '/shop/bitumni-mastyky' },

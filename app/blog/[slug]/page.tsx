@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       locale: 'uk_UA',
       type: 'article',
       publishedTime: article.date,
-      images: [{ url: `https://fixline.com.ua${article.image}`, width: 1200, height: 630, alt: article.title }],
+      images: [{ url: `https://fixline.com.ua/blog/${slug}/opengraph-image`, width: 1200, height: 630, alt: article.title }],
     },
   };
 }
