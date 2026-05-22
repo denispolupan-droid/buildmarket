@@ -1,6 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
 import { getArticle, ARTICLES } from '../../../lib/blog';
@@ -1221,14 +1222,14 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
               {article.description}
             </p>
 
-            {/* Cover image */}
+            {/* Cover image — LCP element, priority preload */}
             <div style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '36px' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={article.image}
                 alt={article.title}
                 width={1200}
                 height={630}
+                priority
                 style={{ width: '100%', height: 'auto', display: 'block' }}
               />
             </div>
@@ -1298,7 +1299,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                   <Link key={a.slug} href={`/blog/${a.slug}`} style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px', textDecoration: 'none' }}>
                     <div style={{ width: '96px', height: '54px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={a.image} alt={a.title} width={96} height={54} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      <Image src={a.image} alt={a.title} width={96} height={54} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px', lineHeight: 1.3 }}>

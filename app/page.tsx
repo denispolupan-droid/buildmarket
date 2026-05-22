@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 
 export const revalidate = 300;
@@ -341,7 +342,7 @@ export default async function Home() {
               <Link key={article.slug} href={`/blog/${article.slug}`} className="blog-carousel__card">
                 <div style={{ aspectRatio: '16/9', overflow: 'hidden' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={article.image} alt={article.title} width={600} height={338} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  <Image src={article.image} alt={article.title} width={600} height={338} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 </div>
                 <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '11px', fontWeight: 700, color: '#4880B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
