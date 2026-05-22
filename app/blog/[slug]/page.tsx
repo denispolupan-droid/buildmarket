@@ -1149,6 +1149,16 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const Content = ARTICLE_CONTENT[slug];
   if (!Content) notFound();
 
+  const faqLd = article.faq?.length ? {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: article.faq.map(({ q, a }) => ({
+      '@type': 'Question',
+      name: q,
+      acceptedAnswer: { '@type': 'Answer', text: a },
+    })),
+  } : null;
+
   const breadcrumbLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -1176,6 +1186,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
+      {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />}
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
         <div style={{ maxWidth: '760px', margin: '0 auto', padding: '40px 32px 64px' }}>
 
@@ -1227,6 +1238,27 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
               <Content />
             </div>
           </article>
+
+          {/* FAQ */}
+          {article.faq && article.faq.length > 0 && (
+            <div style={{ marginTop: '48px', padding: '24px 28px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 20px' }}>
+                Часті запитання
+              </h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {article.faq.map((item, i) => (
+                  <div key={i} style={{ borderTop: i > 0 ? '1px solid var(--border)' : undefined, paddingTop: i > 0 ? '16px' : undefined }}>
+                    <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px' }}>
+                      {item.q}
+                    </p>
+                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>
+                      {item.a}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* CTA */}
           <div style={{ marginTop: '48px', padding: '24px 28px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px' }}>

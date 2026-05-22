@@ -27,6 +27,13 @@ export async function generateMetadata(
 
   if (!brand) return { robots: { index: false, follow: false } };
 
+  const allProducts = await getProductsCached();
+  const brandProductCount = allProducts.filter(
+    p => p.brand.trim().toLowerCase() === brand.trim().toLowerCase()
+  ).length;
+
+  if (brandProductCount < 5) return { robots: { index: false, follow: true } };
+
   return {
     title: `${brand} купити в Україні — офіційний постачальник | FIXLINE`,
     description: `Купити ${brand} в роздріб та оптом. Широкий асортимент, ціни від виробника, доставка по всій Україні. Купить ${brand} с доставкой по Украине.`,
