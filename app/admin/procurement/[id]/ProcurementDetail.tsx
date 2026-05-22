@@ -212,7 +212,8 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Помилка'); return; }
-      setSuccess('✅ Прихід оформлено! Залишки оновлено (FIFO). Оновіть сторінку.');
+      setSuccess('✅ Прихід оформлено! Оновлення сторінки...');
+      setTimeout(() => window.location.reload(), 1200);
     } catch { setError('Мережева помилка'); }
     finally { setReceiving(false); }
   }
@@ -570,10 +571,61 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
 
         {/* Right: Actions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* Invoice */}
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' }}>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '7px' }}>
-              <FileText size={15} /> Рахунок-фактура
+
+          {/* ── ПІСЛЯ ПРИХОДУ: Landed Cost першим ── */}
+          {po.has_receipt && (
+            <div style={{ background: 'var(--bg-card)', border: '2px solid #DDD6FE', borderRadius: '12px', padding: '16px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 800, color: '#7C3AED', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '7px' }}>
+                <Package size={15} /> Додаткові витрати (Landed Cost)
+                <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--text-muted)', marginLeft: 'auto' }}>розподіл по FIFO</span>
+              </div>
+              {lcDone ? (
+                <div style={{ fontSize: '13px', color: '#15803D', fontWeight: 600 }}>✅ Розподілено по FIFO партіях</div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+                    {lcLines.map((line, i) => (
+                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '6px', alignItems: 'center' }}>
+                        <select value={line.cost_type} onChange={e => setLcField(i, 'cost_type', e.target.value)}
+                          style={{ ...inp, cursor: 'pointer', fontSize: '12px' }}>
+                          {COST_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                        </select>
+                        <input style={{ ...inp, fontSize: '12px' }} type="number" min="0" step="0.01"
+                          placeholder="Сума, ₴" value={line.amount}
+                          onChange={e => setLcField(i, 'amount', e.target.value)} />
+                        {lcLines.length > 1 && (
+                          <button onClick={() => removeLcLine(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', padding: '0 4px', display: 'flex' }}><X size={14} /></button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={addLcLine} style={{ fontSize: '12px', color: '#7C3AED', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Plus size={12} /> Додати рядок
+                  </button>
+                  <div style={{ marginBottom: '8px' }}>
+                    <label style={lbl}>Метод розподілу</label>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {(['by_cost','by_qty','equal'] as const).map(m => (
+                        <button key={m} onClick={() => setLcMethod(m)}
+                          style={{ flex: 1, height: '28px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', border: `1px solid ${lcMethod === m ? '#7C3AED' : 'var(--border)'}`, background: lcMethod === m ? '#F5F3FF' : 'var(--bg-soft)', color: lcMethod === m ? '#7C3AED' : 'var(--text-muted)' }}>
+                          {m === 'by_cost' ? 'За вартістю' : m === 'by_qty' ? 'По кількості' : 'Порівну'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <button onClick={handleLandedCost} disabled={lcSaving}
+                    style={{ width: '100%', height: '36px', borderRadius: '8px', border: 'none', background: '#7C3AED', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: lcSaving ? 0.7 : 1 }}>
+                    {lcSaving ? '...' : '📊 Розподілити витрати по FIFO'}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Invoice — компактний після приходу */}
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: po.has_receipt ? '12px 16px' : '16px' }}>
+            <div style={{ fontSize: po.has_receipt ? '12px' : '13px', fontWeight: 700, color: po.has_receipt ? 'var(--text-muted)' : 'var(--text-primary)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '7px' }}>
+              <FileText size={14} /> Рахунок-фактура
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {invoiceSaved && !editingInvoice ? (
@@ -667,8 +719,8 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
             </div>
           </div>
 
-          {/* Landed Cost */}
-          {po.has_receipt && (
+          {/* Landed Cost (shown only when !has_receipt — post-receipt version is above) */}
+          {po.has_receipt && false && (
             <div style={{ background: 'var(--bg-card)', border: `1px solid ${lcDone ? '#86EFAC' : 'var(--border)'}`, borderRadius: '12px', padding: '16px' }}>
               <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '7px' }}>
                 <Package size={15} /> Додаткові витрати (Landed Cost)
@@ -720,10 +772,10 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
             </div>
           )}
 
-          {/* Payment */}
-          <div style={{ background: 'var(--bg-card)', border: `1px solid ${activeStatus === 'paid' ? '#86EFAC' : 'var(--border)'}`, borderRadius: '12px', padding: '16px' }}>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '7px' }}>
-              <Banknote size={15} /> Оплата постачальнику
+          {/* Payment — компактний після приходу */}
+          <div style={{ background: 'var(--bg-card)', border: `1px solid ${activeStatus === 'paid' ? '#86EFAC' : 'var(--border)'}`, borderRadius: '12px', padding: po.has_receipt ? '12px 16px' : '16px' }}>
+            <div style={{ fontSize: po.has_receipt ? '12px' : '13px', fontWeight: 700, color: po.has_receipt ? 'var(--text-muted)' : 'var(--text-primary)', marginBottom: po.has_receipt ? '8px' : '12px', display: 'flex', alignItems: 'center', gap: '7px' }}>
+              <Banknote size={14} /> Оплата постачальнику
             </div>
 
             {/* Supplier bank details */}
