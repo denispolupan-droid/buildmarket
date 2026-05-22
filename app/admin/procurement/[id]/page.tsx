@@ -60,11 +60,13 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
     redirect('/admin/procurement');
   }
 
+  // Рахуємо тільки приходи (не коригування!)
   const { count: receiptCount } = await db
     .from('acc_documents')
     .select('*', { count: 'exact', head: true })
     .eq('parent_doc_id', id)
-    .eq('status', 'confirmed');
+    .eq('status', 'confirmed')
+    .in('doc_type', ['receipt', 'stock_in']);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sup = poBase.supplier as any;
