@@ -56,7 +56,7 @@ export default async function Image({ params }: { params: Promise<{ brand: strin
         width: 'fit-content',
         fontSize: '16px', fontWeight: 600, color: '#93C5FD',
       }}>
-        Офіційний постачальник
+        Авторизований дилер
       </div>
 
       {/* Title */}

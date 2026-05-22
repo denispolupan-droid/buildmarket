@@ -35,9 +35,9 @@ export async function generateMetadata(
   if (brandProductCount < 5) return { robots: { index: false, follow: true } };
 
   return {
-    title: `${brand} купити в Україні — офіційний постачальник | FIXLINE`,
+    title: `${brand} купити в Україні — авторизований дилер | FIXLINE`,
     description: `Купити ${brand} в роздріб та оптом. Широкий асортимент, ціни від виробника, доставка по всій Україні. Купить ${brand} с доставкой по Украине.`,
-    keywords: [brand, 'купити', 'купить', 'офіційний постачальник', 'будівельна хімія', 'Україна'],
+    keywords: [brand, 'купити', 'купить', 'авторизований дилер', 'будівельна хімія', 'Україна'],
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
     alternates: {
       canonical: `${BASE}/shop/brand/${slug}`,
@@ -45,7 +45,7 @@ export async function generateMetadata(
     },
     openGraph: {
       title: `${brand} | Магазин FIXLINE`,
-      description: `${brand} — купити від 1 шт з доставкою по Україні. Офіційний постачальник.`,
+      description: `${brand} — купити від 1 шт з доставкою по Україні. Широкий асортимент, доставка по всій Україні.`,
       url: `${BASE}/shop/brand/${slug}`,
       siteName: 'FIXLINE',
       locale: 'uk_UA',
