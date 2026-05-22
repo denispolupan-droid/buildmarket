@@ -47,18 +47,23 @@ function SidebarInner({ newOrdersCount, statusCounts = {}, chatUnreadCount = 0 }
   const [mailUnread,    setMailUnread]    = useState(0);
 
   useEffect(() => {
-    fetch('/api/admin/mail/folders')
-      .then(r => r.json())
-      .then(d => {
-        const folders: Record<string, unknown>[] = d?.data ?? [];
-        const inbox = folders.find(f =>
-          String(f.folderName ?? '').toLowerCase() === 'inbox'
-        );
-        if (!inbox) return;
-        const count = Number(inbox.unreadCount ?? inbox.unreadMsgCount ?? inbox.unread_count ?? 0);
-        if (count > 0) setMailUnread(count);
-      })
-      .catch(() => {});
+    function fetchUnread() {
+      fetch('/api/admin/mail/folders')
+        .then(r => r.json())
+        .then(d => {
+          const folders: Record<string, unknown>[] = d?.data ?? [];
+          const inbox = folders.find(f =>
+            String(f.folderName ?? '').toLowerCase() === 'inbox'
+          );
+          if (!inbox) return;
+          const count = Number(inbox.unreadCount ?? inbox.unreadMsgCount ?? inbox.unread_count ?? 0);
+          setMailUnread(count);
+        })
+        .catch(() => {});
+    }
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 60_000);
+    return () => clearInterval(interval);
   }, []);
 
   // Читаємо кількість відкритих чернеток замовлень

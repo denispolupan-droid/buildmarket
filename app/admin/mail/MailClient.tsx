@@ -277,7 +277,7 @@ export default function MailClient() {
             <span style={{ opacity: 0.6 }}>{folderIcon(f.folderName)}</span>
             <span style={{ flex: 1 }}>{folderName(f.folderName)}</span>
             {f.unreadCount > 0 && (
-              <span style={{ background: '#1E3A5F', color: '#fff', fontSize: '11px', fontWeight: 700, borderRadius: '20px', padding: '1px 7px' }}>
+              <span style={{ background: '#EF4444', color: '#fff', fontSize: '11px', fontWeight: 700, borderRadius: '20px', padding: '1px 7px', minWidth: '18px', textAlign: 'center' }}>
                 {f.unreadCount}
               </span>
             )}
