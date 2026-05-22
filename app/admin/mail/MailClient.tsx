@@ -15,6 +15,7 @@ type Message = {
   summary: string;
   isRead: '0' | '1' | boolean;
   hasAttachment: string;
+  folderId?: string;
 };
 type MessageContent = Message & { content: string };
 
@@ -207,10 +208,10 @@ export default function MailClient() {
     setSelMessage(msg);
     setMsgContent(null);
     setMsgLoading(true);
-    const res = await fetch(`/api/admin/mail/messages/${msg.messageId}`);
+    const folderId = msg.folderId ?? selFolder?.folderId ?? '';
+    const res = await fetch(`/api/admin/mail/messages/${msg.messageId}?folderId=${folderId}`);
     const data = await res.json();
-    // Тимчасово зберігаємо весь raw response для діагностики
-    setMsgContent(data as unknown as MessageContent);
+    setMsgContent(data?.data ?? null);
     setMsgLoading(false);
 
     // Mark as read
@@ -381,11 +382,21 @@ export default function MailClient() {
               </div>
 
               {msgLoading && <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Завантаження...</div>}
-              {msgContent && (
-                <pre style={{ fontSize: '11px', color: 'var(--text-secondary)', background: 'var(--bg-soft)', padding: '12px', borderRadius: '8px', whiteSpace: 'pre-wrap', overflow: 'auto', maxHeight: '400px' }}>
-                  {JSON.stringify(msgContent, null, 2)}
-                </pre>
-              )}
+              {msgContent && (() => {
+                const mc = msgContent as Record<string, unknown>;
+                const html = (mc.htmlBody || mc.content || mc.body || mc.html || '') as string;
+                const text = (mc.textBody || mc.text || mc.plainBody || '') as string;
+                if (html) return (
+                  <div style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.7 }}
+                    dangerouslySetInnerHTML={{ __html: html }} />
+                );
+                if (text) return (
+                  <pre style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.7, whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
+                    {text}
+                  </pre>
+                );
+                return <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Порожній лист</div>;
+              })()}
             </div>
           </div>
         )}
