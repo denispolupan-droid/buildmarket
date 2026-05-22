@@ -381,10 +381,11 @@ export default function MailClient() {
 
               {msgLoading && <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Завантаження...</div>}
               {msgContent && (() => {
-                const html = (msgContent as Record<string, unknown>).htmlBody as string
-                  || (msgContent as Record<string, unknown>).content as string
-                  || '';
-                const text = (msgContent as Record<string, unknown>).textBody as string || '';
+                const mc = msgContent as Record<string, unknown>;
+                const html = (mc.htmlBody || mc.content || mc.body || mc.html || '') as string;
+                const text = (mc.textBody || mc.text || mc.plainBody || '') as string;
+                const debugKeys = (mc._debug_keys as string[]) ?? Object.keys(mc);
+
                 if (html) return (
                   <div style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.7 }}
                     dangerouslySetInnerHTML={{ __html: html }} />
@@ -394,7 +395,15 @@ export default function MailClient() {
                     {text}
                   </pre>
                 );
-                return <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Порожній лист</div>;
+                // Тимчасово показуємо доступні поля для діагностики
+                return (
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', background: 'var(--bg-soft)', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ marginBottom: '4px', fontWeight: 600 }}>Поля відповіді Zoho API:</div>
+                    {debugKeys.map(k => (
+                      <div key={k}><b>{k}:</b> {String(mc[k] ?? '').slice(0, 100)}</div>
+                    ))}
+                  </div>
+                );
               })()}
             </div>
           </div>
