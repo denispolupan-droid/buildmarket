@@ -195,8 +195,19 @@ export default function MailClient() {
     try {
       const res = await fetch(`/api/admin/mail/messages?folderId=${selFolder.folderId}&limit=30`);
       const data = await res.json();
-      if (data.error) { setError(data.error); setMessages([]); }
-      else setMessages(data?.data ?? []);
+      if (data.error) { setError(data.error); setMessages([]); return; }
+      const msgs: Message[] = data?.data ?? [];
+
+      // Перевіряємо локально прочитані (Supabase)
+      const ids = msgs.map(m => m.messageId).join(',');
+      if (ids) {
+        const rs = await fetch(`/api/admin/mail/read-state?ids=${ids}`);
+        const rd = await rs.json();
+        const readSet = new Set<string>(rd.readIds ?? []);
+        setMessages(msgs.map(m => readSet.has(m.messageId) ? { ...m, status: '1' } : m));
+      } else {
+        setMessages(msgs);
+      }
     } catch { setError('Помилка завантаження листів'); }
     finally { setLoading(false); }
   }, [selFolder]);
@@ -209,23 +220,21 @@ export default function MailClient() {
     setMsgContent(null);
     setMsgLoading(true);
 
-    // Одразу позначаємо як прочитане локально (не чекаємо API)
+    // Одразу позначаємо як прочитане локально
     const wasUnread = String(msg.status) === '0';
     if (wasUnread) {
       setMessages(prev => prev.map(m => m.messageId === msg.messageId ? { ...m, status: '1' } : m));
       setSelMessage({ ...msg, status: '1' });
+      // Зберігаємо в Supabase — не залежить від Zoho API
+      fetch('/api/admin/mail/read-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId: msg.messageId }),
+      });
     }
 
     const folderId = msg.folderId ?? selFolder?.folderId ?? '';
-    const [contentRes] = await Promise.all([
-      fetch(`/api/admin/mail/messages/${msg.messageId}?folderId=${folderId}`),
-      // Паралельно відправляємо mark-as-read
-      wasUnread ? fetch(`/api/admin/mail/messages/${msg.messageId}?folderId=${folderId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isRead: true }),
-      }) : Promise.resolve(),
-    ]);
+    const contentRes = await fetch(`/api/admin/mail/messages/${msg.messageId}?folderId=${folderId}`);
     const data = await contentRes.json();
     setMsgContent(data?.data ?? null);
     setMsgLoading(false);
