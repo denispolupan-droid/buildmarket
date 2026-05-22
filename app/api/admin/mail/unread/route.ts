@@ -22,8 +22,9 @@ export async function GET() {
     );
     const messages: Record<string, unknown>[] = msgsData?.data ?? [];
     const unread = messages.filter(m => m.isRead === '0' || m.isRead === false || m.isRead === 0).length;
+    const sample = messages.slice(0, 3).map(m => ({ isRead: m.isRead, isReadType: typeof m.isRead }));
 
-    return NextResponse.json({ count: unread, folderId, total: messages.length });
+    return NextResponse.json({ count: unread, folderId, total: messages.length, sample });
   } catch {
     return NextResponse.json({ count: 0 });
   }
