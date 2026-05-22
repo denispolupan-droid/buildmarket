@@ -85,6 +85,21 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { zoom: 0.95; overflow-x: hidden; }
 
+.footer-details > summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4880B8;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.footer-details > summary::-webkit-details-marker { display: none; }
+.footer-details > summary::after { content: '↓'; font-size: 10px; transition: transform 0.2s; }
+.footer-details[open] > summary::after { transform: rotate(180deg); }
+
 body {
   font-family: Inter, system-ui, sans-serif;
   background: var(--bg-page);
@@ -183,6 +198,16 @@ input, select { font-family: inherit; }
 .admin-page-enter {
   animation: admin-page-enter 0.22s ease-out both;
 }
+
+/* ── Admin sidebar scrollbar ── */
+.admin-sidebar-nav {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.12) transparent;
+}
+.admin-sidebar-nav::-webkit-scrollbar { width: 4px; }
+.admin-sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.admin-sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+.admin-sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
 
 /* ── Admin panel dark mode ── */
 
@@ -585,6 +610,7 @@ input, select { font-family: inherit; }
   /* Footer */
   .footer-inner { padding: 32px 16px 0 !important; }
   .footer-grid { grid-template-columns: 1fr !important; gap: 28px !important; }
+  .footer-grid > div:first-child { display: none; } /* hide brand col on mobile */
 
   /* Shop count */
   .shop-count { display: none; }

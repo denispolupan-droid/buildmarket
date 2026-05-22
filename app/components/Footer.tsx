@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Mail, Phone, MapPin, Clock4 } from 'lucide-react';
-import { getCategoriesCached, getBrandsCached, getProductsCached } from '../../lib/supabase';
+import { getCategoriesCached, getProductsCached } from '../../lib/supabase';
 
 function brandToSlug(brand: string): string {
   return brand.trim().toLowerCase().replace(/\s+/g, '-');
@@ -88,11 +88,23 @@ export default async function Footer() {
               Категорії
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {parentCats.slice(0, 10).map(cat => (
+              {parentCats.slice(0, 6).map(cat => (
                 <Link key={cat.slug} href={`/shop/${cat.slug}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
                   {cat.name}
                 </Link>
               ))}
+              {parentCats.length > 6 && (
+                <details className="footer-details">
+                  <summary>Ще {parentCats.length - 6}</summary>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+                    {parentCats.slice(6).map(cat => (
+                      <Link key={cat.slug} href={`/shop/${cat.slug}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
+                        {cat.name}
+                      </Link>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
           </div>
 
@@ -102,11 +114,23 @@ export default async function Footer() {
               Бренди
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {topBrands.map(brand => (
+              {topBrands.slice(0, 6).map(brand => (
                 <Link key={brand} href={`/shop/brand/${brandToSlug(brand)}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
                   {brand}
                 </Link>
               ))}
+              {topBrands.length > 6 && (
+                <details className="footer-details">
+                  <summary>Ще {topBrands.length - 6}</summary>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+                    {topBrands.slice(6).map(brand => (
+                      <Link key={brand} href={`/shop/brand/${brandToSlug(brand)}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
+                        {brand}
+                      </Link>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
           </div>
 
