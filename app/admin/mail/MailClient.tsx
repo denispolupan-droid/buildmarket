@@ -216,7 +216,8 @@ export default function MailClient() {
 
     // Mark as read
     if (msg.status === '0') {
-      await fetch(`/api/admin/mail/messages/${msg.messageId}`, {
+      const fId = msg.folderId ?? selFolder?.folderId ?? '';
+      await fetch(`/api/admin/mail/messages/${msg.messageId}?folderId=${fId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isRead: true }),

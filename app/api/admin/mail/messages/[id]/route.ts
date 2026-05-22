@@ -24,11 +24,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const body = await req.json();
+    const folderId = req.nextUrl.searchParams.get('folderId');
+    await req.json(); // consume body
     const accountId = await getAccountId();
+
+    // Zoho EU: mark as read via folder path
+    if (folderId) {
+      const data = await zohoFetch(
+        `/accounts/${accountId}/folders/${folderId}/messages/${id}`,
+        { method: 'PUT', body: JSON.stringify({ isRead: true }) },
+      );
+      if (!data?.data?.errorCode) return NextResponse.json(data);
+    }
+
+    // Fallback: updatemessage endpoint
     const data = await zohoFetch(`/accounts/${accountId}/updatemessage`, {
       method: 'PUT',
-      body: JSON.stringify({ ...body, messageId: id }),
+      body: JSON.stringify({ messageId: id, isRead: true }),
     });
     return NextResponse.json(data);
   } catch (e: unknown) {
