@@ -34,22 +34,28 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
       .eq('status', 'confirmed'),
   ]);
 
-  // Рядки коригувань (дельти)
+  // Рядки коригувань (дельти + нові позиції)
   const adjIds = (adjDocs ?? []).map((a: { id: string }) => a.id);
   const { data: adjLines } = adjIds.length
-    ? await db.from('acc_document_lines').select('sku, qty').in('document_id', adjIds)
+    ? await db.from('acc_document_lines').select('sku, qty, cost_price').in('document_id', adjIds)
     : { data: [] };
 
   // Ефективна кількість = original + Σ delta
   const adjDeltaMap: Record<string, number> = {};
-  for (const l of (adjLines ?? []) as { sku: string; qty: number }[]) {
+  const adjCostMap: Record<string, number>  = {};
+  for (const l of (adjLines ?? []) as { sku: string; qty: number; cost_price: number }[]) {
     adjDeltaMap[l.sku] = (adjDeltaMap[l.sku] ?? 0) + l.qty;
+    if (l.cost_price) adjCostMap[l.sku] = l.cost_price;
   }
 
-  // Назви товарів
-  const skus = (lines ?? []).map((l: { sku: string }) => l.sku).filter(Boolean);
-  const { data: products } = skus.length
-    ? await db.from('products').select('sku, name, brand').in('sku', skus)
+  // Нові позиції з коригувань (не в оригінальних рядках PO)
+  const originalSkus = new Set((lines ?? []).map((l: { sku: string }) => l.sku));
+  const newAdjSkus   = [...new Set(Object.keys(adjDeltaMap).filter(sku => !originalSkus.has(sku)))];
+
+  // Назви товарів (оригінальні + нові з коригувань)
+  const allSkus = [...(lines ?? []).map((l: { sku: string }) => l.sku), ...newAdjSkus].filter(Boolean);
+  const { data: products } = allSkus.length
+    ? await db.from('products').select('sku, name, brand').in('sku', allSkus)
     : { data: [] };
   const nameMap = new Map((products ?? []).map(p => [p.sku, { brand: p.brand ?? '', name: p.name ?? '' }]));
 
@@ -82,13 +88,30 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
       payment_days: sup.payment_days ?? 0,
     } : null,
     has_receipt:    (receiptCount ?? 0) > 0,
-    lines:          (lines ?? []).map((l: { sku: string; qty: number; cost_price: number; supplier_id?: number; warehouse_id?: number; id: number }) => ({
-      ...l,
-      name:         nameMap.get(l.sku)?.name  ?? '',
-      brand:        nameMap.get(l.sku)?.brand ?? '',
-      adj_delta:    adjDeltaMap[l.sku] ?? 0,
-      effective_qty:(l.qty + (adjDeltaMap[l.sku] ?? 0)),
-    })),
+    lines: [
+      // Оригінальні рядки PO
+      ...(lines ?? []).map((l: { sku: string; qty: number; cost_price: number; supplier_id?: number; warehouse_id?: number; id: number }) => ({
+        ...l,
+        name:         nameMap.get(l.sku)?.name  ?? '',
+        brand:        nameMap.get(l.sku)?.brand ?? '',
+        adj_delta:    adjDeltaMap[l.sku] ?? 0,
+        effective_qty: l.qty + (adjDeltaMap[l.sku] ?? 0),
+        is_adj_new:   false,
+      })),
+      // Нові позиції додані через коригування
+      ...newAdjSkus.filter(sku => adjDeltaMap[sku] > 0).map((sku, i) => ({
+        id:           -(i + 1),  // від'ємний id = нова позиція
+        sku,
+        qty:          0,
+        cost_price:   adjCostMap[sku] ?? 0,
+        name:         nameMap.get(sku)?.name  ?? '',
+        brand:        nameMap.get(sku)?.brand ?? '',
+        adj_delta:    adjDeltaMap[sku],
+        effective_qty: adjDeltaMap[sku],
+        is_adj_new:   true,
+        sort_order:   999 + i,
+      })),
+    ],
   };
 
   const poLines = (lines ?? []).map((l: { sku: string; qty: number; cost_price: number }) => ({

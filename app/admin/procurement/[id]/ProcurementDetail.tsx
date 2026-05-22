@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, Truck, Plus, X, Upload, Download, Trash2, Copy, Check } from 'lucide-react';
 import Link from 'next/link';
 
-type Line = { id: number; sku: string; name?: string; brand?: string; qty: number; cost_price: number; supplier_id?: number; adj_delta?: number; effective_qty?: number };
+type Line = { id: number; sku: string; name?: string; brand?: string; qty: number; cost_price: number; supplier_id?: number; adj_delta?: number; effective_qty?: number; is_adj_new?: boolean };
 type SupplierBank = {
   bank_iban: string | null; bank_name: string | null;
   legal_name: string | null; edrpou: string | null;
@@ -418,8 +418,9 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
               const displayPrice = actualPrice ?? line.cost_price ?? 0;
               const displayQty   = actualQty  ?? line.qty;
 
+              const isNew = line.is_adj_new;
               return (
-                <div key={line.id} style={{ display: 'grid', gridTemplateColumns: po.has_receipt ? '110px minmax(0,1fr) 80px 110px 110px' : '110px minmax(0,1fr) 80px 90px 100px 100px 90px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', gap: '8px', background: diff < 0 ? '#FFF5F5' : 'transparent' }}>
+                <div key={line.id} style={{ display: 'grid', gridTemplateColumns: po.has_receipt ? '110px minmax(0,1fr) 80px 110px 110px' : '110px minmax(0,1fr) 80px 90px 100px 100px 90px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', gap: '8px', background: isNew ? 'rgba(21,128,61,0.05)' : diff < 0 ? '#FFF5F5' : 'transparent' }}>
                   <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-muted)' }}>{line.sku}</span>
                   <div style={{ overflow: 'hidden', minWidth: 0 }} title={`${line.brand ?? ''} ${line.name ?? ''}`}>
                     <div style={{ fontSize: '12px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -430,13 +431,21 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
 
                   {/* Замовлено (з коригуванням) */}
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 600 }}>
-                      {(line.adj_delta ?? 0) !== 0 ? (line.effective_qty ?? line.qty) : line.qty}
-                    </div>
-                    {(line.adj_delta ?? 0) !== 0 && (
-                      <div style={{ fontSize: '10px', color: (line.adj_delta ?? 0) < 0 ? '#EF4444' : '#15803D' }}>
-                        ({line.adj_delta! > 0 ? '+' : ''}{line.adj_delta} корект.)
+                    {isNew ? (
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
+                        +{line.adj_delta} додано
                       </div>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: '13px', fontWeight: 600 }}>
+                          {(line.adj_delta ?? 0) !== 0 ? (line.effective_qty ?? line.qty) : line.qty}
+                        </div>
+                        {(line.adj_delta ?? 0) !== 0 && (
+                          <div style={{ fontSize: '10px', color: (line.adj_delta ?? 0) < 0 ? '#EF4444' : '#15803D' }}>
+                            ({line.adj_delta! > 0 ? '+' : ''}{line.adj_delta} корект.)
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
 
