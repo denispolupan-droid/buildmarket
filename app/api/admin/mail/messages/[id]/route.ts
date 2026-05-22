@@ -22,23 +22,27 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  let step = 'init';
   try {
+    step = 'params';
     const { id } = await params;
-    const folderId = req.nextUrl.searchParams.get('folderId');
-    await req.json(); // consume body
+    step = 'body';
+    try { await req.json(); } catch { /* ignore empty body */ }
+    step = 'accountId';
     const accountId = await getAccountId();
-
-    // Use raw fetch to see Zoho's exact response regardless of status code
+    step = 'token';
     const token = await getAccessToken();
+    step = 'fetch';
     const res = await fetch(`https://mail.zoho.eu/api/accounts/${accountId}/updatemessage`, {
       method: 'PUT',
       headers: { Authorization: `Zoho-oauthtoken ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ messageId: [id], isRead: 'true' }),
     });
+    step = 'text';
     const text = await res.text();
     return NextResponse.json({ status: res.status, body: text });
   } catch (e: unknown) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    return NextResponse.json({ error: String(e), step }, { status: 500 });
   }
 }
 
