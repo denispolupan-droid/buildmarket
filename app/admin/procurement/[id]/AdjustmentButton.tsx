@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Edit3, X, Loader2, Check, Trash2, Plus, Search } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { Edit3, X, Loader2, Check, Trash2, Plus } from 'lucide-react';
 
 type POLine = { sku: string; qty: number; cost_price: number; name?: string; brand?: string };
 type AdjLine = POLine & { isNew?: boolean; deleted?: boolean };
@@ -20,10 +20,48 @@ export default function AdjustmentButton({ poId, lines }: { poId: string; lines:
   const [adjLines, setAdjLines] = useState<AdjLine[]>(() =>
     lines.map(l => ({ ...l }))
   );
-  const [newSku,     setNewSku]     = useState('');
-  const [newQty,     setNewQty]     = useState(1);
-  const [newPrice,   setNewPrice]   = useState(0);
-  const [saving,     setSaving]     = useState(false);
+  const [newSku,       setNewSku]       = useState('');
+  const [newName,      setNewName]      = useState('');
+  const [newQty,       setNewQty]       = useState(1);
+  const [newPrice,     setNewPrice]     = useState(0);
+  const [saving,       setSaving]       = useState(false);
+  const [suggestions,  setSuggestions]  = useState<{ sku: string; name: string; brand: string }[]>([]);
+  const [activeIdx,    setActiveIdx]    = useState(-1);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const searchProducts = useCallback(async (q: string) => {
+    if (q.length < 2) { setSuggestions([]); return; }
+    const res = await fetch(`/api/admin/products/search?q=${encodeURIComponent(q)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    setSuggestions(data.slice(0, 8));
+  }, []);
+
+  function handleSearchChange(val: string) {
+    setNewSku(val);
+    setNewName('');
+    setActiveIdx(-1);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => searchProducts(val), 300);
+  }
+
+  async function selectSuggestion(s: { sku: string; name: string; brand: string }) {
+    setSuggestions([]);
+    setNewSku(s.sku);
+    setNewName(`${s.brand} ${s.name}`.trim());
+    setActiveIdx(-1);
+    // Підтягуємо ціну
+    const res = await fetch('/api/admin/products/search-skus', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ skus: [s.sku] }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const p = data.products?.[0];
+      if (p?.price_cost) setNewPrice(p.price_cost);
+    }
+  }
   const [error,      setError]      = useState('');
   const [done,       setDone]       = useState('');
 
@@ -39,8 +77,9 @@ export default function AdjustmentButton({ poId, lines }: { poId: string; lines:
       setError('Цей артикул вже є в замовленні');
       return;
     }
-    setAdjLines(prev => [...prev, { sku: newSku.trim(), qty: newQty, cost_price: newPrice, isNew: true }]);
-    setNewSku(''); setNewQty(1); setNewPrice(0);
+    setAdjLines(prev => [...prev, { sku: newSku.trim(), name: newName, qty: newQty, cost_price: newPrice, isNew: true }]);
+    setNewSku(''); setNewName(''); setNewQty(1); setNewPrice(0);
+    setSuggestions([]);
   }
 
   const changed = adjLines.filter(l => {
@@ -173,11 +212,49 @@ export default function AdjustmentButton({ poId, lines }: { poId: string; lines:
                   <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
                     + Додати позицію
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 80px auto', gap: '8px', alignItems: 'center' }}>
-                    <input style={{ ...inp, width: '100%', textAlign: 'left' }}
-                      placeholder="Артикул (SKU)" value={newSku}
-                      onChange={e => setNewSku(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && addLine()} />
+
+                  {/* Рядок пошуку + к-сть + ціна + кнопка */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 80px auto', gap: '8px', alignItems: 'flex-start' }}>
+
+                    {/* Пошук з дропдауном */}
+                    <div style={{ position: 'relative' }}>
+                      <input ref={searchInputRef}
+                        style={{ ...inp, width: '100%', textAlign: 'left', boxSizing: 'border-box' }}
+                        placeholder="Пошук: назва, артикул, бренд..."
+                        value={newName || newSku}
+                        onChange={e => handleSearchChange(e.target.value)}
+                        onKeyDown={e => {
+                          if (!suggestions.length) { if (e.key === 'Enter') addLine(); return; }
+                          if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx(i => Math.min(i + 1, suggestions.length - 1)); }
+                          else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx(i => Math.max(i - 1, 0)); }
+                          else if (e.key === 'Enter' && activeIdx >= 0) { e.preventDefault(); selectSuggestion(suggestions[activeIdx]); }
+                          else if (e.key === 'Escape') { setSuggestions([]); setActiveIdx(-1); }
+                        }}
+                        onBlur={() => setTimeout(() => setSuggestions([]), 150)}
+                      />
+                      {/* Дропдаун */}
+                      {suggestions.length > 0 && (() => {
+                        const r = searchInputRef.current?.getBoundingClientRect();
+                        if (!r) return null;
+                        const dropW = Math.max(r.width, 420);
+                        const left  = Math.min(r.left, window.innerWidth - dropW - 12);
+                        return (
+                          <div style={{ position: 'fixed', top: r.bottom + 4, left, width: dropW, zIndex: 9999, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.18)', maxHeight: '240px', overflowY: 'auto' }}>
+                            {suggestions.map((s, i) => (
+                              <div key={s.sku}
+                                onMouseDown={() => selectSuggestion(s)}
+                                onMouseEnter={() => setActiveIdx(i)}
+                                style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '12px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'baseline', gap: '8px', background: i === activeIdx ? '#EFF4FF' : 'transparent', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontFamily: 'monospace', flexShrink: 0 }}>{s.sku}</span>
+                                <span style={{ fontWeight: 700, color: '#1E3A5F', flexShrink: 0 }}>{s.brand}</span>
+                                <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+
                     <input style={inp} type="number" min="1" placeholder="К-сть" value={newQty || ''}
                       onChange={e => setNewQty(parseInt(e.target.value) || 0)} />
                     <input style={inp} type="number" min="0" step="0.01" placeholder="Ціна ₴" value={newPrice || ''}
