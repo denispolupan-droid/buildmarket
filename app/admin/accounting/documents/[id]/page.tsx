@@ -214,9 +214,12 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
 
       {/* FIFO batches summary */}
       {(batches ?? []).length > 0 && (
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 16px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '10px' }}>
-            📊 FIFO партії — {(batches ?? []).length} SKU створено
+        <div style={{ background: 'var(--bg-soft)', border: '1px dashed var(--border)', borderRadius: '12px', padding: '14px 16px' }}>
+          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            📊 Результат — FIFO партії на складі ({(batches ?? []).length} SKU)
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+            Фінальна собівартість = ціна приходу + розподілені додаткові витрати
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 80px 120px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', columnGap: '16px', marginBottom: '6px' }}>
             <span>Артикул</span><span>Назва</span><span style={{ textAlign: 'right' }}>К-сть</span><span style={{ textAlign: 'right' }}>Собів./шт</span>
