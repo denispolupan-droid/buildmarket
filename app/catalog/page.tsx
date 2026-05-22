@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getCategoriesCached } from '../../lib/supabase';
 import CatalogLoader from './CatalogLoader';
+import Footer from '../components/Footer';
 
 export async function generateMetadata({
   searchParams,
@@ -30,6 +31,7 @@ export async function generateMetadata({
     title: 'Каталог будівельної хімії оптом | FIXLINE',
     description: 'Герметики, монтажні піни, клеї, рідкі цвяхи та інша будівельна хімія оптом. Оптові ціни для дилерів, підрядників та будівельних компаній. Строительная химия оптом по Украине.',
     keywords: ['будівельна хімія оптом', 'строительная химия оптом', 'герметики оптом', 'монтажна піна оптом', 'монтажная пена оптом', 'клеї оптом', 'клеи оптом', 'купити оптом', 'купить оптом'],
+    robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
     alternates: { canonical: `${BASE}/catalog`, languages: { 'uk': `${BASE}/catalog`, 'ru': `${BASE}/catalog`, 'x-default': `${BASE}/catalog` } },
     openGraph: {
       title: 'Оптовий каталог будівельної хімії | FIXLINE',
@@ -65,6 +67,7 @@ export default async function Catalog({
         initialCategory={category ?? ''}
         initialSaleOnly={sale === '1'}
       />
+      <Footer />
     </>
   );
 }

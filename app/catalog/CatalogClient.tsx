@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal } from 'lucide-react';
+import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronUp, LayoutList, SlidersHorizontal } from 'lucide-react';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import Link from 'next/link';
 import ProductImage from '../components/ProductImage';
@@ -11,7 +11,6 @@ import type { ProductFull, Category } from '../../lib/supabase';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
-import Footer from '../components/Footer';
 
 const WHOLESALE_MIN = 3000;
 import { getCategoryMeta } from '../../lib/category-descriptions';
@@ -404,11 +403,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                         }}
                       >
                         <span>{cat.name}</span>
-                        {children.length > 0 && (
-                          isExpanded
-                            ? <ChevronDown size={13} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.5 }} />
-                            : <ChevronRight size={13} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.5 }} />
-                        )}
                       </div>
                       <div style={{
                         overflow: 'hidden',
@@ -746,7 +740,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
           </div>
         );
       })()}
-      <Footer />
       <ScrollToTop />
     </>
   );
