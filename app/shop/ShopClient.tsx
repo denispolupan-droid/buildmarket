@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Minus, Heart, ChevronDown, ChevronUp, Check, SlidersHorizontal, LayoutList } from 'lucide-react';
 import SearchAutocomplete from '../components/SearchAutocomplete';
@@ -179,7 +178,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     }
     return expanded;
   });
-  const router = useRouter();
   const catsListRef = useRef<HTMLDivElement>(null);
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sidebarRef = useRef<HTMLElement>(null);
@@ -240,7 +238,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
 
   const selectCat = (slug: string | null, scrollSlug?: string) => {
     setSelCat(slug);
-    router.replace(slug ? `/shop/${slug}` : '/shop', { scroll: false } as never);
+    window.history.pushState(null, '', slug ? `/shop/${slug}` : '/shop');
     window.scrollTo({ top: 0, behavior: 'smooth' });
     sidebarRef.current?.scrollTo({ top: 0 });
     setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup('');
@@ -429,7 +427,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                       if (expanding) {
                         // Оновлюємо фільтр БЕЗ скролу сторінки
                         setSelCat(cat.slug);
-                        router.replace(`/shop/${cat.slug}`, { scroll: false } as never);
+                        window.history.pushState(null, '', `/shop/${cat.slug}`);
                         setVisibleCount(24);
                         // Тільки сайдбар — після анімації
                         setTimeout(() => scrollCatToTop(cat.slug), 450);
