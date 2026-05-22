@@ -46,7 +46,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const text = await res.text();
     return NextResponse.json({ status: res.status, body: text });
   } catch (e: unknown) {
-    return NextResponse.json({ error: String(e), step }, { status: 500 });
+    // Return 200 so browser shows response body (not blocked by CORS error handling)
+    return NextResponse.json({ error: String(e), step, errorType: (e as Error)?.name });
   }
 }
 
