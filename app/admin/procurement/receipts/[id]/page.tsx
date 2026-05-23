@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import ReturnButton from '../../[id]/ReturnButton';
 
+export const dynamic = 'force-dynamic';
+
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 const COST_TYPE_LABELS: Record<string, string> = {
@@ -48,7 +50,19 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
 
   const hasLC        = (landedCosts ?? []).length > 0;
   const totalLC      = (landedCosts ?? []).reduce((s: number, l: { amount: number }) => s + Number(l.amount), 0);
-  const totalCost    = (lines ?? []).reduce((s: number, l: { qty: number; cost_price: number }) => s + l.qty * (l.cost_price ?? 0), 0);
+
+  // totalCost — сума рядків БЕЗ landed cost (оригінальні ціни з PO, або рядки якщо немає LC)
+  // ВАЖЛИВО: apply_landed_costs() оновлює acc_document_lines.cost_price «на місці»,
+  // тому читати totalCost з рядків приходу = вже включено LC → подвоєння!
+  const totalCost = (lines ?? []).reduce((s: number, l: { sku: string; qty: number; cost_price: number }) => {
+    const origPrice = hasLC ? (originalPriceMap.get(l.sku) ?? Number(l.cost_price ?? 0)) : Number(l.cost_price ?? 0);
+    return s + l.qty * origPrice;
+  }, 0);
+  // totalAfterLC — фінальна собівартість з FIFO-партій (включає розподілений LC)
+  const totalAfterLC = hasLC
+    ? (batches ?? []).reduce((s: number, b: { initial_qty: number; cost_price: number }) => s + b.initial_qty * b.cost_price, 0)
+    : totalCost;
+
   const supplierName = (doc.supplier as { name?: string } | null)?.name ?? null;
   const warehouseName= (doc.warehouse as { name?: string } | null)?.name ?? null;
 
@@ -131,7 +145,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
         })}
         <div style={{ padding: '10px 16px', borderTop: '2px solid var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 800 }}>
           <span>Всього{hasLC ? ' (з Landed Cost)' : ''}</span>
-          <span>{fmt(totalCost + (hasLC ? totalLC : 0))} ₴</span>
+          <span>{fmt(totalAfterLC)} ₴</span>
         </div>
       </div>
 
@@ -149,7 +163,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
           ))}
           <div style={{ padding: '10px 16px', borderTop: '2px solid var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 800 }}>
             <span>Загальна собівартість</span>
-            <span style={{ color: '#1E3A5F' }}>{fmt(totalCost + totalLC)} ₴</span>
+            <span style={{ color: '#1E3A5F' }}>{fmt(totalAfterLC)} ₴</span>
           </div>
         </div>
       )}

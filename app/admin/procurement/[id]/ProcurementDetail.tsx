@@ -14,7 +14,7 @@ type PO = {
   id: string; doc_number: string; doc_date: string; procurement_status: string | null;
   expected_date: string | null; supplier_id: number | null; supplier_name: string | null;
   supplier_email: string | null; order_id: string | null; total_cost: number | null;
-  notes: string | null; has_receipt: boolean; lc_done?: boolean;
+  notes: string | null; has_receipt: boolean; receipt_id?: string | null; receipt_doc_number?: string | null; lc_done?: boolean;
   lc_lines?: { id: string; cost_type: string; description: string | null; amount: number; distributed: boolean }[];
   supplier_invoice_number: string | null; supplier_invoice_date: string | null;
   supplier_invoice_amount: number | null;
@@ -399,6 +399,12 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
           </div>
         </div>
         {chainButton}
+        {po.receipt_id && (
+          <Link href={`/admin/procurement/receipts/${po.receipt_id}`} prefetch={false}
+            style={{ fontSize: '12px', color: '#15803D', textDecoration: 'none', background: '#F0FDF4', padding: '4px 12px', borderRadius: '6px', fontWeight: 600, border: '1px solid #BBF7D0', flexShrink: 0 }}>
+            ↓ {po.receipt_doc_number ?? 'Прихідний ордер'}
+          </Link>
+        )}
         <button
           onClick={copyToNewDraft}
           disabled={copyingOrder}

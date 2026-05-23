@@ -68,7 +68,7 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
 
   // Чи є розподілені Landed Costs для дочірніх документів
   const { data: receiptDocs } = await db
-    .from('acc_documents').select('id')
+    .from('acc_documents').select('id, doc_number')
     .eq('parent_doc_id', id).eq('status', 'confirmed').in('doc_type', ['receipt', 'stock_in']);
   const receiptIds = (receiptDocs ?? []).map((r: { id: string }) => r.id);
   const { data: existingLcLines } = receiptIds.length
@@ -100,6 +100,8 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
       payment_days: sup.payment_days ?? 0,
     } : null,
     has_receipt:    (receiptCount ?? 0) > 0,
+    receipt_id:     (receiptDocs ?? [])[0]?.id ?? null,
+    receipt_doc_number: (receiptDocs ?? [])[0]?.doc_number ?? null,
     lc_done:        lcAlreadyDone,
     lc_lines:       existingLcLines ?? [],
     lines: [
