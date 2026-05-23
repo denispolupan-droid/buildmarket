@@ -73,7 +73,15 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const warehouseName = (doc.warehouse as any)?.name ?? null;
 
-  const totalCost = (lines ?? []).reduce((s: number, l: { qty: number; cost_price: number }) => s + (l.qty * (l.cost_price ?? 0)), 0);
+  // totalCost — сума рядків БЕЗ landed cost (оригінальні ціни з PO або з рядків якщо немає LC)
+  const totalCost = (lines ?? []).reduce((s: number, l: { sku: string; qty: number; cost_price: number }) => {
+    const origPrice = hasLandedCost ? (originalPriceMap.get(l.sku) ?? Number(l.cost_price ?? 0)) : Number(l.cost_price ?? 0);
+    return s + (l.qty * origPrice);
+  }, 0);
+  // totalAfterLC — фінальна собівартість з FIFO-партій (включає розподілений LC)
+  const totalAfterLC = hasLandedCost
+    ? (batches ?? []).reduce((s: number, b: { initial_qty: number; cost_price: number }) => s + b.initial_qty * b.cost_price, 0)
+    : totalCost;
 
   return (
     <div style={{ padding: '28px 32px', maxWidth: '1000px' }}>
@@ -178,8 +186,8 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
               <span style={{ gridColumn: '1/4', color: 'var(--text-primary)' }}>Всього</span>
               <span style={{ textAlign: 'right', color: 'var(--text-secondary)', fontWeight: 400, fontSize: '12px' }}>{fmt(totalCost)} ₴</span>
               <span style={{ textAlign: 'center', fontSize: '12px', fontWeight: 700, color: '#7C3AED' }}>+{fmt(totalLandedCost)} ₴</span>
-              <span style={{ textAlign: 'right', color: '#1E3A5F' }}>{fmt(totalCost + totalLandedCost)} ₴</span>
-              <span style={{ textAlign: 'right' }}>{fmt((batches ?? []).reduce((s: number, b: { initial_qty: number; cost_price: number }) => s + b.initial_qty * b.cost_price, 0))} ₴</span>
+              <span style={{ textAlign: 'right', color: '#1E3A5F' }}>{fmt(totalAfterLC)} ₴</span>
+              <span style={{ textAlign: 'right' }}>{fmt(totalAfterLC)} ₴</span>
             </>
           ) : (
             <>
@@ -207,7 +215,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
           ))}
           <div style={{ padding: '10px 16px', borderTop: '2px solid var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 800 }}>
             <span>Разом з Landed Cost</span>
-            <span>{fmt(totalCost + (landedCosts ?? []).reduce((s: number, l: { amount: number }) => s + Number(l.amount), 0))} ₴</span>
+            <span>{fmt(totalAfterLC)} ₴</span>
           </div>
         </div>
       )}
