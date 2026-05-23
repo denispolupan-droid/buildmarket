@@ -58,8 +58,12 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
   const [invoiceDate,   setInvoiceDate]   = useState(po.supplier_invoice_date ?? '');
   const [invoiceAmt,    setInvoiceAmt]    = useState(String(po.supplier_invoice_amount ?? po.total_cost ?? ''));
   const [savingInvoice, setSavingInvoice] = useState(false);
-  const [invoiceSaved,  setInvoiceSaved]  = useState(!!po.supplier_invoice_number);
-  const [editingInvoice,setEditingInvoice]= useState(!po.supplier_invoice_number);
+  // noInvoice=true якщо постачальник підтвердив без рахунку (статус confirmed/received/paid і номер рахунку відсутній)
+  const _hasInvoice          = !!po.supplier_invoice_number;
+  const _isNoInvoiceConfirmed = !_hasInvoice && ['confirmed_by_supplier','invoiced','received','paid'].includes(po.procurement_status ?? '');
+  const [noInvoice,     setNoInvoice]     = useState(_isNoInvoiceConfirmed);
+  const [invoiceSaved,  setInvoiceSaved]  = useState(_hasInvoice || _isNoInvoiceConfirmed);
+  const [editingInvoice,setEditingInvoice]= useState(!_hasInvoice && !_isNoInvoiceConfirmed);
 
   const [payAmount,    setPayAmount]    = useState(String(po.supplier_invoice_amount ?? po.total_cost ?? ''));
   const [payDate,      setPayDate]      = useState(new Date().toISOString().slice(0, 10));
@@ -349,6 +353,9 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
       if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Помилка'); return; }
       setNewStatus('confirmed_by_supplier');
       setSuccess('✅ Підтверджено без рахунку-фактури');
+      setNoInvoice(true);
+      setInvoiceSaved(true);
+      setEditingInvoice(false);
     } catch { setError('Мережева помилка'); }
     finally { setUpdatingStatus(false); }
   }
@@ -664,25 +671,36 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
               {invoiceSaved && !editingInvoice ? (
                 /* ── Режим перегляду: все заблоковано ── */
                 <>
-                  <div style={{ padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                    <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Номер: </span><strong>{invoiceNum}</strong></div>
-                    {invoiceDate && <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Дата: </span><strong>{new Date(invoiceDate).toLocaleDateString('uk-UA')}</strong></div>}
-                    {invoiceAmt && <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Сума: </span><strong>{Number(invoiceAmt).toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</strong></div>}
-                  </div>
-
-                  {/* Файл — тільки перегляд/скачування (без видалення) */}
-                  {invoiceFile?.url && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', background: '#F0FDF4', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
-                      <FileText size={14} color="#15803D" style={{ flexShrink: 0 }} />
-                      <span style={{ fontSize: '12px', color: '#15803D', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{invoiceFile.name}</span>
-                      <a href={invoiceFile.url} target="_blank" rel="noopener noreferrer"
-                        style={{ display: 'flex', padding: '3px', color: '#15803D', flexShrink: 0 }} title="Завантажити">
-                        <Download size={13} />
-                      </a>
+                  {noInvoice ? (
+                    /* Підтверджено без рахунку */
+                    <div style={{ padding: '10px 14px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '16px' }}>✓</span>
+                      <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>
+                        Постачальник не виставляє рахунок-фактуру
+                      </span>
                     </div>
+                  ) : (
+                    <>
+                      <div style={{ padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Номер: </span><strong>{invoiceNum}</strong></div>
+                        {invoiceDate && <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Дата: </span><strong>{new Date(invoiceDate).toLocaleDateString('uk-UA')}</strong></div>}
+                        {invoiceAmt && <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Сума: </span><strong>{Number(invoiceAmt).toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</strong></div>}
+                      </div>
+                      {/* Файл — тільки перегляд/скачування (без видалення) */}
+                      {invoiceFile?.url && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', background: '#F0FDF4', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
+                          <FileText size={14} color="#15803D" style={{ flexShrink: 0 }} />
+                          <span style={{ fontSize: '12px', color: '#15803D', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{invoiceFile.name}</span>
+                          <a href={invoiceFile.url} target="_blank" rel="noopener noreferrer"
+                            style={{ display: 'flex', padding: '3px', color: '#15803D', flexShrink: 0 }} title="Завантажити">
+                            <Download size={13} />
+                          </a>
+                        </div>
+                      )}
+                    </>
                   )}
 
-                  <button onClick={() => setEditingInvoice(true)}
+                  <button onClick={() => { setEditingInvoice(true); setNoInvoice(false); }}
                     style={{ height: '34px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
                     ✏️ Редагувати
                   </button>
