@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimit, getClientIp } from '../../../lib/rate-limit';
 
 const service = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,6 +23,12 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // Rate limit: 5 reviews per IP per hour
+  const ip = getClientIp(req);
+  if (!rateLimit(`reviews:${ip}`, 5, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'Занадто багато запитів. Спробуйте пізніше.' }, { status: 429 });
+  }
+
   const body = await req.json();
   const { sku, author_name, rating, review_text } = body;
 

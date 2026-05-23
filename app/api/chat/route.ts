@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { sendTelegram } from '../../../lib/telegram';
+import { rateLimit, getClientIp } from '../../../lib/rate-limit';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -28,11 +29,22 @@ const SYSTEM_PROMPT = `Ти — AI-помічник FIXLINE, B2B-платфор�
 - Якщо питання виходить за рамки компетенції — пропонуй залишити контакти для зворотного зв'язку`;
 
 export async function POST(req: NextRequest) {
+  // Rate limit: 20 messages per IP per 10 minutes
+  const ip = getClientIp(req);
+  if (!rateLimit(`chat:${ip}`, 20, 10 * 60 * 1000)) {
+    return NextResponse.json({ error: 'Занадто багато запитів. Спробуйте пізніше.' }, { status: 429 });
+  }
+
   try {
     const { sessionId, message } = await req.json() as { sessionId?: string; message: string };
 
     if (!message?.trim()) {
       return NextResponse.json({ error: 'empty message' }, { status: 400 });
+    }
+
+    // Limit message length
+    if (message.length > 2000) {
+      return NextResponse.json({ error: 'Повідомлення занадто довге' }, { status: 400 });
     }
 
     let session: { id: string; unread_count: number } | null = null;

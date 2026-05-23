@@ -26,7 +26,30 @@ export async function POST(
   const file = formData.get('file') as File | null;
   if (!file) return NextResponse.json({ error: 'Файл не вказано' }, { status: 400 });
 
-  const ext      = file.name.split('.').pop()?.toLowerCase() ?? 'bin';
+  // Validate MIME type — allow PDF and common document formats only
+  const ALLOWED_MIME = new Set([
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+    'image/jpeg',
+    'image/png',
+  ]);
+  if (!ALLOWED_MIME.has(file.type)) {
+    return NextResponse.json({ error: 'Дозволені формати: PDF, Excel, JPEG, PNG' }, { status: 400 });
+  }
+
+  // Validate file extension
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin';
+  const ALLOWED_EXT = new Set(['pdf', 'xlsx', 'xls', 'jpg', 'jpeg', 'png']);
+  if (!ALLOWED_EXT.has(ext)) {
+    return NextResponse.json({ error: 'Дозволені формати: PDF, Excel, JPEG, PNG' }, { status: 400 });
+  }
+
+  // Limit file size to 20 MB
+  if (file.size > 20 * 1024 * 1024) {
+    return NextResponse.json({ error: 'Файл занадто великий. Максимум — 20 МБ' }, { status: 400 });
+  }
+
   const path     = `invoices/${id}/${Date.now()}.${ext}`;
   const buffer   = Buffer.from(await file.arrayBuffer());
 

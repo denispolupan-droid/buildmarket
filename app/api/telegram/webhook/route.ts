@@ -25,9 +25,11 @@ export async function POST(req: NextRequest) {
   const chatId = message.chat?.id;
   const text: string = message.text ?? '';
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   if (text.startsWith('/start ')) {
     const orderId = text.slice(7).trim();
-    if (!orderId || !chatId) return NextResponse.json({ ok: true });
+    if (!orderId || !chatId || !UUID_RE.test(orderId)) return NextResponse.json({ ok: true });
 
     const { data: order } = await admin
       .from('orders')

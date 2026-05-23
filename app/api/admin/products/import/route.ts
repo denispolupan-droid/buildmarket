@@ -250,6 +250,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 });
   }
 
+  // Validate MIME type — only Excel files allowed
+  const ALLOWED_MIME = new Set([
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+  ]);
+  if (!ALLOWED_MIME.has(file.type)) {
+    return NextResponse.json({ error: 'Дозволені лише файли Excel (.xlsx, .xls)' }, { status: 400 });
+  }
+
+  // Validate file extension
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  if (!ext || !['xlsx', 'xls'].includes(ext)) {
+    return NextResponse.json({ error: 'Дозволені лише файли Excel (.xlsx, .xls)' }, { status: 400 });
+  }
+
+  // Limit file size to 10 MB
+  if (file.size > 10 * 1024 * 1024) {
+    return NextResponse.json({ error: 'Файл занадто великий. Максимум — 10 МБ' }, { status: 400 });
+  }
+
   const buffer = await file.arrayBuffer();
   const wb = XLSX.read(buffer, { type: 'array' });
   const ws = wb.Sheets['Товари'] ?? wb.Sheets[wb.SheetNames[0]];

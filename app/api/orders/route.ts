@@ -3,10 +3,17 @@ import { Resend } from 'resend';
 import { createSupabaseServer, createSupabaseAdmin } from '../../../lib/supabase-server';
 import { buildAdminNotificationHtml, buildCustomerOrderEmail } from '../../../lib/invoice-email';
 import { notifyAdminNewOrder, notifyCustomerNewOrder } from '../../../lib/telegram';
+import { rateLimit, getClientIp } from '../../../lib/rate-limit';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
+  // Rate limit: 10 order submissions per IP per hour (prevents cart-spam / payment link flood)
+  const ip = getClientIp(req);
+  if (!rateLimit(`orders:${ip}`, 10, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'Занадто багато запитів. Спробуйте пізніше.' }, { status: 429 });
+  }
+
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 

@@ -17,7 +17,11 @@ function verifySignature(body: string, signature: string | null): boolean {
   if (!signature) return false;
   const token = process.env.MONOBANK_API_TOKEN!;
   const hmac  = crypto.createHmac('sha256', token).update(body).digest('base64');
-  return hmac === signature;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(signature));
+  } catch {
+    return false; // lengths differ → not equal
+  }
 }
 
 export async function POST(req: NextRequest) {
