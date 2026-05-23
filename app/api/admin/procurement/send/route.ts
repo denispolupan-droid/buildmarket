@@ -138,9 +138,9 @@ export async function POST(req: NextRequest) {
         html,
       });
 
-      // Оновлюємо статус на "sent"
+      // Оновлюємо статус на "sent" + фіксуємо час відправки email
       await db.from('acc_documents')
-        .update({ procurement_status: 'sent' })
+        .update({ procurement_status: 'sent', email_sent_at: new Date().toISOString() })
         .eq('id', doc.id);
 
       results.push({ id: doc.id, doc_number: doc.doc_number, supplier: supplier?.name ?? supplierEmail, emailed: true });

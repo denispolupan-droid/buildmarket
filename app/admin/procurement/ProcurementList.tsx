@@ -12,6 +12,7 @@ type Receipt = {
 type PO = {
   id: string; doc_number: string; doc_date: string;
   procurement_status: string | null; expected_date: string | null;
+  email_sent_at: string | null;
   supplier_id: number | null; supplier_name: string | null; supplier_email: string | null;
   order_id: string | null;
   total_amount: number | null; total_cost: number | null;
@@ -40,7 +41,7 @@ const DEFAULT_STATUS = { label: 'Нове', color: '#1E3A5F', bg: '#EFF4FF', emo
 
 function fmt(n: number) { return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 }); }
 
-const COLS = '28px 130px 160px 1fr 110px 110px 130px 80px';
+const COLS = '28px 130px 160px 1fr 110px 110px 160px 80px';
 
 export default function ProcurementList({ orders }: { orders: PO[] }) {
   const [expanded, setExpanded] = useState<Set<string>>(
@@ -229,19 +230,8 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
       {orders.map((po, idx) => {
         // Пріоритет: po_status (новий) → procurement_status (старий) → default
         const statusKey = (po as { po_status?: string }).po_status ?? po.procurement_status ?? '';
-        const meta = (po.meta ?? {}) as Record<string, string | undefined>;
-        // Відстрочка: invoiced + payment_mode=deferred → спеціальний лейбл
-        const isDeferred = statusKey === 'invoiced' && meta.payment_mode === 'deferred';
-        const deferUntil = isDeferred && meta.payment_defer_date
-          ? new Date(meta.payment_defer_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' })
-          : null;
-        const st = isDeferred
-          ? { label: deferUntil ? `до ${deferUntil}` : 'Відстрочка', color: '#B45309', bg: '#FEF3C7', emoji: '📅' }
-          : (PO_STATUS_CFG[statusKey] ?? DEFAULT_STATUS);
         const hasReceipts = po.receipts.length > 0;
         const isExpanded  = expanded.has(po.id);
-
-        const isSending = sending.has(po.id);
 
         return (
           <div key={po.id} style={{ borderBottom: idx < orders.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
@@ -275,10 +265,30 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                   <span style={{ fontSize: '11px', fontWeight: 700, color: '#94A3B8' }}>⏳ Очікуємо</span>
                 )}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: st.color, background: st.bg, whiteSpace: 'nowrap' }}>
-                  {st.emoji} {st.label}
-                </span>
+              {/* Два статуси: Проведено/Чернетка + Відправлено/Не відправлено */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+                {/* Бейдж 1: чи проведено */}
+                {statusKey === 'draft' ? (
+                  <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#64748B', background: '#F1F5F9', whiteSpace: 'nowrap' }}>
+                    📝 Чернетка
+                  </span>
+                ) : (
+                  <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', whiteSpace: 'nowrap' }}>
+                    ✅ Проведено
+                  </span>
+                )}
+                {/* Бейдж 2: чи відправлено email (тільки для не-чернеток) */}
+                {statusKey !== 'draft' && (
+                  po.email_sent_at ? (
+                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#1E3A5F', background: '#EFF4FF', whiteSpace: 'nowrap' }}>
+                      📤 Відправлено
+                    </span>
+                  ) : (
+                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', whiteSpace: 'nowrap' }}>
+                      ✉ Не відправлено
+                    </span>
+                  )
+                )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
                 {statusKey !== 'draft' && (
