@@ -776,8 +776,8 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
               <Banknote size={14} /> Оплата постачальнику
             </div>
 
-            {/* Supplier bank details */}
-            {po.supplier_bank?.bank_iban && (
+            {/* Supplier bank details — тільки для банківського переказу */}
+            {payMode === 'transfer' && po.supplier_bank?.bank_iban && (
               <div style={{ padding: '8px 12px', background: 'var(--bg-soft)', borderRadius: '8px', marginBottom: '12px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                 <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '3px' }}>{po.supplier_bank.legal_name ?? po.supplier_name}</div>
                 {po.supplier_bank.edrpou && <div>ЄДРПОУ: {po.supplier_bank.edrpou}</div>}
@@ -785,7 +785,7 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                 {po.supplier_bank.bank_name && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{po.supplier_bank.bank_name}</div>}
               </div>
             )}
-            {!po.supplier_bank?.bank_iban && (
+            {!po.supplier_bank?.bank_iban && payMode === 'transfer' && (
               <div style={{ padding: '8px 12px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '12px', fontSize: '12px', color: '#92400E' }}>
                 ⚠ Реквізити не заповнені. Додайте IBAN у картці постачальника.
               </div>
