@@ -4,6 +4,7 @@ import * as crypto from 'crypto';
 import { Resend } from 'resend';
 import { buildCustomerOrderEmail, buildAdminNotificationHtml } from '../../../../lib/invoice-email';
 import { notifyAdminNewOrder } from '../../../../lib/telegram';
+import { recordCustomerPayment } from '../../../../lib/accounting/money';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -83,11 +84,14 @@ export async function POST(req: NextRequest) {
       const { data: order } = await serviceClient
         .from('orders')
         .insert({ ...draft.payload, status: 'confirmed' })
-        .select('id, order_number, contact, company, phone, email, items, total_price, delivery_type, delivery_address, delivery_city_name, comment')
+        .select('id, order_number, contact, company, phone, email, items, total_price, delivery_type, delivery_address, delivery_city_name, comment, channel_code')
         .single();
 
       if (order) {
         const invoiceUrl = `${siteUrl}/invoice/${order.id}`;
+
+        // Записуємо оплату в AR-леджер
+        await recordOrderPaymentToLedger(order.id, draft.user_id, amountUah, businessDate(body));
 
         notifyAdminNewOrder({
           order_number:       order.order_number,
@@ -142,6 +146,9 @@ export async function POST(req: NextRequest) {
     if (order) {
       const invoiceUrl = `${siteUrl}/invoice/${order.id}`;
 
+      // Записуємо оплату в AR-леджер
+      await recordOrderPaymentToLedger(order.id, null, amountUah, businessDate(body));
+
       notifyAdminNewOrder({
         order_number:       order.order_number,
         contact:            order.contact,
@@ -178,4 +185,67 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: true });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function businessDate(body: { createdAt?: number }): string {
+  const ts = body.createdAt ? body.createdAt * 1000 : Date.now();
+  return new Date(ts).toISOString().slice(0, 10);
+}
+
+async function recordOrderPaymentToLedger(
+  orderId: string,
+  userId: string | null,
+  amount: number,
+  date: string,
+) {
+  try {
+    // Знаходимо замовлення і активний договір клієнта
+    const { data: order } = await serviceClient
+      .from('orders')
+      .select('id, order_number, contact, channel_code')
+      .eq('id', orderId)
+      .single();
+
+    if (!order) return;
+
+    // Шукаємо customer_id через auth_user_id або по email
+    let customerId: string | null = null;
+    let contractId: string | null = null;
+
+    if (userId) {
+      const { data: customer } = await serviceClient
+        .from('customers')
+        .select('id')
+        .eq('auth_user_id', userId)
+        .single();
+      customerId = customer?.id ?? null;
+    }
+
+    if (customerId) {
+      const { data: contract } = await serviceClient
+        .from('customer_contracts')
+        .select('id')
+        .eq('customer_id', customerId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      contractId = contract?.id ?? null;
+    }
+
+    await recordCustomerPayment({
+      customerId:      customerId ?? `order:${orderId}`,
+      contractId:      contractId ?? undefined,
+      amount,
+      paymentMethod:   'acquiring',
+      businessDate:    date,
+      description:     `Оплата картою — замовлення #${order.order_number}`,
+      createdBy:       'monobank_webhook',
+      idempotencyKey:  `mono:payment:${orderId}`,
+    });
+  } catch (err) {
+    console.error('[monobank] recordOrderPaymentToLedger failed:', err);
+  }
 }

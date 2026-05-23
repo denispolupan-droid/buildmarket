@@ -51,7 +51,7 @@ export default function ProductsTable({ products, categories }: Props) {
     } else if (filterStatus === 'no_price') {
       list = list.filter(p => !p.stock?.price_retail || p.stock.price_retail === 0);
     } else if (filterStatus === 'out_of_stock') {
-      list = list.filter(p => (p.stock?.stock_qty ?? 0) < 1);
+      list = list.filter(p => p.stock?.stock_status === 'out_of_stock' || (!p.stock?.stock_status && (p.stock?.stock_qty ?? 0) < 1));
     }
 
     return list;
@@ -124,6 +124,7 @@ export default function ProductsTable({ products, categories }: Props) {
               <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Категорія</th>
               <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Опт</th>
               <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Роздріб</th>
+              <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Дроп</th>
               <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Залишок</th>
               <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}>Статус</th>
               <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}></th>
@@ -131,7 +132,7 @@ export default function ProductsTable({ products, categories }: Props) {
           </thead>
           <tbody>
             {filtered.slice(0, visibleCount).map(p => {
-              const hasIssue = !p.stock?.price_retail || (p.stock?.stock_qty ?? 0) < 1;
+              const hasIssue = !p.stock?.price_retail || p.stock?.stock_status === 'out_of_stock';
               return (
                 <tr key={p.sku} style={{ borderBottom: '1px solid var(--border-light)' }}>
                   <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -153,8 +154,11 @@ export default function ProductsTable({ products, categories }: Props) {
                   <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-primary)' }}>
                     {p.stock?.price_retail ? `${p.stock.price_retail} ₴` : '—'}
                   </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', color: (p.stock?.stock_qty ?? 0) < 1 ? '#EF4444' : '#475569' }}>
-                    {p.stock?.stock_qty ?? 0}
+                  <td style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--text-secondary)' }}>
+                    {p.stock?.price_drop ? `${p.stock.price_drop} ₴` : '—'}
+                  </td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', color: p.stock?.stock_status === 'out_of_stock' ? '#EF4444' : p.stock?.stock_status === 'in_stock' ? '#475569' : '#94A3B8' }}>
+                    {(p.stock?.stock_qty ?? 0) > 0 ? p.stock!.stock_qty : p.stock?.stock_status === 'in_stock' ? 'є' : p.stock?.stock_status === 'out_of_stock' ? 'нема' : '—'}
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                     {hasIssue ? (

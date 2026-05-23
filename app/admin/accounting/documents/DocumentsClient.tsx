@@ -26,14 +26,18 @@ type Supplier   = { id: number; name: string };
 type DocType    = { code: string; name: string; direction: string };
 
 const TYPE_LABELS: Record<string, string> = {
-  purchase_order: 'Замовлення постачальнику',
-  receipt:        'Прихід товару',
-  sale:           'Продаж',
-  return_in:      'Повернення від покупця',
-  return_out:     'Повернення постачальнику',
-  write_off:      'Списання',
-  transfer:       'Переміщення',
-  inventory:      'Інвентаризація',
+  purchase_order:            'Замовлення постачальнику',
+  purchase_order_adjustment: 'Коригування замовлення',
+  receipt:                   'Прихід товару',
+  stock_in:                  'Прихід товару',
+  supplier_invoice:          'Рахунок-фактура постачальника',
+  supplier_return:           'Повернення постачальнику',
+  sale:                      'Продаж',
+  return_in:                 'Повернення від покупця',
+  return_out:                'Повернення постачальнику',
+  write_off:                 'Списання',
+  transfer:                  'Переміщення',
+  inventory:                 'Інвентаризація',
 };
 
 const STATUS_STYLE: Record<string, { label: string; color: string; bg: string; icon: typeof Clock }> = {
@@ -204,7 +208,9 @@ export default function DocumentsClient({
                   borderBottom: idx < filtered.length - 1 ? '1px solid var(--border-light)' : 'none',
                   background: doc.status === 'cancelled' ? 'var(--bg-soft)' : 'transparent',
                   opacity: doc.status === 'cancelled' ? 0.6 : 1,
+                  cursor: 'pointer',
                 }}
+                onClick={() => window.location.href = `/admin/accounting/documents/${doc.id}`}
               >
                 {/* Number + type */}
                 <div>
@@ -246,7 +252,7 @@ export default function DocumentsClient({
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                     {doc.total_cost > 0 ? `${doc.total_cost.toFixed(0)} ₴` : '—'}
                   </div>
-                  {doc.total_amount > 0 && doc.total_cost > 0 && (
+                  {doc.total_amount > 0 && doc.total_cost > 0 && doc.doc_type === 'sale' && (
                     <div style={{ fontSize: '11px', color: margin >= 0 ? '#15803D' : '#DC2626', fontWeight: 600 }}>
                       {margin >= 0 ? '+' : ''}{margin.toFixed(0)} ₴
                     </div>
