@@ -382,6 +382,10 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
 
   const activeStatus = newStatus || po.procurement_status || '';
 
+  // Попередній розрахунок LC для заголовка таблиці й підказки
+  const lcTotal = (po.lc_lines ?? []).filter(l => l.distributed).reduce((s, l) => s + Number(l.amount), 0);
+  const hasLC   = lcTotal > 0;
+
   return (
     <div style={{ padding: '28px 32px' }}>
       {/* Header */}
@@ -403,6 +407,10 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
           {copyingOrder ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Copy size={13} />}
           Копіювати
         </button>
+        <Link href="/admin/procurement" prefetch={false} title="Закрити документ"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', textDecoration: 'none', flexShrink: 0, transition: 'all 0.15s' }}>
+          <X size={15} />
+        </Link>
       </div>
 
       {/* Progress bar */}
@@ -470,7 +478,7 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
               {!po.has_receipt && <span style={{ textAlign: 'right', color: '#1E3A5F' }}>Ціна факт. ↓</span>}
               <span style={{ textAlign: 'right' }}>Ціна PO</span>
               {!po.has_receipt && <span style={{ textAlign: 'right' }}>Різниця</span>}
-              <span style={{ textAlign: 'right' }}>Сума</span>
+              <span style={{ textAlign: 'right' }}>{po.has_receipt && hasLC ? 'Сума *' : 'Сума'}</span>
             </div>
 
             {po.lines.map(line => {
@@ -619,6 +627,13 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                 </div>
               );
             })()}
+            {/* Примітка про Landed Cost */}
+            {po.has_receipt && hasLC && (
+              <div style={{ padding: '8px 16px', borderTop: '1px solid #EDE9FE', background: '#F5F3FF', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#7C3AED' }}>
+                <span style={{ fontSize: '13px' }}>ℹ</span>
+                <span>* Ціни в таблиці — базові (без урахування доп. витрат). Landed Cost <strong>{fmt(lcTotal)} ₴</strong> вже розподілено по FIFO-партіях і включено в собівартість товарів.</span>
+              </div>
+            )}
           </div>
 
           {/* Receive block */}
