@@ -300,16 +300,32 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                     ✅ Проведено
                   </span>
                 )}
-                {/* Бейдж 2: чи відправлено email (тільки для не-чернеток) */}
+                {/* Бейдж 2: до приходу — статус email; після приходу — статус оплати */}
                 {statusKey !== 'draft' && (
-                  po.email_sent_at ? (
-                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#1E3A5F', background: '#EFF4FF', whiteSpace: 'nowrap' }}>
-                      📤 Відправлено
-                    </span>
+                  po.has_receipt ? (
+                    po.procurement_status === 'paid' ? (
+                      <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', whiteSpace: 'nowrap' }}>
+                        💳 Оплачено
+                      </span>
+                    ) : po.procurement_status === 'invoiced' ? (
+                      <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', whiteSpace: 'nowrap' }}>
+                        📅 Відстрочка
+                      </span>
+                    ) : (
+                      <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#DC2626', background: '#FEF2F2', whiteSpace: 'nowrap' }}>
+                        ⏳ Не оплачено
+                      </span>
+                    )
                   ) : (
-                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', whiteSpace: 'nowrap' }}>
-                      ✉ Не відправлено
-                    </span>
+                    po.email_sent_at ? (
+                      <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#1E3A5F', background: '#EFF4FF', whiteSpace: 'nowrap' }}>
+                        📤 Відправлено
+                      </span>
+                    ) : (
+                      <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', whiteSpace: 'nowrap' }}>
+                        ✉ Не відправлено
+                      </span>
+                    )
                   )
                 )}
               </div>
