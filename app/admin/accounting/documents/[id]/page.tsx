@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import ReturnButton from '../../../procurement/[id]/ReturnButton';
 
+export const dynamic = 'force-dynamic';
+
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -60,6 +62,15 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
     ? await db.from('acc_document_lines').select('sku, cost_price').eq('document_id', doc.parent_doc_id)
     : { data: [] };
   const originalPriceMap = new Map((poLines ?? []).map(l => [l.sku, Number(l.cost_price ?? 0)]));
+
+  // Дочірні документи — приходні ордери, які базуються на цьому PO
+  const { data: childDocs } = doc.doc_type === 'purchase_order'
+    ? await db.from('acc_documents')
+        .select('id, doc_number, doc_type, status')
+        .eq('parent_doc_id', id)
+        .in('doc_type', ['receipt', 'stock_in'])
+        .neq('status', 'cancelled')
+    : { data: [] };
 
   // Фінальні ціни з FIFO партій
   const finalPriceMap = new Map((batches ?? []).map(b => [b.sku, Number(b.cost_price)]));
@@ -117,6 +128,12 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
             ↑ Підстава
           </Link>
         )}
+        {(childDocs ?? []).map((child: { id: string; doc_number: string; doc_type: string; status: string }) => (
+          <Link key={child.id} href={`/admin/accounting/documents/${child.id}`}
+            style={{ fontSize: '12px', color: '#15803D', textDecoration: 'none', background: '#F0FDF4', padding: '4px 12px', borderRadius: '6px', fontWeight: 600, border: '1px solid #BBF7D0' }}>
+            ↓ {child.doc_number}
+          </Link>
+        ))}
       </div>
 
       {doc.notes && (
