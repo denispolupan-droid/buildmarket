@@ -446,10 +446,12 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
             {po.lines.map(line => {
               const actualQty   = actualQties[line.sku];
               const actualPrice = actualPrices[line.sku];
-              const diff = actualQty !== undefined ? actualQty - line.qty : 0;
-              const diffColor = diff < 0 ? '#EF4444' : diff > 0 ? '#15803D' : 'var(--text-muted)';
+              // effQty = кількість з урахуванням коригування (для нових adj-позицій = adj_delta)
+              const effQty      = line.effective_qty ?? line.qty;
+              const diff        = actualQty !== undefined ? actualQty - effQty : 0;
+              const diffColor   = diff < 0 ? '#EF4444' : diff > 0 ? '#15803D' : 'var(--text-muted)';
               const displayPrice = actualPrice ?? line.cost_price ?? 0;
-              const displayQty   = actualQty  ?? line.qty;
+              const displayQty   = actualQty ?? effQty;   // використовуємо effQty, не line.qty
 
               const isNew = line.is_adj_new;
               return (
@@ -519,7 +521,19 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
 
                   {/* Сума */}
                   <span style={{ textAlign: 'right', fontSize: '12px', fontWeight: 600 }}>
-                    {displayPrice > 0 ? `${fmt(displayPrice * displayQty)} ₴` : '—'}
+                    {displayPrice > 0 ? (
+                      effQty === 0 ? (
+                        // Позиція знята коригуванням — 0 з перекресленим оригіналом
+                        <span style={{ color: '#94A3B8' }}>
+                          <span style={{ textDecoration: 'line-through', fontSize: '10px', marginRight: '3px' }}>
+                            {fmt(displayPrice * line.qty)} ₴
+                          </span>
+                          0 ₴
+                        </span>
+                      ) : (
+                        `${fmt(displayPrice * displayQty)} ₴`
+                      )
+                    ) : '—'}
                   </span>
                 </div>
               );
