@@ -116,6 +116,19 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
   const [fulfillmentOpen,    setFulfillmentOpen]    = useState<Set<string>>(new Set());
   const [fulfillmentLoading, setFulfillmentLoading] = useState<Set<string>>(new Set());
 
+  // PO-звязки для кожного замовлення
+  type LinkedPO = { id: string; doc_number: string; doc_date: string; procurement_status: string | null; total_cost: number | null; supplier: { name: string } | null };
+  const [linkedPOs, setLinkedPOs] = useState<Record<string, LinkedPO[]>>({});
+
+  async function loadLinkedPOs(orderId: string) {
+    if (linkedPOs[orderId]) return;
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/purchase-orders`);
+      const data = await res.json();
+      setLinkedPOs(prev => ({ ...prev, [orderId]: data.pos ?? [] }));
+    } catch { /* silent */ }
+  }
+
   async function loadFulfillment(orderId: string) {
     if (fulfillmentData[orderId]) return;
     setFulfillmentLoading(prev => new Set([...prev, orderId]));
@@ -639,7 +652,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
 
                 {/* ── Compact row ── */}
                 <div
-                  onClick={() => setExpandedId(isExpanded ? null : order.id)}
+                  onClick={() => { const next = isExpanded ? null : order.id; setExpandedId(next); if (next) { loadFulfillment(next); loadLinkedPOs(next); } }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '10px',
                     padding: '9px 14px', cursor: 'pointer',
@@ -1162,6 +1175,39 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                               {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                             </select>
                           </div>
+
+                          {/* Пов'язані замовлення постачальникам (PO) */}
+                          {(linkedPOs[order.id] ?? []).length > 0 && (
+                            <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '8px', marginTop: '2px' }}>
+                              <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '5px' }}>
+                                📋 Замовлення постачальникам
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                {(linkedPOs[order.id] ?? []).map(po => {
+                                  const isPaid     = po.procurement_status === 'paid';
+                                  const isReceived = po.procurement_status === 'received' || po.procurement_status === 'partially_received';
+                                  const badgeColor = isPaid ? '#15803D' : isReceived ? '#7C3AED' : '#1E3A5F';
+                                  const badgeBg    = isPaid ? '#F0FDF4'  : isReceived ? '#F5F3FF'  : '#EFF4FF';
+                                  return (
+                                    <a key={po.id} href={`/admin/procurement/${po.id}`}
+                                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', padding: '5px 8px', borderRadius: '7px', border: `1px solid ${badgeBg}`, background: badgeBg, textDecoration: 'none' }}>
+                                      <div style={{ minWidth: 0 }}>
+                                        <div style={{ fontSize: '11px', fontWeight: 700, color: badgeColor, whiteSpace: 'nowrap' }}>{po.doc_number}</div>
+                                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(po.supplier as any)?.name ?? '—'}</div>
+                                      </div>
+                                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                        {po.total_cost && <div style={{ fontSize: '11px', fontWeight: 700, color: badgeColor }}>{Number(po.total_cost).toFixed(0)} ₴</div>}
+                                        <div style={{ fontSize: '9px', color: 'var(--text-muted)' }}>
+                                          {isPaid ? '💳 Оплачено' : isReceived ? '📦 Отримано' : '⏳ В роботі'}
+                                        </div>
+                                      </div>
+                                    </a>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
 
                           {/* Context action buttons */}
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '2px' }}>
