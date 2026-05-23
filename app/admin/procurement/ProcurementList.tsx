@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ChevronDown, ChevronUp, Send, Loader2, X, Mail, Trash2 } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp, Send, Loader2, X, Mail, Trash2, Copy } from 'lucide-react';
 
 type Receipt = {
   id: string; doc_number: string; doc_date: string;
@@ -52,6 +52,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
   const [sendResult,   setSendResult]   = useState<{ ok: number; fails: number } | null>(null);
   const [sendConfirm,  setSendConfirm]  = useState<{ po: PO; email: string } | null>(null);
   const [openingDraft,  setOpeningDraft]  = useState<string | null>(null);
+  const [copyingDraft,  setCopyingDraft]  = useState<string | null>(null);
   const [deletingDraft, setDeletingDraft] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<PO | null>(null);
 
@@ -130,6 +131,28 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
     } finally {
       setDeletingDraft(null);
       setDeleteConfirm(null);
+    }
+  }
+
+  async function copyOrderToNewDraft(po: PO) {
+    setCopyingDraft(po.id);
+    try {
+      const res  = await fetch(`/api/admin/procurement/${po.id}`);
+      const data = await res.json();
+      window.dispatchEvent(new CustomEvent('open-po-draft', {
+        detail: {
+          suppliers: data.suppliers ?? [{ id: po.supplier_id, name: po.supplier_name, email: po.supplier_email }],
+          prefill: {
+            // NO dbId → creates a brand-new draft
+            supplierId:   data.supplier_id ?? po.supplier_id,
+            expectedDate: '',
+            notes:        data.notes ? `Копія: ${data.notes}` : '',
+            lines:        data.lines ?? [],
+          },
+        },
+      }));
+    } finally {
+      setCopyingDraft(null);
     }
   }
 
@@ -299,6 +322,14 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                     <Send size={13} />
                   </button>
                 )}
+                {/* Copy button — available for all orders */}
+                <button
+                  onClick={() => copyOrderToNewDraft(po)}
+                  disabled={copyingDraft === po.id}
+                  title="Копіювати в нове замовлення"
+                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: copyingDraft === po.id ? 'default' : 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px 6px', opacity: copyingDraft === po.id ? 0.5 : 1 }}>
+                  {copyingDraft === po.id ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Copy size={13} />}
+                </button>
                 {statusKey === 'draft' ? (
                   <>
                     <button

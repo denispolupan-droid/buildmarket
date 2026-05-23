@@ -80,6 +80,7 @@ function parseExcel(buffer: ArrayBuffer): { sku: string; name: string; qty: numb
 function fmt(n: number) { return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
 import type { PoDraft, PoLine } from '../PoDraftManager';
+import ProductPickerModal from './ProductPickerModal';
 
 type Props = {
   initialData:    PoDraft;
@@ -107,6 +108,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
   const [saving,       setSaving]       = useState(false);
   const [error,        setError]        = useState('');
   const [sendOnPost,   setSendOnPost]   = useState(false);
+  const [showPicker,   setShowPicker]   = useState(false);
   const [sendConfirm,  setSendConfirm]  = useState<{
     docId: string;
     email: string;
@@ -271,6 +273,23 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
     onDraftChange({ supplierId, expectedDate, notes, lines: lines as PoLine[] });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supplierId, expectedDate, notes, lines]);
+
+  function handlePickerAdd(items: { sku: string; name: string; qty: number; cost_price: number }[]) {
+    setLines(prev => {
+      // Remove the trailing empty placeholder line if lines is just one empty row
+      const filtered = prev.filter(l => l.sku.trim() || l.name.trim());
+      return [
+        ...filtered,
+        ...items.map(item => ({
+          sku:        item.sku,
+          name:       item.name,
+          qty:        item.qty,
+          cost_price: item.cost_price,
+          matched:    true,
+        })),
+      ];
+    });
+  }
 
   async function save(post = false) {
     const valid = lines.filter(l => l.sku.trim() && l.qty > 0);
@@ -437,6 +456,15 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
         </div>
       </div>
     )}
+    {/* Catalog product picker */}
+    {showPicker && (
+      <ProductPickerModal
+        zIndex={zIndex + 100}
+        onClose={() => setShowPicker(false)}
+        onAdd={handlePickerAdd}
+      />
+    )}
+
     {/* Side panel ЛІВОРУЧ — після sidebar (220px) */}
     <div className="po-panel-enter" style={{ position: 'fixed', top: 0, left: '220px', bottom: '42px', zIndex, width: 'min(1040px, 74vw)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', boxShadow: '8px 0 32px rgba(0,0,0,0.22)', borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -598,10 +626,16 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
 
             {/* Footer: add + total */}
             <div style={{ display: 'grid', gridTemplateColumns: '130px 2fr 80px 120px 110px 32px', padding: '8px 12px', gap: '8px', borderTop: '2px solid var(--border)', background: 'var(--bg-soft)', alignItems: 'center' }}>
-              <button onClick={addLine}
-                style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#1E3A5F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, gridColumn: '1 / 3', padding: 0 }}>
-                <Plus size={13} /> Додати рядок
-              </button>
+              <div style={{ gridColumn: '1 / 3', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button onClick={addLine}
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#1E3A5F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}>
+                  <Plus size={13} /> Додати рядок
+                </button>
+                <button onClick={() => setShowPicker(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#7C3AED', background: 'none', border: '1px solid #DDD6FE', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, padding: '3px 8px' }}>
+                  ⋯ З каталогу
+                </button>
+              </div>
               <span />
               <span style={{ textAlign: 'right', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Разом:</span>
               <span style={{ textAlign: 'right', fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>

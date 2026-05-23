@@ -73,6 +73,27 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
     savedPayMode ?? (payTermsDays > 0 ? 'deferred' : 'transfer')
   );
   const [copied,        setCopied]        = useState(false);
+  const [copyingOrder,  setCopyingOrder]  = useState(false);
+
+  function copyToNewDraft() {
+    setCopyingOrder(true);
+    try {
+      window.dispatchEvent(new CustomEvent('open-po-draft', {
+        detail: {
+          suppliers: [{ id: po.supplier_id, name: po.supplier_name, email: po.supplier_email }],
+          prefill: {
+            // No dbId → creates a brand-new draft
+            supplierId:   po.supplier_id,
+            expectedDate: '',
+            notes:        po.notes ? `Копія: ${po.notes}` : '',
+            lines:        po.lines.map(l => ({ sku: l.sku, name: `${l.brand ?? ''} ${l.name ?? ''}`.trim(), qty: l.qty, cost_price: l.cost_price, matched: true })),
+          },
+        },
+      }));
+    } finally {
+      setTimeout(() => setCopyingOrder(false), 800);
+    }
+  }
   const [editingIban,   setEditingIban]   = useState(false);
   const [ibanDraft,     setIbanDraft]     = useState({ iban: '', legal_name: '', edrpou: '', bank_name: '' });
   const [savingIban,    setSavingIban]    = useState(false);
@@ -344,6 +365,14 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
           </div>
         </div>
         {chainButton}
+        <button
+          onClick={copyToNewDraft}
+          disabled={copyingOrder}
+          title="Копіювати в нове замовлення"
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', transition: 'all 0.15s', opacity: copyingOrder ? 0.6 : 1 }}>
+          {copyingOrder ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Copy size={13} />}
+          Копіювати
+        </button>
       </div>
 
       {/* Progress bar */}
