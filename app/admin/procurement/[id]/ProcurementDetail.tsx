@@ -454,7 +454,7 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
               const isNew = line.is_adj_new;
               return (
                 <div key={line.id} style={{ display: 'grid', gridTemplateColumns: po.has_receipt ? '110px minmax(0,1fr) 80px 110px 100px' : '110px minmax(0,1fr) 60px 75px 90px 90px 60px 90px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', gap: '8px', background: isNew ? 'rgba(21,128,61,0.05)' : diff < 0 ? '#FFF5F5' : 'transparent' }}>
-                  <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-muted)' }}>{line.sku}</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-primary)', fontWeight: 600 }}>{line.sku}</span>
                   <div style={{ overflow: 'hidden', minWidth: 0 }} title={`${line.brand ?? ''} ${line.name ?? ''}`}>
                     <div style={{ fontSize: '12px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {line.name || '—'}
@@ -465,27 +465,32 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                   {/* Замовлено (з коригуванням) */}
                   <div style={{ textAlign: 'right' }}>
                     {isNew ? (
+                      // Позиція додана через коригування — показуємо тільки ефективну кількість
                       <div style={{ fontSize: '11px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
                         +{line.adj_delta} додано
                       </div>
-                    ) : (
+                    ) : (line.adj_delta ?? 0) !== 0 ? (
+                      // Є коригування: показуємо оригінал → ефективна
                       <>
                         <div style={{ fontSize: '13px', fontWeight: 600 }}>
-                          {(line.adj_delta ?? 0) !== 0 ? (line.effective_qty ?? line.qty) : line.qty}
+                          {line.qty} шт
                         </div>
-                        {(line.adj_delta ?? 0) !== 0 && (
-                          <div style={{ fontSize: '10px', color: (line.adj_delta ?? 0) < 0 ? '#EF4444' : '#15803D' }}>
-                            ({line.adj_delta! > 0 ? '+' : ''}{line.adj_delta} корект.)
-                          </div>
-                        )}
+                        <div style={{ fontSize: '10px', color: (line.adj_delta ?? 0) < 0 ? '#EF4444' : '#15803D', whiteSpace: 'nowrap' }}>
+                          → {line.effective_qty ?? line.qty} ({line.adj_delta! > 0 ? '+' : ''}{line.adj_delta})
+                        </div>
                       </>
+                    ) : (
+                      // Без коригувань — звичайна кількість
+                      <div style={{ fontSize: '13px', fontWeight: 600 }}>
+                        {line.qty} шт
+                      </div>
                     )}
                   </div>
 
                   {/* Отримано (input) */}
                   {!po.has_receipt && (
                     <input type="number" min="0" step="1"
-                      placeholder={String(line.qty)}
+                      placeholder={String(line.effective_qty ?? line.qty)}
                       value={actualQties[line.sku] ?? ''}
                       onChange={e => setActualQties(prev => ({ ...prev, [line.sku]: parseFloat(e.target.value) }))}
                       style={{ textAlign: 'right', height: '24px', fontSize: '12px', padding: '0 6px', border: `1.5px solid ${diff < 0 ? '#EF4444' : 'var(--border)'}`, borderRadius: '6px', outline: 'none', width: '100%', background: 'var(--bg-soft)', color: 'var(--text-primary)' }} />
