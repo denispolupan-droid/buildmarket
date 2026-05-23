@@ -107,7 +107,11 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
   const [saving,       setSaving]       = useState(false);
   const [error,        setError]        = useState('');
   const [sendOnPost,   setSendOnPost]   = useState(false);
-  const [sendConfirm,  setSendConfirm]  = useState<{ docId: string; email: string } | null>(null);
+  const [sendConfirm,  setSendConfirm]  = useState<{
+    docId: string;
+    email: string;
+    contacts: { name: string; email: string; note: string }[];
+  } | null>(null);
   const lookupTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const nameTimers   = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const nameInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
@@ -295,9 +299,18 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
 
       if (post) {
         if (sendOnPost) {
-          // Показуємо діалог підтвердження email перед відправкою
-          const currentSupplier = suppliers.find(s => s.id === supplierId);
-          setSendConfirm({ docId: data.id, email: currentSupplier?.email ?? '' });
+          // Завантажуємо contacts постачальника напряму з API
+          let supplierEmail = suppliers.find(s => s.id === supplierId)?.email ?? '';
+          let supplierContacts: { name: string; email: string; note: string }[] = [];
+          try {
+            const sRes = await fetch(`/api/admin/suppliers/${supplierId}`);
+            if (sRes.ok) {
+              const sData = await sRes.json();
+              supplierContacts = sData.contacts ?? [];
+              supplierEmail = supplierContacts[0]?.email || sData.email || supplierEmail;
+            }
+          } catch { /* залишаємо порожнім */ }
+          setSendConfirm({ docId: data.id, email: supplierEmail, contacts: supplierContacts });
           setSaving(false);
           return; // чекаємо підтвердження в діалозі
         } else {
@@ -340,27 +353,76 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
     {/* Діалог підтвердження email перед відправкою */}
     {sendConfirm && (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: zIndex + 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+        <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '460px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
           <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
             Підтвердження відправки
           </div>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>
-            Замовлення буде відправлено постачальнику на вказаний email. Перевірте адресу перед відправкою.
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '18px' }}>
+            Оберіть контакт або введіть email вручну
           </p>
-          <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>
-            Email постачальника
+
+          {/* Контакти постачальника — швидкий вибір */}
+          {sendConfirm.contacts.length > 0 && (
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '7px' }}>
+                Контакти постачальника
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {sendConfirm.contacts.map((c, i) => {
+                  const isSelected = sendConfirm.email === c.email;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setSendConfirm(prev => prev ? { ...prev, email: c.email } : null)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left',
+                        border: `1.5px solid ${isSelected ? '#1E3A5F' : 'var(--border)'}`,
+                        background: isSelected ? '#EFF4FF' : 'var(--bg-soft)',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <div style={{
+                        width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0,
+                        border: `2px solid ${isSelected ? '#1E3A5F' : '#CBD5E1'}`,
+                        background: isSelected ? '#1E3A5F' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {isSelected && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fff' }} />}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {c.name || c.email}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {c.name ? c.email : ''}
+                          {c.note ? <span style={{ color: 'var(--text-muted)', marginLeft: c.name ? '8px' : '' }}>· {c.note}</span> : null}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Або введіть вручну */}
+          <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>
+            {sendConfirm.contacts.length > 0 ? 'Або інший email' : 'Email постачальника'}
           </label>
           <input
             value={sendConfirm.email}
             onChange={e => setSendConfirm(prev => prev ? { ...prev, email: e.target.value } : null)}
             placeholder="email@supplier.com"
-            style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid var(--border)', fontSize: '14px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', marginBottom: '6px' }}
+            style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1.5px solid ${sendConfirm.email && !sendConfirm.contacts.some(c => c.email === sendConfirm.email) ? '#4880B8' : 'var(--border)'}`, fontSize: '14px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', marginBottom: '6px' }}
           />
           {!sendConfirm.email && (
-            <p style={{ fontSize: '11px', color: '#B45309', marginBottom: '8px' }}>
-              ⚠ Email не заповнено — налаштуйте його в картці постачальника
+            <p style={{ fontSize: '11px', color: '#B45309' }}>
+              ⚠ Email не заповнено — додайте контакт у картці постачальника
             </p>
           )}
+
           <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
             <button
               onClick={() => setSendConfirm(null)}

@@ -27,7 +27,7 @@ export interface PoLine {
 export interface PoDraft {
   id:            string;
   dbId?:         string;   // UUID в acc_documents (для редагування існуючого PO)
-  suppliers:     { id: number; name: string }[];
+  suppliers:     { id: number; name: string; email?: string | null }[];
   supplierId:    number;
   expectedDate:  string;
   notes:         string;
@@ -85,7 +85,7 @@ export default function PoDraftManager() {
   useEffect(() => {
     function handler(e: Event) {
       const detail = (e as CustomEvent<{
-        suppliers: { id: number; name: string }[];
+        suppliers: { id: number; name: string; email?: string | null }[];
         prefill?: Partial<PoDraft>;  // для редагування існуючої чернетки
       }>).detail;
       const suppliers = detail?.suppliers ?? [];
@@ -105,7 +105,18 @@ export default function PoDraftManager() {
         createdAt:     now,
         lastActivated: now,
       };
-      setDrafts(prev => [...prev, draft]);
+      setDrafts(prev => {
+        // Якщо чернетка з таким dbId вже відкрита — виводимо її вперед, не дублюємо
+        if (prefill?.dbId) {
+          const existing = prev.find(d => d.dbId === prefill.dbId);
+          if (existing) {
+            return prev.map(d =>
+              d.id === existing.id ? { ...d, minimized: false, lastActivated: Date.now() } : d
+            );
+          }
+        }
+        return [...prev, draft];
+      });
     }
     window.addEventListener('open-po-draft', handler);
     return () => window.removeEventListener('open-po-draft', handler);
@@ -251,7 +262,7 @@ export default function PoDraftManager() {
               borderBottom: 'none',
               display: 'flex', alignItems: 'center',
               boxShadow: isActive ? '0 -3px 14px rgba(72,128,184,0.2)' : 'none',
-              opacity: isActive ? 1 : 0.5,
+              opacity: isActive ? 1 : 0.8,
               transition: 'opacity 0.18s, box-shadow 0.18s, border-color 0.18s',
               flexShrink: 0,
               overflow: 'hidden',

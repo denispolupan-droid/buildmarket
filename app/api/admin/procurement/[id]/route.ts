@@ -24,7 +24,7 @@ export async function GET(
       .select('sku, qty, cost_price')
       .eq('document_id', id)
       .order('sort_order'),
-    db.from('suppliers').select('id, name').eq('is_active', true).order('name'),
+    db.from('suppliers').select('id, name, email').eq('is_active', true).order('name'),
   ]);
 
   if (!doc) return NextResponse.json({ error: 'Не знайдено' }, { status: 404 });

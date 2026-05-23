@@ -5,6 +5,12 @@ import { useRouter } from 'next/navigation';
 import { Layers, Eye, EyeOff, Search, Trash2 } from 'lucide-react';
 import { getSupabaseBrowser } from '../../../lib/supabase-browser';
 
+type ContactEntry = {
+  name:  string;
+  email: string;
+  note:  string;   // напр. "Клей, герметики" або "Фарби, лаки"
+};
+
 type BrandDiscount = {
   brand:             string;
   discount_pct:      number;
@@ -61,6 +67,7 @@ type Supplier = {
   is_active: boolean;
   qty_is_flag: boolean;
   email: string | null;
+  contacts: ContactEntry[];
   contact_name: string | null;
   contact_phone: string | null;
   bank_iban: string | null;
@@ -83,7 +90,7 @@ const EMPTY: Omit<Supplier, 'id' | 'last_synced_at' | 'last_sync'> = {
   slug: '', name: '', source_url: '', file_format: 'csv',
   sheet_name: null, col_sku: null, col_price: null, col_qty: null, col_name: null,
   sync_interval_h: 24, markup_retail: 22, markup_wholesale: 10,
-  markup_drop: 15, is_active: true, qty_is_flag: false, email: '', contact_name: '', contact_phone: '',
+  markup_drop: 15, is_active: true, qty_is_flag: false, email: '', contacts: [], contact_name: '', contact_phone: '',
   bank_iban: '', bank_name: '', bank_swift: '', legal_name: '', edrpou: '', payment_terms: 0, payment_days: 0, priority: 10, notes: '', brand_discounts: [],
 };
 
@@ -185,7 +192,14 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
     setSaving(true); setError('');
     const method = isNew ? 'POST' : 'PUT';
     const url = isNew ? '/api/admin/suppliers' : `/api/admin/suppliers/${editing!.id}`;
-    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editing) });
+    // Синхронізуємо поле email з першим контактом (для зворотної сумісності)
+    const contacts = editing?.contacts ?? [];
+    const payload = {
+      ...editing,
+      contacts,
+      email: contacts[0]?.email || editing?.email || '',
+    };
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     setSaving(false);
     if (!res.ok) { setError((await res.json()).error ?? 'Помилка'); return; }
     setEditing(null);
@@ -250,22 +264,100 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
           <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '10px' }}>
             Контакти постачальника
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '10px' }}>
+
+          {/* Загальний телефон */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
             <div>
-              <span style={label}>Менеджер (ім&apos;я)</span>
+              <span style={label}>Загальний контакт (ім&apos;я)</span>
               <input style={input} value={e.contact_name ?? ''} onChange={ev => set('contact_name', ev.target.value)} placeholder="Іван Петренко" />
             </div>
             <div>
-              <span style={label}>Телефон менеджера</span>
+              <span style={label}>Телефон</span>
               <input style={input} value={e.contact_phone ?? ''} onChange={ev => set('contact_phone', ev.target.value)} placeholder="+380671234567" />
             </div>
           </div>
+
+          {/* Список email-контактів */}
           <div>
-            <span style={label}>Email для замовлень *</span>
-            <input style={input} type="email" value={e.email ?? ''} onChange={ev => set('email', ev.target.value)} placeholder="orders@supplier.com" />
-            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', margin: '4px 0 0' }}>
-              На цю адресу надсилатиметься замовлення товарів
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Email для замовлень
+              </span>
+              <button
+                type="button"
+                onClick={() => setEditing(prev => ({
+                  ...prev,
+                  contacts: [...(prev?.contacts ?? []), { name: '', email: '', note: '' }],
+                }))}
+                style={{ fontSize: '12px', fontWeight: 700, color: '#1E3A5F', background: 'none', border: '1px solid #BFDBFE', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}
+              >
+                + Додати контакт
+              </button>
+            </div>
+
+            {(e.contacts ?? []).length === 0 && (
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                Немає контактів — натисніть «+ Додати контакт»
+              </p>
+            )}
+
+            {(e.contacts ?? []).map((c, i) => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 32px', gap: '8px', marginBottom: '8px', alignItems: 'end' }}>
+                <div>
+                  {i === 0 && <span style={label}>Ім&apos;я менеджера</span>}
+                  <input
+                    style={input}
+                    value={c.name}
+                    placeholder="Іван Петренко"
+                    onChange={ev => setEditing(prev => ({
+                      ...prev,
+                      contacts: (prev?.contacts ?? []).map((x, xi) => xi === i ? { ...x, name: ev.target.value } : x),
+                    }))}
+                  />
+                </div>
+                <div>
+                  {i === 0 && <span style={label}>Email *</span>}
+                  <input
+                    style={{ ...input, borderColor: c.email && !c.email.includes('@') ? '#FCA5A5' : undefined }}
+                    type="email"
+                    value={c.email}
+                    placeholder="orders@supplier.com"
+                    onChange={ev => setEditing(prev => ({
+                      ...prev,
+                      contacts: (prev?.contacts ?? []).map((x, xi) => xi === i ? { ...x, email: ev.target.value } : x),
+                    }))}
+                  />
+                </div>
+                <div>
+                  {i === 0 && <span style={label}>Відповідає за (групи товарів)</span>}
+                  <input
+                    style={input}
+                    value={c.note}
+                    placeholder="Клей, герметики, сітки"
+                    onChange={ev => setEditing(prev => ({
+                      ...prev,
+                      contacts: (prev?.contacts ?? []).map((x, xi) => xi === i ? { ...x, note: ev.target.value } : x),
+                    }))}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditing(prev => ({
+                    ...prev,
+                    contacts: (prev?.contacts ?? []).filter((_, xi) => xi !== i),
+                  }))}
+                  style={{ padding: '7px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#DC2626', alignSelf: i === 0 ? 'flex-end' : 'center' }}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+
+            {(e.contacts ?? []).length > 0 && (
+              <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                Перший контакт = основний email замовлення · при відправці можна обрати потрібний
+              </p>
+            )}
           </div>
         </div>
 

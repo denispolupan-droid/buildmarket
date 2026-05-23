@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { TrendingUp, TrendingDown, ShoppingBag, Package } from 'lucide-react';
+import Link from 'next/link';
+import { TrendingUp, TrendingDown, ShoppingBag, Package, FileText, Clock, Landmark } from 'lucide-react';
+import FinanceActions from './FinanceActions';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,6 +42,17 @@ export default async function FinancePage() {
     .order('created_at', { ascending: false });
 
   // Точні дані обліку (якщо є підтверджені продажі)
+  const { data: arContracts } = await db
+    .from('ar_balances')
+    .select('contract_id, contract_number, customer_id, customer_name, balance')
+    .eq('contract_status', 'active');
+
+  const contractsForDrawer = (arContracts ?? []).map(c => ({
+    id: c.contract_id, contract_number: c.contract_number,
+    customer_id: c.customer_id, customer_name: c.customer_name,
+    balance: Number(c.balance),
+  }));
+
   const { data: accDocs } = await db
     .from('acc_documents')
     .select('doc_date, total_amount, total_cost, channel_code')
@@ -152,7 +165,8 @@ export default async function FinancePage() {
     <div style={{ padding: '28px 32px 64px', maxWidth: '1400px' }}>
 
       {/* Header */}
-      <div style={{ marginBottom: '28px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
+        <div>
         <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
           Фінанси
         </h1>
@@ -160,6 +174,25 @@ export default async function FinancePage() {
           {curMonthLabel} · Собівартість розрахована за поточними закупівельними цінами
           {!hasAccData && ' · Дані на основі замовлень (підтверджені документи з\'являться після відвантаження)'}
         </p>
+        </div>
+        <FinanceActions contracts={contractsForDrawer} />
+      </div>
+
+      {/* Quick links */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '24px' }}>
+        {[
+          { href: '/admin/finance/settlements', label: 'Взаєморозрахунки', icon: FileText,     color: '#1E3A5F', bg: '#EFF4FF' },
+          { href: '/admin/finance/aging',       label: 'Старіння боргу',  icon: Clock,        color: '#DC2626', bg: '#FEF2F2' },
+          { href: '/admin/finance/expenses',    label: 'Витрати',          icon: TrendingDown, color: '#B45309', bg: '#FEF3C7' },
+          { href: '/admin/contracts',           label: 'Договори',         icon: FileText,     color: '#15803D', bg: '#F0FDF4' },
+        ].map(link => {
+          const Icon = link.icon;
+          return (
+            <Link key={link.href} href={link.href} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '7px', height: '36px', padding: '0 16px', borderRadius: '8px', background: link.bg, color: link.color, fontSize: '13px', fontWeight: 600, border: `1px solid ${link.color}22` }}>
+              <Icon size={14} /> {link.label}
+            </Link>
+          );
+        })}
       </div>
 
       {/* Summary cards */}

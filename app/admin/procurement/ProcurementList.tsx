@@ -55,23 +55,43 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
   const [deleteConfirm, setDeleteConfirm] = useState<PO | null>(null);
 
   // Черга підтверджень відправки — обробляємо по одному
-  type QueueItem = { po: PO; email: string };
+  type ContactEntry = { name: string; email: string; note: string };
+  type QueueItem = { po: PO; email: string; contacts: ContactEntry[] };
   const [sendQueue,       setSendQueue]       = useState<QueueItem[]>([]);
   const [sendQueueResult, setSendQueueResult] = useState<{ ok: number; skipped: number; draftsExcluded?: number } | null>(null);
   const [sendingCurrent,  setSendingCurrent]  = useState(false);
+  const [loadingContacts, setLoadingContacts] = useState(false);
 
-  function startSendQueue(ids: string[]) {
+  async function startSendQueue(ids: string[]) {
     const selected   = orders.filter(po => ids.includes(po.id));
     const sendable   = selected.filter(po => po.procurement_status !== 'draft');
     const draftCount = selected.length - sendable.length;
 
     if (!sendable.length) {
-      // Всі вибрані — чернетки
       alert(`Неможливо відправити: всі вибрані замовлення є чернетками.\nСпочатку проведіть замовлення (натисніть "Провести" в чернетці).`);
       return;
     }
 
-    const items = sendable.map(po => ({ po, email: po.supplier_email ?? '' }));
+    // Завантажуємо contacts для кожного унікального supplier_id
+    setLoadingContacts(true);
+    const supplierIds = [...new Set(sendable.map(po => po.supplier_id).filter(Boolean))] as number[];
+    const contactsMap = new Map<number, ContactEntry[]>();
+    await Promise.all(supplierIds.map(async sid => {
+      try {
+        const res = await fetch(`/api/admin/suppliers/${sid}`);
+        if (res.ok) {
+          const data = await res.json();
+          contactsMap.set(sid, data.contacts ?? []);
+        }
+      } catch { /* ігноруємо */ }
+    }));
+    setLoadingContacts(false);
+
+    const items = sendable.map(po => {
+      const contacts = contactsMap.get(po.supplier_id ?? 0) ?? [];
+      const email = contacts[0]?.email || po.supplier_email || '';
+      return { po, email, contacts };
+    });
     setSendQueue(items);
     setSendQueueResult({ ok: 0, skipped: 0, draftsExcluded: draftCount });
   }
@@ -119,7 +139,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
       const data = await res.json();
       window.dispatchEvent(new CustomEvent('open-po-draft', {
         detail: {
-          suppliers: data.suppliers ?? [{ id: po.supplier_id, name: po.supplier_name }],
+          suppliers: data.suppliers ?? [{ id: po.supplier_id, name: po.supplier_name, email: po.supplier_email }],
           prefill: {
             dbId:         po.id,
             supplierId:   data.supplier_id ?? po.supplier_id,
@@ -389,8 +409,36 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
               </button>
             </div>
 
+            {/* Контакти — швидкий вибір */}
+            {item.contacts.length > 0 && (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                  Контакти постачальника
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {item.contacts.map((c, ci) => {
+                    const isSelected = item.email === c.email;
+                    return (
+                      <button key={ci} type="button"
+                        onClick={() => setSendQueue(prev => prev.map((it, i) => i === 0 ? { ...it, email: c.email } : it))}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '7px', cursor: 'pointer', textAlign: 'left', border: `1.5px solid ${isSelected ? '#1E3A5F' : 'var(--border)'}`, background: isSelected ? '#EFF4FF' : 'var(--bg-soft)' }}
+                      >
+                        <div style={{ width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${isSelected ? '#1E3A5F' : '#CBD5E1'}`, background: isSelected ? '#1E3A5F' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {isSelected && <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#fff' }} />}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>{c.name || c.email}</div>
+                          {c.name && <div style={{ fontSize: '11px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email}{c.note ? ` · ${c.note}` : ''}</div>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div style={{ marginBottom: '6px', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '5px', textTransform: 'uppercase' }}>
-              <Mail size={12} /> Email отримувача
+              <Mail size={12} /> {item.contacts.length > 0 ? 'Або інший email' : 'Email отримувача'}
             </div>
             <input
               value={item.email}
@@ -398,9 +446,9 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
               placeholder="email@supplier.com"
               style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1.5px solid ${item.email ? 'var(--border)' : '#FCA5A5'}`, fontSize: '14px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', outline: 'none', marginBottom: '6px' }}
             />
-            {!item.po.supplier_email && (
+            {item.contacts.length === 0 && !item.po.supplier_email && (
               <div style={{ fontSize: '11px', color: '#B45309', background: '#FEF3C7', padding: '6px 10px', borderRadius: '6px', marginBottom: '4px' }}>
-                ⚠ Email не заповнено в картці постачальника
+                ⚠ Контакти не додано — додайте їх у картці постачальника
               </div>
             )}
 

@@ -2,7 +2,7 @@
 
 import { Plus } from 'lucide-react';
 
-type Supplier = { id: number; name: string };
+type Supplier = { id: number; name: string; email?: string | null };
 
 export default function ProcurementClient({ suppliers }: { suppliers: Supplier[] }) {
   function openNew() {
