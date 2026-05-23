@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { zohoFetch, getAccountId } from '../../../../../lib/zoho-mail';
+import { checkAdmin } from '../../../../../lib/check-admin';
 
 export async function GET(req: NextRequest) {
+  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     const { searchParams } = req.nextUrl;
     const folderId = searchParams.get('folderId') ?? 'INBOX';
