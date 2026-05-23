@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Edit3, X, Loader2, Check, Trash2, Plus } from 'lucide-react';
 
 type POLine = { sku: string; qty: number; cost_price: number; name?: string; brand?: string };
@@ -14,7 +15,8 @@ const inp: React.CSSProperties = {
   width: '80px', textAlign: 'right',
 };
 
-export default function AdjustmentButton({ poId, lines }: { poId: string; lines: POLine[] }) {
+export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: string; lines: POLine[]; onSuccess?: () => void }) {
+  const router = useRouter();
   const [open,    setOpen]    = useState(false);
   const [reason,  setReason]  = useState('');
   const [adjLines, setAdjLines] = useState<AdjLine[]>(() =>
@@ -114,7 +116,9 @@ export default function AdjustmentButton({ poId, lines }: { poId: string; lines:
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Помилка'); return; }
       setDone(`✅ Коригування ${data.doc_number} проведено`);
-      setTimeout(() => { setOpen(false); setDone(''); }, 2000);
+      onSuccess?.();
+      router.refresh(); // Оновлюємо табличну частину з актуальними даними
+      setTimeout(() => { setOpen(false); setDone(''); }, 1500);
     } catch { setError('Мережева помилка'); }
     finally { setSaving(false); }
   }
