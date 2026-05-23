@@ -641,8 +641,8 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                       </div>
                     ) : (
                       <button onClick={() => fileRef.current?.click()} disabled={uploadingInvoice}
-                        style={{ width: '100%', height: '34px', borderRadius: '8px', border: '1.5px dashed var(--border)', background: 'var(--bg-soft)', cursor: 'pointer', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                        {uploadingInvoice ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Завантаження...</> : <><Upload size={13} /> Прикріпити файл</>}
+                        style={{ width: '100%', height: '38px', borderRadius: '8px', border: 'none', background: uploadingInvoice ? '#CBD5E1' : '#EA580C', cursor: uploadingInvoice ? 'default' : 'pointer', fontSize: '12px', color: '#fff', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: uploadingInvoice ? 'none' : '0 2px 8px rgba(234,88,12,0.35)', transition: 'background 0.15s' }}>
+                        {uploadingInvoice ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Завантаження...</> : <><Upload size={14} /> Завантажити рахунок</>}
                       </button>
                     )}
                   </div>

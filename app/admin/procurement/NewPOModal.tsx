@@ -322,11 +322,8 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
       }
 
       onSubmitted();
-      if (post) {
-        router.push(`/admin/procurement/${data.id}`);
-      } else {
-        router.push('/admin/procurement');
-      }
+      // Після проведення — завжди до списку. Прихід оформляється пізніше.
+      router.push('/admin/procurement');
       router.refresh();
     } catch { setError('Мережева помилка'); }
     finally { setSaving(false); }
@@ -342,7 +339,8 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
       });
       setSendConfirm(null);
       onSubmitted();
-      router.push(`/admin/procurement/${sendConfirm.docId}`);
+      // Після відправки — також до списку
+      router.push('/admin/procurement');
       router.refresh();
     } catch { setError('Помилка відправки'); }
     finally { setSaving(false); }
