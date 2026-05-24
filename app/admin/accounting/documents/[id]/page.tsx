@@ -199,7 +199,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
                       ? <span style={{ fontSize: '11px', fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', padding: '1px 6px', borderRadius: '4px' }}>+{fmt(lcAdded)} ₴</span>
                       : <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>—</span>}
                   </div>
-                  <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#1E3A5F' }}>{fmt(finalPrice)} ₴</span>
+                  <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{fmt(finalPrice)} ₴</span>
                   <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600 }}>{fmt(line.qty * finalPrice)} ₴</span>
                 </>
               ) : (
@@ -217,7 +217,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
               <span style={{ gridColumn: '1/4', color: 'var(--text-primary)' }}>Всього</span>
               <span style={{ textAlign: 'right', color: 'var(--text-secondary)', fontWeight: 400, fontSize: '12px' }}>{fmt(totalCost)} ₴</span>
               <span style={{ textAlign: 'center', fontSize: '12px', fontWeight: 700, color: '#7C3AED' }}>+{fmt(totalLandedCost)} ₴</span>
-              <span style={{ textAlign: 'right', color: '#1E3A5F' }}>{fmt(totalAfterLC)} ₴</span>
+              <span style={{ textAlign: 'right', color: 'var(--text-primary)' }}>{fmt(totalAfterLC)} ₴</span>
               <span style={{ textAlign: 'right' }}>{fmt(totalAfterLC)} ₴</span>
             </>
           ) : (

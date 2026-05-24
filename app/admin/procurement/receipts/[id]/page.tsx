@@ -137,7 +137,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
                   <div style={{ textAlign: 'center' }}>
                     {lcAdded > 0.01 ? <span style={{ fontSize: '11px', fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', padding: '1px 6px', borderRadius: '4px' }}>+{fmt(lcAdded)} ₴</span> : <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>—</span>}
                   </div>
-                  <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#1E3A5F' }}>{fmt(finalPrice)} ₴</span>
+                  <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{fmt(finalPrice)} ₴</span>
                   <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600 }}>{fmt(line.qty * finalPrice)} ₴</span>
                 </>
               ) : (
@@ -169,7 +169,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
           ))}
           <div style={{ padding: '10px 16px', borderTop: '2px solid var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 800 }}>
             <span>Загальна собівартість</span>
-            <span style={{ color: '#1E3A5F' }}>{fmt(totalAfterLC)} ₴</span>
+            <span style={{ color: 'var(--text-primary)' }}>{fmt(totalAfterLC)} ₴</span>
           </div>
         </div>
       )}
