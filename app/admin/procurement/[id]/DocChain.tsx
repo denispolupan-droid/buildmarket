@@ -49,13 +49,14 @@ function TimelineNode({ icon, title, sub, amount, amountColor = '#374151', href,
       {/* Content */}
       <div style={{ flex: 1, paddingBottom: kids ? '12px' : '0', minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: sub || kids ? '4px' : '0' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{title}</span>
-          {amount && <span style={{ fontSize: '13px', fontWeight: 700, color: amountColor, marginLeft: 'auto' }}>{amount}</span>}
-          {href && (
-            <Link href={href} style={{ color: 'var(--text-muted)', display: 'flex', textDecoration: 'none' }}>
-              <ExternalLink size={13} />
+          {href ? (
+            <Link href={href} style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {title} <ExternalLink size={11} color="var(--text-muted)" />
             </Link>
+          ) : (
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{title}</span>
           )}
+          {amount && <span style={{ fontSize: '13px', fontWeight: 700, color: amountColor, marginLeft: 'auto' }}>{amount}</span>}
         </div>
         {sub && <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: kids ? '8px' : '0' }}>{sub}</div>}
         {kids && <div style={{ paddingLeft: '0' }}>{kids}</div>}

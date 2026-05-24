@@ -32,7 +32,7 @@ export default async function ReceiptsPage() {
           <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Приходи товару</h1>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>Всі підтверджені приходи на склад</p>
         </div>
-        <Link href="/admin/accounting/documents/new?type=receipt"
+        <Link href="/admin/accounting/documents/new?type=stock_in"
           style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '38px', padding: '0 18px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, textDecoration: 'none' }}>
           <Plus size={15} /> Новий прихід
         </Link>

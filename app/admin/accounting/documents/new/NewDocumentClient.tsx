@@ -18,17 +18,19 @@ const inputStyle = {
 const labelStyle = { fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px', display: 'block' as const };
 
 export default function NewDocumentClient({
-  warehouses, suppliers, docTypes,
+  warehouses, suppliers, docTypes, initialType,
 }: {
-  warehouses: Warehouse[];
-  suppliers:  Supplier[];
-  docTypes:   DocType[];
+  warehouses:  Warehouse[];
+  suppliers:   Supplier[];
+  docTypes:    DocType[];
+  initialType?: string;
 }) {
   const router = useRouter();
 
   const defaultWarehouse = warehouses.find(w => w.warehouse_type === 'physical') ?? warehouses[0];
 
-  const [docType,      setDocType]      = useState(docTypes[0]?.code ?? 'receipt');
+  const resolvedInitial = initialType && docTypes.find(t => t.code === initialType) ? initialType : (docTypes[0]?.code ?? 'receipt');
+  const [docType,      setDocType]      = useState(resolvedInitial);
   const [warehouseId,  setWarehouseId]  = useState(defaultWarehouse?.id ?? 0);
   const [supplierId,   setSupplierId]   = useState<number | ''>('');
   const [notes,        setNotes]        = useState('');
@@ -151,7 +153,7 @@ export default function NewDocumentClient({
           <ChevronLeft size={15} /> Назад
         </button>
         <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-          Новий документ
+          {initialType === 'receipt' || initialType === 'stock_in' ? 'Новий прихід товару' : 'Новий документ'}
         </h1>
       </div>
 
@@ -162,14 +164,20 @@ export default function NewDocumentClient({
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-        {/* Doc type */}
+        {/* Doc type — locked if initialType provided */}
         <div>
           <label style={labelStyle}>Тип документу</label>
-          <select value={docType} onChange={e => setDocType(e.target.value)} style={inputStyle}>
-            {docTypes.filter(t => t.code !== 'sale').map(t => (
-              <option key={t.code} value={t.code}>{t.name}</option>
-            ))}
-          </select>
+          {initialType ? (
+            <div style={{ ...inputStyle, display: 'flex', alignItems: 'center', background: 'var(--bg-soft)', color: 'var(--text-primary)', cursor: 'default', height: '36px' }}>
+              {docTypes.find(t => t.code === initialType)?.name ?? initialType}
+            </div>
+          ) : (
+            <select value={docType} onChange={e => setDocType(e.target.value)} style={inputStyle}>
+              {docTypes.filter(t => t.code !== 'sale').map(t => (
+                <option key={t.code} value={t.code}>{t.name}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Warehouse */}

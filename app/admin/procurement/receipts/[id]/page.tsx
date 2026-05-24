@@ -2,8 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 import ReturnButton from '../../[id]/ReturnButton';
+import DocChain from '../../[id]/DocChain';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,6 +97,11 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
             ↑ Замовлення
           </Link>
         )}
+        {doc.parent_doc_id && <DocChain poId={doc.parent_doc_id} />}
+        <Link href="/admin/procurement/receipts" title="Закрити"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', textDecoration: 'none', flexShrink: 0 }}>
+          <X size={15} />
+        </Link>
       </div>
 
       {doc.notes && (
@@ -120,7 +126,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
           const lcAdded    = finalPrice - origPrice;
           return (
             <div key={idx} style={{ display: 'grid', gridTemplateColumns: hasLC ? '110px minmax(0,1fr) 60px 100px 80px 100px 100px' : '120px minmax(0,1fr) 70px 110px 110px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', columnGap: '16px' }}>
-              <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-muted)' }}>{line.sku}</span>
+              <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-primary)' }}>{line.sku}</span>
               <div style={{ overflow: 'hidden', minWidth: 0 }}>
                 <div style={{ fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nameMap.get(line.sku) || line.sku}</div>
               </div>
