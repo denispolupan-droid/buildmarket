@@ -124,9 +124,14 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
           </div>
         </div>
         {doc.parent_doc_id && (
-          <Link href={`/admin/accounting/documents/${doc.parent_doc_id}`}
+          <Link
+            href={
+              ['receipt','stock_in'].includes(doc.doc_type)
+                ? `/admin/procurement/${doc.parent_doc_id}`
+                : `/admin/accounting/documents/${doc.parent_doc_id}`
+            }
             style={{ fontSize: '12px', color: '#1E3A5F', textDecoration: 'none', background: '#EFF4FF', padding: '4px 12px', borderRadius: '6px', fontWeight: 600 }}>
-            ↑ Підстава
+            ↑ {['receipt','stock_in'].includes(doc.doc_type) ? 'Замовлення' : 'Підстава'}
           </Link>
         )}
         {(childDocs ?? []).map((child: { id: string; doc_number: string; doc_type: string; status: string }) => (

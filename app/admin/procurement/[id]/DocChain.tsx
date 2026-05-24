@@ -176,7 +176,7 @@ export default function DocChain({ poId }: { poId: string }) {
                         sub={`${fmtDate(child.doc_date)}${child.notes ? ` · ${child.notes}` : ''}`}
                         amount={child.total_cost ? `${fmt(Number(child.total_cost))} ₴` : undefined}
                         amountColor="#15803D"
-                        href={`/admin/accounting/documents/${child.id}`}
+                        href={`/admin/procurement/receipts/${child.id}`}
                       >
                         {/* Landed costs for this receipt */}
                         {data.landedCosts.filter(l => l.document_id === child.id).map(l => (
