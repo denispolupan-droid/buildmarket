@@ -386,6 +386,26 @@ export async function cancelDocument(
     })
     .eq('id', documentId);
   if (cancelError) throw cancelError;
+
+  // ── Каскадне сторно для замовлень постачальнику ───────────────────────────
+  // Якщо скасовуємо PO — автоматично сторнуємо всі підтверджені приходи,
+  // щоб повернути FIFO-партії і знати наявність на складі.
+  if (doc.doc_type === 'purchase_order') {
+    const { data: childReceipts } = await db
+      .from('acc_documents')
+      .select('id, doc_number')
+      .eq('parent_doc_id', documentId)
+      .in('doc_type', ['receipt', 'stock_in'])
+      .eq('status', 'confirmed');
+
+    for (const receipt of (childReceipts ?? [])) {
+      await cancelDocument(
+        receipt.id,
+        cancelledBy,
+        `Автосторно: скасовано ЗП ${doc.doc_number}`,
+      );
+    }
+  }
 }
 
 // ── Побудова рухів ────────────────────────────────────────────────────────────
