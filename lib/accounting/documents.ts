@@ -296,6 +296,101 @@ export async function confirmDocument(
   }
 }
 
+// ── Перевірка залежностей перед скасуванням ───────────────────────────────────
+//
+// Граф залежностей (не можна скасувати якщо є активні нащадки):
+//
+//   ЗП (purchase_order)
+//    ├─ КЗ (purchase_order_adjustment)  parent_doc_id = ЗП
+//    └─ ПН (receipt / stock_in)         parent_doc_id = ЗП
+//         └─ Продаж (sale)              consumed stock_batches.remaining_qty < initial_qty
+//
+//   ПН (receipt / stock_in)
+//    └─ Якщо FIFO-партії частково/повністю продані → блокуємо
+//
+//   Продаж (sale)
+//    └─ Повернення (return_out / return_in) parent_doc_id або order_id → блокуємо
+
+async function assertNoDependencies(
+  db: ReturnType<typeof createServiceClient>,
+  doc: AccDocumentWithLines,
+): Promise<void> {
+  const id = doc.id;
+
+  // ── 1. ЗП / КЗ — перевірити дочірні документи ──────────────────────────
+  if (doc.doc_type === 'purchase_order' || doc.doc_type === 'purchase_order_adjustment') {
+    const { data: children } = await db
+      .from('acc_documents')
+      .select('doc_number, doc_type')
+      .eq('parent_doc_id', id)
+      .neq('status', 'cancelled');
+
+    if (children && children.length > 0) {
+      const list = children
+        .map(c => `${c.doc_number} (${DOC_TYPE_SHORT[c.doc_type] ?? c.doc_type})`)
+        .join(', ');
+      throw new Error(
+        `Неможливо скасувати: є активні пов'язані документи — ${list}. ` +
+        `Спочатку скасуйте їх.`,
+      );
+    }
+  }
+
+  // ── 2. ПН / stock_in — перевірити чи продані FIFO-партії ────────────────
+  if (doc.doc_type === 'receipt' || doc.doc_type === 'stock_in') {
+    const { data: batches } = await db
+      .from('stock_batches')
+      .select('sku, initial_qty, remaining_qty')
+      .eq('document_id', id);
+
+    const consumed = (batches ?? []).filter(
+      b => Number(b.remaining_qty) < Number(b.initial_qty) - 0.001,
+    );
+
+    if (consumed.length > 0) {
+      const skus = consumed
+        .map(b => `${b.sku} (залишок ${b.remaining_qty} з ${b.initial_qty})`)
+        .join(', ');
+      throw new Error(
+        `Неможливо сторнувати прихід: товар уже відпущено зі складу — ${skus}. ` +
+        `Спочатку сторнуйте пов'язані продажі або переміщення.`,
+      );
+    }
+  }
+
+  // ── 3. Продаж — перевірити чи є активні повернення ──────────────────────
+  if (doc.doc_type === 'sale') {
+    const { data: returns } = await db
+      .from('acc_documents')
+      .select('doc_number, doc_type')
+      .eq('parent_doc_id', id)
+      .in('doc_type', ['return_out', 'return_in'])
+      .neq('status', 'cancelled');
+
+    if (returns && returns.length > 0) {
+      const list = returns.map(r => r.doc_number).join(', ');
+      throw new Error(
+        `Неможливо сторнувати продаж: є активні повернення — ${list}. ` +
+        `Спочатку скасуйте їх.`,
+      );
+    }
+  }
+}
+
+const DOC_TYPE_SHORT: Record<string, string> = {
+  purchase_order:            'ЗП',
+  purchase_order_adjustment: 'КЗ',
+  receipt:                   'ПН',
+  stock_in:                  'ПН',
+  sale:                      'Продаж',
+  return_in:                 'Повернення',
+  return_out:                'Повернення',
+  supplier_return:           'Повернення постачальнику',
+  write_off:                 'Списання',
+  transfer:                  'Переміщення',
+  supplier_invoice:          'Рахунок-фактура',
+};
+
 // ── Отмена документа ──────────────────────────────────────────────────────────
 
 export async function cancelDocument(
@@ -308,6 +403,11 @@ export async function cancelDocument(
   const doc = await getDocument(documentId);
   if (!doc)                       throw new Error('Document not found');
   if (doc.status === 'cancelled') throw new Error('Document already cancelled');
+
+  // ── Перевірка залежностей (тільки для підтверджених документів) ───────────
+  if (doc.status === 'confirmed') {
+    await assertNoDependencies(db, doc);
+  }
 
   // ── Планові документи (direction=none): скасовуємо напряму без реверсалу ──
   // PO, коригування, рахунок-фактура не мають ефекту на склад і леджер,
