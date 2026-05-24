@@ -104,7 +104,7 @@ export default async function ProcurementPage() {
           <StatItems items={[
             amountDrafts   > 0 ? { name: 'Чернетки',  sub: `${totalDrafts} замовл.`,   amt: fmt(amountDrafts)   + ' ₴' } : null,
             amountPending  > 0 ? { name: 'Очікуємо',  sub: `${totalPending} замовл.`,  amt: fmt(amountPending)  + ' ₴' } : null,
-            amountReceived > 0 ? { name: 'Отримано',  sub: `${totalReceived} замовл.`, amt: fmt(amountReceived) + ' ₴' } : null,
+            amountReceived > 0 ? { name: 'Не оплачено', sub: `${totalReceived} замовл.`, amt: fmt(amountReceived) + ' ₴' } : null,
           ].filter(Boolean) as { name: string; sub: string; amt: string | null }[]} />
         </StatCard>
       </div>
