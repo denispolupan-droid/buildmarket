@@ -305,39 +305,68 @@ export default function DocumentsClient({
                       </button>
                     </>
                   )}
-                  {doc.status === 'confirmed' && (
-                    <button
-                      onClick={() => {
-                        const isPO      = doc.doc_type === 'purchase_order';
-                        const isReceipt = doc.doc_type === 'receipt' || doc.doc_type === 'stock_in';
-                        const isSale    = doc.doc_type === 'sale';
-                        const msg = isPO
-                          ? `Скасувати замовлення ${doc.doc_number}?\n\n` +
-                            `⚠️ Це ЛИШЕ скасує план замовлення.\n` +
-                            `Залишки НЕ зміняться — якщо товар уже прийнятий на склад, поверніть його окремо через «Сторно» на документі приходу.`
-                          : isReceipt
-                          ? `Сторнувати прихід ${doc.doc_number}?\n\n` +
-                            `⚠️ Товари будуть ЗНЯТО зі складу (списання FIFO-партій).\n` +
-                            `Ця дія незворотна — перевірте, що товар фізично повернуто постачальнику.`
-                          : isSale
-                          ? `Сторнувати продаж ${doc.doc_number}?\n\n` +
-                            `⚠️ Товари будуть ПОВЕРНЕНО на склад.\n` +
-                            `Використовуйте тільки для виправлення помилкових документів.`
-                          : `Сторнувати документ ${doc.doc_number}? Буде створено зворотній документ.`;
-                        if (!confirm(msg)) return;
-                        doAction(doc.id, 'cancel');
-                      }}
-                      disabled={loading === doc.id + 'cancel'}
-                      style={{
-                        height: '28px', padding: '0 10px', borderRadius: '7px', fontSize: '12px', fontWeight: 600,
-                        border: '1.5px solid #FCA5A5', background: '#FEF2F2',
-                        color: '#DC2626', cursor: 'pointer',
-                        opacity: loading === doc.id + 'cancel' ? 0.5 : 1,
-                      }}
-                    >
-                      Сторно
-                    </button>
-                  )}
+                  {doc.status === 'confirmed' && (() => {
+                    const direction = docTypes.find(t => t.code === doc.doc_type)?.direction ?? 'none';
+                    const isPlanOnly = direction === 'none'; // PO, коригування, рахунок-фактура
+
+                    if (isPlanOnly) {
+                      // Планові документи: просте анулювання без реверсалу
+                      return (
+                        <button
+                          onClick={e => {
+                            e.stopPropagation();
+                            if (!confirm(
+                              `Анулювати ${doc.doc_number}?\n\n` +
+                              `Документ буде скасовано. Залишки та облік НЕ змінюються.`
+                            )) return;
+                            doAction(doc.id, 'cancel');
+                          }}
+                          disabled={loading === doc.id + 'cancel'}
+                          style={{
+                            height: '28px', padding: '0 10px', borderRadius: '7px', fontSize: '12px', fontWeight: 600,
+                            border: '1.5px solid var(--border)', background: 'transparent',
+                            color: 'var(--text-secondary)', cursor: 'pointer',
+                            opacity: loading === doc.id + 'cancel' ? 0.5 : 1,
+                          }}
+                        >
+                          {loading === doc.id + 'cancel' ? '...' : 'Анулювати'}
+                        </button>
+                      );
+                    }
+
+                    // Операційні документи: сторно з попередженням про ефект на склад
+                    const isReceipt = doc.doc_type === 'receipt' || doc.doc_type === 'stock_in';
+                    const isSale    = doc.doc_type === 'sale';
+                    const msg = isReceipt
+                      ? `Сторнувати прихід ${doc.doc_number}?\n\n` +
+                        `⚠️ Товари будуть ЗНЯТО зі складу (списання FIFO-партій).\n` +
+                        `Використовуйте тільки для виправлення помилково проведеного приходу.\n` +
+                        `Для реального повернення постачальнику — використайте «Повернення» в документі приходу.`
+                      : isSale
+                      ? `Сторнувати продаж ${doc.doc_number}?\n\n` +
+                        `⚠️ Товари будуть ПОВЕРНЕНО на склад.\n` +
+                        `Використовуйте тільки для виправлення помилкових документів.`
+                      : `Сторнувати ${doc.doc_number}?\n\nБуде створено зворотній документ. Рух по складу буде скасовано.`;
+
+                    return (
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          if (!confirm(msg)) return;
+                          doAction(doc.id, 'cancel');
+                        }}
+                        disabled={loading === doc.id + 'cancel'}
+                        style={{
+                          height: '28px', padding: '0 10px', borderRadius: '7px', fontSize: '12px', fontWeight: 600,
+                          border: '1.5px solid #FCA5A5', background: '#FEF2F2',
+                          color: '#DC2626', cursor: 'pointer',
+                          opacity: loading === doc.id + 'cancel' ? 0.5 : 1,
+                        }}
+                      >
+                        {loading === doc.id + 'cancel' ? '...' : 'Сторно'}
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             );

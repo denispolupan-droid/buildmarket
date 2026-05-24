@@ -309,7 +309,12 @@ export async function cancelDocument(
   if (!doc)                       throw new Error('Document not found');
   if (doc.status === 'cancelled') throw new Error('Document already cancelled');
 
-  if (doc.status === 'draft') {
+  // ── Планові документи (direction=none): скасовуємо напряму без реверсалу ──
+  // PO, коригування, рахунок-фактура не мають ефекту на склад і леджер,
+  // тому немає сенсу створювати зворотний документ.
+  const PLAN_ONLY_TYPES = new Set(['purchase_order', 'purchase_order_adjustment', 'supplier_invoice']);
+
+  if (doc.status === 'draft' || PLAN_ONLY_TYPES.has(doc.doc_type)) {
     const { error } = await db
       .from('acc_documents')
       .update({
@@ -323,7 +328,8 @@ export async function cancelDocument(
     return;
   }
 
-  // Проведённый документ — создаём сторно-документ
+  // ── Операційні документи (direction=in/out/transfer): створюємо сторно ────
+  // Ці документи мають ефект на склад/леджер — потрібен реверсальний документ.
   const { data: docNumber } = await db
     .rpc('next_doc_number', { p_type: doc.doc_type });
 
