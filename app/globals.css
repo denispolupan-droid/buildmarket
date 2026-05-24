@@ -854,3 +854,57 @@ input, select { font-family: inherit; }
   .cabinet-grid-3 { grid-template-columns: 1fr; }
   .cabinet-grid-2 { grid-template-columns: 1fr; }
 }
+
+
+/* ── Print styles ─────────────────────────────────────────────────────────── */
+@media print {
+  /* Сховати весь адмін-хром */
+  nav, header, aside,
+  [data-sidebar], [data-nav],
+  .admin-sidebar, .admin-nav, .admin-header,
+  [class*="sidebar"], [class*="Sidebar"],
+  [class*="navbar"], [class*="Navbar"],
+  [class*="topbar"], [class*="Topbar"] {
+    display: none !important;
+  }
+
+  /* Прибрати кнопки: Друк, Ланцюжок, Повернення, Закрити, X, ⋯ */
+  button, [role="button"],
+  a[title="Закрити"],
+  a[href*="procurement/receipts"][style*="34px"],
+  a[href*="procurement/receipts"][style*="borderRadius"] {
+    display: none !important;
+  }
+
+  /* Повний контент без відступів лейауту */
+  body { background: #fff !important; }
+  main, [class*="layout-main"], [class*="LayoutMain"] {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Документ — чистий білий лист */
+  .print-doc {
+    padding: 24px 32px !important;
+    max-width: 100% !important;
+    font-size: 12px;
+    color: #000 !important;
+  }
+
+  /* Таблиці — чіткі межі */
+  .print-table th, .print-table td {
+    border: 1px solid #ccc !important;
+    padding: 5px 8px !important;
+  }
+
+  /* Розриви сторінок */
+  .print-break-before { page-break-before: always; }
+  .print-no-break      { page-break-inside: avoid; }
+
+  /* Приховати метку навігаційних хлібних крихт */
+  [aria-label="breadcrumb"] { display: none !important; }
+
+  /* Показати URL посилань при друку */
+  a[href]:after { content: none !important; }
+}

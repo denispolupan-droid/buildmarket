@@ -33,28 +33,33 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   sale: '📤 Продаж',
 };
 
-function TimelineNode({ icon, title, sub, amount, amountColor = '#374151', href, children: kids }: {
+function TimelineNode({ icon, title, sub, amount, amountColor = '#374151', href, cancelled = false, children: kids }: {
   icon: string; title: string; sub?: string; amount?: string; amountColor?: string;
-  href?: string; children?: React.ReactNode;
+  href?: string; cancelled?: boolean; children?: React.ReactNode;
 }) {
   return (
-    <div style={{ display: 'flex', gap: '14px', position: 'relative' }}>
+    <div style={{ display: 'flex', gap: '14px', position: 'relative', opacity: cancelled ? 0.55 : 1 }}>
       {/* Line */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: '32px' }}>
-        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-soft)', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>
+        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: cancelled ? '#F3F4F6' : 'var(--bg-soft)', border: `2px solid ${cancelled ? '#D1D5DB' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>
           {icon}
         </div>
         {kids && <div style={{ width: '2px', flex: 1, background: 'var(--border)', marginTop: '4px', minHeight: '20px' }} />}
       </div>
       {/* Content */}
       <div style={{ flex: 1, paddingBottom: kids ? '12px' : '0', minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: sub || kids ? '4px' : '0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: sub || kids ? '4px' : '0', flexWrap: 'wrap' }}>
           {href ? (
             <Link href={href} style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
               {title} <ExternalLink size={11} color="var(--text-muted)" />
             </Link>
           ) : (
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{title}</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: cancelled ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: cancelled ? 'line-through' : 'none' }}>{title}</span>
+          )}
+          {cancelled && (
+            <span style={{ fontSize: '10px', fontWeight: 700, color: '#DC2626', background: '#FEE2E2', padding: '1px 6px', borderRadius: '4px' }}>
+              Скасовано
+            </span>
           )}
           {amount && <span style={{ fontSize: '13px', fontWeight: 700, color: amountColor, marginLeft: 'auto' }}>{amount}</span>}
         </div>
@@ -122,10 +127,17 @@ export default function DocChain({ poId }: { poId: string }) {
                 <>
                   {/* PO */}
                   <TimelineNode
-                    icon="📋" title={`${data.po.doc_number} — Замовлення постачальнику`}
-                    sub={`${fmtDate(data.po.doc_date)}${data.po.notes ? ` · ${data.po.notes}` : ''}`}
+                    icon={data.po.status === 'cancelled' ? '🚫' : '📋'}
+                    title={
+                      data.po.status === 'cancelled'
+                        ? `${data.po.doc_number} — Замовлення постачальнику`
+                        : `${data.po.doc_number} — Замовлення постачальнику`
+                    }
+                    sub={`${fmtDate(data.po.doc_date)}${data.po.notes ? ` · ${data.po.notes}` : ''}${data.po.status === 'cancelled' ? ' · Скасовано' : ''}`}
                     amount={data.po.total_cost ? `${fmt(Number(data.po.total_cost))} ₴` : undefined}
-                    href={`/admin/procurement/${data.po.id}`}
+                    amountColor={data.po.status === 'cancelled' ? '#9CA3AF' : '#374151'}
+                    href={data.po.status !== 'cancelled' ? `/admin/procurement/${data.po.id}` : undefined}
+                    cancelled={data.po.status === 'cancelled'}
                   >
                     {/* Payments */}
                     {data.payments.filter(p => ['bank','cash','acquiring'].includes(p.account_type) && p.amount < 0).map(p => (

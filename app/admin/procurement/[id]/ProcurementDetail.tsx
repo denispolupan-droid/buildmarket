@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, Truck, Plus, X, Upload, Download, Trash2, Copy, Check, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, Truck, Plus, X, Upload, Download, Trash2, Copy, Check, MoreHorizontal, Printer } from 'lucide-react';
 import Link from 'next/link';
 
 type Line = { id: number; sku: string; name?: string; brand?: string; qty: number; cost_price: number; supplier_id?: number; adj_delta?: number; effective_qty?: number; is_adj_new?: boolean };
@@ -424,6 +424,13 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
             ↓ {po.receipt_doc_number ?? 'Прихідний ордер'}
           </Link>
         )}
+        {/* Друк */}
+        <button
+          onClick={() => window.print()}
+          title="Друк / Зберегти PDF"
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+          <Printer size={14} /> Друк
+        </button>
         {/* ⋯ меню рідкісних дій */}
         <div ref={actionsMenuRef} style={{ position: 'relative' }}>
           <button

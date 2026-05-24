@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, X } from 'lucide-react';
 import ReturnButton from '../../[id]/ReturnButton';
 import DocChain from '../../[id]/DocChain';
+import PrintButton from '../../../components/PrintButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,6 +99,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
           </Link>
         )}
         {doc.parent_doc_id && <DocChain poId={doc.parent_doc_id} />}
+        <PrintButton />
         <Link href="/admin/procurement/receipts" title="Закрити"
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', textDecoration: 'none', flexShrink: 0 }}>
           <X size={15} />

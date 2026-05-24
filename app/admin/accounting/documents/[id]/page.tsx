@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, X } from 'lucide-react';
 import ReturnButton from '../../../procurement/[id]/ReturnButton';
 import DocChain from '../../../procurement/[id]/DocChain';
+import PrintButton from '../../../components/PrintButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -144,6 +145,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
         {(doc.doc_type === 'purchase_order' || (doc.parent_doc_id && ['receipt','stock_in'].includes(doc.doc_type))) && (
           <DocChain poId={doc.doc_type === 'purchase_order' ? id : doc.parent_doc_id!} />
         )}
+        <PrintButton />
         <Link href="/admin/accounting/documents" title="Закрити"
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', textDecoration: 'none', flexShrink: 0 }}>
           <X size={15} />
