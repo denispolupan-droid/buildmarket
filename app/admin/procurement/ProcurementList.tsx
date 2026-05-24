@@ -375,7 +375,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
             {hasReceipts && isExpanded && (
               <div style={{ borderTop: '1px dashed var(--border)' }}>
                 {po.receipts.map(receipt => (
-                  <Link key={receipt.id} href={`/admin/accounting/documents/${receipt.id}`}
+                  <Link key={receipt.id} href={`/admin/procurement/receipts/${receipt.id}`}
                     style={{ display: 'grid', gridTemplateColumns: '130px 160px 1fr 110px 110px 130px 40px', padding: '8px 16px 8px 28px', alignItems: 'center', textDecoration: 'none', background: 'var(--bg-soft)', borderTop: '1px solid var(--border-light)' }}>
                     <div>
                       <div style={{ fontSize: '12px', fontWeight: 600, color: '#15803D' }}>↳ {receipt.doc_number}</div>

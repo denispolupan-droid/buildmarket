@@ -57,7 +57,7 @@ export default function AdditionalReceiptButton({ poId, supplierName }: { poId: 
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Помилка'); return; }
       setOpen(false);
-      router.push(`/admin/accounting/documents/${data.receiptId ?? data.id}`);
+      router.push(`/admin/procurement/receipts/${data.receiptId ?? data.id}`);
       router.refresh();
     } catch { setError('Мережева помилка'); }
     finally { setSaving(false); }
