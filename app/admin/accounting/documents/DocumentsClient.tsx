@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, CheckCircle, XCircle, Clock, FileText, TrendingUp, TrendingDown } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, Clock, FileText, TrendingUp, TrendingDown, MoreHorizontal, Trash2 } from 'lucide-react';
 
 type DocRow = {
   id: string;
@@ -53,6 +53,112 @@ const DIR_ICON: Record<string, typeof TrendingUp> = {
   both: FileText,
   none: FileText,
 };
+
+// Підказка що відбудеться при видаленні — залежно від типу документа
+function deleteWarning(docType: string, docNumber: string, direction: string): string {
+  const isReceipt = docType === 'receipt' || docType === 'stock_in';
+  const isSale    = docType === 'sale';
+  const isPlan    = direction === 'none';
+
+  if (isPlan) {
+    return (
+      `Видалити ${docNumber}?\n\n` +
+      `Документ буде скасовано. Залишки та фінансовий облік не зміняться.`
+    );
+  }
+  if (isReceipt) {
+    return (
+      `Видалити прихід ${docNumber}?\n\n` +
+      `⚠️ Товари будуть знято зі складу.\n` +
+      `Використовуйте тільки якщо документ створено помилково.\n` +
+      `Для повернення товару постачальнику — використайте кнопку «Повернення» в самому документі.`
+    );
+  }
+  if (isSale) {
+    return (
+      `Видалити продаж ${docNumber}?\n\n` +
+      `⚠️ Товари будуть повернено на склад.\n` +
+      `Використовуйте тільки якщо документ створено помилково.`
+    );
+  }
+  return (
+    `Видалити ${docNumber}?\n\n` +
+    `Рух товару по складу буде скасовано. Цю дію не можна відмінити.`
+  );
+}
+
+// ── Кнопка ⋯ з dropdown ───────────────────────────────────────────────────────
+function ActionsMenu({
+  doc,
+  direction,
+  loading,
+  onDelete,
+}: {
+  doc: DocRow;
+  direction: string;
+  loading: string | null;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
+  const isLoading = loading === doc.id + 'cancel';
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
+        style={{
+          width: '28px', height: '28px', borderRadius: '7px', border: '1.5px solid var(--border)',
+          background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          opacity: isLoading ? 0.5 : 1,
+        }}
+        title="Дії"
+      >
+        {isLoading ? '…' : <MoreHorizontal size={14} />}
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', right: 0, top: '34px', zIndex: 100,
+          background: 'var(--bg-card)', border: '1px solid var(--border)',
+          borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          minWidth: '180px', padding: '4px',
+        }}>
+          <button
+            onClick={e => {
+              e.stopPropagation();
+              setOpen(false);
+              const msg = deleteWarning(doc.doc_type, doc.doc_number, direction);
+              if (!confirm(msg)) return;
+              onDelete();
+            }}
+            style={{
+              width: '100%', textAlign: 'left', padding: '8px 12px',
+              borderRadius: '7px', border: 'none', background: 'none',
+              fontSize: '13px', fontWeight: 500, color: '#DC2626',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#FEF2F2')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+          >
+            <Trash2 size={14} /> Видалити
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function DocumentsClient({
   initialDocs, warehouses, suppliers, docTypes,
@@ -160,9 +266,8 @@ export default function DocumentsClient({
 
       {/* Table */}
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
-        {/* Table header */}
         <div style={{
-          display: 'grid', gridTemplateColumns: '140px 1fr 140px 110px 110px 110px 160px',
+          display: 'grid', gridTemplateColumns: '140px 1fr 140px 110px 110px 110px 80px',
           padding: '10px 16px', background: 'var(--bg-soft)',
           borderBottom: '1px solid var(--border)',
           fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)',
@@ -174,7 +279,7 @@ export default function DocumentsClient({
           <span style={{ textAlign: 'right' }}>Сума</span>
           <span style={{ textAlign: 'right' }}>Собів.</span>
           <span style={{ textAlign: 'center' }}>Статус</span>
-          <span style={{ textAlign: 'right' }}>Дії</span>
+          <span />
         </div>
 
         {filtered.length === 0 ? (
@@ -187,24 +292,23 @@ export default function DocumentsClient({
           </div>
         ) : (
           filtered.map((doc, idx) => {
-            const st    = STATUS_STYLE[doc.status] ?? STATUS_STYLE.draft;
-            const StIcon = st.icon;
-            const typeLabel = TYPE_LABELS[doc.doc_type] ?? doc.doc_type;
+            const st       = STATUS_STYLE[doc.status] ?? STATUS_STYLE.draft;
+            const StIcon   = st.icon;
             const direction = docTypes.find(t => t.code === doc.doc_type)?.direction ?? 'none';
-            const DirIcon = DIR_ICON[direction] ?? FileText;
+            const DirIcon  = DIR_ICON[direction] ?? FileText;
             const dirColor = direction === 'in' ? '#15803D' : direction === 'out' ? '#DC2626' : '#64748B';
-            const date = new Date(doc.doc_date).toLocaleDateString('uk-UA', {
+            const date     = new Date(doc.doc_date).toLocaleDateString('uk-UA', {
               day: '2-digit', month: '2-digit', year: 'numeric',
             });
-            const counterparty = doc.supplier?.name ?? doc.counterparty ?? (doc.order_id ? `Замовлення` : '—');
-            const margin = doc.total_amount - doc.total_cost;
+            const counterparty = doc.supplier?.name ?? doc.counterparty ?? (doc.order_id ? 'Замовлення' : '—');
+            const margin       = doc.total_amount - doc.total_cost;
 
             return (
               <div
                 key={doc.id}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '140px 1fr 140px 110px 110px 110px 160px',
+                  gridTemplateColumns: '140px 1fr 140px 110px 110px 110px 80px',
                   padding: '12px 16px', alignItems: 'center',
                   borderBottom: idx < filtered.length - 1 ? '1px solid var(--border-light)' : 'none',
                   background: doc.status === 'cancelled' ? 'var(--bg-soft)' : 'transparent',
@@ -215,14 +319,14 @@ export default function DocumentsClient({
               >
                 {/* Number + type */}
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                     <DirIcon size={12} color={dirColor} />
                     <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                       {doc.doc_number}
                     </span>
                     {doc.reversal_of && (
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#DC2626', background: '#FEE2E2', padding: '1px 5px', borderRadius: '4px', letterSpacing: '0.02em' }}>
-                        СТОРНО
+                      <span style={{ fontSize: '10px', fontWeight: 600, color: '#6B7280', background: 'var(--bg-soft)', border: '1px solid var(--border)', padding: '1px 5px', borderRadius: '4px' }}>
+                        скасування
                       </span>
                     )}
                   </div>
@@ -277,7 +381,11 @@ export default function DocumentsClient({
                 </div>
 
                 {/* Actions */}
-                <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                <div
+                  style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  {/* Чернетка: "Провести" + ⋯ */}
                   {doc.status === 'draft' && (
                     <>
                       <button
@@ -291,82 +399,24 @@ export default function DocumentsClient({
                       >
                         {loading === doc.id + 'confirm' ? '...' : 'Провести'}
                       </button>
-                      <button
-                        onClick={() => doAction(doc.id, 'cancel')}
-                        disabled={loading === doc.id + 'cancel'}
-                        style={{
-                          height: '28px', padding: '0 10px', borderRadius: '7px', fontSize: '12px', fontWeight: 600,
-                          border: '1.5px solid var(--border)', background: 'transparent',
-                          color: 'var(--text-secondary)', cursor: 'pointer',
-                          opacity: loading === doc.id + 'cancel' ? 0.5 : 1,
-                        }}
-                      >
-                        Скасувати
-                      </button>
+                      <ActionsMenu
+                        doc={doc}
+                        direction={direction}
+                        loading={loading}
+                        onDelete={() => doAction(doc.id, 'cancel')}
+                      />
                     </>
                   )}
-                  {doc.status === 'confirmed' && (() => {
-                    const direction = docTypes.find(t => t.code === doc.doc_type)?.direction ?? 'none';
-                    const isPlanOnly = direction === 'none'; // PO, коригування, рахунок-фактура
 
-                    if (isPlanOnly) {
-                      // Планові документи: просте анулювання без реверсалу
-                      return (
-                        <button
-                          onClick={e => {
-                            e.stopPropagation();
-                            if (!confirm(
-                              `Анулювати ${doc.doc_number}?\n\n` +
-                              `Документ буде скасовано. Залишки та облік НЕ змінюються.`
-                            )) return;
-                            doAction(doc.id, 'cancel');
-                          }}
-                          disabled={loading === doc.id + 'cancel'}
-                          style={{
-                            height: '28px', padding: '0 10px', borderRadius: '7px', fontSize: '12px', fontWeight: 600,
-                            border: '1.5px solid var(--border)', background: 'transparent',
-                            color: 'var(--text-secondary)', cursor: 'pointer',
-                            opacity: loading === doc.id + 'cancel' ? 0.5 : 1,
-                          }}
-                        >
-                          {loading === doc.id + 'cancel' ? '...' : 'Анулювати'}
-                        </button>
-                      );
-                    }
-
-                    // Операційні документи: сторно з попередженням про ефект на склад
-                    const isReceipt = doc.doc_type === 'receipt' || doc.doc_type === 'stock_in';
-                    const isSale    = doc.doc_type === 'sale';
-                    const msg = isReceipt
-                      ? `Сторнувати прихід ${doc.doc_number}?\n\n` +
-                        `⚠️ Товари будуть ЗНЯТО зі складу (списання FIFO-партій).\n` +
-                        `Використовуйте тільки для виправлення помилково проведеного приходу.\n` +
-                        `Для реального повернення постачальнику — використайте «Повернення» в документі приходу.`
-                      : isSale
-                      ? `Сторнувати продаж ${doc.doc_number}?\n\n` +
-                        `⚠️ Товари будуть ПОВЕРНЕНО на склад.\n` +
-                        `Використовуйте тільки для виправлення помилкових документів.`
-                      : `Сторнувати ${doc.doc_number}?\n\nБуде створено зворотній документ. Рух по складу буде скасовано.`;
-
-                    return (
-                      <button
-                        onClick={e => {
-                          e.stopPropagation();
-                          if (!confirm(msg)) return;
-                          doAction(doc.id, 'cancel');
-                        }}
-                        disabled={loading === doc.id + 'cancel'}
-                        style={{
-                          height: '28px', padding: '0 10px', borderRadius: '7px', fontSize: '12px', fontWeight: 600,
-                          border: '1.5px solid #FCA5A5', background: '#FEF2F2',
-                          color: '#DC2626', cursor: 'pointer',
-                          opacity: loading === doc.id + 'cancel' ? 0.5 : 1,
-                        }}
-                      >
-                        {loading === doc.id + 'cancel' ? '...' : 'Сторно'}
-                      </button>
-                    );
-                  })()}
+                  {/* Проведено: тільки ⋯ */}
+                  {doc.status === 'confirmed' && (
+                    <ActionsMenu
+                      doc={doc}
+                      direction={direction}
+                      loading={loading}
+                      onDelete={() => doAction(doc.id, 'cancel')}
+                    />
+                  )}
                 </div>
               </div>
             );
