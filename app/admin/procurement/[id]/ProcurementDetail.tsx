@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, Truck, Plus, X, Upload, Download, Trash2, Copy, Check } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, Truck, Plus, X, Upload, Download, Trash2, Copy, Check, MoreHorizontal } from 'lucide-react';
 import Link from 'next/link';
 
 type Line = { id: number; sku: string; name?: string; brand?: string; qty: number; cost_price: number; supplier_id?: number; adj_delta?: number; effective_qty?: number; is_adj_new?: boolean };
@@ -78,6 +78,8 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
   );
   const [copied,        setCopied]        = useState(false);
   const [copyingOrder,  setCopyingOrder]  = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
 
   function copyToNewDraft() {
     setCopyingOrder(true);
@@ -163,6 +165,17 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [po.id]);
+
+  useEffect(() => {
+    if (!showActionsMenu) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
+        setShowActionsMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showActionsMenu]);
 
   async function handleInvoiceUpload(file: File) {
     setUploadingInvoice(true);
@@ -405,14 +418,26 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
             ↓ {po.receipt_doc_number ?? 'Прихідний ордер'}
           </Link>
         )}
-        <button
-          onClick={copyToNewDraft}
-          disabled={copyingOrder}
-          title="Копіювати в нове замовлення"
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', transition: 'all 0.15s', opacity: copyingOrder ? 0.6 : 1 }}>
-          {copyingOrder ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Copy size={13} />}
-          Копіювати
-        </button>
+        {/* ⋯ меню рідкісних дій */}
+        <div ref={actionsMenuRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowActionsMenu(v => !v)}
+            title="Дії"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '8px', border: '1px solid var(--border)', background: showActionsMenu ? 'var(--bg-soft)' : 'none', cursor: 'pointer', color: 'var(--text-secondary)', flexShrink: 0, transition: 'all 0.15s' }}>
+            <MoreHorizontal size={16} />
+          </button>
+          {showActionsMenu && (
+            <div style={{ position: 'absolute', top: '38px', right: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.10)', minWidth: '200px', zIndex: 100, padding: '4px 0', overflow: 'hidden' }}>
+              <button
+                onClick={() => { setShowActionsMenu(false); copyToNewDraft(); }}
+                disabled={copyingOrder}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: 'var(--text-primary)', textAlign: 'left', opacity: copyingOrder ? 0.6 : 1 }}>
+                {copyingOrder ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Copy size={14} style={{ color: 'var(--text-muted)' }} />}
+                Копіювати як нове замовлення
+              </button>
+            </div>
+          )}
+        </div>
         <Link href="/admin/procurement" prefetch={false} title="Закрити документ"
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', textDecoration: 'none', flexShrink: 0, transition: 'all 0.15s' }}>
           <X size={15} />
