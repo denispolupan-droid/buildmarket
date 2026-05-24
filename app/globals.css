@@ -85,6 +85,29 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { zoom: 0.95; overflow-x: hidden; }
 
+/* ── Admin: lifted contrast for dense data UI ───────────────────────────────
+   Scoped to .admin-layout so public site is unaffected.
+   --text-muted lifted #94A3B8 → #64748B (2.6:1 → 4.6:1 contrast)
+   --border     #E2E8F0 → #CBD5E1  stronger table lines
+   --border-light #F1F5F9 → #DDE3EC  visible row dividers on #EEF2F7 bg
+   ──────────────────────────────────────────────────────────────────────── */
+.admin-layout {
+  --text-muted:   #64748B;
+  --border:       #CBD5E1;
+  --border-light: #DDE3EC;
+}
+
+/* Bump micro uppercase labels from 10px → 11px throughout admin
+   Targets inline-style elements that have both font-size:10px and text-transform:uppercase.
+   Safe: only uppercase label text is affected, never icon sizes or layout values. */
+.admin-layout [style*="font-size: 10px"][style*="text-transform: uppercase"] {
+  font-size: 11px !important;
+}
+/* Same but with th elements (AdminOrders expanded items table) */
+.admin-layout th[style*="font-size: 10px"] {
+  font-size: 11px !important;
+}
+
 /* ── Admin sidebar hover & transitions ───────────────────────────────────── */
 .admin-nav-btn {
   transition: background 0.13s ease, color 0.13s ease;

@@ -476,7 +476,7 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                 has_receipt=false : Арт | Назва | Замовл. | Отримано | Ціна факт. | Ціна PO | Різниця | Сума  = 8 cols
                 has_receipt=true  : Арт | Назва | Замовл. | Ціна PO | Сума                              = 5 cols
             */}
-            <div style={{ display: 'grid', gridTemplateColumns: po.has_receipt ? '110px minmax(0,1fr) 80px 110px 100px' : '110px minmax(0,1fr) 60px 75px 90px 90px 60px 90px', padding: '8px 16px', background: 'var(--bg-soft)', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: po.has_receipt ? '110px minmax(0,1fr) 80px 110px 100px' : '110px minmax(0,1fr) 60px 75px 90px 90px 60px 90px', padding: '8px 16px', background: 'var(--bg-soft)', fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', gap: '8px', borderBottom: '1px solid var(--border)' }}>
               <span>Артикул</span>
               <span>Найменування</span>
               <span style={{ textAlign: 'right' }}>Замовлено</span>
@@ -505,7 +505,7 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
                     <div style={{ fontSize: '12px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {line.name || '—'}
                     </div>
-                    {line.brand && <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{line.brand}</div>}
+                    {line.brand && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>{line.brand}</div>}
                   </div>
 
                   {/* Замовлено (з коригуванням) */}

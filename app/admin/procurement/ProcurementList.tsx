@@ -241,7 +241,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
       )}
 
       {/* Header */}
-      <div style={{ display: 'grid', gridTemplateColumns: COLS, padding: '8px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', gap: '8px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: COLS, padding: '9px 16px', background: 'var(--bg-soft)', borderBottom: '2px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', gap: '8px' }}>
         <input type="checkbox" checked={selected.size === orders.length && orders.length > 0} onChange={toggleAll} style={{ cursor: 'pointer', accentColor: '#4880B8' }} />
         <span>Документ</span><span>Постачальник</span><span>Примітка</span>
         <span style={{ textAlign: 'right' }}>Сума</span>
@@ -285,7 +285,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                     {isExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
                   </button>
                 ) : (
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#94A3B8' }}>⏳ Очікуємо</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>⏳ Очікуємо</span>
                 )}
               </div>
               {/* Два статуси: Проведено/Чернетка + Відправлено/Не відправлено */}
