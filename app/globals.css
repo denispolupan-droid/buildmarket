@@ -85,6 +85,34 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { zoom: 0.95; overflow-x: hidden; }
 
+/* ── Admin sidebar hover & transitions ───────────────────────────────────── */
+.admin-nav-btn {
+  transition: background 0.13s ease, color 0.13s ease;
+}
+.admin-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.055) !important;
+}
+.admin-nav-sub {
+  transition: background 0.13s ease, color 0.13s ease;
+}
+.admin-nav-sub:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* ── Admin page enter animation ──────────────────────────────────────────── */
+@keyframes adminPageEnter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.admin-page-enter {
+  animation: adminPageEnter 0.18s ease forwards;
+}
+
+/* ── Admin sidebar nav scrollbar ─────────────────────────────────────────── */
+.admin-sidebar-nav::-webkit-scrollbar { width: 4px; }
+.admin-sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.admin-sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
 .footer-details > summary {
   list-style: none;
   cursor: pointer;

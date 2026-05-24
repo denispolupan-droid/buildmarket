@@ -56,24 +56,32 @@ export default async function AdminPage({
     <div style={{ padding: '32px 36px 64px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
         <div>
-          <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
             {status ? STATUS_LABELS[status] ?? status : 'Замовлення'}
           </h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            Всього: {count ?? 0}
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>Всього: {count ?? 0}</span>
             {(newCount ?? 0) > 0 && (
-              <span style={{ marginLeft: '10px', color: '#DC2626', fontWeight: 700 }}>· Нових: {newCount}</span>
+              <span style={{
+                background: '#FEF2F2', color: '#DC2626', fontWeight: 700,
+                fontSize: '11px', padding: '1px 8px', borderRadius: '6px',
+                border: '1px solid #FECACA',
+              }}>
+                Нових: {newCount}
+              </span>
             )}
             {totalPages > 1 && (
-              <span style={{ marginLeft: '10px' }}>· Сторінка {page} з {totalPages}</span>
+              <span style={{ color: 'var(--text-muted)' }}>· Стор. {page} / {totalPages}</span>
             )}
           </p>
         </div>
         <Link href="/admin/orders/new" style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px',
-          height: '36px', padding: '0 16px', borderRadius: '9px',
-          background: '#1E3A5F', color: '#fff', textDecoration: 'none',
+          height: '36px', padding: '0 18px', borderRadius: '9px',
+          background: 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)',
+          color: '#fff', textDecoration: 'none',
           fontSize: '13px', fontWeight: 700, flexShrink: 0,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
         }}>
           + Нове замовлення
         </Link>

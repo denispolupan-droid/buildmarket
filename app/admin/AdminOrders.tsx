@@ -466,8 +466,8 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
           position: 'sticky', top: '52px', zIndex: 50,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '12px 20px', marginBottom: '16px',
-          background: '#1E3A5F', borderRadius: '12px',
-          boxShadow: '0 4px 20px rgba(30,58,95,0.35)',
+          background: 'linear-gradient(135deg, #0F1729 0%, #1A3456 100%)', borderRadius: '12px',
+          boxShadow: '0 4px 20px rgba(15,23,41,0.45)',
         }}>
           <span style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>
             Вибрано замовлень: {selectedIds.size} · Сума: {orders.filter(o => selectedIds.has(o.id)).reduce((s, o) => s + o.total_price, 0).toFixed(2)} грн
@@ -665,8 +665,8 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                     onClick={e => { e.stopPropagation(); toggleSelect(order.id); }}
                     style={{
                       width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, cursor: 'pointer',
-                      border: `2px solid ${selectedIds.has(order.id) ? '#1E3A5F' : 'var(--border)'}`,
-                      background: selectedIds.has(order.id) ? '#1E3A5F' : 'var(--bg-card)',
+                      border: `2px solid ${selectedIds.has(order.id) ? '#3DBFB8' : 'var(--border)'}`,
+                      background: selectedIds.has(order.id) ? '#3DBFB8' : 'var(--bg-card)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
                   >
@@ -1278,8 +1278,8 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
             .map(p => (
               <a key={p} href={`?page=${p}`} style={{
                 height: '36px', width: '36px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                border: `1.5px solid ${p === currentPage ? '#1E3A5F' : 'var(--border)'}`,
-                background: p === currentPage ? '#1E3A5F' : 'var(--bg-card)',
+                border: `1.5px solid ${p === currentPage ? '#162035' : 'var(--border)'}`,
+                background: p === currentPage ? 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)' : 'var(--bg-card)',
                 color: p === currentPage ? '#fff' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
               }}>{p}</a>
             ))}
@@ -1348,7 +1348,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
               </button>
               {!supplierResult && (
                 <button onClick={sendSupplierModal} disabled={supplierSending}
-                  style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: supplierSending ? 0.7 : 1 }}>
+                  style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: supplierSending ? 0.7 : 1 }}>
                   {supplierSending ? '⏳ Відправлення...' : '📤 Відправити'}
                 </button>
               )}
