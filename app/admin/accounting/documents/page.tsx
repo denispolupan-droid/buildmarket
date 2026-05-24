@@ -12,7 +12,7 @@ export default async function DocumentsPage() {
     .select(`
       id, doc_type, doc_number, status, doc_date,
       total_amount, total_cost, notes, counterparty, order_id,
-      confirmed_at, cancelled_at,
+      confirmed_at, cancelled_at, reversal_of,
       warehouse:warehouse_id ( name ),
       supplier:supplier_id ( name )
     `)

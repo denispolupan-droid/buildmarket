@@ -17,6 +17,7 @@ type DocRow = {
   order_id: string | null;
   confirmed_at: string | null;
   cancelled_at: string | null;
+  reversal_of: string | null;
   warehouse: { name: string } | null;
   supplier: { name: string } | null;
 };
@@ -219,6 +220,11 @@ export default function DocumentsClient({
                     <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                       {doc.doc_number}
                     </span>
+                    {doc.reversal_of && (
+                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#DC2626', background: '#FEE2E2', padding: '1px 5px', borderRadius: '4px', letterSpacing: '0.02em' }}>
+                        СТОРНО
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                     {TYPE_LABELS[doc.doc_type] ?? doc.doc_type} · {date}
@@ -302,7 +308,23 @@ export default function DocumentsClient({
                   {doc.status === 'confirmed' && (
                     <button
                       onClick={() => {
-                        if (!confirm('Сторнувати документ? Буде створено зворотній документ.')) return;
+                        const isPO      = doc.doc_type === 'purchase_order';
+                        const isReceipt = doc.doc_type === 'receipt' || doc.doc_type === 'stock_in';
+                        const isSale    = doc.doc_type === 'sale';
+                        const msg = isPO
+                          ? `Скасувати замовлення ${doc.doc_number}?\n\n` +
+                            `⚠️ Це ЛИШЕ скасує план замовлення.\n` +
+                            `Залишки НЕ зміняться — якщо товар уже прийнятий на склад, поверніть його окремо через «Сторно» на документі приходу.`
+                          : isReceipt
+                          ? `Сторнувати прихід ${doc.doc_number}?\n\n` +
+                            `⚠️ Товари будуть ЗНЯТО зі складу (списання FIFO-партій).\n` +
+                            `Ця дія незворотна — перевірте, що товар фізично повернуто постачальнику.`
+                          : isSale
+                          ? `Сторнувати продаж ${doc.doc_number}?\n\n` +
+                            `⚠️ Товари будуть ПОВЕРНЕНО на склад.\n` +
+                            `Використовуйте тільки для виправлення помилкових документів.`
+                          : `Сторнувати документ ${doc.doc_number}? Буде створено зворотній документ.`;
+                        if (!confirm(msg)) return;
                         doAction(doc.id, 'cancel');
                       }}
                       disabled={loading === doc.id + 'cancel'}
