@@ -258,7 +258,13 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
   const [error,   setError]   = useState('');
   const [success, setSuccess] = useState('');
 
-  const currentStepIdx = statusToStep(newStatus || po.procurement_status || '');
+  // Крок "Отримано" визначається наявністю підтвердженого приходу, НЕ тільки procurement_status.
+  // Причина: при збереженні відстрочення оплати статус може стати 'invoiced' (крок 1),
+  // навіть якщо товар вже фізично отримано (has_receipt=true).
+  const currentStepIdx = Math.max(
+    statusToStep(newStatus || po.procurement_status || ''),
+    po.has_receipt ? 2 : -1,
+  );
 
   async function handleReceive() {
     setReceiving(true); setError(''); setSuccess('');
@@ -477,12 +483,19 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
           })}
         </div>
 
-        {/* Badge "Оплачено" — окремо від ланцюжка */}
-        {activeStatus === 'paid' && (
+        {/* Badge оплати — окремо від ланцюжка */}
+        {(activeStatus === 'paid' || activeStatus === 'invoiced') && (
           <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '3px 10px', borderRadius: '20px' }}>
-              💳 Оплачено
-            </span>
+            {activeStatus === 'paid' && (
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '3px 10px', borderRadius: '20px' }}>
+                💳 Оплачено
+              </span>
+            )}
+            {activeStatus === 'invoiced' && (
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', padding: '3px 10px', borderRadius: '20px' }}>
+                📅 Відстрочення — не оплачено
+              </span>
+            )}
           </div>
         )}
       </div>
