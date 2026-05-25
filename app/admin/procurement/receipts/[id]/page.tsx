@@ -95,6 +95,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
         <PrintButton />
         <ReceiptActionsMenu
           receiptId={id}
+          hasExistingLC={hasLC}
           lines={(lines ?? []).map((l: { sku: string; qty: number; cost_price: number }) => ({
             sku: l.sku, qty: Number(l.qty), cost_price: Number(l.cost_price ?? 0),
             name: nameMap.get(l.sku),

@@ -42,3 +42,7 @@ next-env.d.ts
 
 .vercel
 catalog-export.xlsx
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+fixline-audit.zip
+lint-new.txt

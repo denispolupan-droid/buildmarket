@@ -12,6 +12,7 @@ type SupplierBank = {
 };
 type PO = {
   id: string; doc_number: string; doc_date: string; procurement_status: string | null;
+  status?: string | null;
   expected_date: string | null; supplier_id: number | null; supplier_name: string | null;
   supplier_email: string | null; order_id: string | null; total_cost: number | null;
   notes: string | null; has_receipt: boolean; receipt_id?: string | null; receipt_doc_number?: string | null; lc_done?: boolean;
@@ -405,8 +406,24 @@ export default function ProcurementDetail({ po, chainButton }: { po: PO; chainBu
   const lcTotal = (po.lc_lines ?? []).filter(l => l.distributed).reduce((s, l) => s + Number(l.amount), 0);
   const hasLC   = lcTotal > 0;
 
+  const isCancelled = po.status === 'cancelled';
+
   return (
     <div style={{ padding: '28px 32px' }}>
+
+      {/* Банер "Скасовано" */}
+      {isCancelled && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 18px', marginBottom: '20px', background: '#FEF2F2', border: '1.5px solid #FCA5A5', borderRadius: '10px' }}>
+          <span style={{ fontSize: '20px' }}>🚫</span>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#DC2626' }}>Замовлення скасовано</div>
+            <div style={{ fontSize: '12px', color: '#EF4444', marginTop: '2px' }}>
+              Цей документ анульовано і більше не активний. Перегляд доступний лише для ознайомлення з історією.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
         <Link href="/admin/procurement" prefetch={false} style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}><ArrowLeft size={16} /></Link>

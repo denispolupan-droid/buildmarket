@@ -90,6 +90,7 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
   const sup = poBase.supplier as any;
   const po = {
     ...poBase,
+    status:         poBase.status ?? null,
     supplier_name:  sup?.name  ?? null,
     supplier_email: sup?.email ?? null,
     supplier_bank:  sup ? {

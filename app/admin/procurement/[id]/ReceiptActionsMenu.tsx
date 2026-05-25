@@ -1,17 +1,20 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { MoreHorizontal, RotateCcw } from 'lucide-react';
+import { MoreHorizontal, RotateCcw, Package } from 'lucide-react';
 import ReturnButton from './ReturnButton';
+import ReceiptLandedCostButton from './ReceiptLandedCostButton';
 
 type ReceiptLine = { sku: string; qty: number; cost_price: number; name?: string };
 
 export default function ReceiptActionsMenu({
   receiptId,
   lines,
+  hasExistingLC = false,
 }: {
   receiptId: string;
   lines: ReceiptLine[];
+  hasExistingLC?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -46,8 +49,34 @@ export default function ReceiptActionsMenu({
           position: 'absolute', right: 0, top: '40px', zIndex: 200,
           background: 'var(--bg-card)', border: '1px solid var(--border)',
           borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.13)',
-          minWidth: '210px', padding: '4px',
+          minWidth: '220px', padding: '4px',
         }}>
+          {/* Додаткові витрати (Landed Cost) */}
+          <ReceiptLandedCostButton
+            receiptId={receiptId}
+            renderTrigger={onClick => (
+              <button
+                onClick={() => { setOpen(false); onClick(); }}
+                style={{
+                  width: '100%', textAlign: 'left', padding: '8px 12px',
+                  borderRadius: '7px', border: 'none', background: 'none',
+                  fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-soft)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+              >
+                <Package size={14} style={{ color: '#7C3AED' }} />
+                Додаткові витрати
+                {hasExistingLC && <span style={{ marginLeft: 'auto', fontSize: '10px', color: '#7C3AED', background: '#F5F3FF', padding: '1px 6px', borderRadius: '4px' }}>є</span>}
+              </button>
+            )}
+          />
+
+          {/* Роздільник */}
+          <div style={{ height: '1px', background: 'var(--border-light)', margin: '4px 8px' }} />
+
+          {/* Повернення постачальнику */}
           <ReturnButton
             receiptId={receiptId}
             lines={lines}
