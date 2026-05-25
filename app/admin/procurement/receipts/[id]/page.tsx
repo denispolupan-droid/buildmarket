@@ -3,9 +3,9 @@ import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, X } from 'lucide-react';
-import ReturnButton from '../../[id]/ReturnButton';
 import DocChain from '../../[id]/DocChain';
 import PrintButton from '../../../components/PrintButton';
+import ReceiptActionsMenu from '../../[id]/ReceiptActionsMenu';
 
 export const dynamic = 'force-dynamic';
 
@@ -79,13 +79,6 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{doc.doc_number}</h1>
             <span style={{ padding: '2px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, color: '#15803D', background: '#F0FDF4' }}>Проведено</span>
-            <ReturnButton
-              receiptId={id}
-              lines={(lines ?? []).map((l: { sku: string; qty: number; cost_price: number }) => ({
-                sku: l.sku, qty: Number(l.qty), cost_price: Number(l.cost_price ?? 0),
-                name: nameMap.get(l.sku),
-              }))}
-            />
           </div>
           <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '3px' }}>
             Прихід товару{supplierName && ` · ${supplierName}`}{warehouseName && ` · ${warehouseName}`}
@@ -100,6 +93,13 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
         )}
         {doc.parent_doc_id && <DocChain poId={doc.parent_doc_id} />}
         <PrintButton />
+        <ReceiptActionsMenu
+          receiptId={id}
+          lines={(lines ?? []).map((l: { sku: string; qty: number; cost_price: number }) => ({
+            sku: l.sku, qty: Number(l.qty), cost_price: Number(l.cost_price ?? 0),
+            name: nameMap.get(l.sku),
+          }))}
+        />
         <Link href="/admin/procurement/receipts" title="Закрити"
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', textDecoration: 'none', flexShrink: 0 }}>
           <X size={15} />

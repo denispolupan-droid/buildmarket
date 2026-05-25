@@ -5,7 +5,13 @@ import { RotateCcw, X, Loader2, AlertCircle } from 'lucide-react';
 
 type ReceiptLine = { sku: string; qty: number; cost_price: number; name?: string };
 
-export default function ReturnButton({ receiptId, lines }: { receiptId: string; lines: ReceiptLine[] }) {
+export default function ReturnButton({
+  receiptId, lines, renderTrigger,
+}: {
+  receiptId: string;
+  lines: ReceiptLine[];
+  renderTrigger?: (onClick: () => void) => React.ReactNode;
+}) {
   const [open,    setOpen]    = useState(false);
   const [reason,  setReason]  = useState('');
   const [qtys,    setQtys]    = useState<Record<string, number>>({});
@@ -40,10 +46,15 @@ export default function ReturnButton({ receiptId, lines }: { receiptId: string; 
 
   return (
     <>
-      <button onClick={() => setOpen(true)}
-        style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid #DC2626', background: '#FEF2F2', color: '#DC2626', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
-        <RotateCcw size={13} /> Повернення
-      </button>
+      {renderTrigger
+        ? renderTrigger(() => setOpen(true))
+        : (
+          <button onClick={() => setOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid #DC2626', background: '#FEF2F2', color: '#DC2626', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+            <RotateCcw size={13} /> Повернення
+          </button>
+        )
+      }
 
       {open && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
