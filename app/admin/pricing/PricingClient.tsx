@@ -7,6 +7,13 @@ import {
   ExternalLink, ChevronDown, ChevronUp, Play,
 } from 'lucide-react';
 
+/* ── Search query (mirrors lib/price-checker — can't import server lib) ─ */
+function buildSearchQuery(name: string, volume?: string | null): string {
+  const shortName = name.split('—')[0].trim();
+  const q = volume ? `${shortName} ${volume}` : shortName;
+  return q.replace(/\s+/g, ' ').trim();
+}
+
 /* ── Types ────────────────────────────────────────────────────────────── */
 
 interface MarketPrice {
@@ -327,6 +334,18 @@ export default function PricingClient({ rows }: Props) {
                   <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
                     {row.sku}{row.volume ? ` · ${row.volume}` : ''}
                     {c?.match_count ? ` · ${c.match_count} знайдено` : ''}
+                  </div>
+                  <div style={{
+                    fontSize: 11, color: '#94A3B8', marginTop: 3,
+                    display: 'flex', alignItems: 'center', gap: 4,
+                  }}>
+                    <span style={{ opacity: 0.6 }}>🔍</span>
+                    <span style={{
+                      fontFamily: 'monospace', background: '#F1F5F9',
+                      padding: '1px 5px', borderRadius: 4,
+                    }}>
+                      {buildSearchQuery(row.name, row.volume)}
+                    </span>
                   </div>
                 </div>
 
