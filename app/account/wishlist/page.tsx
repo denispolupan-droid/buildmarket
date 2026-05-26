@@ -14,7 +14,7 @@ import { Heart } from 'lucide-react';
 export default async function WishlistPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return <GuestWishlistPage />;
+  if (!user) return <><GuestWishlistPage /><Footer /></>;
 
   const { data: rows } = await supabase
     .from('wishlists')

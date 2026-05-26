@@ -6,7 +6,7 @@ import { Heart } from 'lucide-react';
 import { useWishlist } from '../../../lib/wishlist';
 import { getSupabaseBrowser } from '../../../lib/supabase-browser';
 import WishlistCard from './WishlistCard';
-import Footer from '../../components/Footer';
+
 import type { ProductFull } from '../../../lib/supabase';
 
 export default function GuestWishlistPage() {
@@ -36,8 +36,7 @@ export default function GuestWishlistPage() {
   const visible = products.filter(p => skus.has(p.sku));
 
   return (
-    <>
-      <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
+    <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
         <div className="mobile-pad" style={{ maxWidth: '960px', margin: '0 auto', padding: '40px 32px 64px' }}>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '32px' }}>
@@ -110,8 +109,6 @@ export default function GuestWishlistPage() {
           </div>
 
         </div>
-      </div>
-      <Footer />
-    </>
+    </div>
   );
 }
