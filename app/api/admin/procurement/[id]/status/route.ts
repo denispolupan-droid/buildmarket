@@ -45,10 +45,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // Record payment to supplier in money_entries
   if (body.procurement_status === 'paid' && body.payment_amount && po?.supplier_id) {
+    const creditAccount = body.payment_mode === 'cash' ? 'cash' : 'bank';
     await recordTxn({
       debitAccount:  'supplier',
       debitParty:    String(po.supplier_id),
-      creditAccount: 'bank',
+      creditAccount,
       creditParty:   null,
       amount:        body.payment_amount,
       businessDate:  body.payment_date ?? new Date().toISOString().slice(0, 10),

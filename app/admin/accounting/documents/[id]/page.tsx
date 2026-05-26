@@ -180,16 +180,19 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
             </>
           )}
         </div>
-        {(lines ?? []).map((line: { sku: string; qty: number; price: number; cost_price: number; sort_order: number }, idx: number) => {
+        {(lines ?? []).map((line: { sku: string; qty: number; price: number; cost_price: number; sort_order: number; is_bonus?: boolean }, idx: number) => {
           const originalPrice = originalPriceMap.get(line.sku) ?? Number(line.cost_price ?? line.price ?? 0);
           const finalPrice    = finalPriceMap.get(line.sku) ?? Number(line.cost_price ?? line.price ?? 0);
           const lcAdded       = finalPrice - originalPrice;
           return (
-            <div key={idx} style={{ display: 'grid', gridTemplateColumns: hasLandedCost ? '110px minmax(0,1fr) 60px 100px 80px 100px 100px' : '120px minmax(0,1fr) 70px 110px 110px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', columnGap: '16px' }}>
+            <div key={idx} style={{ display: 'grid', gridTemplateColumns: hasLandedCost ? '110px minmax(0,1fr) 60px 100px 80px 100px 100px' : '120px minmax(0,1fr) 70px 110px 110px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', columnGap: '16px', background: line.is_bonus ? '#FFFBEB' : undefined }}>
               <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-muted)' }}>{line.sku}</span>
               <div style={{ overflow: 'hidden', minWidth: 0 }}>
-                <div style={{ fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {nameMap.get(line.sku) || line.sku}
+                  {line.is_bonus && (
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', padding: '1px 6px', borderRadius: '4px', flexShrink: 0 }}>🎁 Бонус</span>
+                  )}
                 </div>
               </div>
               <span style={{ textAlign: 'right', fontSize: '13px' }}>{line.qty} шт</span>

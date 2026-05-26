@@ -2,7 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, Plus } from 'lucide-react';
+import { ArrowRight, Plus, ShoppingCart, PackageCheck } from 'lucide-react';
+import NewReceiptButton from './NewReceiptButton';
 
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
@@ -27,15 +28,30 @@ export default async function ReceiptsPage() {
 
   return (
     <div style={{ padding: '28px 32px', maxWidth: '1200px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Приходи товару</h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>Всі підтверджені приходи на склад</p>
-        </div>
-        <Link href="/admin/accounting/documents/new?type=stock_in"
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '38px', padding: '0 18px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, textDecoration: 'none' }}>
-          <Plus size={15} /> Новий прихід
-        </Link>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Закупівля</h1>
+        <NewReceiptButton />
+      </div>
+
+      {/* Sub-section tabs */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+        {[
+          { href: '/admin/procurement',          label: 'Замовлення постачальнику', icon: ShoppingCart, active: false },
+          { href: '/admin/procurement/receipts', label: 'Приходи товару',           icon: PackageCheck, active: true  },
+        ].map(tab => (
+          <Link key={tab.href} href={tab.href} style={{
+            display: 'inline-flex', alignItems: 'center', gap: '7px',
+            height: '34px', padding: '0 16px', borderRadius: '8px',
+            textDecoration: 'none', fontSize: '13px', fontWeight: tab.active ? 700 : 500,
+            background: tab.active ? '#1E3A5F' : 'var(--bg-card)',
+            color: tab.active ? '#fff' : 'var(--text-secondary)',
+            border: `1px solid ${tab.active ? '#1E3A5F' : 'var(--border)'}`,
+          }}>
+            <tab.icon size={14} />
+            {tab.label}
+          </Link>
+        ))}
       </div>
 
       {/* Stats */}

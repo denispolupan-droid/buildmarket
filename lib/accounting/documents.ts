@@ -57,13 +57,16 @@ export async function createDocument(
       channel_code:     input.channel_code       ?? null,
       tracking_number:  input.tracking_number    ?? null,
       expected_date:    input.expected_date      ?? null,
-      doc_date:         input.doc_date           ?? new Date().toISOString(),
-      notes:            input.notes              ?? null,
-      currency:         input.currency           ?? 'UAH',
-      exchange_rate:    input.exchange_rate      ?? 1,
-      created_by:       input.created_by         ?? null,
-      parent_doc_id:    input.parent_doc_id      ?? null,
-      meta:             input.meta               ?? {},
+      doc_date:                input.doc_date                ?? new Date().toISOString(),
+      notes:                   input.notes                   ?? null,
+      currency:                input.currency                ?? 'UAH',
+      exchange_rate:           input.exchange_rate           ?? 1,
+      created_by:              input.created_by              ?? null,
+      parent_doc_id:           input.parent_doc_id           ?? null,
+      supplier_invoice_number: input.supplier_invoice_number ?? null,
+      supplier_invoice_date:   input.supplier_invoice_date   ?? null,
+      supplier_invoice_amount: input.supplier_invoice_amount ?? null,
+      meta:                    input.meta                    ?? {},
     })
     .select()
     .single();
@@ -75,7 +78,7 @@ export async function createDocument(
     sku:              l.sku,
     qty:              l.qty,
     price:            l.price,
-    cost_price:       l.cost_price      ?? null,
+    cost_price:       l.is_bonus ? 0 : (l.cost_price ?? null),
     warehouse_id:     l.warehouse_id    ?? null,
     fulfillment_type: l.fulfillment_type ?? 'own',
     supplier_id:      l.supplier_id     ?? null,
@@ -85,6 +88,7 @@ export async function createDocument(
     qty_system:       l.qty_system      ?? null,
     exchange_rate:    l.exchange_rate   ?? (input.exchange_rate ?? 1),
     sort_order:       i,
+    is_bonus:         l.is_bonus        ?? false,
     meta:             l.meta            ?? {},
   }));
 
@@ -472,6 +476,7 @@ export async function cancelDocument(
     uom_factor:       l.uom_factor,
     exchange_rate:    l.exchange_rate,
     sort_order:       i,
+    is_bonus:         l.is_bonus ?? false,
     meta:             l.meta ?? {},
   }));
 

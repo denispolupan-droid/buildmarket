@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { FileText, Printer, Mail, X, Loader2, Check, Truck, RefreshCw } from 'lucide-react';
+import Link from 'next/link';
+import { FileText, Printer, Mail, X, Loader2, Check, Truck, RefreshCw, ArrowLeft } from 'lucide-react';
 
 type Order = {
   id: string;
@@ -174,11 +175,17 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
   return (
     <div style={{ padding: '28px 32px', maxWidth: '1100px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Відправлення</h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Управління реєстром Нової Пошти та статусами відправлень
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Link href="/admin" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
+            <ArrowLeft size={16} />
+          </Link>
+          <Truck size={18} color="#1E3A5F" />
+          <div>
+            <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Відправлення</h1>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              Управління реєстром Нової Пошти та статусами відправлень
+            </p>
+          </div>
         </div>
         <button onClick={handleRefresh} disabled={refreshing}
           style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-secondary)' }}>

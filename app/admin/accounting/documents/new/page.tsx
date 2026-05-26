@@ -6,8 +6,8 @@ const db = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-export default async function NewDocumentPage({ searchParams }: { searchParams: Promise<{ type?: string }> }) {
-  const { type: initialType } = await searchParams;
+export default async function NewDocumentPage({ searchParams }: { searchParams: Promise<{ type?: string; from?: string }> }) {
+  const { type: initialType, from: returnTo } = await searchParams;
 
   const [{ data: warehouses }, { data: suppliers }, { data: docTypes }] = await Promise.all([
     db.from('warehouses').select('id, name, warehouse_type').eq('is_active', true).order('sort_order'),
@@ -21,6 +21,7 @@ export default async function NewDocumentPage({ searchParams }: { searchParams: 
       suppliers={suppliers ?? []}
       docTypes={docTypes ?? []}
       initialType={initialType}
+      returnTo={returnTo}
     />
   );
 }

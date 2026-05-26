@@ -6,11 +6,10 @@ import Link from 'next/link';
 
 type ChainData = {
   po: { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; total_cost: number | null; procurement_status: string | null; notes: string | null };
-  children:    { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; total_cost: number | null; notes: string | null; landed_cost_total: number | null }[];
+  children:    { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; total_cost: number | null; notes: string | null }[];
   adjustments: { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; notes: string | null }[];
   adjLines:    { document_id: string; sku: string; qty: number; cost_price: number | null }[];
   payments:    { id: string; txn_id: string; amount: number; business_date: string; description: string | null; account_type: string }[];
-  landedCosts: { id: string; cost_type: string; description: string | null; amount: number; distributed: boolean; document_id: string }[];
   batches:     { id: string; sku: string; initial_qty: number; cost_price: number; received_at: string }[];
   relatedDocs: { id: string; doc_number: string; doc_type: string; doc_date: string; total_amount: number | null; total_cost: number | null }[];
 };
@@ -18,10 +17,6 @@ type ChainData = {
 function fmt(n: number) { return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 }); }
 function fmtDate(s: string) { return new Date(s).toLocaleDateString('uk-UA'); }
 
-const COST_TYPE_LABELS: Record<string, string> = {
-  delivery: '🚚 Доставка', loading: '📦 Навантаж.', customs: '🏛 Мито',
-  packaging: '📦 Пакування', broker: '🏛 Брокер', other: '➕ Інше',
-};
 const ACCOUNT_LABELS: Record<string, string> = {
   bank: '🏦 Банк', cash: '💵 Готівка', acquiring: '💳 Еквайринг',
   logistics: '🚚 Логістика', loading: '📦 Навантаж.', customs: '🏛 Мито', opex: '💼 Витрати',
@@ -90,8 +85,6 @@ export default function DocChain({ poId }: { poId: string }) {
   const totalPaid = data?.payments.filter(p => p.amount < 0 && ['bank','cash','acquiring'].includes(p.account_type))
     .reduce((s, p) => s + Math.abs(p.amount), 0) ?? 0;
 
-  const totalLandedCost = data?.landedCosts.reduce((s, l) => s + l.amount, 0) ?? 0;
-
   return (
     <>
       <button onClick={handleOpen}
@@ -141,7 +134,8 @@ export default function DocChain({ poId }: { poId: string }) {
                   >
                     {/* Payments */}
                     {data.payments.filter(p => ['bank','cash','acquiring'].includes(p.account_type) && p.amount < 0).map(p => (
-                      <TimelineNode key={p.id} icon="💳"
+                      <TimelineNode key={p.id}
+                        icon={p.account_type === 'cash' ? '💵' : p.account_type === 'bank' ? '🏦' : '💳'}
                         title={`Оплата постачальнику`}
                         sub={`${fmtDate(p.business_date)} · ${ACCOUNT_LABELS[p.account_type] ?? p.account_type}`}
                         amount={`−${fmt(Math.abs(p.amount))} ₴`} amountColor="#DC2626"
@@ -150,7 +144,7 @@ export default function DocChain({ poId }: { poId: string }) {
 
                     {/* Expense entries (logistics, etc.) */}
                     {data.payments.filter(p => ['logistics','loading','customs','opex'].includes(p.account_type) && p.amount > 0).map(p => (
-                      <TimelineNode key={p.id} icon={COST_TYPE_LABELS[p.account_type]?.split(' ')[0] ?? '💼'}
+                      <TimelineNode key={p.id} icon={{ logistics: '🚚', loading: '📦', customs: '🏛', opex: '💼' }[p.account_type] ?? '💼'}
                         title={p.description ?? ACCOUNT_LABELS[p.account_type]}
                         sub={fmtDate(p.business_date)}
                         amount={`−${fmt(p.amount)} ₴`} amountColor="#B45309"
@@ -190,16 +184,6 @@ export default function DocChain({ poId }: { poId: string }) {
                         amountColor="#15803D"
                         href={`/admin/procurement/receipts/${child.id}`}
                       >
-                        {/* Landed costs for this receipt */}
-                        {data.landedCosts.filter(l => l.document_id === child.id).map(l => (
-                          <TimelineNode key={l.id}
-                            icon={COST_TYPE_LABELS[l.cost_type]?.split(' ')[0] ?? '💼'}
-                            title={l.description ?? COST_TYPE_LABELS[l.cost_type] ?? l.cost_type}
-                            sub={`Landed cost · розподілено по FIFO`}
-                            amount={`+${fmt(l.amount)} ₴`} amountColor="#7C3AED"
-                          />
-                        ))}
-
                         {/* FIFO batches */}
                         {data.batches.filter(b => b.sku).length > 0 && (
                           <TimelineNode

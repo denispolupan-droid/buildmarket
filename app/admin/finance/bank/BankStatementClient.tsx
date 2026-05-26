@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { Upload, Check, ChevronDown, AlertCircle, Banknote, Zap } from 'lucide-react';
+import Link from 'next/link';
+import { Upload, Check, ChevronDown, AlertCircle, Banknote, Zap, ArrowLeft } from 'lucide-react';
 
 type Contract = {
   id: string;
@@ -230,13 +231,18 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
 
   return (
     <div style={{ padding: '28px 32px', maxWidth: '1100px' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-          Банківська виписка
-        </h1>
-        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-          Завантажте CSV з Monobank Business → система автоматично зіставить платежі до договорів
-        </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+        <Link href="/admin/finance" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
+          <ArrowLeft size={16} />
+        </Link>
+        <div>
+          <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+            Банківська виписка
+          </h1>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px', marginBottom: 0 }}>
+            Завантажте CSV з Monobank Business → система автоматично зіставить платежі до договорів
+          </p>
+        </div>
       </div>
 
       {/* Upload zone */}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, ChevronDown, ChevronUp, Send, Loader2, X, Mail, Trash2, Copy } from 'lucide-react';
 
@@ -27,6 +28,7 @@ type PO = {
 // po_status — деталізована статус-машина (P5)
 const PO_STATUS_CFG: Record<string, { label: string; color: string; bg: string; emoji: string }> = {
   draft:                  { label: 'Чернетка',              color: '#64748B', bg: '#F8FAFC', emoji: '📝' },
+  new:                    { label: 'Проведено',             color: '#1E3A5F', bg: '#EFF4FF', emoji: '🆕' },
   sent:                   { label: 'Відправлено',           color: '#1E3A5F', bg: '#EFF4FF', emoji: '📤' },
   confirmed_by_supplier:  { label: 'Підтверджено постач.',  color: '#7C3AED', bg: '#F5F3FF', emoji: '✅' },
   partially_received:     { label: 'Частково отримано',     color: '#B45309', bg: '#FEF3C7', emoji: '📦' },
@@ -35,15 +37,25 @@ const PO_STATUS_CFG: Record<string, { label: string; color: string; bg: string; 
   cancelled:              { label: 'Скасовано',             color: '#DC2626', bg: '#FEF2F2', emoji: '❌' },
   // legacy procurement_status
   invoiced:               { label: 'Рахунок',               color: '#EA580C', bg: '#FFF7ED', emoji: '🧾' },
-  paid:                   { label: 'Оплачено',              color: '#15803D', bg: '#F0FDF4', emoji: '💳' },
+  paid:                   { label: 'Оплачено',              color: '#15803D', bg: '#F0FDF4', emoji: '✅' },
 };
 const DEFAULT_STATUS = { label: 'Нове', color: '#1E3A5F', bg: '#EFF4FF', emoji: '🆕' };
 
 function fmt(n: number) { return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 }); }
 
+function payIcon(meta?: Record<string, unknown> | null): string {
+  const mode = meta?.payment_mode;
+  if (mode === 'cash')     return '💵';
+  if (mode === 'transfer') return '🏦';
+  if (mode === 'deferred') return '📅';
+  return '✅';
+}
+
 const COLS = '28px 130px 160px 1fr 110px 110px 160px 80px';
 
 export default function ProcurementList({ orders }: { orders: PO[] }) {
+  const router = useRouter();
+
   const [expanded, setExpanded] = useState<Set<string>>(
     orders.length === 1 && orders[0].receipts.length > 0 ? new Set([orders[0].id]) : new Set()
   );
@@ -56,9 +68,14 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
   const [deletingDraft, setDeletingDraft] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<PO | null>(null);
 
-  // Черга підтверджень відправки — обробляємо по одному
+  function openPo(po: PO) {
+    router.push(`/admin/procurement/${po.id}`);
+  }
+
+  // Черга підтверджень відправки — по одному постачальнику
+  // (один запис = всі замовлення одного постачальника → один лист)
   type ContactEntry = { name: string; email: string; note: string };
-  type QueueItem = { po: PO; email: string; contacts: ContactEntry[] };
+  type QueueItem = { pos: PO[]; supplierName: string; email: string; contacts: ContactEntry[] };
   const [sendQueue,       setSendQueue]       = useState<QueueItem[]>([]);
   const [sendQueueResult, setSendQueueResult] = useState<{ ok: number; skipped: number; draftsExcluded?: number } | null>(null);
   const [sendingCurrent,  setSendingCurrent]  = useState(false);
@@ -70,13 +87,21 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
     const draftCount = selected.length - sendable.length;
 
     if (!sendable.length) {
-      alert(`Неможливо відправити: всі вибрані замовлення є чернетками.\nСпочатку проведіть замовлення (натисніть "Провести" в чернетці).`);
+      alert(`Неможливо відправити: всі вибрані замовлення є чернетками.\nСпочатку проведіть замовлення.`);
       return;
     }
 
-    // Завантажуємо contacts для кожного унікального supplier_id
+    // Групуємо по supplier_id
+    const supplierGroups = new Map<number, PO[]>();
+    for (const po of sendable) {
+      const sid = po.supplier_id ?? 0;
+      if (!supplierGroups.has(sid)) supplierGroups.set(sid, []);
+      supplierGroups.get(sid)!.push(po);
+    }
+
+    // Завантажуємо contacts для кожного унікального постачальника
     setLoadingContacts(true);
-    const supplierIds = [...new Set(sendable.map(po => po.supplier_id).filter(Boolean))] as number[];
+    const supplierIds = [...supplierGroups.keys()].filter(Boolean) as number[];
     const contactsMap = new Map<number, ContactEntry[]>();
     await Promise.all(supplierIds.map(async sid => {
       try {
@@ -89,10 +114,11 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
     }));
     setLoadingContacts(false);
 
-    const items = sendable.map(po => {
-      const contacts = contactsMap.get(po.supplier_id ?? 0) ?? [];
-      const email = contacts[0]?.email || po.supplier_email || '';
-      return { po, email, contacts };
+    // Один запис черги на постачальника
+    const items: QueueItem[] = [...supplierGroups.entries()].map(([sid, pos]) => {
+      const contacts = contactsMap.get(sid) ?? [];
+      const email    = contacts[0]?.email || pos[0].supplier_email || '';
+      return { pos, supplierName: pos[0].supplier_name ?? '—', email, contacts };
     });
     setSendQueue(items);
     setSendQueueResult({ ok: 0, skipped: 0, draftsExcluded: draftCount });
@@ -103,9 +129,10 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
     if (!item) return;
     setSendingCurrent(true);
     try {
+      // Всі замовлення цього постачальника — одним викликом → один лист
       await fetch('/api/admin/procurement/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: [item.po.id], overrideEmail: item.email }),
+        body: JSON.stringify({ ids: item.pos.map(po => po.id), overrideEmail: item.email }),
       });
       const remaining = sendQueue.slice(1);
       setSendQueue(remaining);
@@ -261,8 +288,11 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
             {/* PO row */}
             <div style={{ display: 'grid', gridTemplateColumns: COLS, padding: '11px 16px', alignItems: 'center', gap: '8px' }}>
               <input type="checkbox" checked={selected.has(po.id)} onChange={() => toggleSelect(po.id)} style={{ cursor: 'pointer', accentColor: '#4880B8' }} />
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{po.doc_number}</div>
+              <div
+                style={{ cursor: statusKey !== 'draft' ? 'pointer' : 'default' }}
+                onClick={() => statusKey !== 'draft' && openPo(po)}
+              >
+                <div style={{ fontSize: '13px', fontWeight: 700, color: statusKey !== 'draft' ? '#1E3A5F' : 'var(--text-primary)', textDecoration: statusKey !== 'draft' ? 'underline' : 'none', textDecorationStyle: 'dotted', textUnderlineOffset: '2px' }}>{po.doc_number}</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{new Date(po.doc_date).toLocaleDateString('uk-UA')}</div>
               </div>
               <div style={{ fontSize: '13px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -305,7 +335,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                   po.has_receipt ? (
                     po.procurement_status === 'paid' ? (
                       <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', whiteSpace: 'nowrap' }}>
-                        💳 Оплачено
+                        {payIcon(po.meta)} Оплачено
                       </span>
                     ) : po.procurement_status === 'invoiced' ? (
                       <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', whiteSpace: 'nowrap' }}>
@@ -363,10 +393,12 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                     </button>
                   </>
                 ) : (
-                  <Link href={`/admin/procurement/${po.id}`}
-                    style={{ display: 'flex', alignItems: 'center', color: 'var(--text-muted)', textDecoration: 'none', padding: '4px' }}>
+                  <button
+                    onClick={() => openPo(po)}
+                    title="Відкрити замовлення"
+                    style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px' }}>
                     <ArrowRight size={16} />
-                  </Link>
+                  </button>
                 )}
               </div>
             </div>
@@ -437,27 +469,28 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
 
     {/* Черга підтверджень відправки */}
     {sendQueue.length > 0 && (() => {
-      const item = sendQueue[0];
-      const total = (sendQueueResult?.ok ?? 0) + (sendQueueResult?.skipped ?? 0) + sendQueue.length;
+      const item    = sendQueue[0];
+      const total   = (sendQueueResult?.ok ?? 0) + (sendQueueResult?.skipped ?? 0) + sendQueue.length;
       const current = (sendQueueResult?.ok ?? 0) + (sendQueueResult?.skipped ?? 0) + 1;
+      const multiPO = item.pos.length > 1;
       return (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '440px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '460px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
 
-            {/* Прогрес */}
+            {/* Прогрес по постачальниках */}
             {total > 1 && (
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Замовлення {current} з {total}
+                Постачальник {current} з {total}
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
               <div>
-                <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                  Відправити замовлення
+                <h3 style={{ margin: '0 0 3px', fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                  Відправити постачальнику
                 </h3>
-                <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  <strong>{item.po.doc_number}</strong> · {item.po.supplier_name ?? '—'}
+                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  {item.supplierName}
                 </div>
               </div>
               <button onClick={() => { setSendQueue([]); setSendQueueResult(null); }}
@@ -466,7 +499,30 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
               </button>
             </div>
 
-            {/* Контакти — швидкий вибір */}
+            {/* Список замовлень у цьому листі */}
+            <div style={{ marginBottom: '12px', padding: '10px 12px', background: multiPO ? '#EFF4FF' : 'var(--bg-soft)', borderRadius: '8px', border: `1px solid ${multiPO ? '#BFDBFE' : 'var(--border)'}` }}>
+              {multiPO ? (
+                <>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <Send size={11} /> 1 лист · {item.pos.length} замовлення
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                    {item.pos.map(po => (
+                      <span key={po.id} style={{ fontSize: '12px', fontWeight: 600, color: '#1E3A5F', background: '#fff', padding: '2px 8px', borderRadius: '5px', border: '1px solid #BFDBFE' }}>
+                        {po.doc_number}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  Замовлення: <strong>{item.pos[0].doc_number}</strong>
+                  {item.pos[0].total_cost && <span style={{ color: 'var(--text-muted)', marginLeft: '8px' }}>{fmt(Number(item.pos[0].total_cost))} ₴</span>}
+                </div>
+              )}
+            </div>
+
+            {/* Контакти постачальника */}
             {item.contacts.length > 0 && (
               <div style={{ marginBottom: '12px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
@@ -503,7 +559,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
               placeholder="email@supplier.com"
               style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1.5px solid ${item.email ? 'var(--border)' : '#FCA5A5'}`, fontSize: '14px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', outline: 'none', marginBottom: '6px' }}
             />
-            {item.contacts.length === 0 && !item.po.supplier_email && (
+            {item.contacts.length === 0 && !item.pos[0].supplier_email && (
               <div style={{ fontSize: '11px', color: '#B45309', background: '#FEF3C7', padding: '6px 10px', borderRadius: '6px', marginBottom: '4px' }}>
                 ⚠ Контакти не додано — додайте їх у картці постачальника
               </div>
@@ -519,7 +575,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                 disabled={sendingCurrent || !item.email.includes('@')}
                 style={{ flex: 2, height: '40px', borderRadius: '8px', border: 'none', background: item.email.includes('@') ? '#1E3A5F' : '#94A3B8', color: '#fff', cursor: item.email.includes('@') ? 'pointer' : 'not-allowed', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}>
                 {sendingCurrent ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={14} />}
-                {sendQueue.length > 1 ? `Відправити та далі →` : 'Відправити'}
+                {sendQueue.length > 1 ? 'Відправити та далі →' : multiPO ? `Відправити ${item.pos.length} замовлення` : 'Відправити'}
               </button>
             </div>
           </div>
@@ -533,7 +589,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
         <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '360px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', textAlign: 'center' }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>{sendQueueResult.ok > 0 ? '✅' : '⚠️'}</div>
           <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 800 }}>Результат відправки</h3>
-          {sendQueueResult.ok > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: '#15803D' }}>✓ Відправлено: {sendQueueResult.ok}</p>}
+          {sendQueueResult.ok > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: '#15803D' }}>✓ Відправлено постачальникам: {sendQueueResult.ok}</p>}
           {sendQueueResult.skipped > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: '#B45309' }}>→ Пропущено: {sendQueueResult.skipped}</p>}
           {(sendQueueResult.draftsExcluded ?? 0) > 0 && (
             <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748B', background: '#F1F5F9', padding: '6px 10px', borderRadius: '6px' }}>

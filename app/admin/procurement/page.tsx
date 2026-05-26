@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { ShoppingCart, PackageCheck } from 'lucide-react';
 import ProcurementClient from './ProcurementClient';
 import ProcurementList from './ProcurementList';
 
@@ -55,14 +57,30 @@ export default async function ProcurementPage() {
 
   return (
     <div style={{ padding: '28px 32px', maxWidth: '1200px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Закупівля</h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Відкриті замовлення постачальникам — від відправки до оплати
-          </p>
-        </div>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Закупівля</h1>
         <ProcurementClient suppliers={suppliers ?? []} />
+      </div>
+
+      {/* Sub-section tabs */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+        {[
+          { href: '/admin/procurement',          label: 'Замовлення постачальнику', icon: ShoppingCart,  active: true  },
+          { href: '/admin/procurement/receipts', label: 'Приходи товару',           icon: PackageCheck,  active: false },
+        ].map(tab => (
+          <Link key={tab.href} href={tab.href} style={{
+            display: 'inline-flex', alignItems: 'center', gap: '7px',
+            height: '34px', padding: '0 16px', borderRadius: '8px',
+            textDecoration: 'none', fontSize: '13px', fontWeight: tab.active ? 700 : 500,
+            background: tab.active ? '#1E3A5F' : 'var(--bg-card)',
+            color: tab.active ? '#fff' : 'var(--text-secondary)',
+            border: `1px solid ${tab.active ? '#1E3A5F' : 'var(--border)'}`,
+          }}>
+            <tab.icon size={14} />
+            {tab.label}
+          </Link>
+        ))}
       </div>
 
       {/* Stats — 4 однакові картки */}

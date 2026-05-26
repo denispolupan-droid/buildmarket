@@ -66,6 +66,7 @@ type Supplier = {
   markup_drop: number;
   is_active: boolean;
   qty_is_flag: boolean;
+  stock_always_available: boolean;
   email: string | null;
   contacts: ContactEntry[];
   contact_name: string | null;
@@ -90,7 +91,7 @@ const EMPTY: Omit<Supplier, 'id' | 'last_synced_at' | 'last_sync'> = {
   slug: '', name: '', source_url: '', file_format: 'csv',
   sheet_name: null, col_sku: null, col_price: null, col_qty: null, col_name: null,
   sync_interval_h: 24, markup_retail: 22, markup_wholesale: 10,
-  markup_drop: 15, is_active: true, qty_is_flag: false, email: '', contacts: [], contact_name: '', contact_phone: '',
+  markup_drop: 15, is_active: true, qty_is_flag: false, stock_always_available: false, email: '', contacts: [], contact_name: '', contact_phone: '',
   bank_iban: '', bank_name: '', bank_swift: '', legal_name: '', edrpou: '', payment_terms: 0, payment_days: 0, priority: 10, notes: '', brand_discounts: [],
 };
 
@@ -798,10 +799,15 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
           Активний (буде синхронізуватись автоматично)
         </label>
 
-        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '20px', fontSize: '13px', cursor: 'pointer' }}>
+        <label style={{
+          display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '16px',
+          fontSize: '13px', cursor: e.stock_always_available ? 'not-allowed' : 'pointer',
+          opacity: e.stock_always_available ? 0.45 : 1,
+        }}>
           <input
             type="checkbox"
             checked={e.qty_is_flag ?? false}
+            disabled={!!e.stock_always_available}
             onChange={ev => set('qty_is_flag', ev.target.checked)}
             style={{ marginTop: '2px' }}
           />
@@ -810,7 +816,26 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
             <span style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
               Постачальник вказує умовне число (10, 5...) замість реального залишку.
               При синку зберігаємо 0, наявність визначається тільки через статус {'"'}є / немає{'"'}.
-              Замовлення будь-якої кількості не блокується.
+              {e.stock_always_available && <span style={{ color: '#B45309', fontWeight: 600 }}> · Неактуально при увімкненому «Всі позиції — в наявності»</span>}
+            </span>
+          </span>
+        </label>
+
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '20px', fontSize: '13px', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={e.stock_always_available ?? false}
+            onChange={ev => {
+              set('stock_always_available', ev.target.checked);
+              if (ev.target.checked) set('qty_is_flag', false); // знімаємо конфліктну галочку
+            }}
+            style={{ marginTop: '2px' }}
+          />
+          <span>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Всі позиції файлу — в наявності</span>
+            <span style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              Сам факт присутності товару у файлі означає {'"'}є в наявності{'"'}, незалежно від значення у колонці кількості.
+              Якщо постачальник прибирає позицію з прайсу — вона стає {'"'}відсутня{'"'}.
             </span>
           </span>
         </label>

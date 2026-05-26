@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
+import Link from 'next/link';
+import { Search, RefreshCw, TrendingUp, TrendingDown, ArrowLeft } from 'lucide-react';
 
 type Contract = { id: string; contract_number: string; customer_id: string; customer_name: string | null; status: string };
 type TxnRow = {
@@ -47,11 +48,16 @@ export default function SettlementsClient({ contracts, defaultContractId }: { co
 
   return (
     <div style={{ padding: '28px 32px', maxWidth: '1200px' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Взаєморозрахунки</h1>
-        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-          Детальні рухи по договорах: відвантаження, оплати, коригування
-        </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+        <Link href="/admin/finance" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
+          <ArrowLeft size={16} />
+        </Link>
+        <div>
+          <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Взаєморозрахунки</h1>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px', marginBottom: 0 }}>
+            Детальні рухи по договорах: відвантаження, оплати, коригування
+          </p>
+        </div>
       </div>
 
       {/* Filters */}

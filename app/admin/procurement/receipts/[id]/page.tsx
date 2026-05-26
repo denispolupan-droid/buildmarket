@@ -27,7 +27,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
 
   const [{ data: doc }, { data: lines }] = await Promise.all([
     db.from('acc_documents')
-      .select('*, supplier:supplier_id(name), warehouse:warehouse_id(name)')
+      .select('*, supplier:supplier_id(name), warehouse:warehouse_id(name), parent_doc:parent_doc_id(id, doc_number, doc_date, doc_type)')
       .eq('id', id).single(),
     db.from('acc_document_lines')
       .select('*').eq('document_id', id).order('sort_order'),
@@ -67,6 +67,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
 
   const supplierName = (doc.supplier as { name?: string } | null)?.name ?? null;
   const warehouseName= (doc.warehouse as { name?: string } | null)?.name ?? null;
+  const parentDoc    = doc.parent_doc as { id: string; doc_number: string; doc_date: string; doc_type: string } | null;
 
   return (
     <div style={{ padding: '28px 32px' }}>
@@ -109,7 +110,23 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
 
       {doc.notes && (
         <div style={{ padding: '10px 14px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-          {doc.notes}
+          {parentDoc && doc.notes.includes(parentDoc.doc_number) ? (() => {
+            const parts = doc.notes!.split(parentDoc.doc_number);
+            const href  = parentDoc.doc_type === 'purchase_order'
+              ? `/admin/procurement/${parentDoc.id}`
+              : `/admin/accounting/documents/${parentDoc.id}`;
+            const date  = new Date(parentDoc.doc_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            return (
+              <>
+                {parts[0]}
+                <Link href={href} style={{ fontWeight: 700, color: '#1D4ED8', textDecoration: 'underline', textUnderlineOffset: '2px' }}>
+                  {parentDoc.doc_number}
+                </Link>
+                <span style={{ color: 'var(--text-muted)', marginLeft: '6px' }}>· {date}</span>
+                {parts.slice(1).join(parentDoc.doc_number)}
+              </>
+            );
+          })() : doc.notes}
         </div>
       )}
 

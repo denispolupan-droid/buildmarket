@@ -8,7 +8,7 @@ import { getSupabaseBrowser } from '../../../../../lib/supabase-browser';
 type Warehouse = { id: number; name: string; warehouse_type: string };
 type Supplier  = { id: number; name: string };
 type DocType   = { code: string; name: string; direction: string };
-type LineItem  = { sku: string; name: string; qty: number; price: number; cost_price: number };
+type LineItem  = { sku: string; name: string; qty: number; price: number; cost_price: number; is_bonus: boolean };
 
 const inputStyle = {
   height: '36px', padding: '0 10px', borderRadius: '8px', fontSize: '13px',
@@ -18,25 +18,32 @@ const inputStyle = {
 const labelStyle = { fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px', display: 'block' as const };
 
 export default function NewDocumentClient({
-  warehouses, suppliers, docTypes, initialType,
+  warehouses, suppliers, docTypes, initialType, returnTo,
 }: {
   warehouses:  Warehouse[];
   suppliers:   Supplier[];
   docTypes:    DocType[];
   initialType?: string;
+  returnTo?:   string;
 }) {
   const router = useRouter();
 
   const defaultWarehouse = warehouses.find(w => w.warehouse_type === 'physical') ?? warehouses[0];
 
+  const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
   const resolvedInitial = initialType && docTypes.find(t => t.code === initialType) ? initialType : (docTypes[0]?.code ?? 'receipt');
-  const [docType,      setDocType]      = useState(resolvedInitial);
-  const [warehouseId,  setWarehouseId]  = useState(defaultWarehouse?.id ?? 0);
-  const [supplierId,   setSupplierId]   = useState<number | ''>('');
-  const [notes,        setNotes]        = useState('');
-  const [lines,        setLines]        = useState<LineItem[]>([]);
-  const [saving,       setSaving]       = useState(false);
-  const [error,        setError]        = useState<string | null>(null);
+  const [docType,           setDocType]           = useState(resolvedInitial);
+  const [warehouseId,       setWarehouseId]       = useState(defaultWarehouse?.id ?? 0);
+  const [supplierId,        setSupplierId]         = useState<number | ''>('');
+  const [docDate,           setDocDate]           = useState(todayStr);
+  const [supplierInvNum,    setSupplierInvNum]    = useState('');
+  const [supplierInvDate,   setSupplierInvDate]   = useState('');
+  const [supplierInvAmount, setSupplierInvAmount] = useState<number | ''>('');
+  const [notes,             setNotes]             = useState('');
+  const [lines,             setLines]             = useState<LineItem[]>([]);
+  const [saving,            setSaving]            = useState(false);
+  const [error,             setError]             = useState<string | null>(null);
 
   const [prodSearch,   setProdSearch]   = useState('');
   const [prodResults,  setProdResults]  = useState<{sku:string;name:string;brand:string;price:number;cost:number}[]>([]);
@@ -46,7 +53,7 @@ export default function NewDocumentClient({
   const currentType = docTypes.find(t => t.code === docType);
   const isIncoming  = currentType?.direction === 'in'   || currentType?.direction === 'both';
   const isOutgoing  = currentType?.direction === 'out'  || currentType?.direction === 'both';
-  const needsSupplier = ['receipt', 'purchase_order', 'return_out'].includes(docType);
+  const needsSupplier = ['receipt', 'stock_in', 'purchase_order', 'return_out'].includes(docType);
 
   // Product search
   useEffect(() => {
@@ -81,7 +88,7 @@ export default function NewDocumentClient({
     setLines(prev => {
       const existing = prev.find(l => l.sku === p.sku);
       if (existing) return prev.map(l => l.sku === p.sku ? { ...l, qty: l.qty + 1 } : l);
-      return [...prev, { sku: p.sku, name: p.name, qty: 1, price: p.price, cost_price: p.cost }];
+      return [...prev, { sku: p.sku, name: p.name, qty: 1, price: p.price, cost_price: p.cost, is_bonus: false }];
     });
     setProdSearch('');
     setProdOpen(false);
@@ -91,12 +98,20 @@ export default function NewDocumentClient({
     setLines(prev => prev.map(l => l.sku === sku ? { ...l, [field]: value } : l));
   }
 
+  function toggleBonus(sku: string) {
+    setLines(prev => prev.map(l => {
+      if (l.sku !== sku) return l;
+      const nowBonus = !l.is_bonus;
+      return { ...l, is_bonus: nowBonus, cost_price: nowBonus ? 0 : l.cost_price };
+    }));
+  }
+
   function removeLine(sku: string) {
     setLines(prev => prev.filter(l => l.sku !== sku));
   }
 
   const totalAmount = lines.reduce((s, l) => s + l.qty * l.price, 0);
-  const totalCost   = lines.reduce((s, l) => s + l.qty * l.cost_price, 0);
+  const totalCost   = lines.reduce((s, l) => s + l.qty * (l.is_bonus ? 0 : l.cost_price), 0);
   const margin      = totalAmount - totalCost;
 
   async function handleSave(autoConfirm: boolean) {
@@ -111,12 +126,17 @@ export default function NewDocumentClient({
         doc_type:    docType,
         warehouse_id: warehouseId,
         supplier_id:  supplierId || undefined,
+        doc_date:     docDate ? new Date(docDate).toISOString() : undefined,
         notes:        notes || undefined,
+        supplier_invoice_number: supplierInvNum  || undefined,
+        supplier_invoice_date:   supplierInvDate || undefined,
+        supplier_invoice_amount: supplierInvAmount !== '' ? supplierInvAmount : undefined,
         lines: lines.map(l => ({
           sku:        l.sku,
           qty:        l.qty,
           price:      l.price,
-          cost_price: l.cost_price,
+          cost_price: l.is_bonus ? 0 : l.cost_price,
+          is_bonus:   l.is_bonus,
           fulfillment_type: 'own',
         })),
       }),
@@ -139,7 +159,7 @@ export default function NewDocumentClient({
       }
     }
 
-    router.push('/admin/accounting/documents');
+    router.push(returnTo ?? '/admin/accounting/documents');
   }
 
   return (
@@ -147,7 +167,7 @@ export default function NewDocumentClient({
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px' }}>
         <button
-          onClick={() => router.back()}
+          onClick={() => returnTo ? router.push(returnTo) : router.back()}
           style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '13px' }}
         >
           <ChevronLeft size={15} /> Назад
@@ -180,6 +200,17 @@ export default function NewDocumentClient({
           )}
         </div>
 
+        {/* Document date */}
+        <div>
+          <label style={labelStyle}>Дата документу</label>
+          <input
+            type="date"
+            value={docDate}
+            onChange={e => setDocDate(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+
         {/* Warehouse */}
         <div>
           <label style={labelStyle}>Склад</label>
@@ -201,8 +232,44 @@ export default function NewDocumentClient({
           </div>
         )}
 
+        {/* Supplier invoice fields — for incoming procurement docs */}
+        {isIncoming && needsSupplier && (
+          <>
+            <div>
+              <label style={labelStyle}>№ рахунку постачальника</label>
+              <input
+                value={supplierInvNum}
+                onChange={e => setSupplierInvNum(e.target.value)}
+                placeholder="Необов'язково..."
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Дата рахунку</label>
+              <input
+                type="date"
+                value={supplierInvDate}
+                onChange={e => setSupplierInvDate(e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Сума рахунку, ₴</label>
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                value={supplierInvAmount}
+                onChange={e => setSupplierInvAmount(e.target.value ? parseFloat(e.target.value) : '')}
+                placeholder="Необов'язково..."
+                style={inputStyle}
+              />
+            </div>
+          </>
+        )}
+
         {/* Notes */}
-        <div style={{ gridColumn: needsSupplier ? undefined : '1 / -1' }}>
+        <div style={{ gridColumn: '1 / -1' }}>
           <label style={labelStyle}>Примітка</label>
           <input
             value={notes}
@@ -260,7 +327,7 @@ export default function NewDocumentClient({
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', marginBottom: '20px' }}>
           {/* Header */}
           <div style={{
-            display: 'grid', gridTemplateColumns: '1fr 80px 100px 100px 36px',
+            display: 'grid', gridTemplateColumns: isIncoming ? '1fr 80px 100px 100px 36px 36px' : '1fr 80px 100px 100px 36px',
             padding: '8px 14px', background: 'var(--bg-soft)',
             fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)',
             textTransform: 'uppercase', borderBottom: '1px solid var(--border)',
@@ -271,8 +338,9 @@ export default function NewDocumentClient({
               {isIncoming ? 'Ціна закупки' : 'Ціна продажу'}
             </span>
             <span style={{ textAlign: 'right' }}>
-              {isIncoming ? 'Роздрібна' : 'Собівартість'}
+              {isIncoming ? 'Ціна продажу' : 'Собівартість'}
             </span>
+            {isIncoming && <span style={{ textAlign: 'center' }} title="Бонусний товар (собівартість = 0)">🎁</span>}
             <span />
           </div>
 
@@ -280,13 +348,17 @@ export default function NewDocumentClient({
             <div
               key={line.sku}
               style={{
-                display: 'grid', gridTemplateColumns: '1fr 80px 100px 100px 36px',
+                display: 'grid', gridTemplateColumns: isIncoming ? '1fr 80px 100px 100px 36px 36px' : '1fr 80px 100px 100px 36px',
                 padding: '8px 14px', alignItems: 'center',
                 borderBottom: idx < lines.length - 1 ? '1px solid var(--border-light)' : 'none',
+                background: line.is_bonus ? '#FFFBEB' : undefined,
               }}
             >
               <div>
-                <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>{line.name}</div>
+                <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {line.name}
+                  {line.is_bonus && <span style={{ fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', padding: '1px 5px', borderRadius: '4px' }}>Бонус</span>}
+                </div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{line.sku}</div>
               </div>
 
@@ -297,9 +369,11 @@ export default function NewDocumentClient({
               />
 
               <input
-                type="number" min={0} step={0.01} value={isIncoming ? line.cost_price : line.price}
+                type="number" min={0} step={0.01}
+                value={isIncoming ? line.cost_price : line.price}
                 onChange={e => updateLine(line.sku, isIncoming ? 'cost_price' : 'price', parseFloat(e.target.value) || 0)}
-                style={{ ...inputStyle, textAlign: 'right' }}
+                disabled={isIncoming && line.is_bonus}
+                style={{ ...inputStyle, textAlign: 'right', opacity: isIncoming && line.is_bonus ? 0.4 : 1 }}
               />
 
               <input
@@ -307,6 +381,22 @@ export default function NewDocumentClient({
                 onChange={e => updateLine(line.sku, isIncoming ? 'price' : 'cost_price', parseFloat(e.target.value) || 0)}
                 style={{ ...inputStyle, textAlign: 'right' }}
               />
+
+              {isIncoming && (
+                <button
+                  onClick={() => toggleBonus(line.sku)}
+                  title={line.is_bonus ? 'Скасувати бонус' : 'Позначити як бонусний (собівартість = 0)'}
+                  style={{
+                    display: 'flex', justifyContent: 'center', alignItems: 'center',
+                    background: line.is_bonus ? '#FEF3C7' : 'none',
+                    border: line.is_bonus ? '1.5px solid #FCD34D' : '1.5px solid transparent',
+                    borderRadius: '6px', cursor: 'pointer', padding: '4px', fontSize: '14px',
+                    height: '28px', width: '28px',
+                  }}
+                >
+                  🎁
+                </button>
+              )}
 
               <button
                 onClick={() => removeLine(line.sku)}

@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
-import { TrendingUp, TrendingDown, ShoppingBag, Package, FileText, Clock, Landmark } from 'lucide-react';
+import { TrendingUp, TrendingDown, ShoppingBag, Package, FileText, Clock, ArrowLeftRight, CreditCard, BarChart2 } from 'lucide-react';
 import FinanceActions from './FinanceActions';
 
 const db = createClient(
@@ -181,10 +181,12 @@ export default async function FinancePage() {
       {/* Quick links */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '24px' }}>
         {[
-          { href: '/admin/finance/settlements', label: 'Взаєморозрахунки', icon: FileText,     color: '#1E3A5F', bg: '#EFF4FF' },
-          { href: '/admin/finance/aging',       label: 'Старіння боргу',  icon: Clock,        color: '#DC2626', bg: '#FEF2F2' },
-          { href: '/admin/finance/expenses',    label: 'Витрати',          icon: TrendingDown, color: '#B45309', bg: '#FEF3C7' },
-          { href: '/admin/contracts',           label: 'Договори',         icon: FileText,     color: '#15803D', bg: '#F0FDF4' },
+          { href: '/admin/finance/cashflow',    label: 'Рух коштів',     icon: ArrowLeftRight, color: '#1D4ED8', bg: '#EFF6FF' },
+          { href: '/admin/finance/payables',   label: 'Кредиторка',     icon: CreditCard,     color: '#1E3A5F', bg: '#EFF4FF' },
+          { href: '/admin/finance/settlements', label: 'Дебіторка',     icon: FileText,       color: '#7C3AED', bg: '#F5F3FF' },
+          { href: '/admin/finance/aging',       label: 'Старіння боргу', icon: Clock,         color: '#DC2626', bg: '#FEF2F2' },
+          { href: '/admin/finance/expenses',    label: 'Витрати',        icon: TrendingDown,  color: '#B45309', bg: '#FEF3C7' },
+          { href: '/admin/finance/reports',     label: 'Звіти',          icon: BarChart2,     color: '#15803D', bg: '#F0FDF4' },
         ].map(link => {
           const Icon = link.icon;
           return (

@@ -66,6 +66,15 @@ export default function PoDraftManager() {
 
   useEffect(() => { setDrafts(loadDrafts()); setMounted(true); }, []);
 
+  // Мінімізувати всі ЗП, коли Receipt-панель стає активною
+  useEffect(() => {
+    function handler() {
+      setDrafts(prev => prev.map(d => d.minimized ? d : { ...d, minimized: true }));
+    }
+    window.addEventListener('receipt-draft-activated', handler);
+    return () => window.removeEventListener('receipt-draft-activated', handler);
+  }, []);
+
   // Автозгортання при будь-якій навігації поза розділом закупівлі
   useEffect(() => {
     if (!mounted) return;
@@ -122,11 +131,15 @@ export default function PoDraftManager() {
     return () => window.removeEventListener('open-po-draft', handler);
   }, []);
 
-  // Принести карту вгору стеку — лише оновлюємо lastActivated, порядок масиву не міняється
+  // Переключитись на карту — мінімізуємо всі інші ЗП і всі Receipt-панелі
   const bringToFront = useCallback((id: string) => {
     setDrafts(prev => prev.map(d =>
-      d.id === id ? { ...d, minimized: false, lastActivated: Date.now() } : d
+      d.id === id
+        ? { ...d, minimized: false, lastActivated: Date.now() }
+        : { ...d, minimized: true }
     ));
+    // Повідомляємо ReceiptDraftManager — він мінімізує свої панелі
+    window.dispatchEvent(new CustomEvent('po-draft-activated'));
   }, []);
 
   const updateDraft   = useCallback((id: string, data: Partial<PoDraft>) =>
@@ -243,8 +256,8 @@ export default function PoDraftManager() {
           display: 'flex', flexDirection: 'row', alignItems: 'stretch', gap: '2px',
         }}>
           {tabOrder.map(draft => {
-            const isActive    = !draft.minimized && draft.id === topCard?.id;
-            const isOpenStack = !draft.minimized && !isActive;
+            const isActive    = !draft.minimized;
+            const isOpenStack = false;
             const supplierName = draft.suppliers.find(s => s.id === draft.supplierId)?.name ?? '';
             const filledLines  = draft.lines.filter(l => l.sku || l.name).length;
             const total        = draft.lines.reduce((s, l) => s + l.qty * l.cost_price, 0);

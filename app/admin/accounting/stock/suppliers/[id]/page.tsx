@@ -13,29 +13,25 @@ export default async function SupplierStockPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const supplierId = Number(id);
 
-  const [{ data: supplier }, { data: skuMap }, { data: lastSync }] = await Promise.all([
+  const [{ data: supplier }, { data: lastSync }, { data: stock }] = await Promise.all([
     db.from('suppliers').select('id, name, email').eq('id', supplierId).single(),
-    db.from('supplier_sku_map').select('our_sku, supplier_sku').eq('supplier_id', supplierId),
     db.from('supplier_sync_log')
       .select('rows_updated, rows_unmapped, error_message, finished_at')
       .eq('supplier_id', supplierId)
       .order('finished_at', { ascending: false })
       .limit(1)
       .single(),
+    db.from('supplier_stock')
+      .select('sku, supplier_sku, stock_qty, stock_status, price_cost, price_unit, updated_at')
+      .eq('supplier_id', supplierId)
+      .order('stock_status')
+      .order('stock_qty', { ascending: false }),
   ]);
 
   if (!supplier) notFound();
 
-  const ourSkus = (skuMap ?? []).map(r => r.our_sku);
-  const supplierSkuMap = new Map((skuMap ?? []).map(r => [r.our_sku, r.supplier_sku]));
-
-  const { data: stock } = ourSkus.length
-    ? await db.from('product_stock')
-        .select('sku, stock_qty, stock_status, price_cost, price_unit, updated_at')
-        .in('sku', ourSkus)
-        .order('stock_status')
-        .order('stock_qty', { ascending: false })
-    : { data: [] };
+  // supplier_sku доступний прямо в рядку — додатковий join не потрібен
+  const supplierSkuMap = new Map((stock ?? []).map(r => [r.sku, r.supplier_sku]));
 
   const stockSkus = (stock ?? []).map(s => s.sku);
   const { data: products } = stockSkus.length

@@ -432,10 +432,12 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
       }
     }
 
-    const stockStatus = row.stock_qty > 0 ? 'in_stock' : 'out_of_stock';
+    // stock_always_available: сам факт присутності у файлі = в наявності
+    // qty_is_flag: число у файлі умовне — зберігаємо 0, статус береться з qty > 0
+    const stockStatus = supplier.stock_always_available
+      ? 'in_stock'
+      : (row.stock_qty > 0 ? 'in_stock' : 'out_of_stock');
 
-    // qty_is_flag: зберігаємо 0 замість умовного числа (10, 5 тощо)
-    // Реальна наявність визначається через stock_status
     const stockQty = supplier.qty_is_flag ? 0 : row.stock_qty;
 
     const rowTime = new Date().toISOString();

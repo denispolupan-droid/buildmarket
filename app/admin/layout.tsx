@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../lib/supabase-server';
 import AdminSidebar from '../components/admin/AdminSidebar';
 import PoDraftManagerLoader from './PoDraftManagerLoader';
+import ReceiptDraftManagerLoader from './ReceiptDraftManagerLoader';
 import PageTransition from './PageTransition';
 
 const serviceClient = createClient(
@@ -15,25 +16,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.user_metadata?.role !== 'admin') redirect('/');
 
-  const STATUS_KEYS = ['new', 'confirmed', 'shipped', 'delivered', 'cancelled'] as const;
-
-  const [orderResults, { count: chatUnread }] = await Promise.all([
-    Promise.all(
-      STATUS_KEYS.map(s =>
-        serviceClient.from('orders').select('*', { count: 'exact', head: true }).eq('status', s)
-      )
-    ),
+  const [{ count: newOrdersCount }, { count: chatUnread }] = await Promise.all([
+    serviceClient.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'new'),
     serviceClient.from('chat_sessions').select('*', { count: 'exact', head: true }).gt('unread_count', 0),
   ]);
 
-  const statusCounts: Record<string, number> = {};
-  STATUS_KEYS.forEach((s, i) => { statusCounts[s] = orderResults[i].count ?? 0; });
-
   return (
     <div className="admin-layout" style={{ display: 'flex', minHeight: '100vh', background: '#EEF2F7' }}>
-      <AdminSidebar newOrdersCount={statusCounts.new ?? 0} statusCounts={statusCounts} chatUnreadCount={chatUnread ?? 0} />
+      <AdminSidebar newOrdersCount={newOrdersCount ?? 0} chatUnreadCount={chatUnread ?? 0} />
       <PageTransition>{children}</PageTransition>
       <PoDraftManagerLoader />
+      <ReceiptDraftManagerLoader />
     </div>
   );
 }

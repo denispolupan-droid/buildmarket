@@ -66,25 +66,11 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
     redirect('/admin/procurement');
   }
 
-  // Чи є розподілені Landed Costs для дочірніх документів
+  // Прив'язані підтверджені приходи
   const { data: receiptDocs } = await db
     .from('acc_documents').select('id, doc_number')
     .eq('parent_doc_id', id).eq('status', 'confirmed').in('doc_type', ['receipt', 'stock_in']);
-  const receiptIds = (receiptDocs ?? []).map((r: { id: string }) => r.id);
-  const { data: existingLcLines } = receiptIds.length
-    ? await db.from('landed_cost_lines')
-        .select('id, cost_type, description, amount, distributed')
-        .in('document_id', receiptIds)
-    : { data: [] };
-  const lcAlreadyDone = (existingLcLines ?? []).some((l: { distributed: boolean }) => l.distributed);
-
-  // Рахуємо тільки приходи (не коригування!)
-  const { count: receiptCount } = await db
-    .from('acc_documents')
-    .select('*', { count: 'exact', head: true })
-    .eq('parent_doc_id', id)
-    .eq('status', 'confirmed')
-    .in('doc_type', ['receipt', 'stock_in']);
+  const receiptCount = (receiptDocs ?? []).length;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sup = poBase.supplier as any;
@@ -100,11 +86,9 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
       edrpou:       sup.edrpou      ?? null,
       payment_days: sup.payment_days ?? 0,
     } : null,
-    has_receipt:    (receiptCount ?? 0) > 0,
+    has_receipt:    receiptCount > 0,
     receipt_id:     (receiptDocs ?? [])[0]?.id ?? null,
     receipt_doc_number: (receiptDocs ?? [])[0]?.doc_number ?? null,
-    lc_done:        lcAlreadyDone,
-    lc_lines:       existingLcLines ?? [],
     lines: [
       // Оригінальні рядки PO
       ...(lines ?? []).map((l: { sku: string; qty: number; cost_price: number; supplier_id?: number; warehouse_id?: number; id: number }) => ({
@@ -139,7 +123,8 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
     brand:      nameMap.get(l.sku)?.brand ?? '',
   }));
 
-  const isDraft = po.procurement_status === 'draft';
+  const isDraft      = po.procurement_status === 'draft';
+  const isCancelled  = po.status === 'cancelled';
 
   return <ProcurementDetail po={po} chainButton={
     <div style={{ display: 'flex', gap: '8px' }}>
@@ -160,8 +145,8 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
           }))}
         />
       )}
-      {!isDraft && <AdjustmentButton poId={id} lines={poLines} />}
-      {!isDraft && <AdditionalReceiptButton poId={id} supplierName={po.supplier_name} />}
+      {!isDraft && !isCancelled && <AdjustmentButton poId={id} lines={poLines} />}
+      {!isDraft && !isCancelled && <AdditionalReceiptButton poId={id} supplierName={po.supplier_name} />}
       {!isDraft && <DocChain poId={id} />}
     </div>
   } />;

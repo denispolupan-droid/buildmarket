@@ -1,8 +1,9 @@
-﻿import { redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../lib/supabase-server';
 import AdminOrders from './AdminOrders';
 import Link from 'next/link';
+import { Send } from 'lucide-react';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,16 +12,17 @@ const serviceClient = createClient(
 
 const PAGE_SIZE = 50;
 
-const STATUS_LABELS: Record<string, string> = {
-  new:             'Нові',
-  pending_payment: 'Очікує оплати',
-  confirmed:       'Підтверджено',
-  awaiting_stock:  'Очікуємо товар',
-  picking:         'Збирається',
-  shipped:         'Відправлено',
-  delivered:       'Доставлено',
-  cancelled:       'Скасовано',
-};
+const STATUS_TABS = [
+  { value: '',                label: 'Всі' },
+  { value: 'new',             label: 'Нові',            badge: true },
+  { value: 'pending_payment', label: 'Очікує оплати' },
+  { value: 'confirmed',       label: 'Підтверджено' },
+  { value: 'awaiting_stock',  label: 'Очікуємо товар' },
+  { value: 'picking',         label: 'Збирається' },
+  { value: 'shipped',         label: 'Відправлено' },
+  { value: 'delivered',       label: 'Доставлено' },
+  { value: 'cancelled',       label: 'Скасовано' },
+] as const;
 
 export default async function AdminPage({
   searchParams,
@@ -44,49 +46,88 @@ export default async function AdminPage({
 
   if (status) query = query.eq('status', status);
 
-  const { data: orders, count } = await query;
-  const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE);
+  const [{ data: orders, count }, { count: newCount }] = await Promise.all([
+    query,
+    serviceClient.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'new'),
+  ]);
 
-  const { count: newCount } = await serviceClient
-    .from('orders')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'new');
+  const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE);
+  const curStatus = status ?? '';
 
   return (
-    <div style={{ padding: '32px 36px 64px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
-            {status ? STATUS_LABELS[status] ?? status : 'Замовлення'}
-          </h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>Всього: {count ?? 0}</span>
-            {(newCount ?? 0) > 0 && (
-              <span style={{
-                background: '#FEF2F2', color: '#DC2626', fontWeight: 700,
-                fontSize: '11px', padding: '1px 8px', borderRadius: '6px',
-                border: '1px solid #FECACA',
-              }}>
-                Нових: {newCount}
-              </span>
-            )}
-            {totalPages > 1 && (
-              <span style={{ color: 'var(--text-muted)' }}>· Стор. {page} / {totalPages}</span>
-            )}
-          </p>
-        </div>
+    <div style={{ padding: '28px 32px 64px' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+          Замовлення
+        </h1>
         <Link href="/admin/orders/new" style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px',
           height: '36px', padding: '0 18px', borderRadius: '9px',
           background: 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)',
           color: '#fff', textDecoration: 'none',
-          fontSize: '13px', fontWeight: 700, flexShrink: 0,
+          fontSize: '13px', fontWeight: 700,
           boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
         }}>
           + Нове замовлення
         </Link>
       </div>
-      <AdminOrders key={status ?? ''} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} />
+
+      {/* Status tabs + Відправлення */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          {STATUS_TABS.map(tab => {
+            const isActive = curStatus === tab.value;
+            return (
+              <Link
+                key={tab.value}
+                href={tab.value ? `/admin?status=${tab.value}` : '/admin'}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '5px',
+                  height: '32px', padding: '0 14px', borderRadius: '8px',
+                  textDecoration: 'none', fontSize: '13px', fontWeight: isActive ? 700 : 400,
+                  background: isActive ? '#1E3A5F' : 'var(--bg-card)',
+                  color: isActive ? '#fff' : 'var(--text-secondary)',
+                  border: `1px solid ${isActive ? '#1E3A5F' : 'var(--border)'}`,
+                  transition: 'all 0.15s',
+                }}
+              >
+                {tab.label}
+                {'badge' in tab && (newCount ?? 0) > 0 && (
+                  <span style={{
+                    background: isActive ? 'rgba(255,255,255,0.25)' : '#EF4444',
+                    color: '#fff', fontSize: '10px', fontWeight: 700,
+                    borderRadius: '5px', padding: '0 5px', lineHeight: '16px',
+                  }}>
+                    {newCount}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Відправлення — окрема кнопка-посилання */}
+        <Link href="/admin/dispatch" style={{
+          display: 'inline-flex', alignItems: 'center', gap: '6px',
+          height: '32px', padding: '0 14px', borderRadius: '8px',
+          textDecoration: 'none', fontSize: '13px', fontWeight: 500,
+          background: '#EFF6FF', color: '#1D4ED8',
+          border: '1px solid #BFDBFE',
+        }}>
+          <Send size={13} />
+          Відправлення
+        </Link>
+      </div>
+
+      {/* Subtitle */}
+      <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 16px' }}>
+        Всього: {count ?? 0}
+        {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
+      </p>
+
+      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} />
     </div>
   );
 }

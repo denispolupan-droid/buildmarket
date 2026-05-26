@@ -22,7 +22,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   // 2. Дочірні документи (приходи + коригування)
   const { data: allChildren } = await db
     .from('acc_documents')
-    .select('id, doc_number, doc_type, doc_date, status, total_cost, notes, landed_cost_total')
+    .select('id, doc_number, doc_type, doc_date, status, total_cost, notes')
     .eq('parent_doc_id', id);
 
   const children    = (allChildren ?? []).filter(c => ['receipt','stock_in'].includes(c.doc_type));
@@ -46,14 +46,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     .in('account_type', ['supplier', 'bank', 'cash', 'acquiring', 'logistics', 'loading', 'customs', 'opex'])
     .order('created_at');
 
-  // 4. Landed costs для дочірніх документів
-  const { data: landedCosts } = childIds.length
-    ? await db.from('landed_cost_lines')
-        .select('id, cost_type, description, amount, distributed, document_id')
-        .in('document_id', childIds)
-    : { data: [] };
-
-  // 5. FIFO партії для дочірніх документів
+  // 4. FIFO партії для дочірніх документів
   const { data: batches } = childIds.length
     ? await db.from('stock_batches')
         .select('id, sku, initial_qty, cost_price, received_at')
@@ -74,7 +67,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     adjustments: adjustments,
     adjLines:    adjLines ?? [],
     payments:    payments ?? [],
-    landedCosts: landedCosts ?? [],
     batches:     batches ?? [],
     relatedDocs: orderDocs ?? [],
   });

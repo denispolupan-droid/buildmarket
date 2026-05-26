@@ -84,6 +84,7 @@ export type AccDocumentLine = {
   overreceipt_reason: string | null;
   original_qty: number | null;
   adjusted_qty: number | null;
+  is_bonus: boolean;
   meta: Record<string, unknown>;
 };
 
@@ -106,6 +107,7 @@ export type CreateDocumentLineInput = {
   qty_actual?: number;
   qty_system?: number;
   exchange_rate?: number;
+  is_bonus?: boolean;
   meta?: Record<string, unknown>;
 };
 
@@ -125,6 +127,9 @@ export type CreateDocumentInput = {
   currency?: string;
   exchange_rate?: number;
   parent_doc_id?: string;
+  supplier_invoice_number?: string;
+  supplier_invoice_date?: string;
+  supplier_invoice_amount?: number;
   lines: CreateDocumentLineInput[];
   created_by?: string;
   meta?: Record<string, unknown>;
