@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { X, Minus, Loader2, Trash2, Plus, AlertCircle } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { X, Minus, Loader2, Trash2, Plus, AlertCircle, Upload, Search, UserCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import * as XLSX from 'xlsx';
 import NovaPoshtaSelect from '../../components/NovaPoshtaSelect';
 import type { OrderDraft, OrderLine } from '../OrderDraftManager';
 
@@ -42,6 +43,51 @@ const DELIVERY_OPTIONS = [
 
 function fmt(n: number) { return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
+// ── Excel parser ─────────────────────────────────────────────────────────────
+function detectCol(headers: string[], keys: string[]): number {
+  const lowers = headers.map(h => h.toLowerCase().replace(/[\s_\-\.]/g, ''));
+  for (const k of keys) {
+    const idx = lowers.findIndex(h => h.includes(k));
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function parseExcel(buffer: ArrayBuffer): { sku: string; name: string; qty: number; price: number }[] {
+  const wb   = XLSX.read(buffer, { type: 'array' });
+  const ws   = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, defval: '' }) as string[][];
+  if (rows.length < 2) return [];
+  let headerIdx = 0;
+  for (let i = 0; i < Math.min(5, rows.length); i++) {
+    if (rows[i].filter(Boolean).length >= 2) { headerIdx = i; break; }
+  }
+  const headers = rows[headerIdx].map(String);
+  const skuCol   = detectCol(headers, ['sku','код','арт','code','article']);
+  const nameCol  = detectCol(headers, ['назв','name','товар','найменув','опис','description']);
+  const qtyCol   = detectCol(headers, ['кіл','qty','кол','количество','amount','count']);
+  const priceCol = detectCol(headers, ['цін','price','ціна','вартість','cost','прайс']);
+  const result: { sku: string; name: string; qty: number; price: number }[] = [];
+  for (let i = headerIdx + 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row.some(Boolean)) continue;
+    const sku   = skuCol  >= 0 ? String(row[skuCol]  ?? '').trim() : '';
+    const name  = nameCol >= 0 ? String(row[nameCol] ?? '').trim() : '';
+    const qty   = qtyCol  >= 0 ? parseFloat(String(row[qtyCol]).replace(',', '.'))   : 1;
+    const price = priceCol >= 0 ? parseFloat(String(row[priceCol]).replace(',', '.')) : 0;
+    if (!sku && !name) continue;
+    result.push({ sku, name, qty: isNaN(qty) || qty <= 0 ? 1 : qty, price: isNaN(price) ? 0 : price });
+  }
+  return result;
+}
+
+// ── Customer type ─────────────────────────────────────────────────────────────
+type Customer = {
+  id: string; name: string; company: string | null;
+  phone: string | null; email: string | null;
+  type: string; city: string | null;
+};
+
 type Props = {
   initialData:   OrderDraft;
   zIndex?:       number;
@@ -54,8 +100,19 @@ type Props = {
 export default function NewOrderModal({
   initialData, zIndex = 1003, onMinimize, onClose, onDraftChange, onSubmitted,
 }: Props) {
-  const router = useRouter();
+  const router  = useRouter();
+  const fileRef = useRef<HTMLInputElement>(null);
 
+  // ── Customer picker state ────────────────────────────────────────────────
+  const [customerId,       setCustomerId]       = useState<string | null>(initialData.customerId ?? null);
+  const [customerSearch,   setCustomerSearch]   = useState('');
+  const [customerResults,  setCustomerResults]  = useState<Customer[]>([]);
+  const [customerOpen,     setCustomerOpen]     = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const customerRef = useRef<HTMLDivElement>(null);
+  const customerTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // ── Order fields ──────────────────────────────────────────────────────────
   const [contact,          setContact]          = useState(initialData.contact);
   const [phone,            setPhone]            = useState(initialData.phone);
   const [email,            setEmail]            = useState(initialData.email);
@@ -76,33 +133,48 @@ export default function NewOrderModal({
       ? initialData.lines
       : [{ sku: '', name: '', brand: '', qty: 1, price: 0, matched: false }]
   );
-  const [saving, setSaving] = useState(false);
-  const [error,  setError]  = useState('');
 
-  // SKU lookup debounce
+  // ── Excel / processing state ──────────────────────────────────────────────
+  const [dragging, setDragging] = useState(false);
+  const [parsing,  setParsing]  = useState(false);
+  const [saving,   setSaving]   = useState(false);
+  const [error,    setError]    = useState('');
+
+  // ── SKU lookup debounce ───────────────────────────────────────────────────
   const lookupTimers  = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
-  // Name autocomplete
+  // ── Name autocomplete ─────────────────────────────────────────────────────
   const nameTimers    = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const nameInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const [nameSuggestions, setNameSuggestions] = useState<
     Record<number, { sku: string; name: string; brand: string }[]>
   >({});
   const [suggestionAnchor, setSuggestionAnchor] = useState<{
-    idx: number; top: number; left: number; width: number;
+    idx: number; top: number; left: number;
   } | null>(null);
   const [activeDropdownIdx, setActiveDropdownIdx] = useState(-1);
 
-  // Cleanup timers on unmount
+  // Cleanup timers
   useEffect(() => {
     const lt = lookupTimers.current;
     const nt = nameTimers.current;
     return () => {
       Object.values(lt).forEach(clearTimeout);
       Object.values(nt).forEach(clearTimeout);
+      clearTimeout(customerTimer.current);
     };
   }, []);
 
-  // Reset NP fields when delivery type changes
+  // Close customer dropdown on outside click
+  useEffect(() => {
+    function h(e: MouseEvent) {
+      if (customerRef.current && !customerRef.current.contains(e.target as Node))
+        setCustomerOpen(false);
+    }
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  // Reset NP fields when delivery changes
   useEffect(() => {
     setNovaSubtype('');
     setNovaCityRef('');
@@ -111,28 +183,114 @@ export default function NewOrderModal({
     setAddress('');
   }, [delivery]);
 
-  // Sync draft state upward (debounce-free, useEffect handles batching)
+  // Sync draft upward
   useEffect(() => {
     onDraftChange({
-      contact, phone, email, company, channelCode,
+      customerId, contact, phone, email, company, channelCode,
       delivery, novaSubtype, novaCityRef, novaCityName, novaWarehouseRef,
       address, payment, comment, lines,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contact, phone, email, company, channelCode,
+  }, [customerId, contact, phone, email, company, channelCode,
       delivery, novaSubtype, novaCityRef, novaCityName, novaWarehouseRef,
       address, payment, comment, lines]);
 
-  // ── Line helpers ────────────────────────────────────────────────────────────
+  // ── Customer picker ───────────────────────────────────────────────────────
+  function handleCustomerSearch(val: string) {
+    setCustomerSearch(val);
+    clearTimeout(customerTimer.current);
+    if (val.length >= 2) {
+      customerTimer.current = setTimeout(async () => {
+        const res = await fetch(`/api/admin/customers/search?q=${encodeURIComponent(val)}`);
+        if (!res.ok) return;
+        const data: Customer[] = await res.json();
+        setCustomerResults(data);
+        setCustomerOpen(data.length > 0);
+      }, 300);
+    } else {
+      setCustomerResults([]);
+      setCustomerOpen(false);
+    }
+  }
+
+  function selectCustomer(c: Customer) {
+    setCustomerId(c.id);
+    setSelectedCustomer(c);
+    setContact(c.name);
+    setPhone(c.phone ?? '');
+    setEmail(c.email ?? '');
+    setCompany(c.company ?? '');
+    setCustomerSearch('');
+    setCustomerOpen(false);
+  }
+
+  function clearCustomer() {
+    setCustomerId(null);
+    setSelectedCustomer(null);
+    setContact('');
+    setPhone('');
+    setEmail('');
+    setCompany('');
+  }
+
+  // ── Excel upload ──────────────────────────────────────────────────────────
+  async function resolveLines(
+    raw: { sku: string; name: string; qty: number; price: number }[]
+  ): Promise<OrderLine[]> {
+    const skus = raw.map(r => r.sku).filter(Boolean);
+    if (!skus.length) return raw.map(r => ({ sku: '', name: r.name, brand: '', qty: r.qty, price: r.price, matched: false }));
+
+    const res = await fetch('/api/admin/products/search-skus', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ skus }),
+    });
+    if (!res.ok) return raw.map(r => ({ sku: r.sku, name: r.name, brand: '', qty: r.qty, price: r.price, matched: false }));
+
+    const data = await res.json();
+    const byInput = new Map<string, { sku: string; name: string; brand: string; price_cost: number | null; price_unit: number | null; matched: boolean }>();
+    for (const p of (data.products ?? [])) byInput.set(p.input_sku, p);
+
+    return raw.map(r => {
+      const found = byInput.get(r.sku);
+      return {
+        sku:     found?.sku   ?? r.sku,
+        name:    found        ? `${found.brand ?? ''} ${found.name ?? ''}`.trim() : r.name,
+        brand:   found?.brand ?? '',
+        qty:     r.qty,
+        price:   r.price || (found?.price_unit ?? found?.price_cost ?? 0),
+        matched: found?.matched ?? false,
+      };
+    });
+  }
+
+  async function processFile(file: File) {
+    setParsing(true); setError('');
+    try {
+      const buf = await file.arrayBuffer();
+      const raw = parseExcel(buf);
+      if (!raw.length) { setError('Не знайдено рядків у файлі. Перевірте формат.'); return; }
+      const resolved = await resolveLines(raw);
+      setLines(resolved);
+    } catch (e) {
+      setError('Помилка читання файлу: ' + (e instanceof Error ? e.message : String(e)));
+    } finally { setParsing(false); }
+  }
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); setDragging(false);
+    const f = e.dataTransfer.files[0];
+    if (f) processFile(f);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Line helpers ──────────────────────────────────────────────────────────
   function setLineField<K extends keyof OrderLine>(idx: number, key: K, val: OrderLine[K]) {
     setLines(prev => prev.map((l, i) => i === idx ? { ...l, [key]: val } : l));
   }
-
   function addLine() {
     setLines(prev => [...prev, { sku: '', name: '', brand: '', qty: 1, price: 0, matched: false }]);
   }
 
-  // SKU lookup — fills name, brand, price from catalog
   async function lookupSku(idx: number, sku: string) {
     if (!sku.trim()) return;
     const res = await fetch('/api/admin/products/search-skus', {
@@ -144,11 +302,10 @@ export default function NewOrderModal({
     const found = data.products?.[0];
     if (found?.matched) {
       setLines(prev => prev.map((l, i) => i === idx ? {
-        ...l,
-        sku:     found.sku,
-        name:    found.name   ?? l.name,
-        brand:   found.brand  ?? l.brand,
-        price:   found.price_unit ?? found.price_cost ?? l.price,
+        ...l, sku: found.sku,
+        name:  found.name  ?? l.name,
+        brand: found.brand ?? l.brand,
+        price: found.price_unit ?? found.price_cost ?? l.price,
         matched: true,
       } : l));
     } else {
@@ -165,12 +322,11 @@ export default function NewOrderModal({
     }
   }
 
-  // Name autocomplete
   function updateAnchor(idx: number) {
     const el = nameInputRefs.current[idx];
     if (!el) return;
     const r = el.getBoundingClientRect();
-    setSuggestionAnchor({ idx, top: r.top + r.height + 4, left: r.left, width: r.width });
+    setSuggestionAnchor({ idx, top: r.top + r.height + 4, left: r.left });
   }
 
   function handleNameChange(idx: number, val: string) {
@@ -199,18 +355,17 @@ export default function NewOrderModal({
       ? { ...l, sku: s.sku, name: `${s.brand} ${s.name}`.trim(), brand: s.brand, matched: true }
       : l
     ));
-    // Get price from catalog
     await lookupSku(idx, s.sku);
   }
 
-  // ── Computed ─────────────────────────────────────────────────────────────────
+  // ── Computed ──────────────────────────────────────────────────────────────
   const total       = lines.reduce((s, l) => s + l.qty * l.price, 0);
   const filledLines = lines.filter(l => l.sku || l.name).length;
   const warnCount   = lines.filter(l => l.sku && !l.matched && l.sku.length >= 3).length;
 
-  // ── Submit ───────────────────────────────────────────────────────────────────
+  // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubmit() {
-    if (!contact.trim()) { setError('Вкажіть контактну особу'); return; }
+    if (!contact.trim()) { setError('Вкажіть клієнта'); return; }
     if (filledLines === 0) { setError('Додайте хоча б один товар'); return; }
     setSaving(true); setError('');
     try {
@@ -221,13 +376,13 @@ export default function NewOrderModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          customerId: customerId ?? undefined,
           company: company || null,
           contact, phone, email,
           deliveryType:         delivery,
           deliverySubtype:      delivery === 'nova' ? novaSubtype : null,
           deliveryAddress:      delivery === 'nova' && novaSubtype === 'courier'
-                                  ? address
-                                  : delivery === 'kharkiv' ? address : null,
+                                  ? address : delivery === 'kharkiv' ? address : null,
           deliveryCityRef:      delivery === 'nova' ? novaCityRef : null,
           deliveryCityName:     delivery === 'nova' ? novaCityName : null,
           deliveryWarehouseRef: delivery === 'nova' && (novaSubtype === 'warehouse' || novaSubtype === 'postomat')
@@ -257,10 +412,10 @@ export default function NewOrderModal({
     }
   }
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* ── Side panel ─────────────────────────────────────────────────────── */}
+      {/* ── Side panel ───────────────────────────────────────────────────── */}
       <div
         className="order-panel-enter"
         style={{
@@ -290,7 +445,7 @@ export default function NewOrderModal({
             </div>
           </div>
 
-          {/* Body */}
+          {/* Scrollable body */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
             {/* Channel */}
@@ -311,42 +466,133 @@ export default function NewOrderModal({
               </div>
             </div>
 
-            {/* Customer */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px' }}>
-              <div>
-                <label style={lbl}>Контактна особа *</label>
-                <input value={contact} onChange={e => setContact(e.target.value)}
-                  placeholder="Іваненко Петро"
-                  style={{ ...sinp, borderColor: !contact.trim() ? '#FCA5A5' : undefined }} />
+            {/* ── CLIENT SECTION ─────────────────────────────────────────── */}
+            <div style={{ border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label style={{ ...lbl, margin: 0 }}>Клієнт / Контрагент</label>
+                {selectedCustomer && (
+                  <span style={{ fontSize: '11px', background: '#EFF6FF', color: '#1D4ED8', padding: '2px 8px', borderRadius: '5px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <UserCheck size={11} /> З довідника
+                  </span>
+                )}
               </div>
-              <div>
-                <label style={lbl}>Телефон</label>
-                <input value={phone} onChange={e => setPhone(e.target.value)}
-                  placeholder="+380..." style={sinp} />
-              </div>
-              <div>
-                <label style={lbl}>Компанія</label>
-                <input value={company} onChange={e => setCompany(e.target.value)}
-                  placeholder="ТОВ «...»" style={sinp} />
-              </div>
-              <div>
-                <label style={lbl}>Email</label>
-                <input value={email} onChange={e => setEmail(e.target.value)}
-                  placeholder="email@..." style={sinp} />
+
+              {/* Customer search (shows only when no customer selected) */}
+              {!selectedCustomer ? (
+                <div ref={customerRef} style={{ position: 'relative' }}>
+                  <div style={{ position: 'relative' }}>
+                    <Search size={13} color="#94A3B8" style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                    <input
+                      placeholder="Пошук клієнта за ім'ям, компанією, телефоном..."
+                      value={customerSearch}
+                      onChange={e => handleCustomerSearch(e.target.value)}
+                      onFocus={() => customerResults.length > 0 && setCustomerOpen(true)}
+                      style={{ ...sinp, paddingLeft: '30px' }}
+                    />
+                  </div>
+                  {customerOpen && customerResults.length > 0 && (
+                    <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 50, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', maxHeight: '220px', overflowY: 'auto' }}>
+                      {customerResults.map(c => (
+                        <button key={c.id} onMouseDown={() => selectCustomer(c)}
+                          style={{ width: '100%', padding: '9px 12px', background: 'none', border: 'none', borderBottom: '1px solid var(--border-light)', cursor: 'pointer', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.name}</span>
+                            {c.company && <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-soft)', padding: '1px 6px', borderRadius: '4px' }}>{c.company}</span>}
+                            <span style={{ fontSize: '10px', color: c.type === 'wholesale' ? '#7C3AED' : '#64748B', marginLeft: 'auto' }}>{c.type === 'wholesale' ? 'Опт' : 'Роздріб'}</span>
+                          </div>
+                          {(c.phone || c.city) && (
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                              {[c.phone, c.city].filter(Boolean).join(' · ')}
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                    Або заповніть поля нижче вручну — клієнт не збережеться до довідника
+                  </div>
+                </div>
+              ) : (
+                /* Selected customer badge */
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: '#EFF6FF', borderRadius: '8px', border: '1px solid #BFDBFE' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#1E3A5F' }}>{selectedCustomer.name}</div>
+                    <div style={{ fontSize: '11px', color: '#3B82F6' }}>
+                      {[selectedCustomer.company, selectedCustomer.phone, selectedCustomer.city].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
+                  <button onClick={clearCustomer} title="Скинути вибір"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3B82F6', display: 'flex', padding: '3px' }}>
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
+              {/* Contact fields (always editable) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={lbl}>Ім'я *</label>
+                  <input value={contact} onChange={e => setContact(e.target.value)}
+                    placeholder="Іваненко Петро"
+                    style={{ ...sinp, borderColor: !contact.trim() ? '#FCA5A5' : undefined }} />
+                </div>
+                <div>
+                  <label style={lbl}>Телефон</label>
+                  <input value={phone} onChange={e => setPhone(e.target.value)}
+                    placeholder="+380..." style={sinp} />
+                </div>
+                <div>
+                  <label style={lbl}>Компанія</label>
+                  <input value={company} onChange={e => setCompany(e.target.value)}
+                    placeholder="ТОВ «...»" style={sinp} />
+                </div>
+                <div>
+                  <label style={lbl}>Email</label>
+                  <input value={email} onChange={e => setEmail(e.target.value)}
+                    placeholder="email@..." style={sinp} />
+                </div>
               </div>
             </div>
 
-            {/* Items table */}
+            {/* ── EXCEL UPLOAD ───────────────────────────────────────────── */}
+            <div
+              onDragOver={e => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={onDrop}
+              onClick={() => fileRef.current?.click()}
+              style={{
+                border: `2px dashed ${dragging ? '#1E3A5F' : 'var(--border)'}`,
+                borderRadius: '10px', padding: '12px 20px', cursor: 'pointer',
+                background: dragging ? '#EFF4FF' : 'var(--bg-soft)',
+                display: 'flex', alignItems: 'center', gap: '12px',
+                transition: 'all 0.15s',
+              }}
+            >
+              {parsing
+                ? <><Loader2 size={18} color="#1E3A5F" style={{ animation: 'spin 1s linear infinite' }} /><span style={{ fontSize: '13px', color: '#1E3A5F' }}>Читаємо файл...</span></>
+                : <>
+                    <Upload size={18} color={dragging ? '#1E3A5F' : '#94A3B8'} />
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>Завантажити з Excel / CSV</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Перетягніть файл або натисніть · Колонки: Артикул, Назва, К-сть, Ціна</div>
+                    </div>
+                  </>}
+              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) processFile(f); e.target.value = ''; }} />
+            </div>
+
+            {/* ── ITEMS TABLE ────────────────────────────────────────────── */}
             <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
-              {/* Header row */}
+              {/* Table header */}
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: '130px 2fr 70px 120px 110px 32px',
                 padding: '8px 12px',
                 background: 'var(--bg-soft)',
                 borderBottom: '1px solid var(--border)',
-                fontSize: '11px', fontWeight: 700,
-                color: 'var(--text-muted)', textTransform: 'uppercase', gap: '8px',
+                fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)',
+                textTransform: 'uppercase', gap: '8px',
               }}>
                 <span>Артикул</span>
                 <span>Найменування</span>
@@ -357,7 +603,7 @@ export default function NewOrderModal({
               </div>
 
               {/* Rows */}
-              <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+              <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
                 {lines.map((line, idx) => {
                   const rowSum = line.qty * line.price;
                   const warn   = line.sku && !line.matched && line.sku.length >= 3;
@@ -369,8 +615,6 @@ export default function NewOrderModal({
                       borderBottom: '1px solid var(--border-light)',
                       background: warn ? '#FFFBEB' : 'transparent',
                     }}>
-
-                      {/* SKU */}
                       <input
                         style={{ ...inp, fontFamily: 'monospace', fontSize: '11px', borderColor: warn ? '#FCD34D' : undefined }}
                         placeholder="1300-014"
@@ -384,8 +628,6 @@ export default function NewOrderModal({
                           }
                         }}
                       />
-
-                      {/* Name */}
                       <input
                         ref={el => { nameInputRefs.current[idx] = el; }}
                         style={inp}
@@ -405,52 +647,29 @@ export default function NewOrderModal({
                         onKeyDown={e => {
                           const suggs = nameSuggestions[idx] ?? [];
                           if (!suggs.length) return;
-                          if (e.key === 'ArrowDown') {
-                            e.preventDefault();
-                            setActiveDropdownIdx(prev => Math.min(prev + 1, suggs.length - 1));
-                          } else if (e.key === 'ArrowUp') {
-                            e.preventDefault();
-                            setActiveDropdownIdx(prev => Math.max(prev - 1, 0));
-                          } else if (e.key === 'Enter' && activeDropdownIdx >= 0) {
-                            e.preventDefault();
-                            selectNameSuggestion(idx, suggs[activeDropdownIdx]);
-                          } else if (e.key === 'Escape') {
-                            setNameSuggestions(prev => ({ ...prev, [idx]: [] }));
-                            setSuggestionAnchor(null);
-                            setActiveDropdownIdx(-1);
-                          }
+                          if (e.key === 'ArrowDown') { e.preventDefault(); setActiveDropdownIdx(prev => Math.min(prev + 1, suggs.length - 1)); }
+                          else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveDropdownIdx(prev => Math.max(prev - 1, 0)); }
+                          else if (e.key === 'Enter' && activeDropdownIdx >= 0) { e.preventDefault(); selectNameSuggestion(idx, suggs[activeDropdownIdx]); }
+                          else if (e.key === 'Escape') { setNameSuggestions(prev => ({ ...prev, [idx]: [] })); setSuggestionAnchor(null); setActiveDropdownIdx(-1); }
                         }}
                       />
-
-                      {/* Qty */}
-                      <input
-                        style={{ ...inp, textAlign: 'right' }}
-                        type="number" min="1" step="1"
+                      <input style={{ ...inp, textAlign: 'right' }} type="number" min="1" step="1"
                         value={line.qty || ''}
                         onChange={e => { const n = parseInt(e.target.value); setLineField(idx, 'qty', isNaN(n) ? 0 : n); }}
                         onBlur={() => { if (!line.qty || line.qty < 1) setLineField(idx, 'qty', 1); }}
                       />
-
-                      {/* Price */}
                       <div style={{ position: 'relative' }}>
-                        <input
-                          style={{ ...inp, textAlign: 'right', paddingRight: '18px' }}
-                          type="number" min="0" step="0.01"
+                        <input style={{ ...inp, textAlign: 'right', paddingRight: '18px' }} type="number" min="0" step="0.01"
                           value={line.price || ''}
                           placeholder="0.00"
                           onChange={e => setLineField(idx, 'price', parseFloat(e.target.value) || 0)}
                         />
                         <span style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
                       </div>
-
-                      {/* Sum */}
                       <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: rowSum > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>
                         {rowSum > 0 ? `${fmt(rowSum)} ₴` : '—'}
                       </div>
-
-                      {/* Delete */}
-                      <button
-                        onClick={() => setLines(prev => prev.filter((_, i) => i !== idx))}
+                      <button onClick={() => setLines(prev => prev.filter((_, i) => i !== idx))}
                         disabled={lines.length === 1}
                         style={{ background: 'none', border: 'none', cursor: lines.length > 1 ? 'pointer' : 'default', color: lines.length > 1 ? '#EF4444' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                         <Trash2 size={13} />
@@ -460,7 +679,7 @@ export default function NewOrderModal({
                 })}
               </div>
 
-              {/* Table footer: add + total */}
+              {/* Table footer */}
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: '130px 2fr 70px 120px 110px 32px',
@@ -534,7 +753,6 @@ export default function NewOrderModal({
               </div>
             )}
 
-            {/* Kharkiv address */}
             {delivery === 'kharkiv' && (
               <div>
                 <label style={lbl}>Адреса доставки</label>
@@ -546,8 +764,7 @@ export default function NewOrderModal({
             {/* Comment */}
             <div>
               <label style={lbl}>Коментар</label>
-              <textarea
-                value={comment} onChange={e => setComment(e.target.value)}
+              <textarea value={comment} onChange={e => setComment(e.target.value)}
                 placeholder="Додаткові примітки..."
                 style={{
                   width: '100%', padding: '8px 10px',
@@ -555,8 +772,7 @@ export default function NewOrderModal({
                   fontSize: '13px', outline: 'none', boxSizing: 'border-box',
                   resize: 'vertical', minHeight: '56px',
                   background: 'var(--bg-soft)', color: 'var(--text-primary)',
-                }}
-              />
+                }} />
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                 ⛔ Мітка «не передзвонювати» додається автоматично для всіх ручних замовлень
               </div>
@@ -573,22 +789,20 @@ export default function NewOrderModal({
           <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
               {filledLines} позицій · {fmt(total)} ₴
+              {customerId && <span style={{ marginLeft: '8px', color: '#3B82F6' }}>· 🔗 Контрагент прив'язаний</span>}
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={onClose} disabled={saving}
                 style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
                 Скасувати
               </button>
-              <button
-                onClick={handleSubmit}
-                disabled={saving || !contact.trim()}
+              <button onClick={handleSubmit} disabled={saving || !contact.trim()}
                 style={{
                   height: '38px', padding: '0 22px', borderRadius: '8px', border: 'none',
                   background: saving || !contact.trim() ? '#94A3B8' : '#1E3A5F',
                   color: '#fff', fontSize: '13px', fontWeight: 700,
                   cursor: saving ? 'wait' : !contact.trim() ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                  opacity: saving ? 0.7 : 1,
+                  display: 'flex', alignItems: 'center', gap: '8px', opacity: saving ? 0.7 : 1,
                 }}>
                 {saving
                   ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Збереження...</>
@@ -596,11 +810,10 @@ export default function NewOrderModal({
               </button>
             </div>
           </div>
-
         </div>
       </div>
 
-      {/* ── Name suggestions dropdown (fixed positioning) ────────────────────── */}
+      {/* ── Name suggestions dropdown ──────────────────────────────────── */}
       {suggestionAnchor && (nameSuggestions[suggestionAnchor.idx]?.length ?? 0) > 0 && (() => {
         const dropW = 500;
         const left  = Math.min(suggestionAnchor.left, window.innerWidth - dropW - 12);

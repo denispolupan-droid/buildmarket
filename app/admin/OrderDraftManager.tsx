@@ -20,6 +20,7 @@ export interface OrderLine {
 
 export interface OrderDraft {
   id:               string;
+  customerId:       string | null;  // FK → customers.id
   contact:          string;
   phone:            string;
   email:            string;
@@ -110,6 +111,7 @@ export default function OrderDraftManager() {
       const now = Date.now();
       const draft: OrderDraft = {
         id:               `order_${now}`,
+        customerId:       null,
         contact:          '',
         phone:            '',
         email:            '',
