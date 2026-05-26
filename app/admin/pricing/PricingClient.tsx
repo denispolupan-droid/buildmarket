@@ -156,6 +156,7 @@ function ResultsDrawer({ results }: { results: MarketPrice[] }) {
 
 export default function PricingClient({ rows }: Props) {
   const [filter, setFilter]           = useState<Filter>('all');
+  const [sortByDemand, setSortByDemand] = useState(false);
   const [checks, setChecks]           = useState<Record<string, CheckData>>(() => {
     const m: Record<string, CheckData> = {};
     for (const r of rows) if (r.check) m[r.sku] = r.check;
@@ -195,13 +196,19 @@ export default function PricingClient({ rows }: Props) {
     setBatchProgress(null);
   }, [rows, checkOne]);
 
-  /* computed rows after filter */
+  /* computed rows after filter + optional sort by demand */
   const visibleRows = useMemo(() => {
-    return rows.filter(r => {
+    const filtered = rows.filter(r => {
       const status = checks[r.sku]?.status ?? r.check?.status ?? 'not_checked';
       return filter === 'all' || status === filter;
     });
-  }, [rows, checks, filter]);
+    if (!sortByDemand) return filtered;
+    return [...filtered].sort((a, b) => {
+      const ca = checks[a.sku]?.match_count ?? a.check?.match_count ?? 0;
+      const cb = checks[b.sku]?.match_count ?? b.check?.match_count ?? 0;
+      return cb - ca;
+    });
+  }, [rows, checks, filter, sortByDemand]);
 
   /* stats */
   const stats = useMemo(() => {
@@ -308,7 +315,18 @@ export default function PricingClient({ rows }: Props) {
           <span style={{ textAlign: 'right' }}>Роздріб</span>
           <span style={{ textAlign: 'right' }}>Опт</span>
           <span style={{ textAlign: 'right' }}>Мін. ринку</span>
-          <span style={{ textAlign: 'right' }}>Prom / Epicentr</span>
+          <button
+            onClick={() => setSortByDemand(v => !v)}
+            style={{
+              textAlign: 'center', background: 'none', border: 'none', padding: 0,
+              cursor: 'pointer', fontWeight: 700, fontSize: 12, color: sortByDemand ? '#F59E0B' : '#6B7280',
+              textTransform: 'uppercase', letterSpacing: '0.05em',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+            }}
+            title="Сортувати за попитом"
+          >
+            Попит {sortByDemand ? '▼' : '↕'}
+          </button>
           <span style={{ textAlign: 'right' }}>Delta</span>
           <span style={{ textAlign: 'center' }}>Статус</span>
           <span style={{ textAlign: 'center' }}>Перевірено</span>
@@ -347,7 +365,6 @@ export default function PricingClient({ rows }: Props) {
                   </div>
                   <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
                     {row.sku}{row.volume ? ` · ${row.volume}` : ''}
-                    {c?.match_count ? ` · ${c.match_count} знайдено` : ''}
                   </div>
                   <div style={{
                     fontSize: 11, color: '#94A3B8', marginTop: 3,
@@ -373,7 +390,29 @@ export default function PricingClient({ rows }: Props) {
                 <span style={{ textAlign: 'right', fontWeight: 700, fontSize: 13, color: '#1E3A5F' }}>{fmt(row.our_price_retail)}</span>
                 <span style={{ textAlign: 'right', fontWeight: 600, fontSize: 13, color: '#374151' }}>{fmt(row.our_price)}</span>
                 <span style={{ textAlign: 'right', color: '#374151', fontSize: 13 }}>{fmt(c?.market_min ?? null)}</span>
-                <span style={{ textAlign: 'right', color: '#374151', fontSize: 13 }}>{fmt(c?.prom_min ?? null)}</span>
+
+                {/* Demand badge */}
+                {(() => {
+                  const n = c?.match_count ?? 0;
+                  if (!c) return <span style={{ textAlign: 'center', color: '#D1D5DB', fontSize: 13 }}>—</span>;
+                  const [emoji, label, color, bg] =
+                    n >= 8 ? ['🔥', 'Хіт',    '#B45309', '#FEF3C7'] :
+                    n >= 4 ? ['📈', 'Добре',   '#0369A1', '#E0F2FE'] :
+                    n >= 1 ? ['📦', 'Є',       '#6B7280', '#F3F4F6'] :
+                             ['💤', 'Мало',    '#9CA3AF', '#F9FAFB'];
+                  return (
+                    <div style={{ textAlign: 'center' }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 3,
+                        padding: '2px 7px', borderRadius: 12,
+                        fontSize: 11, fontWeight: 700, color, background: bg,
+                      }} title={`${n} продавців знайдено`}>
+                        {emoji} {label}
+                        {n > 0 && <span style={{ opacity: 0.7, fontWeight: 400 }}>·{n}</span>}
+                      </span>
+                    </div>
+                  );
+                })()}
 
                 {/* Delta */}
                 <span style={{
