@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import PartnersClient from './PartnersClient';
 
@@ -20,10 +21,12 @@ export default async function PartnersPage() {
 
   return (
     <div style={{ padding: '28px 32px 64px', maxWidth: '1400px' }}>
-      <PartnersClient
-        customers={customers ?? []}
-        pendingPayouts={payouts ?? []}
-      />
+      <Suspense>
+        <PartnersClient
+          customers={customers ?? []}
+          pendingPayouts={payouts ?? []}
+        />
+      </Suspense>
     </div>
   );
 }

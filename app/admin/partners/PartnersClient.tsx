@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Wallet, CheckCircle, XCircle, Plus, ChevronDown, ChevronUp,
   Users, ShoppingBag, TrendingUp, X, Edit2, Save,
@@ -74,6 +75,23 @@ export default function PartnersClient({
 
   // Edit form state
   const [editForm, setEditForm] = useState<Partial<Customer>>({});
+
+  // ── Auto-expand customer from URL ?open=<id> ───────────────────────────────
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const openId = searchParams.get('open');
+    if (!openId) return;
+    setExpandedId(openId);
+    // Switch tab to show this customer's type
+    const customer = initialCustomers.find(c => c.id === openId);
+    if (customer) setTab(customer.type);
+    // Scroll to the row after render
+    setTimeout(() => {
+      const el = document.getElementById(`partner-row-${openId}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 200);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Filtered list ──────────────────────────────────────────────────────────
   const filtered = tab ? customers.filter(c => c.type === tab) : customers;
@@ -277,7 +295,7 @@ export default function PartnersClient({
             const hasBalance  = isPartnerType(c.type);
 
             return (
-              <div key={c.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
+              <div key={c.id} id={`partner-row-${c.id}`} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
                 {/* Main row */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px 90px 90px 90px 36px', padding: '12px 20px', alignItems: 'center', gap: '8px' }}>
                   {/* Name + contact */}

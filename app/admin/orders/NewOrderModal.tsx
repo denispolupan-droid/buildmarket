@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Minus, Loader2, Trash2, Plus, AlertCircle, Upload, Search, UserCheck } from 'lucide-react';
+import { X, Minus, Loader2, Trash2, Plus, AlertCircle, Upload, Search, UserCheck, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import NovaPoshtaSelect from '../../components/NovaPoshtaSelect';
@@ -446,7 +446,7 @@ export default function NewOrderModal({
           </div>
 
           {/* Scrollable body */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
             {/* Channel */}
             <div>
@@ -470,11 +470,23 @@ export default function NewOrderModal({
             <div style={{ border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <label style={{ ...lbl, margin: 0 }}>Клієнт / Контрагент</label>
-                {selectedCustomer && (
-                  <span style={{ fontSize: '11px', background: '#EFF6FF', color: '#1D4ED8', padding: '2px 8px', borderRadius: '5px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <UserCheck size={11} /> З довідника
-                  </span>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {selectedCustomer && (
+                    <span style={{ fontSize: '11px', background: '#EFF6FF', color: '#1D4ED8', padding: '2px 8px', borderRadius: '5px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <UserCheck size={11} /> З довідника
+                    </span>
+                  )}
+                  <a
+                    href={selectedCustomer ? `/admin/partners?open=${selectedCustomer.id}` : '/admin/partners'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Відкрити довідник контрагентів"
+                    style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#3B82F6', textDecoration: 'none', padding: '2px 6px', borderRadius: '5px', border: '1px solid #BFDBFE', background: '#EFF6FF', fontWeight: 600 }}
+                  >
+                    <ExternalLink size={10} />
+                    Довідник
+                  </a>
+                </div>
               </div>
 
               {/* Customer search (shows only when no customer selected) */}
@@ -583,7 +595,7 @@ export default function NewOrderModal({
             </div>
 
             {/* ── ITEMS TABLE ────────────────────────────────────────────── */}
-            <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: '10px' }}>
               {/* Table header */}
               <div style={{
                 display: 'grid',
