@@ -247,6 +247,15 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ overrideEmail: item.email || undefined, comment: item.comment || undefined }),
       });
+      // Update order status → 'picking' (збирається)
+      const statusRes = await fetch(`/api/admin/orders/${item.orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'picking' }),
+      });
+      if (statusRes.ok) {
+        setOrders(prev => prev.map(o => o.id === item.orderId ? { ...o, status: 'picking' } : o));
+      }
       setSupplierQueueDone(true);
       setTimeout(() => advanceSupplierQueue(), 1400);
     } catch {
@@ -1453,18 +1462,24 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
 
                   {/* Email */}
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '5px' }}>Email *</label>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '5px' }}>
+                      Email постачальника
+                    </label>
                     <input
+                      // eslint-disable-next-line jsx-a11y/no-autofocus
+                      autoFocus
                       type="email"
                       value={item.email}
                       onChange={e => setSupplierQueue(prev => prev
                         ? prev.map((it, i) => i === supplierQueueIdx ? { ...it, email: e.target.value } : it)
                         : prev)}
-                      placeholder="supplier@example.com"
-                      style={{ width: '100%', height: '38px', padding: '0 12px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+                      placeholder="Введіть email вручну..."
+                      style={{ width: '100%', height: '38px', padding: '0 12px', border: `1.5px solid ${item.email ? 'var(--border)' : '#FCD34D'}`, borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
                     />
                     {!item.email && (
-                      <div style={{ fontSize: '11px', color: '#B45309', marginTop: '4px' }}>⚠ Email не знайдено у картці постачальника</div>
+                      <div style={{ fontSize: '11px', color: '#B45309', marginTop: '4px' }}>
+                        ⚠ Email не знайдено в картці постачальника — введіть вручну
+                      </div>
                     )}
                   </div>
 
@@ -1495,7 +1510,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                   <button
                     onClick={sendCurrentSupplier}
                     disabled={supplierQueueSending || !item.email.trim()}
-                    style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: !item.email.trim() ? 'default' : 'pointer', opacity: (!item.email.trim() || supplierQueueSending) ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: item.email.trim() ? 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)' : '#94A3B8', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: (!item.email.trim() || supplierQueueSending) ? 'default' : 'pointer', opacity: supplierQueueSending ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     {supplierQueueSending ? '⏳ Відправлення...' : `📧 Відправити${total > 1 ? ` (${idx + 1}/${total})` : ''}`}
                   </button>
                 </div>
