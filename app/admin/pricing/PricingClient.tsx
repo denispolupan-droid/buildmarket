@@ -128,18 +128,23 @@ function ResultsDrawer({ results }: { results: MarketPrice[] }) {
            : r.source === 'epicentr' ? 'Epicentr'
            : 'Prom.ua'}
           </span>
-          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <a
+            href={r.url} target="_blank" rel="noreferrer"
+            style={{
+              flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              color: '#111', textDecoration: 'none', fontWeight: 500,
+            }}
+            title={r.url}
+          >
             {r.title}
-          </span>
+          </a>
           <span style={{ fontWeight: 700, color: '#111', whiteSpace: 'nowrap' }}>
             {r.price.toLocaleString('uk-UA')} ₴
           </span>
           <span style={{ fontSize: 11, color: '#9CA3AF' }}>
             {Math.round(r.confidence * 100)}% збіг
           </span>
-          <a href={r.url} target="_blank" rel="noreferrer" style={{ color: '#6B7280' }}>
-            <ExternalLink size={14} />
-          </a>
+          <ExternalLink size={14} style={{ color: '#9CA3AF', flexShrink: 0 }} />
         </div>
       ))}
     </div>
@@ -347,12 +352,18 @@ export default function PricingClient({ rows }: Props) {
                     display: 'flex', alignItems: 'center', gap: 4,
                   }}>
                     <span style={{ opacity: 0.6 }}>🔍</span>
-                    <span style={{
-                      fontFamily: 'monospace', background: '#F1F5F9',
-                      padding: '1px 5px', borderRadius: 4,
-                    }}>
+                    <a
+                      href={`https://prom.ua/ua/search?search_term=${encodeURIComponent(buildSearchQuery(row.name, row.volume))}`}
+                      target="_blank" rel="noreferrer"
+                      style={{
+                        fontFamily: 'monospace', background: '#F1F5F9',
+                        padding: '1px 5px', borderRadius: 4,
+                        color: '#64748B', textDecoration: 'none',
+                      }}
+                      title="Пошук на Prom.ua"
+                    >
                       {buildSearchQuery(row.name, row.volume)}
-                    </span>
+                    </a>
                   </div>
                 </div>
 
