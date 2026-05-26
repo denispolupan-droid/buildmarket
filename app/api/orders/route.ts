@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   const admin  = createSupabaseAdmin();
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;
   const FROM    = 'FIXLINE <noreply@fixline.com.ua>';
-  const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'denis.polupan@gmail.com';
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'orders@fixline.com.ua';
 
   // ── Card payment: save draft, create Monobank invoice, DO NOT insert into orders ──
   if (paymentType === 'card') {

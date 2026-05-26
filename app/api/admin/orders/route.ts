@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
 
   const siteUrl     = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;
   const FROM        = 'FIXLINE <noreply@fixline.com.ua>';
-  const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'denis.polupan@gmail.com';
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'orders@fixline.com.ua';
 
   notifyAdminNewOrder({
     order_number:       data.order_number,

@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   const amountUah = amount / 100;
   const siteUrl    = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua';
   const FROM       = 'FIXLINE <noreply@fixline.com.ua>';
-  const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'denis.polupan@gmail.com';
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'orders@fixline.com.ua';
 
   // ── Поповнення балансу партнера ─────────────────────────────────────────
   const topupMatch = reference?.match(/^topup_([a-f0-9-]+)_\d+$/);
