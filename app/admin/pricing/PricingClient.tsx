@@ -10,14 +10,15 @@ import {
 /* ── Search query (mirrors lib/price-checker — can't import server lib) ─ */
 function buildSearchQuery(name: string, volume?: string | null): string {
   const shortName = name.split('—')[0].trim();
-  const q = volume ? `${shortName} ${volume}` : shortName;
+  const cleaned   = shortName.replace(/\([^)]{0,20}\)/g, '').trim();
+  const q = volume ? `${cleaned} ${volume}` : cleaned;
   return q.replace(/\s+/g, ' ').trim();
 }
 
 /* ── Types ────────────────────────────────────────────────────────────── */
 
 interface MarketPrice {
-  source:     'rozetka' | 'prom';
+  source:     'rozetka' | 'prom' | 'epicentr';
   title:      string;
   price:      number;
   url:        string;
@@ -116,10 +117,16 @@ function ResultsDrawer({ results }: { results: MarketPrice[] }) {
         }}>
           <span style={{
             padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 700,
-            background: r.source === 'rozetka' ? '#EEF2FF' : '#FFF7ED',
-            color:      r.source === 'rozetka' ? '#4338CA' : '#C2410C',
+            background: r.source === 'rozetka' ? '#EEF2FF'
+                      : r.source === 'epicentr' ? '#F0FDF4'
+                      : '#FFF7ED',
+            color:      r.source === 'rozetka' ? '#4338CA'
+                      : r.source === 'epicentr' ? '#15803D'
+                      : '#C2410C',
           }}>
-            {r.source === 'rozetka' ? 'Rozetka' : 'Prom.ua'}
+            {r.source === 'rozetka' ? 'Rozetka'
+           : r.source === 'epicentr' ? 'Epicentr'
+           : 'Prom.ua'}
           </span>
           <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {r.title}
@@ -210,7 +217,7 @@ export default function PricingClient({ rows }: Props) {
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Аналіз цін</h1>
           <p style={{ margin: '4px 0 0', color: '#6B7280', fontSize: 14 }}>
-            Порівняння ваших цін з Rozetka та Prom.ua
+            Порівняння ваших цін з Prom.ua та Epicentr
           </p>
         </div>
         <button
@@ -293,8 +300,8 @@ export default function PricingClient({ rows }: Props) {
         }}>
           <span>Товар</span>
           <span style={{ textAlign: 'right' }}>Наша ціна</span>
-          <span style={{ textAlign: 'right' }}>Rozetka</span>
-          <span style={{ textAlign: 'right' }}>Prom.ua</span>
+          <span style={{ textAlign: 'right' }}>Мін. ринку</span>
+          <span style={{ textAlign: 'right' }}>Prom / Epicentr</span>
           <span style={{ textAlign: 'right' }}>Delta</span>
           <span style={{ textAlign: 'center' }}>Статус</span>
           <span style={{ textAlign: 'center' }}>Перевірено</span>
@@ -351,7 +358,7 @@ export default function PricingClient({ rows }: Props) {
 
                 {/* Prices */}
                 <span style={{ textAlign: 'right', fontWeight: 600, fontSize: 14 }}>{fmt(row.our_price)}</span>
-                <span style={{ textAlign: 'right', color: '#374151', fontSize: 13 }}>{fmt(c?.rozetka_min ?? null)}</span>
+                <span style={{ textAlign: 'right', color: '#374151', fontSize: 13 }}>{fmt(c?.market_min ?? null)}</span>
                 <span style={{ textAlign: 'right', color: '#374151', fontSize: 13 }}>{fmt(c?.prom_min ?? null)}</span>
 
                 {/* Delta */}
