@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Minus, Loader2, Trash2, Plus, AlertCircle, Upload, Search, UserCheck, Users } from 'lucide-react';
+import {
+  X, Minus, Loader2, Trash2, Plus, AlertCircle, Upload, Search, UserCheck, Users,
+  Printer, ChevronDown, CheckSquare, Package, Send, Warehouse, RefreshCw, Info,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import NovaPoshtaSelect from '../../components/NovaPoshtaSelect';
@@ -141,6 +144,27 @@ export default function NewOrderModal({
       : [{ sku: '', name: '', brand: '', qty: 1, price: 0, matched: false }]
   );
 
+  // ── Saved order state ─────────────────────────────────────────────────────
+  const [createdOrderId,     setCreatedOrderId]     = useState<string | null>(null);
+  const [createdOrderNumber, setCreatedOrderNumber] = useState<number | null>(null);
+
+  // ── Action menu (split-button dropdown) ───────────────────────────────────
+  const [actionMenu,  setActionMenu]  = useState(false);
+  const [actionBusy,  setActionBusy]  = useState(false);
+  const actionMenuRef = useRef<HTMLDivElement>(null);
+
+  // ── PO selection modal ────────────────────────────────────────────────────
+  type PoModalState = { allItems: OrderLine[]; missingItems: OrderLine[]; hasOwn: boolean; orderId: string };
+  const [poModal, setPoModal] = useState<PoModalState | null>(null);
+
+  // ── Supplier send modal ───────────────────────────────────────────────────
+  type SupplierModalState = { orderId: string; supplierName: string; emailOverride: string; comment: string; sending: boolean };
+  const [supplierModal, setSupplierModal] = useState<SupplierModalState | null>(null);
+
+  // ── Result modal ──────────────────────────────────────────────────────────
+  type ResultModalState = { title: string; message: string; orderId?: string; orderNumber?: number; insufficient?: { sku: string; requested: number; available: number }[] };
+  const [resultModal, setResultModal] = useState<ResultModalState | null>(null);
+
   // ── Excel / processing state ──────────────────────────────────────────────
   const [dragging, setDragging] = useState(false);
   const [parsing,  setParsing]  = useState(false);
@@ -177,6 +201,16 @@ export default function NewOrderModal({
     function h(e: MouseEvent) {
       if (customerRef.current && !customerRef.current.contains(e.target as Node))
         setCustomerOpen(false);
+    }
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  // Close action menu on outside click
+  useEffect(() => {
+    function h(e: MouseEvent) {
+      if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node))
+        setActionMenu(false);
     }
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
@@ -404,53 +438,205 @@ export default function NewOrderModal({
   const filledLines = lines.filter(l => l.sku || l.name).length;
   const warnCount   = lines.filter(l => l.sku && !l.matched && l.sku.length >= 3).length;
 
-  // ── Submit ────────────────────────────────────────────────────────────────
-  async function handleSubmit() {
-    if (!contact.trim()) { setError('Вкажіть клієнта'); return; }
-    if (filledLines === 0) { setError('Додайте хоча б один товар'); return; }
-    setSaving(true); setError('');
-    try {
-      const validLines = lines.filter(l => l.name.trim() || l.sku.trim());
-      const fullComment = ['⛔ Не передзвонювати для підтвердження', comment].filter(Boolean).join('\n');
+  // ── Actions ────────────────────────────────────────────────────────────────
 
+  function buildPayload() {
+    const validLines = lines.filter(l => l.name.trim() || l.sku.trim());
+    const fullComment = ['⛔ Не передзвонювати для підтвердження', comment].filter(Boolean).join('\n');
+    return {
+      customerId: customerId ?? undefined,
+      company: company || null, contact, phone, email,
+      deliveryType:         delivery,
+      deliverySubtype:      delivery === 'nova' ? novaSubtype : null,
+      deliveryAddress:      delivery === 'nova' && novaSubtype === 'courier' ? address
+                            : delivery === 'kharkiv' ? address : null,
+      deliveryCityRef:      delivery === 'nova' ? novaCityRef    : null,
+      deliveryCityName:     delivery === 'nova' ? novaCityName   : null,
+      deliveryWarehouseRef: delivery === 'nova' && (novaSubtype === 'warehouse' || novaSubtype === 'postomat')
+                            ? novaWarehouseRef : null,
+      paymentType:  payment,
+      comment:      fullComment,
+      items: validLines.map(l => ({
+        sku: l.sku,
+        name: l.brand ? `${l.brand} ${l.name}`.trim() : l.name,
+        brand: l.brand, qty: l.qty, price: l.price,
+      })),
+      totalPrice: total,
+      channelCode,
+    };
+  }
+
+  /** Save order to DB; returns {id, orderNumber} or null on error. Idempotent. */
+  async function saveOrder(): Promise<{ id: string; orderNumber: number } | null> {
+    if (!contact.trim()) { setError('Вкажіть клієнта'); return null; }
+    if (filledLines === 0) { setError('Додайте хоча б один товар'); return null; }
+    if (createdOrderId && createdOrderNumber) return { id: createdOrderId, orderNumber: createdOrderNumber };
+
+    setActionBusy(true); setSaving(true); setError('');
+    try {
       const res = await fetch('/api/admin/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerId: customerId ?? undefined,
-          company: company || null,
-          contact, phone, email,
-          deliveryType:         delivery,
-          deliverySubtype:      delivery === 'nova' ? novaSubtype : null,
-          deliveryAddress:      delivery === 'nova' && novaSubtype === 'courier'
-                                  ? address : delivery === 'kharkiv' ? address : null,
-          deliveryCityRef:      delivery === 'nova' ? novaCityRef : null,
-          deliveryCityName:     delivery === 'nova' ? novaCityName : null,
-          deliveryWarehouseRef: delivery === 'nova' && (novaSubtype === 'warehouse' || novaSubtype === 'postomat')
-                                  ? novaWarehouseRef : null,
-          paymentType:  payment,
-          comment:      fullComment,
-          items: validLines.map(l => ({
-            sku:   l.sku,
-            name:  l.brand ? `${l.brand} ${l.name}`.trim() : l.name,
-            brand: l.brand,
-            qty:   l.qty,
-            price: l.price,
-          })),
-          totalPrice: total,
-          channelCode,
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildPayload()),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Помилка');
-      onSubmitted();
-      router.push('/admin?status=new');
-      router.refresh();
+      setCreatedOrderId(data.id);
+      setCreatedOrderNumber(data.orderNumber);
+      return { id: data.id, orderNumber: data.orderNumber };
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Невідома помилка');
-    } finally {
-      setSaving(false);
-    }
+      return null;
+    } finally { setActionBusy(false); setSaving(false); }
+  }
+
+  /** Записати — просто зберегти */
+  async function handleRecord() {
+    const saved = await saveOrder();
+    if (!saved) return;
+    onSubmitted();
+    router.push('/admin?status=new');
+    router.refresh();
+  }
+
+  /** Зарезервувати — зберегти + зарезервувати зі свого складу */
+  async function handleReserve() {
+    const saved = await saveOrder();
+    if (!saved) return;
+    setActionBusy(true); setError('');
+    try {
+      const planRes = await fetch(`/api/admin/orders/${saved.id}/fulfillment`);
+      const planData = await planRes.json();
+      const ownItems = (planData.plan?.items ?? []).filter(
+        (i: { fulfillment_type: string; warehouse_id: number }) => i.fulfillment_type === 'own' && i.warehouse_id
+      );
+      if (!ownItems.length) {
+        setResultModal({ title: '📦 Резервування', message: 'Немає товарів для резервування зі власного складу', orderId: saved.id, orderNumber: saved.orderNumber });
+        return;
+      }
+      const res = await fetch(`/api/admin/orders/${saved.id}/reserve`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: ownItems.map((i: { sku: string; warehouse_id: number; qty: number }) => ({ sku: i.sku, warehouse_id: i.warehouse_id, qty: i.qty })) }),
+      });
+      const data = await res.json();
+      setResultModal({
+        title: '📦 Резервування',
+        message: data.insufficient?.length
+          ? `Зарезервовано: ${data.reserved} поз. · Недостатньо: ${data.insufficient.length} поз.`
+          : `Успішно зарезервовано ${data.reserved} позицій`,
+        orderId: saved.id, orderNumber: saved.orderNumber,
+        insufficient: data.insufficient,
+      });
+    } catch (e) { setError(e instanceof Error ? e.message : 'Помилка'); }
+    finally { setActionBusy(false); }
+  }
+
+  /** Провести (власний / дропшип / змішане) */
+  async function handleConfirm(mode: 'own' | 'supplier' | 'mixed') {
+    const saved = await saveOrder();
+    if (!saved) return;
+    setActionBusy(true); setError('');
+    try {
+      const res = await fetch(`/api/admin/orders/${saved.id}/confirm`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fulfillment_mode: mode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.insufficient?.length) {
+          setResultModal({ title: '⚠️ Недостатньо товару', message: data.error ?? 'Деякі позиції не вдалось зарезервувати', orderId: saved.id, orderNumber: saved.orderNumber, insufficient: data.insufficient });
+          return;
+        }
+        throw new Error(data.error ?? 'Помилка');
+      }
+      const modeLabel = mode === 'own' ? 'власний склад' : mode === 'supplier' ? 'дропшип' : 'змішане';
+      setResultModal({ title: `✅ Проведено — ${modeLabel}`, message: `Замовлення №${saved.orderNumber} підтверджено`, orderId: saved.id, orderNumber: saved.orderNumber });
+    } catch (e) { setError(e instanceof Error ? e.message : 'Помилка'); }
+    finally { setActionBusy(false); }
+  }
+
+  /** Замовити у постачальника — перевірка залишків → вибір позицій → ЗП */
+  async function handleCreatePO() {
+    const saved = await saveOrder();
+    if (!saved) return;
+    setActionBusy(true); setError('');
+    try {
+      const res = await fetch(`/api/admin/orders/${saved.id}/fulfillment`);
+      const data = await res.json();
+      const planItems: { sku: string; available_own: number }[] = data.plan?.items ?? [];
+      const ownSkus = new Set(planItems.filter(i => i.available_own > 0).map(i => i.sku));
+      const orderLines = lines.filter(l => l.sku || l.name);
+      const missingItems = orderLines.filter(l => !ownSkus.has(l.sku));
+      setPoModal({ allItems: orderLines, missingItems, hasOwn: ownSkus.size > 0, orderId: saved.id });
+    } catch (e) { setError(e instanceof Error ? e.message : 'Помилка'); }
+    finally { setActionBusy(false); }
+  }
+
+  function openPODraft(items: OrderLine[]) {
+    window.dispatchEvent(new CustomEvent('open-po-draft', {
+      detail: {
+        suppliers: [],
+        prefill: {
+          lines: items.map(l => ({
+            sku: l.sku,
+            name: l.brand ? `${l.brand} ${l.name}`.trim() : l.name,
+            qty: l.qty, cost_price: 0, matched: l.matched,
+          })),
+          notes: `Замовлення покупця №${createdOrderNumber}`,
+        },
+      },
+    }));
+    setPoModal(null);
+    onSubmitted();
+  }
+
+  /** Відправити постачальнику (дропшип) */
+  async function handleSendToSupplier() {
+    const saved = await saveOrder();
+    if (!saved) return;
+    setActionBusy(true); setError('');
+    try {
+      const res = await fetch(`/api/admin/orders/${saved.id}/supplier-order`);
+      const data = await res.json();
+      setSupplierModal({ orderId: saved.id, supplierName: data.supplier_name ?? '—', emailOverride: data.supplier_email ?? '', comment: '', sending: false });
+    } catch (e) { setError(e instanceof Error ? e.message : 'Помилка'); }
+    finally { setActionBusy(false); }
+  }
+
+  async function confirmSendToSupplier() {
+    if (!supplierModal) return;
+    setSupplierModal(p => p ? { ...p, sending: true } : null);
+    try {
+      const res = await fetch(`/api/admin/orders/${supplierModal.orderId}/supplier-order`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ overrideEmail: supplierModal.emailOverride || undefined, comment: supplierModal.comment || undefined }),
+      });
+      if (res.ok) {
+        setSupplierModal(null);
+        setResultModal({ title: '📤 Відправлено постачальнику', message: `Замовлення №${createdOrderNumber} надіслано`, orderId: supplierModal.orderId, orderNumber: createdOrderNumber ?? undefined });
+      } else {
+        const d = await res.json();
+        setError(d.error ?? 'Помилка відправки');
+        setSupplierModal(p => p ? { ...p, sending: false } : null);
+      }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Помилка'); setSupplierModal(p => p ? { ...p, sending: false } : null); }
+  }
+
+  // ── Action button helper ──────────────────────────────────────────────────
+  function ActionBtn({ icon, label, sub, onClick }: { icon: React.ReactNode; label: string; sub: string; onClick: () => void }) {
+    return (
+      <button
+        onMouseDown={onClick}
+        style={{ width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: '10px' }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-soft)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+      >
+        <span style={{ color: '#1E3A5F', marginTop: '2px', flexShrink: 0 }}>{icon}</span>
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{label}</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>{sub}</div>
+        </div>
+      </button>
+    );
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -839,28 +1025,87 @@ export default function NewOrderModal({
           </div>
 
           {/* Footer */}
-          <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ padding: '12px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+            {/* Left: summary */}
             <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              {filledLines} позицій · {fmt(total)} ₴
-              {customerId && <span style={{ marginLeft: '8px', color: '#3B82F6' }}>· 🔗 Контрагент прив'язаний</span>}
+              {createdOrderNumber
+                ? <span style={{ color: '#059669', fontWeight: 700 }}>✅ №{createdOrderNumber}</span>
+                : <>{filledLines} позицій · {fmt(total)} ₴</>}
+              {customerId && <span style={{ marginLeft: '8px', color: '#3B82F6' }}>· 🔗 Прив'язаний</span>}
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={onClose} disabled={saving}
-                style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
-                Скасувати
+
+            {/* Right: actions */}
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              {/* Print — only after save */}
+              {createdOrderId && (
+                <a
+                  href={`/admin?order=${createdOrderId}&print=1`}
+                  target="_blank" rel="noopener noreferrer"
+                  title="Роздрукувати замовлення"
+                  style={{ height: '36px', padding: '0 12px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
+                  <Printer size={13} /> Друк
+                </a>
+              )}
+
+              <button onClick={onClose} disabled={actionBusy}
+                style={{ height: '36px', padding: '0 16px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+                {createdOrderId ? 'Закрити' : 'Скасувати'}
               </button>
-              <button onClick={handleSubmit} disabled={saving || !contact.trim()}
-                style={{
-                  height: '38px', padding: '0 22px', borderRadius: '8px', border: 'none',
-                  background: saving || !contact.trim() ? '#94A3B8' : '#1E3A5F',
-                  color: '#fff', fontSize: '13px', fontWeight: 700,
-                  cursor: saving ? 'wait' : !contact.trim() ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '8px', opacity: saving ? 0.7 : 1,
-                }}>
-                {saving
-                  ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Збереження...</>
-                  : `✅ Створити замовлення${total > 0 ? ` · ${fmt(total)} ₴` : ''}`}
-              </button>
+
+              {/* Split button: Записати | ▼ */}
+              <div ref={actionMenuRef} style={{ position: 'relative', display: 'flex' }}>
+                <button
+                  onClick={handleRecord}
+                  disabled={actionBusy || !contact.trim()}
+                  style={{
+                    height: '36px', padding: '0 16px', border: 'none',
+                    borderRadius: '8px 0 0 8px',
+                    background: actionBusy || !contact.trim() ? '#94A3B8' : '#1E3A5F',
+                    color: '#fff', fontSize: '13px', fontWeight: 700,
+                    cursor: actionBusy ? 'wait' : !contact.trim() ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '7px',
+                  }}>
+                  {actionBusy
+                    ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Збереження...</>
+                    : `✅ Записати${total > 0 ? ` · ${fmt(total)} ₴` : ''}`}
+                </button>
+                <button
+                  onClick={() => setActionMenu(v => !v)}
+                  disabled={actionBusy || !contact.trim()}
+                  title="Більше дій"
+                  style={{
+                    height: '36px', width: '32px', border: 'none',
+                    borderRadius: '0 8px 8px 0',
+                    borderLeft: '1px solid rgba(255,255,255,0.25)',
+                    background: actionBusy || !contact.trim() ? '#94A3B8' : '#1E3A5F',
+                    color: '#fff', cursor: actionBusy ? 'wait' : !contact.trim() ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                  <ChevronDown size={14} />
+                </button>
+
+                {/* Action dropdown */}
+                {actionMenu && (
+                  <div style={{
+                    position: 'absolute', bottom: 'calc(100% + 6px)', right: 0, zIndex: 100,
+                    background: 'var(--bg-card)', border: '1px solid var(--border)',
+                    borderRadius: '10px', boxShadow: '0 8px 28px rgba(0,0,0,0.18)',
+                    minWidth: '240px', overflow: 'hidden',
+                  }}>
+                    {/* Reserve / confirm */}
+                    <div style={{ padding: '6px 0', borderBottom: '1px solid var(--border-light)' }}>
+                      <ActionBtn icon={<Warehouse size={14} />} label="Зарезервувати" sub="Зарезервувати зі свого складу" onClick={() => { setActionMenu(false); handleReserve(); }} />
+                      <ActionBtn icon={<CheckSquare size={14} />} label="Провести — власний склад" sub="Резервування + підтвердження" onClick={() => { setActionMenu(false); handleConfirm('own'); }} />
+                      <ActionBtn icon={<RefreshCw size={14} />} label="Провести — змішане" sub="Своє зарезервувати + ЗП на решту" onClick={() => { setActionMenu(false); handleConfirm('mixed'); }} />
+                    </div>
+                    {/* PO / dropship */}
+                    <div style={{ padding: '6px 0' }}>
+                      <ActionBtn icon={<Package size={14} />} label="Замовити у постачальника" sub="Перевірка залишків, вибір позицій" onClick={() => { setActionMenu(false); handleCreatePO(); }} />
+                      <ActionBtn icon={<Send size={14} />} label="Відправити постачальнику" sub="Дропшип — надіслати лист" onClick={() => { setActionMenu(false); handleSendToSupplier(); }} />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -988,6 +1233,143 @@ export default function NewOrderModal({
                 {pickerList.length} контрагент(ів) · клікніть щоб вибрати
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── PO selection modal ────────────────────────────────────────── */}
+      {poModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onMouseDown={e => { if (e.target === e.currentTarget) setPoModal(null); }}>
+          <div style={{ width: '480px', background: 'var(--bg-card)', borderRadius: '14px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <Package size={16} color="#1E3A5F" /> Замовлення постачальнику
+              </div>
+              <button onClick={() => setPoModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px' }}><X size={16} /></button>
+            </div>
+            <div style={{ padding: '16px 20px' }}>
+              {poModal.hasOwn ? (
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                    <div style={{ flex: 1, padding: '10px 14px', background: '#F0FDF4', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: '#15803D', textTransform: 'uppercase' }}>На складі</div>
+                      <div style={{ fontSize: '22px', fontWeight: 800, color: '#15803D' }}>{poModal.allItems.length - poModal.missingItems.length}</div>
+                      <div style={{ fontSize: '11px', color: '#16A34A' }}>позицій в наявності</div>
+                    </div>
+                    <div style={{ flex: 1, padding: '10px 14px', background: '#FEF2F2', borderRadius: '8px', border: '1px solid #FECACA' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: '#DC2626', textTransform: 'uppercase' }}>Відсутні</div>
+                      <div style={{ fontSize: '22px', fontWeight: 800, color: '#DC2626' }}>{poModal.missingItems.length}</div>
+                      <div style={{ fontSize: '11px', color: '#EF4444' }}>позицій потрібно замовити</div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', padding: '8px 12px', background: 'var(--bg-soft)', borderRadius: '8px', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                    <Info size={13} style={{ flexShrink: 0, marginTop: '1px' }} />
+                    Оберіть позиції для замовлення постачальнику:
+                  </div>
+                </div>
+              ) : (
+                <div style={{ marginBottom: '16px', padding: '12px 14px', background: '#FEF2F2', borderRadius: '8px', fontSize: '13px', color: '#DC2626' }}>
+                  На власному складі нічого немає — замовимо весь асортимент
+                </div>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {poModal.missingItems.length > 0 && (
+                  <button
+                    onClick={() => openPODraft(poModal.missingItems)}
+                    style={{ padding: '12px 16px', background: '#1E3A5F', color: '#fff', border: 'none', borderRadius: '9px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}>
+                    📋 Тільки відсутні ({poModal.missingItems.length} поз.) — мінімальне замовлення
+                  </button>
+                )}
+                <button
+                  onClick={() => openPODraft(poModal.allItems)}
+                  style={{ padding: '12px 16px', background: poModal.missingItems.length > 0 ? 'var(--bg-soft)' : '#1E3A5F', color: poModal.missingItems.length > 0 ? 'var(--text-primary)' : '#fff', border: `1.5px solid ${poModal.missingItems.length > 0 ? 'var(--border)' : 'none'}`, borderRadius: '9px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}>
+                  📦 Весь асортимент ({poModal.allItems.length} поз.)
+                </button>
+                <button onClick={() => setPoModal(null)} style={{ padding: '10px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '13px' }}>
+                  Скасувати
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Supplier send modal ────────────────────────────────────────── */}
+      {supplierModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onMouseDown={e => { if (e.target === e.currentTarget) setSupplierModal(null); }}>
+          <div style={{ width: '420px', background: 'var(--bg-card)', borderRadius: '14px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <Send size={15} color="#1E3A5F" /> Відправити постачальнику
+              </div>
+              <button onClick={() => setSupplierModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px' }}><X size={16} /></button>
+            </div>
+            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Постачальник</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>{supplierModal.supplierName}</div>
+              </div>
+              <div>
+                <label style={lbl}>Email</label>
+                <input value={supplierModal.emailOverride} onChange={e => setSupplierModal(p => p ? { ...p, emailOverride: e.target.value } : null)} placeholder="email@supplier.com" style={sinp} />
+              </div>
+              <div>
+                <label style={lbl}>Коментар (необов'язково)</label>
+                <textarea value={supplierModal.comment} onChange={e => setSupplierModal(p => p ? { ...p, comment: e.target.value } : null)}
+                  placeholder="Термінове, особливі умови..."
+                  style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', resize: 'vertical', minHeight: '56px', background: 'var(--bg-soft)', color: 'var(--text-primary)', boxSizing: 'border-box' }} />
+              </div>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                <button onClick={() => setSupplierModal(null)} style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+                  Скасувати
+                </button>
+                <button onClick={confirmSendToSupplier} disabled={supplierModal.sending || !supplierModal.emailOverride.trim()}
+                  style={{ height: '38px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: supplierModal.sending ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: supplierModal.sending ? 0.7 : 1 }}>
+                  {supplierModal.sending ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Надсилаємо...</> : <><Send size={13} /> Надіслати</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Result modal ───────────────────────────────────────────────── */}
+      {resultModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '440px', maxHeight: '520px', background: 'var(--bg-card)', borderRadius: '14px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>{resultModal.title}</div>
+              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>{resultModal.message}</div>
+            </div>
+            {resultModal.insufficient && resultModal.insufficient.length > 0 && (
+              <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Позиції з нестачею</div>
+                <div style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 80px', padding: '6px 12px', background: 'var(--bg-soft)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', gap: '8px' }}>
+                    <span>Артикул</span><span style={{ textAlign: 'right' }}>Потрібно</span><span style={{ textAlign: 'right' }}>В наявності</span>
+                  </div>
+                  {resultModal.insufficient.map((item, i) => (
+                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 80px', padding: '7px 12px', borderTop: '1px solid var(--border-light)', fontSize: '12px', gap: '8px', alignItems: 'center' }}>
+                      <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)' }}>{item.sku}</span>
+                      <span style={{ textAlign: 'right', fontWeight: 600 }}>{item.requested}</span>
+                      <span style={{ textAlign: 'right', color: item.available === 0 ? '#DC2626' : '#F59E0B', fontWeight: 700 }}>{item.available}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button onClick={() => { setResultModal(null); onSubmitted(); router.push('/admin?status=new'); router.refresh(); }}
+                style={{ height: '36px', padding: '0 16px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+                Закрити
+              </button>
+              <button onClick={() => { setResultModal(null); onSubmitted(); router.push('/admin?status=new'); router.refresh(); }}
+                style={{ height: '36px', padding: '0 18px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                До списку замовлень
+              </button>
+            </div>
           </div>
         </div>
       )}
