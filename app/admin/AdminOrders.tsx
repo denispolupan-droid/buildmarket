@@ -82,6 +82,8 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
   );
   const [ttnSaving,      setTtnSaving]      = useState<string | null>(null);
   const [ttnDeleting,    setTtnDeleting]    = useState<string | null>(null);
+  const [registryAdding, setRegistryAdding] = useState<string | null>(null);
+  const [registryAdded,  setRegistryAdded]  = useState<Set<string>>(new Set());
   const [supplierModal,  setSupplierModal]  = useState<{ orderIds: string[]; comment: string } | null>(null);
   const [supplierSending, setSupplierSending] = useState(false);
   const [supplierResult, setSupplierResult] = useState<{ supplier_name: string; emailed: boolean }[] | null>(null);
@@ -466,6 +468,25 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
       setOrders(prev => prev.map(o => o.id === id ? { ...o, tracking_number: ttnValues[id] || null } : o));
     }
     setTtnSaving(null);
+  }
+
+  async function addToRegistry(orderId: string, ttn: string) {
+    if (registryAdded.has(ttn)) return;
+    setRegistryAdding(orderId);
+    try {
+      const res = await fetch('/api/admin/registers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ttnNumber: ttn, registerRef: null }),
+      });
+      if (res.ok) {
+        setRegistryAdded(prev => new Set([...prev, ttn]));
+      } else {
+        const data = await res.json();
+        alert(data.error ?? 'Помилка додавання в реєстр');
+      }
+    } catch { alert('Мережева помилка'); }
+    finally { setRegistryAdding(null); }
   }
 
   async function deleteTTN(id: string) {
@@ -1133,12 +1154,27 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                                 </button>
                               );
                             })()}
-                            {order.tracking_number && (
-                              <a href="/admin/dispatch" title="Перейти до реєстру відправлень"
-                                style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0, background: '#F0FDF4', color: '#15803D', border: '1.5px solid #86EFAC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', textDecoration: 'none' }}>
-                                📋
-                              </a>
-                            )}
+                            {order.tracking_number && (() => {
+                              const inReg = registryAdded.has(order.tracking_number);
+                              const isAddingReg = registryAdding === order.id;
+                              return (
+                                <button
+                                  onClick={() => !inReg && addToRegistry(order.id, order.tracking_number!)}
+                                  disabled={inReg || isAddingReg}
+                                  title={inReg ? 'Вже в реєстрі НП' : 'Додати в реєстр НП'}
+                                  style={{
+                                    height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
+                                    background: inReg ? '#DCFCE7' : '#F0FDF4',
+                                    color: inReg ? '#15803D' : '#15803D',
+                                    border: `1.5px solid ${inReg ? '#86EFAC' : '#86EFAC'}`,
+                                    cursor: inReg ? 'default' : 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: '14px',
+                                  }}>
+                                  {isAddingReg ? '…' : inReg ? <Check size={14} /> : '📋'}
+                                </button>
+                              );
+                            })()}
                             {order.tracking_number && (
                               <button onClick={() => deleteTTN(order.id)} disabled={ttnDeleting === order.id}
                                 title="Видалити ТТН з бази та з НП"
