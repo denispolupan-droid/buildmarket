@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
-import { createDocument } from '../../../../../../lib/accounting/documents';
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -52,93 +51,57 @@ export async function POST(
 
   const { data: order } = await db
     .from('orders')
-    .select('id, order_number, items, channel_code, contact, phone, delivery_type, delivery_subtype, delivery_city_name, delivery_address, tracking_number')
+    .select('id, order_number, items, contact, phone, delivery_city_name')
     .eq('id', id)
     .single();
 
   if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  let overrideEmail: string | undefined;
-  let overrideComment: string | undefined;
-  try {
-    const body = await _req.json().catch(() => ({}));
-    if (body.overrideEmail) overrideEmail = body.overrideEmail;
-    if (body.comment)       overrideComment = body.comment;
-  } catch { /* no body */ }
+  const body = await _req.json().catch(() => ({}));
+  const overrideEmail: string | undefined   = body.overrideEmail || undefined;
+  const overrideComment: string | undefined = body.comment       || undefined;
 
-  const orderItems = (order.items ?? []) as { sku: string; name: string; brand: string; qty: number; price: number }[];
+  const orderItems = (order.items ?? []) as { sku: string; name: string; brand: string; qty: number }[];
   const skus = orderItems.map(i => i.sku);
 
-  // Get supplier mapping for all SKUs
   const { data: skuMapRows } = await db
     .from('supplier_sku_map')
     .select('our_sku, supplier_id, supplier_sku')
     .in('our_sku', skus);
 
-  // Get supplier info including email
   const supplierIds = [...new Set((skuMapRows ?? []).map(r => r.supplier_id).filter(Boolean))];
   const { data: supplierRows } = await db
     .from('suppliers')
     .select('id, name, email, notes')
     .in('id', supplierIds);
 
-  const supplierMap = new Map((skuMapRows ?? []).map(r => [r.our_sku, r]));
-  const supplierInfoMap = new Map((supplierRows ?? []).map(s => [s.id, s]));
-
-  // Get default warehouse for document creation
-  const { data: warehouse } = await db
-    .from('warehouses')
-    .select('id')
-    .eq('is_default', true)
-    .single();
-
-  if (!warehouse) return NextResponse.json({ error: 'Default warehouse not found' }, { status: 500 });
+  const supplierMap     = new Map((skuMapRows    ?? []).map(r => [r.our_sku, r]));
+  const supplierInfoMap = new Map((supplierRows  ?? []).map(s => [s.id, s]));
 
   // Group items by supplier
   const bySupplier = new Map<number, { items: typeof orderItems; supplierSkus: Map<string, string> }>();
   for (const item of orderItems) {
     const mapping = supplierMap.get(item.sku);
     if (!mapping?.supplier_id) continue;
-    if (!bySupplier.has(mapping.supplier_id)) {
+    if (!bySupplier.has(mapping.supplier_id))
       bySupplier.set(mapping.supplier_id, { items: [], supplierSkus: new Map() });
-    }
     bySupplier.get(mapping.supplier_id)!.items.push(item);
     bySupplier.get(mapping.supplier_id)!.supplierSkus.set(item.sku, mapping.supplier_sku ?? item.sku);
   }
 
-  const results: { supplier_id: number; supplier_name: string; doc_id: string; emailed: boolean }[] = [];
+  const results: { supplier_name: string; emailed: boolean }[] = [];
 
   for (const [supplierId, { items: supplierItems, supplierSkus }] of bySupplier) {
     const supplier = supplierInfoMap.get(supplierId);
     if (!supplier) continue;
 
-    // Create purchase_order document
-    const doc = await createDocument({
-      doc_type:     'purchase_order',
-      warehouse_id: warehouse.id,
-      supplier_id:  supplierId,
-      order_id:     id,
-      notes:        `Замовлення клієнта #${order.order_number} — ${order.contact}`,
-      created_by:   user.email ?? 'admin',
-      lines: supplierItems.map(item => ({
-        sku:              item.sku,
-        qty:              item.qty,
-        price:            item.price,
-        cost_price:       0,
-        fulfillment_type: 'dropship' as const,
-        supplier_id:      supplierId,
-        warehouse_id:     warehouse.id,
-      })),
-    });
-
-    // Send email if supplier has email (use override if provided)
     let emailed = false;
-    const supplierEmail = overrideEmail || supplier.email || extractEmail(supplier.notes ?? '');
-    if (supplierEmail) {
+    const toEmail = overrideEmail || supplier.email || extractEmail(supplier.notes ?? '');
+    if (toEmail) {
       try {
         await resend.emails.send({
           from: FROM,
-          to:   supplierEmail,
+          to:   toEmail,
           subject: `Замовлення від FIXLINE — #${order.order_number}`,
           html: buildSupplierEmailHtml({
             orderNumber:  order.order_number,
@@ -148,7 +111,7 @@ export async function POST(
             comment:      overrideComment,
             items: supplierItems.map(item => ({
               supplierSku: supplierSkus.get(item.sku) ?? item.sku,
-              name:        `${item.brand} ${item.name}`,
+              name:        `${item.brand ? item.brand + ' ' : ''}${item.name}`,
               qty:         item.qty,
             })),
           }),
@@ -159,7 +122,7 @@ export async function POST(
       }
     }
 
-    results.push({ supplier_id: supplierId, supplier_name: supplier.name, doc_id: doc.id, emailed });
+    results.push({ supplier_name: supplier.name, emailed });
   }
 
   return NextResponse.json({ ok: true, results });

@@ -1281,38 +1281,6 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                             </select>
                           </div>
 
-                          {/* Пов'язані замовлення постачальникам (PO) */}
-                          {(linkedPOs[order.id] ?? []).length > 0 && (
-                            <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '8px', marginTop: '2px' }}>
-                              <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '5px' }}>
-                                📋 Замовлення постачальникам
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                {(linkedPOs[order.id] ?? []).map(po => {
-                                  const isPaid     = po.procurement_status === 'paid';
-                                  const isReceived = po.procurement_status === 'received' || po.procurement_status === 'partially_received';
-                                  const badgeColor = isPaid ? '#15803D' : isReceived ? '#7C3AED' : '#1E3A5F';
-                                  const badgeBg    = isPaid ? '#F0FDF4'  : isReceived ? '#F5F3FF'  : '#EFF4FF';
-                                  return (
-                                    <a key={po.id} href={`/admin/procurement/${po.id}`}
-                                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', padding: '5px 8px', borderRadius: '7px', border: `1px solid ${badgeBg}`, background: badgeBg, textDecoration: 'none' }}>
-                                      <div style={{ minWidth: 0 }}>
-                                        <div style={{ fontSize: '11px', fontWeight: 700, color: badgeColor, whiteSpace: 'nowrap' }}>{po.doc_number}</div>
-                                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(po.supplier as any)?.name ?? '—'}</div>
-                                      </div>
-                                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                        {po.total_cost && <div style={{ fontSize: '11px', fontWeight: 700, color: badgeColor }}>{Number(po.total_cost).toFixed(0)} ₴</div>}
-                                        <div style={{ fontSize: '9px', color: 'var(--text-muted)' }}>
-                                          {isPaid ? '💳 Оплачено' : isReceived ? '📦 Отримано' : '⏳ В роботі'}
-                                        </div>
-                                      </div>
-                                    </a>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
 
                           {/* Context action buttons */}
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '2px' }}>
