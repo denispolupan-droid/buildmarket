@@ -46,10 +46,17 @@ export default async function AdminPage({
 
   if (status) query = query.eq('status', status);
 
-  const [{ data: orders, count }, { count: newCount }] = await Promise.all([
+  const [{ data: orders, count }, { data: statusRows }] = await Promise.all([
     query,
-    serviceClient.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'new'),
+    serviceClient.from('orders').select('status'),
   ]);
+
+  // Count orders per status
+  const statusCounts = (statusRows ?? []).reduce<Record<string, number>>((acc, row) => {
+    if (row.status) acc[row.status] = (acc[row.status] ?? 0) + 1;
+    return acc;
+  }, {});
+  const totalCount = statusRows?.length ?? 0;
 
   const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE);
   const curStatus = status ?? '';
@@ -79,6 +86,8 @@ export default async function AdminPage({
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           {STATUS_TABS.map(tab => {
             const isActive = curStatus === tab.value;
+            const cnt = tab.value === '' ? totalCount : (statusCounts[tab.value] ?? 0);
+            const isNew = tab.value === 'new';
             return (
               <Link
                 key={tab.value}
@@ -94,13 +103,16 @@ export default async function AdminPage({
                 }}
               >
                 {tab.label}
-                {'badge' in tab && (newCount ?? 0) > 0 && (
+                {cnt > 0 && (
                   <span style={{
-                    background: isActive ? 'rgba(255,255,255,0.25)' : '#EF4444',
-                    color: '#fff', fontSize: '10px', fontWeight: 700,
+                    background: isActive
+                      ? 'rgba(255,255,255,0.25)'
+                      : isNew ? '#EF4444' : '#E2E8F0',
+                    color: isActive ? '#fff' : isNew ? '#fff' : '#475569',
+                    fontSize: '10px', fontWeight: 700,
                     borderRadius: '5px', padding: '0 5px', lineHeight: '16px',
                   }}>
-                    {newCount}
+                    {cnt}
                   </span>
                 )}
               </Link>
