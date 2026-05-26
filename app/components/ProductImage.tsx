@@ -187,7 +187,8 @@ export default function ProductImage({
         alt={rest.nl1}
         width={400}
         height={400}
-        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
+        quality={90}
+        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 40vw, 500px"
         style={{ height: '100%', width: '100%', objectFit: 'contain', display: 'block' }}
         loading="lazy"
       />
