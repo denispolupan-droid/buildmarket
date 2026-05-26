@@ -53,7 +53,7 @@ export default async function Image({ params }: { params: Promise<{ brand: strin
         border: '1px solid rgba(72,128,184,0.4)',
         borderRadius: '20px',
         padding: '8px 20px',
-        width: 'fit-content',
+        alignSelf: 'flex-start',
         fontSize: '16px', fontWeight: 600, color: '#93C5FD',
       }}>
         Авторизований дилер

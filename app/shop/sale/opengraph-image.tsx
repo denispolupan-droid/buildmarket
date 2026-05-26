@@ -41,7 +41,7 @@ export default function Image() {
         border: '1px solid rgba(239,68,68,0.4)',
         borderRadius: '20px',
         padding: '8px 20px',
-        width: 'fit-content',
+        alignSelf: 'flex-start',
         fontSize: '16px', fontWeight: 600, color: '#FCA5A5',
       }}>
         Спецпропозиції

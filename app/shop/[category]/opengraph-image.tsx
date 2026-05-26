@@ -47,12 +47,11 @@ export default async function Image({ params }: { params: Promise<{ category: st
 
       {/* Badge */}
       <div style={{
-        display: 'flex', alignItems: 'center',
+        display: 'flex', alignItems: 'center', alignSelf: 'flex-start',
         background: 'rgba(72,128,184,0.25)',
         border: '1px solid rgba(72,128,184,0.4)',
         borderRadius: '20px',
         padding: '8px 20px',
-        width: 'fit-content',
         fontSize: '16px', fontWeight: 600, color: '#93C5FD',
       }}>
         {subtitle}

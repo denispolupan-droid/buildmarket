@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, BarChart2 } from 'lucide-react';
 import ReportsClient, { type PLData, type CFData } from './ReportsClient';
@@ -197,7 +198,9 @@ export default async function ReportsPage({
         <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{periodLabel}</span>
       </div>
 
-      <ReportsClient pl={pl} cf={cf} dateFrom={dateFrom} dateTo={dateTo} />
+      <Suspense>
+        <ReportsClient pl={pl} cf={cf} dateFrom={dateFrom} dateTo={dateTo} />
+      </Suspense>
     </div>
   );
 }
