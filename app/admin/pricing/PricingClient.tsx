@@ -368,7 +368,7 @@ export default function PricingClient({ rows }: Props) {
                   </div>
                   <div style={{
                     fontSize: 11, color: '#94A3B8', marginTop: 3,
-                    display: 'flex', alignItems: 'center', gap: 4,
+                    display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
                   }}>
                     <span style={{ opacity: 0.6 }}>🔍</span>
                     <a
@@ -382,6 +382,25 @@ export default function PricingClient({ rows }: Props) {
                       title="Пошук на Prom.ua"
                     >
                       {buildSearchQuery(row.name, row.volume)}
+                    </a>
+                    <a
+                      href={`https://trends.google.com/trends/explore?q=${encodeURIComponent(buildSearchQuery(row.name, row.volume))}&geo=UA&hl=uk`}
+                      target="_blank" rel="noreferrer"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 3,
+                        padding: '1px 6px', borderRadius: 4,
+                        background: '#FFF8F0', border: '1px solid #FBBF24',
+                        color: '#92400E', textDecoration: 'none',
+                        fontFamily: 'sans-serif', fontWeight: 600, fontSize: 10,
+                        whiteSpace: 'nowrap',
+                      }}
+                      title="Переглянути тренд пошукового попиту в Україні"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                        <path d="M3 17l6-6 4 4 8-9" stroke="#4285F4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M3 17l6-6 4 4 8-9" stroke="#EA4335" strokeWidth="0" />
+                      </svg>
+                      Google Trends
                     </a>
                   </div>
                 </div>
