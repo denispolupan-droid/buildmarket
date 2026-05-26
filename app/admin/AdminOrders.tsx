@@ -307,6 +307,24 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedId]);
 
+  // Pre-load current registry TTNs so button shows correct state on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/registers');
+        const data = await res.json();
+        const sheets = data.sheets ?? [];
+        if (sheets.length === 0) return;
+        const ref = sheets[0].Ref;
+        const res2 = await fetch(`/api/admin/registers?ref=${ref}`);
+        const data2 = await res2.json();
+        const ttns: string[] = (data2.ttns ?? []).map((t: { ttn: string }) => t.ttn);
+        if (ttns.length > 0) setRegistryAdded(new Set(ttns));
+      } catch { /* silent */ }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function openSupplierPO(order: Order) {
     setCreatingPo(order.id);
     try {
