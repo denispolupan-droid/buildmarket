@@ -181,7 +181,7 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
           </Link>
           <Truck size={18} color="#1E3A5F" />
           <div>
-            <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Відправлення</h1>
+            <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Реєстр НП</h1>
             <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
               Управління реєстром Нової Пошти та статусами відправлень
             </p>

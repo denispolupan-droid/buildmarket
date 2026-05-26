@@ -108,7 +108,7 @@ export default async function AdminPage({
           })}
         </div>
 
-        {/* Відправлення — окрема кнопка-посилання */}
+        {/* Реєстр НП — окрема кнопка-посилання */}
         <Link href="/admin/dispatch" style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px',
           height: '32px', padding: '0 14px', borderRadius: '8px',
@@ -117,7 +117,7 @@ export default async function AdminPage({
           border: '1px solid #BFDBFE',
         }}>
           <Send size={13} />
-          Відправлення
+          Реєстр НП
         </Link>
       </div>
 
