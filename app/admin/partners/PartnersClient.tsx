@@ -4,8 +4,28 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Wallet, CheckCircle, XCircle, Plus, ChevronDown, ChevronUp,
-  Users, ShoppingBag, TrendingUp, X, Edit2, Save,
+  Users, ShoppingBag, TrendingUp, X, Edit2, Save, Eye,
 } from 'lucide-react';
+
+/* ── Phone mask (same as cart) ──────────────────────────────────────────── */
+function getLocalDigits(formatted: string): string {
+  const raw = formatted.replace(/\D/g, '');
+  if (raw.startsWith('380')) return raw.slice(3);
+  if (raw.startsWith('38'))  return raw.slice(2);
+  if (raw.startsWith('0'))   return raw.slice(1);
+  return raw;
+}
+function formatPhone(localDigits: string): string {
+  const d = localDigits.replace(/\D/g, '').slice(0, 9);
+  if (!d) return '';
+  let r = '+38 (0' + d.slice(0, Math.min(2, d.length));
+  if (d.length <= 2) return r;
+  r += ') ' + d.slice(2, Math.min(5, d.length));
+  if (d.length <= 5) return r;
+  r += '-' + d.slice(5, Math.min(7, d.length));
+  if (d.length <= 7) return r;
+  return r + '-' + d.slice(7);
+}
 
 type Customer = {
   id: string; name: string; email: string | null; phone: string | null;
@@ -63,6 +83,7 @@ export default function PartnersClient({
   const [topupNote,   setTopupNote]   = useState('');
   const [saving,      setSaving]      = useState(false);
   const [error,       setError]       = useState('');
+  const [viewingId,   setViewingId]   = useState<string | null>(null);
 
   // New customer modal
   const [showNew,  setShowNew]  = useState(false);
@@ -70,11 +91,13 @@ export default function PartnersClient({
     name: '', company: '', phone: '', email: '', city: '',
     type: 'retail', credit_limit: '', notes: '',
   });
+  const [newPhone, setNewPhone] = useState('');
   const [newSaving, setNewSaving] = useState(false);
   const [newError,  setNewError]  = useState('');
 
   // Edit form state
-  const [editForm, setEditForm] = useState<Partial<Customer>>({});
+  const [editForm,  setEditForm]  = useState<Partial<Customer>>({});
+  const [editPhone, setEditPhone] = useState('');
 
   // ── Auto-expand customer from URL ?open=<id> ───────────────────────────────
   const searchParams = useSearchParams();
@@ -108,7 +131,7 @@ export default function PartnersClient({
     setNewSaving(true); setNewError('');
     const res = await fetch('/api/admin/partners', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newForm),
+      body: JSON.stringify({ ...newForm, phone: newPhone }),
     });
     const data = await res.json();
     setNewSaving(false);
@@ -116,20 +139,23 @@ export default function PartnersClient({
     setCustomers(prev => [data, ...prev]);
     setShowNew(false);
     setNewForm({ name: '', company: '', phone: '', email: '', city: '', type: 'retail', credit_limit: '', notes: '' });
+    setNewPhone('');
   }
 
   // ── Save edit ─────────────────────────────────────────────────────────────
   async function handleSaveEdit(id: string) {
     setSaving(true); setError('');
+    const payload = { ...editForm, phone: editPhone };
     const res = await fetch(`/api/admin/partners/${id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editForm),
+      body: JSON.stringify(payload),
     });
     setSaving(false);
     if (!res.ok) { setError('Помилка збереження'); return; }
-    setCustomers(prev => prev.map(c => c.id === id ? { ...c, ...editForm } : c));
+    setCustomers(prev => prev.map(c => c.id === id ? { ...c, ...payload } : c));
     setEditingId(null);
     setEditForm({});
+    setEditPhone('');
   }
 
   // ── Toggle active ─────────────────────────────────────────────────────────
@@ -361,9 +387,14 @@ export default function PartnersClient({
                   <div style={{ background: 'var(--bg-soft)', borderTop: '1px solid var(--border-light)', padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {/* Action bar */}
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button onClick={() => setViewingId(c.id)}
+                        style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Eye size={11} /> Картка
+                      </button>
                       <button onClick={() => {
                         setEditingId(c.id);
-                        setEditForm({ name: c.name, company: c.company ?? '', phone: c.phone ?? '', email: c.email ?? '', city: c.city ?? '', type: c.type, credit_limit: c.credit_limit ?? undefined, notes: c.notes ?? '' });
+                        setEditPhone(c.phone ?? '');
+                        setEditForm({ name: c.name, company: c.company ?? '', email: c.email ?? '', city: c.city ?? '', type: c.type, credit_limit: c.credit_limit ?? undefined, notes: c.notes ?? '' });
                       }}
                         style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Edit2 size={11} /> Редагувати
@@ -383,7 +414,6 @@ export default function PartnersClient({
                           {[
                             { key: 'name',    label: "Ім'я / Назва *" },
                             { key: 'company', label: 'Компанія' },
-                            { key: 'phone',   label: 'Телефон' },
                             { key: 'email',   label: 'Email' },
                             { key: 'city',    label: 'Місто' },
                           ].map(f => (
@@ -395,6 +425,19 @@ export default function PartnersClient({
                                 style={inp} />
                             </div>
                           ))}
+                          <div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Телефон</div>
+                            <input
+                              value={editPhone}
+                              placeholder="+38 (0__) ___-__-__"
+                              onChange={e => setEditPhone(formatPhone(getLocalDigits(e.target.value)))}
+                              onKeyDown={e => {
+                                if (e.key !== 'Backspace') return;
+                                e.preventDefault();
+                                setEditPhone(formatPhone(getLocalDigits(editPhone).slice(0, -1)));
+                              }}
+                              style={inp} />
+                          </div>
                           <div>
                             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Тип</div>
                             <select value={editForm.type ?? c.type}
@@ -463,6 +506,115 @@ export default function PartnersClient({
         )}
       </div>
 
+      {/* ── Customer card modal ────────────────────────────────────────────── */}
+      {viewingId && (() => {
+        const vc = customers.find(c => c.id === viewingId);
+        if (!vc) return null;
+        const typeInfo = TYPE_LABELS[vc.type] ?? TYPE_LABELS.retail;
+        const avail    = Number(vc.balance) - Number(vc.balance_held);
+        const hasBalance = vc.type === 'wholesale' || vc.type === 'dropship_partner';
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={e => { if (e.target === e.currentTarget) setViewingId(null); }}>
+            <div style={{ background: 'var(--bg-card)', borderRadius: '18px', width: '520px', maxWidth: '95vw', boxShadow: '0 32px 80px rgba(0,0,0,0.45)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+
+              {/* Header */}
+              <div style={{ background: 'linear-gradient(135deg, #1E3A5F 0%, #0F2040 100%)', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '20px', fontWeight: 800, color: '#fff' }}>{vc.name}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '20px', background: typeInfo.bg, color: typeInfo.color }}>{typeInfo.label}</span>
+                  </div>
+                  {vc.company && <div style={{ fontSize: '13px', color: '#94A3B8' }}>{vc.company}</div>}
+                  <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>
+                    ID: {vc.id.slice(0, 8)}…
+                    {vc.partner_code && ` · Код: ${vc.partner_code}`}
+                  </div>
+                </div>
+                <button onClick={() => setViewingId(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', color: '#94A3B8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                {/* Contacts */}
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>Контакти</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {[
+                      { label: 'Телефон', value: vc.phone },
+                      { label: 'Email',   value: vc.email },
+                      { label: 'Місто',   value: vc.city },
+                    ].filter(r => r.value).map(r => (
+                      <div key={r.label} style={{ background: 'var(--bg-soft)', borderRadius: '9px', padding: '10px 14px' }}>
+                        <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '3px' }}>{r.label}</div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{r.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Stats */}
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>Статистика</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                    {[
+                      { label: 'Замовлень',    value: String(vc.orders_count) },
+                      { label: 'Виручка',      value: fmtMoney(Number(vc.total_revenue)) },
+                      { label: 'Остання купів', value: fmtDate(vc.last_order_at) },
+                    ].map(r => (
+                      <div key={r.label} style={{ background: 'var(--bg-soft)', borderRadius: '9px', padding: '10px 14px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '3px' }}>{r.label}</div>
+                        <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>{r.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Balance (partners) */}
+                {hasBalance && (
+                  <div style={{ background: Number(avail) >= 0 ? '#F0FDF4' : '#FEF2F2', borderRadius: '10px', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '3px' }}>Баланс</div>
+                      <div style={{ fontSize: '20px', fontWeight: 800, color: avail >= 0 ? '#15803D' : '#DC2626' }}>{fmtMoney(avail)}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Всього: {fmtMoney(Number(vc.balance))} · Заморожено: {fmtMoney(Number(vc.balance_held))}</div>
+                    </div>
+                    {vc.credit_limit && (
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '3px' }}>Кредит</div>
+                        <div style={{ fontSize: '16px', fontWeight: 700, color: '#4880B8' }}>{fmtMoney(Number(vc.credit_limit))}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Notes */}
+                {vc.notes && (
+                  <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '9px', padding: '12px 16px' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#B45309', textTransform: 'uppercase', marginBottom: '4px' }}>Нотатки</div>
+                    <div style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{vc.notes}</div>
+                  </div>
+                )}
+
+                {/* Footer actions */}
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => { setViewingId(null); setExpandedId(vc.id); setEditingId(vc.id); setEditPhone(vc.phone ?? ''); setEditForm({ name: vc.name, company: vc.company ?? '', email: vc.email ?? '', city: vc.city ?? '', type: vc.type, credit_limit: vc.credit_limit ?? undefined, notes: vc.notes ?? '' }); }}
+                    style={{ flex: 1, height: '38px', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                    <Edit2 size={13} /> Редагувати
+                  </button>
+                  <button onClick={() => setViewingId(null)}
+                    style={{ flex: 1, height: '38px', borderRadius: '9px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                    Закрити
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── New customer modal ─────────────────────────────────────────────── */}
       {showNew && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -496,7 +648,6 @@ export default function PartnersClient({
               {[
                 { key: 'name',    label: "Ім'я / Назва *", placeholder: 'Іваненко Петро' },
                 { key: 'company', label: 'Компанія',        placeholder: 'ТОВ «...»' },
-                { key: 'phone',   label: 'Телефон',         placeholder: '+380...' },
                 { key: 'email',   label: 'Email',           placeholder: 'email@...' },
                 { key: 'city',    label: 'Місто',           placeholder: 'Харків' },
               ].map(f => (
@@ -509,6 +660,19 @@ export default function PartnersClient({
                     style={inp} />
                 </div>
               ))}
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Телефон</div>
+                <input
+                  placeholder="+38 (0__) ___-__-__"
+                  value={newPhone}
+                  onChange={e => setNewPhone(formatPhone(getLocalDigits(e.target.value)))}
+                  onKeyDown={e => {
+                    if (e.key !== 'Backspace') return;
+                    e.preventDefault();
+                    setNewPhone(formatPhone(getLocalDigits(newPhone).slice(0, -1)));
+                  }}
+                  style={inp} />
+              </div>
               {(newForm.type === 'wholesale' || newForm.type === 'dropship_partner') && (
                 <div>
                   <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Кредитний ліміт ₴</div>

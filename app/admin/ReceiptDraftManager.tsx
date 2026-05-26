@@ -1,10 +1,10 @@
-'use client';
+﻿'use client';
 
 /**
- * Менеджер чернеток приходів товару.
- * Поведінка аналогічна PoDraftManager:
- *   - Карти стекуються ліворуч від edge sidebar
- *   - Мінімізовані → таб-бар внизу (позиціонується після PO-табів)
+ * РњРµРЅРµРґР¶РµСЂ С‡РµСЂРЅРµС‚РѕРє РїСЂРёС…РѕРґС–РІ С‚РѕРІР°СЂСѓ.
+ * РџРѕРІРµРґС–РЅРєР° Р°РЅР°Р»РѕРіС–С‡РЅР° PoDraftManager:
+ *   - РљР°СЂС‚Рё СЃС‚РµРєСѓСЋС‚СЊСЃСЏ Р»С–РІРѕСЂСѓС‡ РІС–Рґ edge sidebar
+ *   - РњС–РЅС–РјС–Р·РѕРІР°РЅС– в†’ С‚Р°Р±-Р±Р°СЂ РІРЅРёР·Сѓ (РїРѕР·РёС†С–РѕРЅСѓС”С‚СЊСЃСЏ РїС–СЃР»СЏ PO-С‚Р°Р±С–РІ)
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -38,7 +38,7 @@ type Supplier  = { id: number; name: string };
 const NewReceiptModal = dynamic(() => import('./procurement/NewReceiptModal'), { ssr: false });
 
 const SESSION_KEY   = 'admin_receipt_drafts';
-const SIDEBAR_W     = 220;
+const SIDEBAR_W     = 240;  // AdminSidebar width
 const PANEL_W       = 'min(960px, 74vw)';
 const PEEK_PER_CARD = 24;
 const PO_TAB_W      = 212; // 210px + 2px gap
@@ -77,7 +77,7 @@ export default function ReceiptDraftManager() {
       .catch(() => { /* ignore */ });
   }, []);
 
-  // Мінімізувати всі Receipt, коли PO або Order-панель стає активною
+  // РњС–РЅС–РјС–Р·СѓРІР°С‚Рё РІСЃС– Receipt, РєРѕР»Рё PO Р°Р±Рѕ Order-РїР°РЅРµР»СЊ СЃС‚Р°С” Р°РєС‚РёРІРЅРѕСЋ
   useEffect(() => {
     function handler() {
       setDrafts(prev => prev.map(d => d.minimized ? d : { ...d, minimized: true }));
@@ -106,7 +106,7 @@ export default function ReceiptDraftManager() {
     window.dispatchEvent(new CustomEvent('receipt-drafts-changed', { detail: { count: drafts.length } }));
   }, [drafts, mounted]);
 
-  // Open receipt draft from "Новий прихід" button
+  // Open receipt draft from "РќРѕРІРёР№ РїСЂРёС…С–Рґ" button
   useEffect(() => {
     function handler() {
       const now = Date.now();
@@ -136,7 +136,7 @@ export default function ReceiptDraftManager() {
         ? { ...d, minimized: false, lastActivated: Date.now() }
         : { ...d, minimized: true }
     ));
-    // Повідомляємо PoDraftManager — він мінімізує свої панелі
+    // РџРѕРІС–РґРѕРјР»СЏС”РјРѕ PoDraftManager вЂ” РІС–РЅ РјС–РЅС–РјС–Р·СѓС” СЃРІРѕС— РїР°РЅРµР»С–
     window.dispatchEvent(new CustomEvent('receipt-draft-activated'));
   }, []);
 
@@ -172,7 +172,7 @@ export default function ReceiptDraftManager() {
 
   return (
     <>
-      {/* Background cards — peek edge visible */}
+      {/* Background cards вЂ” peek edge visible */}
       {bgCards.map((draft, idx) => {
         const depth      = bgCards.length - idx;
         const peekWidth  = PEEK_PER_CARD * depth;
@@ -181,7 +181,7 @@ export default function ReceiptDraftManager() {
           <div
             key={draft.id}
             onClick={() => bringToFront(draft.id)}
-            title="Відкрити прихід"
+            title="Р’С–РґРєСЂРёС‚Рё РїСЂРёС…С–Рґ"
             style={{
               position: 'fixed',
               left:   `${SIDEBAR_W}px`,
@@ -210,7 +210,7 @@ export default function ReceiptDraftManager() {
               }}
             >
               <div style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', maxHeight: '120px', overflow: 'hidden' }}>
-                Прихід
+                РџСЂРёС…С–Рґ
               </div>
             </div>
           </div>
@@ -246,7 +246,7 @@ export default function ReceiptDraftManager() {
             const isConfirming = confirmClose === draft.id;
 
             const supplierLabel = suppliers.find(s => s.id === draft.supplierId)?.name ?? '';
-            const label = supplierLabel || 'Новий прихід';
+            const label = supplierLabel || 'РќРѕРІРёР№ РїСЂРёС…С–Рґ';
 
             return (
               <div key={draft.id} style={{ position: 'relative', alignSelf: 'flex-end', flexShrink: 0 }}>
@@ -271,14 +271,14 @@ export default function ReceiptDraftManager() {
                     onClick={() => isActive ? minimizeDraft(draft.id) : bringToFront(draft.id)}
                     style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px 0 12px', height: '100%', cursor: 'pointer' }}
                   >
-                    <span style={{ display: 'inline-block', fontSize: '14px', flexShrink: 0 }}>📦</span>
+                    <span style={{ display: 'inline-block', fontSize: '14px', flexShrink: 0 }}>рџ“¦</span>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: '12px', fontWeight: isActive ? 700 : 500, color: isActive ? '#E2E8F0' : '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {label}
                       </div>
                       {lineCount > 0 && (
                         <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.28)', lineHeight: 1 }}>
-                          {lineCount} поз · {fmt(total)} ₴
+                          {lineCount} РїРѕР· В· {fmt(total)} в‚ґ
                         </div>
                       )}
                     </div>
@@ -287,7 +287,7 @@ export default function ReceiptDraftManager() {
                     {!draft.minimized && (
                       <button
                         onClick={() => minimizeDraft(draft.id)}
-                        title="Згорнути"
+                        title="Р—РіРѕСЂРЅСѓС‚Рё"
                         className="receipt-close-btn"
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', display: 'flex', padding: '3px', borderRadius: '4px' }}
                       >
@@ -296,7 +296,7 @@ export default function ReceiptDraftManager() {
                     )}
                     <button
                       onClick={() => closeDraft(draft.id)}
-                      title="Закрити"
+                      title="Р—Р°РєСЂРёС‚Рё"
                       className="receipt-close-btn"
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', display: 'flex', padding: '3px', borderRadius: '4px' }}
                     >
@@ -308,11 +308,11 @@ export default function ReceiptDraftManager() {
                 {/* Confirm close dialog (inline, above tab) */}
                 {isConfirming && (
                   <div style={{ position: 'absolute', bottom: '46px', left: 0, width: '280px', background: 'var(--bg-card)', borderRadius: '12px', padding: '16px 18px', boxShadow: '0 12px 40px rgba(0,0,0,0.35)', border: '1px solid var(--border)', zIndex: 10 }}>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>Закрити без збереження?</div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px', lineHeight: 1.4 }}>Незбережені дані будуть видалені.</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>Р—Р°РєСЂРёС‚Рё Р±РµР· Р·Р±РµСЂРµР¶РµРЅРЅСЏ?</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px', lineHeight: 1.4 }}>РќРµР·Р±РµСЂРµР¶РµРЅС– РґР°РЅС– Р±СѓРґСѓС‚СЊ РІРёРґР°Р»РµРЅС–.</div>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={() => setConfirmClose(null)} style={{ flex: 1, height: '34px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Скасувати</button>
-                      <button onClick={() => closeDraft(draft.id, true)} style={{ flex: 1, height: '34px', borderRadius: '8px', border: 'none', background: '#DC2626', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>Закрити</button>
+                      <button onClick={() => setConfirmClose(null)} style={{ flex: 1, height: '34px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>РЎРєР°СЃСѓРІР°С‚Рё</button>
+                      <button onClick={() => closeDraft(draft.id, true)} style={{ flex: 1, height: '34px', borderRadius: '8px', border: 'none', background: '#DC2626', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>Р—Р°РєСЂРёС‚Рё</button>
                     </div>
                   </div>
                 )}

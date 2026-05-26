@@ -41,7 +41,7 @@ export interface OrderDraft {
 }
 
 const SESSION_KEY   = 'admin_order_drafts';
-const SIDEBAR_W     = 220;
+const SIDEBAR_W     = 240;  // AdminSidebar width
 const PANEL_W       = 'min(980px, 72vw)';
 const PEEK_PER_CARD = 24;
 const TAB_W         = 212; // 210px tab + 2px gap
