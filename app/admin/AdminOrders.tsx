@@ -282,11 +282,30 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
   async function openSupplierPO(order: Order) {
     setCreatingPo(order.id);
     try {
-      const suppliers = await fetch('/api/admin/suppliers').then(r => r.json());
+      // Fetch suppliers + fulfillment prices in parallel
+      const [suppliers, fi] = await Promise.all([
+        fetch('/api/admin/suppliers').then(r => r.json()),
+        fulfillmentData[order.id]
+          ? Promise.resolve(fulfillmentData[order.id])
+          : fetch(`/api/admin/orders/${order.id}/fulfillment`).then(r => r.json()),
+      ]);
+
+      // Build cost-price map from fulfillment data
+      const costMap: Record<string, number> = {};
+      for (const group of fi?.by_supplier ?? []) {
+        for (const item of group.items ?? []) {
+          if (item.sku && item.cost_price > 0) costMap[item.sku] = item.cost_price;
+        }
+      }
+
       const lines = order.items.map(i => ({
-        sku: i.sku, name: i.name, qty: i.qty,
-        cost_price: 0, matched: true,
+        sku: i.sku,
+        name: i.brand ? `${i.brand} ${i.name}` : i.name,
+        qty: i.qty,
+        cost_price: costMap[i.sku] ?? 0,
+        matched: !!costMap[i.sku],
       }));
+
       window.dispatchEvent(new CustomEvent('open-po-draft', {
         detail: {
           suppliers,

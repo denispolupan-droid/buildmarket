@@ -90,6 +90,9 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
 
   const [recipientAddress, setRecipientAddress] = useState('');
 
+  // Sender type override — null means "use whatever senderInfo says"
+  const [senderTypeOverride, setSenderTypeOverride] = useState<'warehouse' | 'address' | null>(null);
+
   const [lastName,   setLastName]   = useState(initial.lastName);
   const [firstName,  setFirstName]  = useState(initial.firstName);
   const [middleName, setMiddleName] = useState(initial.middleName);
@@ -232,7 +235,8 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
 
     setSubmitting(true); setError('');
 
-    const isAddress = senderInfo.senderType === 'address';
+    const effectiveSenderType = senderTypeOverride ?? senderInfo.senderType;
+    const isAddress = effectiveSenderType === 'address';
     const serviceType = isCourier
       ? (isAddress ? 'DoorsDoors' : 'WarehouseDoors')
       : (isAddress ? 'DoorsWarehouse' : 'WarehouseWarehouse');
@@ -242,7 +246,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
       body: JSON.stringify({
         orderId: order.id,
         senderRef:          senderInfo.ref,
-        senderCityRef:      senderWH?.cityRef ?? senderInfo.warehouses[0]?.cityRef ?? senderInfo.cityRef,
+        senderCityRef:      isAddress ? senderInfo.cityRef : (senderWH?.cityRef ?? senderInfo.warehouses[0]?.cityRef ?? senderInfo.cityRef),
         senderWarehouseRef: isAddress ? senderInfo.addressRef : (senderWH?.ref ?? senderInfo.warehouses[0]?.ref),
         senderContactRef:   senderInfo.contactRef,
         senderPhone:        senderInfo.phone,
@@ -441,22 +445,46 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
             </div>}
           </section>
 
-          {/* Відправник */}
-          {senderInfo && senderInfo.senderType === 'address' && (
+          {/* ── Відправник: спосіб забору ── */}
+          {senderInfo && (
             <section>
-              {senderInfo.addressRef ? (
-                <div style={{ padding: '10px 14px', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: '8px', fontSize: '13px', color: '#15803D' }}>
-                  🏭 Забір зі складу: <strong>{senderInfo.addressDesc || senderInfo.addressRef}</strong>
-                  <div style={{ fontSize: '11px', color: '#16A34A', marginTop: '2px' }}>НП приїде за товаром на вашу зареєстровану адресу</div>
-                </div>
-              ) : (
-                <div style={{ padding: '10px 14px', background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '8px', fontSize: '13px', color: '#92400E' }}>
-                  ⚠ Адреса забору не налаштована. Перейдіть у Налаштування → НП Відправник.
-                </div>
-              )}
+              <div style={secTitle}><Package size={11} /><span>Спосіб відправки (звідки)</span></div>
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                {([
+                  { value: 'warehouse' as const, label: '🏢 Я несу у відділення НП' },
+                  { value: 'address'   as const, label: '🚚 Кур\'єр забирає зі складу' },
+                ] as const).map(({ value, label }) => {
+                  const active = (senderTypeOverride ?? senderInfo.senderType) === value;
+                  return (
+                    <button
+                      key={value}
+                      style={{ ...radio(active), flex: 1, fontSize: '11px' }}
+                      onClick={() => setSenderTypeOverride(value)}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Показуємо інфо залежно від ефективного типу */}
+              {(senderTypeOverride ?? senderInfo.senderType) === 'address' ? (
+                senderInfo.addressRef ? (
+                  <div style={{ padding: '10px 14px', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: '8px', fontSize: '13px', color: '#15803D' }}>
+                    🏭 Забір зі складу: <strong>{senderInfo.addressDesc || senderInfo.addressRef}</strong>
+                    <div style={{ fontSize: '11px', color: '#16A34A', marginTop: '2px' }}>НП приїде за товаром на зареєстровану адресу</div>
+                  </div>
+                ) : (
+                  <div style={{ padding: '10px 14px', background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '8px', fontSize: '13px', color: '#92400E' }}>
+                    ⚠ Адреса забору не налаштована. Перейдіть у Налаштування → НП Відправник.
+                  </div>
+                )
+              ) : null}
             </section>
           )}
-          {senderInfo && senderInfo.senderType === 'warehouse' && senderInfo.warehouses.length > 1 && (
+
+          {/* Вибір відділення відправника (якщо warehouse і кілька відділень) */}
+          {senderInfo && (senderTypeOverride ?? senderInfo.senderType) === 'warehouse' && senderInfo.warehouses.length > 1 && (
             <section>
               <div style={secTitle}><Package size={11} /><span>Відділення відправника</span></div>
               <div ref={senderWhRef} style={{ position: 'relative' }}>

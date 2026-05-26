@@ -1,6 +1,12 @@
 'use client';
 
-import { Printer } from 'lucide-react';
+import { Printer, FileSpreadsheet } from 'lucide-react';
+
+/** UA29-char IBAN → groups of 4 with spaces */
+function formatIban(raw: string) {
+  const s = raw.replace(/\s/g, '');
+  return s.match(/.{1,4}/g)?.join(' ') ?? s; // non-breaking space so it doesn't break mid-group
+}
 
 type Item = { sku: string; name: string; brand: string; qty: number; price: number };
 type Order = {
@@ -26,6 +32,36 @@ export default function InvoicePrint({ order, bankRecipient, bankIban, bankName,
   const date = new Date(order.created_at).toLocaleDateString('uk-UA', {
     day: '2-digit', month: '2-digit', year: 'numeric',
   });
+  const ibanDisplay = formatIban(bankIban);
+
+  async function exportExcel() {
+    const XLSX = await import('xlsx');
+    const wb = XLSX.utils.book_new();
+    const rows: (string | number)[][] = [
+      [`Рахунок-фактура №${order.order_number}`, '', '', '', ''],
+      ['Дата:', date, '', '', ''],
+      ['Платник:', order.company || order.contact, '', '', ''],
+      order.delivery_address ? ['Доставка:', order.delivery_address, '', '', ''] : [],
+      [],
+      ['Артикул', 'Бренд', 'Назва', 'Кількість', 'Ціна, грн', 'Сума, грн'],
+      ...order.items.map(i => [i.sku, i.brand, i.name, i.qty, i.price, +(i.price * i.qty).toFixed(2)]),
+      [],
+      ['', '', '', '', 'РАЗОМ:', +order.total_price.toFixed(2)],
+      [],
+      ['Реквізити для оплати', '', '', '', '', ''],
+      ['Отримувач:', bankRecipient, '', '', '', ''],
+      ['IBAN:', bankIban, '', '', '', ''],
+      ['Банк:', bankName, '', '', '', ''],
+      ['ЄДРПОУ:', bankEdrpou, '', '', '', ''],
+      ['Призначення:', `Оплата за замовлення №${order.order_number}`, '', '', '', ''],
+    ].filter(r => r.length > 0);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ws = XLSX.utils.aoa_to_sheet(rows as any);
+    ws['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 44 }, { wch: 10 }, { wch: 13 }, { wch: 13 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Рахунок');
+    XLSX.writeFile(wb, `Рахунок_${order.order_number}.xlsx`);
+  }
 
   return (
     <>
@@ -38,10 +74,24 @@ export default function InvoicePrint({ order, bankRecipient, bankIban, bankName,
         @page { margin: 16mm; }
       `}</style>
 
-      {/* Print button */}
+      {/* Action buttons */}
       <div className="no-print" style={{
         position: 'fixed', bottom: '32px', right: '80px', zIndex: 100,
+        display: 'flex', gap: '10px',
       }}>
+        <button
+          onClick={exportExcel}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            height: '48px', padding: '0 20px', borderRadius: '12px',
+            background: '#15803D', color: '#fff', fontSize: '14px', fontWeight: 700,
+            border: 'none', cursor: 'pointer',
+            boxShadow: '0 4px 16px rgba(21,128,61,0.3)',
+          }}
+        >
+          <FileSpreadsheet size={16} />
+          Excel
+        </button>
         <button
           onClick={() => window.print()}
           style={{
@@ -53,7 +103,7 @@ export default function InvoicePrint({ order, bankRecipient, bankIban, bankName,
           }}
         >
           <Printer size={16} />
-          Зберегти як PDF
+          PDF
         </button>
       </div>
 
@@ -142,16 +192,16 @@ export default function InvoicePrint({ order, bankRecipient, bankIban, bankName,
             <div style={{ fontSize: '12px', fontWeight: 700, color: '#1E3A5F', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
               Реквізити для оплати
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '6px 12px' }}>
-              {[
+            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '6px 12px', alignItems: 'start' }}>
+              {([
                 ['Отримувач', bankRecipient],
-                ['IBAN', bankIban],
+                ['IBAN', ibanDisplay],
                 ['Банк', bankName],
                 ['ЄДРПОУ', bankEdrpou],
-              ].map(([k, v]) => (
+              ] as [string, string][]).map(([k, v]) => (
                 <div key={k} style={{ display: 'contents' }}>
-                  <span style={{ fontSize: '12px', color: '#64748B' }}>{k}</span>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#0F172A' }}>{v}</span>
+                  <span style={{ fontSize: '12px', color: '#64748B', paddingTop: '1px' }}>{k}</span>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#0F172A', wordBreak: 'break-word' }}>{v}</span>
                 </div>
               ))}
             </div>
