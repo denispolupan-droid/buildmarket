@@ -1,96 +1,85 @@
 'use client';
 
 /**
- * Менеджер чернеток приходів товару.
- * Поведінка аналогічна PoDraftManager:
- *   - Карти стекуються ліворуч від edge sidebar
- *   - Мінімізовані → таб-бар внизу (позиціонується після PO-табів)
+ * Менеджер чернеток замовлень покупців.
+ * Поведінка аналогічна PoDraftManager та ReceiptDraftManager:
+ *   - Панель розкривається ліворуч від контенту (після sidebar 220px)
+ *   - Мінімізовані → таб-бар внизу (після PO + Receipt табів)
+ *   - Кілька відкритих — stack з peek-edge
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { X, Minus } from 'lucide-react';
 
-export type ReceiptLine = {
-  sku: string; name: string; qty: number;
-  cost_price: number; sale_price: number; is_bonus: boolean;
-  matched?: boolean;
-};
+const NewOrderModal = dynamic(() => import('./orders/NewOrderModal'), { ssr: false });
 
-export type ReceiptDraft = {
-  id:              string;
-  warehouseId:     number;
-  supplierId:      number | null;
-  docDate:         string;
-  supplierInvNum:  string;
-  supplierInvDate: string;
-  supplierInvAmount: number | '';
-  notes:           string;
-  lines:           ReceiptLine[];
-  minimized:       boolean;
-  createdAt:       number;
-  lastActivated:   number;
-};
+export interface OrderLine {
+  sku: string; name: string; brand: string; qty: number; price: number; matched: boolean;
+}
 
-type Warehouse = { id: number; name: string };
-type Supplier  = { id: number; name: string };
+export interface OrderDraft {
+  id:               string;
+  contact:          string;
+  phone:            string;
+  email:            string;
+  company:          string;
+  channelCode:      string;
+  delivery:         string;
+  novaSubtype:      string;
+  novaCityRef:      string;
+  novaCityName:     string;
+  novaWarehouseRef: string;
+  address:          string;
+  payment:          string;
+  comment:          string;
+  lines:            OrderLine[];
+  minimized:        boolean;
+  createdAt:        number;
+  lastActivated:    number;
+}
 
-const NewReceiptModal = dynamic(() => import('./procurement/NewReceiptModal'), { ssr: false });
-
-const SESSION_KEY   = 'admin_receipt_drafts';
+const SESSION_KEY   = 'admin_order_drafts';
 const SIDEBAR_W     = 220;
-const PANEL_W       = 'min(960px, 74vw)';
+const PANEL_W       = 'min(980px, 72vw)';
 const PEEK_PER_CARD = 24;
-const PO_TAB_W      = 212; // 210px + 2px gap
+const TAB_W         = 212; // 210px tab + 2px gap
 
-function loadDrafts(): ReceiptDraft[] {
+function loadDrafts(): OrderDraft[] {
   try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? '[]'); }
   catch { return []; }
 }
-function saveDrafts(d: ReceiptDraft[]) {
-  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(d)); }
+function saveDrafts(drafts: OrderDraft[]) {
+  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(drafts)); }
   catch { /* quota */ }
 }
 function fmt(n: number) { return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 }); }
 
-export default function ReceiptDraftManager() {
-  const [drafts,       setDrafts]       = useState<ReceiptDraft[]>([]);
+export default function OrderDraftManager() {
+  const [drafts,       setDrafts]       = useState<OrderDraft[]>([]);
   const [mounted,      setMounted]      = useState(false);
   const [confirmClose, setConfirmClose] = useState<string | null>(null);
-  const [warehouses,   setWarehouses]   = useState<Warehouse[]>([]);
-  const [suppliers,    setSuppliers]    = useState<Supplier[]>([]);
 
-  // How many PO draft tabs are visible (to offset receipt tabs)
-  const [poDraftCount, setPoDraftCount] = useState(0);
+  // Offsets for tab bar (PO tabs + Receipt tabs come first)
+  const [poDraftCount,      setPoDraftCount]      = useState(0);
+  const [receiptDraftCount, setReceiptDraftCount] = useState(0);
 
-  useEffect(() => {
-    setDrafts(loadDrafts());
-    setMounted(true);
+  useEffect(() => { setDrafts(loadDrafts()); setMounted(true); }, []);
 
-    // Load warehouses & suppliers via admin API (needs service role)
-    fetch('/api/admin/procurement/receipt-meta')
-      .then(r => r.ok ? r.json() : { warehouses: [], suppliers: [] })
-      .then(({ warehouses: wh, suppliers: sup }) => {
-        setWarehouses(wh ?? []);
-        setSuppliers(sup ?? []);
-      })
-      .catch(() => { /* ignore */ });
-  }, []);
-
-  // Мінімізувати всі Receipt, коли PO або Order-панель стає активною
+  // Minimize all order drafts when PO or Receipt panel activates
   useEffect(() => {
     function handler() {
       setDrafts(prev => prev.map(d => d.minimized ? d : { ...d, minimized: true }));
     }
-    window.addEventListener('po-draft-activated',    handler);
-    window.addEventListener('order-draft-activated', handler);
+    window.addEventListener('po-draft-activated',      handler);
+    window.addEventListener('receipt-draft-activated', handler);
     return () => {
-      window.removeEventListener('po-draft-activated',    handler);
-      window.removeEventListener('order-draft-activated', handler);
+      window.removeEventListener('po-draft-activated',      handler);
+      window.removeEventListener('receipt-draft-activated', handler);
     };
   }, []);
 
-  // Listen for PO draft count changes to offset tab bar
+  // Track PO count for tab offset
   useEffect(() => {
     function handler(e: Event) {
       setPoDraftCount((e as CustomEvent<{ count: number }>).detail.count ?? 0);
@@ -99,36 +88,51 @@ export default function ReceiptDraftManager() {
     return () => window.removeEventListener('po-drafts-changed', handler);
   }, []);
 
-  // Persist drafts + notify OrderDraftManager for tab offset
+  // Track Receipt count for tab offset
+  useEffect(() => {
+    function handler(e: Event) {
+      setReceiptDraftCount((e as CustomEvent<{ count: number }>).detail.count ?? 0);
+    }
+    window.addEventListener('receipt-drafts-changed', handler);
+    return () => window.removeEventListener('receipt-drafts-changed', handler);
+  }, []);
+
+  // Persist + notify siblings
   useEffect(() => {
     if (!mounted) return;
     saveDrafts(drafts);
-    window.dispatchEvent(new CustomEvent('receipt-drafts-changed', { detail: { count: drafts.length } }));
+    window.dispatchEvent(new CustomEvent('order-drafts-changed', { detail: { count: drafts.length } }));
   }, [drafts, mounted]);
 
-  // Open receipt draft from "Новий прихід" button
+  // Open new order draft via event
   useEffect(() => {
     function handler() {
       const now = Date.now();
-      const draft: ReceiptDraft = {
-        id:              `receipt_${now}`,
-        warehouseId:     warehouses[0]?.id ?? 0,
-        supplierId:      null,
-        docDate:         new Date().toISOString().slice(0, 10),
-        supplierInvNum:  '',
-        supplierInvDate: '',
-        supplierInvAmount: '',
-        notes:           '',
-        lines:           [],
-        minimized:       false,
-        createdAt:       now,
-        lastActivated:   now,
+      const draft: OrderDraft = {
+        id:               `order_${now}`,
+        contact:          '',
+        phone:            '',
+        email:            '',
+        company:          '',
+        channelCode:      'retail',
+        delivery:         'pickup',
+        novaSubtype:      '',
+        novaCityRef:      '',
+        novaCityName:     '',
+        novaWarehouseRef: '',
+        address:          '',
+        payment:          'cash',
+        comment:          '',
+        lines:            [{ sku: '', name: '', brand: '', qty: 1, price: 0, matched: false }],
+        minimized:        false,
+        createdAt:        now,
+        lastActivated:    now,
       };
       setDrafts(prev => [...prev, draft]);
     }
-    window.addEventListener('open-receipt-draft', handler);
-    return () => window.removeEventListener('open-receipt-draft', handler);
-  }, [warehouses]);
+    window.addEventListener('open-order-draft', handler);
+    return () => window.removeEventListener('open-order-draft', handler);
+  }, []);
 
   const bringToFront = useCallback((id: string) => {
     setDrafts(prev => prev.map(d =>
@@ -136,11 +140,10 @@ export default function ReceiptDraftManager() {
         ? { ...d, minimized: false, lastActivated: Date.now() }
         : { ...d, minimized: true }
     ));
-    // Повідомляємо PoDraftManager — він мінімізує свої панелі
-    window.dispatchEvent(new CustomEvent('receipt-draft-activated'));
+    window.dispatchEvent(new CustomEvent('order-draft-activated'));
   }, []);
 
-  const updateDraft   = useCallback((id: string, data: Partial<ReceiptDraft>) =>
+  const updateDraft   = useCallback((id: string, data: Partial<OrderDraft>) =>
     setDrafts(prev => prev.map(d => d.id === id ? { ...d, ...data } : d)), []);
 
   const minimizeDraft = useCallback((id: string) =>
@@ -153,7 +156,9 @@ export default function ReceiptDraftManager() {
     if (!force) {
       const draft = drafts.find(d => d.id === id);
       if (!draft) return;
-      const hasData = draft.lines.length > 0 || draft.notes.trim() || draft.supplierInvNum.trim();
+      const hasData = draft.lines.some(l => l.sku || l.name)
+        || draft.contact.trim()
+        || draft.comment.trim();
       if (hasData) { setConfirmClose(id); return; }
     }
     setConfirmClose(null);
@@ -167,21 +172,21 @@ export default function ReceiptDraftManager() {
   const topCard  = stack[stack.length - 1];
   const bgCards  = stack.slice(0, -1);
 
-  // Tab bar starts after PO tabs
-  const tabLeft = SIDEBAR_W + poDraftCount * PO_TAB_W;
+  // Tabs start after all PO + Receipt tabs
+  const tabLeft = SIDEBAR_W + (poDraftCount + receiptDraftCount) * TAB_W;
 
   return (
     <>
-      {/* Background cards — peek edge visible */}
+      {/* ── Background cards (peek edge) ────────────────────────────────────── */}
       {bgCards.map((draft, idx) => {
-        const depth      = bgCards.length - idx;
-        const peekWidth  = PEEK_PER_CARD * depth;
-        const topOffset  = depth * 5;
+        const depth     = bgCards.length - idx;
+        const peekWidth = PEEK_PER_CARD * depth;
+        const topOffset = depth * 5;
         return (
           <div
             key={draft.id}
             onClick={() => bringToFront(draft.id)}
-            title="Відкрити прихід"
+            title={`Відкрити: ${draft.contact || 'Нове замовлення'}`}
             style={{
               position: 'fixed',
               left:   `${SIDEBAR_W}px`,
@@ -199,31 +204,32 @@ export default function ReceiptDraftManager() {
               transition:   'top 0.2s ease-out, width 0.2s ease-out',
             }}
           >
-            <div
-              style={{
-                position: 'absolute', right: 0, top: 0, bottom: 0,
-                width: `${peekWidth}px`,
-                background: 'var(--bg-soft)',
-                borderLeft: '1px solid var(--border)',
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', paddingTop: '20px', gap: '4px',
-              }}
-            >
-              <div style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', maxHeight: '120px', overflow: 'hidden' }}>
-                Прихід
+            <div style={{
+              position: 'absolute', right: 0, top: 0, bottom: 0,
+              width: `${peekWidth}px`,
+              background: 'var(--bg-soft)',
+              borderLeft: '1px solid var(--border)',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', paddingTop: '20px', gap: '4px',
+            }}>
+              <div style={{
+                writingMode: 'vertical-rl', textOrientation: 'mixed',
+                transform: 'rotate(180deg)',
+                fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)',
+                maxHeight: '120px', overflow: 'hidden',
+              }}>
+                {draft.contact || 'Замовлення'}
               </div>
             </div>
           </div>
         );
       })}
 
-      {/* Active card */}
+      {/* ── Active card (top of stack) ───────────────────────────────────────── */}
       {topCard && (
-        <NewReceiptModal
+        <NewOrderModal
           key={topCard.id}
           initialData={topCard}
-          warehouses={warehouses}
-          suppliers={suppliers}
           zIndex={1000 + stack.length}
           onMinimize={() => minimizeDraft(topCard.id)}
           onClose={() => closeDraft(topCard.id)}
@@ -232,36 +238,33 @@ export default function ReceiptDraftManager() {
         />
       )}
 
-      {/* Tab bar */}
+      {/* ── Tab bar (bottom) ─────────────────────────────────────────────────── */}
       {drafts.length > 0 && (
         <div style={{
           position: 'fixed', bottom: 0, left: `${tabLeft}px`, zIndex: 1010,
           display: 'flex', flexDirection: 'row', alignItems: 'stretch', gap: '2px',
         }}>
           {tabOrder.map(draft => {
-            const isActive   = !draft.minimized && draft.id === topCard?.id;
-            const lineCount  = draft.lines.length;
-            const total      = draft.lines.reduce((s, l) => s + l.qty * (l.is_bonus ? 0 : l.cost_price), 0);
-
+            const isActive    = !draft.minimized && draft.id === topCard?.id;
+            const lineCount   = draft.lines.filter(l => l.sku || l.name).length;
+            const total       = draft.lines.reduce((s, l) => s + l.qty * l.price, 0);
+            const label       = draft.contact || 'Нове замовлення';
             const isConfirming = confirmClose === draft.id;
-
-            const supplierLabel = suppliers.find(s => s.id === draft.supplierId)?.name ?? '';
-            const label = supplierLabel || 'Новий прихід';
 
             return (
               <div key={draft.id} style={{ position: 'relative', alignSelf: 'flex-end', flexShrink: 0 }}>
                 <div
-                  className="receipt-tab"
+                  className="order-tab"
                   style={{
                     height: '42px', width: '210px',
-                    background: '#1a3a2a',
+                    background: '#1c2a3d',
                     backdropFilter: 'blur(8px)',
                     borderRadius: '10px 10px 0 0',
                     border: '1px solid rgba(255,255,255,0.08)',
-                    borderTop: isActive ? '2px solid #15803D' : '1px solid rgba(255,255,255,0.06)',
+                    borderTop: isActive ? '2px solid #2563EB' : '1px solid rgba(255,255,255,0.06)',
                     borderBottom: 'none',
                     display: 'flex', alignItems: 'center',
-                    boxShadow: isActive ? '0 -3px 14px rgba(21,128,61,0.2)' : 'none',
+                    boxShadow: isActive ? '0 -3px 14px rgba(37,99,235,0.22)' : 'none',
                     opacity: isActive ? 1 : 0.8,
                     transition: 'opacity 0.18s, box-shadow 0.18s, border-color 0.18s',
                     flexShrink: 0, overflow: 'hidden',
@@ -271,7 +274,7 @@ export default function ReceiptDraftManager() {
                     onClick={() => isActive ? minimizeDraft(draft.id) : bringToFront(draft.id)}
                     style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px 0 12px', height: '100%', cursor: 'pointer' }}
                   >
-                    <span style={{ display: 'inline-block', fontSize: '14px', flexShrink: 0 }}>📦</span>
+                    <span style={{ fontSize: '14px', flexShrink: 0 }}>🛍️</span>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: '12px', fontWeight: isActive ? 700 : 500, color: isActive ? '#E2E8F0' : '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {label}
@@ -288,24 +291,22 @@ export default function ReceiptDraftManager() {
                       <button
                         onClick={() => minimizeDraft(draft.id)}
                         title="Згорнути"
-                        className="receipt-close-btn"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', display: 'flex', padding: '3px', borderRadius: '4px' }}
-                      >
+                        className="order-close-btn"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', display: 'flex', padding: '3px', borderRadius: '4px' }}>
                         <Minus size={11} />
                       </button>
                     )}
                     <button
                       onClick={() => closeDraft(draft.id)}
                       title="Закрити"
-                      className="receipt-close-btn"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', display: 'flex', padding: '3px', borderRadius: '4px' }}
-                    >
+                      className="order-close-btn"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', display: 'flex', padding: '3px', borderRadius: '4px' }}>
                       <X size={12} />
                     </button>
                   </div>
                 </div>
 
-                {/* Confirm close dialog (inline, above tab) */}
+                {/* Confirm-close popup above tab */}
                 {isConfirming && (
                   <div style={{ position: 'absolute', bottom: '46px', left: 0, width: '280px', background: 'var(--bg-card)', borderRadius: '12px', padding: '16px 18px', boxShadow: '0 12px 40px rgba(0,0,0,0.35)', border: '1px solid var(--border)', zIndex: 10 }}>
                     <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>Закрити без збереження?</div>
@@ -323,8 +324,8 @@ export default function ReceiptDraftManager() {
       )}
 
       <style>{`
-        .receipt-tab:hover { background: #22472e !important; }
-        .receipt-tab:hover .receipt-close-btn { color: rgba(255,255,255,0.6) !important; }
+        .order-tab:hover { background: #243550 !important; }
+        .order-tab:hover .order-close-btn { color: rgba(255,255,255,0.6) !important; }
       `}</style>
     </>
   );

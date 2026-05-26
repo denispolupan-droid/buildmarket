@@ -4,6 +4,7 @@ import { createSupabaseServer } from '../../lib/supabase-server';
 import AdminSidebar from '../components/admin/AdminSidebar';
 import PoDraftManagerLoader from './PoDraftManagerLoader';
 import ReceiptDraftManagerLoader from './ReceiptDraftManagerLoader';
+import OrderDraftManagerLoader from './OrderDraftManagerLoader';
 import PageTransition from './PageTransition';
 
 const serviceClient = createClient(
@@ -27,6 +28,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <PageTransition>{children}</PageTransition>
       <PoDraftManagerLoader />
       <ReceiptDraftManagerLoader />
+      <OrderDraftManagerLoader />
     </div>
   );
 }

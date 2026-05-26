@@ -4,6 +4,7 @@ import { createSupabaseServer } from '../../lib/supabase-server';
 import AdminOrders from './AdminOrders';
 import Link from 'next/link';
 import { Send } from 'lucide-react';
+import NewOrderButton from './orders/NewOrderButton';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -69,16 +70,7 @@ export default async function AdminPage({
         <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
           Замовлення
         </h1>
-        <Link href="/admin/orders/new" style={{
-          display: 'inline-flex', alignItems: 'center', gap: '6px',
-          height: '36px', padding: '0 18px', borderRadius: '9px',
-          background: 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)',
-          color: '#fff', textDecoration: 'none',
-          fontSize: '13px', fontWeight: 700,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
-        }}>
-          + Нове замовлення
-        </Link>
+        <NewOrderButton />
       </div>
 
       {/* Status tabs + Відправлення */}

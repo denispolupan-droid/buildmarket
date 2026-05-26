@@ -66,13 +66,17 @@ export default function PoDraftManager() {
 
   useEffect(() => { setDrafts(loadDrafts()); setMounted(true); }, []);
 
-  // Мінімізувати всі ЗП, коли Receipt-панель стає активною
+  // Мінімізувати всі ЗП, коли Receipt або Order-панель стає активною
   useEffect(() => {
     function handler() {
       setDrafts(prev => prev.map(d => d.minimized ? d : { ...d, minimized: true }));
     }
     window.addEventListener('receipt-draft-activated', handler);
-    return () => window.removeEventListener('receipt-draft-activated', handler);
+    window.addEventListener('order-draft-activated',   handler);
+    return () => {
+      window.removeEventListener('receipt-draft-activated', handler);
+      window.removeEventListener('order-draft-activated',   handler);
+    };
   }, []);
 
   // Автозгортання при будь-якій навігації поза розділом закупівлі
