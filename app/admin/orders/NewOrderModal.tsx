@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Minus, Loader2, Trash2, Plus, AlertCircle, Upload, Search, UserCheck, ExternalLink } from 'lucide-react';
+import { X, Minus, Loader2, Trash2, Plus, AlertCircle, Upload, Search, UserCheck, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import NovaPoshtaSelect from '../../components/NovaPoshtaSelect';
@@ -112,6 +112,13 @@ export default function NewOrderModal({
   const customerRef = useRef<HTMLDivElement>(null);
   const customerTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  // ── Customer picker modal ─────────────────────────────────────────────────
+  const [showPicker,    setShowPicker]    = useState(false);
+  const [pickerQuery,   setPickerQuery]   = useState('');
+  const [pickerList,    setPickerList]    = useState<Customer[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const pickerTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
   // ── Order fields ──────────────────────────────────────────────────────────
   const [contact,          setContact]          = useState(initialData.contact);
   const [phone,            setPhone]            = useState(initialData.phone);
@@ -161,6 +168,7 @@ export default function NewOrderModal({
       Object.values(lt).forEach(clearTimeout);
       Object.values(nt).forEach(clearTimeout);
       clearTimeout(customerTimer.current);
+      clearTimeout(pickerTimer.current);
     };
   }, []);
 
@@ -194,6 +202,39 @@ export default function NewOrderModal({
   }, [customerId, contact, phone, email, company, channelCode,
       delivery, novaSubtype, novaCityRef, novaCityName, novaWarehouseRef,
       address, payment, comment, lines]);
+
+  // ── Customer picker modal logic ───────────────────────────────────────────
+  async function openPicker() {
+    setShowPicker(true);
+    setPickerQuery('');
+    setPickerLoading(true);
+    const res = await fetch('/api/admin/customers/search?q=&limit=60');
+    const data: Customer[] = res.ok ? await res.json() : [];
+    setPickerList(data);
+    setPickerLoading(false);
+  }
+
+  function handlePickerSearch(val: string) {
+    setPickerQuery(val);
+    clearTimeout(pickerTimer.current);
+    setPickerLoading(true);
+    pickerTimer.current = setTimeout(async () => {
+      const q = val.trim();
+      const url = q.length >= 2
+        ? `/api/admin/customers/search?q=${encodeURIComponent(q)}&limit=60`
+        : '/api/admin/customers/search?q=&limit=60';
+      const res = await fetch(url);
+      const data: Customer[] = res.ok ? await res.json() : [];
+      setPickerList(data);
+      setPickerLoading(false);
+    }, 250);
+  }
+
+  function pickCustomer(c: Customer) {
+    selectCustomer(c);
+    setShowPicker(false);
+    setPickerQuery('');
+  }
 
   // ── Customer picker ───────────────────────────────────────────────────────
   function handleCustomerSearch(val: string) {
@@ -470,23 +511,11 @@ export default function NewOrderModal({
             <div style={{ border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <label style={{ ...lbl, margin: 0 }}>Клієнт / Контрагент</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {selectedCustomer && (
-                    <span style={{ fontSize: '11px', background: '#EFF6FF', color: '#1D4ED8', padding: '2px 8px', borderRadius: '5px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <UserCheck size={11} /> З довідника
-                    </span>
-                  )}
-                  <a
-                    href={selectedCustomer ? `/admin/partners?open=${selectedCustomer.id}` : '/admin/partners'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Відкрити довідник контрагентів"
-                    style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#3B82F6', textDecoration: 'none', padding: '2px 6px', borderRadius: '5px', border: '1px solid #BFDBFE', background: '#EFF6FF', fontWeight: 600 }}
-                  >
-                    <ExternalLink size={10} />
-                    Довідник
-                  </a>
-                </div>
+                {selectedCustomer && (
+                  <span style={{ fontSize: '11px', background: '#EFF6FF', color: '#1D4ED8', padding: '2px 8px', borderRadius: '5px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <UserCheck size={11} /> З довідника
+                  </span>
+                )}
               </div>
 
               {/* Customer search (shows only when no customer selected) */}
@@ -499,8 +528,20 @@ export default function NewOrderModal({
                       value={customerSearch}
                       onChange={e => handleCustomerSearch(e.target.value)}
                       onFocus={() => customerResults.length > 0 && setCustomerOpen(true)}
-                      style={{ ...sinp, paddingLeft: '30px' }}
+                      style={{ ...sinp, paddingLeft: '30px', paddingRight: '38px' }}
                     />
+                    <button
+                      type="button"
+                      onClick={openPicker}
+                      title="Вибрати зі списку контрагентів"
+                      style={{
+                        position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)',
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        color: '#64748B', display: 'flex', padding: '3px', borderRadius: '4px',
+                      }}
+                    >
+                      <Users size={15} />
+                    </button>
                   </div>
                   {customerOpen && customerResults.length > 0 && (
                     <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 50, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', maxHeight: '220px', overflowY: 'auto' }}>
@@ -859,6 +900,97 @@ export default function NewOrderModal({
           </div>
         );
       })()}
+
+      {/* ── Customer picker modal ─────────────────────────────────────── */}
+      {showPicker && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onMouseDown={e => { if (e.target === e.currentTarget) setShowPicker(false); }}
+        >
+          <div style={{
+            width: '520px', maxHeight: '580px', background: 'var(--bg-card)',
+            borderRadius: '14px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          }}>
+            {/* Header */}
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Users size={16} color="#1E3A5F" /> Вибір контрагента
+              </div>
+              <button onClick={() => setShowPicker(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Search */}
+            <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+              <div style={{ position: 'relative' }}>
+                <Search size={13} color="#94A3B8" style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                <input
+                  autoFocus
+                  placeholder="Пошук за ім'ям, компанією, телефоном..."
+                  value={pickerQuery}
+                  onChange={e => handlePickerSearch(e.target.value)}
+                  style={{ ...sinp, paddingLeft: '30px' }}
+                />
+              </div>
+            </div>
+
+            {/* List */}
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+              {pickerLoading ? (
+                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Завантаження...
+                </div>
+              ) : pickerList.length === 0 ? (
+                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                  Нічого не знайдено
+                </div>
+              ) : (
+                pickerList.map((c, i) => {
+                  const typeColor = c.type === 'wholesale' ? '#7C3AED' : c.type === 'dropship_partner' ? '#2563EB' : '#64748B';
+                  const typeBg   = c.type === 'wholesale' ? '#F5F3FF' : c.type === 'dropship_partner' ? '#EFF6FF' : '#F8FAFC';
+                  const typeLabel = c.type === 'wholesale' ? 'Опт' : c.type === 'dropship_partner' ? 'Дропшип' : 'Роздріб';
+                  return (
+                    <button
+                      key={c.id}
+                      onMouseDown={() => pickCustomer(c)}
+                      style={{
+                        width: '100%', padding: '11px 20px', background: 'none', border: 'none',
+                        borderBottom: i < pickerList.length - 1 ? '1px solid var(--border-light)' : 'none',
+                        cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '12px',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-soft)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {c.name}
+                          {c.company && <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: '6px' }}>{c.company}</span>}
+                        </div>
+                        {(c.phone || c.city) && (
+                          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                            {[c.phone, c.city].filter(Boolean).join(' · ')}
+                          </div>
+                        )}
+                      </div>
+                      <span style={{ fontSize: '10px', fontWeight: 600, color: typeColor, background: typeBg, padding: '2px 7px', borderRadius: '4px', flexShrink: 0 }}>
+                        {typeLabel}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            {!pickerLoading && pickerList.length > 0 && (
+              <div style={{ padding: '8px 20px', borderTop: '1px solid var(--border)', fontSize: '11px', color: 'var(--text-muted)', flexShrink: 0 }}>
+                {pickerList.length} контрагент(ів) · клікніть щоб вибрати
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }

@@ -14,16 +14,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const q = req.nextUrl.searchParams.get('q')?.trim() ?? '';
-  if (q.length < 2) return NextResponse.json([]);
+  const q     = req.nextUrl.searchParams.get('q')?.trim() ?? '';
+  const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') ?? '10'), 100);
 
-  const { data } = await serviceClient
+  let query = serviceClient
     .from('customers')
     .select('id, name, company, legal_name, phone, email, type, price_tier, city')
-    .or(`name.ilike.%${q}%,company.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`)
     .eq('is_active', true)
-    .order('name')
-    .limit(10);
+    .order('last_order_at', { ascending: false, nullsFirst: false })
+    .limit(limit);
 
+  if (q.length >= 2) {
+    query = query.or(
+      `name.ilike.%${q}%,company.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`
+    );
+  }
+
+  const { data } = await query;
   return NextResponse.json(data ?? []);
 }
