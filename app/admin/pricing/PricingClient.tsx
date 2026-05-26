@@ -40,12 +40,13 @@ interface CheckData {
 }
 
 interface Row {
-  sku:       string;
-  name:      string;
-  brand:     string | null;
-  volume:    string | null;
-  our_price: number | null;
-  check:     CheckData | null;
+  sku:              string;
+  name:             string;
+  brand:            string | null;
+  volume:           string | null;
+  our_price:        number | null;   // price_unit (B2B/wholesale)
+  our_price_retail: number | null;   // price_retail (shown to end customers)
+  check:            CheckData | null;
 }
 
 interface Props {
@@ -297,14 +298,15 @@ export default function PricingClient({ rows }: Props) {
         {/* Table header */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 110px 110px 110px 90px 110px 130px 100px',
+          gridTemplateColumns: '1fr 95px 95px 110px 110px 90px 110px 130px 100px',
           padding: '12px 16px',
           background: '#F9FAFB', borderBottom: '1px solid #E5E7EB',
           fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase',
           letterSpacing: '0.05em',
         }}>
           <span>Товар</span>
-          <span style={{ textAlign: 'right' }}>Наша ціна</span>
+          <span style={{ textAlign: 'right' }}>Роздріб</span>
+          <span style={{ textAlign: 'right' }}>Опт</span>
           <span style={{ textAlign: 'right' }}>Мін. ринку</span>
           <span style={{ textAlign: 'right' }}>Prom / Epicentr</span>
           <span style={{ textAlign: 'right' }}>Delta</span>
@@ -331,7 +333,7 @@ export default function PricingClient({ rows }: Props) {
               {/* Main row */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 110px 110px 110px 90px 110px 130px 100px',
+                gridTemplateColumns: '1fr 95px 95px 110px 110px 90px 110px 130px 100px',
                 padding: '12px 16px',
                 alignItems: 'center',
                 background: isLoading ? '#FAFAFA' : undefined,
@@ -368,7 +370,8 @@ export default function PricingClient({ rows }: Props) {
                 </div>
 
                 {/* Prices */}
-                <span style={{ textAlign: 'right', fontWeight: 600, fontSize: 14 }}>{fmt(row.our_price)}</span>
+                <span style={{ textAlign: 'right', fontWeight: 700, fontSize: 13, color: '#1E3A5F' }}>{fmt(row.our_price_retail)}</span>
+                <span style={{ textAlign: 'right', fontWeight: 600, fontSize: 13, color: '#374151' }}>{fmt(row.our_price)}</span>
                 <span style={{ textAlign: 'right', color: '#374151', fontSize: 13 }}>{fmt(c?.market_min ?? null)}</span>
                 <span style={{ textAlign: 'right', color: '#374151', fontSize: 13 }}>{fmt(c?.prom_min ?? null)}</span>
 

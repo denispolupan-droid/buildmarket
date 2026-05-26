@@ -19,7 +19,7 @@ export default async function PricingPage() {
 
   const { data: stocks } = await db
     .from('product_stock')
-    .select('sku, price_unit')
+    .select('sku, price_unit, price_retail')
     .in('sku', skus);
 
   const { data: checks } = await db
@@ -27,9 +27,12 @@ export default async function PricingPage() {
     .select('*')
     .order('delta_pct', { ascending: false, nullsFirst: false });
 
-  const stockMap: Record<string, number | null> = {};
+  const stockMap: Record<string, { unit: number | null; retail: number | null }> = {};
   for (const s of stocks ?? []) {
-    stockMap[s.sku] = s.price_unit ? Number(s.price_unit) : null;
+    stockMap[s.sku] = {
+      unit:   s.price_unit   ? Number(s.price_unit)   : null,
+      retail: s.price_retail ? Number(s.price_retail) : null,
+    };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,12 +42,13 @@ export default async function PricingPage() {
   }
 
   const rows = (products ?? []).map(p => ({
-    sku:          p.sku,
-    name:         p.name,
-    brand:        p.brand,
-    volume:       p.volume,
-    our_price:    stockMap[p.sku] ?? null,
-    check:        checkMap[p.sku] ?? null,
+    sku:              p.sku,
+    name:             p.name,
+    brand:            p.brand,
+    volume:           p.volume,
+    our_price:        stockMap[p.sku]?.unit   ?? null,
+    our_price_retail: stockMap[p.sku]?.retail ?? null,
+    check:            checkMap[p.sku] ?? null,
   }));
 
   return <PricingClient rows={rows} />;

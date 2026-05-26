@@ -34,15 +34,19 @@ export async function POST(req: NextRequest) {
 
   const { data: stock } = await db
     .from('product_stock')
-    .select('price_unit')
+    .select('price_unit, price_retail')
     .eq('sku', sku)
     .single();
+
+  // Compare retail price against market (competitors show retail prices)
+  const retailPrice = stock?.price_retail ? Number(stock.price_retail) : null;
+  const unitPrice   = stock?.price_unit   ? Number(stock.price_unit)   : null;
 
   const result = await checkProductPrices({
     sku:    product.sku,
     name:   product.name,
     volume: product.volume ?? null,
-    price:  stock?.price_unit ? Number(stock.price_unit) : null,
+    price:  retailPrice ?? unitPrice,   // delta/status based on retail
   });
 
   // Upsert into market_price_checks
