@@ -7,6 +7,36 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = 'FIXLINE <orders@fixline.com.ua>';
 
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || user.user_metadata?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  const { id } = await params;
+  const db = createServiceClient();
+
+  const { data: order } = await db.from('orders').select('items').eq('id', id).single();
+  if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  const skus = ((order.items ?? []) as { sku: string }[]).map((i) => i.sku);
+  const { data: skuMapRows } = await db
+    .from('supplier_sku_map').select('supplier_id').in('our_sku', skus);
+  const supplierIds = [...new Set((skuMapRows ?? []).map((r) => r.supplier_id).filter(Boolean))];
+  const { data: suppliers } = await db
+    .from('suppliers').select('id, name, email, notes').in('id', supplierIds);
+
+  const first = suppliers?.[0];
+  const supplierEmail = first?.email ?? extractEmail(first?.notes ?? '') ?? '';
+  return NextResponse.json({
+    supplier_name:  suppliers?.map((s) => s.name).join(', ') ?? '—',
+    supplier_email: supplierEmail,
+  });
+}
+
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -27,6 +57,14 @@ export async function POST(
     .single();
 
   if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  let overrideEmail: string | undefined;
+  let overrideComment: string | undefined;
+  try {
+    const body = await _req.json().catch(() => ({}));
+    if (body.overrideEmail) overrideEmail = body.overrideEmail;
+    if (body.comment)       overrideComment = body.comment;
+  } catch { /* no body */ }
 
   const orderItems = (order.items ?? []) as { sku: string; name: string; brand: string; qty: number; price: number }[];
   const skus = orderItems.map(i => i.sku);
@@ -93,9 +131,9 @@ export async function POST(
       })),
     });
 
-    // Send email if supplier has email
+    // Send email if supplier has email (use override if provided)
     let emailed = false;
-    const supplierEmail = supplier.email ?? extractEmail(supplier.notes ?? '');
+    const supplierEmail = overrideEmail || supplier.email || extractEmail(supplier.notes ?? '');
     if (supplierEmail) {
       try {
         await resend.emails.send({
@@ -107,6 +145,7 @@ export async function POST(
             contact:      order.contact,
             phone:        order.phone,
             deliveryCity: order.delivery_city_name ?? '',
+            comment:      overrideComment,
             items: supplierItems.map(item => ({
               supplierSku: supplierSkus.get(item.sku) ?? item.sku,
               name:        `${item.brand} ${item.name}`,
@@ -136,6 +175,7 @@ function buildSupplierEmailHtml(data: {
   contact: string;
   phone: string;
   deliveryCity: string;
+  comment?: string;
   items: { supplierSku: string; name: string; qty: number }[];
 }) {
   const rows = data.items.map(i => `
@@ -144,6 +184,10 @@ function buildSupplierEmailHtml(data: {
       <td style="padding:8px 12px;border-bottom:1px solid #eee">${i.name}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;font-weight:700">${i.qty} шт</td>
     </tr>`).join('');
+
+  const commentBlock = data.comment?.trim()
+    ? `<div style="margin-top:16px;padding:12px;background:#FEF3C7;border-radius:8px;font-size:13px;color:#92400E"><strong>Коментар:</strong> ${data.comment}</div>`
+    : '';
 
   return `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
@@ -159,6 +203,7 @@ function buildSupplierEmailHtml(data: {
         </thead>
         <tbody>${rows}</tbody>
       </table>
+      ${commentBlock}
       <p style="color:#94A3B8;font-size:12px;margin-top:24px">FIXLINE — orders@fixline.com.ua</p>
     </div>`;
 }

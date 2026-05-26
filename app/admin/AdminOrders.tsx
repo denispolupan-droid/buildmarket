@@ -84,9 +84,12 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
   const [ttnDeleting,    setTtnDeleting]    = useState<string | null>(null);
   const [registryAdding, setRegistryAdding] = useState<string | null>(null);
   const [registryAdded,  setRegistryAdded]  = useState<Set<string>>(new Set());
-  const [supplierModal,  setSupplierModal]  = useState<{ orderIds: string[]; comment: string } | null>(null);
-  const [supplierSending, setSupplierSending] = useState(false);
-  const [supplierResult, setSupplierResult] = useState<{ supplier_name: string; emailed: boolean }[] | null>(null);
+  type SupplierQItem = { orderId: string; orderNumber: number; supplierName: string; email: string; comment: string };
+  const [supplierQueue,        setSupplierQueue]        = useState<SupplierQItem[] | null>(null);
+  const [supplierQueueIdx,     setSupplierQueueIdx]     = useState(0);
+  const [supplierQueueLoading, setSupplierQueueLoading] = useState(false);
+  const [supplierQueueSending, setSupplierQueueSending] = useState(false);
+  const [supplierQueueDone,    setSupplierQueueDone]    = useState(false);
   const [ttnModalOrder,  setTtnModalOrder]  = useState<Order | null>(null);
   const [syncing,        setSyncing]        = useState(false);
   const [syncResult,     setSyncResult]     = useState<{ updated: number; checked: number } | null>(null);
@@ -99,7 +102,6 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
   const [confirming, setConfirming] = useState<string | null>(null);
   const [confirmErrors, setConfirmErrors] = useState<Record<string, { error: string; insufficient?: { sku: string; requested: number; available: number }[] }>>({});
   const [copiedSku, setCopiedSku] = useState<string | null>(null);
-  const [orderingSupplier, setOrderingSupplier] = useState<string | null>(null);
 
   // Edit order items
   const [editingId,   setEditingId]   = useState<string | null>(null);
@@ -201,7 +203,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
         : o));
       setFulfillmentData(prev => { const n = { ...prev }; delete n[orderId]; return n; });
       loadFulfillment(orderId);
-      setSupplierModal({ orderIds: [orderId], comment: '' });
+      startSupplierSend([orderId]);
     } catch (err) {
       console.error('[confirmAndSend] failed:', err);
       setConfirmErrors(prev => ({ ...prev, [orderId]: { error: 'Помилка мережі' } }));
@@ -210,32 +212,47 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
     }
   }
 
-  async function sendSupplierModal() {
-    if (!supplierModal) return;
-    setSupplierSending(true);
-    setSupplierResult(null);
-    try {
-      const res = await fetch('/api/admin/supplier-orders/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderIds: supplierModal.orderIds, comment: supplierModal.comment }),
-      });
-      const data = await res.json();
-      setSupplierResult(data.results ?? []);
-    } catch (err) {
-      console.error('[sendSupplierModal] failed:', err);
-      setSupplierResult([]);
-    } finally {
-      setSupplierSending(false);
-    }
+  async function startSupplierSend(orderIds: string[]) {
+    setSupplierQueueLoading(true);
+    setSupplierQueueDone(false);
+    const items: SupplierQItem[] = await Promise.all(orderIds.map(async (oid) => {
+      const order = orders.find(o => o.id === oid);
+      try {
+        const res = await fetch(`/api/admin/orders/${oid}/supplier-order`);
+        const d = await res.json();
+        return { orderId: oid, orderNumber: order?.order_number ?? 0, supplierName: d.supplier_name ?? '—', email: d.supplier_email ?? '', comment: '' };
+      } catch {
+        return { orderId: oid, orderNumber: order?.order_number ?? 0, supplierName: '—', email: '', comment: '' };
+      }
+    }));
+    setSupplierQueue(items);
+    setSupplierQueueIdx(0);
+    setSupplierQueueLoading(false);
   }
 
-  async function sendSupplierOrder(orderId: string) {
-    setOrderingSupplier(orderId);
+  function advanceSupplierQueue() {
+    if (!supplierQueue) return;
+    const next = supplierQueueIdx + 1;
+    if (next >= supplierQueue.length) { setSupplierQueue(null); }
+    else { setSupplierQueueIdx(next); setSupplierQueueDone(false); }
+  }
+
+  async function sendCurrentSupplier() {
+    if (!supplierQueue) return;
+    const item = supplierQueue[supplierQueueIdx];
+    setSupplierQueueSending(true);
     try {
-      await fetch(`/api/admin/orders/${orderId}/supplier-order`, { method: 'POST' });
+      await fetch(`/api/admin/orders/${item.orderId}/supplier-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ overrideEmail: item.email || undefined, comment: item.comment || undefined }),
+      });
+      setSupplierQueueDone(true);
+      setTimeout(() => advanceSupplierQueue(), 1400);
+    } catch {
+      advanceSupplierQueue();
     } finally {
-      setOrderingSupplier(null);
+      setSupplierQueueSending(false);
     }
   }
 
@@ -542,9 +559,10 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
               color: '#fff', fontSize: '13px', cursor: 'pointer',
             }}>Скасувати</button>
             <button
-              onClick={() => setSupplierModal({ orderIds: [...selectedIds], comment: '' })}
-              style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              📤 Відправити постачальнику
+              onClick={() => startSupplierSend([...selectedIds])}
+              disabled={supplierQueueLoading}
+              style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: supplierQueueLoading ? 0.6 : 1 }}>
+              {supplierQueueLoading ? '⏳' : '📧'} Надіслати постачальнику
             </button>
             <button onClick={openMergeModal} style={{
               height: '34px', padding: '0 16px', borderRadius: '8px',
@@ -1190,7 +1208,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                       {order.status === 'new' && (() => {
                         const mode = selectedMode[order.id] ?? 'supplier';
                         const isSupplier = mode === 'supplier';
-                        const busy = confirming === order.id || orderingSupplier === order.id;
+                        const busy = confirming === order.id;
                         const confirmErr = confirmErrors[order.id];
                         return (
                           <div style={{ marginTop: '4px' }}>
@@ -1291,10 +1309,10 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '2px' }}>
                             {order.status === 'confirmed' && (fMode === 'supplier' || fMode === 'mixed') && (
                               <button
-                                onClick={() => sendSupplierOrder(order.id)}
-                                disabled={orderingSupplier === order.id}
-                                style={{ padding: '7px 10px', borderRadius: '7px', border: '1.5px solid #0E7490', background: '#ECFEFF', color: '#0E7490', fontSize: '11px', fontWeight: 700, cursor: 'pointer', opacity: orderingSupplier === order.id ? 0.6 : 1 }}>
-                                {orderingSupplier === order.id ? '...' : '📤 Замовити у постачальника'}
+                                onClick={() => startSupplierSend([order.id])}
+                                disabled={supplierQueueLoading}
+                                style={{ padding: '7px 10px', borderRadius: '7px', border: '1.5px solid #0E7490', background: '#ECFEFF', color: '#0E7490', fontSize: '11px', fontWeight: 700, cursor: 'pointer', opacity: supplierQueueLoading ? 0.6 : 1 }}>
+                                📧 Надіслати постачальнику
                               </button>
                             )}
                             {order.status === 'awaiting_stock' && (
@@ -1388,70 +1406,104 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
         </div>
       )}
 
-      {/* Supplier order modal */}
-      {supplierModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-          onClick={e => { if (!supplierSending && e.target === e.currentTarget) { setSupplierModal(null); setSupplierResult(null); } }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '480px', boxShadow: '0 24px 80px rgba(0,0,0,0.22)', overflow: 'hidden' }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-light)' }}>
-              <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                📤 Відправити замовлення постачальнику
-              </div>
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                {supplierModal.orderIds.length === 1
-                  ? `Замовлення #${orders.find(o => o.id === supplierModal.orderIds[0])?.order_number ?? ''}`
-                  : `${supplierModal.orderIds.length} замовлень: ${supplierModal.orderIds.map(id => `#${orders.find(o => o.id === id)?.order_number ?? ''}`).join(', ')}`}
-              </div>
-            </div>
-            {supplierResult ? (
-              <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {supplierResult.length === 0 ? (
-                  <div style={{ padding: '12px 14px', background: '#FEF2F2', borderRadius: '10px', fontSize: '13px', color: '#DC2626' }}>
-                    ⚠ Постачальника не знайдено. Перевірте маппінг SKU у розділі Постачальники.
+      {/* Supplier send queue modal */}
+      {(supplierQueueLoading || supplierQueue !== null) && (() => {
+        const item = supplierQueue?.[supplierQueueIdx];
+        const total = supplierQueue?.length ?? 0;
+        const idx = supplierQueueIdx;
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+            onClick={e => { if (!supplierQueueSending && !supplierQueueDone && e.target === e.currentTarget) setSupplierQueue(null); }}>
+            <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '460px', boxShadow: '0 24px 80px rgba(0,0,0,0.22)', overflow: 'hidden' }}>
+
+              {/* Header */}
+              <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    📧 Надіслати постачальнику {total > 1 && <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-muted)' }}>({idx + 1} / {total})</span>}
                   </div>
-                ) : supplierResult.map((r, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', background: r.emailed ? '#F0FDF4' : '#FEF3C7', border: `1px solid ${r.emailed ? '#86EFAC' : '#FCD34D'}` }}>
-                    <span style={{ fontSize: '16px' }}>{r.emailed ? '✅' : '⚠️'}</span>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: 700, color: r.emailed ? '#15803D' : '#B45309' }}>{r.supplier_name}</div>
-                      <div style={{ fontSize: '12px', color: r.emailed ? '#16A34A' : '#92400E' }}>
-                        {r.emailed ? 'Email відправлено успішно' : 'Email не налаштовано — додайте email у картці постачальника'}
-                      </div>
+                  {item && <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>Замовлення #{item.orderNumber}</div>}
+                </div>
+                {!supplierQueueSending && !supplierQueueDone && (
+                  <button onClick={() => setSupplierQueue(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={18} /></button>
+                )}
+              </div>
+
+              {supplierQueueLoading ? (
+                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                  ⏳ Завантаження даних постачальника...
+                </div>
+              ) : supplierQueueDone ? (
+                <div style={{ padding: '28px 22px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '28px' }}>✅</span>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#15803D' }}>Відправлено!</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      #{item?.orderNumber} → {item?.supplierName} ({item?.email || 'email постачальника'})
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ padding: '12px 14px', background: 'var(--brand-blue-light)', borderRadius: '10px', fontSize: '13px', color: 'var(--brand-blue)' }}>
-                  Система автоматично визначить постачальника і надішле email з переліком товарів.
                 </div>
-                <div>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Коментар постачальнику (необов&apos;язково)</label>
-                  <textarea
-                    value={supplierModal.comment}
-                    onChange={e => setSupplierModal(prev => prev ? { ...prev, comment: e.target.value } : null)}
-                    placeholder="Термінове замовлення, потрібна доставка до п'ятниці..."
-                    style={{ width: '100%', height: '80px', padding: '10px 12px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
-                  />
+              ) : item ? (
+                <div style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {/* Supplier info */}
+                  <div style={{ padding: '10px 14px', background: 'var(--bg-soft)', borderRadius: '10px', fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontWeight: 700 }}>🏭</span>
+                    <span>{item.supplierName}</span>
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '5px' }}>Email *</label>
+                    <input
+                      type="email"
+                      value={item.email}
+                      onChange={e => setSupplierQueue(prev => prev
+                        ? prev.map((it, i) => i === supplierQueueIdx ? { ...it, email: e.target.value } : it)
+                        : prev)}
+                      placeholder="supplier@example.com"
+                      style={{ width: '100%', height: '38px', padding: '0 12px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                    {!item.email && (
+                      <div style={{ fontSize: '11px', color: '#B45309', marginTop: '4px' }}>⚠ Email не знайдено у картці постачальника</div>
+                    )}
+                  </div>
+
+                  {/* Comment */}
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '5px' }}>Коментар (необов&apos;язково)</label>
+                    <textarea
+                      value={item.comment}
+                      onChange={e => setSupplierQueue(prev => prev
+                        ? prev.map((it, i) => i === supplierQueueIdx ? { ...it, comment: e.target.value } : it)
+                        : prev)}
+                      placeholder="Термінове замовлення, потрібна доставка до п'ятниці..."
+                      style={{ width: '100%', height: '68px', padding: '8px 12px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', padding: '14px 24px', borderTop: '1px solid var(--border-light)' }}>
-              <button onClick={() => { setSupplierModal(null); setSupplierResult(null); }} disabled={supplierSending}
-                style={{ height: '36px', padding: '0 18px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                {supplierResult ? 'Закрити' : 'Пропустити'}
-              </button>
-              {!supplierResult && (
-                <button onClick={sendSupplierModal} disabled={supplierSending}
-                  style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: supplierSending ? 0.7 : 1 }}>
-                  {supplierSending ? '⏳ Відправлення...' : '📤 Відправити'}
-                </button>
+              ) : null}
+
+              {/* Footer */}
+              {!supplierQueueLoading && !supplierQueueDone && item && (
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', padding: '12px 22px', borderTop: '1px solid var(--border-light)' }}>
+                  <button
+                    onClick={advanceSupplierQueue}
+                    disabled={supplierQueueSending}
+                    style={{ height: '36px', padding: '0 16px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                    Пропустити
+                  </button>
+                  <button
+                    onClick={sendCurrentSupplier}
+                    disabled={supplierQueueSending || !item.email.trim()}
+                    style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: !item.email.trim() ? 'default' : 'pointer', opacity: (!item.email.trim() || supplierQueueSending) ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {supplierQueueSending ? '⏳ Відправлення...' : `📧 Відправити${total > 1 ? ` (${idx + 1}/${total})` : ''}`}
+                  </button>
+                </div>
               )}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {ttnModalOrder && (
         <CreateTTNModal
