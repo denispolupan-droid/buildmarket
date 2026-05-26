@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 
   let query = serviceClient
     .from('customers')
-    .select('id, name, company, legal_name, phone, email, type, price_tier, city')
+    .select('id, name, company, phone, email, type, price_tier, city')
     .eq('is_active', true)
     .order('last_order_at', { ascending: false, nullsFirst: false })
     .limit(limit);

@@ -41,7 +41,9 @@ export async function POST(req: NextRequest) {
     : { data: [] };
 
   const { data: stockRows } = allOurSkus.length
-    ? await db.from('product_stock').select('sku, price_cost, price_unit').in('sku', allOurSkus)
+    ? await db.from('product_stock')
+        .select('sku, price_cost, price_unit, price_retail, price_wholesale, price_drop')
+        .in('sku', allOurSkus)
     : { data: [] };
 
   const priceMap   = new Map((stockRows ?? []).map(s => [s.sku, s]));
@@ -59,14 +61,17 @@ export async function POST(req: NextRequest) {
     const stock   = priceMap.get(ourSku);
 
     return {
-      input_sku:    inputSku,          // артикул як ввів користувач
-      sku:          ourSku,            // наш артикул
-      name:         product?.name   ?? null,
-      brand:        product?.brand  ?? null,
-      price_cost:   stock?.price_cost ?? null,
-      price_unit:   stock?.price_unit  ?? null,
-      matched:      !!product,
-      via_supplier: supplierToOur.has(inputSku), // знайдено через артикул постачальника
+      input_sku:       inputSku,
+      sku:             ourSku,
+      name:            product?.name          ?? null,
+      brand:           product?.brand         ?? null,
+      price_cost:      stock?.price_cost      ?? null,
+      price_unit:      stock?.price_unit      ?? null,
+      price_retail:    stock?.price_retail    ?? null,
+      price_wholesale: stock?.price_wholesale ?? null,
+      price_drop:      stock?.price_drop      ?? null,
+      matched:         !!product,
+      via_supplier:    supplierToOur.has(inputSku),
     };
   });
 

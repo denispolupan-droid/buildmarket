@@ -84,11 +84,36 @@ function parseExcel(buffer: ArrayBuffer): { sku: string; name: string; qty: numb
   return result;
 }
 
+// ── Price tier helpers ────────────────────────────────────────────────────────
+const PRICE_TIER_OPTIONS = [
+  { value: 'retail',    label: 'Роздріб' },
+  { value: 'wholesale', label: 'Оптова'  },
+  { value: 'drop',      label: 'Дроп'    },
+  { value: 'cost',      label: 'Закуп'   },
+];
+
+type ProductPrices = {
+  price_retail?:    number | null;
+  price_wholesale?: number | null;
+  price_drop?:      number | null;
+  price_cost?:      number | null;
+  price_unit?:      number | null;
+};
+
+function priceForTier(p: ProductPrices, tier: string): number {
+  const v = tier === 'retail'    ? (p.price_retail    ?? p.price_unit)
+          : tier === 'wholesale' ? (p.price_wholesale ?? p.price_unit)
+          : tier === 'drop'      ? (p.price_drop      ?? p.price_unit)
+          : tier === 'cost'      ? p.price_cost
+          : p.price_unit;
+  return Number(v ?? 0);
+}
+
 // ── Customer type ─────────────────────────────────────────────────────────────
 type Customer = {
   id: string; name: string; company: string | null;
   phone: string | null; email: string | null;
-  type: string; city: string | null;
+  type: string; city: string | null; price_tier: string | null;
 };
 
 type Props = {
@@ -143,6 +168,7 @@ export default function NewOrderModal({
       ? initialData.lines
       : [{ sku: '', name: '', brand: '', qty: 1, price: 0, matched: false }]
   );
+  const [priceTier, setPriceTier] = useState<string>(initialData.priceTier || 'retail');
 
   // ── Saved order state ─────────────────────────────────────────────────────
   const [createdOrderId,     setCreatedOrderId]     = useState<string | null>(null);
@@ -228,14 +254,36 @@ export default function NewOrderModal({
   // Sync draft upward
   useEffect(() => {
     onDraftChange({
-      customerId, contact, phone, email, company, channelCode,
+      customerId, contact, phone, email, company, channelCode, priceTier,
       delivery, novaSubtype, novaCityRef, novaCityName, novaWarehouseRef,
       address, payment, comment, lines,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerId, contact, phone, email, company, channelCode,
+  }, [customerId, contact, phone, email, company, channelCode, priceTier,
       delivery, novaSubtype, novaCityRef, novaCityName, novaWarehouseRef,
       address, payment, comment, lines]);
+
+  // Re-apply prices when priceTier changes (only for matched lines)
+  useEffect(() => {
+    const matchedSkus = lines.filter(l => l.matched && l.sku).map(l => l.sku);
+    if (!matchedSkus.length) return;
+    fetch('/api/admin/products/search-skus', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ skus: matchedSkus }),
+    }).then(r => r.json()).then(data => {
+      const pm = new Map<string, ProductPrices>((data.products ?? []).map(
+        (p: ProductPrices & { sku: string }) => [p.sku, p]
+      ));
+      setLines(prev => prev.map(l => {
+        if (!l.matched || !l.sku) return l;
+        const p = pm.get(l.sku);
+        if (!p) return l;
+        const newPrice = priceForTier(p, priceTier);
+        return newPrice > 0 ? { ...l, price: newPrice } : l;
+      }));
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [priceTier]);
 
   // ── Customer picker modal logic ───────────────────────────────────────────
   async function openPicker() {
@@ -297,6 +345,7 @@ export default function NewOrderModal({
     setCompany(c.company ?? '');
     setCustomerSearch('');
     setCustomerOpen(false);
+    setPriceTier(c.price_tier ?? 'retail');
   }
 
   function clearCustomer() {
@@ -306,6 +355,7 @@ export default function NewOrderModal({
     setPhone('');
     setEmail('');
     setCompany('');
+    setPriceTier('retail');
   }
 
   // ── Excel upload ──────────────────────────────────────────────────────────
@@ -332,7 +382,7 @@ export default function NewOrderModal({
         name:    found        ? `${found.brand ?? ''} ${found.name ?? ''}`.trim() : r.name,
         brand:   found?.brand ?? '',
         qty:     r.qty,
-        price:   r.price || (found?.price_unit ?? found?.price_cost ?? 0),
+        price:   r.price || (found ? priceForTier(found, priceTier) : 0),
         matched: found?.matched ?? false,
       };
     });
@@ -380,7 +430,7 @@ export default function NewOrderModal({
         ...l, sku: found.sku,
         name:  found.name  ?? l.name,
         brand: found.brand ?? l.brand,
-        price: found.price_unit ?? found.price_cost ?? l.price,
+        price: priceForTier(found, priceTier) || found.price_unit || found.price_cost || l.price,
         matched: true,
       } : l));
     } else {
@@ -823,6 +873,34 @@ export default function NewOrderModal({
 
             {/* ── ITEMS TABLE ────────────────────────────────────────────── */}
             <div style={{ border: '1px solid var(--border)', borderRadius: '10px' }}>
+              {/* Price tier selector */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '8px 12px',
+                borderBottom: '1px solid var(--border)',
+                background: 'var(--bg-soft)',
+              }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  Тип цін:
+                </span>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {PRICE_TIER_OPTIONS.map(t => (
+                    <button key={t.value} onClick={() => setPriceTier(t.value)}
+                      style={{
+                        padding: '3px 10px', borderRadius: '5px', fontSize: '11px', fontWeight: 700,
+                        cursor: 'pointer', border: 'none',
+                        background: priceTier === t.value ? '#1E3A5F' : 'transparent',
+                        color:      priceTier === t.value ? '#fff'     : 'var(--text-muted)',
+                        transition: 'all 0.12s',
+                      }}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                  Ціни підтягуються автоматично по тарифу
+                </span>
+              </div>
               {/* Table header */}
               <div style={{
                 display: 'grid',
@@ -836,7 +914,9 @@ export default function NewOrderModal({
                 <span>Артикул</span>
                 <span>Найменування</span>
                 <span style={{ textAlign: 'right' }}>К-сть</span>
-                <span style={{ textAlign: 'right' }}>Ціна продажу</span>
+                <span style={{ textAlign: 'right' }}>
+                  Ціна · <span style={{ color: '#1E3A5F' }}>{PRICE_TIER_OPTIONS.find(t => t.value === priceTier)?.label}</span>
+                </span>
                 <span style={{ textAlign: 'right' }}>Сума</span>
                 <span />
               </div>

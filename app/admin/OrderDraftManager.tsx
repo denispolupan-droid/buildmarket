@@ -26,6 +26,7 @@ export interface OrderDraft {
   email:            string;
   company:          string;
   channelCode:      string;
+  priceTier:        string;         // 'retail' | 'wholesale' | 'drop' | 'cost'
   delivery:         string;
   novaSubtype:      string;
   novaCityRef:      string;
@@ -117,6 +118,7 @@ export default function OrderDraftManager() {
         email:            '',
         company:          '',
         channelCode:      'retail',
+        priceTier:        'retail',
         delivery:         'pickup',
         novaSubtype:      '',
         novaCityRef:      '',
