@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -88,6 +88,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
   const [ttnModalOrder,  setTtnModalOrder]  = useState<Order | null>(null);
   const [syncing,        setSyncing]        = useState(false);
   const [syncResult,     setSyncResult]     = useState<{ updated: number; checked: number } | null>(null);
+  const [creatingPo,     setCreatingPo]     = useState<string | null>(null);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sourceOverrides, setSourceOverrides] = useState<Record<string, Record<string, 'own' | 'dropship'>>>({});
@@ -277,6 +278,28 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
     if (expandedId) loadFulfillment(expandedId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedId]);
+
+  async function openSupplierPO(order: Order) {
+    setCreatingPo(order.id);
+    try {
+      const suppliers = await fetch('/api/admin/suppliers').then(r => r.json());
+      const lines = order.items.map(i => ({
+        sku: i.sku, name: i.name, qty: i.qty,
+        cost_price: 0, matched: true,
+      }));
+      window.dispatchEvent(new CustomEvent('open-po-draft', {
+        detail: {
+          suppliers,
+          prefill: {
+            lines,
+            notes: `Замовлення покупця №${order.order_number}`,
+          },
+        },
+      }));
+    } finally {
+      setCreatingPo(null);
+    }
+  }
 
   const SYNC_KEY = 'lastDeliverySync';
   const SYNC_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 години
@@ -1250,6 +1273,24 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                                 ✓ Доставлено
                               </button>
                             )}
+
+                            {/* Print invoice */}
+                            <a
+                              href={`/invoice/${order.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 10px', borderRadius: '7px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 700, textDecoration: 'none' }}>
+                              <Printer size={12} /> Друк / Рахунок
+                            </a>
+
+                            {/* Create supplier PO */}
+                            <button
+                              onClick={() => openSupplierPO(order)}
+                              disabled={creatingPo === order.id}
+                              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 10px', borderRadius: '7px', border: '1.5px solid #7C3AED', background: '#F5F3FF', color: '#7C3AED', fontSize: '11px', fontWeight: 700, cursor: creatingPo === order.id ? 'wait' : 'pointer', opacity: creatingPo === order.id ? 0.6 : 1 }}>
+                              <ShoppingCart size={12} />
+                              {creatingPo === order.id ? '...' : 'Створити ЗП'}
+                            </button>
                           </div>
                         </div>
                       );

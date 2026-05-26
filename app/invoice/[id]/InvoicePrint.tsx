@@ -16,7 +16,13 @@ type Order = {
   total_price: number;
 };
 
-export default function InvoicePrint({ order }: { order: Order }) {
+export default function InvoicePrint({ order, bankRecipient, bankIban, bankName, bankEdrpou }: {
+  order: Order;
+  bankRecipient: string;
+  bankIban: string;
+  bankName: string;
+  bankEdrpou: string;
+}) {
   const date = new Date(order.created_at).toLocaleDateString('uk-UA', {
     day: '2-digit', month: '2-digit', year: 'numeric',
   });
@@ -34,7 +40,7 @@ export default function InvoicePrint({ order }: { order: Order }) {
 
       {/* Print button */}
       <div className="no-print" style={{
-        position: 'fixed', bottom: '32px', right: '32px', zIndex: 100,
+        position: 'fixed', bottom: '32px', right: '80px', zIndex: 100,
       }}>
         <button
           onClick={() => window.print()}
@@ -138,10 +144,10 @@ export default function InvoicePrint({ order }: { order: Order }) {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '6px 12px' }}>
               {[
-                ['Отримувач', 'ФОП Buildmarket'],
-                ['IBAN', 'UA00 0000 0000 0000 0000 0000 000'],
-                ['Банк', 'АТ «ПриватБанк»'],
-                ['ЄДРПОУ', '00000000'],
+                ['Отримувач', bankRecipient],
+                ['IBAN', bankIban],
+                ['Банк', bankName],
+                ['ЄДРПОУ', bankEdrpou],
               ].map(([k, v]) => (
                 <div key={k} style={{ display: 'contents' }}>
                   <span style={{ fontSize: '12px', color: '#64748B' }}>{k}</span>

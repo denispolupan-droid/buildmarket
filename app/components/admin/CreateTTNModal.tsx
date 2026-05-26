@@ -79,7 +79,16 @@ const dropBtn: React.CSSProperties = {
 export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   const initial = splitContact(order.contact);
   const isCod = order.payment_type === 'cod';
-  const isPostomat = order.delivery_subtype === 'postomat';
+
+  const initialSubtype: 'warehouse' | 'postomat' | 'courier' =
+    order.delivery_subtype === 'postomat' ? 'postomat'
+    : order.delivery_subtype === 'courier' ? 'courier'
+    : 'warehouse';
+  const [deliverySubtype, setDeliverySubtype] = useState<'warehouse' | 'postomat' | 'courier'>(initialSubtype);
+  const isPostomat = deliverySubtype === 'postomat';
+  const isCourier  = deliverySubtype === 'courier';
+
+  const [recipientAddress, setRecipientAddress] = useState('');
 
   const [lastName,   setLastName]   = useState(initial.lastName);
   const [firstName,  setFirstName]  = useState(initial.firstName);
@@ -200,7 +209,9 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
     setSelectedWH(null); setWhQuery(''); setWhLoading(true);
     npRequest('Address', 'getWarehouses', { SettlementRef: s.Ref, Limit: 500, Page: 1 })
       .then((data: Warehouse[]) => {
-        const filtered = isPostomat ? data.filter(w => w.Description.toLowerCase().includes('поштомат')) : data;
+        const filtered = deliverySubtype === 'postomat'
+          ? data.filter(w => w.Description.toLowerCase().includes('поштомат'))
+          : data.filter(w => !w.Description.toLowerCase().includes('поштомат'));
         setWarehouses(filtered);
       }).finally(() => setWhLoading(false));
   }
@@ -210,7 +221,8 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
 
   async function handleSubmit() {
     if (!selectedCity)    { setError('Оберіть місто одержувача'); return; }
-    if (!selectedWH)      { setError('Оберіть відділення одержувача'); return; }
+    if (!isCourier && !selectedWH) { setError('Оберіть відділення одержувача'); return; }
+    if (isCourier && !recipientAddress.trim()) { setError('Вкажіть адресу доставки кур\'єром'); return; }
     if (!senderInfo)      { setError('Дані відправника не завантажені'); return; }
     if (senderInfo.senderType === 'warehouse' && !senderWH && senderInfo.warehouses.length > 0) { setError('Оберіть відділення відправника'); return; }
     if (!lastName || !firstName) { setError('Вкажіть прізвище та ім\'я одержувача'); return; }
@@ -221,7 +233,9 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
     setSubmitting(true); setError('');
 
     const isAddress = senderInfo.senderType === 'address';
-    const serviceType = isAddress ? 'DoorsWarehouse' : 'WarehouseWarehouse';
+    const serviceType = isCourier
+      ? (isAddress ? 'DoorsDoors' : 'WarehouseDoors')
+      : (isAddress ? 'DoorsWarehouse' : 'WarehouseWarehouse');
 
     const res = await fetch('/api/admin/create-ttn', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -233,7 +247,9 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
         senderContactRef:   senderInfo.contactRef,
         senderPhone:        senderInfo.phone,
         lastName, firstName, middleName, recipientPhone: phone,
-        cityRecipientRef: selectedWH.CityRef || selectedCity.Ref, recipientAddressRef: selectedWH.Ref,
+        cityRecipientRef: isCourier ? selectedCity.Ref : (selectedWH?.CityRef || selectedCity.Ref),
+        recipientAddressRef: isCourier ? '' : selectedWH?.Ref,
+        recipientAddress: isCourier ? recipientAddress : undefined,
         weight: parseFloat(weight), seatsAmount: parseInt(seats) || 1,
         cost: parseFloat(cost) || 0, description,
         serviceType, payerType, paymentMethod,
@@ -279,7 +295,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
               <Truck size={16} color="#4880B8" /> Створити ТТН
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-              {isPostomat ? 'Нова Пошта — відділення → поштомат' : 'Нова Пошта — відділення → відділення'}
+              {isPostomat ? 'Нова Пошта — відділення → поштомат' : isCourier ? 'Нова Пошта — відділення → кур\'єр' : 'Нова Пошта — відділення → відділення'}
             </div>
           </div>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px', display: 'flex', borderRadius: '6px' }}>
@@ -299,6 +315,42 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
               {senderError}
             </div>
           )}
+
+          {/* Тип доставки одержувачу */}
+          <section>
+            <div style={secTitle}><Truck size={11} /><span>Тип доставки одержувачу</span></div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {([
+                { value: 'warehouse', label: '🏢 Відділення' },
+                { value: 'postomat',  label: '📦 Поштомат' },
+                { value: 'courier',   label: '🚚 Кур\'єр' },
+              ] as const).map(({ value, label }) => (
+                <button
+                  key={value}
+                  style={{
+                    ...radio(deliverySubtype === value),
+                    flex: 1, fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                  }}
+                  onClick={() => {
+                    setDeliverySubtype(value);
+                    setSelectedWH(null); setWhQuery('');
+                    if (selectedCity) {
+                      setWhLoading(true);
+                      npRequest('Address', 'getWarehouses', { SettlementRef: selectedCity.Ref, Limit: 500, Page: 1 })
+                        .then((data: Warehouse[]) => {
+                          const filtered = value === 'postomat'
+                            ? data.filter(w => w.Description.toLowerCase().includes('поштомат'))
+                            : data.filter(w => !w.Description.toLowerCase().includes('поштомат'));
+                          setWarehouses(filtered);
+                        }).finally(() => setWhLoading(false));
+                    }
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </section>
 
           {/* Одержувач */}
           <section>
@@ -325,9 +377,9 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
             </div>
           </section>
 
-          {/* Місто + відділення */}
+          {/* Місто + відділення / адреса */}
           <section>
-            <div style={secTitle}><MapPin size={11} /><span>{isPostomat ? 'Місто та поштомат одержувача' : 'Місто та відділення одержувача'}</span></div>
+            <div style={secTitle}><MapPin size={11} /><span>{isPostomat ? 'Місто та поштомат одержувача' : isCourier ? 'Місто та адреса доставки' : 'Місто та відділення одержувача'}</span></div>
             <div ref={cityRef} style={{ position: 'relative', marginBottom: '8px' }}>
               <label style={lbl}>Місто</label>
               <div style={{ position: 'relative' }}>
@@ -351,7 +403,19 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
                 </div>
               )}
             </div>
-            <div ref={whRef} style={{ position: 'relative' }}>
+            {isCourier ? (
+              <div>
+                <label style={lbl}>Адреса доставки <span style={{ color: '#EF4444' }}>*</span></label>
+                <input
+                  style={inp} placeholder="вул. Шевченка, 12, кв. 5"
+                  value={recipientAddress} onChange={e => setRecipientAddress(e.target.value)}
+                />
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Вкажіть вулицю, номер будинку та квартиру. НП узгодить деталі з одержувачем.
+                </div>
+              </div>
+            ) : null}
+            {!isCourier && <div ref={whRef} style={{ position: 'relative' }}>
               <label style={lbl}>{isPostomat ? 'Поштомат' : 'Відділення'}</label>
               {whLoading ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', ...inp, paddingLeft: '10px' }}>
@@ -374,7 +438,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
                   ))}
                 </div>
               )}
-            </div>
+            </div>}
           </section>
 
           {/* Відправник */}
