@@ -14,7 +14,7 @@ const NAV = [
   { href: '/admin',                      label: 'Замовлення',     icon: ShoppingBag,   exact: true  },
   { href: '/admin/products',             label: 'Товари',         icon: Package,       exact: false },
   { href: '/admin/suppliers',            label: 'Постачальники',  icon: Truck,         exact: false },
-  { href: '/admin/partners',             label: 'Партнери',       icon: Users,         exact: false },
+  { href: '/admin/partners',             label: 'Контрагенти',    icon: Users,         exact: false },
   { href: '/admin/procurement',          label: 'Закупівля',      icon: ShoppingCart,  exact: false },
   { href: '/admin/contracts',            label: 'Договори',       icon: FileText,      exact: false },
   { href: '/admin/pricing',              label: 'Аналіз цін',     icon: TrendingUp,    exact: false },

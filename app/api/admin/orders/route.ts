@@ -7,6 +7,76 @@ import { notifyAdminNewOrder } from '../../../../lib/telegram';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+/** Find or create a customer record; returns customer UUID or null */
+async function resolveCustomer(db: ReturnType<typeof createServiceClient>, opts: {
+  customerId?: string | null;
+  contact: string;
+  phone?: string;
+  email?: string;
+  company?: string;
+  totalPrice: number;
+}): Promise<string | null> {
+  // 1. Explicit customer_id passed from UI (selected from directory)
+  if (opts.customerId) {
+    // Increment counters asynchronously (don't await)
+    db.from('customers').select('orders_count, total_revenue').eq('id', opts.customerId).single()
+      .then(({ data }) => {
+        if (data) {
+          db.from('customers').update({
+            orders_count:  data.orders_count  + 1,
+            total_revenue: Number(data.total_revenue) + opts.totalPrice,
+            last_order_at: new Date().toISOString(),
+          }).eq('id', opts.customerId!).then(() => {});
+        }
+      });
+    return opts.customerId;
+  }
+
+  // 2. Try to find by phone (most reliable match for retail)
+  const cleanPhone = opts.phone?.replace(/\s+/g, '').replace(/[()]/g, '') ?? '';
+  if (cleanPhone.length >= 9) {
+    const { data: found } = await db
+      .from('customers')
+      .select('id, orders_count, total_revenue')
+      .or(`phone.eq.${opts.phone},phone.eq.${cleanPhone}`)
+      .limit(1)
+      .single();
+
+    if (found) {
+      // Update stats
+      db.from('customers').update({
+        orders_count:  found.orders_count  + 1,
+        total_revenue: Number(found.total_revenue) + opts.totalPrice,
+        last_order_at: new Date().toISOString(),
+        // Also update name/email if we have better data
+        ...(opts.contact && { name: opts.contact }),
+        ...(opts.email   && { email: opts.email }),
+        ...(opts.company && { company: opts.company }),
+      }).eq('id', found.id).then(() => {});
+      return found.id;
+    }
+  }
+
+  // 3. Create new retail customer
+  const { data: created } = await db.from('customers').insert({
+    name:          opts.contact.trim(),
+    phone:         opts.phone?.trim()   || null,
+    email:         opts.email?.trim()   || null,
+    company:       opts.company?.trim() || null,
+    type:          'retail',
+    price_tier:    'retail',
+    is_active:     true,
+    orders_count:  1,
+    total_revenue: opts.totalPrice,
+    last_order_at: new Date().toISOString(),
+    balance:       0,
+    balance_held:  0,
+    meta:          {},
+  }).select('id').single();
+
+  return created?.id ?? null;
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -16,7 +86,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const {
-    customerId,
+    customerId: bodyCustomerId,
     company, contact, phone, email,
     deliveryType, deliverySubtype, deliveryAddress,
     deliveryCityRef, deliveryCityName, deliveryWarehouseRef,
@@ -29,12 +99,20 @@ export async function POST(req: NextRequest) {
   if (!['cod', 'invoice', 'cash'].includes(paymentType)) return NextResponse.json({ error: 'Невірний тип оплати' }, { status: 400 });
 
   const db = createServiceClient();
+  const orderTotal = totalPrice ?? items.reduce((s: number, i: { qty: number; price: number }) => s + i.qty * i.price, 0);
+
+  // Find or create customer — this ensures every manual order builds the CRM
+  const resolvedCustomerId = await resolveCustomer(db, {
+    customerId: bodyCustomerId,
+    contact, phone, email, company,
+    totalPrice: orderTotal,
+  });
 
   const { data, error } = await db
     .from('orders')
     .insert({
       user_id:               null,
-      customer_id:           customerId ?? null,
+      customer_id:           resolvedCustomerId,
       company:               company ?? null,
       contact,
       phone:                 phone ?? '',
@@ -49,7 +127,7 @@ export async function POST(req: NextRequest) {
       status:                'new',
       comment:               comment ?? null,
       items,
-      total_price:           totalPrice ?? items.reduce((s: number, i: { qty: number; price: number }) => s + i.qty * i.price, 0),
+      total_price:           orderTotal,
       channel_code:          channelCode ?? 'retail',
     })
     .select('id, order_number')
@@ -60,8 +138,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const siteUrl   = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;
-  const FROM      = 'FIXLINE <noreply@fixline.com.ua>';
+  const siteUrl     = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;
+  const FROM        = 'FIXLINE <noreply@fixline.com.ua>';
   const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'denis.polupan@gmail.com';
 
   notifyAdminNewOrder({
@@ -69,7 +147,7 @@ export async function POST(req: NextRequest) {
     contact,
     company:            company ?? null,
     phone:              phone ?? '',
-    total_price:        totalPrice ?? 0,
+    total_price:        orderTotal,
     payment_type:       paymentType,
     delivery_city_name: deliveryCityName ?? null,
   });
@@ -80,7 +158,7 @@ export async function POST(req: NextRequest) {
     html: buildAdminNotificationHtml({
       orderNumber: data.order_number, company: company ?? '', contact,
       phone: phone ?? '', email: email ?? '', items,
-      totalPrice: totalPrice ?? 0, deliveryType: deliveryType ?? 'pickup',
+      totalPrice: orderTotal, deliveryType: deliveryType ?? 'pickup',
       deliveryAddress: deliveryAddress ?? '', paymentType, comment,
     }),
   }).catch(e => console.error('[admin order email]', e));
