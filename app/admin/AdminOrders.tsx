@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -1283,65 +1283,60 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
 
 
                           {/* Context action buttons */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '2px' }}>
-                            {order.status === 'confirmed' && (fMode === 'supplier' || fMode === 'mixed') && (
-                              <button
-                                onClick={() => startSupplierSend([order.id])}
-                                disabled={supplierQueueLoading}
-                                style={{ padding: '7px 10px', borderRadius: '7px', border: '1.5px solid #0E7490', background: '#ECFEFF', color: '#0E7490', fontSize: '11px', fontWeight: 700, cursor: 'pointer', opacity: supplierQueueLoading ? 0.6 : 1 }}>
-                                📧 Надіслати постачальнику
-                              </button>
-                            )}
-                            {order.status === 'awaiting_stock' && (
-                              <button
-                                onClick={() => changeStatus(order.id, 'picking')}
-                                disabled={!!loading}
-                                style={{ padding: '7px 10px', borderRadius: '7px', border: '1.5px solid #0E7490', background: '#ECFEFF', color: '#0E7490', fontSize: '11px', fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.6 : 1 }}>
-                                📦 Товар надійшов — збираємо
-                              </button>
-                            )}
-                            {(order.status === 'confirmed' || order.status === 'awaiting_stock' || order.status === 'picking') && (
-                              <button
-                                onClick={() => changeStatus(order.id, 'shipped')}
-                                disabled={!!loading}
-                                style={{ padding: '7px 10px', borderRadius: '7px', border: '1.5px solid #B45309', background: '#FEF3C7', color: '#B45309', fontSize: '11px', fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.6 : 1 }}>
-                                📋 Позначити відправленим
-                              </button>
-                            )}
-                            {order.status === 'awaiting_stock' && (
-                              <a
-                                href="/admin/accounting/documents/new"
-                                style={{ display: 'block', padding: '7px 10px', borderRadius: '7px', border: '1.5px solid #7C3AED', background: '#F5F3FF', color: '#7C3AED', fontSize: '11px', fontWeight: 700, textDecoration: 'none', textAlign: 'center' }}>
-                                📦 Оформити поступлення →
-                              </a>
-                            )}
-                            {order.status === 'shipped' && (
-                              <button
-                                onClick={() => changeStatus(order.id, 'delivered')}
-                                disabled={!!loading}
-                                style={{ padding: '7px 10px', borderRadius: '7px', border: '1.5px solid #15803D', background: '#DCFCE7', color: '#15803D', fontSize: '11px', fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.6 : 1 }}>
-                                ✓ Доставлено
-                              </button>
-                            )}
-
-                            {/* Print invoice */}
-                            <a
-                              href={`/invoice/${order.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 10px', borderRadius: '7px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 700, textDecoration: 'none' }}>
-                              <Printer size={12} /> Друк / Рахунок
-                            </a>
-
-                            {/* Create supplier PO */}
-                            <button
-                              onClick={() => openSupplierPO(order)}
-                              disabled={creatingPo === order.id}
-                              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 10px', borderRadius: '7px', border: '1.5px solid #7C3AED', background: '#F5F3FF', color: '#7C3AED', fontSize: '11px', fontWeight: 700, cursor: creatingPo === order.id ? 'wait' : 'pointer', opacity: creatingPo === order.id ? 0.6 : 1 }}>
-                              <ShoppingCart size={12} />
-                              {creatingPo === order.id ? '...' : 'Створити ЗП'}
-                            </button>
-                          </div>
+                          {(() => {
+                            // Unified button styles
+                            const btn = {
+                              display: 'flex' as const, alignItems: 'center' as const, gap: '6px',
+                              padding: '7px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
+                              cursor: 'pointer', textDecoration: 'none', border: '1.5px solid #CBD5E1',
+                              background: 'var(--bg-card)', color: 'var(--text-primary)', width: '100%',
+                              boxSizing: 'border-box' as const, justifyContent: 'flex-start' as const,
+                            };
+                            const btnPrimary = { ...btn, border: '1.5px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F' };
+                            const btnMuted   = { ...btn, color: 'var(--text-secondary)' };
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
+                                {order.status === 'confirmed' && (fMode === 'supplier' || fMode === 'mixed') && (
+                                  <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
+                                    style={{ ...btnPrimary, opacity: supplierQueueLoading ? 0.6 : 1 }}>
+                                    <Mail size={13} /> Надіслати постачальнику
+                                  </button>
+                                )}
+                                {order.status === 'awaiting_stock' && (
+                                  <button onClick={() => changeStatus(order.id, 'picking')} disabled={!!loading}
+                                    style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
+                                    <Package size={13} /> Товар надійшов — збираємо
+                                  </button>
+                                )}
+                                {(order.status === 'confirmed' || order.status === 'awaiting_stock' || order.status === 'picking') && (
+                                  <button onClick={() => changeStatus(order.id, 'shipped')} disabled={!!loading}
+                                    style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
+                                    <Truck size={13} /> Позначити відправленим
+                                  </button>
+                                )}
+                                {order.status === 'awaiting_stock' && (
+                                  <a href="/admin/accounting/documents/new" style={{ ...btnPrimary }}>
+                                    <Package size={13} /> Оформити поступлення
+                                  </a>
+                                )}
+                                {order.status === 'shipped' && (
+                                  <button onClick={() => changeStatus(order.id, 'delivered')} disabled={!!loading}
+                                    style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
+                                    <Check size={13} /> Доставлено
+                                  </button>
+                                )}
+                                <a href={`/invoice/${order.id}`} target="_blank" rel="noopener noreferrer"
+                                  style={btnMuted}>
+                                  <Printer size={13} /> Друк / Рахунок
+                                </a>
+                                <button onClick={() => openSupplierPO(order)} disabled={creatingPo === order.id}
+                                  style={{ ...btnMuted, cursor: creatingPo === order.id ? 'wait' : 'pointer', opacity: creatingPo === order.id ? 0.6 : 1 }}>
+                                  <ShoppingCart size={13} />
+                                  {creatingPo === order.id ? 'Завантаження...' : 'Створити ЗП'}
+                                </button>
+                              </div>
+                            );
+                          })()}
                         </div>
                       );
                     })()}
