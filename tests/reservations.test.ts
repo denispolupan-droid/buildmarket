@@ -59,6 +59,7 @@ describe('createReservation', () => {
       p_order_id:     'order-uuid',
       p_warehouse_id: 1,
       p_items:        [{ sku: 'SKU-1', qty: 5 }],
+      p_expires_at:   null,
     });
   });
 
