@@ -29,7 +29,7 @@ const NAV = [
 
 // ── Visual tokens — change colours here only ──────────────────────────────
 const T = {
-  textIdle:   'rgba(148,163,184,0.80)',
+  textIdle:   '#CBD5E1',
   textActive: '#3DBFB8',
   bgActive:   'rgba(61,191,184,0.13)',
   divider:    'rgba(255,255,255,0.07)',
@@ -75,7 +75,7 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0 }: Props) {
     <aside style={{
       width: '240px',
       flexShrink: 0,
-      background: 'linear-gradient(180deg, #1A3357 0%, #1E3D6A 100%)',
+      background: 'linear-gradient(180deg, #142844 0%, #1A3357 100%)',
       display: 'flex',
       flexDirection: 'column',
       height: '100vh',
