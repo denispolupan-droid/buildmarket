@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Wallet, CheckCircle, XCircle, Plus, ChevronDown, ChevronUp,
-  Users, ShoppingBag, TrendingUp, X, Edit2, Save, Eye,
+  Users, ShoppingBag, TrendingUp, X, Edit2, Save, Eye, FileText,
 } from 'lucide-react';
+import Link from 'next/link';
 
 /* ── Phone mask (same as cart) ──────────────────────────────────────────── */
 function getLocalDigits(formatted: string): string {
@@ -270,7 +271,7 @@ export default function PartnersClient({
       )}
 
       {/* ── Type tabs ───────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', alignItems: 'center' }}>
         {TABS.map(t => {
           const cnt = t.value ? customers.filter(c => c.type === t.value).length : customers.length;
           const isActive = tab === t.value;
@@ -292,6 +293,17 @@ export default function PartnersClient({
             </button>
           );
         })}
+        <div style={{ flex: 1 }} />
+        <Link href="/admin/contracts"
+          style={{
+            height: '32px', padding: '0 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 500,
+            border: '1px solid var(--border)', background: 'var(--bg-card)',
+            color: 'var(--text-secondary)', textDecoration: 'none',
+            display: 'flex', alignItems: 'center', gap: '6px',
+          }}>
+          <FileText size={13} />
+          Договори
+        </Link>
       </div>
 
       {/* ── Table ───────────────────────────────────────────────────────────── */}

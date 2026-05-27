@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, X, Check, Loader2, FileText, Banknote, ExternalLink } from 'lucide-react';
+import { Plus, X, Check, Loader2, FileText, Banknote, ExternalLink, Users } from 'lucide-react';
+import Link from 'next/link';
 
 type Contract = {
   id: string;
@@ -139,6 +140,18 @@ export default function ContractsClient({ initialContracts }: { initialContracts
 
   return (
     <div style={{ padding: '28px 32px', maxWidth: '1200px' }}>
+      {/* ── Breadcrumb nav ──────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+        <Link href="/admin/partners"
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '30px', padding: '0 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 500, textDecoration: 'none' }}>
+          <Users size={12} /> Контрагенти
+        </Link>
+        <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>/</span>
+        <span style={{ height: '30px', padding: '0 12px', borderRadius: '8px', border: '1px solid #1E3A5F', background: '#1E3A5F', color: '#fff', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <FileText size={12} /> Договори
+        </span>
+      </div>
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Договори</h1>

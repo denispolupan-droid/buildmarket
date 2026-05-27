@@ -7,7 +7,7 @@ import Link from 'next/link';
 import {
   ShoppingBag, Package, Truck, Store,
   Settings, BookOpen, Warehouse, BarChart3, Users, Star,
-  MessageSquare, FileText, ShoppingCart, Mail, ExternalLink, TrendingUp,
+  MessageSquare, ShoppingCart, Mail, ExternalLink, TrendingUp,
 } from 'lucide-react';
 
 const NAV = [
@@ -16,7 +16,6 @@ const NAV = [
   { href: '/admin/suppliers',            label: 'Постачальники',  icon: Truck,         exact: false },
   { href: '/admin/partners',             label: 'Контрагенти',    icon: Users,         exact: false },
   { href: '/admin/procurement',          label: 'Закупівля',      icon: ShoppingCart,  exact: false },
-  { href: '/admin/contracts',            label: 'Договори',       icon: FileText,      exact: false },
   { href: '/admin/pricing',              label: 'Аналіз цін',     icon: TrendingUp,    exact: false },
   { href: '/admin/finance',              label: 'Фінанси',        icon: BarChart3,     exact: false },
   { href: '/admin/accounting/documents', label: 'Облік',          icon: BookOpen,      exact: false },
@@ -107,8 +106,11 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0 }: Props) {
       >
         {NAV.map(({ href, label, icon: Icon, exact }) => {
           // Custom active logic: /admin (Замовлення) also covers /admin/orders/* and /admin/dispatch
+          // /admin/partners also covers /admin/contracts (Договори is a sub-section)
           const active = href === '/admin'
             ? (pathname === '/admin' || pathname.startsWith('/admin/orders') || pathname.startsWith('/admin/dispatch'))
+            : href === '/admin/partners'
+            ? (pathname.startsWith('/admin/partners') || pathname.startsWith('/admin/contracts'))
             : exact ? pathname === href : pathname.startsWith(href);
 
           // Badges
