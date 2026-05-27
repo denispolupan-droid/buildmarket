@@ -113,7 +113,7 @@ html { zoom: 0.95; overflow-x: hidden; }
   transition: background 0.13s ease, color 0.13s ease;
 }
 .admin-nav-btn:hover {
-  background: rgba(15, 23, 42, 0.05) !important;
+  background: rgba(255, 255, 255, 0.055) !important;
 }
 .admin-nav-sub {
   transition: background 0.13s ease, color 0.13s ease;
@@ -253,12 +253,12 @@ input, select { font-family: inherit; }
 /* ── Admin sidebar scrollbar ── */
 .admin-sidebar-nav {
   scrollbar-width: thin;
-  scrollbar-color: rgba(15,23,42,0.12) transparent;
+  scrollbar-color: rgba(255,255,255,0.12) transparent;
 }
 .admin-sidebar-nav::-webkit-scrollbar { width: 4px; }
 .admin-sidebar-nav::-webkit-scrollbar-track { background: transparent; }
-.admin-sidebar-nav::-webkit-scrollbar-thumb { background: rgba(15,23,42,0.12); border-radius: 4px; }
-.admin-sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(15,23,42,0.22); }
+.admin-sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+.admin-sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
 
 /* ── Admin panel dark mode ── */
 
