@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
@@ -73,6 +74,7 @@ const PAYMENT_LABEL: Record<string, string> = {
 };
 
 export default function AdminOrders({ initialOrders, currentPage = 1, totalPages = 1 }: { initialOrders: Order[]; currentPage?: number; totalPages?: number }) {
+  const router = useRouter();
   const [orders, setOrders]         = useState<Order[]>(initialOrders);
   const [channelFilter, setChannelFilter] = useState('');
   const [search, setSearch]         = useState('');
@@ -172,6 +174,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
           : o));
         setFulfillmentData(prev => { const n = { ...prev }; delete n[orderId]; return n; });
         loadFulfillment(orderId);
+        router.refresh();
       } else {
         setConfirmErrors(prev => ({ ...prev, [orderId]: { error: data?.error ?? 'Помилка підтвердження', insufficient: data?.insufficient } }));
       }
@@ -203,6 +206,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
         : o));
       setFulfillmentData(prev => { const n = { ...prev }; delete n[orderId]; return n; });
       loadFulfillment(orderId);
+      router.refresh();
       startSupplierSend([orderId]);
     } catch (err) {
       console.error('[confirmAndSend] failed:', err);
@@ -746,7 +750,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
             const callbackDone = order.callback_done ?? false;
             const isDropship = order.channel_code === 'dropship';
             const channel = CHANNEL_LABEL[order.channel_code ?? 'website'] ?? CHANNEL_LABEL.website;
-            const isUnpaidInvoice = order.payment_type === 'invoice' && !paymentConfirmed
+            const isUnpaidInvoice = !paymentConfirmed && order.payment_type !== 'cod'
               && !['delivered', 'cancelled'].includes(order.status);
 
             return (
@@ -989,11 +993,14 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                                           ) : planSrc ? (
                                             <select
                                               value={effectiveSrc ?? planSrc.fulfillment_type}
+                                              disabled={order.fulfillment_mode !== null || order.status !== 'new'}
                                               onChange={e => setSourceOverrides(prev => ({
                                                 ...prev,
                                                 [order.id]: { ...(prev[order.id] ?? {}), [item.sku]: e.target.value as 'own' | 'dropship' },
                                               }))}
-                                              style={{ fontSize: '10px', border: '1px solid var(--border)', borderRadius: '4px', padding: '1px 3px', background: 'transparent', cursor: 'pointer', maxWidth: '86px',
+                                              style={{ fontSize: '10px', border: '1px solid var(--border)', borderRadius: '4px', padding: '1px 3px', background: 'transparent',
+                                                cursor: order.fulfillment_mode !== null || order.status !== 'new' ? 'default' : 'pointer',
+                                                maxWidth: '86px', opacity: order.fulfillment_mode !== null || order.status !== 'new' ? 0.6 : 1,
                                                 color: effectiveSrc === 'own' ? '#15803D' : 'var(--brand-blue)', fontWeight: isMixed ? 700 : 400 }}
                                             >
                                               <option value="dropship">{supplierName ?? 'Постач.'}</option>
@@ -1128,6 +1135,18 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                       ) : order.payment_type === 'card' ? (
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: order.status === 'confirmed' ? '#DCFCE7' : '#EFF6FF', color: order.status === 'confirmed' ? '#15803D' : 'var(--brand-blue)', border: `1px solid ${order.status === 'confirmed' ? '#86EFAC' : '#BFDBFE'}` }}>
                           <CreditCard size={12} />{order.status === 'confirmed' ? '💳 Оплата карткою — підтверджено' : '💳 Картка онлайн'}
+                        </div>
+                      ) : order.payment_type === 'cash' ? (
+                        <div>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: paymentConfirmed ? '#DCFCE7' : '#F0FDF4', color: paymentConfirmed ? '#15803D' : '#166534', border: `1px solid ${paymentConfirmed ? '#86EFAC' : '#86EFAC'}` }}>
+                            <CreditCard size={12} />{paymentConfirmed ? '✓ Готівку отримано' : '💵 Оплата готівкою'}
+                          </div>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '6px', cursor: 'pointer' }} onClick={() => toggleFlag(order.id, 'payment_confirmed', !paymentConfirmed)}>
+                            <div style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, border: `2px solid ${paymentConfirmed ? '#15803D' : '#166534'}`, background: paymentConfirmed ? '#15803D' : 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {paymentConfirmed && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </div>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Готівку отримано</span>
+                          </label>
                         </div>
                       ) : (
                         <div>
