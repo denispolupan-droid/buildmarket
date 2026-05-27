@@ -75,7 +75,7 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0 }: Props) {
     <aside style={{
       width: '240px',
       flexShrink: 0,
-      background: 'linear-gradient(180deg, #0F1E35 0%, #162A48 100%)',
+      background: 'linear-gradient(180deg, #1A3357 0%, #1E3D6A 100%)',
       display: 'flex',
       flexDirection: 'column',
       height: '100vh',
