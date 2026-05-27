@@ -39,7 +39,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { error } = await db.from('orders').update(update).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // ── Готівка підтверджена → записуємо в касу ───────────────────────────────
+  // ── Оплата підтверджена → записуємо в леджер ─────────────────────────────
   if (payment_confirmed === true) {
     try {
       const { data: ord } = await db
@@ -48,29 +48,41 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         .eq('id', id)
         .single();
 
-      if (ord?.payment_type === 'cash') {
-        // Шукаємо активний договір клієнта (якщо є)
-        let cashContractId: string | undefined;
-        if (ord.customer_id) {
-          const { data: ctr } = await db
-            .from('customer_contracts')
-            .select('id')
-            .eq('customer_id', ord.customer_id)
-            .eq('status', 'active')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          cashContractId = ctr?.id ?? undefined;
-        }
+      // Всі типи оплати що закривають дебіторку
+      const PAYMENT_METHOD_MAP: Record<string, 'cash' | 'bank' | 'acquiring'> = {
+        cash:     'cash',
+        invoice:  'bank',
+        bank:     'bank',
+        card:     'acquiring',
+        online:   'acquiring',
+        liqpay:   'acquiring',
+        mono:     'acquiring',
+      };
 
+      const payMethod = PAYMENT_METHOD_MAP[ord?.payment_type ?? ''] ?? 'bank';
+
+      if (ord && ord.customer_id) {
+        // Шукаємо активний договір клієнта (якщо є)
+        let payContractId: string | undefined;
+        const { data: ctr } = await db
+          .from('customer_contracts')
+          .select('id')
+          .eq('customer_id', ord.customer_id)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        payContractId = ctr?.id ?? undefined;
+
+        const methodLabel = payMethod === 'cash' ? 'Готівка' : payMethod === 'acquiring' ? 'Еквайринг' : 'Безготівковий';
         await recordCustomerPayment({
-          customerId:     ord.customer_id ?? `order:${id}`,
-          contractId:     cashContractId,
+          customerId:     ord.customer_id,
+          contractId:     payContractId,
           amount:         Number(ord.total_price),
-          paymentMethod:  'cash',
+          paymentMethod:  payMethod,
           businessDate:   new Date().toISOString().slice(0, 10),
-          description:    `Готівка — замовлення #${ord.order_number}`,
-          idempotencyKey: `cash:payment:${id}`,
+          description:    `${methodLabel} — замовлення #${ord.order_number}`,
+          idempotencyKey: `payment:confirmed:${id}`,
           createdBy:      user.email,
         });
       }
@@ -78,7 +90,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       // Ігноруємо duplicate idempotency key (вже записано раніше)
       const msg = String(err instanceof Error ? err.message : err);
       if (!msg.includes('unique') && !msg.includes('duplicate') && !msg.includes('23505')) {
-        console.error('[cash] recordCustomerPayment failed:', err);
+        console.error('[payment] recordCustomerPayment failed:', err);
       }
     }
   }

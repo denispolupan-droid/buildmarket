@@ -47,5 +47,21 @@ export async function GET(req: NextRequest) {
   const { data: rows, error } = await txnQuery.limit(500);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ opening, rows: rows ?? [] });
+  // ── Збагачуємо рядки номерами замовлень ─────────────────────────────────────
+  const orderIds = [...new Set((rows ?? []).map((r: { order_id: string | null }) => r.order_id).filter(Boolean))] as string[];
+  let orderNumberMap: Record<string, number> = {};
+  if (orderIds.length > 0) {
+    const { data: orders } = await db
+      .from('orders')
+      .select('id, order_number')
+      .in('id', orderIds);
+    orderNumberMap = Object.fromEntries((orders ?? []).map((o: { id: string; order_number: number }) => [o.id, o.order_number]));
+  }
+
+  const enrichedRows = (rows ?? []).map((r: { order_id: string | null }) => ({
+    ...r,
+    order_number: r.order_id ? (orderNumberMap[r.order_id] ?? null) : null,
+  }));
+
+  return NextResponse.json({ opening, rows: enrichedRows });
 }
