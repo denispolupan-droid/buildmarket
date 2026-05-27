@@ -17,6 +17,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id: _id, balance: _b, created_at: _c, created_by: _cb, ...updates } = body;
   updates.updated_at = new Date().toISOString();
 
+  // Якщо customer_id оновлюється — підтягуємо актуальне ім'я
+  if (updates.customer_id) {
+    const { data: cust } = await db
+      .from('customers')
+      .select('name, company, legal_name')
+      .eq('id', updates.customer_id)
+      .maybeSingle();
+    if (cust) {
+      updates.customer_name = cust.company?.trim() || cust.legal_name?.trim() || cust.name?.trim() || updates.customer_name;
+    }
+  }
+
   const { data, error } = await db
     .from('customer_contracts')
     .update(updates)

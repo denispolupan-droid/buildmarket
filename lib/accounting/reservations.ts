@@ -21,6 +21,25 @@
 import { createServiceClient } from '../supabase';
 import type { CreateReservationInput, ReservationResult } from './types';
 
+/** Читає reservation_ttl_days з app_settings. Дефолт — 7. */
+export async function getReservationTtlDays(): Promise<number> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'reservation_ttl_days')
+    .single();
+  const n = parseInt(data?.value ?? '7', 10);
+  return isNaN(n) || n <= 0 ? 7 : n;
+}
+
+/** Повертає ISO-рядок expires_at = зараз + ttlDays днів. */
+export function computeExpiresAt(ttlDays: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + ttlDays);
+  return d.toISOString();
+}
+
 // ── Создание резерва (атомарное, через SQL-функцию) ───────────────────────────
 
 export async function createReservation(
@@ -31,7 +50,8 @@ export async function createReservation(
   const { data, error } = await db.rpc('reserve_order_items', {
     p_order_id:     input.order_id,
     p_warehouse_id: input.warehouse_id,
-    p_items:        input.items,  // [{sku, qty}]
+    p_items:        input.items,
+    p_expires_at:   input.expires_at ?? null,
   });
 
   if (error) throw error;

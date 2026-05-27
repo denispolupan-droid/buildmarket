@@ -79,7 +79,7 @@ export default async function CashflowPage() {
     : { data: [] };
   const supplierMap = new Map((suppliers ?? []).map(s => [String(s.id), s.name as string]));
 
-  // Customer ids (UUID strings) — use profiles table
+  // Customer ids (UUID strings) — look up both profiles (website users) and customers (admin CRM)
   const customerIds = [...new Set(
     [...txnPartyMap.values()]
       .filter(p => ['customer', 'advance', 'partner'].includes(p.accountType))
@@ -88,12 +88,17 @@ export default async function CashflowPage() {
   const { data: profiles } = customerIds.length
     ? await db.from('profiles').select('id, full_name, company_name').in('id', customerIds)
     : { data: [] };
-  const profileMap = new Map(
-    (profiles ?? []).map(p => [
-      p.id,
-      (p.company_name || p.full_name || 'Клієнт') as string,
-    ])
-  );
+  const { data: crmCustomers } = customerIds.length
+    ? await db.from('customers').select('id, name, company').in('id', customerIds)
+    : { data: [] };
+
+  const nameMap = new Map<string, string>();
+  for (const p of (profiles ?? [])) {
+    nameMap.set(p.id, (p.company_name || p.full_name || 'Клієнт') as string);
+  }
+  for (const c of (crmCustomers ?? [])) {
+    if (!nameMap.has(c.id)) nameMap.set(c.id, (c.company || c.name || 'Клієнт') as string);
+  }
 
   // ── 5. Assemble entries ───────────────────────────────────────────────────────
   const entries: CashflowEntry[] = (rawEntries ?? []).map(e => {
@@ -104,7 +109,7 @@ export default async function CashflowPage() {
       if (party.accountType === 'supplier') {
         counterparty = supplierMap.get(party.partyId) ?? null;
       } else {
-        counterparty = profileMap.get(party.partyId) ?? null;
+        counterparty = nameMap.get(party.partyId) ?? null;
       }
     }
 

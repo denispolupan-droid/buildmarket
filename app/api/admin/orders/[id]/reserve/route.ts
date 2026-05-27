@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
-import { createReservation, releaseReservation } from '../../../../../../lib/accounting/reservations';
+import { createReservation, releaseReservation, getReservationTtlDays, computeExpiresAt } from '../../../../../../lib/accounting/reservations';
 
 export async function POST(
   req: NextRequest,
@@ -25,6 +25,10 @@ export async function POST(
   // Release existing active reservations first (idempotent re-reserve)
   await releaseReservation(id, 'manual');
 
+  // Читаємо TTL з налаштувань
+  const ttlDays  = await getReservationTtlDays();
+  const expiresAt = computeExpiresAt(ttlDays);
+
   // Group by warehouse_id
   const byWarehouse = new Map<number, { sku: string; qty: number }[]>();
   for (const item of items) {
@@ -40,6 +44,7 @@ export async function POST(
       order_id:     id,
       warehouse_id: warehouseId,
       items:        warehouseItems,
+      expires_at:   expiresAt,
     });
     totalReserved += result.reserved.length;
     insufficient.push(...result.insufficient);

@@ -18,7 +18,7 @@ type FulfillmentData = OrderFulfillmentInfo & {
 import CreateTTNModal from '../components/admin/CreateTTNModal';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 
-type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number };
+type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number; is_bonus?: boolean; supplier_sku?: string };
 
 type Order = {
   id: string;
@@ -800,9 +800,11 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                     </div>
                     {order.items[0] && (
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
+                        {order.items[0].is_bonus && <span style={{ marginRight: '4px' }}>🎁</span>}
                         {order.items[0].brand ? `${order.items[0].brand} ` : ''}{order.items[0].name}
                         <span style={{ marginLeft: '4px', color: 'var(--text-muted)' }}>×{order.items[0].qty}</span>
                         {order.items.length > 1 && <span style={{ marginLeft: '4px', color: 'var(--text-muted)' }}>+{order.items.length - 1}</span>}
+                        {order.items.some(i => i.is_bonus) && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#15803D', fontWeight: 600, background: '#F0FDF4', padding: '0 5px', borderRadius: '4px' }}>🎁 бонус</span>}
                       </div>
                     )}
                   </div>
@@ -895,7 +897,9 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                                 <input type="number" min={1} value={item.qty}
                                   onChange={e => setEditItems(prev => prev.map((it, i) => i === idx ? { ...it, qty: Math.max(1, parseInt(e.target.value) || 1) } : it))}
                                   style={{ width: '46px', height: '26px', border: '1px solid var(--border)', borderRadius: '6px', textAlign: 'center', fontSize: '12px', outline: 'none' }} />
-                                <span style={{ color: 'var(--text-secondary)', width: '70px', textAlign: 'right', flexShrink: 0 }}>{(item.price * item.qty).toFixed(0)} грн</span>
+                                <span style={{ color: item.is_bonus ? '#15803D' : 'var(--text-secondary)', width: '70px', textAlign: 'right', flexShrink: 0, fontWeight: item.is_bonus ? 600 : 400 }}>
+                                  {item.is_bonus ? '🎁 0 ₴' : `${(item.price * item.qty).toFixed(0)} грн`}
+                                </span>
                                 <button onClick={() => setEditItems(prev => prev.filter((_, i) => i !== idx))}
                                   style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#EF4444', padding: '2px', flexShrink: 0, display: 'flex' }}>
                                   <Trash2 size={12} />
@@ -986,7 +990,12 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                                           </button>{item.name}
                                         </td>
                                         <td style={{ padding: '5px 6px', color: 'var(--text-secondary)', textAlign: 'center' }}>{item.qty}</td>
-                                        <td style={{ padding: '5px 0', color: 'var(--text-primary)', textAlign: 'right', fontWeight: 500 }}>{(item.price * item.qty).toFixed(0)} ₴</td>
+                                        <td style={{ padding: '5px 0', textAlign: 'right', fontWeight: 500 }}>
+                                          {item.is_bonus
+                                            ? <span style={{ color: '#15803D', fontSize: '11px', fontWeight: 700, background: '#F0FDF4', padding: '1px 6px', borderRadius: '4px' }}>🎁 Бонус</span>
+                                            : <span style={{ color: 'var(--text-primary)' }}>{(item.price * item.qty).toFixed(0)} ₴</span>
+                                          }
+                                        </td>
                                         <td style={{ padding: '5px 0 5px 8px', textAlign: 'right', background: srcBg, borderLeft: srcBorder, borderRadius: isMixed ? '4px' : undefined }}>
                                           {fulfillmentLoading.has(order.id) ? (
                                             <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>...</span>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { resolveOrderFulfillment } from '../../../../../../lib/accounting/fulfillment';
-import { createReservation } from '../../../../../../lib/accounting/reservations';
+import { createReservation, getReservationTtlDays, computeExpiresAt } from '../../../../../../lib/accounting/reservations';
 import { createDocument } from '../../../../../../lib/accounting/documents';
 import { notifyAdminStatusChange } from '../../../../../../lib/telegram';
 
@@ -47,6 +47,10 @@ export async function POST(
   let newStatus = 'confirmed';
   let purchaseOrderId: string | undefined;
 
+  // TTL резерву з налаштувань
+  const ttlDays  = await getReservationTtlDays();
+  const expiresAt = computeExpiresAt(ttlDays);
+
   // ── Supplier: чиста відправка, без складських операцій ───────────────────────
   if (fulfillment_mode === 'supplier') {
     await db.from('orders').update({ status: 'confirmed', fulfillment_mode }).eq('id', id);
@@ -80,6 +84,7 @@ export async function POST(
         order_id:     id,
         warehouse_id: warehouseId,
         items:        warehouseItems,
+        expires_at:   expiresAt,
       });
       allInsufficient.push(...result.insufficient);
     }
@@ -121,6 +126,7 @@ export async function POST(
           order_id:     id,
           warehouse_id: warehouseId,
           items:        warehouseItems,
+          expires_at:   expiresAt,
         });
         allInsufficient.push(...result.insufficient);
       }

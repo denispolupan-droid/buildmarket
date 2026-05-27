@@ -22,6 +22,19 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const body = await req.json();
+
+  // Автозаповнення customer_name з таблиці customers
+  if (body.customer_id) {
+    const { data: cust } = await db
+      .from('customers')
+      .select('name, company, legal_name')
+      .eq('id', body.customer_id)
+      .maybeSingle();
+    if (cust) {
+      body.customer_name = cust.company?.trim() || cust.legal_name?.trim() || cust.name?.trim() || body.customer_name;
+    }
+  }
+
   const { data, error } = await db
     .from('customer_contracts')
     .insert({ ...body, created_by: user.email })

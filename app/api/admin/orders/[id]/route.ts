@@ -4,6 +4,7 @@ import { createServiceClient } from '../../../../../lib/supabase';
 import { recordDropshipSale } from '../../../../../lib/accounting/dropship';
 import { releaseReservation } from '../../../../../lib/accounting/reservations';
 import { notifyAdminStatusChange, notifyCustomerStatus } from '../../../../../lib/telegram';
+import { recordCustomerPayment } from '../../../../../lib/accounting/money';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createSupabaseServer();
@@ -37,6 +38,50 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { error } = await db.from('orders').update(update).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // ── Готівка підтверджена → записуємо в касу ───────────────────────────────
+  if (payment_confirmed === true) {
+    try {
+      const { data: ord } = await db
+        .from('orders')
+        .select('payment_type, total_price, customer_id, order_number')
+        .eq('id', id)
+        .single();
+
+      if (ord?.payment_type === 'cash') {
+        // Шукаємо активний договір клієнта (якщо є)
+        let cashContractId: string | undefined;
+        if (ord.customer_id) {
+          const { data: ctr } = await db
+            .from('customer_contracts')
+            .select('id')
+            .eq('customer_id', ord.customer_id)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          cashContractId = ctr?.id ?? undefined;
+        }
+
+        await recordCustomerPayment({
+          customerId:     ord.customer_id ?? `order:${id}`,
+          contractId:     cashContractId,
+          amount:         Number(ord.total_price),
+          paymentMethod:  'cash',
+          businessDate:   new Date().toISOString().slice(0, 10),
+          description:    `Готівка — замовлення #${ord.order_number}`,
+          idempotencyKey: `cash:payment:${id}`,
+          createdBy:      user.email,
+        });
+      }
+    } catch (err: unknown) {
+      // Ігноруємо duplicate idempotency key (вже записано раніше)
+      const msg = String(err instanceof Error ? err.message : err);
+      if (!msg.includes('unique') && !msg.includes('duplicate') && !msg.includes('23505')) {
+        console.error('[cash] recordCustomerPayment failed:', err);
+      }
+    }
+  }
 
   // Note: reservation on confirm is now handled by /confirm endpoint (fulfillment decision)
 
@@ -77,17 +122,38 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     try {
       const { data: order } = await db
         .from('orders')
-        .select('id, order_number, items, channel_code, partner_code')
+        .select('id, order_number, items, channel_code, partner_code, customer_id, payment_type, created_at')
         .eq('id', id)
         .single();
 
       if (order?.items?.length && order.channel_code !== 'dropship') {
+        const bizDate = order.created_at
+          ? new Date(order.created_at).toISOString().slice(0, 10)
+          : new Date().toISOString().slice(0, 10);
+
+        // Шукаємо активний договір клієнта, щоб прив'язати проводки до нього
+        let saleContractId: string | undefined;
+        if (order.customer_id) {
+          const { data: ctr } = await db
+            .from('customer_contracts')
+            .select('id')
+            .eq('customer_id', order.customer_id)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          saleContractId = ctr?.id ?? undefined;
+        }
+
         await recordDropshipSale({
-          order_id:     order.id,
-          order_number: order.order_number,
-          order_items:  order.items,
-          channel_code: order.channel_code ?? 'website',
-          confirmed_by: user.email ?? 'admin',
+          order_id:      order.id,
+          order_number:  order.order_number,
+          order_items:   order.items,
+          channel_code:  order.channel_code ?? 'website',
+          confirmed_by:  user.email ?? 'admin',
+          customer_id:   order.customer_id ?? undefined,
+          contract_id:   saleContractId,
+          business_date: bizDate,
         });
       }
     } catch (err) {

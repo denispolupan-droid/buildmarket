@@ -4,11 +4,15 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   X, Minus, Loader2, Trash2, Plus, AlertCircle, Upload, Search, UserCheck, Users,
   Printer, ChevronDown, CheckSquare, Package, Send, Warehouse, RefreshCw, Info,
+  Gift, LayoutGrid,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
+import dynamic from 'next/dynamic';
 import NovaPoshtaSelect from '../../components/NovaPoshtaSelect';
 import type { OrderDraft, OrderLine } from '../OrderDraftManager';
+
+const ProductPickerModal = dynamic(() => import('../procurement/ProductPickerModal'), { ssr: false });
 
 // ── Style tokens ─────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = {
@@ -210,6 +214,9 @@ export default function NewOrderModal({
   } | null>(null);
   const [activeDropdownIdx, setActiveDropdownIdx] = useState(-1);
 
+  // ── Catalog picker ────────────────────────────────────────────────────────
+  const [showCatalog, setShowCatalog] = useState(false);
+
   // Cleanup timers
   useEffect(() => {
     const lt = lookupTimers.current;
@@ -378,12 +385,13 @@ export default function NewOrderModal({
     return raw.map(r => {
       const found = byInput.get(r.sku);
       return {
-        sku:     found?.sku   ?? r.sku,
-        name:    found        ? `${found.brand ?? ''} ${found.name ?? ''}`.trim() : r.name,
-        brand:   found?.brand ?? '',
-        qty:     r.qty,
-        price:   r.price || (found ? priceForTier(found, priceTier) : 0),
-        matched: found?.matched ?? false,
+        sku:      found?.sku   ?? r.sku,
+        name:     found        ? `${found.brand ?? ''} ${found.name ?? ''}`.trim() : r.name,
+        brand:    found?.brand ?? '',
+        qty:      r.qty,
+        price:    r.price || (found ? priceForTier(found, priceTier) : 0),
+        matched:  found?.matched ?? false,
+        is_bonus: false,
       };
     });
   }
@@ -413,7 +421,7 @@ export default function NewOrderModal({
     setLines(prev => prev.map((l, i) => i === idx ? { ...l, [key]: val } : l));
   }
   function addLine() {
-    setLines(prev => [...prev, { sku: '', name: '', brand: '', qty: 1, price: 0, matched: false }]);
+    setLines(prev => [...prev, { sku: '', name: '', brand: '', qty: 1, price: 0, matched: false, is_bonus: false }]);
   }
 
   async function lookupSku(idx: number, sku: string) {
@@ -483,8 +491,20 @@ export default function NewOrderModal({
     await lookupSku(idx, s.sku);
   }
 
+  // ── Catalog picker ────────────────────────────────────────────────────────
+  function handleCatalogAdd(items: { sku: string; name: string; qty: number; cost_price: number }[]) {
+    const cleanedLines = lines.filter(l => l.sku || l.name);
+    const newLines: OrderLine[] = items.map(item => ({
+      sku: item.sku, name: item.name, brand: '', qty: item.qty,
+      price: 0, matched: true, is_bonus: false,
+    }));
+    setLines([...cleanedLines, ...newLines]);
+    // Fetch tier-correct prices for each item
+    items.forEach((item, i) => lookupSku(cleanedLines.length + i, item.sku));
+  }
+
   // ── Computed ──────────────────────────────────────────────────────────────
-  const total       = lines.reduce((s, l) => s + l.qty * l.price, 0);
+  const total       = lines.reduce((s, l) => s + (l.is_bonus ? 0 : l.qty * l.price), 0);
   const filledLines = lines.filter(l => l.sku || l.name).length;
   const warnCount   = lines.filter(l => l.sku && !l.matched && l.sku.length >= 3).length;
 
@@ -509,7 +529,9 @@ export default function NewOrderModal({
       items: validLines.map(l => ({
         sku: l.sku,
         name: l.brand ? `${l.brand} ${l.name}`.trim() : l.name,
-        brand: l.brand, qty: l.qty, price: l.price,
+        brand: l.brand, qty: l.qty,
+        price: l.is_bonus ? 0 : l.price,
+        is_bonus: l.is_bonus ?? false,
       })),
       totalPrice: total,
       channelCode,
@@ -904,7 +926,7 @@ export default function NewOrderModal({
               {/* Table header */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: '130px 2fr 70px 120px 110px 32px',
+                gridTemplateColumns: '130px 2fr 70px 120px 100px 26px 32px',
                 padding: '8px 12px',
                 background: 'var(--bg-soft)',
                 borderBottom: '1px solid var(--border)',
@@ -918,24 +940,27 @@ export default function NewOrderModal({
                   Ціна · <span style={{ color: '#1E3A5F' }}>{PRICE_TIER_OPTIONS.find(t => t.value === priceTier)?.label}</span>
                 </span>
                 <span style={{ textAlign: 'right' }}>Сума</span>
+                <span title="Бонусний товар" style={{ textAlign: 'center' }}>🎁</span>
                 <span />
               </div>
 
               {/* Rows */}
-              <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
+              <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
                 {lines.map((line, idx) => {
-                  const rowSum = line.qty * line.price;
-                  const warn   = line.sku && !line.matched && line.sku.length >= 3;
+                  const isBonus = !!line.is_bonus;
+                  const rowSum  = isBonus ? 0 : line.qty * line.price;
+                  const warn    = line.sku && !line.matched && line.sku.length >= 3;
                   return (
                     <div key={idx} style={{
                       display: 'grid',
-                      gridTemplateColumns: '130px 2fr 70px 120px 110px 32px',
+                      gridTemplateColumns: '130px 2fr 70px 120px 100px 26px 32px',
                       padding: '6px 12px', gap: '8px', alignItems: 'center',
                       borderBottom: '1px solid var(--border-light)',
-                      background: warn ? '#FFFBEB' : 'transparent',
+                      background: isBonus ? 'rgba(21,128,61,0.06)' : warn ? '#FFFBEB' : 'transparent',
                     }}>
+                      {/* SKU */}
                       <input
-                        style={{ ...inp, fontFamily: 'monospace', fontSize: '11px', borderColor: warn ? '#FCD34D' : undefined }}
+                        style={{ ...inp, fontFamily: 'monospace', fontSize: '11px', borderColor: warn ? '#FCD34D' : isBonus ? 'rgba(21,128,61,0.3)' : undefined }}
                         placeholder="1300-014"
                         value={line.sku}
                         onChange={e => handleSkuChange(idx, e.target.value)}
@@ -947,9 +972,10 @@ export default function NewOrderModal({
                           }
                         }}
                       />
+                      {/* Name */}
                       <input
                         ref={el => { nameInputRefs.current[idx] = el; }}
-                        style={inp}
+                        style={{ ...inp, color: isBonus ? '#15803D' : undefined }}
                         placeholder="Назва товару або пошук..."
                         title={line.name || undefined}
                         value={line.name}
@@ -972,22 +998,54 @@ export default function NewOrderModal({
                           else if (e.key === 'Escape') { setNameSuggestions(prev => ({ ...prev, [idx]: [] })); setSuggestionAnchor(null); setActiveDropdownIdx(-1); }
                         }}
                       />
+                      {/* Qty */}
                       <input style={{ ...inp, textAlign: 'right' }} type="number" min="1" step="1"
                         value={line.qty || ''}
                         onChange={e => { const n = parseInt(e.target.value); setLineField(idx, 'qty', isNaN(n) ? 0 : n); }}
                         onBlur={() => { if (!line.qty || line.qty < 1) setLineField(idx, 'qty', 1); }}
                       />
+                      {/* Price */}
                       <div style={{ position: 'relative' }}>
-                        <input style={{ ...inp, textAlign: 'right', paddingRight: '18px' }} type="number" min="0" step="0.01"
-                          value={line.price || ''}
-                          placeholder="0.00"
-                          onChange={e => setLineField(idx, 'price', parseFloat(e.target.value) || 0)}
-                        />
-                        <span style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
+                        {isBonus ? (
+                          <div style={{ height: '26px', borderRadius: '6px', background: 'rgba(21,128,61,0.1)', border: '1px solid rgba(21,128,61,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#15803D' }}>
+                            Безкоштовно
+                          </div>
+                        ) : (
+                          <>
+                            <input style={{ ...inp, textAlign: 'right', paddingRight: '18px' }} type="number" min="0" step="0.01"
+                              value={line.price || ''}
+                              placeholder="0.00"
+                              onChange={e => setLineField(idx, 'price', parseFloat(e.target.value) || 0)}
+                            />
+                            <span style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
+                          </>
+                        )}
                       </div>
-                      <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: rowSum > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                        {rowSum > 0 ? `${fmt(rowSum)} ₴` : '—'}
+                      {/* Sum */}
+                      <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: isBonus ? '#15803D' : rowSum > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                        {isBonus ? '0 ₴' : rowSum > 0 ? `${fmt(rowSum)} ₴` : '—'}
                       </div>
+                      {/* Bonus toggle */}
+                      <button
+                        onClick={() => setLineField(idx, 'is_bonus', (!isBonus) as unknown as never)}
+                        title={isBonus ? 'Скасувати бонус' : 'Позначити як бонусний товар'}
+                        style={{
+                          background: isBonus ? 'rgba(21,128,61,0.15)' : 'none',
+                          border: isBonus ? '1px solid rgba(21,128,61,0.3)' : 'none',
+                          borderRadius: '5px',
+                          cursor: 'pointer',
+                          color: isBonus ? '#15803D' : 'var(--text-muted)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          padding: '2px', width: '22px', height: '22px',
+                          opacity: isBonus ? 1 : 0.45,
+                          transition: 'all 0.15s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.opacity = '1'; }}
+                        onMouseLeave={e => { e.currentTarget.style.opacity = isBonus ? '1' : '0.45'; }}
+                      >
+                        <Gift size={12} />
+                      </button>
+                      {/* Delete */}
                       <button onClick={() => setLines(prev => prev.filter((_, i) => i !== idx))}
                         disabled={lines.length === 1}
                         style={{ background: 'none', border: 'none', cursor: lines.length > 1 ? 'pointer' : 'default', color: lines.length > 1 ? '#EF4444' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
@@ -1001,15 +1059,19 @@ export default function NewOrderModal({
               {/* Table footer */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: '130px 2fr 70px 120px 110px 32px',
+                gridTemplateColumns: '130px 2fr 70px 120px 100px 26px 32px',
                 padding: '8px 12px', gap: '8px',
                 borderTop: '2px solid var(--border)',
                 background: 'var(--bg-soft)', alignItems: 'center',
               }}>
-                <div style={{ gridColumn: '1 / 3' }}>
+                <div style={{ gridColumn: '1 / 3', display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <button onClick={addLine}
                     style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#1E3A5F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}>
                     <Plus size={13} /> Додати рядок
+                  </button>
+                  <button onClick={() => setShowCatalog(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#6366F1', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, padding: '3px 9px' }}>
+                    <LayoutGrid size={12} /> З каталогу
                   </button>
                 </div>
                 <span />
@@ -1017,7 +1079,7 @@ export default function NewOrderModal({
                 <span style={{ textAlign: 'right', fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>
                   {fmt(total)} ₴
                 </span>
-                <span />
+                <span /><span />
               </div>
             </div>
 
@@ -1225,6 +1287,15 @@ export default function NewOrderModal({
           </div>
         );
       })()}
+
+      {/* ── Catalog picker ────────────────────────────────────────────── */}
+      {showCatalog && (
+        <ProductPickerModal
+          zIndex={9999}
+          onClose={() => setShowCatalog(false)}
+          onAdd={items => { handleCatalogAdd(items); setShowCatalog(false); }}
+        />
+      )}
 
       {/* ── Customer picker modal ─────────────────────────────────────── */}
       {showPicker && (

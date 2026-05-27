@@ -1,15 +1,15 @@
-﻿'use client';
+'use client';
 
 /**
  * РњРµРЅРµРґР¶РµСЂ С‡РµСЂРЅРµС‚РѕРє Р·Р°РјРѕРІР»РµРЅСЊ РїРѕСЃС‚Р°С‡Р°Р»СЊРЅРёРєСѓ.
  * Р–РёРІРµ РІ admin layout вЂ” РїРµСЂРµР¶РёРІР°С” РЅР°РІС–РіР°С†С–СЋ РјС–Р¶ СЃС‚РѕСЂС–РЅРєР°РјРё.
  *
  * РџРѕРІРµРґС–РЅРєР° РєР°СЂС‚ (card stack):
- *   - Р’СЃС– РЅРµР·РіРѕСЂРЅСѓС‚С– РґРѕРєСѓРјРµРЅС‚Рё = РІС–РґРєСЂРёС‚С– РїР°РЅРµР»С– (stack)
+ *   - Р'СЃС– РЅРµР·РіРѕСЂРЅСѓС‚С– РґРѕРєСѓРјРµРЅС‚Рё = РІС–РґРєСЂРёС‚С– РїР°РЅРµР»С– (stack)
  *   - РћСЃС‚Р°РЅРЅСЏ Сѓ РјР°СЃРёРІС– = Р°РєС‚РёРІРЅР° (Р·РІРµСЂС…Сѓ)
  *   - РџРѕРїРµСЂРµРґРЅС– = РІРёРґРЅРѕ С‚С–Р»СЊРєРё РїСЂР°РІРёР№ РєСЂР°Р№ (peek strip)
- *   - РљР»С–Рє РЅР° edge в†’ bringToFront
- *   - Р—РіРѕСЂРЅСѓС‚С– в†’ С‚Р°Р±-Р±Р°СЂ РІРЅРёР·Сѓ
+ *   - РљР»С–Рє РЅР° edge в†' bringToFront
+ *   - Р—РіРѕСЂРЅСѓС‚С– в†' С‚Р°Р±-Р±Р°СЂ РІРЅРёР·Сѓ
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -190,7 +190,7 @@ export default function PoDraftManager() {
           <div
             key={draft.id}
             onClick={() => bringToFront(draft.id)}
-            title={`Р’С–РґРєСЂРёС‚Рё: ${supplierName || 'РќРѕРІРµ Р·Р°РјРѕРІР»РµРЅРЅСЏ'}`}
+            title={`Відкрити: ${supplierName || 'Нове замовлення'}`}
             style={{
               position: 'fixed',
               left:   `${SIDEBAR_W}px`,
@@ -208,7 +208,7 @@ export default function PoDraftManager() {
               transition:   'top 0.2s ease-out, width 0.2s ease-out',
             }}
           >
-            {/* Р’РёРґРёРјРёР№ РїСЂР°РІРёР№ edge Р·С– СЃР»Р°Р±РєРёРј hover */}
+            {/* Р'РёРґРёРјРёР№ РїСЂР°РІРёР№ edge Р·С– СЃР»Р°Р±РєРёРј hover */}
             <div
               className="po-bg-edge"
               style={{
@@ -233,7 +233,7 @@ export default function PoDraftManager() {
                 maxHeight: '120px',
                 overflow: 'hidden',
               }}>
-                {supplierName || 'Р—Р°РјРѕРІР»РµРЅРЅСЏ'}
+                {supplierName || 'Замовлення'}
               </div>
             </div>
           </div>
@@ -297,23 +297,23 @@ export default function PoDraftManager() {
                     <span className="po-dot" style={{ opacity: isActive ? 1 : 0.6, flexShrink: 0 }} />
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: '12px', fontWeight: isActive ? 700 : 500, color: isActive ? '#E2E8F0' : '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {supplierName || 'РќРѕРІРµ Р·Р°РјРѕРІР»РµРЅРЅСЏ'}
+                        {supplierName || 'Нове замовлення'}
                       </div>
                       {filledLines > 0 && (
                         <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.28)', lineHeight: 1 }}>
-                          {filledLines} РїРѕР· В· {fmt(total)} в‚ґ
+                          {filledLines} поз · {fmt(total)} ₴
                         </div>
                       )}
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', padding: '0 6px 0 0', gap: '2px', flexShrink: 0 }}>
                     {!draft.minimized && (
-                      <button onClick={() => minimizeDraft(draft.id)} title="Р—РіРѕСЂРЅСѓС‚Рё" className="po-close-btn"
+                      <button onClick={() => minimizeDraft(draft.id)} title="Згорнути" className="po-close-btn"
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', display: 'flex', padding: '3px', borderRadius: '4px' }}>
                         <Minus size={11} />
                       </button>
                     )}
-                    <button onClick={() => closeDraft(draft.id)} title="Р—Р°РєСЂРёС‚Рё" className="po-close-btn"
+                    <button onClick={() => closeDraft(draft.id)} title="Закрити" className="po-close-btn"
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', display: 'flex', padding: '3px', borderRadius: '4px' }}>
                       <X size={12} />
                     </button>
@@ -326,7 +326,7 @@ export default function PoDraftManager() {
         </div>
       )}
 
-      {/* в”Ђв”Ђ Р¦РµРЅС‚СЂРѕРІР°РЅРёР№ РґС–Р°Р»РѕРі РїС–РґС‚РІРµСЂРґР¶РµРЅРЅСЏ Р·Р°РєСЂРёС‚С‚СЏ в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */}
+      {/* ── Центрований діалог підтвердження закриття ───────────────────────────── */}
       {confirmClose && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 1050,
@@ -340,22 +340,22 @@ export default function PoDraftManager() {
             border: '1px solid var(--border)',
           }}>
             <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
-              Р—Р°РєСЂРёС‚Рё Р±РµР· Р·Р±РµСЂРµР¶РµРЅРЅСЏ?
+              Закрити без збереження?
             </div>
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: 1.5 }}>
-              РќРµР·Р±РµСЂРµР¶РµРЅС– РґР°РЅС– С‡РµСЂРЅРµС‚РєРё Р±СѓРґСѓС‚СЊ РІРёРґР°Р»РµРЅС– РЅР°Р·Р°РІР¶РґРё.
-              Р©РѕР± Р·Р±РµСЂРµРіС‚Рё вЂ” РЅР°С‚РёСЃРЅС–С‚СЊ В«РЎРєР°СЃСѓРІР°С‚РёВ» С– Р·Р±РµСЂРµР¶С–С‚СЊ СЏРє С‡РµСЂРЅРµС‚РєСѓ.
+              Незбережені дані чернетки будуть видалені назавжди.
+              Щоб зберегти — натисніть «Скасувати» і збережіть як чернетку.
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button
                 onClick={() => setConfirmClose(null)}
                 style={{ flex: 1, height: '38px', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
-                РЎРєР°СЃСѓРІР°С‚Рё
+                Скасувати
               </button>
               <button
                 onClick={() => closeDraft(confirmClose, true)}
                 style={{ flex: 1, height: '38px', borderRadius: '9px', border: 'none', background: '#DC2626', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
-                РўР°Рє, Р·Р°РєСЂРёС‚Рё
+                Так, закрити
               </button>
             </div>
           </div>

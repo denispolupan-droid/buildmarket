@@ -226,9 +226,11 @@ export async function recordDropshipSale(
     doc_type:     'sale',
     warehouse_id: warehouse.id,
     order_id:     input.order_id,
+    customer_id:  input.customer_id ?? undefined,
     channel_code: input.channel_code ?? 'website',
     notes:        `Заказ #${input.order_number}`,
     created_by:   input.confirmed_by ?? 'system',
+    doc_date:     input.business_date ? new Date(input.business_date).toISOString() : undefined,
     lines: input.order_items.map(item => {
       const source = plan.items.find(s => s.sku === item.sku);
       return {

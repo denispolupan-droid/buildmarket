@@ -178,7 +178,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
         </div>
       ) : (
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 100px 120px 90px 100px 120px 110px', padding: '8px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 100px 120px 90px 100px 120px 140px', padding: '8px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
             <span>Договір</span><span>Клієнт</span><span style={{ textAlign: 'right' }}>Відстрочка</span>
             <span style={{ textAlign: 'right' }}>Ліміт</span><span style={{ textAlign: 'right' }}>Знижка</span>
             <span style={{ textAlign: 'center' }}>Статус</span><span style={{ textAlign: 'right' }}>Борг</span>
@@ -189,7 +189,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
             const balance = c.balance ?? 0;
             return (
               <div key={c.id} style={{
-                display: 'grid', gridTemplateColumns: '160px 1fr 100px 120px 90px 100px 120px 110px',
+                display: 'grid', gridTemplateColumns: '160px 1fr 100px 120px 90px 100px 120px 140px',
                 padding: '11px 16px', alignItems: 'center', cursor: 'default',
                 borderBottom: idx < filtered.length - 1 ? '1px solid var(--border-light)' : 'none',
                 transition: 'background 0.1s',
@@ -220,7 +220,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                 <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: balance > 0 ? '#DC2626' : '#15803D' }}>
                   {balance > 0 ? `${balance.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴` : '—'}
                 </span>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', flexShrink: 0, flexWrap: 'nowrap' }}>
                   <button onClick={() => { setPayModal(c); setPayAmount(balance > 0 ? String(Math.round(balance)) : ''); setPayDate(new Date().toISOString().slice(0, 10)); setPayDesc(''); setPayError(''); }}
                     title="Записати оплату"
                     style={{ height: '28px', padding: '0 8px', borderRadius: '6px', border: '1.5px solid #86EFAC', background: '#F0FDF4', color: '#15803D', fontSize: '11px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -230,7 +230,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                     style={{ height: '28px', width: '28px', borderRadius: '6px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <FileText size={12} />
                   </button>
-                  <a href={`/admin/finance/settlements?contractId=${c.id}`} title="Взаєморозрахунки"
+                  <a href={`/admin/finance/settlements?customerId=${c.customer_id}`} title="Взаєморозрахунки"
                     style={{ height: '28px', width: '28px', borderRadius: '6px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
                     <ExternalLink size={12} />
                   </a>
@@ -270,15 +270,16 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={lbl}>ID клієнта *</label>
-                  <input style={inp} value={form.customer_id} onChange={e => set('customer_id', e.target.value)} placeholder="UUID або код клієнта" />
-                </div>
-                <div>
-                  <label style={lbl}>Назва клієнта</label>
-                  <input style={inp} value={form.customer_name ?? ''} onChange={e => set('customer_name', e.target.value)} placeholder="ТОВ Компанія" />
-                </div>
+              <div>
+                <label style={lbl}>ID клієнта *</label>
+                <input style={inp} value={form.customer_id} onChange={e => set('customer_id', e.target.value)} placeholder="UUID або код клієнта" />
+                {form.customer_name && (
+                  <div style={{ marginTop: '5px', fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>↳</span>
+                    <span>{form.customer_name}</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>(назва підтягується автоматично)</span>
+                  </div>
+                )}
               </div>
 
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: '14px' }}>

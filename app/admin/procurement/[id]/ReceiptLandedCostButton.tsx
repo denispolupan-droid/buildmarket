@@ -18,6 +18,11 @@ const METHODS = [
   { value: 'equal',   label: 'Рівномірно по всіх позиціях' },
 ];
 
+const PAYMENT_METHODS = [
+  { value: 'cash', label: '💵 Готівка' },
+  { value: 'bank', label: '🏦 Безготівковий' },
+];
+
 type CostLine = { cost_type: string; description: string; amount: string };
 
 export default function ReceiptLandedCostButton({
@@ -27,12 +32,13 @@ export default function ReceiptLandedCostButton({
   receiptId: string;
   renderTrigger?: (onClick: () => void) => React.ReactNode;
 }) {
-  const [open,   setOpen]   = useState(false);
-  const [lines,  setLines]  = useState<CostLine[]>([{ cost_type: 'delivery', description: '', amount: '' }]);
-  const [method, setMethod] = useState<'by_cost' | 'by_qty' | 'equal'>('by_cost');
-  const [saving, setSaving] = useState(false);
-  const [error,  setError]  = useState('');
-  const [done,   setDone]   = useState('');
+  const [open,          setOpen]          = useState(false);
+  const [lines,         setLines]         = useState<CostLine[]>([{ cost_type: 'delivery', description: '', amount: '' }]);
+  const [method,        setMethod]        = useState<'by_cost' | 'by_qty' | 'equal'>('by_cost');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank'>('cash');
+  const [saving,        setSaving]        = useState(false);
+  const [error,         setError]         = useState('');
+  const [done,          setDone]          = useState('');
 
   function addLine() {
     setLines(prev => [...prev, { cost_type: 'delivery', description: '', amount: '' }]);
@@ -56,7 +62,7 @@ export default function ReceiptLandedCostButton({
       const res = await fetch(`/api/admin/receipts/${receiptId}/landed-cost`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ costs, method }),
+        body: JSON.stringify({ costs, method, paymentMethod }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Помилка'); return; }
@@ -142,6 +148,23 @@ export default function ReceiptLandedCostButton({
                         onChange={() => setMethod(m.value as typeof method)}
                         style={{ accentColor: '#1E3A5F' }} />
                       {m.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Спосіб оплати */}
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  Спосіб оплати
+                </div>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  {PAYMENT_METHODS.map(pm => (
+                    <label key={pm.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: paymentMethod === pm.value ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: paymentMethod === pm.value ? 700 : 400 }}>
+                      <input type="radio" name="paymentMethod" value={pm.value} checked={paymentMethod === pm.value}
+                        onChange={() => setPaymentMethod(pm.value as 'cash' | 'bank')}
+                        style={{ accentColor: '#1E3A5F' }} />
+                      {pm.label}
                     </label>
                   ))}
                 </div>

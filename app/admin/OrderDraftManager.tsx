@@ -16,6 +16,7 @@ const NewOrderModal = dynamic(() => import('./orders/NewOrderModal'), { ssr: fal
 
 export interface OrderLine {
   sku: string; name: string; brand: string; qty: number; price: number; matched: boolean;
+  is_bonus?: boolean;
 }
 
 export interface OrderDraft {

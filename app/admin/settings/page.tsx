@@ -3,6 +3,7 @@ import { createSupabaseServer } from '../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import NpSenderSettings from './NpSenderSettings';
 import EmailSettings from './EmailSettings';
+import ReservationSettings from './ReservationSettings';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,6 +41,9 @@ export default async function SettingsPage() {
         initialAdminEmail={cfg.admin_email            ?? ''}
         initialContactName={cfg.company_contact_name  ?? ''}
         initialContactPhone={cfg.company_contact_phone ?? ''}
+      />
+      <ReservationSettings
+        initialTtlDays={parseInt(cfg.reservation_ttl_days ?? '7', 10)}
       />
     </div>
   );

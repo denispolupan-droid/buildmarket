@@ -15,9 +15,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id: receiptId } = await params;
 
   const body = await req.json() as {
-    costs:  { cost_type: string; description?: string; amount: number }[];
-    method: 'by_cost' | 'by_qty' | 'equal';
+    costs:         { cost_type: string; description?: string; amount: number }[];
+    method:        'by_cost' | 'by_qty' | 'equal';
+    paymentMethod?: 'cash' | 'bank';
   };
+
+  const paymentMethod = body.paymentMethod === 'cash' ? 'cash' : 'bank';
 
   if (!body.costs?.length) return NextResponse.json({ error: 'Вкажіть хоча б одну статтю витрат' }, { status: 400 });
   if (!['by_cost','by_qty','equal'].includes(body.method)) return NextResponse.json({ error: 'Невірний метод розподілу' }, { status: 400 });
@@ -25,7 +28,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Перевіряємо що прихід існує і підтверджений
   const { data: receipt } = await db
     .from('acc_documents')
-    .select('id, total_cost, status, doc_type')
+    .select('id, total_cost, status, doc_type, doc_number')
     .eq('id', receiptId)
     .in('doc_type', ['receipt', 'stock_in'])
     .single();
@@ -67,27 +70,35 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     delivery: 'logistics', loading: 'loading', customs: 'customs',
     packaging: 'packaging', broker: 'customs', other: 'opex',
   };
+  const costTypeLabel: Record<string, string> = {
+    delivery: 'Доставка', loading: 'Навантаж./розвантаж.', customs: 'Мито',
+    packaging: 'Пакування', broker: 'Брокер', other: 'Інше',
+  };
+  const docRef = receipt.doc_number ? ` — ${receipt.doc_number}` : '';
 
   const expenseInserts = [];
   for (const cost of body.costs.filter(c => c.amount > 0)) {
     const accountType = expenseAccountMap[cost.cost_type] ?? 'opex';
+    const description = cost.description
+      ? `${cost.description}${docRef}`
+      : `${costTypeLabel[cost.cost_type] ?? cost.cost_type}${docRef}`;
     const { data: txnId } = await db.rpc('record_money_txn', {
       p_debit_account:  accountType,
-      p_credit_account: 'bank',
+      p_credit_account: paymentMethod,
       p_debit_party:    null,
       p_credit_party:   null,
       p_amount:         cost.amount,
       p_business_date:  today,
       p_doc_id:         receiptId,
       p_doc_type:       'landed_cost',
-      p_description:    cost.description ?? `Landed cost: ${cost.cost_type}`,
+      p_description:    description,
       p_created_by:     user.email,
     });
     expenseInserts.push({
       expense_type:   accountType,
-      description:    cost.description ?? `Landed cost: ${cost.cost_type}`,
+      description,
       amount:         cost.amount,
-      payment_method: 'bank',
+      payment_method: paymentMethod,
       source:         'landed_cost',
       source_id:      receiptId,
       txn_id:         txnId ?? null,
