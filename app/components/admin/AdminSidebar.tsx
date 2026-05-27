@@ -29,10 +29,11 @@ const NAV = [
 
 // ── Visual tokens — change colours here only ──────────────────────────────
 const T = {
-  textIdle:  'rgba(148,163,184,0.72)',
-  textActive: '#3DBFB8',
-  bgActive:   'rgba(61,191,184,0.13)',
-  divider:    'rgba(255,255,255,0.07)',
+  textIdle:   '#64748B',
+  textActive: '#0E7490',
+  bgActive:   'rgba(14,116,144,0.10)',
+  divider:    'rgba(15,23,42,0.07)',
+  iconActive: '#3DBFB8',
 } as const;
 
 type Props = { newOrdersCount: number; chatUnreadCount?: number };
@@ -74,13 +75,14 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0 }: Props) {
     <aside style={{
       width: '240px',
       flexShrink: 0,
-      background: 'linear-gradient(180deg, #0F1729 0%, #0D1F3C 100%)',
+      background: 'linear-gradient(180deg, #FFFFFF 0%, #F5F7FA 100%)',
       display: 'flex',
       flexDirection: 'column',
       height: '100vh',
       position: 'sticky',
       top: 0,
       borderRight: `1px solid ${T.divider}`,
+      boxShadow: '2px 0 12px rgba(15,23,42,0.05)',
     }}>
 
       {/* ── Logo ─────────────────────────────────────────────────── */}
@@ -88,10 +90,10 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0 }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Store size={20} color="#3DBFB8" />
           <div>
-            <div style={{ fontSize: '14px', fontWeight: 800, color: '#fff', letterSpacing: '0.02em' }}>
+            <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F1729', letterSpacing: '0.02em' }}>
               FIXLINE
             </div>
-            <div style={{ fontSize: '11px', color: 'rgba(61,191,184,0.6)', marginTop: '1px' }}>
+            <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '1px' }}>
               Панель менеджера
             </div>
           </div>
@@ -131,7 +133,7 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0 }: Props) {
                 fontSize: '13.5px', fontWeight: active ? 600 : 400,
               }}
             >
-              <Icon size={15} strokeWidth={active ? 2.5 : 1.75} color={active ? '#3DBFB8' : undefined} />
+              <Icon size={15} strokeWidth={active ? 2.5 : 1.75} color={active ? T.iconActive : T.textIdle} />
               <span style={{ flex: 1 }}>{label}</span>
               {badgeCount > 0 && (
                 <span style={{
@@ -155,7 +157,7 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0 }: Props) {
           style={{
             display: 'flex', alignItems: 'center', gap: '8px',
             padding: '8px 12px', borderRadius: '8px', textDecoration: 'none',
-            color: 'rgba(148,163,184,0.4)', fontSize: '13px',
+            color: '#94A3B8', fontSize: '13px',
           }}
         >
           <ExternalLink size={13} />
