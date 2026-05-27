@@ -53,6 +53,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         .in('document_id', childIds)
     : { data: [] };
 
+  // 5. Landed cost lines для приходів (щоб показати окремо від вартості товару)
+  const { data: landedCosts } = childIds.length
+    ? await db.from('landed_cost_lines')
+        .select('document_id, cost_type, description, amount')
+        .in('document_id', childIds)
+        .order('created_at')
+    : { data: [] };
+
   // 6. Продажі пов'язані через order_id (якщо PO пов'язаний із замовленням)
   const { data: orderDocs } = po.order_id ? await db
     .from('acc_documents')
@@ -63,11 +71,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({
     po,
-    children:    children,
-    adjustments: adjustments,
-    adjLines:    adjLines ?? [],
-    payments:    payments ?? [],
-    batches:     batches ?? [],
-    relatedDocs: orderDocs ?? [],
+    children:     children,
+    adjustments:  adjustments,
+    adjLines:     adjLines ?? [],
+    payments:     payments ?? [],
+    batches:      batches ?? [],
+    relatedDocs:  orderDocs ?? [],
+    landedCosts:  landedCosts ?? [],
   });
 }

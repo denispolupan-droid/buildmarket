@@ -4,14 +4,17 @@ import { useState } from 'react';
 import { X, GitBranch, Loader2, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 
+type LandedCostLine = { document_id: string; cost_type: string; description: string | null; amount: number };
+
 type ChainData = {
   po: { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; total_cost: number | null; procurement_status: string | null; notes: string | null };
-  children:    { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; total_cost: number | null; notes: string | null }[];
-  adjustments: { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; notes: string | null }[];
-  adjLines:    { document_id: string; sku: string; qty: number; cost_price: number | null }[];
-  payments:    { id: string; txn_id: string; amount: number; business_date: string; description: string | null; account_type: string }[];
-  batches:     { id: string; sku: string; initial_qty: number; cost_price: number; received_at: string }[];
-  relatedDocs: { id: string; doc_number: string; doc_type: string; doc_date: string; total_amount: number | null; total_cost: number | null }[];
+  children:     { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; total_cost: number | null; notes: string | null }[];
+  adjustments:  { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; notes: string | null }[];
+  adjLines:     { document_id: string; sku: string; qty: number; cost_price: number | null }[];
+  payments:     { id: string; txn_id: string; amount: number; business_date: string; description: string | null; account_type: string }[];
+  batches:      { id: string; sku: string; initial_qty: number; cost_price: number; received_at: string }[];
+  relatedDocs:  { id: string; doc_number: string; doc_type: string; doc_date: string; total_amount: number | null; total_cost: number | null }[];
+  landedCosts:  LandedCostLine[];
 };
 
 function fmt(n: number) { return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 }); }
@@ -176,23 +179,49 @@ export default function DocChain({ poId }: { poId: string }) {
                     })}
 
                     {/* Child documents (receipts) */}
-                    {data.children.map(child => (
-                      <TimelineNode key={child.id}
-                        icon="📥" title={`${child.doc_number} — ${DOC_TYPE_LABELS[child.doc_type] ?? child.doc_type}`}
-                        sub={`${fmtDate(child.doc_date)}${child.notes ? ` · ${child.notes}` : ''}`}
-                        amount={child.total_cost ? `${fmt(Number(child.total_cost))} ₴` : undefined}
-                        amountColor="#15803D"
-                        href={`/admin/procurement/receipts/${child.id}`}
-                      >
-                        {/* FIFO batches */}
-                        {data.batches.filter(b => b.sku).length > 0 && (
-                          <TimelineNode
-                            icon="📊" title={`FIFO партії: ${data.batches.filter(b => true).length} SKU`}
-                            sub={`Залишки оновлено · собівартість розподілено`}
-                          />
-                        )}
-                      </TimelineNode>
-                    ))}
+                    {data.children.map(child => {
+                      const childLC = (data.landedCosts ?? []).filter(lc => lc.document_id === child.id);
+                      const lcTotal = childLC.reduce((s, lc) => s + Number(lc.amount), 0);
+                      // Показуємо вартість товарів без landed cost
+                      const goodsCost = child.total_cost ? Number(child.total_cost) - lcTotal : null;
+                      const LC_ICONS: Record<string, string> = {
+                        delivery: '🚚', loading: '📦', customs: '🏛', packaging: '📦', broker: '🏛', other: '➕',
+                      };
+                      return (
+                        <TimelineNode key={child.id}
+                          icon="📥" title={`${child.doc_number} — ${DOC_TYPE_LABELS[child.doc_type] ?? child.doc_type}`}
+                          sub={`${fmtDate(child.doc_date)}${child.notes ? ` · ${child.notes}` : ''}`}
+                          amount={goodsCost !== null ? `${fmt(goodsCost)} ₴` : undefined}
+                          amountColor="#15803D"
+                          href={`/admin/procurement/receipts/${child.id}`}
+                        >
+                          {/* Landed cost lines — показуємо окремо */}
+                          {childLC.map((lc, i) => (
+                            <TimelineNode key={i}
+                              icon={LC_ICONS[lc.cost_type] ?? '➕'}
+                              title={lc.description || `Додаткові витрати: ${lc.cost_type}`}
+                              sub="Landed Cost · розподілено по собівартості"
+                              amount={`+${fmt(Number(lc.amount))} ₴`}
+                              amountColor="#7C3AED"
+                            />
+                          ))}
+                          {/* Підсумок з landed cost */}
+                          {lcTotal > 0 && (
+                            <div style={{ marginTop: '6px', padding: '6px 10px', background: '#F5F3FF', borderRadius: '7px', display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                              <span style={{ color: '#6B21A8', fontWeight: 600 }}>Разом з витратами:</span>
+                              <span style={{ color: '#6B21A8', fontWeight: 800 }}>{fmt(Number(child.total_cost))} ₴</span>
+                            </div>
+                          )}
+                          {/* FIFO batches */}
+                          {data.batches.filter(b => b.sku).length > 0 && (
+                            <TimelineNode
+                              icon="📊" title={`FIFO партії: ${data.batches.filter(b => true).length} SKU`}
+                              sub={`Залишки оновлено · собівартість розподілено`}
+                            />
+                          )}
+                        </TimelineNode>
+                      );
+                    })}
 
                     {/* Related sale documents */}
                     {data.relatedDocs.filter(d => d.doc_type === 'sale').map(d => (
