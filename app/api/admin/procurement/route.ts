@@ -49,6 +49,35 @@ export async function POST(req: NextRequest) {
       await db.from('acc_documents').update({ parent_doc_id: body.parent_doc_id }).eq('id', receipt.id);
     }
     await confirmDocument(receipt.id, user.email ?? 'admin');
+
+    // After additional receipt — update parent PO status based on remaining items
+    if (body.parent_doc_id) {
+      const { data: poLines } = await db
+        .from('acc_document_lines').select('sku, qty').eq('document_id', body.parent_doc_id);
+
+      const { data: allReceiptDocs } = await db
+        .from('acc_documents').select('id')
+        .eq('parent_doc_id', body.parent_doc_id).eq('status', 'confirmed')
+        .in('doc_type', ['receipt', 'stock_in']);
+
+      const rIds = (allReceiptDocs ?? []).map((r: { id: string }) => r.id);
+      const receivedMap = new Map<string, number>();
+      if (rIds.length > 0) {
+        const { data: rLines } = await db
+          .from('acc_document_lines').select('sku, qty').in('document_id', rIds);
+        for (const l of rLines ?? []) {
+          receivedMap.set(l.sku, (receivedMap.get(l.sku) ?? 0) + Number(l.qty));
+        }
+      }
+
+      const allReceived = (poLines ?? []).every((l: { sku: string; qty: number }) =>
+        (receivedMap.get(l.sku) ?? 0) >= Number(l.qty)
+      );
+      await db.from('acc_documents')
+        .update({ procurement_status: allReceived ? 'received' : 'partially_received' })
+        .eq('id', body.parent_doc_id);
+    }
+
     return NextResponse.json({ receiptId: receipt.id, doc_number: receipt.doc_number }, { status: 201 });
   }
 

@@ -145,8 +145,10 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
           }))}
         />
       )}
-      {!isDraft && !isCancelled && <AdjustmentButton poId={id} lines={poLines} />}
-      {!isDraft && !isCancelled && <AdditionalReceiptButton poId={id} supplierName={po.supplier_name} />}
+      {/* Коригування: тільки до першого приходу */}
+      {!isDraft && !isCancelled && !po.has_receipt && <AdjustmentButton poId={id} lines={poLines} />}
+      {/* Додатковий прихід: тільки якщо є прихід і ще залишились нeoприходовані товари */}
+      {!isDraft && !isCancelled && po.has_receipt && po.procurement_status !== 'received' && <AdditionalReceiptButton poId={id} supplierName={po.supplier_name} />}
       {!isDraft && <DocChain poId={id} />}
     </div>
   } />;

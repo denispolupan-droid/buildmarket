@@ -74,9 +74,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Confirm receipt → creates FIFO batches, updates stock_balance
   await confirmDocument(receipt.id, user.email ?? 'admin');
 
-  // Update PO procurement_status
+  // Update PO procurement_status: 'received' if all items fully received, else 'partially_received'
+  const allReceived = (po.lines ?? []).every((l: { sku: string; qty: number }) => {
+    const actualQty = body.actualQties?.[l.sku];
+    const receivedQty = (actualQty !== undefined && !isNaN(actualQty)) ? actualQty : l.qty;
+    return receivedQty >= l.qty;
+  });
   await db.from('acc_documents')
-    .update({ procurement_status: 'received' })
+    .update({ procurement_status: allReceived ? 'received' : 'partially_received' })
     .eq('id', id);
 
   // Record AP: ми винні постачальнику (debit stock_asset → credit supplier)

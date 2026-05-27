@@ -85,10 +85,12 @@ export default function PODrawer({ poId, poLabel, onClose }: Props) {
           lines={(po.poLines ?? []).map(l => ({ ...l, matched: true }))}
         />
       )}
-      {!isDraft && !isCancelled && (
+      {/* Коригування: тільки до першого приходу */}
+      {!isDraft && !isCancelled && !po.has_receipt && (
         <AdjustmentButton poId={po.id} lines={po.poLines ?? []} />
       )}
-      {!isDraft && !isCancelled && (
+      {/* Додатковий прихід: тільки якщо вже є прихід але ще залишились нeoприходовані товари */}
+      {!isDraft && !isCancelled && po.has_receipt && po.procurement_status !== 'received' && (
         <AdditionalReceiptButton poId={po.id} supplierName={po.supplier_name} />
       )}
       {!isDraft && <DocChain poId={po.id} />}
