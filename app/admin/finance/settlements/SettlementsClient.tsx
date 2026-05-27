@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Search, RefreshCw, ArrowLeft, ExternalLink, FileText, ShoppingBag } from 'lucide-react';
+import { Search, RefreshCw, ArrowLeft, ExternalLink } from 'lucide-react';
 
 type Customer = {
   id: string;
@@ -30,36 +30,34 @@ function customerLabel(c: Customer) {
 }
 
 function fmt(n: number) {
-  return n.toLocaleString('uk-UA', { maximumFractionDigits: 2 });
+  return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-const DOC_LABELS: Record<string, string> = {
-  sale:        'Відвантаження',
-  payment:     'Оплата',
-  return_out:  'Повернення',
-  cogs:        'Собівартість',
-  correction:  'Коригування',
+const DOC_TYPE_LABELS: Record<string, string> = {
+  sale:       'Відвантаження',
+  payment:    'Оплата',
+  return_out: 'Повернення',
+  cogs:       'Собівартість',
+  correction: 'Коригування',
 };
 
-const DOC_COLORS: Record<string, { bg: string; color: string }> = {
-  sale:       { bg: '#FEF2F2', color: '#DC2626' },
-  payment:    { bg: '#F0FDF4', color: '#15803D' },
-  return_out: { bg: '#FEF3C7', color: '#B45309' },
-  cogs:       { bg: '#F1F5F9', color: '#475569' },
-  correction: { bg: '#EFF6FF', color: '#2563EB' },
-};
-
-/** Повертає href документа для рядка */
-function docHref(row: TxnRow): string | null {
-  if (row.doc_id)   return `/admin/accounting/documents/${row.doc_id}`;
-  return null;
+/** Формує підпис рядка: тип + посилання на документ */
+function rowContent(row: TxnRow): { label: string; href: string | null } {
+  const typeLabel = DOC_TYPE_LABELS[row.doc_type ?? ''] ?? row.doc_type ?? '—';
+  const docRef    = row.order_number ? ` / Замовлення #${row.order_number}` : '';
+  const label     = (row.description ?? typeLabel) + docRef;
+  const href      = row.doc_id ? `/admin/accounting/documents/${row.doc_id}` : null;
+  return { label, href };
 }
 
-/** Підпис документа */
-function docLabel(row: TxnRow): string | null {
-  if (row.order_number) return `#${row.order_number}`;
-  if (row.doc_id)       return 'Документ';
-  return null;
+function SaldoBadge({ value }: { value: number }) {
+  const color  = value > 0.005 ? '#DC2626' : value < -0.005 ? '#2563EB' : '#15803D';
+  const bg     = value > 0.005 ? '#FEF2F2' : value < -0.005 ? '#EFF6FF' : '#F0FDF4';
+  return (
+    <span style={{ fontWeight: 700, color, background: bg, borderRadius: '6px', padding: '1px 8px', fontSize: '13px', whiteSpace: 'nowrap' }}>
+      {fmt(value)} ₴
+    </span>
+  );
 }
 
 export default function SettlementsClient({
@@ -76,14 +74,14 @@ export default function SettlementsClient({
   const today      = new Date().toISOString().slice(0, 10);
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
 
-  const [customerId,  setCustomerId]  = useState(defaultCustomerId ?? '');
-  const [contractId,  setContractId]  = useState(defaultContractId ?? '');
-  const [dateFrom,    setDateFrom]    = useState(monthStart);
-  const [dateTo,      setDateTo]      = useState(today);
-  const [rows,        setRows]        = useState<TxnRow[]>([]);
-  const [opening,     setOpening]     = useState<number | null>(null);
-  const [loading,     setLoading]     = useState(false);
-  const [searched,    setSearched]    = useState(false);
+  const [customerId, setCustomerId] = useState(defaultCustomerId ?? '');
+  const [contractId, setContractId] = useState(defaultContractId ?? '');
+  const [dateFrom,   setDateFrom]   = useState(monthStart);
+  const [dateTo,     setDateTo]     = useState(today);
+  const [rows,       setRows]       = useState<TxnRow[]>([]);
+  const [opening,    setOpening]    = useState<number | null>(null);
+  const [loading,    setLoading]    = useState(false);
+  const [searched,   setSearched]   = useState(false);
 
   const customerContracts = useMemo(
     () => contracts.filter(c => c.customer_id === customerId),
@@ -114,22 +112,37 @@ export default function SettlementsClient({
     finally { setLoading(false); }
   }
 
+  // Підсумки
   const totalDebit  = rows.filter(r => r.amount > 0).reduce((s, r) => s + r.amount, 0);
   const totalCredit = rows.filter(r => r.amount < 0).reduce((s, r) => s + Math.abs(r.amount), 0);
   const closing     = (opening ?? 0) + totalDebit - totalCredit;
 
+  // Наростаюче сальдо по рядках
+  const rowsWithSaldo = useMemo(() => {
+    let saldo = opening ?? 0;
+    return rows.map(r => {
+      saldo += r.amount; // debit = +, credit = -
+      return { ...r, saldo };
+    });
+  }, [rows, opening]);
+
   const showContractCol = !contractId;
 
-  // Grid: Дата | [Договір] | Документ | Опис | Тип | Дебет | Кредит
-  const cols = showContractCol
-    ? '90px 130px 110px 1fr 115px 105px 105px'
-    : '90px 110px 1fr 115px 105px 105px';
+  // Колонки: Дата | [Договір] | Зміст операції | Дебет | Кредит | Сальдо
+  const COLS = showContractCol
+    ? '90px 120px 1fr 115px 115px 130px'
+    : '90px 1fr 115px 115px 130px';
 
   const inp: React.CSSProperties = {
     height: '36px', padding: '0 10px',
     border: '1.5px solid var(--border)', borderRadius: '8px',
     fontSize: '13px', outline: 'none',
     color: 'var(--text-primary)', background: 'var(--bg-soft)',
+  };
+
+  const thStyle: React.CSSProperties = {
+    fontSize: '11px', fontWeight: 700,
+    color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em',
   };
 
   const selectedCustomer = customers.find(c => c.id === customerId);
@@ -145,7 +158,7 @@ export default function SettlementsClient({
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Взаєморозрахунки</h1>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px', marginBottom: 0 }}>
-            Відвантаження, оплати та баланс по контрагентах
+            Карточка рахунку дебіторської заборгованості
           </p>
         </div>
       </div>
@@ -156,11 +169,8 @@ export default function SettlementsClient({
         padding: '16px 20px', marginBottom: '20px',
         display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap',
       }}>
-        {/* Контрагент */}
         <div style={{ flex: '1 1 200px', minWidth: '180px' }}>
-          <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>
-            Контрагент *
-          </label>
+          <label style={{ ...thStyle, display: 'block', marginBottom: '4px' }}>Контрагент *</label>
           <select value={customerId} onChange={e => handleCustomerChange(e.target.value)}
             style={{ ...inp, width: '100%', cursor: 'pointer' }}>
             <option value="">— оберіть контрагента —</option>
@@ -170,11 +180,8 @@ export default function SettlementsClient({
           </select>
         </div>
 
-        {/* Договір */}
         <div style={{ flex: '1 1 180px', minWidth: '160px' }}>
-          <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>
-            Договір
-          </label>
+          <label style={{ ...thStyle, display: 'block', marginBottom: '4px' }}>Договір</label>
           <select value={contractId}
             onChange={e => { setContractId(e.target.value); setSearched(false); setRows([]); setOpening(null); }}
             disabled={!customerId}
@@ -186,13 +193,12 @@ export default function SettlementsClient({
           </select>
         </div>
 
-        {/* Дати */}
         <div>
-          <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>З</label>
+          <label style={{ ...thStyle, display: 'block', marginBottom: '4px' }}>З</label>
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={inp} />
         </div>
         <div>
-          <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>По</label>
+          <label style={{ ...thStyle, display: 'block', marginBottom: '4px' }}>По</label>
           <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={inp} />
         </div>
 
@@ -212,65 +218,82 @@ export default function SettlementsClient({
       {/* Results */}
       {searched && (
         <>
-          {/* Summary cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '16px' }}>
+          {/* Summary strip */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
             {[
-              { label: 'Вхідний залишок',   value: opening ?? 0, color: '#1E3A5F',  accent: '#4880B8' },
-              { label: 'Нараховано (дебет)', value: totalDebit,   color: '#DC2626',  accent: '#DC2626' },
-              { label: 'Оплачено (кредит)',  value: totalCredit,  color: '#16A34A',  accent: '#16A34A' },
-              {
-                label: 'Вихідний залишок',
-                value: closing,
-                color: closing > 0.005 ? '#DC2626' : '#16A34A',
-                accent: closing > 0.005 ? '#DC2626' : '#16A34A',
-              },
+              { label: 'Вхідне сальдо',    value: opening ?? 0, accent: '#94A3B8' },
+              { label: 'Оборот дебет',      value: totalDebit,   accent: '#DC2626' },
+              { label: 'Оборот кредит',     value: totalCredit,  accent: '#16A34A' },
+              { label: 'Вихідне сальдо',    value: closing,      accent: closing > 0.005 ? '#DC2626' : '#16A34A' },
             ].map(s => (
-              <div key={s.label} style={{ padding: '14px 18px', borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: `3px solid ${s.accent}` }}>
-                <div style={{ fontSize: '20px', fontWeight: 800, color: s.color }}>{fmt(s.value)} ₴</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{s.label}</div>
+              <div key={s.label} style={{
+                padding: '12px 16px', borderRadius: '10px',
+                background: 'var(--bg-card)', border: '1px solid var(--border)',
+                borderLeft: `3px solid ${s.accent}`,
+              }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '3px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.label}</div>
+                <div style={{ fontSize: '17px', fontWeight: 800, color: s.accent === '#94A3B8' ? 'var(--text-primary)' : s.accent }}>
+                  {fmt(s.value)} ₴
+                </div>
               </div>
             ))}
           </div>
 
-          {/* Table */}
+          {/* Ledger table */}
           {rows.length === 0 ? (
             <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
               Немає операцій за обраний період
             </div>
           ) : (
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-              {/* Header */}
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', fontSize: '13px' }}>
+
+              {/* Column headers */}
               <div style={{
-                display: 'grid', gridTemplateColumns: cols,
+                display: 'grid', gridTemplateColumns: COLS, gap: '0',
                 padding: '8px 16px',
-                background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)',
-                fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase',
-                gap: '8px',
+                background: '#1E3A5F',
+                color: '#CBD5E1',
+                fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
               }}>
                 <span>Дата</span>
                 {showContractCol && <span>Договір</span>}
-                <span>Документ</span>
-                <span>Опис</span>
-                <span style={{ textAlign: 'center' }}>Тип</span>
-                <span style={{ textAlign: 'right' }}>Дебет ₴</span>
-                <span style={{ textAlign: 'right' }}>Кредит ₴</span>
+                <span>Зміст операції</span>
+                <span style={{ textAlign: 'right' }}>Дебет</span>
+                <span style={{ textAlign: 'right' }}>Кредит</span>
+                <span style={{ textAlign: 'right' }}>Сальдо</span>
               </div>
 
-              {/* Rows */}
-              {rows.map((row, idx) => {
-                const isDebit  = row.amount > 0;
-                const label    = DOC_LABELS[row.doc_type ?? ''] ?? row.doc_type ?? '—';
-                const clr      = DOC_COLORS[row.doc_type ?? ''] ?? { bg: '#F1F5F9', color: '#475569' };
-                const href     = docHref(row);
-                const dLabel   = docLabel(row);
-                const isOrder  = !!row.order_id && !row.doc_id;
+              {/* Opening balance row */}
+              <div style={{
+                display: 'grid', gridTemplateColumns: COLS, gap: '0',
+                padding: '7px 16px', alignItems: 'center',
+                background: '#F8FAFC', borderBottom: '1px solid var(--border)',
+                fontStyle: 'italic',
+              }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{dateFrom}</span>
+                {showContractCol && <span />}
+                <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Сальдо на початок</span>
+                <span />
+                <span />
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <SaldoBadge value={opening ?? 0} />
+                </div>
+              </div>
+
+              {/* Transaction rows */}
+              {rowsWithSaldo.map((row, idx) => {
+                const isDebit = row.amount > 0;
+                const { label, href } = rowContent(row);
+                const isEven = idx % 2 === 0;
 
                 return (
                   <div key={row.id} style={{
-                    display: 'grid', gridTemplateColumns: cols,
-                    padding: '9px 16px', alignItems: 'center', gap: '8px',
-                    borderBottom: idx < rows.length - 1 ? '1px solid var(--border-light)' : 'none',
-                    background: isDebit ? 'transparent' : 'rgba(21,128,61,0.03)',
+                    display: 'grid', gridTemplateColumns: COLS, gap: '0',
+                    padding: '8px 16px', alignItems: 'center',
+                    borderBottom: '1px solid var(--border-light)',
+                    background: isDebit
+                      ? (isEven ? '#fff' : '#FAFAFA')
+                      : (isEven ? '#F0FDF4' : '#ECFDF5'),
                     transition: 'background 0.1s',
                   }}>
                     {/* Дата */}
@@ -280,78 +303,84 @@ export default function SettlementsClient({
 
                     {/* Договір */}
                     {showContractCol && (
-                      <div>
-                        {row.contract_number
-                          ? <Link href={`/admin/contracts`} style={{ fontSize: '12px', fontWeight: 600, color: '#1E3A5F', textDecoration: 'none' }}>{row.contract_number}</Link>
-                          : <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Без договору</span>
-                        }
-                      </div>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        {row.contract_number ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                      </span>
                     )}
 
-                    {/* Документ (клікабельний) */}
-                    <div>
-                      {href && dLabel ? (
+                    {/* Зміст */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                      <span style={{
+                        fontSize: '12px', color: 'var(--text-primary)',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }} title={label}>
+                        {label}
+                      </span>
+                      {href && (
                         <Link href={href} target="_blank"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600, color: '#1E3A5F', textDecoration: 'none', padding: '2px 7px', borderRadius: '6px', border: '1px solid #BFDBFE', background: '#EFF6FF' }}>
-                          <FileText size={11} />
-                          {dLabel}
-                          <ExternalLink size={10} style={{ opacity: 0.5 }} />
+                          style={{ color: '#94A3B8', flexShrink: 0, display: 'flex', alignItems: 'center' }}
+                          title="Відкрити документ">
+                          <ExternalLink size={12} />
                         </Link>
-                      ) : dLabel && isOrder ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600, color: '#475569', padding: '2px 7px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-soft)' }}>
-                          <ShoppingBag size={11} />
-                          {dLabel}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>—</span>
                       )}
                     </div>
 
-                    {/* Опис */}
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                      title={row.description ?? label}>
-                      {row.description ?? label}
-                    </span>
-
-                    {/* Тип */}
-                    <div style={{ display: 'flex', justifyContent: 'center' }}>
-                      <span style={{
-                        fontSize: '11px', padding: '2px 8px', borderRadius: '20px', fontWeight: 600,
-                        background: clr.bg, color: clr.color,
-                        whiteSpace: 'nowrap',
-                      }}>
-                        {label}
-                      </span>
-                    </div>
-
                     {/* Дебет */}
-                    <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#DC2626' }}>
+                    <span style={{ textAlign: 'right', fontWeight: isDebit ? 700 : 400, color: isDebit ? '#1E293B' : 'var(--text-muted)', fontFamily: 'monospace' }}>
                       {isDebit ? `${fmt(row.amount)} ₴` : ''}
                     </span>
 
                     {/* Кредит */}
-                    <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#15803D' }}>
+                    <span style={{ textAlign: 'right', fontWeight: !isDebit ? 700 : 400, color: !isDebit ? '#15803D' : 'var(--text-muted)', fontFamily: 'monospace' }}>
                       {!isDebit ? `${fmt(Math.abs(row.amount))} ₴` : ''}
                     </span>
+
+                    {/* Сальдо */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <SaldoBadge value={row.saldo} />
+                    </div>
                   </div>
                 );
               })}
 
-              {/* Footer totals */}
+              {/* Turnover row */}
               <div style={{
-                display: 'grid', gridTemplateColumns: cols,
-                padding: '10px 16px', gap: '8px',
-                background: 'var(--bg-soft)', borderTop: '2px solid var(--border)',
-                fontSize: '13px', fontWeight: 700,
+                display: 'grid', gridTemplateColumns: COLS, gap: '0',
+                padding: '9px 16px', alignItems: 'center',
+                background: '#F1F5F9', borderTop: '2px solid #CBD5E1',
+                fontWeight: 700,
               }}>
-                <span style={{
-                  gridColumn: showContractCol ? '1 / 6' : '1 / 5',
-                  color: 'var(--text-primary)',
-                }}>
-                  Разом за період
+                <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>{dateTo}</span>
+                {showContractCol && <span />}
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                  Обороти за період
                 </span>
-                <span style={{ textAlign: 'right', color: '#DC2626' }}>{fmt(totalDebit)} ₴</span>
-                <span style={{ textAlign: 'right', color: '#15803D' }}>{fmt(totalCredit)} ₴</span>
+                <span style={{ textAlign: 'right', color: '#1E293B', fontFamily: 'monospace' }}>
+                  {fmt(totalDebit)} ₴
+                </span>
+                <span style={{ textAlign: 'right', color: '#15803D', fontFamily: 'monospace' }}>
+                  {fmt(totalCredit)} ₴
+                </span>
+                <span />
+              </div>
+
+              {/* Closing balance row */}
+              <div style={{
+                display: 'grid', gridTemplateColumns: COLS, gap: '0',
+                padding: '9px 16px', alignItems: 'center',
+                background: '#EEF2F7', borderTop: '1px solid #CBD5E1',
+                fontWeight: 700,
+              }}>
+                <span />
+                {showContractCol && <span />}
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                  Сальдо на кінець
+                </span>
+                <span />
+                <span />
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <SaldoBadge value={closing} />
+                </div>
               </div>
             </div>
           )}
