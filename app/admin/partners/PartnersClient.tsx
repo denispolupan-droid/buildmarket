@@ -33,7 +33,7 @@ type Customer = {
   balance: number; balance_held: number; is_active: boolean;
   orders_count: number; total_revenue: number; last_order_at: string | null;
   created_at: string; partner_code: string | null; credit_limit: number | null;
-  notes: string | null;
+  notes: string | null; customer_number: number | null;
 };
 
 type Payout = {
@@ -327,6 +327,11 @@ export default function PartnersClient({
                   {/* Name + contact */}
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                      {c.customer_number && (
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>
+                          #{String(c.customer_number).padStart(3, '0')}
+                        </span>
+                      )}
                       <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</span>
                       <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 7px', borderRadius: '20px', background: typeInfo.bg, color: typeInfo.color }}>
                         {typeInfo.short}
@@ -516,7 +521,7 @@ export default function PartnersClient({
         return (
           <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             onClick={e => { if (e.target === e.currentTarget) setViewingId(null); }}>
-            <div style={{ background: 'var(--bg-card)', borderRadius: '18px', width: '520px', maxWidth: '95vw', boxShadow: '0 32px 80px rgba(0,0,0,0.45)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+            <div style={{ background: 'var(--bg-card)', borderRadius: '18px', width: '640px', maxWidth: '95vw', boxShadow: '0 32px 80px rgba(0,0,0,0.45)', border: '1px solid var(--border)', overflow: 'hidden' }}>
 
               {/* Header */}
               <div style={{ background: 'linear-gradient(135deg, #1E3A5F 0%, #0F2040 100%)', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -527,7 +532,7 @@ export default function PartnersClient({
                   </div>
                   {vc.company && <div style={{ fontSize: '13px', color: '#94A3B8' }}>{vc.company}</div>}
                   <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>
-                    ID: {vc.id.slice(0, 8)}…
+                    {vc.customer_number ? `#${String(vc.customer_number).padStart(3, '0')}` : `ID: ${vc.id.slice(0, 8)}…`}
                     {vc.partner_code && ` · Код: ${vc.partner_code}`}
                   </div>
                 </div>
