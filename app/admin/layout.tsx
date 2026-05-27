@@ -22,9 +22,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     serviceClient.from('chat_sessions').select('*', { count: 'exact', head: true }).gt('unread_count', 0),
   ]);
 
+  // ── User label for sidebar ──────────────────────────────────────────────────
+  const role      = user.user_metadata?.role ?? '';
+  const rawName   = user.user_metadata?.name ?? user.user_metadata?.full_name ?? '';
+  const firstName = rawName.trim().split(/\s+/)[0] || user.email?.split('@')[0] || '';
+  const userLabel = role === 'admin'
+    ? 'Адміністратор'
+    : firstName ? `Менеджер ${firstName}` : 'Менеджер';
+
   return (
     <div className="admin-layout" style={{ display: 'flex', minHeight: '100vh', background: '#EEF2F7' }}>
-      <AdminSidebar newOrdersCount={newOrdersCount ?? 0} chatUnreadCount={chatUnread ?? 0} />
+      <AdminSidebar newOrdersCount={newOrdersCount ?? 0} chatUnreadCount={chatUnread ?? 0} userLabel={userLabel} />
       <PageTransition>{children}</PageTransition>
       <PoDraftManagerLoader />
       <ReceiptDraftManagerLoader />

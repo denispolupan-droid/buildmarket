@@ -35,9 +35,9 @@ const T = {
   iconActive: '#3DBFB8',
 } as const;
 
-type Props = { newOrdersCount: number; chatUnreadCount?: number };
+type Props = { newOrdersCount: number; chatUnreadCount?: number; userLabel?: string };
 
-function SidebarInner({ newOrdersCount, chatUnreadCount = 0 }: Props) {
+function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Панель менеджера' }: Props) {
   const pathname = usePathname();
 
   const [poDraftCount, setPoDraftCount] = useState(0);
@@ -93,7 +93,7 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0 }: Props) {
               FIXLINE
             </div>
             <div style={{ fontSize: '11px', color: 'rgba(61,191,184,0.6)', marginTop: '1px' }}>
-              Панель менеджера
+              {userLabel}
             </div>
           </div>
         </div>
@@ -173,7 +173,7 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0 }: Props) {
 export default function AdminSidebar(props: Props) {
   return (
     <Suspense fallback={null}>
-      <SidebarInner newOrdersCount={props.newOrdersCount} chatUnreadCount={props.chatUnreadCount} />
+      <SidebarInner newOrdersCount={props.newOrdersCount} chatUnreadCount={props.chatUnreadCount} userLabel={props.userLabel} />
     </Suspense>
   );
 }
