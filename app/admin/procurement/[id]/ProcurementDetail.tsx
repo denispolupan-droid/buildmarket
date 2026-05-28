@@ -476,13 +476,6 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
         )}
         {/* 4. Ланцюжок */}
         {chainButton}
-        {/* 5. Друк */}
-        <button
-          onClick={() => window.print()}
-          title="Друк / Зберегти PDF"
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
-          <Printer size={14} /> Друк
-        </button>
         {/* ⋯ меню рідкісних дій */}
         <div ref={actionsMenuRef} style={{ position: 'relative' }}>
           <button
@@ -493,6 +486,13 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
           </button>
           {showActionsMenu && (
             <div style={{ position: 'absolute', top: '38px', right: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.10)', minWidth: '220px', zIndex: 100, padding: '4px 0', overflow: 'hidden' }}>
+              <button
+                onClick={() => { setShowActionsMenu(false); window.print(); }}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: 'var(--text-primary)', textAlign: 'left' }}>
+                <Printer size={14} style={{ color: 'var(--text-muted)' }} />
+                Друк / Зберегти PDF
+              </button>
+              <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
               <button
                 onClick={() => { setShowActionsMenu(false); copyToNewDraft(); }}
                 disabled={copyingOrder}
