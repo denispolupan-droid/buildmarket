@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 type Line = { id: number; sku: string; name?: string; brand?: string; qty: number; cost_price: number; supplier_id?: number; adj_delta?: number; effective_qty?: number; is_adj_new?: boolean };
+type ContactEntry = { name: string; email: string; note?: string };
 type SupplierBank = {
   bank_iban: string | null; bank_name: string | null;
   legal_name: string | null; edrpou: string | null;
@@ -92,9 +93,15 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const actionsMenuRef = useRef<HTMLDivElement>(null);
 
-  const [showSendModal, setShowSendModal] = useState(false);
-  const [sendEmail,     setSendEmail]     = useState(po.supplier_email ?? '');
-  const [sendingMail,   setSendingMail]   = useState(false);
+  const [showSendModal,        setShowSendModal]        = useState(false);
+  const [sendEmail,            setSendEmail]            = useState(po.supplier_email ?? '');
+  const [sendingMail,          setSendingMail]          = useState(false);
+  const [sendContacts,         setSendContacts]         = useState<ContactEntry[]>([]);
+  const [sendContactsLoading,  setSendContactsLoading]  = useState(false);
+
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason,    setCancelReason]    = useState('');
+  const [cancelling,      setCancelling]      = useState(false);
 
   function copyToNewDraft() {
     setCopyingOrder(true);
@@ -129,6 +136,20 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
       setShowSendModal(false);
     } catch { setError('Мережева помилка'); }
     finally { setSendingMail(false); }
+  }
+
+  async function handleCancel() {
+    setCancelling(true); setError('');
+    try {
+      const res = await fetch(`/api/admin/procurement/${po.id}/status`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ procurement_status: 'cancelled', cancel_reason: cancelReason || undefined }),
+      });
+      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Помилка скасування'); return; }
+      setShowCancelModal(false);
+      window.location.reload();
+    } catch { setError('Мережева помилка'); }
+    finally { setCancelling(false); }
   }
 
   const [editingIban,   setEditingIban]   = useState(false);
@@ -207,6 +228,22 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showActionsMenu]);
+
+  useEffect(() => {
+    if (!showSendModal || !po.supplier_id) return;
+    setSendContactsLoading(true);
+    fetch(`/api/admin/suppliers/${po.supplier_id}`)
+      .then(r => r.json())
+      .then(d => {
+        const contacts: ContactEntry[] = d.contacts ?? [];
+        setSendContacts(contacts);
+        const first = contacts.find(c => c.email?.includes('@'));
+        if (first) setSendEmail(first.email);
+      })
+      .catch(() => {})
+      .finally(() => setSendContactsLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSendModal]);
 
   async function handleInvoiceUpload(file: File) {
     setUploadingInvoice(true);
@@ -392,7 +429,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
             <MoreHorizontal size={16} />
           </button>
           {showActionsMenu && (
-            <div style={{ position: 'absolute', top: '38px', right: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.10)', minWidth: '200px', zIndex: 100, padding: '4px 0', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: '38px', right: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.10)', minWidth: '220px', zIndex: 100, padding: '4px 0', overflow: 'hidden' }}>
               <button
                 onClick={() => { setShowActionsMenu(false); copyToNewDraft(); }}
                 disabled={copyingOrder}
@@ -400,6 +437,17 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                 {copyingOrder ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Copy size={14} style={{ color: 'var(--text-muted)' }} />}
                 Копіювати як нове замовлення
               </button>
+              {!po.has_receipt && !isCancelled && (
+                <>
+                  <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
+                  <button
+                    onClick={() => { setShowActionsMenu(false); setShowCancelModal(true); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#DC2626', textAlign: 'left' }}>
+                    <X size={14} style={{ color: '#DC2626' }} />
+                    Скасувати замовлення
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -962,37 +1010,79 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
       {/* Модалка відправки постачальнику */}
       {showSendModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-              <Send size={18} color="#1E3A5F" />
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                Відправити постачальнику
-              </h3>
-            </div>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
-              <strong>{po.supplier_name}</strong> · {po.doc_number}
-              {po.total_cost ? ` · ${Number(po.total_cost).toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴` : ''}
-            </p>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>
-                <Mail size={11} style={{ display: 'inline', marginRight: '4px' }} /> Email отримувача
-              </label>
-              <input
-                value={sendEmail}
-                onChange={e => setSendEmail(e.target.value)}
-                placeholder="email@supplier.com"
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1.5px solid ${sendEmail.includes('@') ? 'var(--border)' : '#FCA5A5'}`, fontSize: '14px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', outline: 'none' }}
-              />
-              {!po.supplier_email && (
-                <div style={{ fontSize: '11px', color: '#B45309', marginTop: '4px' }}>
-                  ⚠ Email не заповнено в картці постачальника
+          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '460px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 3px', fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                  Відправити постачальнику
+                </h3>
+                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  {po.supplier_name}
                 </div>
-              )}
+              </div>
+              <button onClick={() => setShowSendModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '2px' }}>
+                <X size={18} />
+              </button>
             </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
+
+            {/* Замовлення */}
+            <div style={{ marginBottom: '12px', padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '13px', color: 'var(--text-secondary)' }}>
+              Замовлення: <strong>{po.doc_number}</strong>
+              {po.total_cost && <span style={{ color: 'var(--text-muted)', marginLeft: '8px' }}>{fmt(Number(po.total_cost))} ₴</span>}
+            </div>
+
+            {/* Контакти постачальника */}
+            {sendContactsLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Завантаження контактів...
+              </div>
+            ) : sendContacts.length > 0 && (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                  Контакти постачальника
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {sendContacts.map((c, ci) => {
+                    const isSelected = sendEmail === c.email;
+                    return (
+                      <button key={ci} type="button"
+                        onClick={() => setSendEmail(c.email)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '7px', cursor: 'pointer', textAlign: 'left', border: `1.5px solid ${isSelected ? '#1E3A5F' : 'var(--border)'}`, background: isSelected ? '#EFF4FF' : 'var(--bg-soft)' }}>
+                        <div style={{ width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${isSelected ? '#1E3A5F' : '#CBD5E1'}`, background: isSelected ? '#1E3A5F' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {isSelected && <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#fff' }} />}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>{c.name || c.email}</div>
+                          {c.name && <div style={{ fontSize: '11px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email}{c.note ? ` · ${c.note}` : ''}</div>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Email input */}
+            <div style={{ marginBottom: '6px', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '5px', textTransform: 'uppercase' }}>
+              <Mail size={12} /> {sendContacts.length > 0 ? 'Або інший email' : 'Email отримувача'}
+            </div>
+            <input
+              value={sendEmail}
+              onChange={e => setSendEmail(e.target.value)}
+              placeholder="email@supplier.com"
+              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1.5px solid ${sendEmail.includes('@') ? 'var(--border)' : '#FCA5A5'}`, fontSize: '14px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', outline: 'none', marginBottom: '6px' }}
+            />
+            {sendContacts.length === 0 && !po.supplier_email && (
+              <div style={{ fontSize: '11px', color: '#B45309', background: '#FEF3C7', padding: '6px 10px', borderRadius: '6px', marginBottom: '4px' }}>
+                ⚠ Контакти не додано — додайте їх у картці постачальника
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
               <button
                 onClick={() => setShowSendModal(false)}
-                style={{ flex: 1, height: '40px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                style={{ flex: 1, height: '40px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
                 Скасувати
               </button>
               <button
@@ -1001,6 +1091,47 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                 style={{ flex: 2, height: '40px', borderRadius: '8px', border: 'none', background: sendEmail.includes('@') ? '#1E3A5F' : '#94A3B8', color: '#fff', cursor: sendEmail.includes('@') ? 'pointer' : 'not-allowed', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', opacity: sendingMail ? 0.7 : 1 }}>
                 {sendingMail ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={14} />}
                 Відправити
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модалка скасування замовлення */}
+      {showCancelModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ fontSize: '16px', fontWeight: 800, color: '#DC2626', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              🚫 Скасувати замовлення?
+            </div>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+              <strong>{po.doc_number}</strong> · {po.supplier_name}<br />
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Цю дію не можна відмінити. Замовлення буде анульовано.</span>
+            </p>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>
+                Причина скасування (необов&apos;язково)
+              </label>
+              <textarea
+                value={cancelReason}
+                onChange={e => setCancelReason(e.target.value)}
+                placeholder="Наприклад: постачальник не може виконати замовлення"
+                rows={3}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid var(--border)', fontSize: '13px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => { setShowCancelModal(false); setCancelReason(''); }}
+                style={{ flex: 1, height: '40px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Назад
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                style={{ flex: 1, height: '40px', borderRadius: '8px', border: 'none', background: '#DC2626', color: '#fff', cursor: cancelling ? 'default' : 'pointer', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', opacity: cancelling ? 0.7 : 1 }}>
+                {cancelling ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : null}
+                Скасувати замовлення
               </button>
             </div>
           </div>

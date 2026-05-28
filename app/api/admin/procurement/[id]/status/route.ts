@@ -21,6 +21,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     payment_date?: string;
     payment_defer_date?: string;
     payment_mode?: string;
+    cancel_reason?: string;
   };
 
   const update: Record<string, unknown> = {};
@@ -30,15 +31,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.supplier_invoice_amount)  update.supplier_invoice_amount  = body.supplier_invoice_amount;
   if (body.expected_date)            update.expected_date            = body.expected_date;
 
-  // Зберігаємо деталі оплати в meta
-  if (body.payment_defer_date || body.payment_mode) {
+  // Зберігаємо деталі оплати та скасування в meta
+  if (body.payment_defer_date || body.payment_mode || body.cancel_reason) {
     const { data: current } = await db.from('acc_documents').select('meta').eq('id', id).single();
     const existingMeta = (current?.meta as Record<string, unknown>) ?? {};
     update.meta = {
       ...existingMeta,
       ...(body.payment_defer_date ? { payment_defer_date: body.payment_defer_date } : {}),
       ...(body.payment_mode      ? { payment_mode:       body.payment_mode       } : {}),
+      ...(body.cancel_reason     ? { cancel_reason:      body.cancel_reason      } : {}),
     };
+  }
+
+  // Скасування: також встановлюємо status = 'cancelled' (не тільки procurement_status)
+  if (body.procurement_status === 'cancelled') {
+    update.status = 'cancelled';
   }
 
   const { data: po } = await db.from('acc_documents').select('supplier_id, doc_number, total_cost').eq('id', id).single();
