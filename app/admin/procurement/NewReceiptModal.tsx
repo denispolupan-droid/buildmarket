@@ -103,6 +103,9 @@ export default function NewReceiptModal({
     initialData.lines?.length ? initialData.lines : [{ sku: '', name: '', qty: 1, cost_price: 0, sale_price: 0, is_bonus: false, matched: false }]
   );
 
+  const [currentDraftReceiptId, setCurrentDraftReceiptId] = useState<string | null>(initialData.draftReceiptId ?? null);
+  const [savedAsDraft,          setSavedAsDraft]          = useState(false);
+
   const [dragging,    setDragging]    = useState(false);
   const [parsing,     setParsing]     = useState(false);
   const [saving,      setSaving]      = useState(false);
@@ -305,6 +308,35 @@ export default function NewReceiptModal({
     if (!valid.length) { setError('Додайте хоча б один товар з артикулом'); return; }
     setSaving(true); setError('');
     try {
+      // ── PO-linked receipt ──────────────────────────────────────────────────
+      if (initialData.poId) {
+        const res = await fetch(`/api/admin/procurement/${initialData.poId}/receive`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            actualQties:    Object.fromEntries(valid.map(l => [l.sku.trim(), l.qty])),
+            actualPrices:   Object.fromEntries(valid.map(l => [l.sku.trim(), l.is_bonus ? 0 : l.cost_price])),
+            sale_prices:    Object.fromEntries(valid.map(l => [l.sku.trim(), l.sale_price])),
+            notes:          notes || undefined,
+            draft:          !autoConfirm,
+            draftReceiptId: currentDraftReceiptId ?? undefined,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) { setError(data.error ?? 'Помилка проведення приходу'); return; }
+        if (!autoConfirm) {
+          setCurrentDraftReceiptId(data.receiptId);
+          onDraftChange({ draftReceiptId: data.receiptId });
+          setSavedAsDraft(true);
+          setTimeout(() => setSavedAsDraft(false), 3000);
+          return;
+        }
+        onSubmitted();
+        router.push(`/admin/procurement/receipts/${data.receiptId}`);
+        router.refresh();
+        return;
+      }
+
+      // ── Standalone receipt (stock_in) ──────────────────────────────────────
       const res = await fetch('/api/admin/accounting/documents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -362,8 +394,13 @@ export default function NewReceiptModal({
       >
         {/* ── Header ── */}
         <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-          <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
-            Новий прихід товару
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
+              {initialData.poId ? `Прихід за ${initialData.poDocNumber ?? 'ЗП'}` : 'Новий прихід товару'}
+            </div>
+            {initialData.poId && (
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Перевірте фактичні кількості, ціни закупки та встановіть ціни продажу</div>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <button onClick={onMinimize} title="Згорнути" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px', borderRadius: '6px' }}><Minus size={18} /></button>
@@ -514,10 +551,18 @@ export default function NewReceiptModal({
                     />
 
                     {/* Qty */}
-                    <input style={{ ...inp, textAlign: 'right' }} type="number" min="0.001" step="1"
-                      value={line.qty || ''}
-                      onChange={e => setLineField(idx, 'qty', parseFloat(e.target.value) || 1)}
-                      onBlur={() => { if (!line.qty || line.qty < 0.001) setLineField(idx, 'qty', 1); }} />
+                    <div>
+                      <input style={{ ...inp, textAlign: 'right' }} type="number" min="0.001" step="1"
+                        value={line.qty || ''}
+                        onChange={e => setLineField(idx, 'qty', parseFloat(e.target.value) || 1)}
+                        onBlur={() => { if (!line.qty || line.qty < 0.001) setLineField(idx, 'qty', 1); }} />
+                      {line.ordered_qty != null && (
+                        <div style={{ fontSize: '9px', marginTop: '2px', textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 600,
+                          color: line.qty === line.ordered_qty ? '#15803D' : line.qty < line.ordered_qty ? '#F59E0B' : '#EF4444' }}>
+                          Зам: {line.ordered_qty}
+                        </div>
+                      )}
+                    </div>
 
                     {/* Cost price */}
                     <div style={{ position: 'relative' }}>
@@ -595,12 +640,12 @@ export default function NewReceiptModal({
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={() => handleSave(false)} disabled={saving}
-              style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: saving ? 0.6 : 1 }}>
-              💾 Чернетка
+              style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: '1.5px solid var(--border)', background: savedAsDraft ? '#F0FDF4' : 'var(--bg-card)', color: savedAsDraft ? '#15803D' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: saving ? 0.6 : 1 }}>
+              {savedAsDraft ? '✅ Збережено' : '💾 Чернетка'}
             </button>
             <button onClick={() => handleSave(true)} disabled={saving}
               style={{ height: '38px', padding: '0 22px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: saving ? 0.7 : 1 }}>
-              {saving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Збереження...</> : '✅ Провести'}
+              {saving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Проводимо...</> : initialData.poId ? '📦 Провести прихід' : '✅ Провести'}
             </button>
           </div>
         </div>

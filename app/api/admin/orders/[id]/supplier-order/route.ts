@@ -6,6 +6,48 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = 'FIXLINE <orders@fixline.com.ua>';
 
+type SkuMapping = { our_sku: string; supplier_id: number; supplier_sku: string };
+
+/**
+ * Resolves supplier for each SKU.
+ * Primary: supplier_sku_map; Fallback: supplier_stock (populated on every price sync).
+ */
+async function resolveSkuMapping(
+  db: ReturnType<typeof createServiceClient>,
+  skus: string[],
+): Promise<Map<string, SkuMapping>> {
+  if (skus.length === 0) return new Map();
+
+  const { data: mapRows } = await db
+    .from('supplier_sku_map')
+    .select('our_sku, supplier_id, supplier_sku')
+    .in('our_sku', skus);
+
+  const result = new Map<string, SkuMapping>(
+    (mapRows ?? []).map(r => [r.our_sku, r as SkuMapping]),
+  );
+
+  // Fallback: supplier_stock for SKUs not in supplier_sku_map
+  const unmapped = skus.filter(s => !result.has(s));
+  if (unmapped.length > 0) {
+    const { data: stockRows } = await db
+      .from('supplier_stock')
+      .select('sku, supplier_id, supplier_sku')
+      .in('sku', unmapped);
+    for (const row of stockRows ?? []) {
+      if (!result.has(row.sku)) {
+        result.set(row.sku, {
+          our_sku:      row.sku,
+          supplier_id:  row.supplier_id,
+          supplier_sku: row.supplier_sku ?? row.sku,
+        });
+      }
+    }
+  }
+
+  return result;
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -22,15 +64,16 @@ export async function GET(
   if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const skus = ((order.items ?? []) as { sku: string }[]).map((i) => i.sku);
-  const { data: skuMapRows } = await db
-    .from('supplier_sku_map').select('supplier_id').in('our_sku', skus);
-  const supplierIds = [...new Set((skuMapRows ?? []).map((r) => r.supplier_id).filter(Boolean))];
+  const supplierMap = await resolveSkuMapping(db, skus);
+
+  const supplierIds = [...new Set([...supplierMap.values()].map(r => r.supplier_id).filter(Boolean))];
   const { data: suppliers } = await db
     .from('suppliers').select('id, name, email, notes').in('id', supplierIds);
 
   const first = suppliers?.[0];
   const supplierEmail = first?.email ?? extractEmail(first?.notes ?? '') ?? '';
   return NextResponse.json({
+    supplier_id:    first?.id ?? null,
     supplier_name:  suppliers?.map((s) => s.name).join(', ') ?? '—',
     supplier_email: supplierEmail,
   });
@@ -64,19 +107,15 @@ export async function POST(
   const orderItems = (order.items ?? []) as { sku: string; name: string; brand: string; qty: number }[];
   const skus = orderItems.map(i => i.sku);
 
-  const { data: skuMapRows } = await db
-    .from('supplier_sku_map')
-    .select('our_sku, supplier_id, supplier_sku')
-    .in('our_sku', skus);
+  const supplierMap = await resolveSkuMapping(db, skus);
 
-  const supplierIds = [...new Set((skuMapRows ?? []).map(r => r.supplier_id).filter(Boolean))];
+  const supplierIds = [...new Set([...supplierMap.values()].map(r => r.supplier_id).filter(Boolean))];
   const { data: supplierRows } = await db
     .from('suppliers')
     .select('id, name, email, notes')
     .in('id', supplierIds);
 
-  const supplierMap     = new Map((skuMapRows    ?? []).map(r => [r.our_sku, r]));
-  const supplierInfoMap = new Map((supplierRows  ?? []).map(s => [s.id, s]));
+  const supplierInfoMap = new Map((supplierRows ?? []).map(s => [s.id, s]));
 
   // Group items by supplier
   const bySupplier = new Map<number, { items: typeof orderItems; supplierSkus: Map<string, string> }>();
@@ -87,6 +126,16 @@ export async function POST(
       bySupplier.set(mapping.supplier_id, { items: [], supplierSkus: new Map() });
     bySupplier.get(mapping.supplier_id)!.items.push(item);
     bySupplier.get(mapping.supplier_id)!.supplierSkus.set(item.sku, mapping.supplier_sku ?? item.sku);
+  }
+
+  // If no SKUs matched any supplier but overrideEmail is provided, send all items to that email
+  if (bySupplier.size === 0 && overrideEmail) {
+    const supplierId = -1;
+    bySupplier.set(supplierId, {
+      items: orderItems,
+      supplierSkus: new Map(orderItems.map(i => [i.sku, i.sku])),
+    });
+    supplierInfoMap.set(supplierId, { id: supplierId, name: 'Постачальник', email: overrideEmail, notes: null });
   }
 
   const results: { supplier_name: string; emailed: boolean }[] = [];
@@ -123,6 +172,10 @@ export async function POST(
     }
 
     results.push({ supplier_name: supplier.name, emailed });
+  }
+
+  if (results.some(r => r.emailed)) {
+    await db.from('orders').update({ supplier_sent_at: new Date().toISOString() }).eq('id', id);
   }
 
   return NextResponse.json({ ok: true, results });

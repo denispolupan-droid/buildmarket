@@ -16,7 +16,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { status, tracking_number, tracking_ref, payment_confirmed, callback_done, items: bodyItems, total_price: bodyTotalPrice } = body;
+  const { status, tracking_number, tracking_ref, payment_confirmed, callback_done, supplier_confirmed, items: bodyItems, total_price: bodyTotalPrice } = body;
 
   const db = createServiceClient();
   const update: Record<string, unknown> = {};
@@ -31,8 +31,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (tracking_number !== undefined) update.tracking_number = tracking_number;
   if (tracking_ref    !== undefined) update.tracking_ref    = tracking_ref;
-  if (payment_confirmed !== undefined) update.payment_confirmed = payment_confirmed;
-  if (callback_done !== undefined) update.callback_done = callback_done;
+  if (payment_confirmed  !== undefined) update.payment_confirmed  = payment_confirmed;
+  if (callback_done      !== undefined) update.callback_done      = callback_done;
+  if (supplier_confirmed !== undefined) update.supplier_confirmed = supplier_confirmed;
   if (bodyItems !== undefined) update.items = bodyItems;
   if (bodyTotalPrice !== undefined) update.total_price = bodyTotalPrice;
 

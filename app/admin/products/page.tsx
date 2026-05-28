@@ -23,8 +23,8 @@ export default async function AdminProductsPage() {
       stock:product_stock(*),
       characteristics:product_characteristics(*)
     `)
-    .order('updated_at', { ascending: false })
-    .limit(500);
+    .order('category_slug', { ascending: true })
+    .order('sku', { ascending: true });
 
   const { data: categories } = await serviceClient
     .from('categories')

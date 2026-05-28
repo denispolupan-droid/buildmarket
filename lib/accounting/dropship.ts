@@ -76,7 +76,7 @@ export async function getOrderFulfillmentInfo(
     .from('suppliers')
     .select('id, name');
 
-  // Fallback: match by supplier_sku value from product_stock
+  // Fallback 1: match by supplier_sku value from product_stock → supplier_sku_map
   const supplierSkusFromStock = (stockRows ?? []).map(r => r.supplier_sku).filter(Boolean);
   const { data: fallbackMaps } = supplierSkusFromStock.length
     ? await db.from('supplier_sku_map')
@@ -85,6 +85,15 @@ export async function getOrderFulfillmentInfo(
     : { data: [] };
   const fallbackBySupplierSku = new Map(
     (fallbackMaps ?? []).map(r => [r.supplier_sku, r.supplier_id]),
+  );
+
+  // Fallback 2: supplier_stock — пишется при каждом синке, содержит supplier_id напрямую
+  const { data: supplierStockRows } = await db
+    .from('supplier_stock')
+    .select('sku, supplier_id')
+    .in('sku', skus);
+  const supplierByStockSku = new Map(
+    (supplierStockRows ?? []).map(r => [r.sku, r.supplier_id]),
   );
 
   // Индексы для быстрого поиска
@@ -107,6 +116,7 @@ export async function getOrderFulfillmentInfo(
     const supplierSku = skuMapping?.supplier_sku ?? stock?.supplier_sku ?? null;
     const supplierId  = skuMapping?.supplier_id
       ?? (supplierSku ? (fallbackBySupplierSku.get(supplierSku) ?? null) : null)
+      ?? supplierByStockSku.get(item.sku)
       // Last resort: if only one supplier exists and product has a supplier_sku, use it
       ?? (supplierSku && (supplierRows ?? []).length === 1 ? (supplierRows![0].id) : null);
     const supplierName = supplierId ? (supplierNameMap.get(supplierId) ?? null) : null;

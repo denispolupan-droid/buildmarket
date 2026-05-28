@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { MoreHorizontal, RotateCcw, Package } from 'lucide-react';
+import { MoreHorizontal, RotateCcw } from 'lucide-react';
 import ReturnButton from './ReturnButton';
-import ReceiptLandedCostButton from './ReceiptLandedCostButton';
 
 type ReceiptLine = { sku: string; qty: number; cost_price: number; name?: string };
 
@@ -17,14 +16,12 @@ const menuBtnStyle: React.CSSProperties = {
 export default function ReceiptActionsMenu({
   receiptId,
   lines,
-  hasExistingLC = false,
 }: {
   receiptId: string;
   lines: ReceiptLine[];
   hasExistingLC?: boolean;
 }) {
   const [open,       setOpen]       = useState(false);
-  const [showLC,     setShowLC]     = useState(false);
   const [showReturn, setShowReturn] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -39,12 +36,6 @@ export default function ReceiptActionsMenu({
 
   return (
     <>
-      {/* Always-mounted modals — state survives dropdown close */}
-      <ReceiptLandedCostButton
-        receiptId={receiptId}
-        open={showLC}
-        onClose={() => setShowLC(false)}
-      />
       <ReturnButton
         receiptId={receiptId}
         lines={lines}
@@ -74,19 +65,6 @@ export default function ReceiptActionsMenu({
             borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.13)',
             minWidth: '220px', padding: '4px',
           }}>
-            <button
-              onClick={() => { setOpen(false); setShowLC(true); }}
-              style={menuBtnStyle}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-soft)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-            >
-              <Package size={14} style={{ color: '#7C3AED' }} />
-              Додаткові витрати
-              {hasExistingLC && <span style={{ marginLeft: 'auto', fontSize: '10px', color: '#7C3AED', background: '#F5F3FF', padding: '1px 6px', borderRadius: '4px' }}>є</span>}
-            </button>
-
-            <div style={{ height: '1px', background: 'var(--border-light)', margin: '4px 8px' }} />
-
             <button
               onClick={() => { setOpen(false); setShowReturn(true); }}
               style={menuBtnStyle}

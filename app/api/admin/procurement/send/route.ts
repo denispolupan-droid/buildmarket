@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   const { data: docs } = await db
     .from('acc_documents')
     .select(`
-      id, doc_number, doc_date, notes, expected_date,
+      id, doc_number, doc_date, notes, expected_date, procurement_status,
       supplier:supplier_id ( id, name, email, notes, contact_name, contact_phone )
     `)
     .in('id', ids);
@@ -224,10 +224,12 @@ export async function POST(req: NextRequest) {
         html,
       });
 
-      // Оновлюємо статус і email_sent_at для всіх документів цього постачальника
+      // Оновлюємо email_sent_at; procurement_status міняємо на 'sent' тільки якщо замовлення ще не пройшло далі
+      const STATUSES_PAST_SENT = ['confirmed_by_supplier', 'partially_received', 'received', 'invoiced', 'paid'];
       for (const doc of supplierDocs) {
+        const alreadyPast = STATUSES_PAST_SENT.includes((doc as { procurement_status?: string }).procurement_status ?? '');
         await db.from('acc_documents')
-          .update({ procurement_status: 'sent', email_sent_at: now })
+          .update({ email_sent_at: now, ...(alreadyPast ? {} : { procurement_status: 'sent' }) })
           .eq('id', doc.id);
         results.push({ id: doc.id, doc_number: doc.doc_number, supplier: supplier?.name ?? supplierEmail, emailed: true });
       }

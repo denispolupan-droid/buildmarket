@@ -320,7 +320,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                   <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>⏳ Очікуємо</span>
                 )}
               </div>
-              {/* Два статуси: Проведено/Чернетка + Відправлено/Не відправлено */}
+              {/* Статуси: Проведено/Чернетка + Email + Оплата */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
                 {/* Бейдж 1: чи проведено */}
                 {statusKey === 'draft' ? (
@@ -332,34 +332,42 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                     ✅ Проведено
                   </span>
                 )}
-                {/* Бейдж 2: до приходу — статус email; після приходу — статус оплати */}
+                {/* Бейдж 2: статус email */}
                 {statusKey !== 'draft' && (
-                  po.has_receipt ? (
-                    po.procurement_status === 'paid' ? (
-                      <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', whiteSpace: 'nowrap' }}>
-                        {payIcon(po.meta)} Оплачено
-                      </span>
-                    ) : po.procurement_status === 'invoiced' ? (
-                      <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', whiteSpace: 'nowrap' }}>
-                        📅 Відстрочка
-                      </span>
-                    ) : (
-                      <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#DC2626', background: '#FEF2F2', whiteSpace: 'nowrap' }}>
-                        ⏳ Не оплачено
-                      </span>
-                    )
+                  po.email_sent_at ? (
+                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#1E3A5F', background: '#EFF4FF', whiteSpace: 'nowrap' }}>
+                      📤 Відправлено
+                    </span>
                   ) : (
-                    po.email_sent_at ? (
-                      <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#1E3A5F', background: '#EFF4FF', whiteSpace: 'nowrap' }}>
-                        📤 Відправлено
-                      </span>
-                    ) : (
-                      <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', whiteSpace: 'nowrap' }}>
-                        ✉ Не відправлено
-                      </span>
-                    )
+                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', whiteSpace: 'nowrap' }}>
+                      ✉ Не відправлено
+                    </span>
                   )
                 )}
+                {/* Бейдж 3: статус оплати */}
+                {statusKey !== 'draft' && (() => {
+                  const isPaid     = po.meta?.is_paid === true || po.procurement_status === 'paid';
+                  const isInvoiced = po.meta?.payment_status === 'invoiced' || po.procurement_status === 'invoiced';
+                  if (isPaid) return (
+                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', whiteSpace: 'nowrap' }}>
+                      {payIcon(po.meta)} Оплачено
+                    </span>
+                  );
+                  if (isInvoiced) {
+                    const deferDate = po.meta?.payment_defer_date as string | undefined;
+                    const overdue = deferDate && deferDate < new Date().toISOString().slice(0, 10);
+                    return (
+                      <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: overdue ? '#DC2626' : '#B45309', background: overdue ? '#FEF2F2' : '#FEF3C7', whiteSpace: 'nowrap' }}>
+                        {overdue ? '⚠ Відстрочка прострочена' : '📅 Відстрочка'}
+                      </span>
+                    );
+                  }
+                  return (
+                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#DC2626', background: '#FEF2F2', whiteSpace: 'nowrap' }}>
+                      ⏳ Не оплачено
+                    </span>
+                  );
+                })()}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
                 {statusKey !== 'draft' && (

@@ -22,8 +22,11 @@ type PO = {
   supplier_invoice_number: string | null; supplier_invoice_date: string | null;
   supplier_invoice_amount: number | null;
   supplier_bank: SupplierBank | null;
+  warehouse_id?: number | null;
   lines: Line[];
   meta?: Record<string, unknown> | null;
+  draft_receipt_id?: string | null;
+  draft_receipt_lines?: { sku: string; qty: number; cost_price: number; price: number }[];
 };
 
 // 4 кроки хронології PO
@@ -47,7 +50,11 @@ const lbl: React.CSSProperties = { fontSize: '11px', fontWeight: 700, color: 'va
 
 function fmt(n: number) { return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
-export default function ProcurementDetail({ po, chainButton, adjustmentButton, onClose, compact }: { po: PO; chainButton?: React.ReactNode; adjustmentButton?: React.ReactNode; onClose?: () => void; compact?: boolean }) {
+type CustomerOrder = { order_number: number; contact: string | null; company: string | null; status: string; total_price: number | null } | null;
+type ActivityEvent = { icon: string; label: string; detail?: string; date: string | null; isDatetime: boolean };
+type PaymentHistoryEntry = { created_at: string; amount: number; payment_mode: string | null; doc_type: string };
+
+export default function ProcurementDetail({ po, chainButton, adjustmentButton, onClose, compact, customerOrder, events, paymentHistory, totalPaid }: { po: PO; chainButton?: React.ReactNode; adjustmentButton?: React.ReactNode; onClose?: () => void; compact?: boolean; customerOrder?: CustomerOrder; events?: ActivityEvent[]; paymentHistory?: PaymentHistoryEntry[]; totalPaid?: number }) {
   const router = useRouter();
 
   function goToList() {
@@ -55,7 +62,6 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
     router.push('/admin/procurement');
   }
 
-  const [receiving,     setReceiving]     = useState(false);
 
   const [updatingStatus, setUpdatingStatus] = useState(false);
   // Статус доставки — не включає стани оплати ('paid'/'invoiced')
@@ -216,7 +222,20 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
     const d = new Date(); d.setDate(d.getDate() + (payTermsDays || 14));
     return d.toISOString().slice(0, 10);
   });
-  const [paying,      setPaying]      = useState(false);
+  const [paying,         setPaying]         = useState(false);
+  const [showReverseModal, setShowReverseModal] = useState(false);
+  const [reverseReason,    setReverseReason]    = useState('');
+  const [reversing,        setReversing]        = useState(false);
+
+  const [showAddPayment, setShowAddPayment] = useState(false);
+  const [addPayAmount,   setAddPayAmount]   = useState(String(po.supplier_invoice_amount ?? po.total_cost ?? ''));
+  const [addPayMode,     setAddPayMode]     = useState<'transfer' | 'cash'>('transfer');
+  const [addPayDate,     setAddPayDate]     = useState(new Date().toISOString().slice(0, 10));
+  const [addingPayment,  setAddingPayment]  = useState(false);
+
+  const invoiceAmount      = Number(po.supplier_invoice_amount ?? po.total_cost ?? 0);
+  const effectiveTotalPaid = totalPaid ?? 0;
+  const remaining          = Math.max(0, invoiceAmount - effectiveTotalPaid);
 
   // Invoice file upload
   const fileRef = useRef<HTMLInputElement>(null);
@@ -286,18 +305,34 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
     po.has_receipt ? 3 : -1,
   );
 
-  async function handleReceive() {
-    setReceiving(true); setError(''); setSuccess('');
-    try {
-      const res = await fetch(`/api/admin/procurement/${po.id}/receive`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error ?? 'Помилка'); return; }
-      window.location.reload();
-    } catch { setError('Мережева помилка'); }
-    finally { setReceiving(false); }
+  function handleReceive() {
+    const draftBySkuMap = new Map((po.draft_receipt_lines ?? []).map(dl => [dl.sku, dl]));
+    const eventLines = po.lines.map(l => {
+      const dl = draftBySkuMap.get(l.sku);
+      return {
+        sku:         l.sku,
+        name:        `${l.brand ?? ''} ${l.name ?? ''}`.trim(),
+        qty:         dl ? dl.qty          : (l.effective_qty ?? l.qty),
+        cost_price:  dl ? dl.cost_price   : l.cost_price,
+        sale_price:  dl ? (dl.price ?? 0) : 0,
+        is_bonus:    false,
+        matched:     true,
+        ordered_qty: l.effective_qty ?? l.qty,
+      };
+    });
+    window.dispatchEvent(new CustomEvent('open-po-receipt-draft', {
+      detail: {
+        poId:              po.id,
+        poDocNumber:       po.doc_number,
+        supplierId:        po.supplier_id,
+        warehouseId:       po.warehouse_id ?? null,
+        supplierInvNum:    po.supplier_invoice_number ?? '',
+        supplierInvDate:   po.supplier_invoice_date  ?? '',
+        supplierInvAmount: po.supplier_invoice_amount ?? '',
+        draftReceiptId:    po.draft_receipt_id ?? null,
+        lines:             eventLines,
+      },
+    }));
   }
 
   async function handleStatusUpdate(status: string) {
@@ -371,6 +406,50 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
       setEditingPayment(false);
     } catch { setError('Мережева помилка'); }
     finally { setPaying(false); }
+  }
+
+  async function handleReversePayment() {
+    setReversing(true); setError('');
+    try {
+      const res = await fetch(`/api/admin/procurement/${po.id}/reverse-payment`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reverseReason.trim() || undefined }),
+      });
+      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Помилка скасування оплати'); return; }
+      setIsPaid(false);
+      setIsInvoiced(false);
+      setPaymentSaved(false);
+      setEditingPayment(true);
+      setShowReverseModal(false);
+      setReverseReason('');
+      setSuccess('✅ Оплату скасовано. Компенсуюча проводка проведена.');
+    } catch { setError('Мережева помилка'); }
+    finally { setReversing(false); }
+  }
+
+  async function handleAddPayment() {
+    if (!addPayAmount || parseFloat(addPayAmount) <= 0) { setError('Вкажіть суму'); return; }
+    setAddingPayment(true); setError('');
+    try {
+      const res = await fetch(`/api/admin/procurement/${po.id}/add-payment`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: parseFloat(addPayAmount), payment_mode: addPayMode, payment_date: addPayDate }),
+      });
+      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Помилка'); return; }
+      const data = await res.json();
+      setSuccess(`✅ Оплату ${Number(addPayAmount).toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴ додано`);
+      setShowAddPayment(false);
+      if (data.is_fully_paid) setIsPaid(true);
+      window.location.reload();
+    } catch { setError('Мережева помилка'); }
+    finally { setAddingPayment(false); }
+  }
+
+  function payModeLabel(mode: string | null) {
+    if (mode === 'cash')     return '💵 Готівка';
+    if (mode === 'transfer') return '🏦 Переказ';
+    if (mode === 'deferred') return '📅 Відстрочка';
+    return '💳';
   }
 
   const activeStatus = newStatus; // 'paid'/'invoiced' відфільтровані при ініціалізації
@@ -465,13 +544,15 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
         )}
         {/* 2. Коригування */}
         {adjustmentButton}
-        {/* 3. Прийняти товар */}
+        {/* 3. Прийняти товар / Чернетка приходу */}
         {!compact && !po.has_receipt && !isCancelled && (
           <button
             onClick={handleReceive}
-            disabled={receiving}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: receiving ? 'default' : 'pointer', flexShrink: 0, opacity: receiving ? 0.7 : 1 }}>
-            {receiving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Оформлюємо...</> : <><Package size={14} /> Прийняти товар</>}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 16px', borderRadius: '8px', border: po.draft_receipt_id ? '1.5px solid #1E3A5F' : 'none', background: po.draft_receipt_id ? 'transparent' : '#1E3A5F', color: po.draft_receipt_id ? '#1E3A5F' : '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+            {po.draft_receipt_id
+              ? <><FileText size={14} /> Чернетка приходу</>
+              : <><Package size={14} /> Прийняти товар</>
+            }
           </button>
         )}
         {/* 4. Ланцюжок */}
@@ -508,6 +589,17 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                     style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#DC2626', textAlign: 'left' }}>
                     <X size={14} style={{ color: '#DC2626' }} />
                     Скасувати замовлення
+                  </button>
+                </>
+              )}
+              {isPaid && !isCancelled && (
+                <>
+                  <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
+                  <button
+                    onClick={() => { setShowActionsMenu(false); setShowReverseModal(true); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#DC2626', textAlign: 'left' }}>
+                    <X size={14} style={{ color: '#DC2626' }} />
+                    Скасувати оплату (Admin)
                   </button>
                 </>
               )}
@@ -577,11 +669,16 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                     {payIcon(savedPayMode)} Оплачено
                   </span>
                 )}
-                {isInvoiced && !isPaid && (
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', padding: '3px 10px', borderRadius: '20px' }}>
-                    📅 Відстрочення — не оплачено
-                  </span>
-                )}
+                {isInvoiced && !isPaid && (() => {
+                  const deferDate = po.meta?.payment_defer_date as string | undefined;
+                  const overdue = deferDate && deferDate < new Date().toISOString().slice(0, 10);
+                  return (
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: overdue ? '#DC2626' : '#92400E', background: overdue ? '#FEF2F2' : '#FFFBEB', border: `1px solid ${overdue ? '#FCA5A5' : '#FDE68A'}`, padding: '3px 10px', borderRadius: '20px' }}>
+                      {overdue ? '⚠ Відстрочка прострочена' : '📅 Відстрочення — не оплачено'}
+                      {deferDate && <span style={{ fontWeight: 400, marginLeft: '6px' }}>до {new Date(deferDate).toLocaleDateString('uk-UA')}</span>}
+                    </span>
+                  );
+                })()}
               </div>
             )}
           </>
@@ -602,7 +699,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
               <span>Артикул</span>
               <span>Найменування</span>
               <span style={{ textAlign: 'right' }}>Замовлено</span>
-              <span style={{ textAlign: 'right' }}>Ціна PO</span>
+              <span style={{ textAlign: 'right' }}>Ціна закупівлі</span>
               <span style={{ textAlign: 'right' }}>Сума</span>
             </div>
 
@@ -718,8 +815,8 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
 
-          {/* Invoice — компактний після приходу */}
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: po.has_receipt ? '12px 16px' : '16px' }}>
+          {/* Рахунок + Оплата — об'єднаний блок */}
+          <div style={{ background: 'var(--bg-card)', border: `1px solid ${isPaid ? '#86EFAC' : 'var(--border)'}`, borderRadius: '12px', padding: po.has_receipt ? '12px 16px' : '16px' }}>
             <div style={{ fontSize: po.has_receipt ? '12px' : '13px', fontWeight: 700, color: po.has_receipt ? 'var(--text-muted)' : 'var(--text-primary)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '7px' }}>
               <FileText size={14} /> Рахунок-фактура
             </div>
@@ -797,7 +894,13 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                   {/* Кнопки дій */}
                   <div style={{ display: 'flex', gap: '6px' }}>
                     {invoiceSaved && (
-                      <button onClick={() => setEditingInvoice(false)}
+                      <button onClick={() => {
+                        setEditingInvoice(false);
+                        setInvoiceNum(po.supplier_invoice_number ?? '');
+                        setInvoiceDate(po.supplier_invoice_date ?? '');
+                        setInvoiceAmt(String(po.supplier_invoice_amount ?? po.total_cost ?? ''));
+                        setNoInvoice(_isNoInvoiceConfirmed);
+                      }}
                         style={{ height: '34px', padding: '0 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
                         Скасувати
                       </button>
@@ -815,21 +918,14 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                 </>
               )}
 
-              {/* Статус оплати */}
-              {isPaid && (
-                <div style={{ padding: '8px 10px', background: '#F0FDF4', borderRadius: '8px', border: '1px solid #BBF7D0', fontSize: '12px', fontWeight: 700, color: '#15803D', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {payIcon(savedPayMode)} Оплачено
-                </div>
-              )}
-
               {/* Hidden file input */}
               <input ref={fileRef} type="file" accept=".pdf,.xlsx,.xls,.jpg,.jpeg,.png" style={{ display: 'none' }}
                 onChange={e => { const f = e.target.files?.[0]; if (f) handleInvoiceUpload(f); e.target.value = ''; }} />
             </div>
-          </div>
 
-          {/* Payment */}
-          <div style={{ background: 'var(--bg-card)', border: `1px solid ${isPaid ? '#86EFAC' : 'var(--border)'}`, borderRadius: '12px', padding: '12px 16px' }}>
+            {/* Роздільник між рахунком і оплатою */}
+            <div style={{ height: '1px', background: 'var(--border)', margin: '14px -16px' }} />
+
             <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '7px' }}>
               <Banknote size={14} /> Оплата постачальнику
             </div>
@@ -850,12 +946,88 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
             )}
 
             {isPaid && !editingPayment ? (
-              <div style={{ padding: '10px 12px', background: '#F0FDF4', borderRadius: '8px', fontSize: '13px', color: '#15803D', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <CheckCircle size={16} /> Оплачено {payMode === 'cash' ? '(готівка)' : payMode === 'transfer' ? '(переказ)' : ''}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ padding: '10px 12px', background: '#F0FDF4', borderRadius: '8px', fontSize: '13px', color: '#15803D', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><CheckCircle size={16} /> Повністю оплачено</span>
+                  {effectiveTotalPaid > 0 && <span style={{ fontSize: '12px', fontWeight: 700 }}>{effectiveTotalPaid.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>}
+                </div>
+
+                {/* Список оплат */}
+                {paymentHistory && paymentHistory.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    {paymentHistory.map((p, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 10px', background: 'var(--bg-soft)', borderRadius: '6px', fontSize: '12px' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>
+                          {payModeLabel(p.payment_mode)} · {new Date(p.created_at).toLocaleDateString('uk-UA')}
+                        </span>
+                        <span style={{ fontWeight: 700, color: '#15803D' }}>{p.amount.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Додати ще оплату */}
+                {!isCancelled && !showAddPayment && (
+                  <button onClick={() => setShowAddPayment(true)}
+                    style={{ height: '30px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+                    + Додати ще оплату
+                  </button>
+                )}
+                {showAddPayment && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Нова оплата</div>
+                    <div style={{ display: 'flex', borderRadius: '7px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                      {([{ key: 'transfer', label: '🏦 Рахунок' }, { key: 'cash', label: '💵 Готівка' }] as { key: typeof addPayMode; label: string }[]).map((m, i) => (
+                        <button key={m.key} onClick={() => setAddPayMode(m.key)}
+                          style={{ flex: 1, height: '32px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', border: 'none', borderLeft: i > 0 ? '1px solid var(--border)' : 'none', background: addPayMode === m.key ? '#1E3A5F' : 'var(--bg-card)', color: addPayMode === m.key ? '#fff' : 'var(--text-secondary)' }}>
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={lbl}>Сума, ₴</label>
+                        <input style={inp} type="number" value={addPayAmount} onChange={e => setAddPayAmount(e.target.value)} placeholder="0.00" />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={lbl}>Дата</label>
+                        <input style={inp} type="date" value={addPayDate} onChange={e => setAddPayDate(e.target.value)} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button onClick={() => setShowAddPayment(false)}
+                        style={{ flex: 1, height: '32px', borderRadius: '7px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+                        Скасувати
+                      </button>
+                      <button onClick={handleAddPayment} disabled={addingPayment || !addPayAmount || parseFloat(addPayAmount) <= 0}
+                        style={{ flex: 2, height: '32px', borderRadius: '7px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                        {addingPayment ? '...' : '💳 Провести'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : paymentSaved && !editingPayment ? (
               /* ── Режим перегляду оплати ── */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* Часткова оплата: прогрес */}
+                {paymentHistory && paymentHistory.length > 0 && invoiceAmount > 0 && (
+                  <div style={{ padding: '8px 12px', background: '#FFFBEB', borderRadius: '8px', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Оплачено</span>
+                      <span style={{ fontWeight: 700, color: '#15803D' }}>{effectiveTotalPaid.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
+                    </div>
+                    {remaining > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Залишилось</span>
+                        <span style={{ fontWeight: 700, color: '#DC2626' }}>{remaining.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
+                      </div>
+                    )}
+                    <div style={{ marginTop: '4px', height: '4px', background: '#E5E7EB', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', background: remaining > 0 ? '#F59E0B' : '#15803D', borderRadius: '2px', width: `${Math.min(100, (effectiveTotalPaid / invoiceAmount) * 100)}%`, transition: 'width 0.3s' }} />
+                    </div>
+                  </div>
+                )}
                 <div style={{ padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Спосіб: </span>
                     <strong>{payMode === 'transfer' ? '🏦 Банківський переказ' : payMode === 'deferred' ? '📅 Відстрочка' : '💵 Готівка'}</strong>
@@ -868,15 +1040,76 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                     : payDate && <div><span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Дата оплати: </span><strong>{new Date(payDate).toLocaleDateString('uk-UA')}</strong></div>
                   }
                 </div>
+                {/* Список платежів */}
+                {paymentHistory && paymentHistory.length > 1 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    {paymentHistory.map((p, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 10px', background: 'var(--bg-soft)', borderRadius: '6px', fontSize: '11px' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>{payModeLabel(p.payment_mode)} · {new Date(p.created_at).toLocaleDateString('uk-UA')}</span>
+                        <span style={{ fontWeight: 700, color: '#15803D' }}>{p.amount.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {!isCancelled && (
-                  <button onClick={() => setEditingPayment(true)}
-                    style={{ height: '32px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-                    ✏️ Редагувати
-                  </button>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button onClick={() => setEditingPayment(true)}
+                      style={{ flex: 1, height: '32px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                      ✏️ Редагувати
+                    </button>
+                    {remaining > 0 && !showAddPayment && (
+                      <button onClick={() => setShowAddPayment(true)}
+                        style={{ flex: 1, height: '32px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                        + Ще оплату
+                      </button>
+                    )}
+                  </div>
+                )}
+                {showAddPayment && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Нова оплата</div>
+                    <div style={{ display: 'flex', borderRadius: '7px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                      {([{ key: 'transfer', label: '🏦 Рахунок' }, { key: 'cash', label: '💵 Готівка' }] as { key: typeof addPayMode; label: string }[]).map((m, i) => (
+                        <button key={m.key} onClick={() => setAddPayMode(m.key)}
+                          style={{ flex: 1, height: '32px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', border: 'none', borderLeft: i > 0 ? '1px solid var(--border)' : 'none', background: addPayMode === m.key ? '#1E3A5F' : 'var(--bg-card)', color: addPayMode === m.key ? '#fff' : 'var(--text-secondary)' }}>
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ flex: 1 }}><label style={lbl}>Сума, ₴</label><input style={inp} type="number" value={addPayAmount} onChange={e => setAddPayAmount(e.target.value)} placeholder="0.00" /></div>
+                      <div style={{ flex: 1 }}><label style={lbl}>Дата</label><input style={inp} type="date" value={addPayDate} onChange={e => setAddPayDate(e.target.value)} /></div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button onClick={() => setShowAddPayment(false)} style={{ flex: 1, height: '32px', borderRadius: '7px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Скасувати</button>
+                      <button onClick={handleAddPayment} disabled={addingPayment || !addPayAmount || parseFloat(addPayAmount) <= 0}
+                        style={{ flex: 2, height: '32px', borderRadius: '7px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                        {addingPayment ? '...' : '💳 Провести'}
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+                {/* Раніше проведені оплати */}
+                {paymentHistory && paymentHistory.length > 0 && (
+                  <div style={{ padding: '8px 12px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    {paymentHistory.map((p, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>{payModeLabel(p.payment_mode)} · {new Date(p.created_at).toLocaleDateString('uk-UA')}</span>
+                        <span style={{ fontWeight: 700, color: '#15803D' }}>{p.amount.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
+                      </div>
+                    ))}
+                    {remaining > 0 && invoiceAmount > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '4px', borderTop: '1px solid var(--border-light)', marginTop: '2px' }}>
+                        <span style={{ color: '#DC2626', fontWeight: 600 }}>Залишилось оплатити</span>
+                        <span style={{ fontWeight: 700, color: '#DC2626' }}>{remaining.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Вибір способу оплати */}
                 <div>
@@ -1013,6 +1246,69 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
               </div>
             )}
           </div>
+
+          {/* Замовлення клієнта */}
+          {customerOrder && (
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px 16px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                🛒 Замовлення клієнта
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <a href={`/admin/orders/${po.order_id}`} style={{ fontWeight: 700, color: '#1E3A5F', textDecoration: 'underline dotted', textUnderlineOffset: '2px' }}>
+                    #{customerOrder.order_number}
+                  </a>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    {customerOrder.total_price != null ? `${Number(customerOrder.total_price).toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴` : ''}
+                  </span>
+                </div>
+                {(customerOrder.company || customerOrder.contact) && (
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                    {customerOrder.company || customerOrder.contact}
+                  </div>
+                )}
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  Статус: {customerOrder.status}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Журнал подій */}
+          {events && events.length > 0 && (
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 16px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Журнал подій
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {events.map((ev, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                      <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: 'var(--bg-soft)', border: '1.5px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flexShrink: 0 }}>
+                        {ev.icon}
+                      </div>
+                      {i < events.length - 1 && (
+                        <div style={{ width: '1.5px', flex: 1, minHeight: '10px', margin: '3px 0', background: 'var(--border)' }} />
+                      )}
+                    </div>
+                    <div style={{ paddingBottom: i < events.length - 1 ? '12px' : '0', paddingTop: '3px', flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }}>{ev.label}</div>
+                      {ev.detail && (
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.detail}</div>
+                      )}
+                      {ev.date && (
+                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          {ev.isDatetime
+                            ? new Date(ev.date).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                            : new Date(ev.date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
         </div>
       </div>
@@ -1196,6 +1492,45 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                 style={{ flex: 1, height: '40px', borderRadius: '8px', border: 'none', background: '#DC2626', color: '#fff', cursor: cancelling ? 'default' : 'pointer', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', opacity: cancelling ? 0.7 : 1 }}>
                 {cancelling ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : null}
                 Скасувати замовлення
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модалка скасування оплати */}
+      {showReverseModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ fontSize: '16px', fontWeight: 800, color: '#DC2626', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              🚫 Скасувати оплату?
+            </div>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+              <strong>{po.doc_number}</strong> · {po.supplier_name}
+            </p>
+            <div style={{ padding: '10px 12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: '#92400E', marginBottom: '16px' }}>
+              ⚠ Буде проведено компенсуючу проводку в леджері. Дія тільки для адміністратора.
+            </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>
+                Причина скасування (необов&apos;язково)
+              </label>
+              <input
+                value={reverseReason}
+                onChange={e => setReverseReason(e.target.value)}
+                placeholder="Наприклад: помилкова оплата"
+                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid var(--border)', fontSize: '13px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', outline: 'none' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => { setShowReverseModal(false); setReverseReason(''); }}
+                style={{ flex: 1, height: '40px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Назад
+              </button>
+              <button onClick={handleReversePayment} disabled={reversing}
+                style={{ flex: 1, height: '40px', borderRadius: '8px', border: 'none', background: '#DC2626', color: '#fff', cursor: reversing ? 'default' : 'pointer', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', opacity: reversing ? 0.7 : 1 }}>
+                {reversing ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : null}
+                Скасувати оплату
               </button>
             </div>
           </div>

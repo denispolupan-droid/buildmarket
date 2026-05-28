@@ -304,9 +304,19 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
   ]);
 
   // supplier_sku → our_sku
+  // Primary source: supplier_sku_map; fallback: product_stock.supplier_sku
   const skuMap: Record<string, string> = {};
-  (skuMapRows ?? []).forEach(r => { skuMap[r.supplier_sku] = r.our_sku; });
-  (stockRows ?? []).forEach(r => { if (r.supplier_sku && !skuMap[r.supplier_sku]) skuMap[r.supplier_sku] = r.sku; });
+  const alreadyMapped = new Set<string>(); // supplier_skus already in supplier_sku_map
+  (skuMapRows ?? []).forEach(r => { skuMap[r.supplier_sku] = r.our_sku; alreadyMapped.add(r.supplier_sku); });
+
+  // Fallback rows — track them so we can persist them to supplier_sku_map after sync
+  const fallbackMappings: { supplier_id: number; supplier_sku: string; our_sku: string }[] = [];
+  (stockRows ?? []).forEach(r => {
+    if (r.supplier_sku && !skuMap[r.supplier_sku]) {
+      skuMap[r.supplier_sku] = r.sku;
+      fallbackMappings.push({ supplier_id: supplierId, supplier_sku: r.supplier_sku, our_sku: r.sku });
+    }
+  });
 
   // our_sku → brand
   const brandMap: Record<string, string> = {};
@@ -507,7 +517,14 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
       .upsert(unmappedBatch, { onConflict: 'supplier_id,supplier_sku' });
   }
 
-  // 7. Оновлюємо лог і last_synced_at
+  // 7. Персистуємо fallback-маппінги в supplier_sku_map (щоб не залежати від product_stock)
+  if (fallbackMappings.length > 0) {
+    await supabase
+      .from('supplier_sku_map')
+      .upsert(fallbackMappings, { onConflict: 'supplier_id,supplier_sku', ignoreDuplicates: true });
+  }
+
+  // 8. Оновлюємо лог і last_synced_at
   const finishedAt = new Date().toISOString();
   await Promise.all([
     logId && supabase

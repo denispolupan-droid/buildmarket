@@ -40,13 +40,13 @@ export default async function ProcurementPage() {
   const orders = pos ?? [];
   const totalDrafts   = orders.filter(p => p.procurement_status === 'draft').length;
   const totalPending  = orders.filter(p => !p.has_receipt && p.procurement_status !== 'draft').length;
-  const totalReceived = orders.filter(p => p.has_receipt && p.procurement_status !== 'paid').length;
+  const totalReceived = orders.filter(p => p.has_receipt && p.procurement_status !== 'paid' && !p.meta?.is_paid).length;
   const totalAmount = orders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
 
   // Деталі для карток
   const draftOrders    = orders.filter(p => p.procurement_status === 'draft');
   const pendingOrders  = orders.filter(p => !p.has_receipt && p.procurement_status !== 'draft');
-  const receivedOrders = orders.filter(p => p.has_receipt && p.procurement_status !== 'paid');
+  const receivedOrders = orders.filter(p => p.has_receipt && p.procurement_status !== 'paid' && !p.meta?.is_paid);
 
   const amountDrafts   = draftOrders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
   const amountPending  = pendingOrders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);

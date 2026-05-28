@@ -163,7 +163,8 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
   type RawRow = { sku: string; name: string; qty: number; price: number };
   const [rawImport,  setRawImport]  = useState<RawRow[] | null>(null);
   const [priceMode,  setPriceMode]  = useState<'file' | 'last'>('file');
-  const [showPicker,   setShowPicker]   = useState(false);
+  const [showPicker,     setShowPicker]     = useState(false);
+  const [lastPriceMap,   setLastPriceMap]   = useState<Record<string, number>>({});
   const lookupTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const nameTimers   = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const nameInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
@@ -189,6 +190,20 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
       Object.values(ntimers).forEach(clearTimeout);
     };
   }, []);
+
+  // Підтягуємо останні закупівельні ціни для всіх знайдених SKU
+  useEffect(() => {
+    const matchedSkus = lines.filter(l => l.matched && l.sku).map(l => l.sku);
+    if (!matchedSkus.length) return;
+    fetch(`/api/admin/products/last-purchase-price?skus=${matchedSkus.map(encodeURIComponent).join(',')}`)
+      .then(r => r.json())
+      .then((data: Record<string, { last_price: number }>) => {
+        const map: Record<string, number> = {};
+        for (const [sku, v] of Object.entries(data)) map[sku] = v.last_price;
+        setLastPriceMap(map);
+      })
+      .catch(() => {});
+  }, [lines.map(l => l.sku + ':' + l.matched).join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function updateAnchor(idx: number) {
     const el = nameInputRefs.current[idx];
@@ -594,11 +609,21 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
                         placeholder="0.00"
                         onChange={e => setLineField(idx, 'cost_price', parseFloat(e.target.value) || 0)} />
                       <span style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
-                      {line.catalog_price != null && line.catalog_price !== line.cost_price && (
+                      {line.catalog_price != null && line.catalog_price !== line.cost_price && lastPriceMap[line.sku] == null && (
                         <div style={{ fontSize: '9px', color: line.cost_price === 0 ? '#F59E0B' : '#94A3B8', position: 'absolute', bottom: '-13px', right: 0, whiteSpace: 'nowrap' }}>
                           {line.cost_price === 0 ? '⚠ роздріб' : 'прайс'}: {fmt(line.catalog_price)} ₴
                         </div>
                       )}
+                      {line.matched && lastPriceMap[line.sku] != null && line.cost_price > 0 && (() => {
+                        const last = lastPriceMap[line.sku];
+                        const diff = ((line.cost_price - last) / last) * 100;
+                        if (Math.abs(diff) < 5) return null;
+                        return (
+                          <div style={{ fontSize: '9px', fontWeight: 700, color: diff > 0 ? '#DC2626' : '#15803D', position: 'absolute', bottom: '-13px', right: 0, whiteSpace: 'nowrap' }}>
+                            {diff > 0 ? '↑' : '↓'} {Math.abs(diff).toFixed(0)}% vs. попер.
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: rowSum > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>

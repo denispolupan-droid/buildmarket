@@ -28,7 +28,7 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
       .order('sort_order'),
     // Коригування для цього PO
     db.from('acc_documents')
-      .select('id')
+      .select('id, doc_number, doc_date')
       .eq('parent_doc_id', id)
       .eq('doc_type', 'purchase_order_adjustment')
       .eq('status', 'confirmed'),
@@ -36,9 +36,20 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
 
   // Рядки коригувань (дельти + нові позиції)
   const adjIds = (adjDocs ?? []).map((a: { id: string }) => a.id);
-  const { data: adjLines } = adjIds.length
-    ? await db.from('acc_document_lines').select('sku, qty, cost_price').in('document_id', adjIds)
-    : { data: [] };
+  const [{ data: adjLines }, { data: receiptDocs }, { data: paymentEntries }] = await Promise.all([
+    adjIds.length
+      ? db.from('acc_document_lines').select('sku, qty, cost_price').in('document_id', adjIds)
+      : Promise.resolve({ data: [] as { sku: string; qty: number; cost_price: number }[] }),
+    db.from('acc_documents')
+      .select('id, doc_number, doc_date')
+      .eq('parent_doc_id', id).eq('status', 'confirmed').in('doc_type', ['receipt', 'stock_in']),
+    db.from('money_entries')
+      .select('created_at, amount, doc_type, description, account_type, meta')
+      .eq('doc_id', id)
+      .eq('account_type', 'supplier')
+      .in('doc_type', ['supplier_payment', 'supplier_payment_reversal'])
+      .order('created_at'),
+  ]);
 
   // Ефективна кількість = original + Σ delta
   const adjDeltaMap: Record<string, number> = {};
@@ -61,16 +72,34 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
 
   if (!poBase) notFound();
 
+  // Замовлення клієнта (якщо PO створено з конкретного замовлення)
+  const { data: customerOrder } = poBase.order_id
+    ? await db.from('orders')
+        .select('order_number, contact, company, status, total_price')
+        .eq('id', poBase.order_id)
+        .single()
+    : { data: null };
+
   // Чернетка — редіректимо до списку (відкривається через модаль)
   if (poBase.procurement_status === 'draft') {
     redirect('/admin/procurement');
   }
 
-  // Прив'язані підтверджені приходи
-  const { data: receiptDocs } = await db
-    .from('acc_documents').select('id, doc_number')
-    .eq('parent_doc_id', id).eq('status', 'confirmed').in('doc_type', ['receipt', 'stock_in']);
   const receiptCount = (receiptDocs ?? []).length;
+
+  // Чернетка приходу (незавершений прихід від цього PO)
+  const { data: draftReceiptDocRow } = await db
+    .from('acc_documents').select('id')
+    .eq('parent_doc_id', id).eq('status', 'draft').in('doc_type', ['receipt'])
+    .maybeSingle();
+
+  const draftReceiptId = draftReceiptDocRow?.id ?? null;
+
+  const { data: draftReceiptLines } = draftReceiptId
+    ? await db.from('acc_document_lines')
+        .select('sku, qty, cost_price, price')
+        .eq('document_id', draftReceiptId)
+    : { data: [] as { sku: string; qty: number; cost_price: number; price: number }[] };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sup = poBase.supplier as any;
@@ -113,6 +142,13 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
         sort_order:   999 + i,
       })),
     ],
+    draft_receipt_id:    draftReceiptId,
+    draft_receipt_lines: (draftReceiptLines ?? []).map(l => ({
+      sku:        l.sku,
+      qty:        Number(l.qty ?? 0),
+      cost_price: Number(l.cost_price ?? 0),
+      price:      Number(l.price ?? 0),
+    })),
   };
 
   const poLines = (lines ?? []).map((l: { sku: string; qty: number; cost_price: number }) => ({
@@ -128,8 +164,65 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
 
   const hasSubordinateDocs = po.has_receipt || (adjDocs ?? []).length > 0;
 
+  // Журнал подій — всі ключові події хронологічно
+  type ActivityEvent = { icon: string; label: string; detail?: string; date: string | null; isDatetime: boolean };
+  const events: ActivityEvent[] = [];
+
+  // Платіжна історія для відображення в компоненті
+  type PaymentHistoryEntry = { created_at: string; amount: number; payment_mode: string | null; doc_type: string };
+  const allEntries = (paymentEntries ?? []) as { created_at: string; amount: number; doc_type: string; description: string | null; account_type: string; meta?: Record<string, unknown> | null }[];
+  const paymentHistory: PaymentHistoryEntry[] = allEntries
+    .filter(e => e.doc_type === 'supplier_payment' && Number(e.amount) > 0)
+    .map(e => ({
+      created_at:   e.created_at,
+      amount:       Number(e.amount),
+      payment_mode: (e.meta?.payment_mode as string | null) ?? null,
+      doc_type:     e.doc_type,
+    }));
+  const totalPaid = paymentHistory.reduce((s, e) => s + e.amount, 0);
+
+  events.push({ icon: '📋', label: 'Замовлення проведено', detail: po.doc_number, date: po.doc_date, isDatetime: false });
+
+  for (const adj of (adjDocs ?? []) as { id: string; doc_number: string; doc_date: string }[]) {
+    events.push({ icon: '📝', label: 'Коригування', detail: adj.doc_number, date: adj.doc_date, isDatetime: false });
+  }
+
+  if (po.email_sent_at) {
+    events.push({ icon: '📤', label: 'Email відправлено постачальнику', date: po.email_sent_at, isDatetime: true });
+  }
+
+  if (po.supplier_invoice_date) {
+    events.push({ icon: '🧾', label: 'Рахунок-фактура', detail: po.supplier_invoice_number ?? undefined, date: po.supplier_invoice_date, isDatetime: false });
+  }
+
+  for (const r of (receiptDocs ?? []) as { id: string; doc_number: string; doc_date: string }[]) {
+    events.push({ icon: '📦', label: 'Прихід оприходований', detail: r.doc_number, date: r.doc_date, isDatetime: false });
+  }
+
+  for (const p of allEntries) {
+    if (p.doc_type === 'supplier_payment' && Number(p.amount) > 0) {
+      events.push({ icon: '💳', label: 'Оплата проведена', detail: `${Math.abs(Number(p.amount)).toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴`, date: p.created_at, isDatetime: true });
+    } else if (p.doc_type === 'supplier_payment_reversal') {
+      events.push({ icon: '↩️', label: 'Оплату скасовано', date: p.created_at, isDatetime: true });
+    }
+  }
+
+  if (isCancelled) {
+    events.push({ icon: '🚫', label: 'Замовлення скасовано', date: null, isDatetime: false });
+  }
+
+  events.sort((a, b) => {
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return a.date < b.date ? -1 : 1;
+  });
+
   return <ProcurementDetail
     po={po}
+    customerOrder={customerOrder ?? null}
+    events={events}
+    paymentHistory={paymentHistory}
+    totalPaid={totalPaid}
     adjustmentButton={
       !isDraft && !isCancelled ? (
         <div style={{ display: 'flex', gap: '8px' }}>

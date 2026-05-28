@@ -34,7 +34,9 @@ export default async function AdminPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.user_metadata?.role !== 'admin') redirect('/');
 
-  const { page: pageStr, status } = await searchParams;
+  const { page: pageStr, status: statusParam } = await searchParams;
+  // undefined → default to 'new'; empty string → all orders
+  const status = statusParam ?? 'new';
   const page = Math.max(1, parseInt(pageStr ?? '1'));
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -60,7 +62,7 @@ export default async function AdminPage({
   const totalCount = statusRows?.length ?? 0;
 
   const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE);
-  const curStatus = status ?? '';
+  const curStatus = status;
 
   return (
     <div style={{ padding: '28px 32px 64px' }}>
@@ -83,7 +85,7 @@ export default async function AdminPage({
             return (
               <Link
                 key={tab.value}
-                href={tab.value ? `/admin?status=${tab.value}` : '/admin'}
+                href={`/admin?status=${tab.value}`}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: '5px',
                   height: '32px', padding: '0 14px', borderRadius: '8px',

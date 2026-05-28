@@ -10,9 +10,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   const body = await req.json() as {
-    actualQties?:  Record<string, number>;
-    actualPrices?: Record<string, number>;
-    notes?:        string;
+    actualQties?:    Record<string, number>;
+    actualPrices?:   Record<string, number>;
+    sale_prices?:    Record<string, number>;
+    notes?:          string;
+    draft?:          boolean;
+    draftReceiptId?: string;
   };
   const db = createServiceClient();
 
@@ -37,6 +40,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if ((count ?? 0) > 0) return NextResponse.json({ error: 'Прихід вже існує для цього PO' }, { status: 409 });
 
+  // Delete old draft receipt if replacing it
+  if (body.draftReceiptId) {
+    await db.from('acc_document_lines').delete().eq('document_id', body.draftReceiptId);
+    await db.from('acc_documents').delete().eq('id', body.draftReceiptId).eq('status', 'draft');
+  }
+
   // Create receipt document
   const lines = (po.lines ?? []).map((l: { sku: string; qty: number; cost_price: number; supplier_id: number; warehouse_id: number }) => {
     const actualQty   = body.actualQties?.[l.sku];
@@ -47,13 +56,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       ? actualPrice
       : (l.cost_price ?? 0);
     return {
-    sku:              l.sku,
-    qty,
-    price:            0,
-    cost_price,
-    fulfillment_type: 'own' as const,
-    warehouse_id:     l.warehouse_id ?? po.warehouse_id,
-    supplier_id:      l.supplier_id ?? po.supplier_id,
+      sku:              l.sku,
+      qty,
+      price:            body.sale_prices?.[l.sku] ?? 0,
+      cost_price,
+      fulfillment_type: 'own' as const,
+      warehouse_id:     l.warehouse_id ?? po.warehouse_id,
+      supplier_id:      l.supplier_id ?? po.supplier_id,
     };
   });
 
@@ -71,6 +80,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Set parent link
   await db.from('acc_documents').update({ parent_doc_id: id }).eq('id', receipt.id);
 
+  if (body.draft) {
+    // Draft mode: do not confirm, do not update PO status
+    return NextResponse.json({ ok: true, receiptId: receipt.id, draft: true });
+  }
+
   // Confirm receipt → creates FIFO batches, updates stock_balance
   await confirmDocument(receipt.id, user.email ?? 'admin');
 
@@ -87,7 +101,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Record AP: ми винні постачальнику (debit stock_asset → credit supplier)
   if (po.total_cost && po.total_cost > 0 && po.supplier_id) {
     await db.rpc('record_money_txn', {
-      p_debit_account:  'variance',   // буде stock_asset після повного впровадження
+      p_debit_account:  'variance',
       p_credit_account: 'supplier',
       p_debit_party:    null,
       p_credit_party:   String(po.supplier_id),
@@ -100,5 +114,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
   }
 
-  return NextResponse.json({ ok: true, receiptId: receipt.id });
+  return NextResponse.json({ ok: true, receiptId: receipt.id, draft: false });
 }

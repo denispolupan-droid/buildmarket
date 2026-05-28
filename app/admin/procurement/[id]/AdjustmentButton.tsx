@@ -91,6 +91,13 @@ export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: str
     return orig && l.qty !== orig.qty;
   });
 
+  function tryClose() {
+    if (changed.length > 0 || reason.trim()) {
+      if (!window.confirm('Є незбережені зміни. Закрити без збереження?')) return;
+    }
+    setOpen(false);
+  }
+
   async function handleSave() {
     if (!reason.trim()) { setError('Вкажіть причину коригування'); return; }
     if (!changed.length) { setError('Жодних змін не виявлено'); return; }
@@ -132,21 +139,21 @@ export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: str
 
       {open && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-          onClick={e => { if (e.target === e.currentTarget) setOpen(false); }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '680px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.35)' }}>
+          onClick={e => { if (e.target === e.currentTarget) tryClose(); }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '920px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.35)' }}>
 
             {/* Header */}
             <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Edit3 size={18} color="#7C3AED" /> Коригування замовлення
               </div>
-              <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={20} /></button>
+              <button onClick={tryClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={20} /></button>
             </div>
 
             {/* Body */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ padding: '10px 14px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '12px', color: 'var(--text-muted)', borderLeft: '3px solid #7C3AED' }}>
-                Підтверджений PO не можна редагувати напряму. Коригування створює окремий документ.
+                Підтверджене замовлення не можна редагувати напряму. Коригування створює окремий документ.
               </div>
 
               {/* Причина */}
@@ -185,7 +192,8 @@ export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: str
                         {line.isNew && <span style={{ color: '#15803D', marginRight: '3px' }}>+</span>}
                         {line.sku}
                       </span>
-                      <div style={{ overflow: 'hidden', minWidth: 0 }}>
+                      <div style={{ overflow: 'hidden', minWidth: 0 }}
+                        title={`${line.brand ? line.brand + ' ' : ''}${line.name || line.sku}`}>
                         <div style={{ fontSize: '12px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {line.brand && <span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>{line.brand}</span>}
                           {line.name || line.sku}
@@ -289,7 +297,7 @@ export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: str
 
             {/* Footer */}
             <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px', justifyContent: 'flex-end', flexShrink: 0 }}>
-              <button onClick={() => setOpen(false)}
+              <button onClick={tryClose}
                 style={{ height: '36px', padding: '0 16px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'none', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-secondary)' }}>
                 Скасувати
               </button>

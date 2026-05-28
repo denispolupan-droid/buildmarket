@@ -1,0 +1,72 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createSupabaseServer } from '../../../../../../lib/supabase-server';
+import { createServiceClient } from '../../../../../../lib/supabase';
+import { recordTxn } from '../../../../../../lib/accounting/money';
+
+const db = createServiceClient();
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || user.user_metadata?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const { id } = await params;
+  const { reason } = await req.json() as { reason?: string };
+
+  const { data: doc } = await db
+    .from('acc_documents')
+    .select('meta, supplier_id, doc_number')
+    .eq('id', id).single();
+
+  if (!doc) return NextResponse.json({ error: 'Не знайдено' }, { status: 404 });
+
+  const meta = (doc.meta as Record<string, unknown>) ?? {};
+  if (!meta.is_paid && meta.payment_status !== 'invoiced') {
+    return NextResponse.json({ error: 'Оплата не знайдена або вже скасована' }, { status: 400 });
+  }
+
+  // Знаходимо оригінальну суму оплати в леджері
+  const { data: entries } = await db
+    .from('money_entries')
+    .select('amount, account_type, doc_type')
+    .eq('doc_id', id)
+    .in('doc_type', ['supplier_payment'])
+    .order('created_at', { ascending: true });
+
+  const supplierEntry = (entries ?? []).find(
+    e => e.account_type === 'supplier' && Number(e.amount) > 0
+  );
+  const cashOrBankEntry = (entries ?? []).find(
+    e => (e.account_type === 'cash' || e.account_type === 'bank') && Number(e.amount) < 0
+  );
+
+  // Проводимо компенсуючу проводку (reverse)
+  if (supplierEntry && cashOrBankEntry && doc.supplier_id) {
+    const paymentAccount = cashOrBankEntry.account_type as 'cash' | 'bank';
+    await recordTxn({
+      debitAccount:   paymentAccount,
+      debitParty:     null,
+      creditAccount:  'supplier',
+      creditParty:    String(doc.supplier_id),
+      amount:         Math.abs(Number(supplierEntry.amount)),
+      businessDate:   new Date().toISOString().slice(0, 10),
+      docId:          id,
+      docType:        'supplier_payment_reversal',
+      description:    `Скасування оплати: ${doc.doc_number}${reason ? ` (${reason})` : ''}`,
+      idempotencyKey: `supplier_payment_reversal:${id}:${Date.now()}`,
+      createdBy:      user.email,
+    });
+  }
+
+  // Скидаємо поля оплати в meta, зберігаємо решту
+  const { is_paid, payment_status, payment_mode, payment_defer_date, ...restMeta } = meta;
+  void is_paid; void payment_status; void payment_mode; void payment_defer_date;
+
+  const { error } = await db
+    .from('acc_documents')
+    .update({ meta: restMeta })
+    .eq('id', id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}

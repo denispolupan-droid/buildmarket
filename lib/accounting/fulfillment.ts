@@ -203,15 +203,25 @@ async function resolveDropshipFallback(
   sku: string,
   qty: number,
 ): Promise<Omit<FulfillmentSource, 'sku' | 'qty'> | null> {
-  // Ищем поставщика через supplier_sku_map
+  // Ищем поставщика: сначала supplier_sku_map, fallback — supplier_stock
   const { data: mapping } = await db
     .from('supplier_sku_map')
     .select('supplier_id')
     .eq('our_sku', sku)
     .limit(1)
-    .single();
+    .maybeSingle();
 
-  const supplierId = mapping?.supplier_id ?? null;
+  let supplierId: number | null = mapping?.supplier_id ?? null;
+
+  if (!supplierId) {
+    const { data: stockRow } = await db
+      .from('supplier_stock')
+      .select('supplier_id')
+      .eq('sku', sku)
+      .limit(1)
+      .maybeSingle();
+    supplierId = stockRow?.supplier_id ?? null;
+  }
 
   // Находим виртуальный склад поставщика
   const { data: wh } = await db

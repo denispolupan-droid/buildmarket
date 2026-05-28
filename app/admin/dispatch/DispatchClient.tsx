@@ -20,6 +20,13 @@ type Order = {
 type RegisterTtn = { ttn: string; contact: string; amount: number };
 type ScanSheet = { Ref: string; Number: string; Count: number; DateTime: string };
 
+function fmt(dateStr: string): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
 const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
   new:            { label: 'Нове',            color: '#1E3A5F', bg: '#EFF4FF' },
   confirmed:      { label: 'Підтверджено',    color: '#15803D', bg: '#DCFCE7' },
@@ -171,6 +178,8 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
 
   const hasRegister = ttns.length > 0 || !!currentRef;
   const ordersNotAdded = orders.filter(o => o.tracking_number && !addedSet.has(o.tracking_number));
+  const currentSheet = sheets.find(s => s.Ref === currentRef);
+  const ttnDateMap = new Map(orders.map(o => [o.tracking_number, o.created_at]));
 
   return (
     <div style={{ padding: '28px 32px', maxWidth: '1100px' }}>
@@ -207,6 +216,11 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
                 {ttns.length} ТТН
               </span>
             )}
+            {currentSheet?.DateTime && (
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>
+                {fmt(currentSheet.DateTime)}
+              </span>
+            )}
             {!hasRegister && !sheetsLoading && (
               <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Порожньо — додайте ТТН з таблиці нижче</span>
             )}
@@ -233,12 +247,13 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
 
         {ttns.length > 0 && (
           <div style={{ borderTop: '1px solid #BFDBFE', padding: '8px 20px 12px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 100px 32px', gap: '8px', padding: '4px 0 6px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
-              <span>ТТН</span><span>Отримувач</span><span style={{ textAlign: 'right' }}>Сума</span><span />
+            <div style={{ display: 'grid', gridTemplateColumns: '160px 90px 1fr 100px 32px', gap: '8px', padding: '4px 0 6px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
+              <span>ТТН</span><span>Дата</span><span>Отримувач</span><span style={{ textAlign: 'right' }}>Сума</span><span />
             </div>
             {ttns.map(t => (
-              <div key={t.ttn} style={{ display: 'grid', gridTemplateColumns: '160px 1fr 100px 32px', gap: '8px', padding: '5px 0', alignItems: 'center', borderBottom: '1px solid var(--border-light)' }}>
+              <div key={t.ttn} style={{ display: 'grid', gridTemplateColumns: '160px 90px 1fr 100px 32px', gap: '8px', padding: '5px 0', alignItems: 'center', borderBottom: '1px solid var(--border-light)' }}>
                 <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#1E3A5F', fontWeight: 600 }}>{t.ttn}</span>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{fmt(ttnDateMap.get(t.ttn) ?? '')}</span>
                 <span style={{ fontSize: '12px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.contact}</span>
                 <span style={{ fontSize: '12px', color: '#15803D', fontWeight: 600, textAlign: 'right' }}>{t.amount} ₴</span>
                 <button
@@ -295,15 +310,15 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
         </div>
       ) : (
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 160px 90px 80px 120px', padding: '8px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-            <span>№</span><span>Клієнт</span><span>ТТН</span><span>Статус</span><span style={{ textAlign: 'right' }}>Сума</span><span style={{ textAlign: 'center' }}>Реєстр</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 160px 90px 85px 80px 120px', padding: '8px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <span>№</span><span>Клієнт</span><span>ТТН</span><span>Статус</span><span>Дата</span><span style={{ textAlign: 'right' }}>Сума</span><span style={{ textAlign: 'center' }}>Реєстр</span>
           </div>
           {orders.map((order, idx) => {
             const st = STATUS_LABEL[order.status] ?? { label: order.status, color: 'var(--text-secondary)', bg: '#F1F5F9' };
             const inReg = addedSet.has(order.tracking_number);
             const isAdding = adding === order.tracking_number;
             return (
-              <div key={order.id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 160px 90px 80px 120px', padding: '10px 16px', alignItems: 'center', borderBottom: idx < orders.length - 1 ? '1px solid var(--border-light)' : 'none', opacity: inReg ? 0.7 : 1 }}>
+              <div key={order.id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 160px 90px 85px 80px 120px', padding: '10px 16px', alignItems: 'center', borderBottom: idx < orders.length - 1 ? '1px solid var(--border-light)' : 'none', opacity: inReg ? 0.7 : 1 }}>
                 <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13px' }}>#{order.order_number}</span>
                 <div>
                   <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>{order.contact}</div>
@@ -311,6 +326,7 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
                 </div>
                 <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#1E3A5F', fontWeight: 600 }}>{order.tracking_number}</span>
                 <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, color: st.color, background: st.bg }}>{st.label}</span>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{fmt(order.created_at)}</span>
                 <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600 }}>{order.total_price} ₴</span>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                   {inReg ? (

@@ -35,9 +35,9 @@ export async function generateMetadata(
   if (brandProductCount < 5) return { robots: { index: false, follow: true } };
 
   return {
-    title: `${brand} купити в Україні — авторизований дилер | FIXLINE`,
-    description: `Купити ${brand} в роздріб та оптом. Широкий асортимент, ціни від виробника, доставка по всій Україні. Купить ${brand} с доставкой по Украине.`,
-    keywords: [brand, 'купити', 'купить', 'авторизований дилер', 'будівельна хімія', 'Україна'],
+    title: `${brand} купити в Україні — вигідні ціни | FIXLINE`,
+    description: `Купити ${brand} в роздріб та оптом. Широкий асортимент, вигідні ціни, доставка по всій Україні. Купить ${brand} с доставкой по Украине.`,
+    keywords: [brand, 'купити', 'купить', 'будівельна хімія', 'Україна', 'оптом'],
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
     alternates: {
       canonical: `${BASE}/shop/brand/${slug}`,
@@ -124,7 +124,7 @@ export default async function ShopBrandPage({ params }: { params: Promise<{ bran
             {brand} — купити в Україні
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '0 0 24px', lineHeight: 1.6 }}>
-            Офіційний постачальник {brand} в Україні. Широкий асортимент, ціни від виробника, доставка Новою Поштою по всій Україні.
+            Широкий асортимент продукції {brand} за вигідними цінами. Оптові та роздрібні умови, швидка доставка Новою Поштою по всій Україні.
           </p>
           <ShopLoader initialBrand={brand} />
         </div>

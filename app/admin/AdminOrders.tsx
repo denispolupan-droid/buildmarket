@@ -39,10 +39,12 @@ type Order = {
   payment_type: string;
   comment: string | null;
   tracking_number: string | null;
-  payment_confirmed: boolean;
-  callback_done: boolean;
-  channel_code: string | null;
-  fulfillment_mode: string | null;
+  payment_confirmed:  boolean;
+  callback_done:      boolean;
+  supplier_sent_at:   string | null;
+  supplier_confirmed: boolean;
+  channel_code:       string | null;
+  fulfillment_mode:   string | null;
   items: OrderItem[];
 };
 
@@ -86,7 +88,8 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
   const [ttnDeleting,    setTtnDeleting]    = useState<string | null>(null);
   const [registryAdding, setRegistryAdding] = useState<string | null>(null);
   const [registryAdded,  setRegistryAdded]  = useState<Set<string>>(new Set());
-  type SupplierQItem = { orderId: string; orderNumber: number; supplierName: string; email: string; comment: string };
+  type ContactEntry = { name: string; email: string; note?: string };
+  type SupplierQItem = { orderId: string; orderNumber: number; supplierName: string; supplierId: number | null; email: string; contacts: ContactEntry[]; comment: string };
   const [supplierQueue,        setSupplierQueue]        = useState<SupplierQItem[] | null>(null);
   const [supplierQueueIdx,     setSupplierQueueIdx]     = useState(0);
   const [supplierQueueLoading, setSupplierQueueLoading] = useState(false);
@@ -186,47 +189,26 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
     }
   }
 
-  async function confirmAndSend(orderId: string) {
-    const mode = selectedMode[orderId] ?? 'supplier';
-    setConfirming(orderId);
-    setConfirmErrors(prev => { const n = { ...prev }; delete n[orderId]; return n; });
-    try {
-      const res = await fetch(`/api/admin/orders/${orderId}/confirm`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fulfillment_mode: mode }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setConfirmErrors(prev => ({ ...prev, [orderId]: { error: data?.error ?? 'Помилка підтвердження', insufficient: data?.insufficient } }));
-        return;
-      }
-      setOrders(prev => prev.map(o => o.id === orderId
-        ? { ...o, status: data.status, fulfillment_mode: data.fulfillment_mode }
-        : o));
-      setFulfillmentData(prev => { const n = { ...prev }; delete n[orderId]; return n; });
-      loadFulfillment(orderId);
-      router.refresh();
-      startSupplierSend([orderId]);
-    } catch (err) {
-      console.error('[confirmAndSend] failed:', err);
-      setConfirmErrors(prev => ({ ...prev, [orderId]: { error: 'Помилка мережі' } }));
-    } finally {
-      setConfirming(null);
-    }
-  }
-
   async function startSupplierSend(orderIds: string[]) {
     setSupplierQueueLoading(true);
     setSupplierQueueDone(false);
     const items: SupplierQItem[] = await Promise.all(orderIds.map(async (oid) => {
       const order = orders.find(o => o.id === oid);
       try {
-        const res = await fetch(`/api/admin/orders/${oid}/supplier-order`);
-        const d = await res.json();
-        return { orderId: oid, orderNumber: order?.order_number ?? 0, supplierName: d.supplier_name ?? '—', email: d.supplier_email ?? '', comment: '' };
+        const d = await fetch(`/api/admin/orders/${oid}/supplier-order`).then(r => r.json());
+        const supplierId: number | null = d.supplier_id ?? null;
+        let contacts: ContactEntry[] = [];
+        if (supplierId) {
+          try {
+            const sd = await fetch(`/api/admin/suppliers/${supplierId}`).then(r => r.json());
+            contacts = sd.contacts ?? [];
+          } catch { /* silent */ }
+        }
+        const firstContact = contacts.find(c => c.email?.includes('@'));
+        const email = firstContact?.email || d.supplier_email || '';
+        return { orderId: oid, orderNumber: order?.order_number ?? 0, supplierName: d.supplier_name ?? '—', supplierId, email, contacts, comment: '' };
       } catch {
-        return { orderId: oid, orderNumber: order?.order_number ?? 0, supplierName: '—', email: '', comment: '' };
+        return { orderId: oid, orderNumber: order?.order_number ?? 0, supplierName: '—', supplierId: null, email: '', contacts: [], comment: '' };
       }
     }));
     setSupplierQueue(items);
@@ -251,15 +233,8 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ overrideEmail: item.email || undefined, comment: item.comment || undefined }),
       });
-      // Update order status → 'picking' (збирається)
-      const statusRes = await fetch(`/api/admin/orders/${item.orderId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'picking' }),
-      });
-      if (statusRes.ok) {
-        setOrders(prev => prev.map(o => o.id === item.orderId ? { ...o, status: 'picking' } : o));
-      }
+      const sentAt = new Date().toISOString();
+      setOrders(prev => prev.map(o => o.id === item.orderId ? { ...o, supplier_sent_at: sentAt } : o));
       setSupplierQueueDone(true);
       setTimeout(() => advanceSupplierQueue(), 1400);
     } catch {
@@ -496,7 +471,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
     });
   }
 
-  async function toggleFlag(id: string, field: 'payment_confirmed' | 'callback_done', value: boolean) {
+  async function toggleFlag(id: string, field: 'payment_confirmed' | 'callback_done' | 'supplier_confirmed', value: boolean) {
     await fetch(`/api/admin/orders/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -589,12 +564,20 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
               border: '1px solid rgba(255,255,255,0.2)', background: 'transparent',
               color: '#fff', fontSize: '13px', cursor: 'pointer',
             }}>Скасувати</button>
-            <button
-              onClick={() => startSupplierSend([...selectedIds])}
-              disabled={supplierQueueLoading}
-              style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: supplierQueueLoading ? 0.6 : 1 }}>
-              {supplierQueueLoading ? '⏳' : '📧'} Надіслати постачальнику
-            </button>
+            {(() => {
+              const sel = orders.filter(o => selectedIds.has(o.id));
+              const supplierSel = sel.filter(o => o.fulfillment_mode === 'supplier' || o.fulfillment_mode === 'mixed' || (o.status === 'new' && (o.fulfillment_mode == null || o.fulfillment_mode === 'supplier')));
+              if (supplierSel.length === 0) return null;
+              const unsentCount = supplierSel.filter(o => !o.supplier_sent_at).length;
+              return (
+                <button
+                  onClick={() => startSupplierSend(supplierSel.map(o => o.id))}
+                  disabled={supplierQueueLoading}
+                  style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: supplierQueueLoading ? 0.6 : 1 }}>
+                  {supplierQueueLoading ? '⏳' : '📧'} Надіслати постачальнику{unsentCount > 0 ? ` (${unsentCount} нових)` : ''}
+                </button>
+              );
+            })()}
             <button onClick={openMergeModal} style={{
               height: '34px', padding: '0 16px', borderRadius: '8px',
               border: 'none', background: 'var(--bg-card)', color: 'var(--brand-blue)',
@@ -825,10 +808,15 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                   </div>
 
                   {/* Канал */}
-                  <div style={{ width: '56px', flexShrink: 0 }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 6px', borderRadius: '20px', color: channel.color, background: channel.bg, display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ width: '56px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '3px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 6px', borderRadius: '20px', color: channel.color, background: channel.bg, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {channel.label}
                     </span>
+                    {order.supplier_sent_at && (
+                      <span title="Надіслано постачальнику"
+                        style={{ width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0,
+                          background: '#3B82F6', display: 'inline-block' }} />
+                    )}
                   </div>
 
                   {/* Оплата */}
@@ -1189,6 +1177,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                         </div>
                       ))}
 
+
                       {(() => {
                         const displayComment = order.comment?.split('\n').filter(line => !line.includes('Не передзвонювати')).join('\n').trim();
                         return displayComment ? (
@@ -1266,17 +1255,28 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                         const busy = confirming === order.id;
                         const confirmErr = confirmErrors[order.id];
                         return (
-                          <div style={{ marginTop: '4px' }}>
+                          <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <button
-                              onClick={() => isSupplier ? confirmAndSend(order.id) : confirmOrder(order.id)}
+                              onClick={() => confirmOrder(order.id)}
                               disabled={busy}
                               style={{ width: '100%', height: '34px', borderRadius: '8px', border: 'none',
                                 background: busy ? '#94A3B8' : '#15803D', color: '#fff',
                                 fontSize: '12px', fontWeight: 700, cursor: busy ? 'wait' : 'pointer' }}>
-                              {busy ? '⏳ Обробка...' : isSupplier ? '✅ Підтвердити і відправити постачальнику' : '✅ Підтвердити замовлення'}
+                              {busy ? '⏳ Обробка...' : '✅ Підтвердити замовлення'}
                             </button>
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', textAlign: 'center' }}>
-                              {isSupplier ? 'Підтвердить + надішле email постачальнику' : mode === 'own' ? 'Зарезервує товар з власного складу' : 'Резерв + замовлення у постачальника'}
+                            {isSupplier && (
+                              <button
+                                onClick={() => startSupplierSend([order.id])}
+                                disabled={supplierQueueLoading}
+                                style={{ width: '100%', height: '34px', borderRadius: '8px',
+                                  border: '1.5px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F',
+                                  fontSize: '12px', fontWeight: 700, cursor: supplierQueueLoading ? 'wait' : 'pointer',
+                                  opacity: supplierQueueLoading ? 0.6 : 1 }}>
+                                📤 Відправити постачальнику
+                              </button>
+                            )}
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                              {mode === 'own' ? 'Зарезервує товар з власного складу' : mode === 'mixed' ? 'Резерв + замовлення у постачальника' : 'Підтвердить замовлення клієнту'}
                             </div>
 
                             {/* Inline error: generic or insufficient stock */}
@@ -1342,10 +1342,20 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                             const btnMuted   = { ...btn, color: 'var(--text-secondary)' };
                             return (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
-                                {order.status === 'confirmed' && (fMode === 'supplier' || fMode === 'mixed') && (
+                                {order.status === 'confirmed' && (fMode === 'supplier' || fMode === 'mixed' || !!order.supplier_sent_at) && (
                                   <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
-                                    style={{ ...btnPrimary, opacity: supplierQueueLoading ? 0.6 : 1 }}>
-                                    <Mail size={13} /> Надіслати постачальнику
+                                    style={order.supplier_sent_at
+                                      ? { ...btn, border: '1.5px solid #86EFAC', background: '#F0FDF4', color: '#15803D', opacity: supplierQueueLoading ? 0.6 : 1, alignItems: 'flex-start' }
+                                      : { ...btnPrimary, opacity: supplierQueueLoading ? 0.6 : 1 }}>
+                                    <Mail size={13} style={{ flexShrink: 0, marginTop: order.supplier_sent_at ? '2px' : 0 }} />
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '1px' }}>
+                                      <span>{order.supplier_sent_at ? '✅ Надіслано постачальнику' : 'Надіслати постачальнику'}</span>
+                                      {order.supplier_sent_at && (
+                                        <span style={{ fontSize: '10px', opacity: 0.75 }}>
+                                          {new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · натисніть щоб надіслати ще раз
+                                        </span>
+                                      )}
+                                    </div>
                                   </button>
                                 )}
                                 {order.status === 'awaiting_stock' && (
@@ -1463,31 +1473,54 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                 </div>
               ) : item ? (
                 <div style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {/* Supplier info */}
-                  <div style={{ padding: '10px 14px', background: 'var(--bg-soft)', borderRadius: '10px', fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontWeight: 700 }}>🏭</span>
-                    <span>{item.supplierName}</span>
-                  </div>
+                  {/* Contacts — radio buttons like ProcurementDetail */}
+                  {item.contacts.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                        Контакти постачальника
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        {item.contacts.map((c, ci) => {
+                          const isSelected = item.email === c.email;
+                          return (
+                            <button key={ci} type="button"
+                              onClick={() => setSupplierQueue(prev => prev
+                                ? prev.map((it, i) => i === supplierQueueIdx ? { ...it, email: c.email } : it)
+                                : prev)}
+                              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '7px', cursor: 'pointer', textAlign: 'left', border: `1.5px solid ${isSelected ? '#1E3A5F' : 'var(--border)'}`, background: isSelected ? '#EFF4FF' : 'var(--bg-soft)' }}>
+                              <div style={{ width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${isSelected ? '#1E3A5F' : '#CBD5E1'}`, background: isSelected ? '#1E3A5F' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {isSelected && <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#fff' }} />}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>{c.name || c.email}</div>
+                                {c.name && <div style={{ fontSize: '11px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email}{c.note ? ` · ${c.note}` : ''}</div>}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Email */}
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '5px' }}>
-                      Email постачальника
-                    </label>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <Mail size={11} /> {item.contacts.length > 0 ? 'Або інший email' : 'Email отримувача'}
+                    </div>
                     <input
                       // eslint-disable-next-line jsx-a11y/no-autofocus
-                      autoFocus
+                      autoFocus={item.contacts.length === 0}
                       type="email"
                       value={item.email}
                       onChange={e => setSupplierQueue(prev => prev
                         ? prev.map((it, i) => i === supplierQueueIdx ? { ...it, email: e.target.value } : it)
                         : prev)}
-                      placeholder="Введіть email вручну..."
-                      style={{ width: '100%', height: '38px', padding: '0 12px', border: `1.5px solid ${item.email ? 'var(--border)' : '#FCD34D'}`, borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+                      placeholder="email@supplier.com"
+                      style={{ width: '100%', height: '38px', padding: '0 12px', border: `1.5px solid ${item.email.includes('@') ? 'var(--border)' : '#FCA5A5'}`, borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: 'var(--bg-soft)', color: 'var(--text-primary)' }}
                     />
-                    {!item.email && (
-                      <div style={{ fontSize: '11px', color: '#B45309', marginTop: '4px' }}>
-                        ⚠ Email не знайдено в картці постачальника — введіть вручну
+                    {item.contacts.length === 0 && !item.email && (
+                      <div style={{ fontSize: '11px', color: '#B45309', background: '#FEF3C7', padding: '6px 10px', borderRadius: '6px', marginTop: '4px' }}>
+                        ⚠ Контакти не знайдено — додайте їх у картці постачальника або введіть email вручну
                       </div>
                     )}
                   </div>
@@ -1518,8 +1551,8 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                   </button>
                   <button
                     onClick={sendCurrentSupplier}
-                    disabled={supplierQueueSending || !item.email.trim()}
-                    style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: item.email.trim() ? 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)' : '#94A3B8', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: (!item.email.trim() || supplierQueueSending) ? 'default' : 'pointer', opacity: supplierQueueSending ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    disabled={supplierQueueSending || !item.email.includes('@')}
+                    style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: item.email.includes('@') ? 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)' : '#94A3B8', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: (!item.email.includes('@') || supplierQueueSending) ? 'default' : 'pointer', opacity: supplierQueueSending ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     {supplierQueueSending ? '⏳ Відправлення...' : `📧 Відправити${total > 1 ? ` (${idx + 1}/${total})` : ''}`}
                   </button>
                 </div>

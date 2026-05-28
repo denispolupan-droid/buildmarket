@@ -15,10 +15,14 @@ export type ReceiptLine = {
   sku: string; name: string; qty: number;
   cost_price: number; sale_price: number; is_bonus: boolean;
   matched?: boolean;
+  ordered_qty?: number;  // original PO qty for comparison column
 };
 
 export type ReceiptDraft = {
   id:              string;
+  poId?:           string;       // linked PO id (receipt from PO flow)
+  poDocNumber?:    string;       // e.g. "ЗП-2026-0012"
+  draftReceiptId?: string | null; // existing draft acc_document id (for edit mode)
   warehouseId:     number;
   supplierId:      number | null;
   docDate:         string;
@@ -128,6 +132,52 @@ export default function ReceiptDraftManager() {
     }
     window.addEventListener('open-receipt-draft', handler);
     return () => window.removeEventListener('open-receipt-draft', handler);
+  }, [warehouses]);
+
+  // Open receipt pre-filled from PO ("Прийняти товар" button)
+  useEffect(() => {
+    function handler(e: Event) {
+      const detail = (e as CustomEvent<{
+        poId: string; poDocNumber: string;
+        draftReceiptId?: string | null;
+        supplierId: number | null; warehouseId: number | null;
+        supplierInvNum: string; supplierInvDate: string; supplierInvAmount: number | '';
+        lines: ReceiptLine[];
+      }>).detail;
+
+      // If draft for same PO already open — bring to front
+      setDrafts(prev => {
+        const existing = prev.find(d => d.poId === detail.poId);
+        if (existing) {
+          window.dispatchEvent(new CustomEvent('receipt-draft-activated'));
+          return prev.map(d => d.id === existing.id
+            ? { ...d, minimized: false, lastActivated: Date.now() }
+            : { ...d, minimized: true });
+        }
+        const now = Date.now();
+        const draft: ReceiptDraft = {
+          id:               `receipt_po_${detail.poId}_${now}`,
+          poId:             detail.poId,
+          poDocNumber:      detail.poDocNumber,
+          draftReceiptId:   detail.draftReceiptId ?? null,
+          warehouseId:      detail.warehouseId || warehouses[0]?.id || 0,
+          supplierId:       detail.supplierId ?? null,
+          docDate:          new Date().toISOString().slice(0, 10),
+          supplierInvNum:   detail.supplierInvNum ?? '',
+          supplierInvDate:  detail.supplierInvDate ?? '',
+          supplierInvAmount: detail.supplierInvAmount ?? '',
+          notes:            '',
+          lines:            detail.lines ?? [],
+          minimized:        false,
+          createdAt:        now,
+          lastActivated:    now,
+        };
+        window.dispatchEvent(new CustomEvent('receipt-draft-activated'));
+        return [...prev.map(d => ({ ...d, minimized: true })), draft];
+      });
+    }
+    window.addEventListener('open-po-receipt-draft', handler);
+    return () => window.removeEventListener('open-po-receipt-draft', handler);
   }, [warehouses]);
 
   const bringToFront = useCallback((id: string) => {
