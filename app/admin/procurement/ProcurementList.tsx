@@ -28,7 +28,7 @@ type PO = {
 // po_status — деталізована статус-машина (P5)
 const PO_STATUS_CFG: Record<string, { label: string; color: string; bg: string; emoji: string }> = {
   draft:                  { label: 'Чернетка',              color: '#64748B', bg: '#F8FAFC', emoji: '📝' },
-  new:                    { label: 'Проведено',             color: '#1E3A5F', bg: '#EFF4FF', emoji: '🆕' },
+  ordered:                { label: 'Проведено',             color: '#1E3A5F', bg: '#EFF4FF', emoji: '✅' },
   sent:                   { label: 'Відправлено',           color: '#1E3A5F', bg: '#EFF4FF', emoji: '📤' },
   confirmed_by_supplier:  { label: 'Підтверджено постач.',  color: '#7C3AED', bg: '#F5F3FF', emoji: '✅' },
   partially_received:     { label: 'Частково отримано',     color: '#B45309', bg: '#FEF3C7', emoji: '📦' },

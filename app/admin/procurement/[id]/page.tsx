@@ -126,9 +126,19 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
   const isDraft      = po.procurement_status === 'draft';
   const isCancelled  = po.status === 'cancelled';
 
-  return <ProcurementDetail po={po} chainButton={
-    <div style={{ display: 'flex', gap: '8px' }}>
-      {isDraft && (
+  const hasSubordinateDocs = po.has_receipt || (adjDocs ?? []).length > 0;
+
+  return <ProcurementDetail
+    po={po}
+    adjustmentButton={
+      !isDraft && !isCancelled ? (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {/* Коригування: тільки до першого приходу */}
+          {!po.has_receipt && <AdjustmentButton poId={id} lines={poLines} />}
+          {/* Додатковий прихід: після першого приходу */}
+          {po.has_receipt && po.procurement_status !== 'received' && <AdditionalReceiptButton poId={id} supplierName={po.supplier_name} />}
+        </div>
+      ) : isDraft ? (
         <EditDraftButton
           poId={id}
           supplierId={po.supplier_id ?? 0}
@@ -144,12 +154,8 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
             matched:    nameMap.has(l.sku),
           }))}
         />
-      )}
-      {/* Коригування: тільки до першого приходу */}
-      {!isDraft && !isCancelled && !po.has_receipt && <AdjustmentButton poId={id} lines={poLines} />}
-      {/* Додатковий прихід: тільки якщо є прихід і ще залишились нeoприходовані товари */}
-      {!isDraft && !isCancelled && po.has_receipt && po.procurement_status !== 'received' && <AdditionalReceiptButton poId={id} supplierName={po.supplier_name} />}
-      {!isDraft && <DocChain poId={id} />}
-    </div>
-  } />;
+      ) : null
+    }
+    chainButton={!isDraft && hasSubordinateDocs ? <DocChain poId={id} /> : null}
+  />;
 }

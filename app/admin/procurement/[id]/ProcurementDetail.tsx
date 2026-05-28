@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, Truck, Plus, X, Upload, Download, Trash2, Copy, Check, MoreHorizontal, Printer, Send, Mail } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, X, Upload, Download, Trash2, Copy, Check, MoreHorizontal, Printer, Send, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -14,6 +14,7 @@ type SupplierBank = {
 type PO = {
   id: string; doc_number: string; doc_date: string; procurement_status: string | null;
   status?: string | null;
+  email_sent_at?: string | null;
   expected_date: string | null; supplier_id: number | null; supplier_name: string | null;
   supplier_email: string | null; order_id: string | null; total_cost: number | null;
   notes: string | null; has_receipt: boolean; receipt_id?: string | null; receipt_doc_number?: string | null;
@@ -24,19 +25,20 @@ type PO = {
   meta?: Record<string, unknown> | null;
 };
 
-// Спрощений ланцюжок — 3 кроки
+// 4 кроки хронології PO
 const STATUS_STEPS = [
-  { key: 'sent',                  label: 'Відправлено постачальнику',  icon: '📤', manual: true  },
-  { key: 'confirmed_by_supplier', label: 'Підтверджено постачальником', icon: '✅', manual: true  },
-  { key: 'received',              label: 'Отримано на склад',          icon: '📦', manual: false }, // авто через прихід
+  { key: 'ordered',               label: 'Проведено',                  icon: '📋' },
+  { key: 'sent',                  label: 'Відправлено постачальнику',   icon: '📤' },
+  { key: 'confirmed_by_supplier', label: 'Рахунок отримано',            icon: '🧾' },
+  { key: 'received',              label: 'Товар отримано',              icon: '📦' },
 ];
 
 // Маппінг всіх статусів на індекс кроку в прогрес-барі
 function statusToStep(status: string): number {
-  if (['paid', 'received', 'partially_received'].includes(status)) return 2;
-  if (['confirmed_by_supplier', 'invoiced'].includes(status))       return 1;
-  if (status === 'sent')                                             return 0;
-  return -1;
+  if (['paid', 'received', 'partially_received'].includes(status)) return 3;
+  if (['confirmed_by_supplier', 'invoiced'].includes(status))      return 2;
+  if (status === 'sent')                                           return 1;
+  return 0; // 'ordered', '', null → "Проведено"
 }
 
 const inp: React.CSSProperties = { height: '36px', padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', color: 'var(--text-primary)', background: 'var(--bg-soft)', width: '100%' };
@@ -44,7 +46,7 @@ const lbl: React.CSSProperties = { fontSize: '11px', fontWeight: 700, color: 'va
 
 function fmt(n: number) { return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
-export default function ProcurementDetail({ po, chainButton, onClose, compact }: { po: PO; chainButton?: React.ReactNode; onClose?: () => void; compact?: boolean }) {
+export default function ProcurementDetail({ po, chainButton, adjustmentButton, onClose, compact }: { po: PO; chainButton?: React.ReactNode; adjustmentButton?: React.ReactNode; onClose?: () => void; compact?: boolean }) {
   const router = useRouter();
 
   function goToList() {
@@ -53,11 +55,6 @@ export default function ProcurementDetail({ po, chainButton, onClose, compact }:
   }
 
   const [receiving,     setReceiving]     = useState(false);
-  const [receiptNotes,  setReceiptNotes]  = useState('');
-  const [actualQties,   setActualQties]   = useState<Record<string, number>>({});
-  const [actualPrices,  setActualPrices]  = useState<Record<string, number>>({});
-  const [importingFile, setImportingFile] = useState(false);
-  const receiptFileRef = useRef<HTMLInputElement>(null);
 
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [newStatus,      setNewStatus]      = useState(po.procurement_status ?? '');
@@ -231,12 +228,9 @@ export default function ProcurementDetail({ po, chainButton, onClose, compact }:
   const [error,   setError]   = useState('');
   const [success, setSuccess] = useState('');
 
-  // Крок "Отримано" визначається наявністю підтвердженого приходу, НЕ тільки procurement_status.
-  // Причина: при збереженні відстрочення оплати статус може стати 'invoiced' (крок 1),
-  // навіть якщо товар вже фізично отримано (has_receipt=true).
   const currentStepIdx = Math.max(
     statusToStep(newStatus || po.procurement_status || ''),
-    po.has_receipt ? 2 : -1,
+    po.has_receipt ? 3 : -1,
   );
 
   async function handleReceive() {
@@ -244,60 +238,13 @@ export default function ProcurementDetail({ po, chainButton, onClose, compact }:
     try {
       const res = await fetch(`/api/admin/procurement/${po.id}/receive`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          actualQties:  Object.keys(actualQties).length  ? actualQties  : undefined,
-          actualPrices: Object.keys(actualPrices).length ? actualPrices : undefined,
-          notes:        receiptNotes,
-        }),
+        body: JSON.stringify({}),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Помилка'); return; }
       window.location.reload();
     } catch { setError('Мережева помилка'); }
     finally { setReceiving(false); }
-  }
-
-  async function handleImportReceipt(file: File) {
-    setImportingFile(true); setError('');
-    try {
-      const XLSX = await import('xlsx');
-      const buf = await file.arrayBuffer();
-      const wb  = XLSX.read(buf, { type: 'array' });
-      const ws  = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<Record<string, string | number>>(ws, { defval: '' }) as Record<string, string | number>[];
-
-      const qties:  Record<string, number> = {};
-      const prices: Record<string, number> = {};
-
-      for (const row of rows) {
-        // Автодетект колонок SKU, кількість, ціна
-        const keys = Object.keys(row).map(k => k.toLowerCase().replace(/[\s_]/g, ''));
-        const skuKey   = Object.keys(row).find((_, i) => ['sku','артикул','код','article'].includes(keys[i]));
-        const qtyKey   = Object.keys(row).find((_, i) => ['qty','кількість','кол','количество','count'].includes(keys[i]));
-        const priceKey = Object.keys(row).find((_, i) => ['ціна','price','цена','cost'].includes(keys[i]));
-
-        const sku = skuKey ? String(row[skuKey]).trim() : '';
-        if (!sku) continue;
-
-        // Перевіряємо чи є цей SKU в замовленні
-        const line = po.lines.find(l => l.sku === sku);
-        if (!line) continue;
-
-        if (qtyKey)   { const q = parseFloat(String(row[qtyKey]).replace(',','.')); if (q >= 0) qties[sku]  = q; }
-        if (priceKey) { const p = parseFloat(String(row[priceKey]).replace(',','.')); if (p > 0) prices[sku] = p; }
-      }
-
-      if (Object.keys(qties).length === 0 && Object.keys(prices).length === 0) {
-        setError('Не знайдено відповідних даних. Перевірте формат файлу (колонки: Артикул, Кількість, Ціна)');
-        return;
-      }
-
-      setActualQties(prev => ({ ...prev, ...qties }));
-      setActualPrices(prev => ({ ...prev, ...prices }));
-      setSuccess(`✅ Імпортовано: ${Object.keys(qties).length} кількостей, ${Object.keys(prices).length} цін`);
-    } catch (e) {
-      setError('Помилка читання файлу: ' + (e instanceof Error ? e.message : String(e)));
-    } finally { setImportingFile(false); }
   }
 
   async function handleStatusUpdate(status: string) {
@@ -320,14 +267,15 @@ export default function ProcurementDetail({ po, chainButton, onClose, compact }:
       const res = await fetch(`/api/admin/procurement/${po.id}/status`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // Не змінюємо procurement_status — просто зберігаємо реквізити рахунку
+          procurement_status:      'confirmed_by_supplier',
           supplier_invoice_number: invoiceNum,
           supplier_invoice_date:   invoiceDate,
           supplier_invoice_amount: parseFloat(invoiceAmt) || undefined,
         }),
       });
       if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Помилка'); return; }
-      setSuccess('✅ Реквізити рахунку збережено');
+      setNewStatus('confirmed_by_supplier');
+      setSuccess('✅ Рахунок збережено — статус змінено на «Рахунок отримано»');
       setInvoiceSaved(true);
       setEditingInvoice(false);
     } catch { setError('Мережева помилка'); }
@@ -406,31 +354,29 @@ export default function ProcurementDetail({ po, chainButton, onClose, compact }:
             {po.expected_date && ` · Очікуємо: ${new Date(po.expected_date).toLocaleDateString('uk-UA')}`}
           </div>
         </div>
-        {chainButton}
-        {/* ── Кнопка прийому товару — з'являється поки немає приходу ── */}
-        {!compact && !po.has_receipt && !isCancelled && (
-          <button
-            onClick={() => document.getElementById('receive-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-            <Package size={14} /> Прийняти товар
-          </button>
-        )}
-        {po.receipt_id && (
-          <Link href={`/admin/procurement/receipts/${po.receipt_id}`} prefetch={false}
-            style={{ fontSize: '12px', color: '#15803D', textDecoration: 'none', background: '#F0FDF4', padding: '4px 12px', borderRadius: '6px', fontWeight: 600, border: '1px solid #BBF7D0', flexShrink: 0 }}>
-            ↓ {po.receipt_doc_number ?? 'Прихідний ордер'}
-          </Link>
-        )}
-        {/* Відправити постачальнику */}
+        {/* 1. Відправити постачальнику */}
         {!isCancelled && (
           <button
             onClick={() => setShowSendModal(true)}
             title="Відправити замовлення постачальнику"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
-            <Send size={14} /> Відправити
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: `1.5px solid ${po.email_sent_at ? '#86EFAC' : 'var(--border)'}`, background: po.email_sent_at ? '#F0FDF4' : 'var(--bg-soft)', color: po.email_sent_at ? '#15803D' : 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+            <Send size={14} /> {po.email_sent_at ? '✅ Відправлено' : 'Відправити'}
           </button>
         )}
-        {/* Друк */}
+        {/* 2. Коригування */}
+        {adjustmentButton}
+        {/* 3. Прийняти товар */}
+        {!compact && !po.has_receipt && !isCancelled && (
+          <button
+            onClick={handleReceive}
+            disabled={receiving}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: receiving ? 'default' : 'pointer', flexShrink: 0, opacity: receiving ? 0.7 : 1 }}>
+            {receiving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Оформлюємо...</> : <><Package size={14} /> Прийняти товар</>}
+          </button>
+        )}
+        {/* 4. Ланцюжок */}
+        {chainButton}
+        {/* 5. Друк */}
         <button
           onClick={() => window.print()}
           title="Друк / Зберегти PDF"
@@ -499,19 +445,6 @@ export default function ProcurementDetail({ po, chainButton, onClose, compact }:
                     <div style={{ fontSize: '10px', fontWeight: active ? 700 : 400, color: done ? 'var(--brand-blue)' : 'var(--text-muted)', marginTop: '4px', textAlign: 'center', maxWidth: '80px' }}>
                       {step.icon} {step.label}
                     </div>
-                    {/* Кнопка ручного підтвердження — тільки для manual-кроків */}
-                    {!done && step.manual && (
-                      <button onClick={() => handleStatusUpdate(step.key)} disabled={updatingStatus}
-                        style={{ marginTop: '4px', fontSize: '10px', padding: '1px 6px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-soft)', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                        ✓ Так
-                      </button>
-                    )}
-                    {/* Крок "Отримано" — автоматично через прихід */}
-                    {!done && !step.manual && (
-                      <div style={{ marginTop: '4px', fontSize: '9px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                        авто
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -546,34 +479,23 @@ export default function ProcurementDetail({ po, chainButton, onClose, compact }:
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '7px' }}>
               <Package size={15} /> Товари
             </div>
-            {/* Заголовок таблиці
-                has_receipt=false : Арт | Назва | Замовл. | Отримано | Ціна факт. | Ціна PO | Різниця | Сума  = 8 cols
-                has_receipt=true  : Арт | Назва | Замовл. | Ціна PO | Сума                              = 5 cols
-            */}
-            <div style={{ display: 'grid', gridTemplateColumns: po.has_receipt ? '110px minmax(0,1fr) 80px 110px 100px' : '110px minmax(0,1fr) 60px 75px 90px 90px 60px 90px', padding: '8px 16px', background: 'var(--bg-soft)', fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', gap: '8px', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '110px minmax(0,1fr) 80px 110px 100px', padding: '8px 16px', background: 'var(--bg-soft)', fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', gap: '8px', borderBottom: '1px solid var(--border)' }}>
               <span>Артикул</span>
               <span>Найменування</span>
               <span style={{ textAlign: 'right' }}>Замовлено</span>
-              {!po.has_receipt && <span style={{ textAlign: 'right', color: '#1E3A5F' }}>Отримано ↓</span>}
-              {!po.has_receipt && <span style={{ textAlign: 'right', color: '#1E3A5F' }}>Ціна факт. ↓</span>}
               <span style={{ textAlign: 'right' }}>Ціна PO</span>
-              {!po.has_receipt && <span style={{ textAlign: 'right' }}>Різниця</span>}
               <span style={{ textAlign: 'right' }}>Сума</span>
             </div>
 
             {po.lines.map(line => {
-              const actualQty   = actualQties[line.sku];
-              const actualPrice = actualPrices[line.sku];
               // effQty = кількість з урахуванням коригування (для нових adj-позицій = adj_delta)
               const effQty      = line.effective_qty ?? line.qty;
-              const diff        = actualQty !== undefined ? actualQty - effQty : 0;
-              const diffColor   = diff < 0 ? '#EF4444' : diff > 0 ? '#15803D' : 'var(--text-muted)';
-              const displayPrice = actualPrice ?? line.cost_price ?? 0;
-              const displayQty   = actualQty ?? effQty;   // використовуємо effQty, не line.qty
+              const displayPrice = line.cost_price ?? 0;
+              const displayQty   = effQty;
 
               const isNew = line.is_adj_new;
               return (
-                <div key={line.id} style={{ display: 'grid', gridTemplateColumns: po.has_receipt ? '110px minmax(0,1fr) 80px 110px 100px' : '110px minmax(0,1fr) 60px 75px 90px 90px 60px 90px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', gap: '8px', background: isNew ? 'rgba(21,128,61,0.05)' : diff < 0 ? '#FFF5F5' : 'transparent' }}>
+                <div key={line.id} style={{ display: 'grid', gridTemplateColumns: '110px minmax(0,1fr) 80px 110px 100px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', gap: '8px', background: isNew ? 'rgba(21,128,61,0.05)' : 'transparent' }}>
                   <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-primary)', fontWeight: 600 }}>{line.sku}</span>
                   <div style={{ overflow: 'hidden', minWidth: 0 }} title={`${line.brand ?? ''} ${line.name ?? ''}`}>
                     <div style={{ fontSize: '12px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -607,35 +529,10 @@ export default function ProcurementDetail({ po, chainButton, onClose, compact }:
                     )}
                   </div>
 
-                  {/* Отримано (input) */}
-                  {!po.has_receipt && (
-                    <input type="number" min="0" step="1"
-                      placeholder={String(line.effective_qty ?? line.qty)}
-                      value={actualQties[line.sku] ?? ''}
-                      onChange={e => setActualQties(prev => ({ ...prev, [line.sku]: parseFloat(e.target.value) }))}
-                      style={{ textAlign: 'right', height: '24px', fontSize: '12px', padding: '0 6px', border: `1.5px solid ${diff < 0 ? '#EF4444' : 'var(--border)'}`, borderRadius: '6px', outline: 'none', width: '100%', background: 'var(--bg-soft)', color: 'var(--text-primary)' }} />
-                  )}
-
-                  {/* Ціна фактична (input) */}
-                  {!po.has_receipt && (
-                    <input type="number" min="0" step="0.01"
-                      placeholder={line.cost_price ? String(line.cost_price) : '0'}
-                      value={actualPrices[line.sku] ?? ''}
-                      onChange={e => setActualPrices(prev => ({ ...prev, [line.sku]: parseFloat(e.target.value) }))}
-                      style={{ textAlign: 'right', height: '24px', fontSize: '12px', padding: '0 6px', border: '1.5px solid var(--border)', borderRadius: '6px', outline: 'none', width: '100%', background: 'var(--bg-soft)', color: 'var(--text-primary)' }} />
-                  )}
-
                   {/* Ціна PO */}
                   <span style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)' }}>
                     {line.cost_price ? `${fmt(line.cost_price)} ₴` : '—'}
                   </span>
-
-                  {/* Різниця */}
-                  {!po.has_receipt && (
-                    <span style={{ textAlign: 'right', fontSize: '12px', fontWeight: 600, color: diffColor }}>
-                      {actualQty !== undefined ? (diff > 0 ? `+${diff}` : diff === 0 ? '✓' : String(diff)) : '—'}
-                    </span>
-                  )}
 
                   {/* Сума */}
                   <span style={{ textAlign: 'right', fontSize: '12px', fontWeight: 600 }}>
@@ -696,41 +593,6 @@ export default function ProcurementDetail({ po, chainButton, onClose, compact }:
             })()}
           </div>
 
-          {/* Receive block */}
-          {!po.has_receipt && (
-            <div id="receive-section" style={{ background: 'var(--bg-card)', border: '2px solid #BFDBFE', borderRadius: '12px', padding: '16px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 800, color: '#1E3A5F', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '7px' }}><Truck size={15} /> Оформлення приходу</span>
-                <button onClick={() => receiptFileRef.current?.click()} disabled={importingFile}
-                  style={{ display: 'flex', alignItems: 'center', gap: '5px', height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid #BFDBFE', background: '#EFF4FF', color: '#1E3A5F', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
-                  {importingFile ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={11} />}
-                  Імпорт з Excel
-                </button>
-                <input ref={receiptFileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) handleImportReceipt(f); e.target.value = ''; }} />
-              </div>
-
-              <div style={{ fontSize: '12px', color: '#1E3A5F', background: '#EFF4FF', padding: '8px 12px', borderRadius: '8px', marginBottom: '12px' }}>
-                📋 Заповніть <strong>"Отримано"</strong> і <strong>"Ціна факт."</strong> у таблиці вище якщо є розходження. Порожнє = як в замовленні.
-              </div>
-
-              {Object.keys(actualQties).some(sku => actualQties[sku] !== po.lines.find(l => l.sku === sku)?.qty) && (
-                <div style={{ marginBottom: '10px', padding: '8px 12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: '#92400E' }}>
-                  ⚠ Є розходження по {Object.keys(actualQties).filter(sku => actualQties[sku] !== po.lines.find(l => l.sku === sku)?.qty).length} позиціях
-                </div>
-              )}
-
-              <div style={{ marginBottom: '10px' }}>
-                <label style={lbl}>Нотатки до приходу</label>
-                <input style={inp} value={receiptNotes} onChange={e => setReceiptNotes(e.target.value)} placeholder="Все відповідно, отримано без зауважень" />
-              </div>
-
-              <button onClick={handleReceive} disabled={receiving}
-                style={{ width: '100%', height: '40px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: receiving ? 0.7 : 1 }}>
-                {receiving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Оформлюємо...</> : <><Package size={14} />Оформити прихід на склад (FIFO)</>}
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Right: Actions */}
