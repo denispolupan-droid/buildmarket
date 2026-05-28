@@ -372,6 +372,11 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
             <div style={{ fontSize: '12px', color: '#EF4444', marginTop: '2px' }}>
               Цей документ анульовано і більше не активний. Перегляд доступний лише для ознайомлення з історією.
             </div>
+            {typeof po.meta?.cancel_reason === 'string' && (
+              <div style={{ fontSize: '12px', color: '#DC2626', marginTop: '6px', fontStyle: 'italic' }}>
+                Причина: {po.meta.cancel_reason}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -394,7 +399,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
         {/* 1. Відправити постачальнику */}
         {!isCancelled && (
           <button
-            onClick={() => setShowSendModal(true)}
+            onClick={() => { setSendContactsLoading(true); setSendContacts([]); setSendEmail(po.supplier_email ?? ''); setShowSendModal(true); }}
             title="Відправити замовлення постачальнику"
             style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: `1.5px solid ${po.email_sent_at ? '#86EFAC' : 'var(--border)'}`, background: po.email_sent_at ? '#F0FDF4' : 'var(--bg-soft)', color: po.email_sent_at ? '#15803D' : 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
             <Send size={14} /> {po.email_sent_at ? '✅ Відправлено' : 'Відправити'}
