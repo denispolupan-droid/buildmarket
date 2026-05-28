@@ -120,7 +120,8 @@ export async function PUT(
 
   if (!doc) return NextResponse.json({ error: 'Не знайдено' }, { status: 404 });
   if (doc.doc_type !== 'purchase_order') return NextResponse.json({ error: 'Не є PO' }, { status: 400 });
-  if (doc.procurement_status !== 'draft') {
+  // NULL = legacy docs created before procurement_status was populated (treat as draft)
+  if (doc.procurement_status !== 'draft' && doc.procurement_status !== null) {
     return NextResponse.json({ error: 'Можна редагувати тільки чернетки' }, { status: 400 });
   }
 
