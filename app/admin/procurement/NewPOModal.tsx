@@ -39,6 +39,9 @@ function detectCol(headers: string[], keys: string[]): number {
   return -1;
 }
 
+// Number() is stricter than parseFloat: rejects "2109-016" (parseFloat gives 2109)
+const isStrictNum = (v: string) => v.trim() !== '' && !isNaN(Number(v.replace(/\s/g, '').replace(',', '.')));
+
 function parseExcel(buffer: ArrayBuffer): { sku: string; name: string; qty: number; price: number }[] {
   const wb   = XLSX.read(buffer, { type: 'array' });
   const ws   = wb.Sheets[wb.SheetNames[0]];
@@ -46,10 +49,24 @@ function parseExcel(buffer: ArrayBuffer): { sku: string; name: string; qty: numb
 
   if (rows.length < 1) return [];
 
-  // Find first row with at least 2 non-empty cells
+  // 1. Try to find a keyword header row (e.g. files with metadata rows before actual headers)
   let headerIdx = -1;
-  for (let i = 0; i < Math.min(8, rows.length); i++) {
-    if (rows[i].filter(Boolean).length >= 2) { headerIdx = i; break; }
+  for (let i = 0; i < Math.min(12, rows.length); i++) {
+    if (rows[i].filter(Boolean).length < 2) continue;
+    const h = rows[i].map(String);
+    const hasSku   = detectCol(h, ['sku','код','арт','code','article']) >= 0;
+    const hasName  = detectCol(h, ['назв','name','товар','найменув','опис','description']) >= 0;
+    const hasQty   = detectCol(h, ['кіл','qty','кол','количество','amount','count']) >= 0;
+    const hasPrice = detectCol(h, ['цін','price','ціна','вартість','cost','прайс']) >= 0;
+    if ((hasSku || hasName) && (hasQty || hasPrice)) { headerIdx = i; break; }
+  }
+
+  // 2. No keyword header → positional detection from first row with enough cells
+  const positional = headerIdx < 0;
+  if (positional) {
+    for (let i = 0; i < Math.min(12, rows.length); i++) {
+      if (rows[i].filter(Boolean).length >= 2) { headerIdx = i; break; }
+    }
   }
   if (headerIdx < 0) return [];
 
@@ -60,17 +77,14 @@ function parseExcel(buffer: ArrayBuffer): { sku: string; name: string; qty: numb
   let priceCol = detectCol(headers, ['цін','price','ціна','вартість','cost','прайс']);
   let dataStart = headerIdx + 1;
 
-  // Fallback: no header keywords found → file has no header row, detect columns by content
-  if (skuCol < 0 && nameCol < 0) {
-    dataStart = headerIdx; // the "header" row is actually data
+  // Positional fallback: classify columns by content
+  if (positional) {
+    dataStart = headerIdx; // the "header" row is actually first data row
     const sample = rows.slice(headerIdx, Math.min(headerIdx + 6, rows.length));
     const colCount = Math.max(...sample.map(r => r.length));
 
     let bestSkuCol = -1, bestNameCol = -1, bestNameLen = 0;
     const numCols: { col: number; avg: number }[] = [];
-
-    // Strict number check: Number() rejects "2109-016" unlike parseFloat which gives 2109
-    const isStrictNum = (v: string) => !isNaN(Number(v.replace(/\s/g, '').replace(',', '.'))) && v.trim() !== '';
 
     for (let c = 0; c < colCount; c++) {
       const vals = sample.map(r => String(r[c] ?? '')).filter(Boolean);
@@ -80,50 +94,36 @@ function parseExcel(buffer: ArrayBuffer): { sku: string; name: string; qty: numb
         numCols.push({ col: c, avg: numVals.reduce((s, n) => s + n, 0) / numVals.length });
       } else {
         const avgLen = vals.reduce((s, v) => s + v.length, 0) / vals.length;
-        // SKU pattern: short, contains both digits and a separator
         const looksLikeSku = vals.every(v => v.length < 20 && /\d/.test(v) && /[-\/]/.test(v));
-        if (looksLikeSku && bestSkuCol < 0) {
-          bestSkuCol = c;
-        } else if (avgLen > bestNameLen) {
-          bestNameLen = avgLen;
-          bestNameCol = c;
-        }
+        if (looksLikeSku && bestSkuCol < 0) bestSkuCol = c;
+        else if (avgLen > bestNameLen) { bestNameLen = avgLen; bestNameCol = c; }
       }
     }
-
-    // If no SKU by pattern, use first short non-number non-name col
     if (bestSkuCol < 0) {
       for (let c = 0; c < colCount; c++) {
         if (c === bestNameCol) continue;
         const vals = sample.map(r => String(r[c] ?? '')).filter(Boolean);
         if (vals.every(isStrictNum)) continue;
-        bestSkuCol = c;
-        break;
+        bestSkuCol = c; break;
       }
     }
-
     skuCol  = bestSkuCol;
     nameCol = bestNameCol;
-    // Sort by avg: smallest = qty, next = price, rest = totals (ignored)
     numCols.sort((a, b) => a.avg - b.avg);
     qtyCol   = numCols.length >= 2 ? numCols[0].col : -1;
     priceCol = numCols.length >= 2 ? numCols[1].col : (numCols[0]?.col ?? -1);
   }
 
   const result: { sku: string; name: string; qty: number; price: number }[] = [];
-
   for (let i = dataStart; i < rows.length; i++) {
     const row = rows[i];
     if (!row.some(Boolean)) continue;
-
     const sku   = skuCol  >= 0 ? String(row[skuCol]  ?? '').trim() : '';
     const name  = nameCol >= 0 ? String(row[nameCol] ?? '').trim() : '';
     const qty   = qtyCol  >= 0 ? parseFloat(String(row[qtyCol]  ?? '').replace(',', '.')) : 1;
     const price = priceCol>= 0 ? parseFloat(String(row[priceCol] ?? '').replace(',', '.')) : 0;
-
     if (!sku && !name) continue;
     if (qtyCol >= 0 && (isNaN(qty) || qty <= 0)) continue;
-
     result.push({ sku, name, qty: isNaN(qty) ? 1 : qty, price: isNaN(price) ? 0 : price });
   }
   return result;
@@ -159,6 +159,10 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
   const [parsing,      setParsing]      = useState(false);
   const [saving,       setSaving]       = useState(false);
   const [error,        setError]        = useState('');
+
+  type RawRow = { sku: string; name: string; qty: number; price: number };
+  const [rawImport,  setRawImport]  = useState<RawRow[] | null>(null);
+  const [priceMode,  setPriceMode]  = useState<'file' | 'last'>('file');
   const [showPicker,   setShowPicker]   = useState(false);
   const lookupTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const nameTimers   = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
@@ -224,33 +228,33 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
   }
 
   // Resolve SKUs against DB — підтримує і наші артикули і артикули постачальника
-  async function resolveLines(raw: { sku: string; name: string; qty: number; price: number }[]): Promise<Line[]> {
+  // useFilePrice=true → ціна з Excel пріоритетна; false → ігноруємо, беремо з бази
+  async function resolveLines(raw: { sku: string; name: string; qty: number; price: number }[], useFilePrice = true): Promise<Line[]> {
     if (!raw.length) return [];
     const skus = raw.map(r => r.sku).filter(Boolean);
-    if (!skus.length) return raw.map(r => ({ ...r, cost_price: r.price, matched: false }));
+    if (!skus.length) return raw.map(r => ({ ...r, cost_price: useFilePrice ? r.price : 0, matched: false }));
 
     const res = await fetch('/api/admin/products/search-skus', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ skus }),
     });
 
-    if (!res.ok) return raw.map(r => ({ ...r, cost_price: r.price, matched: false }));
+    if (!res.ok) return raw.map(r => ({ ...r, cost_price: useFilePrice ? r.price : 0, matched: false }));
     const data = await res.json();
 
-    // input_sku → resolved product info
-    const byInput = new Map<string, { sku: string; name: string; brand: string; price_cost: number | null; price_unit: number | null; matched: boolean; via_supplier: boolean }>();
-    for (const p of (data.products ?? [])) {
-      byInput.set(p.input_sku, p);
-    }
+    const byInput = new Map<string, { sku: string; name: string; brand: string; price_cost: number | null; price_unit: number | null; matched: boolean }>();
+    for (const p of (data.products ?? [])) byInput.set(p.input_sku, p);
 
     return raw.map(r => {
       const found = byInput.get(r.sku);
+      const dbPrice = found?.price_cost ?? found?.price_unit ?? 0;
       return {
-        sku:           found?.sku ?? r.sku,           // завжди наш артикул
+        sku:           found?.sku ?? r.sku,
         name:          found ? `${found.brand ?? ''} ${found.name ?? ''}`.trim() : r.name,
         qty:           r.qty,
-        // price_cost → ціна з Excel (якщо > 0) → price_unit з бази → 0
-        cost_price:    found?.price_cost ?? (r.price > 0 ? r.price : (found?.price_unit ?? 0)),
+        cost_price:    useFilePrice
+          ? (r.price > 0 ? r.price : dbPrice)   // Excel ціна → fallback DB
+          : dbPrice,                             // тільки DB (остання закупочна)
         catalog_price: found?.price_cost ?? found?.price_unit ?? undefined,
         matched:       found?.matched ?? false,
       };
@@ -263,10 +267,23 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
       const buf = await file.arrayBuffer();
       const raw = parseExcel(buf);
       if (!raw.length) { setError('Не знайдено рядків у файлі. Перевірте формат.'); return; }
-      const resolved = await resolveLines(raw);
-      setLines(resolved);
+      // Show price dialog before importing
+      setRawImport(raw);
+      setPriceMode('file');
     } catch (e) {
       setError('Помилка читання файлу: ' + (e instanceof Error ? e.message : String(e)));
+    } finally { setParsing(false); }
+  }
+
+  async function confirmImport() {
+    if (!rawImport) return;
+    setParsing(true); setError('');
+    try {
+      const resolved = await resolveLines(rawImport, priceMode === 'file');
+      setLines(resolved);
+      setRawImport(null);
+    } catch (e) {
+      setError('Помилка обробки: ' + (e instanceof Error ? e.message : String(e)));
     } finally { setParsing(false); }
   }
 
@@ -384,6 +401,59 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
         onClose={() => setShowPicker(false)}
         onAdd={handlePickerAdd}
       />
+    )}
+
+    {/* Діалог вибору ціни при імпорті Excel */}
+    {rawImport && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: zIndex + 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: 'var(--bg-card)', borderRadius: '14px', padding: '24px 28px', width: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+          <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>
+            📊 Знайдено {rawImport.length} позицій
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '18px' }}>
+            {rawImport.filter(r => r.price > 0).length > 0
+              ? `Ціни у файлі: ${rawImport.filter(r => r.price > 0).slice(0, 3).map(r => `${r.price} ₴`).join(', ')}${rawImport.filter(r => r.price > 0).length > 3 ? '…' : ''}`
+              : 'Ціни у файлі не визначені'}
+          </div>
+
+          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
+            Яку ціну використовувати?
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '20px' }}>
+            {([
+              { value: 'file', label: 'Ціну з файлу', desc: rawImport.filter(r => r.price > 0).length > 0 ? 'Завантажити ціни як закупочні' : 'У файлі немає цін — використає бази' },
+              { value: 'last', label: 'Останню закупочну з бази', desc: 'Ігнорувати ціни з файлу' },
+            ] as { value: 'file' | 'last'; label: string; desc: string }[]).map(opt => {
+              const isSelected = priceMode === opt.value;
+              return (
+                <button key={opt.value} type="button" onClick={() => setPriceMode(opt.value)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', border: `1.5px solid ${isSelected ? '#1E3A5F' : 'var(--border)'}`, background: isSelected ? '#EFF4FF' : 'var(--bg-soft)' }}>
+                  <div style={{ width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${isSelected ? '#1E3A5F' : '#CBD5E1'}`, background: isSelected ? '#1E3A5F' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {isSelected && <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#fff' }} />}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{opt.label}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{opt.desc}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={() => setRawImport(null)}
+              style={{ flex: 1, height: '38px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
+              Скасувати
+            </button>
+            <button onClick={confirmImport} disabled={parsing}
+              style={{ flex: 2, height: '38px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', opacity: parsing ? 0.7 : 1 }}>
+              {parsing ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : null}
+              Завантажити
+            </button>
+          </div>
+        </div>
+      </div>
     )}
 
     {/* Side panel ЛІВОРУЧ — після sidebar (220px) */}
