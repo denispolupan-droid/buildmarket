@@ -30,7 +30,7 @@ type PO = {
 const STATUS_STEPS = [
   { key: 'ordered',               label: 'Проведено',                  icon: '📋' },
   { key: 'sent',                  label: 'Відправлено постачальнику',   icon: '📤' },
-  { key: 'confirmed_by_supplier', label: 'Підтверджено постачальником', icon: '✅' },
+  { key: 'confirmed_by_supplier', label: 'Очікуємо підтвердження',     icon: '⏳' },
   { key: 'received',              label: 'Товар отримано',              icon: '📦' },
 ];
 
