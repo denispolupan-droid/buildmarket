@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronUp, LayoutList, SlidersHorizontal } from 'lucide-react';
+import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2 } from 'lucide-react';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import Link from 'next/link';
 import ProductImage from '../components/ProductImage';
@@ -97,6 +97,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const [inStockOnly,   setInStockOnly]   = useState(false);
   const [saleOnly,      setSaleOnly]      = useState(initialSaleOnly);
   const [visibleCount,  setVisibleCount]  = useState(50);
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [expandedCats, setExpandedCats]  = useState<Set<string>>(() => {
     if (!initialCategory) return new Set<string>();
     const expanded = new Set<string>();
@@ -545,21 +546,155 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   <Upload size={14} strokeWidth={2} />
                   Завантажити Excel
                 </button>
+                <div className="catalog-view-toggle">
+                  <button
+                    className={'catalog-view-btn' + (viewMode === 'table' ? ' active' : '')}
+                    title="Таблиця"
+                    onClick={() => setViewMode('table')}
+                  >
+                    <Table2 size={15} strokeWidth={2} />
+                  </button>
+                  <button
+                    className={'catalog-view-btn' + (viewMode === 'grid' ? ' active' : '')}
+                    title="Карточки"
+                    onClick={() => setViewMode('grid')}
+                  >
+                    <LayoutGrid size={15} strokeWidth={2} />
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Search */}
-            <SearchAutocomplete
-              value={search}
-              onChange={setSearch}
-              placeholder="Пошук за назвою, артикулом, брендом..."
-              wrapperClassName="search-bar"
-              iconClassName="search-icon"
-            />
+            {/* Sticky search + category pills */}
+            <div className="catalog-sticky-bar">
+              <SearchAutocomplete
+                value={search}
+                onChange={setSearch}
+                placeholder="Пошук за назвою, артикулом, брендом..."
+                wrapperClassName="search-bar"
+                iconClassName="search-icon"
+              />
+              <div className="catalog-cats-pills">
+                <button
+                  className={'catalog-cat-pill' + (!selCat ? ' active' : '')}
+                  onClick={() => { setSelCat(''); router.replace('?', { scroll: false } as never); setVisibleCount(50); }}
+                >
+                  Всі категорії
+                </button>
+                {parentCats.map(cat => {
+                  const isActive = selCat === cat.slug || (childrenOf[cat.slug] ?? []).some(c => c.slug === selCat);
+                  return (
+                    <button
+                      key={cat.slug}
+                      className={'catalog-cat-pill' + (isActive ? ' active' : '')}
+                      onClick={() => {
+                        const next = isActive ? '' : cat.slug;
+                        setSelCat(next);
+                        router.replace(next ? `?category=${next}` : '?', { scroll: false } as never);
+                        setExpandedCats(new Set(next ? [next] : []));
+                        setVisibleCount(50);
+                        if (next) setTimeout(() => scrollCatToTop(next), 500);
+                      }}
+                    >
+                      {cat.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
+
+            {/* Grid view */}
+            {viewMode === 'grid' && (
+              filtered.length === 0 ? (
+                <div className="product-table-wrap"><div className="empty-state"><h3>Нічого не знайдено</h3><p>Спробуйте змінити фільтри або пошуковий запит</p></div></div>
+              ) : (
+                <>
+                  <div className="catalog-grid">
+                    {filtered.slice(0, visibleCount).map(p => {
+                      const priceUnit = p.stock?.price_unit ?? 0;
+                      const priceOld  = p.stock?.price_old  ?? null;
+                      const stockQty  = p.stock?.stock_qty  ?? 0;
+                      const inStock   = p.stock?.stock_status === 'in_stock' || stockQty >= 1;
+                      const isSale    = priceOld != null && priceUnit > 0 && priceUnit < priceOld;
+                      const qty       = getQty(p.sku, 1);
+                      return (
+                        <div key={p.sku} className="catalog-card">
+                          <Link href={`/product/${p.sku}`} className="catalog-card__img-wrap">
+                            {isSale && <span className="catalog-card__badge">АКЦІЯ</span>}
+                            <ProductImage
+                              brand={p.brand} nl1={p.nl1 ?? ''} nl2={p.nl2 ?? undefined}
+                              volume={p.volume ?? ''} bc={p.bc} ac={p.ac} type={p.img_type}
+                              imageUrl={p.image ?? undefined}
+                            />
+                          </Link>
+                          <div className="catalog-card__body">
+                            <Link href={`/product/${p.sku}`} className="catalog-card__name">{p.name}</Link>
+                            <div className="catalog-card__meta">
+                              <span>{p.brand}</span>
+                              {p.volume && <span className="catalog-card__vol">{p.volume}</span>}
+                              <span>Арт. {p.sku}</span>
+                            </div>
+                            <div className="catalog-card__bottom">
+                            <div className="catalog-card__bottom-left">
+                              <span className={'catalog-card__stock' + (inStock ? '' : ' out')}>
+                                <span className="catalog-card__dot" />
+                                {inStock ? 'В наявності' : 'Немає'}
+                              </span>
+                              {priceUnit > 0 ? (
+                                <div className="catalog-card__price">
+                                  {isSale && <span className="catalog-card__price-old">{Number(priceOld).toFixed(2)} грн</span>}
+                                  <span>{Number(priceUnit).toFixed(2)} <em>грн</em></span>
+                                </div>
+                              ) : (
+                                <div className="catalog-card__price-na">За запитом</div>
+                              )}
+                              <div className="catalog-card__pack">уп. {p.pack_qty} шт</div>
+                            </div>
+                            <div className="catalog-card__actions">
+                              <input
+                                className="qty-input"
+                                type="number" min={1}
+                                value={getInputVal(p.sku, 1)}
+                                onChange={e => setInputVals(prev => ({ ...prev, [p.sku]: e.target.value }))}
+                                onBlur={() => commitInputVal(p.sku, 1)}
+                                onClick={e => e.preventDefault()}
+                              />
+                              <button
+                                className={'action-icon-btn primary' + (added[p.sku] ? ' added' : '')}
+                                disabled={!inStock}
+                                onClick={e => { e.preventDefault(); handleAddToCart(p, qty); }}
+                                style={!inStock ? { opacity: 0.4 } : undefined}
+                              >
+                                {added[p.sku] ? <Check size={14} strokeWidth={2.5} /> : <Plus size={14} strokeWidth={2.5} />}
+                              </button>
+                              <button
+                                className="action-icon-btn"
+                                onClick={() => toggle(p.sku)}
+                                style={{ color: isLiked(p.sku) ? '#EF4444' : undefined, background: isLiked(p.sku) ? '#FEF2F2' : undefined, borderColor: isLiked(p.sku) ? '#FECACA' : undefined }}
+                              >
+                                <Heart size={13} strokeWidth={2} fill={isLiked(p.sku) ? '#EF4444' : 'none'} />
+                              </button>
+                            </div>
+                          </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {filtered.length > visibleCount && (
+                    <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                      <button onClick={() => setVisibleCount(v => v + 50)} style={{ height: '48px', padding: '0 32px', borderRadius: '12px', background: '#1E3A5F', color: '#fff', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+                        Показати більше ({filtered.length - visibleCount} залишилось)
+                      </button>
+                    </div>
+                  )}
+                </>
+              )
+            )}
 
             {/* Table */}
-            {filtered.length === 0 ? (
+            {viewMode === 'table' && (filtered.length === 0 ? (
               <div className="product-table-wrap">
                 <div className="empty-state">
                   <h3>Нічого не знайдено</h3>
@@ -703,9 +838,9 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   </tbody>
                 </table>
               </div>
-            )}
+            ))}
 
-            {filtered.length > visibleCount && (
+            {viewMode === 'table' && filtered.length > visibleCount && (
               <div style={{ textAlign: 'center', padding: '32px 0' }}>
                 <button
                   onClick={() => setVisibleCount(v => v + 50)}
