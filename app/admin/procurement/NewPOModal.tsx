@@ -44,33 +44,85 @@ function parseExcel(buffer: ArrayBuffer): { sku: string; name: string; qty: numb
   const ws   = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, defval: '' }) as string[][];
 
-  if (rows.length < 2) return [];
+  if (rows.length < 1) return [];
 
-  // Find header row (first row with at least 2 non-empty cells)
-  let headerIdx = 0;
-  for (let i = 0; i < Math.min(5, rows.length); i++) {
+  // Find first row with at least 2 non-empty cells
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(8, rows.length); i++) {
     if (rows[i].filter(Boolean).length >= 2) { headerIdx = i; break; }
   }
+  if (headerIdx < 0) return [];
 
   const headers = rows[headerIdx].map(String);
-  const skuCol  = detectCol(headers, ['sku','код','арт','code','article']);
-  const nameCol = detectCol(headers, ['назв','name','товар','найменув','опис','description']);
-  const qtyCol  = detectCol(headers, ['кіл','qty','кол','количество','amount','count']);
-  const priceCol= detectCol(headers, ['цін','price','ціна','вартість','cost','прайс']);
+  let skuCol   = detectCol(headers, ['sku','код','арт','code','article']);
+  let nameCol  = detectCol(headers, ['назв','name','товар','найменув','опис','description']);
+  let qtyCol   = detectCol(headers, ['кіл','qty','кол','количество','amount','count']);
+  let priceCol = detectCol(headers, ['цін','price','ціна','вартість','cost','прайс']);
+  let dataStart = headerIdx + 1;
+
+  // Fallback: no header keywords found → file has no header row, detect columns by content
+  if (skuCol < 0 && nameCol < 0) {
+    dataStart = headerIdx; // the "header" row is actually data
+    const sample = rows.slice(headerIdx, Math.min(headerIdx + 6, rows.length));
+    const colCount = Math.max(...sample.map(r => r.length));
+
+    let bestSkuCol = -1, bestNameCol = -1, bestNameLen = 0;
+    const numCols: { col: number; avg: number }[] = [];
+
+    // Strict number check: Number() rejects "2109-016" unlike parseFloat which gives 2109
+    const isStrictNum = (v: string) => !isNaN(Number(v.replace(/\s/g, '').replace(',', '.'))) && v.trim() !== '';
+
+    for (let c = 0; c < colCount; c++) {
+      const vals = sample.map(r => String(r[c] ?? '')).filter(Boolean);
+      if (!vals.length) continue;
+      if (vals.every(isStrictNum)) {
+        const numVals = vals.map(v => Number(v.replace(/\s/g, '').replace(',', '.')));
+        numCols.push({ col: c, avg: numVals.reduce((s, n) => s + n, 0) / numVals.length });
+      } else {
+        const avgLen = vals.reduce((s, v) => s + v.length, 0) / vals.length;
+        // SKU pattern: short, contains both digits and a separator
+        const looksLikeSku = vals.every(v => v.length < 20 && /\d/.test(v) && /[-\/]/.test(v));
+        if (looksLikeSku && bestSkuCol < 0) {
+          bestSkuCol = c;
+        } else if (avgLen > bestNameLen) {
+          bestNameLen = avgLen;
+          bestNameCol = c;
+        }
+      }
+    }
+
+    // If no SKU by pattern, use first short non-number non-name col
+    if (bestSkuCol < 0) {
+      for (let c = 0; c < colCount; c++) {
+        if (c === bestNameCol) continue;
+        const vals = sample.map(r => String(r[c] ?? '')).filter(Boolean);
+        if (vals.every(isStrictNum)) continue;
+        bestSkuCol = c;
+        break;
+      }
+    }
+
+    skuCol  = bestSkuCol;
+    nameCol = bestNameCol;
+    // Sort by avg: smallest = qty, next = price, rest = totals (ignored)
+    numCols.sort((a, b) => a.avg - b.avg);
+    qtyCol   = numCols.length >= 2 ? numCols[0].col : -1;
+    priceCol = numCols.length >= 2 ? numCols[1].col : (numCols[0]?.col ?? -1);
+  }
 
   const result: { sku: string; name: string; qty: number; price: number }[] = [];
 
-  for (let i = headerIdx + 1; i < rows.length; i++) {
+  for (let i = dataStart; i < rows.length; i++) {
     const row = rows[i];
     if (!row.some(Boolean)) continue;
 
     const sku   = skuCol  >= 0 ? String(row[skuCol]  ?? '').trim() : '';
     const name  = nameCol >= 0 ? String(row[nameCol] ?? '').trim() : '';
-    const qty   = qtyCol  >= 0 ? parseFloat(String(row[qtyCol]).replace(',', '.')) : 0;
-    const price = priceCol>= 0 ? parseFloat(String(row[priceCol]).replace(',', '.')) : 0;
+    const qty   = qtyCol  >= 0 ? parseFloat(String(row[qtyCol]  ?? '').replace(',', '.')) : 1;
+    const price = priceCol>= 0 ? parseFloat(String(row[priceCol] ?? '').replace(',', '.')) : 0;
 
     if (!sku && !name) continue;
-    if (qty <= 0) continue;
+    if (qtyCol >= 0 && (isNaN(qty) || qty <= 0)) continue;
 
     result.push({ sku, name, qty: isNaN(qty) ? 1 : qty, price: isNaN(price) ? 0 : price });
   }
