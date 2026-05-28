@@ -42,9 +42,12 @@ type Order = {
   payment_confirmed:  boolean;
   callback_done:      boolean;
   supplier_sent_at:   string | null;
-  supplier_confirmed: boolean;
   channel_code:       string | null;
   fulfillment_mode:   string | null;
+  confirmed_at:       string | null;
+  shipped_at:         string | null;
+  delivered_at:       string | null;
+  cancelled_at:       string | null;
   items: OrderItem[];
 };
 
@@ -471,7 +474,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
     });
   }
 
-  async function toggleFlag(id: string, field: 'payment_confirmed' | 'callback_done' | 'supplier_confirmed', value: boolean) {
+  async function toggleFlag(id: string, field: 'payment_confirmed' | 'callback_done', value: boolean) {
     await fetch(`/api/admin/orders/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -807,11 +810,19 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                     </span>
                   </div>
 
-                  {/* Канал */}
-                  <div style={{ width: '56px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '3px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 6px', borderRadius: '20px', color: channel.color, background: channel.bg, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {/* Канал + тип відправки */}
+                  <div style={{ width: '84px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '3px', overflow: 'hidden' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 6px', borderRadius: '20px', color: channel.color, background: channel.bg, flexShrink: 0 }}>
                       {channel.label}
                     </span>
+                    {order.fulfillment_mode && (
+                      <span title={order.fulfillment_mode === 'own' ? 'Відправка зі складу' : order.fulfillment_mode === 'supplier' ? 'Відправка через постачальника' : 'Змішана відправка'}
+                        style={{ fontSize: '10px', fontWeight: 700, padding: '1px 5px', borderRadius: '8px', flexShrink: 0,
+                          color:      order.fulfillment_mode === 'own' ? '#15803D' : order.fulfillment_mode === 'supplier' ? '#1D4ED8' : '#7C3AED',
+                          background: order.fulfillment_mode === 'own' ? '#DCFCE7' : order.fulfillment_mode === 'supplier' ? '#DBEAFE' : '#EDE9FE' }}>
+                        {order.fulfillment_mode === 'own' ? 'Склад' : order.fulfillment_mode === 'mixed' ? 'Mix' : 'Пост.'}
+                      </span>
+                    )}
                     {order.supplier_sent_at && (
                       <span title="Надіслано постачальнику"
                         style={{ width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0,
@@ -945,6 +956,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                   <th style={{ textAlign: 'left', padding: '4px 0', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Назва</th>
                                   <th style={{ textAlign: 'center', padding: '4px 6px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '40px', whiteSpace: 'nowrap' }}>К-сть</th>
+                                  <th style={{ textAlign: 'right', padding: '4px 6px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '60px', whiteSpace: 'nowrap' }}>Ціна</th>
                                   <th style={{ textAlign: 'right', padding: '4px 0', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '64px' }}>Сума</th>
                                   <th style={{ textAlign: 'right', padding: '4px 0 4px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '90px' }}>Джерело</th>
                                 </tr>
@@ -978,6 +990,9 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                                           </button>{item.name}
                                         </td>
                                         <td style={{ padding: '5px 6px', color: 'var(--text-secondary)', textAlign: 'center' }}>{item.qty}</td>
+                                        <td style={{ padding: '5px 6px', textAlign: 'right', color: 'var(--text-muted)', fontSize: '11px' }}>
+                                          {item.is_bonus ? '' : `${item.price.toFixed(0)} ₴`}
+                                        </td>
                                         <td style={{ padding: '5px 0', textAlign: 'right', fontWeight: 500 }}>
                                           {item.is_bonus
                                             ? <span style={{ color: '#15803D', fontSize: '11px', fontWeight: 700, background: '#F0FDF4', padding: '1px 6px', borderRadius: '4px' }}>🎁 Бонус</span>
@@ -1398,6 +1413,45 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                     })()}
 
                   </div>
+
+                  {/* ── Журнал подій ── */}
+                  {(() => {
+                    const evs: { icon: string; label: string; at: string | null }[] = [
+                      { icon: '🛒', label: 'Оформлено',          at: order.created_at },
+                      { icon: '✅', label: 'Підтверджено',       at: order.confirmed_at },
+                      { icon: '📧', label: 'Постачальнику',      at: order.supplier_sent_at },
+                      { icon: '📦', label: 'Відправлено',        at: order.shipped_at },
+                      { icon: '🏠', label: 'Доставлено',         at: order.delivered_at },
+                      { icon: '❌', label: 'Скасовано',          at: order.cancelled_at },
+                    ].filter(e => e.at !== null)
+                     .sort((a, b) => new Date(a.at!).getTime() - new Date(b.at!).getTime());
+                    if (evs.length === 0) return null;
+                    return (
+                      <div style={{ borderTop: '1px solid var(--border-light)', padding: '10px 16px' }}>
+                        <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+                          Журнал подій
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: '4px' }}>
+                          {evs.map((ev, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '8px', padding: '4px 9px', minWidth: '70px' }}>
+                                <div style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                  <span>{ev.icon}</span>
+                                  <span style={{ fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{ev.label}</span>
+                                </div>
+                                <span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                                  {new Date(ev.at!).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              {i < evs.length - 1 && (
+                                <span style={{ color: 'var(--text-muted)', fontSize: '12px', lineHeight: 1 }}>→</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                   </>
                 )}
               </div>

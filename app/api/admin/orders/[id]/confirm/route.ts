@@ -52,8 +52,10 @@ export async function POST(
   const expiresAt = computeExpiresAt(ttlDays);
 
   // ── Supplier: чиста відправка, без складських операцій ───────────────────────
+  const confirmedAt = new Date().toISOString();
+
   if (fulfillment_mode === 'supplier') {
-    await db.from('orders').update({ status: 'confirmed', fulfillment_mode }).eq('id', id);
+    await db.from('orders').update({ status: 'confirmed', fulfillment_mode, confirmed_at: confirmedAt }).eq('id', id);
 
   // ── Own: резервуємо весь товар зі свого складу ────────────────────────────────
   } else if (fulfillment_mode === 'own') {
@@ -100,7 +102,7 @@ export async function POST(
       );
     }
 
-    await db.from('orders').update({ status: 'confirmed', fulfillment_mode }).eq('id', id);
+    await db.from('orders').update({ status: 'confirmed', fulfillment_mode, confirmed_at: confirmedAt }).eq('id', id);
 
   // ── Mixed: резервуємо своє + purchase_order для постачальника ────────────────
   } else {
@@ -171,7 +173,7 @@ export async function POST(
       }
     }
 
-    await db.from('orders').update({ status: newStatus, fulfillment_mode }).eq('id', id);
+    await db.from('orders').update({ status: newStatus, fulfillment_mode, confirmed_at: confirmedAt }).eq('id', id);
   }
 
   // Telegram (best-effort, не впливає на результат)

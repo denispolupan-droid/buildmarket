@@ -27,6 +27,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
     update.status = status;
+    const now = new Date().toISOString();
+    if (status === 'shipped')   update.shipped_at   = now;
+    if (status === 'delivered') update.delivered_at = now;
+    if (status === 'cancelled') update.cancelled_at = now;
   }
 
   if (tracking_number !== undefined) update.tracking_number = tracking_number;
