@@ -89,10 +89,7 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Пан
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Store size={20} color="#3DBFB8" />
           <div>
-            <div style={{ fontSize: '14px', fontWeight: 800, color: '#fff', letterSpacing: '0.02em' }}>
-              FIXLINE
-            </div>
-            <div style={{ fontSize: '11px', color: 'rgba(61,191,184,0.6)', marginTop: '1px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '0.01em' }}>
               {userLabel}
             </div>
           </div>

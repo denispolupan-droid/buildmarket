@@ -152,6 +152,21 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
         </Link>
       </div>
 
+      {doc.status === 'cancelled' && (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 18px', marginBottom: '16px', background: '#FEF2F2', border: '1.5px solid #FCA5A5', borderRadius: '10px' }}>
+          <span style={{ fontSize: '18px', flexShrink: 0 }}>🚫</span>
+          <div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#DC2626' }}>Документ скасовано</div>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {typeof (doc.meta as any)?.cancel_reason === 'string' && (
+              <div style={{ fontSize: '12px', color: '#DC2626', marginTop: '4px', fontStyle: 'italic' }}>
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                Причина: {(doc.meta as any).cancel_reason}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {doc.notes && (
         <div style={{ padding: '10px 14px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
           {doc.notes}
