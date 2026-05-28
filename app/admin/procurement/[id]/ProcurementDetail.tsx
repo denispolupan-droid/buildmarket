@@ -36,10 +36,10 @@ const STATUS_STEPS = [
 
 // Маппінг всіх статусів на індекс кроку в прогрес-барі
 function statusToStep(status: string): number {
-  if (['paid', 'received', 'partially_received'].includes(status)) return 3;
-  if (['confirmed_by_supplier', 'invoiced'].includes(status))      return 2;
-  if (status === 'sent')                                           return 1;
-  return 0; // 'ordered', '', null → "Проведено"
+  if (['received', 'partially_received'].includes(status))    return 3;
+  if (status === 'confirmed_by_supplier')                     return 2;
+  if (status === 'sent')                                      return 1;
+  return 0; // 'ordered', '', null, 'paid', 'invoiced' → "Проведено"
 }
 
 const inp: React.CSSProperties = { height: '36px', padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', color: 'var(--text-primary)', background: 'var(--bg-soft)', width: '100%' };
@@ -58,7 +58,19 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
   const [receiving,     setReceiving]     = useState(false);
 
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [newStatus,      setNewStatus]      = useState(po.procurement_status ?? '');
+  // Статус доставки — не включає стани оплати ('paid'/'invoiced')
+  const _deliveryStatus = ['paid', 'invoiced'].includes(po.procurement_status ?? '')
+    ? ((po.meta?.pre_payment_status as string) ?? '')
+    : (po.procurement_status ?? '');
+  const [newStatus, setNewStatus] = useState(_deliveryStatus);
+
+  // Оплата — окремий стан, не впливає на прогрес-бар доставки
+  const [isPaid,      setIsPaid]      = useState(po.procurement_status === 'paid'     || po.meta?.is_paid === true);
+  const [isInvoiced,  setIsInvoiced]  = useState(po.procurement_status === 'invoiced' || po.meta?.payment_status === 'invoiced');
+
+  const [expectedDate,     setExpectedDate]     = useState(po.expected_date ?? '');
+  const [editingExpDate,   setEditingExpDate]   = useState(false);
+  const [savingExpDate,    setSavingExpDate]    = useState(false);
 
   const [invoiceNum,    setInvoiceNum]    = useState(po.supplier_invoice_number ?? '');
   const [invoiceDate,   setInvoiceDate]   = useState(po.supplier_invoice_date ?? '');
@@ -133,6 +145,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Помилка відправки'); return; }
       setSuccess('✅ Замовлення відправлено постачальнику');
+      setNewStatus('sent');
       setShowSendModal(false);
     } catch { setError('Мережева помилка'); }
     finally { setSendingMail(false); }
@@ -155,8 +168,9 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
   const [editingIban,   setEditingIban]   = useState(false);
   const [ibanDraft,     setIbanDraft]     = useState({ iban: '', legal_name: '', edrpou: '', bank_name: '' });
   const [savingIban,    setSavingIban]    = useState(false);
-  // Вважаємо оплату збереженою якщо: статус paid/invoiced/received АБО є збережений режим в meta
-  const _paymentAlreadySet = ['paid', 'invoiced', 'received'].includes(po.procurement_status ?? '')
+  // Вважаємо оплату збереженою якщо: є факт оплати або відстрочка
+  const _paymentAlreadySet = ['paid', 'invoiced'].includes(po.procurement_status ?? '')
+    || po.meta?.is_paid === true || po.meta?.payment_status === 'invoiced'
     || !!po.meta?.payment_mode;
   const [paymentSaved,  setPaymentSaved]  = useState(_paymentAlreadySet);
   const [editingPayment,setEditingPayment]= useState(!_paymentAlreadySet);
@@ -229,21 +243,23 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showActionsMenu]);
 
-  useEffect(() => {
-    if (!showSendModal || !po.supplier_id) return;
+  async function openSendModal() {
+    if (sendContactsLoading) return;
     setSendContactsLoading(true);
-    fetch(`/api/admin/suppliers/${po.supplier_id}`)
-      .then(r => r.json())
-      .then(d => {
+    setSendContacts([]);
+    setSendEmail(po.supplier_email ?? '');
+    try {
+      if (po.supplier_id) {
+        const d = await fetch(`/api/admin/suppliers/${po.supplier_id}`).then(r => r.json());
         const contacts: ContactEntry[] = d.contacts ?? [];
         setSendContacts(contacts);
         const first = contacts.find(c => c.email?.includes('@'));
         if (first) setSendEmail(first.email);
-      })
-      .catch(() => {})
-      .finally(() => setSendContactsLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSendModal]);
+      }
+    } catch {}
+    setSendContactsLoading(false);
+    setShowSendModal(true);
+  }
 
   async function handleInvoiceUpload(file: File) {
     setUploadingInvoice(true);
@@ -345,18 +361,19 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
           procurement_status: 'paid',
           payment_amount:     parseFloat(payAmount),
           payment_date:       payDate,
+          payment_mode:       payMode,
         }),
       });
       if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Помилка'); return; }
       setSuccess('✅ Оплату зафіксовано в леджері');
-      setNewStatus('paid');
+      setIsPaid(true);      // не чіпаємо newStatus — прогрес-бар доставки не змінюється
       setPaymentSaved(true);
       setEditingPayment(false);
     } catch { setError('Мережева помилка'); }
     finally { setPaying(false); }
   }
 
-  const activeStatus = newStatus || po.procurement_status || '';
+  const activeStatus = newStatus; // 'paid'/'invoiced' відфільтровані при ініціалізації
 
   const isCancelled = po.status === 'cancelled';
 
@@ -391,18 +408,59 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
         )}
         <div style={{ flex: 1 }}>
           <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{po.doc_number}</h1>
-          <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-            {po.supplier_name} · {new Date(po.doc_date).toLocaleDateString('uk-UA')}
-            {po.expected_date && ` · Очікуємо: ${new Date(po.expected_date).toLocaleDateString('uk-UA')}`}
+          <div style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
+            <span>{po.supplier_name} · {new Date(po.doc_date).toLocaleDateString('uk-UA')}</span>
+            {!isCancelled && (editingExpDate ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <span>· Очікуємо:</span>
+                <input
+                  type="date"
+                  autoFocus
+                  min="2020-01-01"
+                  max="2099-12-31"
+                  value={expectedDate}
+                  onChange={e => setExpectedDate(e.target.value)}
+                  onBlur={async () => {
+                    setEditingExpDate(false);
+                    const year = expectedDate ? new Date(expectedDate).getFullYear() : 0;
+                    const valid = expectedDate && year >= 2020 && year <= 2099;
+                    if (!valid || expectedDate === (po.expected_date ?? '')) {
+                      setExpectedDate(po.expected_date ?? '');
+                      return;
+                    }
+                    setSavingExpDate(true);
+                    await fetch(`/api/admin/procurement/${po.id}/status`, {
+                      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ expected_date: expectedDate }),
+                    }).catch(() => {});
+                    setSavingExpDate(false);
+                  }}
+                  onKeyDown={e => { if (e.key === 'Escape') { setExpectedDate(po.expected_date ?? ''); setEditingExpDate(false); } }}
+                  style={{ height: '22px', padding: '0 6px', border: '1.5px solid var(--brand-blue)', borderRadius: '6px', fontSize: '12px', color: 'var(--text-primary)', background: 'var(--bg-soft)', outline: 'none' }}
+                />
+              </span>
+            ) : (
+              <button
+                onClick={() => setEditingExpDate(true)}
+                title="Змінити дату очікування"
+                style={{ background: 'none', border: 'none', padding: '1px 5px', borderRadius: '5px', cursor: 'pointer', fontSize: '13px', color: savingExpDate ? 'var(--text-muted)' : '#1E3A5F', fontWeight: 500, textDecoration: 'underline dotted', textUnderlineOffset: '2px' }}>
+                {savingExpDate ? '...' : expectedDate ? `· Очікуємо: ${new Date(expectedDate).toLocaleDateString('uk-UA')}` : '· + дата поставки'}
+              </button>
+            ))}
+            {isCancelled && expectedDate && (
+              <span>· Очікуємо: {new Date(expectedDate).toLocaleDateString('uk-UA')}</span>
+            )}
           </div>
         </div>
         {/* 1. Відправити постачальнику */}
         {!isCancelled && (
           <button
-            onClick={() => { setSendContactsLoading(true); setSendContacts([]); setSendEmail(po.supplier_email ?? ''); setShowSendModal(true); }}
+            onClick={openSendModal}
+            disabled={sendContactsLoading}
             title="Відправити замовлення постачальнику"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: `1.5px solid ${po.email_sent_at ? '#86EFAC' : 'var(--border)'}`, background: po.email_sent_at ? '#F0FDF4' : 'var(--bg-soft)', color: po.email_sent_at ? '#15803D' : 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
-            <Send size={14} /> {po.email_sent_at ? '✅ Відправлено' : 'Відправити'}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: `1.5px solid ${po.email_sent_at ? '#86EFAC' : 'var(--border)'}`, background: po.email_sent_at ? '#F0FDF4' : 'var(--bg-soft)', color: po.email_sent_at ? '#15803D' : 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: sendContactsLoading ? 'default' : 'pointer', flexShrink: 0, opacity: sendContactsLoading ? 0.7 : 1 }}>
+            {sendContactsLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={14} />}
+            {po.email_sent_at ? '✅ Відправлено' : 'Відправити'}
           </button>
         )}
         {/* 2. Коригування */}
@@ -503,15 +561,15 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
               })}
             </div>
 
-            {/* Badge оплати — окремо від ланцюжка */}
-            {(activeStatus === 'paid' || activeStatus === 'invoiced') && (
+            {/* Badge оплати — окремо від ланцюжка доставки */}
+            {(isPaid || isInvoiced) && (
               <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                {activeStatus === 'paid' && (
+                {isPaid && (
                   <span style={{ fontSize: '12px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '3px 10px', borderRadius: '20px' }}>
                     {payIcon(savedPayMode)} Оплачено
                   </span>
                 )}
-                {activeStatus === 'invoiced' && (
+                {isInvoiced && !isPaid && (
                   <span style={{ fontSize: '12px', fontWeight: 700, color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', padding: '3px 10px', borderRadius: '20px' }}>
                     📅 Відстрочення — не оплачено
                   </span>
@@ -750,7 +808,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
               )}
 
               {/* Статус оплати */}
-              {activeStatus === 'paid' && (
+              {isPaid && (
                 <div style={{ padding: '8px 10px', background: '#F0FDF4', borderRadius: '8px', border: '1px solid #BBF7D0', fontSize: '12px', fontWeight: 700, color: '#15803D', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {payIcon(savedPayMode)} Оплачено
                 </div>
@@ -763,7 +821,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
           </div>
 
           {/* Payment */}
-          <div style={{ background: 'var(--bg-card)', border: `1px solid ${activeStatus === 'paid' ? '#86EFAC' : 'var(--border)'}`, borderRadius: '12px', padding: '12px 16px' }}>
+          <div style={{ background: 'var(--bg-card)', border: `1px solid ${isPaid ? '#86EFAC' : 'var(--border)'}`, borderRadius: '12px', padding: '12px 16px' }}>
             <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '7px' }}>
               <Banknote size={14} /> Оплата постачальнику
             </div>
@@ -783,9 +841,9 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
               </div>
             )}
 
-            {activeStatus === 'paid' ? (
+            {isPaid && !editingPayment ? (
               <div style={{ padding: '10px 12px', background: '#F0FDF4', borderRadius: '8px', fontSize: '13px', color: '#15803D', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <CheckCircle size={16} /> Оплачено
+                <CheckCircle size={16} /> Оплачено {payMode === 'cash' ? '(готівка)' : payMode === 'transfer' ? '(переказ)' : ''}
               </div>
             ) : paymentSaved && !editingPayment ? (
               /* ── Режим перегляду оплати ── */
@@ -868,19 +926,16 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                       <>
                         <div><label style={lbl}>Сума, ₴</label><input style={inp} type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" /></div>
                         <div><label style={lbl}>Дата оплати</label><input style={inp} type="date" value={payDate} onChange={e => setPayDate(e.target.value)} /></div>
-                        <div style={{ display: 'flex', gap: '6px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <button onClick={copyPaymentDetails}
-                            style={{ flex: 1, height: '36px', borderRadius: '8px', border: '1px solid var(--border)', background: copied ? '#F0FDF4' : 'var(--bg-soft)', color: copied ? '#15803D' : 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-                            {copied ? <><Check size={12} /> Скопійовано</> : <><Copy size={12} /> Копіювати реквізити</>}
+                            style={{ width: '100%', height: '38px', borderRadius: '8px', border: `1px solid ${copied ? '#86EFAC' : 'var(--border)'}`, background: copied ? '#F0FDF4' : 'var(--bg-soft)', color: copied ? '#15803D' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            {copied ? <><Check size={13} /> Реквізити скопійовано</> : <><Copy size={13} /> Копіювати реквізити</>}
                           </button>
                           <button onClick={() => { if (!payAmount || parseFloat(payAmount) <= 0) { setError('Вкажіть суму'); return; } setPayConfirm(true); }}
                             disabled={paying || !payAmount || parseFloat(payAmount) <= 0}
-                            style={{ flex: 2, height: '36px', borderRadius: '8px', border: 'none', background: !payAmount || parseFloat(payAmount) <= 0 ? '#E2E8F0' : '#15803D', color: !payAmount || parseFloat(payAmount) <= 0 ? '#94A3B8' : '#fff', fontSize: '13px', fontWeight: 700, cursor: !payAmount || parseFloat(payAmount) <= 0 ? 'not-allowed' : 'pointer' }}>
+                            style={{ width: '100%', height: '42px', borderRadius: '8px', border: 'none', background: !payAmount || parseFloat(payAmount) <= 0 ? '#E2E8F0' : '#15803D', color: !payAmount || parseFloat(payAmount) <= 0 ? '#94A3B8' : '#fff', fontSize: '14px', fontWeight: 700, cursor: !payAmount || parseFloat(payAmount) <= 0 ? 'not-allowed' : 'pointer' }}>
                             💳 Підтвердити переказ
                           </button>
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                          Перекажіть кошти через свій інтернет-банкінг і натисніть "Підтвердити"
                         </div>
                       </>
                     )}
@@ -909,10 +964,10 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                           });
                           if (res.ok) {
                             setSuccess(`✅ Відстрочку зафіксовано до ${new Date(deferDate2).toLocaleDateString('uk-UA')}`);
+                            setIsInvoiced(true);  // прогрес-бар доставки не змінюється
                             setPaymentSaved(true);
                             setEditingPayment(false);
                           }
-                          setNewStatus('invoiced');
                         } catch { setError('Помилка'); }
                         finally { setUpdatingStatus(false); }
                       }}
@@ -1038,11 +1093,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
             </div>
 
             {/* Контакти постачальника */}
-            {sendContactsLoading ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '12px' }}>
-                <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Завантаження контактів...
-              </div>
-            ) : sendContacts.length > 0 && (
+            {sendContacts.length > 0 && (
               <div style={{ marginBottom: '12px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
                   Контакти постачальника

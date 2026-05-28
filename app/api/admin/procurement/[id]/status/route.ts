@@ -32,15 +32,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.expected_date)            update.expected_date            = body.expected_date;
 
   // Зберігаємо деталі оплати та скасування в meta
-  if (body.payment_defer_date || body.payment_mode || body.cancel_reason) {
-    const { data: current } = await db.from('acc_documents').select('meta').eq('id', id).single();
+  const isPaymentOp = body.payment_defer_date || body.payment_mode || body.cancel_reason
+    || body.procurement_status === 'paid' || body.procurement_status === 'invoiced';
+  if (isPaymentOp) {
+    const { data: current } = await db.from('acc_documents').select('meta, procurement_status').eq('id', id).single();
     const existingMeta = (current?.meta as Record<string, unknown>) ?? {};
+    const isNewPayment = body.procurement_status === 'paid' || body.procurement_status === 'invoiced';
     update.meta = {
       ...existingMeta,
       ...(body.payment_defer_date ? { payment_defer_date: body.payment_defer_date } : {}),
       ...(body.payment_mode      ? { payment_mode:       body.payment_mode       } : {}),
       ...(body.cancel_reason     ? { cancel_reason:      body.cancel_reason      } : {}),
+      // Зберігаємо статус доставки до оплати, щоб не ламати прогрес-бар
+      ...(isNewPayment ? {
+        pre_payment_status: current?.procurement_status ?? null,
+        is_paid:            body.procurement_status === 'paid',
+        payment_status:     body.procurement_status,
+      } : {}),
     };
+  }
+
+  // Проведення: встановлюємо status = 'confirmed'
+  if (body.procurement_status === 'ordered') {
+    update.status       = 'confirmed';
+    update.confirmed_at = new Date().toISOString();
+    update.confirmed_by = user.email;
   }
 
   // Скасування: також встановлюємо status = 'cancelled' (не тільки procurement_status)

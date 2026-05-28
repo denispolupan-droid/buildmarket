@@ -148,7 +148,12 @@ export async function PUT(
       notes:              body.notes ?? null,
       total_amount:       total,
       total_cost:         total,
-      ...(body.conduct ? { procurement_status: 'ordered' } : {}),
+      ...(body.conduct ? {
+        procurement_status: 'ordered',
+        status:             'confirmed',
+        confirmed_at:       new Date().toISOString(),
+        confirmed_by:       user.email,
+      } : {}),
     })
     .eq('id', id);
 
