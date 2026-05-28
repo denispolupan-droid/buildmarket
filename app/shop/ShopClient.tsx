@@ -64,7 +64,6 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
           />
         </div>
         <div className="shop-card__body">
-          <div className="shop-card__brand">{p.brand}</div>
           <div className="shop-card__name" title={`${p.name}${p.volume && !p.name.includes(p.volume) ? ` ${p.volume}` : ''}`}>
             {p.name}{p.volume && !p.name.includes(p.volume) ? ` ${p.volume}` : ''}
           </div>
@@ -78,18 +77,21 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
               </>);
             })()}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', color: '#94A3B8' }}>Арт. {p.sku}</span>
-            <button
-              onClick={handleCopySku}
-              title="Копіювати артикул"
-              style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: copied ? '#16A34A' : '#CBD5E1', lineHeight: 1, display: 'flex', alignItems: 'center' }}
-            >
-              {copied
-                ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-              }
-            </button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '2px' }}>
+            <span className="shop-card__brand" style={{ margin: 0 }}>{p.brand}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+              <span style={{ fontSize: '11px', color: '#94A3B8' }}>Арт. {p.sku}</span>
+              <button
+                onClick={handleCopySku}
+                title="Копіювати артикул"
+                style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: copied ? '#16A34A' : '#CBD5E1', lineHeight: 1, display: 'flex', alignItems: 'center' }}
+              >
+                {copied
+                  ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                }
+              </button>
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
             <div className={'shop-card__stock' + (inStock ? '' : ' out')}>
@@ -165,6 +167,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const [filterPlasticGroup, setFilterPlasticGroup] = useState('');
   const [inStockOnly,  setInStockOnly]  = useState(false);
   const [visibleCount,  setVisibleCount]  = useState(24);
+  const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'sale'>('default');
   const [catsOpen,      setCatsOpen]      = useState(false);
   const catsOpenRef = useRef(false);
   const [mobilePanel,   setMobilePanel]   = useState<'cats' | 'filters' | null>(null);
@@ -382,6 +385,20 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     return list;
   }, [products, matchingSlugs, saleOnly, filterValues, filterVolume, filterVolumeKg, inStockOnly, search, filterPlasticGroup, isPlasticCat]);
 
+  const sorted = useMemo(() => {
+    if (sortBy === 'default') return filtered;
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'price_asc') return (a.stock?.price_retail ?? 0) - (b.stock?.price_retail ?? 0);
+      if (sortBy === 'price_desc') return (b.stock?.price_retail ?? 0) - (a.stock?.price_retail ?? 0);
+      if (sortBy === 'sale') {
+        const sa = a.stock?.price_retail_old != null ? 1 : 0;
+        const sb = b.stock?.price_retail_old != null ? 1 : 0;
+        return sb - sa;
+      }
+      return 0;
+    });
+  }, [filtered, sortBy]);
+
   const countFor = (slug: string) => {
     const children = (childrenOf[slug] ?? []).map(c => c.slug);
     const slugs = new Set([slug, ...children]);
@@ -558,7 +575,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       </aside>
 
       {/* Main */}
-      <div>
+      <div style={{ minWidth: 0 }}>
         <div className="shop-topbar">
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
             <h1 className="shop-title">{saleOnly ? 'Акційні товари' : 'Магазин'}</h1>
@@ -600,22 +617,62 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             >
               🔥 Акція
             </button>
+            <select
+              className="shop-sort-select"
+              value={sortBy}
+              onChange={e => { setSortBy(e.target.value as typeof sortBy); setVisibleCount(24); }}
+            >
+              <option value="default">За замовчуванням</option>
+              <option value="price_asc">Ціна: від низької</option>
+              <option value="price_desc">Ціна: від високої</option>
+              <option value="sale">Спочатку акційні</option>
+            </select>
           </div>
         </div>
 
-        <SearchAutocomplete
-          value={search}
-          onChange={setSearch}
-          placeholder="Пошук за назвою, артикулом, брендом..."
-          wrapperClassName="shop-search"
-          iconClassName="shop-search__icon"
-        />
+        <div className="shop-sticky-bar">
+          <SearchAutocomplete
+            value={search}
+            onChange={setSearch}
+            placeholder="Пошук за назвою, артикулом, брендом..."
+            wrapperClassName="shop-search"
+            iconClassName="shop-search__icon"
+          />
+
+          <div className="shop-cats-pills">
+          <button
+            className={'shop-cat-pill' + (!selCat ? ' active' : '')}
+            onClick={() => { selectCat(null); setExpandedCats(new Set()); }}
+          >
+            Всі категорії
+          </button>
+          {parentCats.map(cat => {
+            const isActive = selCat === cat.slug || (childrenOf[cat.slug] ?? []).some(c => c.slug === selCat || (childrenOf[c.slug] ?? []).some(g => g.slug === selCat));
+            return (
+              <button
+                key={cat.slug}
+                className={'shop-cat-pill' + (isActive ? ' active' : '')}
+                onClick={() => {
+                  if (isActive) { selectCat(null); setExpandedCats(new Set()); }
+                  else {
+                    selectCat(cat.slug);
+                    setExpandedCats(new Set([cat.slug]));
+                    setTimeout(() => scrollCatToTop(cat.slug), 500);
+                  }
+                }}
+              >
+                {cat.name}
+              </button>
+            );
+          })}
+          </div>
+        </div>
 
         <div className="shop-grid">
-          {filtered.length === 0 && (
+          {sorted.length === 0 && (
             <div className="shop-empty">Нічого не знайдено</div>
           )}
-          {filtered.slice(0, visibleCount).map(p => {
+          {sorted.slice(0, visibleCount).map(p => {
             const price = p.stock?.price_retail ?? null;
             const priceOld = p.stock?.price_retail_old ?? null;
             const inStock = p.stock?.stock_status === 'in_stock' || (p.stock?.stock_qty ?? 0) >= 1;
@@ -639,7 +696,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           })}
         </div>
 
-        {filtered.length > visibleCount && (
+        {sorted.length > visibleCount && (
           <div style={{ textAlign: 'center', padding: '32px 0' }}>
             <button
               onClick={() => setVisibleCount(v => v + 24)}
@@ -649,7 +706,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                 fontSize: '14px', fontWeight: 700, cursor: 'pointer',
               }}
             >
-              Показати більше ({filtered.length - visibleCount} залишилось)
+              Показати більше ({sorted.length - visibleCount} залишилось)
             </button>
           </div>
         )}

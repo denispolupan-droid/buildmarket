@@ -1,7 +1,7 @@
 export default function ShopLoading() {
   return (
     <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px' }}>
+      <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px 0' }}>
         <nav style={{ marginBottom: '24px', fontSize: '13px', color: 'var(--text-muted)' }}>
           Головна / Магазин
         </nav>

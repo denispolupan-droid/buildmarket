@@ -29,28 +29,38 @@ export default function BackButton({ breadcrumbId }: { breadcrumbId: string }) {
       onClick={() => window.history.back()}
       style={{
         position: 'fixed',
-        top: '64px',
-        left: '4px',
+        top: '74px',
+        left: '16px',
         zIndex: 100,
         display: 'flex',
         alignItems: 'center',
-        gap: '4px',
-        height: '32px',
-        padding: '0 10px',
-        background: 'transparent',
-        border: 'none',
-        fontSize: '14px',
-        fontWeight: 700,
-        color: '#475569',
+        gap: '6px',
+        height: '36px',
+        padding: '0 14px 0 10px',
+        background: 'var(--bg-card, #fff)',
+        border: '1px solid var(--border, #E2E8F0)',
+        borderRadius: '20px',
+        fontSize: '13px',
+        fontWeight: 600,
+        color: 'var(--text-secondary, #475569)',
         cursor: 'pointer',
-        letterSpacing: '-0.2px',
-        textShadow: '0 1px 3px rgba(255,255,255,0.8)',
-        transition: 'color 0.15s',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+        transition: 'box-shadow 0.15s, color 0.15s, transform 0.15s',
       }}
-      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#0F172A'; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#475569'; }}
+      onMouseEnter={e => {
+        const b = e.currentTarget as HTMLButtonElement;
+        b.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
+        b.style.color = 'var(--text-primary, #0F172A)';
+        b.style.transform = 'translateY(-1px)';
+      }}
+      onMouseLeave={e => {
+        const b = e.currentTarget as HTMLButtonElement;
+        b.style.boxShadow = '0 2px 8px rgba(0,0,0,0.10)';
+        b.style.color = 'var(--text-secondary, #475569)';
+        b.style.transform = 'translateY(0)';
+      }}
     >
-      <ArrowLeft size={15} strokeWidth={2.5} />
+      <ArrowLeft size={14} strokeWidth={2.5} />
       Назад
     </button>
   );

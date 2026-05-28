@@ -112,7 +112,7 @@ export default async function ShopBrandPage({ params }: { params: Promise<{ bran
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       {itemListLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }} />}
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 32px 64px 8px' }} className="mobile-pad">
+        <div style={{ margin: '0 auto', padding: '24px 16px 64px' }} className="mobile-pad">
           <nav aria-label="Breadcrumb" style={{ marginBottom: '24px', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Link href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</Link>
             <span>/</span>
