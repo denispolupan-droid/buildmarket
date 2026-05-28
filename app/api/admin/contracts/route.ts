@@ -12,9 +12,27 @@ async function checkAdmin() {
 
 export async function GET() {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  const { data, error } = await db.from('customer_contracts').select('*').order('created_at', { ascending: false });
+
+  const { data: contracts, error } = await db
+    .from('customer_contracts')
+    .select('*')
+    .order('created_at', { ascending: false });
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  // Merge customer_number from customers table
+  const customerIds = [...new Set((contracts ?? []).map(c => c.customer_id as string))].filter(Boolean);
+  if (customerIds.length > 0) {
+    const { data: customers } = await db
+      .from('customers')
+      .select('id, customer_number')
+      .in('id', customerIds);
+    const numMap = new Map((customers ?? []).map(c => [c.id as string, c.customer_number as number | null]));
+    const result = (contracts ?? []).map(c => ({ ...c, customer_number: numMap.get(c.customer_id) ?? null }));
+    return NextResponse.json(result);
+  }
+
+  return NextResponse.json(contracts ?? []);
 }
 
 export async function POST(req: NextRequest) {
@@ -23,11 +41,22 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
 
-  // Автозаповнення customer_name з таблиці customers
+  // Auto-generate contract_number if not provided
+  if (!body.contract_number?.trim()) {
+    const year = new Date().getFullYear();
+    const prefix = `ДГ-${year}-`;
+    const { count } = await db
+      .from('customer_contracts')
+      .select('*', { count: 'exact', head: true })
+      .like('contract_number', `${prefix}%`);
+    body.contract_number = `${prefix}${String((count ?? 0) + 1).padStart(4, '0')}`;
+  }
+
+  // Auto-fill customer_name from customers table
   if (body.customer_id) {
     const { data: cust } = await db
       .from('customers')
-      .select('name, company, legal_name')
+      .select('name, company, legal_name, customer_number')
       .eq('id', body.customer_id)
       .maybeSingle();
     if (cust) {

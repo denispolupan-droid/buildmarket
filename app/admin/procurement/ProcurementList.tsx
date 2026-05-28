@@ -151,10 +151,12 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
     setDeletingDraft(po.id);
     try {
       const res = await fetch(`/api/admin/procurement/${po.id}`, { method: 'DELETE' });
-      if (res.ok) {
-        // Прибираємо з локального стану без перезавантаження
-        window.location.reload();
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`Помилка видалення: ${data.error ?? 'невідома помилка'}`);
+        return;
       }
+      window.location.reload();
     } finally {
       setDeletingDraft(null);
       setDeleteConfirm(null);

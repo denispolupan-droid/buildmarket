@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
     notes?:         string;
     parent_doc_id?: string;   // якщо це додатковий прихід до існуючого PO
     is_receipt?:    boolean;  // створити як прихід (receipt), а не PO
+    conduct?:       boolean;  // одразу провести (procurement_status: 'new')
     lines: { sku: string; qty: number; cost_price: number }[];
   };
 
@@ -99,17 +100,17 @@ export async function POST(req: NextRequest) {
     })),
   });
 
-  // Confirm immediately (purchase_order direction = 'none' — no stock movement)
-  const { createClient } = await import('@supabase/supabase-js');
-  const sc = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-  await sc.from('acc_documents').update({
-    status:              'confirmed',
-    confirmed_at:        new Date().toISOString(),
-    confirmed_by:        user.email,
-    procurement_status:  'draft',
-    total_amount:        body.lines.reduce((s, l) => s + l.qty * l.cost_price, 0),
-    total_cost:          body.lines.reduce((s, l) => s + l.qty * l.cost_price, 0),
+  const total = body.lines.reduce((s, l) => s + l.qty * l.cost_price, 0);
+  const { error: updateErr } = await db.from('acc_documents').update({
+    status:             'confirmed',
+    confirmed_at:       new Date().toISOString(),
+    confirmed_by:       user.email,
+    procurement_status: body.conduct ? 'new' : 'draft',
+    total_amount:       total,
+    total_cost:         total,
   }).eq('id', doc.id);
+
+  if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
 
   return NextResponse.json({ id: doc.id, doc_number: doc.doc_number }, { status: 201 });
 }

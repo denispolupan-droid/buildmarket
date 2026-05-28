@@ -181,8 +181,9 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
           )}
         </div>
         {(lines ?? []).map((line: { sku: string; qty: number; price: number; cost_price: number; sort_order: number; is_bonus?: boolean }, idx: number) => {
-          const originalPrice = originalPriceMap.get(line.sku) ?? Number(line.cost_price ?? line.price ?? 0);
-          const finalPrice    = finalPriceMap.get(line.sku) ?? Number(line.cost_price ?? line.price ?? 0);
+          const costPrice     = line.is_bonus ? 0 : Number(line.cost_price ?? 0);
+          const originalPrice = line.is_bonus ? 0 : (originalPriceMap.get(line.sku) ?? costPrice);
+          const finalPrice    = line.is_bonus ? 0 : (finalPriceMap.get(line.sku) ?? costPrice);
           const lcAdded       = finalPrice - originalPrice;
           return (
             <div key={idx} style={{ display: 'grid', gridTemplateColumns: hasLandedCost ? '110px minmax(0,1fr) 60px 100px 80px 100px 100px' : '120px minmax(0,1fr) 70px 110px 110px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', columnGap: '16px', background: line.is_bonus ? '#FFFBEB' : undefined }}>
@@ -209,8 +210,8 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
                 </>
               ) : (
                 <>
-                  <span style={{ textAlign: 'right', fontSize: '13px', color: 'var(--text-secondary)' }}>{fmt(Number(line.cost_price || line.price || 0))} ₴</span>
-                  <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600 }}>{fmt(line.qty * Number(line.cost_price || line.price || 0))} ₴</span>
+                  <span style={{ textAlign: 'right', fontSize: '13px', color: 'var(--text-secondary)' }}>{fmt(costPrice)} ₴</span>
+                  <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600 }}>{fmt(line.qty * costPrice)} ₴</span>
                 </>
               )}
             </div>

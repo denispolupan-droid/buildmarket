@@ -6,6 +6,7 @@ import { ArrowLeft, X } from 'lucide-react';
 import DocChain from '../../[id]/DocChain';
 import PrintButton from '../../../components/PrintButton';
 import ReceiptActionsMenu from '../../[id]/ReceiptActionsMenu';
+import LandedCostHeaderButton from './LandedCostHeaderButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,6 +95,8 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
         )}
         {doc.parent_doc_id && <DocChain poId={doc.parent_doc_id} />}
         <PrintButton />
+        {/* ── Додаткові витрати — завжди видима кнопка ── */}
+        <LandedCostHeaderButton receiptId={id} hasLC={hasLC} />
         <ReceiptActionsMenu
           receiptId={id}
           hasExistingLC={hasLC}
@@ -136,34 +139,47 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
           <span>Товари</span>
           {hasLC && <span style={{ fontSize: '11px', fontWeight: 600, color: '#7C3AED', background: '#F5F3FF', padding: '2px 10px', borderRadius: '20px' }}>З урахуванням Landed Cost</span>}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: hasLC ? '110px minmax(0,1fr) 60px 100px 80px 100px 100px' : '120px minmax(0,1fr) 70px 110px 110px', padding: '7px 16px', background: 'var(--bg-soft)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', columnGap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: hasLC ? '110px minmax(0,1fr) 60px 100px 80px 100px 110px 100px' : '120px minmax(0,1fr) 70px 110px 110px 110px', padding: '7px 16px', background: 'var(--bg-soft)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', columnGap: '16px' }}>
           <span>Артикул</span><span>Найменування</span><span style={{ textAlign: 'right' }}>К-сть</span>
-          {hasLC ? (<><span style={{ textAlign: 'right' }}>Ціна до</span><span style={{ textAlign: 'center', color: '#7C3AED' }}>+LC</span><span style={{ textAlign: 'right' }}>Ціна після</span><span style={{ textAlign: 'right' }}>Сума</span></>) : (<><span style={{ textAlign: 'right' }}>Ціна</span><span style={{ textAlign: 'right' }}>Сума</span></>)}
+          {hasLC ? (
+            <><span style={{ textAlign: 'right' }}>Ціна до</span><span style={{ textAlign: 'center', color: '#7C3AED' }}>+LC</span><span style={{ textAlign: 'right' }}>Ціна після</span><span style={{ textAlign: 'right' }}>Ціна продажу</span><span style={{ textAlign: 'right' }}>Сума</span></>
+          ) : (
+            <><span style={{ textAlign: 'right' }}>Ціна закупки</span><span style={{ textAlign: 'right' }}>Ціна продажу</span><span style={{ textAlign: 'right' }}>Сума</span></>
+          )}
         </div>
-        {(lines ?? []).map((line: { sku: string; qty: number; cost_price: number }, idx: number) => {
+        {(lines ?? []).map((line: { sku: string; qty: number; price: number; cost_price: number; is_bonus?: boolean }, idx: number) => {
           const origPrice  = originalPriceMap.get(line.sku) ?? Number(line.cost_price ?? 0);
           const finalPrice = finalPriceMap.get(line.sku) ?? Number(line.cost_price ?? 0);
           const lcAdded    = finalPrice - origPrice;
+          const costPrice  = line.is_bonus ? 0 : Number(line.cost_price || 0);
+          const salePrice  = Number(line.price || 0);
           return (
-            <div key={idx} style={{ display: 'grid', gridTemplateColumns: hasLC ? '110px minmax(0,1fr) 60px 100px 80px 100px 100px' : '120px minmax(0,1fr) 70px 110px 110px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', columnGap: '16px' }}>
+            <div key={idx} style={{ display: 'grid', gridTemplateColumns: hasLC ? '110px minmax(0,1fr) 60px 100px 80px 100px 110px 100px' : '120px minmax(0,1fr) 70px 110px 110px 110px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', columnGap: '16px', background: line.is_bonus ? '#FFFBEB' : undefined }}>
               <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-primary)' }}>{line.sku}</span>
               <div style={{ overflow: 'hidden', minWidth: 0 }}>
-                <div style={{ fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nameMap.get(line.sku) || line.sku}</div>
+                <div style={{ fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {nameMap.get(line.sku) || line.sku}
+                  {line.is_bonus && (
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', padding: '1px 6px', borderRadius: '4px', flexShrink: 0 }}>🎁 Бонус</span>
+                  )}
+                </div>
               </div>
               <span style={{ textAlign: 'right', fontSize: '13px' }}>{line.qty} шт</span>
               {hasLC ? (
                 <>
-                  <span style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-secondary)' }}>{fmt(origPrice)} ₴</span>
+                  <span style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-secondary)' }}>{fmt(line.is_bonus ? 0 : origPrice)} ₴</span>
                   <div style={{ textAlign: 'center' }}>
-                    {lcAdded > 0.01 ? <span style={{ fontSize: '11px', fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', padding: '1px 6px', borderRadius: '4px' }}>+{fmt(lcAdded)} ₴</span> : <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>—</span>}
+                    {!line.is_bonus && lcAdded > 0.01 ? <span style={{ fontSize: '11px', fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', padding: '1px 6px', borderRadius: '4px' }}>+{fmt(lcAdded)} ₴</span> : <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>—</span>}
                   </div>
-                  <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{fmt(finalPrice)} ₴</span>
-                  <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600 }}>{fmt(line.qty * finalPrice)} ₴</span>
+                  <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{fmt(line.is_bonus ? 0 : finalPrice)} ₴</span>
+                  <span style={{ textAlign: 'right', fontSize: '13px', color: '#15803D' }}>{salePrice > 0 ? `${fmt(salePrice)} ₴` : '—'}</span>
+                  <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600 }}>{fmt(line.is_bonus ? 0 : line.qty * finalPrice)} ₴</span>
                 </>
               ) : (
                 <>
-                  <span style={{ textAlign: 'right', fontSize: '13px', color: 'var(--text-secondary)' }}>{fmt(Number(line.cost_price || 0))} ₴</span>
-                  <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600 }}>{fmt(line.qty * Number(line.cost_price || 0))} ₴</span>
+                  <span style={{ textAlign: 'right', fontSize: '13px', color: 'var(--text-secondary)' }}>{fmt(costPrice)} ₴</span>
+                  <span style={{ textAlign: 'right', fontSize: '13px', color: '#15803D' }}>{salePrice > 0 ? `${fmt(salePrice)} ₴` : '—'}</span>
+                  <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600 }}>{fmt(line.qty * costPrice)} ₴</span>
                 </>
               )}
             </div>

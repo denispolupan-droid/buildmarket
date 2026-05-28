@@ -28,11 +28,22 @@ type CostLine = { cost_type: string; description: string; amount: string };
 export default function ReceiptLandedCostButton({
   receiptId,
   renderTrigger,
+  open: externalOpen,
+  onClose,
 }: {
   receiptId: string;
   renderTrigger?: (onClick: () => void) => React.ReactNode;
+  open?: boolean;
+  onClose?: () => void;
 }) {
-  const [open,          setOpen]          = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open    = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = externalOpen !== undefined
+    ? (v: boolean | ((prev: boolean) => boolean)) => {
+        const next = typeof v === 'function' ? v(open) : v;
+        if (!next) onClose?.();
+      }
+    : setInternalOpen;
   const [lines,         setLines]         = useState<CostLine[]>([{ cost_type: 'delivery', description: '', amount: '' }]);
   const [method,        setMethod]        = useState<'by_cost' | 'by_qty' | 'equal'>('by_cost');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank'>('cash');
@@ -85,8 +96,8 @@ export default function ReceiptLandedCostButton({
     <>
       {renderTrigger
         ? renderTrigger(() => setOpen(true))
-        : (
-          <button onClick={() => setOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+        : externalOpen === undefined && (
+          <button onClick={() => setInternalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
             + Додаткові витрати
           </button>
         )

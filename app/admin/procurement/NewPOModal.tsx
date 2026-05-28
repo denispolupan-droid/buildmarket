@@ -197,7 +197,8 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
         sku:           found?.sku ?? r.sku,           // завжди наш артикул
         name:          found ? `${found.brand ?? ''} ${found.name ?? ''}`.trim() : r.name,
         qty:           r.qty,
-        cost_price:    found?.price_cost ?? r.price,
+        // price_cost → ціна з Excel (якщо > 0) → price_unit з бази → 0
+        cost_price:    found?.price_cost ?? (r.price > 0 ? r.price : (found?.price_unit ?? 0)),
         catalog_price: found?.price_cost ?? found?.price_unit ?? undefined,
         matched:       found?.matched ?? false,
       };
@@ -246,8 +247,9 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
         ...l,
         sku:           found.sku,
         name:          `${found.brand ?? ''} ${found.name ?? ''}`.trim(),
-        cost_price:    found.price_cost ?? l.cost_price,
-        // якщо немає price_cost — показуємо price_unit як орієнтир
+        // price_cost → user-entered price (if non-zero) → price_unit → 0
+        // Збігається з логікою каталог-пікера: price_cost ?? price_unit ?? 0
+        cost_price:    found.price_cost ?? (l.cost_price > 0 ? l.cost_price : (found.price_unit ?? 0)),
         catalog_price: found.price_cost ?? found.price_unit ?? undefined,
         matched:       true,
       } : l));
@@ -301,6 +303,8 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
           expected_date: expectedDate || undefined,
           notes:         notes || undefined,
           lines:         valid.map(l => ({ sku: l.sku.trim(), qty: l.qty, cost_price: l.cost_price })),
+          // Провести: міняємо статус прямо в тілі запиту (атомарно, без окремого PATCH)
+          conduct: post,
         }),
       });
       const data = await res.json();
@@ -308,22 +312,13 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
       // При редагуванні зберігаємо той же ID документа
       if (isEdit) data.id = initialData.dbId;
 
-      if (post) {
-        // Провести: знімаємо статус 'draft', лист постачальнику відправляємо окремо зі списку
-        await fetch(`/api/admin/procurement/${data.id}/status`, {
-          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ procurement_status: 'new' }),
-        });
-      }
-
       onSubmitted();
-      // Після проведення — відкриваємо деталі ЗП (рахунок, оплата); чернетка → список
+      router.refresh(); // скидаємо кеш списку до навігації
       if (post) {
         router.push(`/admin/procurement/${data.id}`);
       } else {
         router.push('/admin/procurement');
       }
-      router.refresh();
     } catch { setError('Мережева помилка'); }
     finally { setSaving(false); }
   }

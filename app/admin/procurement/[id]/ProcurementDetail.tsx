@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, Truck, Plus, X, Upload, Download, Trash2, Copy, Check, MoreHorizontal, Printer } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, Truck, Plus, X, Upload, Download, Trash2, Copy, Check, MoreHorizontal, Printer, Send, Mail } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 type Line = { id: number; sku: string; name?: string; brand?: string; qty: number; cost_price: number; supplier_id?: number; adj_delta?: number; effective_qty?: number; is_adj_new?: boolean };
 type SupplierBank = {
@@ -44,6 +45,13 @@ const lbl: React.CSSProperties = { fontSize: '11px', fontWeight: 700, color: 'va
 function fmt(n: number) { return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
 export default function ProcurementDetail({ po, chainButton, onClose, compact }: { po: PO; chainButton?: React.ReactNode; onClose?: () => void; compact?: boolean }) {
+  const router = useRouter();
+
+  function goToList() {
+    router.refresh();
+    router.push('/admin/procurement');
+  }
+
   const [receiving,     setReceiving]     = useState(false);
   const [receiptNotes,  setReceiptNotes]  = useState('');
   const [actualQties,   setActualQties]   = useState<Record<string, number>>({});
@@ -83,9 +91,13 @@ export default function ProcurementDetail({ po, chainButton, onClose, compact }:
     savedPayMode ?? (payTermsDays > 0 ? 'deferred' : 'transfer')
   );
   const [copied,        setCopied]        = useState(false);
-  const [copyingOrder,  setCopyingOrder]  = useState(false);
+  const [copyingOrder,    setCopyingOrder]    = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const actionsMenuRef = useRef<HTMLDivElement>(null);
+
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendEmail,     setSendEmail]     = useState(po.supplier_email ?? '');
+  const [sendingMail,   setSendingMail]   = useState(false);
 
   function copyToNewDraft() {
     setCopyingOrder(true);
@@ -106,6 +118,22 @@ export default function ProcurementDetail({ po, chainButton, onClose, compact }:
       setTimeout(() => setCopyingOrder(false), 800);
     }
   }
+  async function handleSendToSupplier() {
+    if (!sendEmail.includes('@')) { setError('Вкажіть коректний email'); return; }
+    setSendingMail(true); setError('');
+    try {
+      const res = await fetch('/api/admin/procurement/send', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [po.id], overrideEmail: sendEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? 'Помилка відправки'); return; }
+      setSuccess('✅ Замовлення відправлено постачальнику');
+      setShowSendModal(false);
+    } catch { setError('Мережева помилка'); }
+    finally { setSendingMail(false); }
+  }
+
   const [editingIban,   setEditingIban]   = useState(false);
   const [ibanDraft,     setIbanDraft]     = useState({ iban: '', legal_name: '', edrpou: '', bank_name: '' });
   const [savingIban,    setSavingIban]    = useState(false);
@@ -366,11 +394,11 @@ export default function ProcurementDetail({ po, chainButton, onClose, compact }:
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', flexWrap: 'wrap', rowGap: '6px' }}>
         {/* ← назад — Link або callback; у compact-drawer прихований (є окрема панель керування) */}
-        {!compact && (onClose ? (
-          <button onClick={onClose} style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 0 }}><ArrowLeft size={16} /></button>
-        ) : (
-          <Link href="/admin/procurement" prefetch={false} style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}><ArrowLeft size={16} /></Link>
-        ))}
+        {!compact && (
+          <button onClick={onClose ?? goToList} style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 0 }}>
+            <ArrowLeft size={16} />
+          </button>
+        )}
         <div style={{ flex: 1 }}>
           <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{po.doc_number}</h1>
           <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
@@ -379,11 +407,28 @@ export default function ProcurementDetail({ po, chainButton, onClose, compact }:
           </div>
         </div>
         {chainButton}
+        {/* ── Кнопка прийому товару — з'являється поки немає приходу ── */}
+        {!compact && !po.has_receipt && !isCancelled && (
+          <button
+            onClick={() => document.getElementById('receive-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+            <Package size={14} /> Прийняти товар
+          </button>
+        )}
         {po.receipt_id && (
           <Link href={`/admin/procurement/receipts/${po.receipt_id}`} prefetch={false}
             style={{ fontSize: '12px', color: '#15803D', textDecoration: 'none', background: '#F0FDF4', padding: '4px 12px', borderRadius: '6px', fontWeight: 600, border: '1px solid #BBF7D0', flexShrink: 0 }}>
             ↓ {po.receipt_doc_number ?? 'Прихідний ордер'}
           </Link>
+        )}
+        {/* Відправити постачальнику */}
+        {!isCancelled && (
+          <button
+            onClick={() => setShowSendModal(true)}
+            title="Відправити замовлення постачальнику"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+            <Send size={14} /> Відправити
+          </button>
         )}
         {/* Друк */}
         <button
@@ -413,17 +458,12 @@ export default function ProcurementDetail({ po, chainButton, onClose, compact }:
           )}
         </div>
         {/* ✕ закрити — тільки на повній сторінці; у drawer є своя панель */}
-        {!compact && (onClose ? (
-          <button onClick={onClose} title="Закрити документ"
+        {!compact && (
+          <button onClick={onClose ?? goToList} title="Закрити документ"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', cursor: 'pointer', flexShrink: 0 }}>
             <X size={15} />
           </button>
-        ) : (
-          <Link href="/admin/procurement" prefetch={false} title="Закрити документ"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', textDecoration: 'none', flexShrink: 0, transition: 'all 0.15s' }}>
-            <X size={15} />
-          </Link>
-        ))}
+        )}
       </div>
 
       {/* Progress bar */}
@@ -658,7 +698,7 @@ export default function ProcurementDetail({ po, chainButton, onClose, compact }:
 
           {/* Receive block */}
           {!po.has_receipt && (
-            <div style={{ background: 'var(--bg-card)', border: '2px solid #BFDBFE', borderRadius: '12px', padding: '16px' }}>
+            <div id="receive-section" style={{ background: 'var(--bg-card)', border: '2px solid #BFDBFE', borderRadius: '12px', padding: '16px' }}>
               <div style={{ fontSize: '13px', fontWeight: 800, color: '#1E3A5F', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '7px' }}><Truck size={15} /> Оформлення приходу</span>
                 <button onClick={() => receiptFileRef.current?.click()} disabled={importingFile}
@@ -1051,6 +1091,54 @@ export default function ProcurementDetail({ po, chainButton, onClose, compact }:
                 disabled={paying}
                 style={{ flex: 1, height: '40px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                 {paying ? '...' : '💳 Підтвердити оплату'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модалка відправки постачальнику */}
+      {showSendModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <Send size={18} color="#1E3A5F" />
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                Відправити постачальнику
+              </h3>
+            </div>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+              <strong>{po.supplier_name}</strong> · {po.doc_number}
+              {po.total_cost ? ` · ${Number(po.total_cost).toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴` : ''}
+            </p>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>
+                <Mail size={11} style={{ display: 'inline', marginRight: '4px' }} /> Email отримувача
+              </label>
+              <input
+                value={sendEmail}
+                onChange={e => setSendEmail(e.target.value)}
+                placeholder="email@supplier.com"
+                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1.5px solid ${sendEmail.includes('@') ? 'var(--border)' : '#FCA5A5'}`, fontSize: '14px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', outline: 'none' }}
+              />
+              {!po.supplier_email && (
+                <div style={{ fontSize: '11px', color: '#B45309', marginTop: '4px' }}>
+                  ⚠ Email не заповнено в картці постачальника
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => setShowSendModal(false)}
+                style={{ flex: 1, height: '40px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Скасувати
+              </button>
+              <button
+                onClick={handleSendToSupplier}
+                disabled={sendingMail || !sendEmail.includes('@')}
+                style={{ flex: 2, height: '40px', borderRadius: '8px', border: 'none', background: sendEmail.includes('@') ? '#1E3A5F' : '#94A3B8', color: '#fff', cursor: sendEmail.includes('@') ? 'pointer' : 'not-allowed', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', opacity: sendingMail ? 0.7 : 1 }}>
+                {sendingMail ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={14} />}
+                Відправити
               </button>
             </div>
           </div>

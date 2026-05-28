@@ -6,13 +6,22 @@ import { RotateCcw, X, Loader2, AlertCircle } from 'lucide-react';
 type ReceiptLine = { sku: string; qty: number; cost_price: number; name?: string };
 
 export default function ReturnButton({
-  receiptId, lines, renderTrigger,
+  receiptId, lines, renderTrigger, open: externalOpen, onClose,
 }: {
   receiptId: string;
   lines: ReceiptLine[];
   renderTrigger?: (onClick: () => void) => React.ReactNode;
+  open?: boolean;
+  onClose?: () => void;
 }) {
-  const [open,    setOpen]    = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open    = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = externalOpen !== undefined
+    ? (v: boolean | ((prev: boolean) => boolean)) => {
+        const next = typeof v === 'function' ? v(open) : v;
+        if (!next) onClose?.();
+      }
+    : setInternalOpen;
   const [reason,  setReason]  = useState('');
   const [qtys,    setQtys]    = useState<Record<string, number>>({});
   const [saving,  setSaving]  = useState(false);
@@ -48,8 +57,8 @@ export default function ReturnButton({
     <>
       {renderTrigger
         ? renderTrigger(() => setOpen(true))
-        : (
-          <button onClick={() => setOpen(true)}
+        : externalOpen === undefined && (
+          <button onClick={() => setInternalOpen(true)}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid #DC2626', background: '#FEF2F2', color: '#DC2626', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
             <RotateCcw size={13} /> Повернення
           </button>

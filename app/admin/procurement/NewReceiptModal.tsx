@@ -132,8 +132,10 @@ export default function NewReceiptModal({
   function updateAnchor(idx: number) {
     const el = nameInputRefs.current[idx];
     if (!el) return;
-    const r = el.getBoundingClientRect();
-    setSuggestionAnchor({ idx, top: r.top + r.height + 4, left: r.left, width: r.width });
+    const inputR = el.getBoundingClientRect();
+    const rowEl  = el.parentElement;
+    const top    = rowEl ? rowEl.getBoundingClientRect().bottom + 4 : inputR.bottom + 4;
+    setSuggestionAnchor({ idx, top, left: inputR.left, width: inputR.width });
   }
 
   function setLineField<K extends keyof ReceiptLine>(idx: number, key: K, val: ReceiptLine[K]) {

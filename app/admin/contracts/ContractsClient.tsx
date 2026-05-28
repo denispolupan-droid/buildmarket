@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, X, Check, Loader2, FileText, Banknote, ExternalLink, Users } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, X, Check, Loader2, FileText, Banknote, ExternalLink, Users, Search } from 'lucide-react';
 import Link from 'next/link';
 
 type Contract = {
@@ -9,6 +9,7 @@ type Contract = {
   contract_number: string;
   customer_id: string;
   customer_name: string | null;
+  customer_number?: number | null;
   credit_days: number;
   credit_limit: number;
   discount_pct: number;
@@ -20,6 +21,15 @@ type Contract = {
   status: 'active' | 'suspended' | 'closed';
   notes: string | null;
   balance?: number;
+};
+
+type CustomerResult = {
+  id: string;
+  name: string;
+  company: string | null;
+  phone: string | null;
+  customer_number: number | null;
+  type: string;
 };
 
 const inp: React.CSSProperties = {
@@ -34,7 +44,7 @@ const lbl: React.CSSProperties = {
   textTransform: 'uppercase', letterSpacing: '0.04em',
 };
 
-const EMPTY: Omit<Contract, 'id' | 'balance'> = {
+const EMPTY: Omit<Contract, 'id' | 'balance' | 'customer_number'> = {
   contract_number: '', customer_id: '', customer_name: '',
   credit_days: 30, credit_limit: 0, discount_pct: 0,
   allow_promo: false, payment_terms: '', price_type: 'retail',
@@ -48,14 +58,26 @@ const STATUS_CFG = {
   closed:    { label: 'Закрито',     color: '#DC2626', bg: '#FEF2F2' },
 };
 
+function fmtCustomerNum(n: number | null | undefined) {
+  if (n == null) return null;
+  return `#${String(n).padStart(4, '0')}`;
+}
+
 export default function ContractsClient({ initialContracts }: { initialContracts: Contract[] }) {
   const [contracts, setContracts] = useState(initialContracts);
   const [modal, setModal]         = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing]     = useState<Contract | null>(null);
-  const [form, setForm]           = useState<Omit<Contract, 'id' | 'balance'>>(EMPTY);
+  const [form, setForm]           = useState<Omit<Contract, 'id' | 'balance' | 'customer_number'>>(EMPTY);
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState('');
   const [search, setSearch]       = useState('');
+
+  // Customer search in form modal
+  const [custSearch,   setCustSearch]   = useState('');
+  const [custResults,  setCustResults]  = useState<CustomerResult[]>([]);
+  const [custLoading,  setCustLoading]  = useState(false);
+  const [custOpen,     setCustOpen]     = useState(false);
+  const custTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Payment modal
   const [payModal, setPayModal]   = useState<Contract | null>(null);
@@ -67,18 +89,76 @@ export default function ContractsClient({ initialContracts }: { initialContracts
   const [paying, setPaying]       = useState(false);
   const [payError, setPayError]   = useState('');
 
-  function openCreate() { setForm(EMPTY); setEditing(null); setError(''); setModal('create'); }
+  // ── Customer search ────────────────────────────────────────────────────────
+  function handleCustSearch(val: string) {
+    setCustSearch(val);
+    clearTimeout(custTimer.current);
+    if (val.trim().length < 1) { setCustResults([]); setCustOpen(false); return; }
+    setCustLoading(true);
+    custTimer.current = setTimeout(async () => {
+      const res = await fetch(`/api/admin/customers/search?q=${encodeURIComponent(val.trim())}&limit=20`);
+      const data: CustomerResult[] = res.ok ? await res.json() : [];
+      setCustResults(data);
+      setCustOpen(data.length > 0);
+      setCustLoading(false);
+    }, 200);
+  }
+
+  function selectCustomer(c: CustomerResult) {
+    setForm(prev => ({
+      ...prev,
+      customer_id:   c.id,
+      customer_name: c.company?.trim() || c.name,
+    }));
+    setCustSearch(c.company?.trim() || c.name);
+    setCustResults([]);
+    setCustOpen(false);
+  }
+
+  function clearCustomer() {
+    setForm(prev => ({ ...prev, customer_id: '', customer_name: '' }));
+    setCustSearch('');
+    setCustResults([]);
+  }
+
+  // ── Next contract number ───────────────────────────────────────────────────
+  function nextContractNumber() {
+    const year = new Date().getFullYear();
+    const prefix = `ДГ-${year}-`;
+    const yearContracts = contracts.filter(c => c.contract_number?.startsWith(prefix));
+    // Find max sequential number used this year
+    let max = yearContracts.length;
+    for (const c of yearContracts) {
+      const suffix = c.contract_number.slice(prefix.length);
+      const n = parseInt(suffix, 10);
+      if (!isNaN(n) && n > max) max = n;
+    }
+    return `${prefix}${String(max + 1).padStart(4, '0')}`;
+  }
+
+  // ── Modal open ─────────────────────────────────────────────────────────────
+  function openCreate() {
+    setForm({ ...EMPTY, contract_number: nextContractNumber() });
+    setEditing(null); setError('');
+    setCustSearch(''); setCustResults([]); setCustOpen(false);
+    setModal('create');
+  }
+
   function openEdit(c: Contract) {
-    setForm({ ...c }); setEditing(c); setError(''); setModal('edit');
+    setForm({ ...c });
+    setEditing(c); setError('');
+    setCustSearch(c.customer_name || '');
+    setCustResults([]); setCustOpen(false);
+    setModal('edit');
   }
 
   function set<K extends keyof typeof form>(key: K, value: typeof form[K]) {
     setForm(prev => ({ ...prev, [key]: value }));
   }
 
+  // ── Save ───────────────────────────────────────────────────────────────────
   async function handleSave() {
-    if (!form.contract_number.trim()) { setError('Номер договору обов\'язковий'); return; }
-    if (!form.customer_id.trim()) { setError('ID клієнта обов\'язковий'); return; }
+    if (!form.customer_id.trim()) { setError('Оберіть клієнта'); return; }
     setSaving(true); setError('');
     try {
       const url = editing ? `/api/admin/contracts/${editing.id}` : '/api/admin/contracts';
@@ -99,6 +179,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
     finally { setSaving(false); }
   }
 
+  // ── Payment ────────────────────────────────────────────────────────────────
   async function handlePayment() {
     if (!payModal || !payAmount || parseFloat(payAmount) <= 0) {
       setPayError('Введіть суму оплати'); return;
@@ -120,7 +201,6 @@ export default function ContractsClient({ initialContracts }: { initialContracts
       });
       const data = await res.json();
       if (!res.ok) { setPayError(data.error ?? 'Помилка'); return; }
-      // Оновлюємо баланс локально
       setContracts(prev => prev.map(c =>
         c.id === payModal.id
           ? { ...c, balance: Math.max(0, (c.balance ?? 0) - parseFloat(payAmount)) }
@@ -140,7 +220,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
 
   return (
     <div style={{ padding: '28px 32px', maxWidth: '1200px' }}>
-      {/* ── Breadcrumb nav ──────────────────────────────────────────────────── */}
+      {/* Breadcrumb */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
         <Link href="/admin/partners"
           style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '30px', padding: '0 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 500, textDecoration: 'none' }}>
@@ -170,11 +250,11 @@ export default function ContractsClient({ initialContracts }: { initialContracts
         placeholder="Пошук по номеру договору або клієнту..."
         style={{ ...inp, marginBottom: '16px', maxWidth: '400px' }} />
 
-      {/* Summary */}
+      {/* Summary cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
         {[
           { label: 'Активних',      value: contracts.filter(c => c.status === 'active').length,    color: '#16A34A',           accent: '#16A34A' },
-          { label: 'Призупинено',  value: contracts.filter(c => c.status === 'suspended').length, color: '#D97706',           accent: '#D97706' },
+          { label: 'Призупинено',   value: contracts.filter(c => c.status === 'suspended').length, color: '#D97706',           accent: '#D97706' },
           { label: 'Загальний борг', value: `${contracts.filter(c => c.status === 'active').reduce((s, c) => s + (c.balance ?? 0), 0).toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴`, color: 'var(--brand-blue)', accent: '#4880B8' },
         ].map(s => (
           <div key={s.label} style={{ padding: '14px 18px', borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: `3px solid ${s.accent}` }}>
@@ -200,6 +280,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
           {filtered.map((c, idx) => {
             const st = STATUS_CFG[c.status];
             const balance = c.balance ?? 0;
+            const custNum = fmtCustomerNum(c.customer_number);
             return (
               <div key={c.id} style={{
                 display: 'grid', gridTemplateColumns: '160px 1fr 100px 120px 90px 100px 120px 140px',
@@ -210,13 +291,19 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-soft)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
+                {/* Contract number */}
                 <div>
                   <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.contract_number}</div>
                   {c.end_date && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>до {c.end_date}</div>}
                 </div>
+                {/* Customer */}
                 <div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{c.customer_name || c.customer_id}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{c.customer_id}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{c.customer_name || '—'}</div>
+                  {custNum && (
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                      {custNum}
+                    </div>
+                  )}
                 </div>
                 <span style={{ textAlign: 'right', fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 }}>
                   {c.credit_days > 0 ? `${c.credit_days} дн.` : '—'}
@@ -254,7 +341,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
         </div>
       )}
 
-      {/* Modal */}
+      {/* ── Create / Edit Modal ────────────────────────────────────────────── */}
       {modal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
           onClick={e => { if (e.target === e.currentTarget) setModal(null); }}>
@@ -268,10 +355,17 @@ export default function ContractsClient({ initialContracts }: { initialContracts
             </div>
 
             <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+              {/* Номер + Статус */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={lbl}>Номер договору *</label>
-                  <input style={inp} value={form.contract_number} onChange={e => set('contract_number', e.target.value)} placeholder="ДГ-2026-001" />
+                  <label style={lbl}>Номер договору</label>
+                  <input style={inp} value={form.contract_number}
+                    onChange={e => set('contract_number', e.target.value)}
+                    placeholder="ДГ-2026-0001 (авто)" />
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px' }}>
+                    Залиште порожнім — номер присвоїться автоматично
+                  </div>
                 </div>
                 <div>
                   <label style={lbl}>Статус</label>
@@ -283,18 +377,66 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                 </div>
               </div>
 
-              <div>
-                <label style={lbl}>ID клієнта *</label>
-                <input style={inp} value={form.customer_id} onChange={e => set('customer_id', e.target.value)} placeholder="UUID або код клієнта" />
-                {form.customer_name && (
-                  <div style={{ marginTop: '5px', fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>↳</span>
+              {/* Клієнт — пошук */}
+              <div style={{ position: 'relative' }}>
+                <label style={lbl}>Клієнт *</label>
+                <div style={{ position: 'relative' }}>
+                  <Search size={13} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                  <input
+                    style={{ ...inp, paddingLeft: '32px', paddingRight: form.customer_id ? '36px' : '12px',
+                      borderColor: !form.customer_id && error ? '#FCA5A5' : form.customer_id ? '#86EFAC' : undefined }}
+                    value={custSearch}
+                    onChange={e => handleCustSearch(e.target.value)}
+                    placeholder="Пошук за ім'ям, компанією, телефоном..."
+                    autoComplete="off"
+                  />
+                  {custLoading && (
+                    <Loader2 size={13} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', animation: 'spin 1s linear infinite', color: '#94A3B8' }} />
+                  )}
+                  {form.customer_id && !custLoading && (
+                    <button onClick={clearCustomer}
+                      style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', display: 'flex', padding: '2px' }}>
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+                {/* Customer number badge */}
+                {form.customer_id && (
+                  <div style={{ marginTop: '5px', fontSize: '12px', color: '#15803D', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <Check size={12} />
                     <span>{form.customer_name}</span>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>(назва підтягується автоматично)</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-soft)', padding: '1px 7px', borderRadius: '4px', fontWeight: 600 }}>
+                      Клієнт обрано
+                    </span>
+                  </div>
+                )}
+                {/* Dropdown */}
+                {custOpen && custResults.length > 0 && (
+                  <div style={{ position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, zIndex: 50, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', maxHeight: '220px', overflowY: 'auto' }}>
+                    {custResults.map((c, i) => (
+                      <button key={c.id} onMouseDown={() => selectCustomer(c)}
+                        style={{ width: '100%', padding: '9px 12px', background: 'none', border: 'none', borderBottom: i < custResults.length - 1 ? '1px solid var(--border-light)' : 'none', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-soft)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                            {c.company || c.name}
+                          </div>
+                          {c.phone && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{c.phone}</div>}
+                        </div>
+                        {c.customer_number != null && (
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', background: '#EFF4FF', padding: '2px 7px', borderRadius: '5px', flexShrink: 0 }}>
+                            #{String(c.customer_number).padStart(4, '0')}
+                          </span>
+                        )}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
 
+              {/* Кредитні умови */}
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
                 <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.04em' }}>Кредитні умови</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
@@ -368,12 +510,12 @@ export default function ContractsClient({ initialContracts }: { initialContracts
           </div>
         </div>
       )}
-      {/* Payment modal */}
+
+      {/* ── Payment Modal ──────────────────────────────────────────────────── */}
       {payModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
           onClick={e => { if (e.target === e.currentTarget) setPayModal(null); }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '440px', boxShadow: '0 24px 80px rgba(0,0,0,0.22)', overflow: 'hidden' }}>
-
             <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Banknote size={18} color="#15803D" /> Записати оплату
@@ -382,10 +524,19 @@ export default function ContractsClient({ initialContracts }: { initialContracts
             </div>
 
             <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ padding: '10px 14px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                <strong>{payModal.contract_number}</strong> · {payModal.customer_name || payModal.customer_id}
+              <div style={{ padding: '10px 14px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{payModal.contract_number}</span>
+                  {' · '}
+                  {payModal.customer_name || payModal.customer_id}
+                </div>
+                {payModal.customer_number != null && (
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', background: '#EFF4FF', padding: '2px 8px', borderRadius: '5px', flexShrink: 0 }}>
+                    {fmtCustomerNum(payModal.customer_number)}
+                  </span>
+                )}
                 {(payModal.balance ?? 0) > 0 && (
-                  <span style={{ marginLeft: '8px', color: '#DC2626', fontWeight: 700 }}>
+                  <span style={{ color: '#DC2626', fontWeight: 700, fontSize: '13px', flexShrink: 0 }}>
                     Борг: {(payModal.balance ?? 0).toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
                   </span>
                 )}

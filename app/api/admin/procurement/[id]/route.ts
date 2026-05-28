@@ -65,7 +65,7 @@ export async function DELETE(
 
   const { data: doc } = await db
     .from('acc_documents')
-    .select('procurement_status, doc_type')
+    .select('procurement_status, doc_type, doc_number')
     .eq('id', id)
     .single();
 
@@ -73,12 +73,26 @@ export async function DELETE(
   if (doc.doc_type !== 'purchase_order') {
     return NextResponse.json({ error: 'Можна видаляти тільки PO' }, { status: 400 });
   }
-  if (doc.procurement_status !== 'draft') {
-    return NextResponse.json({ error: 'Видалити можна тільки чернетку. Проведений документ — скасуйте через Облік' }, { status: 400 });
+
+  // Забороняємо видалення якщо є приходи товару (receipt / stock_in)
+  const { count: receiptCount } = await db
+    .from('acc_documents')
+    .select('id', { count: 'exact', head: true })
+    .eq('parent_doc_id', id)
+    .neq('status', 'cancelled');
+
+  if ((receiptCount ?? 0) > 0) {
+    return NextResponse.json(
+      { error: `Неможливо видалити: є ${receiptCount} прихід(ів) товару. Спочатку скасуйте приходи.` },
+      { status: 400 },
+    );
   }
 
-  await db.from('acc_document_lines').delete().eq('document_id', id);
-  await db.from('acc_documents').delete().eq('id', id);
+  const { error: linesErr } = await db.from('acc_document_lines').delete().eq('document_id', id);
+  if (linesErr) return NextResponse.json({ error: linesErr.message }, { status: 500 });
+
+  const { error: docErr } = await db.from('acc_documents').delete().eq('id', id);
+  if (docErr) return NextResponse.json({ error: docErr.message }, { status: 500 });
 
   return NextResponse.json({ ok: true });
 }
@@ -114,6 +128,7 @@ export async function PUT(
     supplier_id:    number;
     expected_date?: string;
     notes?:         string;
+    conduct?:       boolean;  // одразу провести (procurement_status: 'new')
     lines: { sku: string; qty: number; cost_price: number }[];
   };
 
@@ -127,11 +142,13 @@ export async function PUT(
   const { error: docErr } = await db
     .from('acc_documents')
     .update({
-      supplier_id:   body.supplier_id,
-      expected_date: body.expected_date ?? null,
-      notes:         body.notes ?? null,
-      total_amount:  total,
-      total_cost:    total,
+      supplier_id:        body.supplier_id,
+      expected_date:      body.expected_date ?? null,
+      notes:              body.notes ?? null,
+      total_amount:       total,
+      total_cost:         total,
+      // conduct=true → одразу провести (статус 'new'); інакше → лишити 'draft'
+      ...(body.conduct ? { procurement_status: 'new' } : {}),
     })
     .eq('id', id);
 
