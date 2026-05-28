@@ -30,7 +30,7 @@ type PO = {
 const STATUS_STEPS = [
   { key: 'ordered',               label: 'Проведено',                  icon: '📋' },
   { key: 'sent',                  label: 'Відправлено постачальнику',   icon: '📤' },
-  { key: 'confirmed_by_supplier', label: 'Рахунок отримано',            icon: '🧾' },
+  { key: 'confirmed_by_supplier', label: 'Підтверджено постачальником', icon: '✅' },
   { key: 'received',              label: 'Товар отримано',              icon: '📦' },
 ];
 
@@ -547,14 +547,22 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
               {STATUS_STEPS.map((step, i) => {
                 const done   = currentStepIdx >= i;
                 const active = currentStepIdx === i;
+                // Динамічний підпис для кроку "Підтверджено"
+                const stepLabel = step.key === 'confirmed_by_supplier' && done
+                  ? (noInvoice
+                      ? 'Підтверджено без рахунку'
+                      : invoiceSaved
+                        ? 'Підтверджено, рахунок отримано'
+                        : step.label)
+                  : step.label;
                 return (
                   <div key={step.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
                     {i > 0 && <div style={{ position: 'absolute', left: '-50%', top: '14px', width: '100%', height: '2px', background: done ? 'var(--brand-blue)' : 'var(--border)', zIndex: 0 }} />}
                     <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: done ? 'var(--brand-blue)' : 'var(--bg-soft)', border: `2px solid ${done ? 'var(--brand-blue)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1, position: 'relative' }}>
                       {done ? <CheckCircle size={14} color="#fff" /> : <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{i + 1}</span>}
                     </div>
-                    <div style={{ fontSize: '10px', fontWeight: active ? 700 : 400, color: done ? 'var(--brand-blue)' : 'var(--text-muted)', marginTop: '4px', textAlign: 'center', maxWidth: '80px' }}>
-                      {step.icon} {step.label}
+                    <div style={{ fontSize: '10px', fontWeight: active ? 700 : 400, color: done ? 'var(--brand-blue)' : 'var(--text-muted)', marginTop: '4px', textAlign: 'center', maxWidth: '90px' }}>
+                      {step.icon} {stepLabel}
                     </div>
                   </div>
                 );
