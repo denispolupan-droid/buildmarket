@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     status:             'confirmed',
     confirmed_at:       new Date().toISOString(),
     confirmed_by:       user.email,
-    procurement_status: body.conduct ? 'new' : 'draft',
+    procurement_status: body.conduct ? 'sent' : 'draft',
     total_amount:       total,
     total_cost:         total,
   }).eq('id', doc.id);

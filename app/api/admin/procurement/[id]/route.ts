@@ -148,8 +148,7 @@ export async function PUT(
       notes:              body.notes ?? null,
       total_amount:       total,
       total_cost:         total,
-      // conduct=true → одразу провести (статус 'new'); інакше → лишити 'draft'
-      ...(body.conduct ? { procurement_status: 'new' } : {}),
+      ...(body.conduct ? { procurement_status: 'sent' } : {}),
     })
     .eq('id', id);
 
