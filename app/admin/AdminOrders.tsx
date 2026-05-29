@@ -701,7 +701,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
           <div style={{ width: '16px', flexShrink: 0 }} />
           <span style={{ width: '70px', flexShrink: 0 }}>№</span>
           <span style={{ width: '90px', flexShrink: 0 }}>Дата</span>
-          <span style={{ flex: 1, minWidth: 0 }}>Клієнт / Товар</span>
+          <span style={{ flex: 1, minWidth: 0, maxWidth: 'calc(50% - 230px)' }}>Клієнт / Товар</span>
           <span style={{ width: '130px', flexShrink: 0 }}>Доставка</span>
           <span style={{ width: '104px', flexShrink: 0 }}>Статус</span>
           <span style={{ width: '72px', flexShrink: 0 }}>Канал</span>
@@ -778,7 +778,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                   <span style={{ width: '90px', flexShrink: 0, fontSize: '11px', color: 'var(--text-muted)' }}>{date}</span>
 
                   {/* Клієнт / Товар */}
-                  <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                  <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', maxWidth: 'calc(50% - 230px)' }}>
                     <div style={{ fontSize: '13px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {order.company
                         ? <><span style={{ fontWeight: 600 }}>{order.company}</span><span style={{ color: 'var(--text-muted)' }}> · {order.contact}</span></>
@@ -865,7 +865,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                 {/* ── Expanded panel ── */}
                 {isExpanded && (
                   <>
-                  <div style={{ borderTop: '1px solid var(--border-light)', display: 'grid', gridTemplateColumns: '1fr 358px 200px' }}>
+                  <div style={{ borderTop: '1px solid var(--border-light)', display: 'grid', gridTemplateColumns: '50% 1fr 200px' }}>
 
                     {/* Col 1: Items */}
                     <div style={{ padding: '14px 16px', borderRight: '1px solid var(--border-light)' }}>
