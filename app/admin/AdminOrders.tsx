@@ -749,10 +749,11 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
             return (
               <div key={order.id} style={{
                 background: isUnpaidInvoice ? '#FFFBF0' : 'var(--bg-card)',
-                border: `1px solid ${isExpanded ? 'var(--border)' : isUnpaidInvoice ? '#FCD34D' : 'var(--border)'}`,
+                border: `1px solid ${isExpanded ? 'var(--brand-blue)' : isUnpaidInvoice ? '#FCD34D' : 'var(--border)'}`,
                 borderRadius: '10px', overflow: 'hidden',
-                boxShadow: isExpanded ? '0 2px 12px rgba(0,0,0,0.06)' : 'none',
-                transition: 'box-shadow 0.15s, border-color 0.15s',
+                boxShadow: isExpanded ? '0 4px 16px rgba(0,0,0,0.10)' : 'none',
+                opacity: expandedId && !isExpanded ? 0.35 : 1,
+                transition: 'box-shadow 0.15s, border-color 0.15s, opacity 0.15s',
               }}>
 
                 {/* ── Compact row ── */}
