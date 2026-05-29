@@ -1356,7 +1356,15 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                                 // managers: no backward moves; cancel only from 'new'
                                 if (s.value === 'cancelled') return order.status === 'new';
                                 return (STATUS_RANK[s.value] ?? -1) >= (STATUS_RANK[order.status] ?? 0);
-                              }).map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                              }).map(s => (
+                                <option
+                                  key={s.value}
+                                  value={s.value}
+                                  style={s.value === 'cancelled' ? { color: '#DC2626', fontWeight: 700 } : undefined}
+                                >
+                                  {s.value === 'cancelled' ? '⚠ ' + s.label : s.label}
+                                </option>
+                              ))}
                             </select>
                           </div>
 
