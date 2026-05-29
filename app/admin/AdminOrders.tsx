@@ -865,7 +865,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                 {/* ── Expanded panel ── */}
                 {isExpanded && (
                   <>
-                  <div style={{ borderTop: '1px solid var(--border-light)', display: 'grid', gridTemplateColumns: '1.2fr 1fr 200px' }}>
+                  <div style={{ borderTop: '1px solid var(--border-light)', display: 'grid', gridTemplateColumns: '1fr 358px 200px' }}>
 
                     {/* Col 1: Items */}
                     <div style={{ padding: '14px 16px', borderRight: '1px solid var(--border-light)' }}>
