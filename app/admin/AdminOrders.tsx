@@ -702,7 +702,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
           <span style={{ width: '70px', flexShrink: 0 }}>№</span>
           <span style={{ width: '90px', flexShrink: 0 }}>Дата</span>
           <span style={{ flex: 1, minWidth: 0, maxWidth: 'calc(50% - 230px)' }}>Клієнт / Товар</span>
-          <span style={{ width: '130px', flexShrink: 0 }}>Доставка</span>
+          <span style={{ flex: 1, minWidth: '100px' }}>Доставка</span>
           <span style={{ width: '104px', flexShrink: 0 }}>Статус</span>
           <span style={{ width: '72px', flexShrink: 0 }}>Канал</span>
           <span style={{ width: '46px', flexShrink: 0 }}>Оплата</span>
@@ -796,7 +796,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                   </div>
 
                   {/* Доставка */}
-                  <span style={{ width: '130px', flexShrink: 0, fontSize: '12px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span style={{ flex: 1, minWidth: '100px', fontSize: '12px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {order.delivery_type === 'pickup' ? 'Самовивіз'
                       : order.delivery_city_name
                         ? `${order.delivery_city_name}${order.delivery_subtype === 'courier' ? ' · кур.' : ''}`
