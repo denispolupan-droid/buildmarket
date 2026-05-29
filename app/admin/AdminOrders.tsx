@@ -48,6 +48,7 @@ type Order = {
   shipped_at:         string | null;
   delivered_at:       string | null;
   cancelled_at:       string | null;
+  status_history:     { status: string; at: string; by: string }[] | null;
   items: OrderItem[];
 };
 
@@ -1442,16 +1443,49 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
 
                   {/* ── Журнал подій ── */}
                   {(() => {
-                    const evs: { icon: string; label: string; at: string | null }[] = [
-                      { icon: '🛒', label: 'Оформлено',          at: order.created_at },
-                      { icon: '✅', label: 'Підтверджено',       at: order.confirmed_at },
-                      { icon: '📧', label: 'Постачальнику',      at: order.supplier_sent_at },
-                      { icon: '📦', label: 'Відправлено',        at: order.shipped_at },
-                      { icon: '🏠', label: 'Доставлено',         at: order.delivered_at },
-                      { icon: '❌', label: 'Скасовано',          at: order.cancelled_at },
-                    ].filter(e => e.at !== null)
-                     .sort((a, b) => new Date(a.at!).getTime() - new Date(b.at!).getTime());
-                    if (evs.length === 0) return null;
+                    const STATUS_CFG: Record<string, { icon: string; label: string }> = {
+                      new:            { icon: '🛒', label: 'Нове' },
+                      confirmed:      { icon: '✅', label: 'Підтверджено' },
+                      awaiting_stock: { icon: '⏳', label: 'Очікуємо товар' },
+                      picking:        { icon: '📋', label: 'Збирається' },
+                      shipped:        { icon: '📦', label: 'Відправлено' },
+                      delivered:      { icon: '🏠', label: 'Доставлено' },
+                      cancelled:      { icon: '❌', label: 'Скасовано' },
+                    };
+                    const RANK: Record<string, number> = {
+                      new: 0, confirmed: 1, awaiting_stock: 2, picking: 3, shipped: 4, delivered: 5,
+                    };
+
+                    // Build event list: always start with "Оформлено", then status_history entries
+                    type Ev = { icon: string; label: string; at: string; by?: string; backward?: boolean };
+                    const evs: Ev[] = [{ icon: '🛒', label: 'Оформлено', at: order.created_at }];
+
+                    const history = order.status_history ?? [];
+                    if (history.length > 0) {
+                      history.forEach((h, i) => {
+                        const cfg = STATUS_CFG[h.status] ?? { icon: '•', label: h.status };
+                        const prevStatus = i === 0 ? 'new' : history[i - 1].status;
+                        const backward = (RANK[h.status] ?? 99) < (RANK[prevStatus] ?? 0);
+                        evs.push({ icon: cfg.icon, label: cfg.label, at: h.at, by: h.by, backward });
+                      });
+                    } else {
+                      // Fallback for very old orders without status_history
+                      if (order.confirmed_at) evs.push({ ...STATUS_CFG.confirmed, at: order.confirmed_at });
+                      if (order.shipped_at)   evs.push({ ...STATUS_CFG.shipped,   at: order.shipped_at });
+                      if (order.delivered_at) evs.push({ ...STATUS_CFG.delivered, at: order.delivered_at });
+                      if (order.cancelled_at) evs.push({ ...STATUS_CFG.cancelled, at: order.cancelled_at });
+                    }
+
+                    // Insert supplier_sent_at pseudo-event at correct position
+                    if (order.supplier_sent_at) {
+                      const sentAt = order.supplier_sent_at;
+                      const insertAt = evs.findIndex(e => e.at > sentAt);
+                      const sentEv: Ev = { icon: '📧', label: 'Постачальнику', at: sentAt };
+                      if (insertAt === -1) evs.push(sentEv);
+                      else evs.splice(insertAt, 0, sentEv);
+                    }
+
+                    if (evs.length <= 1) return null;
                     return (
                       <div style={{ borderTop: '1px solid var(--border-light)', padding: '10px 16px' }}>
                         <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
@@ -1460,18 +1494,32 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                         <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: '4px' }}>
                           {evs.map((ev, i) => (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '8px', padding: '4px 9px', minWidth: '70px' }}>
+                              {i > 0 && (
+                                <span style={{ color: ev.backward ? '#F59E0B' : 'var(--text-muted)', fontSize: '12px', lineHeight: 1 }}>
+                                  {ev.backward ? '↩' : '→'}
+                                </span>
+                              )}
+                              <div style={{
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px',
+                                background: ev.backward ? '#FFFBEB' : 'var(--bg-soft)',
+                                border: `1px solid ${ev.backward ? '#FDE68A' : 'var(--border)'}`,
+                                borderRadius: '8px', padding: '4px 9px', minWidth: '70px',
+                              }}>
                                 <div style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}>
                                   <span>{ev.icon}</span>
-                                  <span style={{ fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{ev.label}</span>
+                                  <span style={{ fontWeight: 600, color: ev.backward ? '#B45309' : 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                                    {ev.label}
+                                  </span>
                                 </div>
                                 <span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                                  {new Date(ev.at!).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                  {new Date(ev.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                 </span>
+                                {ev.by && ev.by !== 'system' && (
+                                  <span style={{ fontSize: '9px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '90px', textOverflow: 'ellipsis' }}>
+                                    {ev.by.split('@')[0]}
+                                  </span>
+                                )}
                               </div>
-                              {i < evs.length - 1 && (
-                                <span style={{ color: 'var(--text-muted)', fontSize: '12px', lineHeight: 1 }}>→</span>
-                              )}
                             </div>
                           ))}
                         </div>

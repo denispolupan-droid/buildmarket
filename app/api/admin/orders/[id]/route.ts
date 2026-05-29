@@ -28,12 +28,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 
+    // Always fetch current order for history tracking + manager backward check
+    const { data: current } = await db
+      .from('orders')
+      .select('status, status_history')
+      .eq('id', id)
+      .single();
+
     // Managers cannot move status backward or cancel non-new orders
     if (role !== 'admin') {
       const STATUS_RANK: Record<string, number> = {
         new: 0, confirmed: 1, awaiting_stock: 2, picking: 3, shipped: 4, delivered: 5,
       };
-      const { data: current } = await db.from('orders').select('status').eq('id', id).single();
       const currentStatus = current?.status ?? 'new';
       const isBackward = (STATUS_RANK[status] ?? -1) < (STATUS_RANK[currentStatus] ?? 0);
       const isCancelNonNew = status === 'cancelled' && currentStatus !== 'new';
@@ -47,6 +53,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (status === 'shipped')   update.shipped_at   = now;
     if (status === 'delivered') update.delivered_at = now;
     if (status === 'cancelled') update.cancelled_at = now;
+
+    // Append to status_history
+    const history = Array.isArray(current?.status_history) ? current.status_history : [];
+    update.status_history = [
+      ...history,
+      { status, at: now, by: user.email ?? 'admin' },
+    ];
   }
 
   if (tracking_number !== undefined) update.tracking_number = tracking_number;
