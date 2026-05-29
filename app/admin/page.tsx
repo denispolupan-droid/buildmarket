@@ -32,7 +32,8 @@ export default async function AdminPage({
 }) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+  const userRole = user?.user_metadata?.role ?? '';
+  if (!user || !['admin', 'manager'].includes(userRole)) redirect('/');
 
   const { page: pageStr, status: statusParam } = await searchParams;
   // undefined → default to 'new'; empty string → all orders
@@ -133,7 +134,7 @@ export default async function AdminPage({
         {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
       </p>
 
-      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} />
+      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} />
     </div>
   );
 }

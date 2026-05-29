@@ -78,7 +78,12 @@ const PAYMENT_LABEL: Record<string, string> = {
   invoice: 'Безготівковий', cod: 'Оплата при отриманні', card: '💳 Картка онлайн',
 };
 
-export default function AdminOrders({ initialOrders, currentPage = 1, totalPages = 1 }: { initialOrders: Order[]; currentPage?: number; totalPages?: number }) {
+const STATUS_RANK: Record<string, number> = {
+  new: 0, confirmed: 1, awaiting_stock: 2, picking: 3, shipped: 4, delivered: 5,
+};
+
+export default function AdminOrders({ initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin' }: { initialOrders: Order[]; currentPage?: number; totalPages?: number; userRole?: string }) {
+  const isAdmin = userRole === 'admin';
   const router = useRouter();
   const [orders, setOrders]         = useState<Order[]>(initialOrders);
   const [channelFilter, setChannelFilter] = useState('');
@@ -1338,13 +1343,20 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
 
                           {/* Manual status dropdown */}
                           <div>
-                            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>Змінити вручну</div>
+                            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
+                              Змінити вручну{!isAdmin && <span style={{ marginLeft: '4px', color: '#F59E0B' }}>🔒</span>}
+                            </div>
                             <select
                               value={order.status}
                               onChange={e => { if (e.target.value !== order.status) changeStatus(order.id, e.target.value); }}
                               style={{ width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-primary)' }}
                             >
-                              {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                              {STATUSES.filter(s => {
+                                if (isAdmin) return true;
+                                // managers: no backward moves; cancel only from 'new'
+                                if (s.value === 'cancelled') return order.status === 'new';
+                                return (STATUS_RANK[s.value] ?? -1) >= (STATUS_RANK[order.status] ?? 0);
+                              }).map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                             </select>
                           </div>
 

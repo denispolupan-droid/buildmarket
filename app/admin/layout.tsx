@@ -15,7 +15,8 @@ const serviceClient = createClient(
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+  const role = user?.user_metadata?.role ?? '';
+  if (!user || !['admin', 'manager'].includes(role)) redirect('/');
 
   const [{ count: newOrdersCount }, { count: chatUnread }] = await Promise.all([
     serviceClient.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'new'),
@@ -23,7 +24,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   ]);
 
   // ── User label for sidebar ──────────────────────────────────────────────────
-  const role      = user.user_metadata?.role ?? '';
   const rawName   = user.user_metadata?.name ?? user.user_metadata?.full_name ?? '';
   const firstName = rawName.trim().split(/\s+/)[0] || user.email?.split('@')[0] || '';
   const userLabel = role === 'admin'

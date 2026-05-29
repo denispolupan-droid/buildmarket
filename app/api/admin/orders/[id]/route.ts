@@ -10,7 +10,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user || user.user_metadata?.role !== 'admin') {
+  const role = user?.user_metadata?.role ?? '';
+  if (!user || !['admin', 'manager'].includes(role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -26,6 +27,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!VALID.includes(status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
+
+    // Managers cannot move status backward or cancel non-new orders
+    if (role !== 'admin') {
+      const STATUS_RANK: Record<string, number> = {
+        new: 0, confirmed: 1, awaiting_stock: 2, picking: 3, shipped: 4, delivered: 5,
+      };
+      const { data: current } = await db.from('orders').select('status').eq('id', id).single();
+      const currentStatus = current?.status ?? 'new';
+      const isBackward = (STATUS_RANK[status] ?? -1) < (STATUS_RANK[currentStatus] ?? 0);
+      const isCancelNonNew = status === 'cancelled' && currentStatus !== 'new';
+      if (isBackward || isCancelNonNew) {
+        return NextResponse.json({ error: 'Недостатньо прав для зміни статусу в зворотньому порядку' }, { status: 403 });
+      }
+    }
+
     update.status = status;
     const now = new Date().toISOString();
     if (status === 'shipped')   update.shipped_at   = now;
