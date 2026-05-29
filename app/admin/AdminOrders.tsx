@@ -702,12 +702,13 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
           <span style={{ width: '70px', flexShrink: 0 }}>№</span>
           <span style={{ width: '90px', flexShrink: 0 }}>Дата</span>
           <span style={{ flex: '0 1 calc(50% - 230px)', minWidth: 0 }}>Клієнт / Товар</span>
-          <span style={{ width: '130px', flexShrink: 0 }}>Доставка</span>
+          <span style={{ flex: 1, minWidth: '100px' }}>Доставка</span>
           <span style={{ width: '104px', flexShrink: 0 }}>Статус</span>
-          <span style={{ width: '72px', flexShrink: 0 }}>Канал</span>
+          <span style={{ width: '64px', flexShrink: 0 }}>Канал</span>
+          <span style={{ width: '64px', flexShrink: 0 }}>Відправка</span>
           <span style={{ width: '46px', flexShrink: 0 }}>Оплата</span>
           <span style={{ width: '34px', flexShrink: 0, textAlign: 'center' }}>Дзвін.</span>
-          <span style={{ flex: 1, minWidth: '84px', textAlign: 'right' }}>Сума</span>
+          <span style={{ width: '84px', flexShrink: 0, textAlign: 'right' }}>Сума</span>
           <div style={{ width: '14px', flexShrink: 0 }} />
         </div>
       )}
@@ -796,7 +797,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                   </div>
 
                   {/* Доставка */}
-                  <span style={{ width: '130px', flexShrink: 0, fontSize: '12px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span style={{ flex: 1, minWidth: '100px', fontSize: '12px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {order.delivery_type === 'pickup' ? 'Самовивіз'
                       : order.delivery_city_name
                         ? `${order.delivery_city_name}${order.delivery_subtype === 'courier' ? ' · кур.' : ''}`
@@ -810,27 +811,27 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                     </span>
                   </div>
 
-                  {/* Канал + тип відправки */}
-                  <div style={{ width: '72px', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px', overflow: 'hidden' }}>
+                  {/* Канал */}
+                  <div style={{ width: '64px', flexShrink: 0, overflow: 'hidden' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, padding: '1px 6px', borderRadius: '20px', color: channel.color, background: channel.bg, whiteSpace: 'nowrap' }}>
                       {channel.label}
                     </span>
-                    {(order.fulfillment_mode || order.supplier_sent_at) && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        {order.fulfillment_mode && (
-                          <span title={order.fulfillment_mode === 'own' ? 'Відправка зі складу' : order.fulfillment_mode === 'supplier' ? 'Відправка через постачальника' : 'Змішана відправка'}
-                            style={{ fontSize: '10px', fontWeight: 700, padding: '1px 5px', borderRadius: '6px',
-                              color:      order.fulfillment_mode === 'own' ? '#15803D' : order.fulfillment_mode === 'supplier' ? '#1D4ED8' : '#7C3AED',
-                              background: order.fulfillment_mode === 'own' ? '#DCFCE7' : order.fulfillment_mode === 'supplier' ? '#DBEAFE' : '#EDE9FE' }}>
-                            {order.fulfillment_mode === 'own' ? 'Склад' : order.fulfillment_mode === 'mixed' ? 'Mix' : 'Пост.'}
-                          </span>
-                        )}
-                        {order.supplier_sent_at && (
-                          <span title="Надіслано постачальнику"
-                            style={{ width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0,
-                              background: '#3B82F6', display: 'inline-block' }} />
-                        )}
-                      </div>
+                  </div>
+
+                  {/* Відправка */}
+                  <div style={{ width: '64px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {order.fulfillment_mode && (
+                      <span
+                        title={order.fulfillment_mode === 'own' ? 'Відправка зі складу' : order.fulfillment_mode === 'supplier' ? 'Відправка через постачальника' : 'Змішана відправка'}
+                        style={{ fontSize: '10px', fontWeight: 700, padding: '1px 5px', borderRadius: '6px',
+                          color:      order.fulfillment_mode === 'own' ? '#15803D' : order.fulfillment_mode === 'supplier' ? '#1D4ED8' : '#7C3AED',
+                          background: order.fulfillment_mode === 'own' ? '#DCFCE7' : order.fulfillment_mode === 'supplier' ? '#DBEAFE' : '#EDE9FE' }}>
+                        {order.fulfillment_mode === 'own' ? 'Склад' : order.fulfillment_mode === 'mixed' ? 'Mix' : 'Пост.'}
+                      </span>
+                    )}
+                    {order.supplier_sent_at && (
+                      <span title="Надіслано постачальнику"
+                        style={{ width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0, background: '#3B82F6', display: 'inline-block' }} />
                     )}
                   </div>
 
@@ -853,7 +854,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                   </div>
 
                   {/* Сума */}
-                  <span style={{ flex: 1, minWidth: '84px', fontSize: '13px', fontWeight: 800, color: 'var(--brand-blue)', textAlign: 'right' }}>
+                  <span style={{ width: '84px', flexShrink: 0, fontSize: '13px', fontWeight: 800, color: 'var(--brand-blue)', textAlign: 'right' }}>
                     {order.total_price.toFixed(0)} ₴
                   </span>
                   {isExpanded
