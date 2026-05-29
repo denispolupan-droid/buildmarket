@@ -41,7 +41,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   // 3. Платежі постачальнику (money_entries linked to PO)
   const { data: payments } = await db
     .from('money_entries')
-    .select('id, txn_id, amount, business_date, description, account_type')
+    .select('id, txn_id, amount, business_date, description, account_type, doc_type')
     .eq('doc_id', id)
     .in('account_type', ['supplier', 'bank', 'cash', 'acquiring', 'logistics', 'loading', 'customs', 'opex'])
     .order('created_at');

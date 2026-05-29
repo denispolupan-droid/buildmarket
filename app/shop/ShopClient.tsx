@@ -186,6 +186,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const catsListRef = useRef<HTMLDivElement>(null);
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sidebarRef = useRef<HTMLElement>(null);
+  const pillsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -209,6 +210,18 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     };
     document.addEventListener('wheel', handleWheel, { passive: false });
     return () => document.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  useEffect(() => {
+    const el = pillsRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
   useEffect(() => {
@@ -639,7 +652,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             iconClassName="shop-search__icon"
           />
 
-          <div className="shop-cats-pills">
+          <div className="shop-cats-pills" ref={pillsRef}>
           <button
             className={'shop-cat-pill' + (!selCat ? ' active' : '')}
             onClick={() => { selectCat(null); setExpandedCats(new Set()); }}

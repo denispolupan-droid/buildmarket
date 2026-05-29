@@ -6,14 +6,20 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ShoppingCart, PackageCheck } from 'lucide-react';
 import ProcurementClient from './ProcurementClient';
-import ProcurementList from './ProcurementList';
+import ProcurementWrapper from './ProcurementWrapper';
 
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 
 function fmt(n: number) { return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 }); }
 
-export default async function ProcurementPage() {
+export default async function ProcurementPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
+  const params = await searchParams;
+  const initialFilter = params.filter ?? 'all';
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.user_metadata?.role !== 'admin') redirect('/');
@@ -38,15 +44,16 @@ export default async function ProcurementPage() {
   }
 
   const orders = pos ?? [];
-  const totalDrafts   = orders.filter(p => p.procurement_status === 'draft').length;
-  const totalPending  = orders.filter(p => !p.has_receipt && p.procurement_status !== 'draft').length;
-  const totalReceived = orders.filter(p => p.has_receipt && p.procurement_status !== 'paid' && !p.meta?.is_paid).length;
-  const totalAmount = orders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
+  const activeOrders  = orders.filter(p => p.procurement_status !== 'closed');
+  const totalDrafts   = activeOrders.filter(p => p.procurement_status === 'draft').length;
+  const totalPending  = activeOrders.filter(p => !p.has_receipt && p.procurement_status !== 'draft').length;
+  const totalReceived = activeOrders.filter(p => p.has_receipt && p.procurement_status !== 'paid' && !p.meta?.is_paid).length;
+  const totalAmount   = activeOrders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
 
   // Деталі для карток
-  const draftOrders    = orders.filter(p => p.procurement_status === 'draft');
-  const pendingOrders  = orders.filter(p => !p.has_receipt && p.procurement_status !== 'draft');
-  const receivedOrders = orders.filter(p => p.has_receipt && p.procurement_status !== 'paid' && !p.meta?.is_paid);
+  const draftOrders    = activeOrders.filter(p => p.procurement_status === 'draft');
+  const pendingOrders  = activeOrders.filter(p => !p.has_receipt && p.procurement_status !== 'draft');
+  const receivedOrders = activeOrders.filter(p => p.has_receipt && p.procurement_status !== 'paid' && !p.meta?.is_paid);
 
   const amountDrafts   = draftOrders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
   const amountPending  = pendingOrders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
@@ -130,7 +137,10 @@ export default async function ProcurementPage() {
       </div>
 
       {/* Table */}
-      <ProcurementList orders={orders.map(po => ({ ...po, receipts: receiptMap.get(po.id) ?? [] }))} />
+      <ProcurementWrapper
+        orders={orders.map(po => ({ ...po, receipts: receiptMap.get(po.id) ?? [] }))}
+        initialFilter={initialFilter}
+      />
     </div>
   );
 }

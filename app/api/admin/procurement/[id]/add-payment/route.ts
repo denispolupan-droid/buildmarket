@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { recordTxn } from '../../../../../../lib/accounting/money';
+import { maybeAutoClose } from '../../../../../../lib/accounting/documents';
 
 const db = createServiceClient();
 
@@ -56,15 +57,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const invoiceAmt = Number(doc.supplier_invoice_amount ?? doc.total_cost ?? 0);
   const isFullyPaid = invoiceAmt > 0 && totalPaid >= invoiceAmt * 0.999; // 0.1% tolerance
 
-  const meta = (doc.meta as Record<string, unknown>) ?? {};
+  const { payment_reversed, ...cleanMeta } = (doc.meta as Record<string, unknown>) ?? {};
+  void payment_reversed; // знімаємо флаг скасування — здійснюється нова оплата
   await db.from('acc_documents').update({
     meta: {
-      ...meta,
+      ...cleanMeta,
       is_paid:        isFullyPaid || undefined,
       payment_status: isFullyPaid ? 'paid' : 'partial',
       payment_mode,
     },
   }).eq('id', id);
+
+  if (isFullyPaid) await maybeAutoClose(id);
 
   return NextResponse.json({ ok: true, total_paid: totalPaid, is_fully_paid: isFullyPaid });
 }

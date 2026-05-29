@@ -11,7 +11,7 @@ type ChainData = {
   children:     { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; total_cost: number | null; notes: string | null }[];
   adjustments:  { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; notes: string | null }[];
   adjLines:     { document_id: string; sku: string; qty: number; cost_price: number | null }[];
-  payments:     { id: string; txn_id: string; amount: number; business_date: string; description: string | null; account_type: string }[];
+  payments:     { id: string; txn_id: string; amount: number; business_date: string; description: string | null; account_type: string; doc_type: string }[];
   batches:      { id: string; sku: string; initial_qty: number; cost_price: number; received_at: string }[];
   relatedDocs:  { id: string; doc_number: string; doc_type: string; doc_date: string; total_amount: number | null; total_cost: number | null }[];
   landedCosts:  LandedCostLine[];
@@ -75,7 +75,6 @@ export default function DocChain({ poId }: { poId: string }) {
 
   async function handleOpen() {
     setOpen(true);
-    if (data) return;
     setLoading(true);
     try {
       const res = await fetch(`/api/admin/procurement/${poId}/chain`);
@@ -135,103 +134,135 @@ export default function DocChain({ poId }: { poId: string }) {
                     href={data.po.status !== 'cancelled' ? `/admin/procurement/${data.po.id}` : undefined}
                     cancelled={data.po.status === 'cancelled'}
                   >
-                    {/* Payments */}
-                    {data.payments.filter(p => ['bank','cash','acquiring'].includes(p.account_type) && p.amount < 0).map(p => (
-                      <TimelineNode key={p.id}
-                        icon={p.account_type === 'cash' ? '💵' : p.account_type === 'bank' ? '🏦' : '💳'}
-                        title={`Оплата постачальнику`}
-                        sub={`${fmtDate(p.business_date)} · ${ACCOUNT_LABELS[p.account_type] ?? p.account_type}`}
-                        amount={`−${fmt(Math.abs(p.amount))} ₴`} amountColor="#DC2626"
-                      />
-                    ))}
+                    {/* Всі дочірні події — відсортовані хронологічно */}
+                    {(() => {
+                      type ChainEvent =
+                        | { kind: 'payment';     sortKey: string; data: ChainData['payments'][0] }
+                        | { kind: 'expense';     sortKey: string; data: ChainData['payments'][0] }
+                        | { kind: 'adjustment';  sortKey: string; data: ChainData['adjustments'][0] }
+                        | { kind: 'receipt';     sortKey: string; data: ChainData['children'][0] }
+                        | { kind: 'sale';        sortKey: string; data: ChainData['relatedDocs'][0] };
 
-                    {/* Expense entries (logistics, etc.) */}
-                    {data.payments.filter(p => ['logistics','loading','customs','opex'].includes(p.account_type) && p.amount > 0).map(p => (
-                      <TimelineNode key={p.id} icon={{ logistics: '🚚', loading: '📦', customs: '🏛', opex: '💼' }[p.account_type] ?? '💼'}
-                        title={p.description ?? ACCOUNT_LABELS[p.account_type]}
-                        sub={fmtDate(p.business_date)}
-                        amount={`−${fmt(p.amount)} ₴`} amountColor="#B45309"
-                      />
-                    ))}
+                      const events: ChainEvent[] = [
+                        ...data.payments
+                          .filter(p => ['bank','cash','acquiring'].includes(p.account_type))
+                          .map(p => ({ kind: 'payment'  as const, sortKey: p.business_date, data: p })),
+                        ...data.payments
+                          .filter(p => ['logistics','loading','customs','opex'].includes(p.account_type) && p.amount > 0)
+                          .map(p => ({ kind: 'expense'  as const, sortKey: p.business_date, data: p })),
+                        ...(data.adjustments ?? [])
+                          .map(a => ({ kind: 'adjustment' as const, sortKey: a.doc_date, data: a })),
+                        ...data.children
+                          .map(c => ({ kind: 'receipt'  as const, sortKey: c.doc_date, data: c })),
+                        ...data.relatedDocs.filter(d => d.doc_type === 'sale')
+                          .map(d => ({ kind: 'sale'     as const, sortKey: d.doc_date, data: d })),
+                      ].sort((a, b) => a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0);
 
-                    {/* Коригування */}
-                    {data.adjustments?.map(adj => {
-                      const lines = data.adjLines.filter(l => l.document_id === adj.id);
-                      return (
-                        <TimelineNode key={adj.id}
-                          icon="✏️"
-                          title={`${adj.doc_number} — Коригування замовлення`}
-                          sub={`${fmtDate(adj.doc_date)}${adj.notes ? ` · ${adj.notes}` : ''}`}
-                          href={`/admin/accounting/documents/${adj.id}`}
-                        >
-                          {lines.length > 0 && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '4px 0' }}>
-                              {lines.map(l => (
-                                <div key={l.sku} style={{ fontSize: '11px', color: l.qty < 0 ? '#EF4444' : '#15803D', display: 'flex', gap: '6px' }}>
-                                  <span style={{ fontFamily: 'monospace' }}>{l.sku}</span>
-                                  <span>{l.qty > 0 ? `+${l.qty}` : l.qty} шт</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </TimelineNode>
-                      );
-                    })}
-
-                    {/* Child documents (receipts) */}
-                    {data.children.map(child => {
-                      const childLC = (data.landedCosts ?? []).filter(lc => lc.document_id === child.id);
-                      const lcTotal = childLC.reduce((s, lc) => s + Number(lc.amount), 0);
-                      // Показуємо вартість товарів без landed cost
-                      const goodsCost = child.total_cost ? Number(child.total_cost) - lcTotal : null;
                       const LC_ICONS: Record<string, string> = {
                         delivery: '🚚', loading: '📦', customs: '🏛', packaging: '📦', broker: '🏛', other: '➕',
                       };
-                      return (
-                        <TimelineNode key={child.id}
-                          icon="📥" title={`${child.doc_number} — ${DOC_TYPE_LABELS[child.doc_type] ?? child.doc_type}`}
-                          sub={`${fmtDate(child.doc_date)}${child.notes ? ` · ${child.notes}` : ''}`}
-                          amount={goodsCost !== null ? `${fmt(goodsCost)} ₴` : undefined}
-                          amountColor="#15803D"
-                          href={`/admin/procurement/receipts/${child.id}`}
-                        >
-                          {/* Landed cost lines — показуємо окремо */}
-                          {childLC.map((lc, i) => (
-                            <TimelineNode key={i}
-                              icon={LC_ICONS[lc.cost_type] ?? '➕'}
-                              title={lc.description || `Додаткові витрати: ${lc.cost_type}`}
-                              sub="Landed Cost · розподілено по собівартості"
-                              amount={`+${fmt(Number(lc.amount))} ₴`}
-                              amountColor="#7C3AED"
-                            />
-                          ))}
-                          {/* Підсумок з landed cost */}
-                          {lcTotal > 0 && (
-                            <div style={{ marginTop: '6px', padding: '6px 10px', background: '#F5F3FF', borderRadius: '7px', display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                              <span style={{ color: '#6B21A8', fontWeight: 600 }}>Разом з витратами:</span>
-                              <span style={{ color: '#6B21A8', fontWeight: 800 }}>{fmt(Number(child.total_cost))} ₴</span>
-                            </div>
-                          )}
-                          {/* FIFO batches */}
-                          {data.batches.filter(b => b.sku).length > 0 && (
-                            <TimelineNode
-                              icon="📊" title={`FIFO партії: ${data.batches.filter(b => true).length} SKU`}
-                              sub={`Залишки оновлено · собівартість розподілено`}
-                            />
-                          )}
-                        </TimelineNode>
-                      );
-                    })}
 
-                    {/* Related sale documents */}
-                    {data.relatedDocs.filter(d => d.doc_type === 'sale').map(d => (
-                      <TimelineNode key={d.id}
-                        icon="📤" title={`${d.doc_number} — Продаж`}
-                        sub={fmtDate(d.doc_date)}
-                        amount={d.total_amount ? `${fmt(Number(d.total_amount))} ₴` : undefined}
-                        amountColor="#15803D"
-                      />
-                    ))}
+                      return events.map((ev, idx) => {
+                        if (ev.kind === 'payment') {
+                          const p = ev.data;
+                          const isReversal = p.doc_type === 'supplier_payment_reversal';
+                          const icon = p.account_type === 'cash' ? '💵' : p.account_type === 'bank' ? '🏦' : '💳';
+                          return (
+                            <TimelineNode key={`pay-${idx}`}
+                              icon={isReversal ? '↩️' : icon}
+                              title={isReversal ? 'Скасування оплати' : 'Оплата постачальнику'}
+                              sub={`${fmtDate(p.business_date)} · ${ACCOUNT_LABELS[p.account_type] ?? p.account_type}`}
+                              amount={isReversal ? `+${fmt(Math.abs(p.amount))} ₴` : `−${fmt(Math.abs(p.amount))} ₴`}
+                              amountColor={isReversal ? '#B45309' : '#DC2626'}
+                              cancelled={isReversal}
+                            />
+                          );
+                        }
+                        if (ev.kind === 'expense') {
+                          const p = ev.data;
+                          return (
+                            <TimelineNode key={`exp-${idx}`}
+                              icon={({ logistics: '🚚', loading: '📦', customs: '🏛', opex: '💼' } as Record<string,string>)[p.account_type] ?? '💼'}
+                              title={p.description ?? ACCOUNT_LABELS[p.account_type]}
+                              sub={fmtDate(p.business_date)}
+                              amount={`−${fmt(p.amount)} ₴`} amountColor="#B45309"
+                            />
+                          );
+                        }
+                        if (ev.kind === 'adjustment') {
+                          const adj = ev.data;
+                          const lines = data.adjLines.filter(l => l.document_id === adj.id);
+                          return (
+                            <TimelineNode key={`adj-${idx}`}
+                              icon="✏️"
+                              title={`${adj.doc_number} — Коригування замовлення`}
+                              sub={`${fmtDate(adj.doc_date)}${adj.notes ? ` · ${adj.notes}` : ''}`}
+                              href={`/admin/accounting/documents/${adj.id}`}
+                            >
+                              {lines.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '4px 0' }}>
+                                  {lines.map(l => (
+                                    <div key={l.sku} style={{ fontSize: '11px', color: l.qty < 0 ? '#EF4444' : '#15803D', display: 'flex', gap: '6px' }}>
+                                      <span style={{ fontFamily: 'monospace' }}>{l.sku}</span>
+                                      <span>{l.qty > 0 ? `+${l.qty}` : l.qty} шт</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </TimelineNode>
+                          );
+                        }
+                        if (ev.kind === 'receipt') {
+                          const child = ev.data;
+                          const childLC = (data.landedCosts ?? []).filter(lc => lc.document_id === child.id);
+                          const lcTotal = childLC.reduce((s, lc) => s + Number(lc.amount), 0);
+                          const goodsCost = child.total_cost ? Number(child.total_cost) - lcTotal : null;
+                          return (
+                            <TimelineNode key={`rec-${idx}`}
+                              icon="📥" title={`${child.doc_number} — ${DOC_TYPE_LABELS[child.doc_type] ?? child.doc_type}`}
+                              sub={`${fmtDate(child.doc_date)}${child.notes ? ` · ${child.notes}` : ''}`}
+                              amount={goodsCost !== null ? `${fmt(goodsCost)} ₴` : undefined}
+                              amountColor="#15803D"
+                              href={`/admin/procurement/receipts/${child.id}`}
+                            >
+                              {childLC.map((lc, i) => (
+                                <TimelineNode key={i}
+                                  icon={LC_ICONS[lc.cost_type] ?? '➕'}
+                                  title={lc.description || `Додаткові витрати: ${lc.cost_type}`}
+                                  sub="Landed Cost · розподілено по собівартості"
+                                  amount={`+${fmt(Number(lc.amount))} ₴`}
+                                  amountColor="#7C3AED"
+                                />
+                              ))}
+                              {lcTotal > 0 && (
+                                <div style={{ marginTop: '6px', padding: '6px 10px', background: '#F5F3FF', borderRadius: '7px', display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                                  <span style={{ color: '#6B21A8', fontWeight: 600 }}>Разом з витратами:</span>
+                                  <span style={{ color: '#6B21A8', fontWeight: 800 }}>{fmt(Number(child.total_cost))} ₴</span>
+                                </div>
+                              )}
+                              {data.batches.filter(b => b.sku).length > 0 && (
+                                <TimelineNode
+                                  icon="📊" title={`FIFO партії: ${data.batches.length} SKU`}
+                                  sub="Залишки оновлено · собівартість розподілено"
+                                />
+                              )}
+                            </TimelineNode>
+                          );
+                        }
+                        if (ev.kind === 'sale') {
+                          const d = ev.data;
+                          return (
+                            <TimelineNode key={`sale-${idx}`}
+                              icon="📤" title={`${d.doc_number} — Продаж`}
+                              sub={fmtDate(d.doc_date)}
+                              amount={d.total_amount ? `${fmt(Number(d.total_amount))} ₴` : undefined}
+                              amountColor="#15803D"
+                            />
+                          );
+                        }
+                        return null;
+                      });
+                    })()}
                   </TimelineNode>
 
                 </>

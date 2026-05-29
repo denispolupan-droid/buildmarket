@@ -201,7 +201,9 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
 
   for (const p of allEntries) {
     if (p.doc_type === 'supplier_payment' && Number(p.amount) > 0) {
-      events.push({ icon: '💳', label: 'Оплата проведена', detail: `${Math.abs(Number(p.amount)).toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴`, date: p.created_at, isDatetime: true });
+      const mode = p.meta?.payment_mode as string | null;
+      const icon = mode === 'cash' ? '💵' : mode === 'transfer' ? '🏦' : '💳';
+      events.push({ icon, label: 'Оплата проведена', detail: `${Math.abs(Number(p.amount)).toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴`, date: p.created_at, isDatetime: true });
     } else if (p.doc_type === 'supplier_payment_reversal') {
       events.push({ icon: '↩️', label: 'Оплату скасовано', date: p.created_at, isDatetime: true });
     }

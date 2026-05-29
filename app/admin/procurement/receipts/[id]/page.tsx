@@ -70,6 +70,21 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
   const warehouseName= (doc.warehouse as { name?: string } | null)?.name ?? null;
   const parentDoc    = doc.parent_doc as { id: string; doc_number: string; doc_date: string; doc_type: string } | null;
 
+  // Check linked customer order (receipt → PO → customer order)
+  let linkedOrder: { id: string; order_number: number; status: string } | null = null;
+  if (doc.parent_doc_id) {
+    const { data: po } = await db.from('acc_documents').select('order_id').eq('id', doc.parent_doc_id).single();
+    if ((po as { order_id?: string } | null)?.order_id) {
+      const { data: cOrder } = await db.from('orders')
+        .select('id, order_number, status').eq('id', (po as { order_id: string }).order_id).single();
+      linkedOrder = cOrder ?? null;
+    }
+  }
+
+  // Count all awaiting_stock orders for the banner
+  const { count: awaitingCount } = await db.from('orders')
+    .select('id', { count: 'exact', head: true }).eq('status', 'awaiting_stock');
+
   return (
     <div style={{ padding: '28px 32px' }}>
       {/* Header */}
@@ -110,6 +125,34 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
           <X size={15} />
         </Link>
       </div>
+
+      {/* Awaiting orders alert */}
+      {(linkedOrder?.status === 'awaiting_stock' || (awaitingCount ?? 0) > 0) && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', marginBottom: '16px', borderRadius: '10px', background: '#F5F3FF', border: '1.5px solid #A78BFA' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '18px' }}>⏳</span>
+            <div>
+              {linkedOrder?.status === 'awaiting_stock' ? (
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#6D28D9' }}>
+                  Замовлення <a href={`/admin#order-${linkedOrder.id}`} style={{ color: '#7C3AED', textDecoration: 'underline' }}>#{linkedOrder.order_number}</a> очікувало цей товар — переведіть у &ldquo;Збирається&rdquo;
+                </div>
+              ) : (
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#6D28D9' }}>
+                  {awaitingCount} {(awaitingCount ?? 0) === 1 ? 'замовлення очікує товар' : 'замовлень очікують товар'}
+                </div>
+              )}
+              {linkedOrder?.status === 'awaiting_stock' && (awaitingCount ?? 0) > 1 && (
+                <div style={{ fontSize: '11px', color: '#7C3AED', marginTop: '2px' }}>
+                  Ще {(awaitingCount ?? 0) - 1} інших замовлень в черзі
+                </div>
+              )}
+            </div>
+          </div>
+          <Link href="/admin" style={{ height: '32px', padding: '0 14px', borderRadius: '7px', border: '1.5px solid #A78BFA', background: '#EDE9FE', color: '#6D28D9', fontSize: '12px', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+            До замовлень →
+          </Link>
+        </div>
+      )}
 
       {doc.notes && (
         <div style={{ padding: '10px 14px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>

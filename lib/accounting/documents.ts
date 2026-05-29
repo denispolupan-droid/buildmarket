@@ -504,6 +504,25 @@ export async function cancelDocument(
   // або створіть документ «Повернення постачальнику».
 }
 
+// ── Автозакриття замовлення постачальнику ────────────────────────────────────
+// Викликається після запису оплати або приходу.
+// Якщо обидві умови виконані (повний прихід + оплачено) → procurement_status = 'closed'.
+
+export async function maybeAutoClose(id: string): Promise<void> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from('acc_documents')
+    .select('procurement_status, meta')
+    .eq('id', id)
+    .single();
+  if (!data) return;
+  const isReceived = data.procurement_status === 'received';
+  const isPaid = (data.meta as Record<string, unknown> | null)?.is_paid === true;
+  if (isReceived && isPaid) {
+    await db.from('acc_documents').update({ procurement_status: 'closed' }).eq('id', id);
+  }
+}
+
 // ── Побудова рухів ────────────────────────────────────────────────────────────
 //
 // Знак qty визначається напрямком та тим, чи це сторно (qtyInBase < 0):

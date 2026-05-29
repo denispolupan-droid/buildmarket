@@ -68,6 +68,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const updateFields: Record<string, unknown> = { meta: { ...restMeta, payment_reversed: true } };
   if (docStatus === 'paid' || docStatus === 'invoiced') {
     updateFields.procurement_status = (pre_payment_status as string | undefined) ?? 'ordered';
+  } else if (docStatus === 'closed') {
+    // Якщо замовлення було автозакрите — повертаємо до 'received' (товар вже є)
+    updateFields.procurement_status = 'received';
   }
 
   const { error } = await db

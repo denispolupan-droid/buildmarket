@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { recordTxn } from '../../../../../../lib/accounting/money';
+import { maybeAutoClose } from '../../../../../../lib/accounting/documents';
 
 const db = createServiceClient();
 
@@ -36,8 +37,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     || body.procurement_status === 'paid' || body.procurement_status === 'invoiced';
   if (isPaymentOp) {
     const { data: current } = await db.from('acc_documents').select('meta, procurement_status').eq('id', id).single();
-    const existingMeta = (current?.meta as Record<string, unknown>) ?? {};
     const isNewPayment = body.procurement_status === 'paid' || body.procurement_status === 'invoiced';
+    const { payment_reversed, ...existingMeta } = (current?.meta as Record<string, unknown>) ?? {};
+    void payment_reversed; // знімаємо флаг скасування при новій оплаті
     update.meta = {
       ...existingMeta,
       ...(body.payment_defer_date ? { payment_defer_date: body.payment_defer_date } : {}),
@@ -79,13 +81,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       docId:         id,
       docType:       'supplier_payment',
       description:   `Оплата постачальнику: ${po.doc_number}`,
-      idempotencyKey: `supplier_payment:${id}`,
+      idempotencyKey: `supplier_payment:${id}:${Date.now()}`,
       createdBy:     user.email,
+      meta:          { payment_mode: body.payment_mode ?? 'transfer' },
     });
   }
 
   const { error } = await db.from('acc_documents').update(update).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Legacy оплата через status route: якщо встановили paid/invoiced → перевірити автозакриття
+  if (body.procurement_status === 'paid') await maybeAutoClose(id);
 
   return NextResponse.json({ ok: true });
 }

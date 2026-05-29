@@ -271,7 +271,7 @@ export async function recordDropshipSale(
       amount:         totalRevenue,
       businessDate:   input.business_date,
       createdBy:      input.confirmed_by,
-      idempotencyKey: `shipment:${input.order_id}`,
+      idempotencyKey: `shipment:${input.order_id}:${doc.id}`,
     });
   }
 
@@ -282,7 +282,7 @@ export async function recordDropshipSale(
       orderId:        input.order_id,
       businessDate:   input.business_date,
       createdBy:      input.confirmed_by,
-      idempotencyKey: `cogs:${input.order_id}`,
+      idempotencyKey: `cogs:${input.order_id}:${doc.id}`,
     });
   }
 

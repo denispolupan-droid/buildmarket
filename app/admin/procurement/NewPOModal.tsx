@@ -386,6 +386,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
           supplier_id:   supplierId,
           expected_date: expectedDate || undefined,
           notes:         notes || undefined,
+          order_id:      initialData.orderId || undefined,
           lines:         valid.map(l => ({ sku: l.sku.trim(), qty: l.qty, cost_price: l.cost_price })),
           // Провести: міняємо статус прямо в тілі запиту (атомарно, без окремого PATCH)
           conduct: post,

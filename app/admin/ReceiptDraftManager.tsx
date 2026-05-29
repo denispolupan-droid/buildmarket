@@ -13,9 +13,13 @@ import { X, Minus } from 'lucide-react';
 
 export type ReceiptLine = {
   sku: string; name: string; qty: number;
-  cost_price: number; sale_price: number; is_bonus: boolean;
+  cost_price: number;
+  sale_price: number;       // роздріб (основна, legacy)
+  price_wholesale: number;  // опт
+  price_drop: number;       // дроп
+  is_bonus: boolean;
   matched?: boolean;
-  ordered_qty?: number;  // original PO qty for comparison column
+  ordered_qty?: number;
 };
 
 export type ReceiptDraft = {

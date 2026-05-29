@@ -83,7 +83,7 @@ const STATUS_RANK: Record<string, number> = {
   new: 0, confirmed: 1, awaiting_stock: 2, picking: 3, shipped: 4, delivered: 5,
 };
 
-export default function AdminOrders({ initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin' }: { initialOrders: Order[]; currentPage?: number; totalPages?: number; userRole?: string }) {
+export default function AdminOrders({ initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin', hasRecentReceipts = false }: { initialOrders: Order[]; currentPage?: number; totalPages?: number; userRole?: string; hasRecentReceipts?: boolean }) {
   const isAdmin = userRole === 'admin';
   const router = useRouter();
   const [orders, setOrders]         = useState<Order[]>(initialOrders);
@@ -136,7 +136,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
   const [fulfillmentLoading, setFulfillmentLoading] = useState<Set<string>>(new Set());
 
   // PO-звязки для кожного замовлення
-  type LinkedPO = { id: string; doc_number: string; doc_date: string; procurement_status: string | null; total_cost: number | null; supplier: { name: string } | null };
+  type LinkedPO = { id: string; doc_number: string; doc_date: string; created_at: string; procurement_status: string | null; total_cost: number | null; supplier: { name: string } | null };
   const [linkedPOs, setLinkedPOs] = useState<Record<string, LinkedPO[]>>({});
 
   async function loadLinkedPOs(orderId: string) {
@@ -345,7 +345,8 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
           suppliers,
           prefill: {
             lines,
-            notes: `Замовлення покупця №${order.order_number}`,
+            notes:   `Замовлення покупця №${order.order_number}`,
+            orderId: order.id,
           },
         },
       }));
@@ -695,6 +696,44 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
         )}
       </div>
 
+      {/* Awaiting stock alert — показується тільки якщо сьогодні провели прихід */}
+      {(() => {
+        const awaitingCount = orders.filter(o => o.status === 'awaiting_stock').length;
+        if (!awaitingCount || !hasRecentReceipts) return null;
+        const isFiltered = channelFilter === '' && !q;
+        return (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '9px 14px', marginBottom: '10px', borderRadius: '10px',
+            background: '#F5F3FF', border: '1.5px solid #DDD6FE',
+            animation: 'awaiting-banner-pulse 3s ease-in-out infinite',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '14px' }}>⏳</span>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#6D28D9' }}>
+                {awaitingCount} {awaitingCount === 1 ? 'замовлення очікує товар' : 'замовлень очікують товар'}
+              </span>
+              <span style={{ fontSize: '12px', color: '#7C3AED' }}>— перевірте надходження товару</span>
+            </div>
+            {isFiltered ? (
+              <button
+                onClick={() => setChannelFilter('')}
+                style={{ height: '28px', padding: '0 12px', borderRadius: '6px', border: '1.5px solid #A78BFA', background: '#EDE9FE', color: '#6D28D9', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+              >
+                Показати →
+              </button>
+            ) : (
+              <button
+                onClick={() => { setChannelFilter(''); setSearch(''); }}
+                style={{ height: '28px', padding: '0 12px', borderRadius: '6px', border: '1.5px solid #A78BFA', background: '#EDE9FE', color: '#6D28D9', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+              >
+                Скинути фільтри →
+              </button>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Table header */}
       {filtered.length > 0 && (
         <div style={{
@@ -814,7 +853,9 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
 
                   {/* Статус */}
                   <div style={{ width: '104px', flexShrink: 0 }}>
-                    <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '20px', color: status.color, background: status.bg, display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span
+                      className={order.status === 'awaiting_stock' ? 'status-awaiting-pulse' : undefined}
+                      style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '20px', color: status.color, background: status.bg, display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {status.label}
                     </span>
                   </div>
@@ -1458,7 +1499,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                     };
 
                     // Build event list: always start with "Оформлено", then status_history entries
-                    type Ev = { icon: string; label: string; at: string; by?: string; backward?: boolean };
+                    type Ev = { icon: string; label: string; at: string; by?: string; backward?: boolean; href?: string; sub?: string };
                     const evs: Ev[] = [{ icon: '🛒', label: 'Оформлено', at: order.created_at }];
 
                     const history = order.status_history ?? [];
@@ -1486,6 +1527,21 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                       else evs.splice(insertAt, 0, sentEv);
                     }
 
+                    // Insert linked PO events at correct position
+                    for (const po of (linkedPOs[order.id] ?? [])) {
+                      const poAt = po.created_at;
+                      const poEv: Ev = {
+                        icon: '📋',
+                        label: po.doc_number,
+                        at: poAt,
+                        href: `/admin/procurement/${po.id}`,
+                        sub: po.supplier?.name ?? undefined,
+                      };
+                      const insertAt = evs.findIndex(e => e.at > poAt);
+                      if (insertAt === -1) evs.push(poEv);
+                      else evs.splice(insertAt, 0, poEv);
+                    }
+
                     if (evs.length <= 1) return null;
                     return (
                       <div style={{ borderTop: '1px solid var(--border-light)', padding: '10px 16px' }}>
@@ -1500,27 +1556,39 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                                   {ev.backward ? '↩' : '→'}
                                 </span>
                               )}
-                              <div style={{
-                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px',
-                                background: ev.backward ? '#FFFBEB' : 'var(--bg-soft)',
-                                border: `1px solid ${ev.backward ? '#FDE68A' : 'var(--border)'}`,
-                                borderRadius: '8px', padding: '4px 9px', minWidth: '70px',
-                              }}>
-                                <div style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                  <span>{ev.icon}</span>
-                                  <span style={{ fontWeight: 600, color: ev.backward ? '#B45309' : 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                                    {ev.label}
-                                  </span>
-                                </div>
-                                <span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                                  {new Date(ev.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                                {ev.by && ev.by !== 'system' && (
-                                  <span style={{ fontSize: '9px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '90px', textOverflow: 'ellipsis' }}>
-                                    {ev.by.split('@')[0]}
-                                  </span>
-                                )}
-                              </div>
+                              {(() => {
+                                const card = (
+                                  <div style={{
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px',
+                                    background: ev.backward ? '#FFFBEB' : ev.href ? '#F0F9FF' : 'var(--bg-soft)',
+                                    border: `1px solid ${ev.backward ? '#FDE68A' : ev.href ? '#BAE6FD' : 'var(--border)'}`,
+                                    borderRadius: '8px', padding: '4px 9px', minWidth: '70px',
+                                  }}>
+                                    <div style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                      <span>{ev.icon}</span>
+                                      <span style={{ fontWeight: 600, color: ev.backward ? '#B45309' : ev.href ? '#0369A1' : 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                                        {ev.label}
+                                      </span>
+                                    </div>
+                                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                                      {new Date(ev.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                    {ev.sub && (
+                                      <span style={{ fontSize: '9px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '90px', textOverflow: 'ellipsis' }}>
+                                        {ev.sub}
+                                      </span>
+                                    )}
+                                    {ev.by && ev.by !== 'system' && (
+                                      <span style={{ fontSize: '9px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '90px', textOverflow: 'ellipsis' }}>
+                                        {ev.by.split('@')[0]}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                                return ev.href
+                                  ? <a href={ev.href} style={{ textDecoration: 'none' }} onClick={e => e.stopPropagation()}>{card}</a>
+                                  : card;
+                              })()}
                             </div>
                           ))}
                         </div>
@@ -1732,6 +1800,20 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
           }}
         />
       )}
+
+      <style>{`
+        @keyframes awaiting-pulse {
+          0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(124,58,237,0.4); }
+          50% { opacity: 0.85; box-shadow: 0 0 0 4px rgba(124,58,237,0); }
+        }
+        .status-awaiting-pulse {
+          animation: awaiting-pulse 2s ease-in-out infinite;
+        }
+        @keyframes awaiting-banner-pulse {
+          0%, 100% { border-color: #DDD6FE; }
+          50% { border-color: #8B5CF6; }
+        }
+      `}</style>
     </>
   );
 }

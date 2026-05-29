@@ -27,6 +27,7 @@ export interface PoLine {
 export interface PoDraft {
   id:            string;
   dbId?:         string;   // UUID РІ acc_documents (РґР»СЏ СЂРµРґР°РіСѓРІР°РЅРЅСЏ С–СЃРЅСѓСЋС‡РѕРіРѕ PO)
+  orderId?:      string;   // ID замовлення покупця, з якого створено ЗП
   suppliers:     { id: number; name: string; email?: string | null }[];
   supplierId:    number;
   expectedDate:  string;
@@ -107,6 +108,7 @@ export default function PoDraftManager() {
       const draft: PoDraft = {
         id:            `po_${now}`,
         dbId:          prefill?.dbId,
+        orderId:       prefill?.orderId,
         suppliers,
         supplierId:    prefill?.supplierId ?? suppliers[0]?.id ?? 0,
         expectedDate:  prefill?.expectedDate ?? '',

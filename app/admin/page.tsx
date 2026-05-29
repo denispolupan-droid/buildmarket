@@ -50,9 +50,16 @@ export default async function AdminPage({
 
   if (status) query = query.eq('status', status);
 
-  const [{ data: orders, count }, { data: statusRows }] = await Promise.all([
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const [{ data: orders, count }, { data: statusRows }, { count: recentReceiptCount }] = await Promise.all([
     query,
     serviceClient.from('orders').select('status'),
+    serviceClient.from('acc_documents')
+      .select('id', { count: 'exact', head: true })
+      .in('doc_type', ['receipt', 'stock_in'])
+      .eq('status', 'confirmed')
+      .gte('confirmed_at', oneDayAgo),
   ]);
 
   // Count orders per status
@@ -134,7 +141,7 @@ export default async function AdminPage({
         {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
       </p>
 
-      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} />
+      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} />
     </div>
   );
 }

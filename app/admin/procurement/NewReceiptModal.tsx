@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Minus, Upload, Loader2, Trash2, AlertCircle } from 'lucide-react';
+import { X, Minus, Upload, Loader2, Trash2, AlertCircle, Copy } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import type { ReceiptDraft, ReceiptLine } from '../ReceiptDraftManager';
@@ -82,8 +82,8 @@ function parseExcel(buffer: ArrayBuffer): { sku: string; name: string; qty: numb
   return result;
 }
 
-// Grid cols: Артикул | Найменування | Кількість | Ціна закупки | Ціна продажу | Сума | 🎁 | Del
-const COLS = '130px 2fr 80px 120px 120px 110px 30px 32px';
+// Grid: Артикул | Найменування | Кількість | Ціна закупки | Ціни продажу (Р/О/Д) | Сума | 🎁 | Копія | Del
+const COLS = '110px 1.8fr 90px 110px 165px 100px 28px 28px 28px';
 
 export default function NewReceiptModal({
   initialData, warehouses, suppliers,
@@ -100,7 +100,7 @@ export default function NewReceiptModal({
   const [supplierInvAmount, setSupplierInvAmount] = useState<number | ''>(initialData.supplierInvAmount ?? '');
   const [notes,             setNotes]             = useState(initialData.notes || '');
   const [lines,             setLines]             = useState<ReceiptLine[]>(
-    initialData.lines?.length ? initialData.lines : [{ sku: '', name: '', qty: 1, cost_price: 0, sale_price: 0, is_bonus: false, matched: false }]
+    initialData.lines?.length ? initialData.lines : [{ sku: '', name: '', qty: 1, cost_price: 0, sale_price: 0, price_wholesale: 0, price_drop: 0, is_bonus: false, matched: false }]
   );
 
   const [currentDraftReceiptId, setCurrentDraftReceiptId] = useState<string | null>(initialData.draftReceiptId ?? null);
@@ -195,11 +195,13 @@ export default function NewReceiptModal({
     if (found?.matched) {
       setLines(prev => prev.map((l, i) => i === idx ? {
         ...l,
-        sku:        found.sku,
-        name:       `${found.brand ?? ''} ${found.name ?? ''}`.trim(),
-        cost_price: found.price_cost ?? l.cost_price,
-        sale_price: found.price_unit ?? l.sale_price,
-        matched:    true,
+        sku:             found.sku,
+        name:            `${found.brand ?? ''} ${found.name ?? ''}`.trim(),
+        cost_price:      found.price_cost      ?? l.cost_price,
+        sale_price:      found.price_unit      ?? l.sale_price,
+        price_wholesale: found.price_wholesale ?? l.price_wholesale,
+        price_drop:      found.price_drop      ?? l.price_drop,
+        matched:         true,
       } : l));
     } else {
       setLines(prev => prev.map((l, i) => i === idx ? { ...l, matched: false } : l));
@@ -210,25 +212,28 @@ export default function NewReceiptModal({
   async function resolveLines(raw: { sku: string; name: string; qty: number; price: number }[]): Promise<ReceiptLine[]> {
     if (!raw.length) return [];
     const skus = raw.map(r => r.sku).filter(Boolean);
-    if (!skus.length) return raw.map(r => ({ sku: r.sku, name: r.name, qty: r.qty, cost_price: r.price, sale_price: 0, is_bonus: false, matched: false }));
+    const emptyPrices = { sale_price: 0, price_wholesale: 0, price_drop: 0 };
+    if (!skus.length) return raw.map(r => ({ sku: r.sku, name: r.name, qty: r.qty, cost_price: r.price, ...emptyPrices, is_bonus: false, matched: false }));
     const res = await fetch('/api/admin/products/search-skus', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ skus }),
     });
-    if (!res.ok) return raw.map(r => ({ sku: r.sku, name: r.name, qty: r.qty, cost_price: r.price, sale_price: 0, is_bonus: false, matched: false }));
+    if (!res.ok) return raw.map(r => ({ sku: r.sku, name: r.name, qty: r.qty, cost_price: r.price, ...emptyPrices, is_bonus: false, matched: false }));
     const data = await res.json();
-    const byInput = new Map<string, { sku: string; name: string; brand: string; price_cost: number | null; price_unit: number | null; matched: boolean }>();
+    const byInput = new Map<string, { sku: string; name: string; brand: string; price_cost: number | null; price_unit: number | null; price_wholesale?: number | null; price_drop?: number | null; matched: boolean }>();
     for (const p of (data.products ?? [])) byInput.set(p.input_sku, p);
     return raw.map(r => {
       const found = byInput.get(r.sku);
       return {
-        sku:        found?.sku ?? r.sku,
-        name:       found ? `${found.brand ?? ''} ${found.name ?? ''}`.trim() : r.name,
-        qty:        r.qty,
-        cost_price: found?.price_cost ?? r.price,
-        sale_price: found?.price_unit ?? 0,
-        is_bonus:   false,
-        matched:    found?.matched ?? false,
+        sku:             found?.sku ?? r.sku,
+        name:            found ? `${found.brand ?? ''} ${found.name ?? ''}`.trim() : r.name,
+        qty:             r.qty,
+        cost_price:      found?.price_cost      ?? r.price,
+        sale_price:      found?.price_unit      ?? 0,
+        price_wholesale: found?.price_wholesale ?? 0,
+        price_drop:      found?.price_drop      ?? 0,
+        is_bonus:        false,
+        matched:         found?.matched ?? false,
       };
     });
   }
@@ -247,7 +252,16 @@ export default function NewReceiptModal({
   }
 
   function addLine() {
-    setLines(prev => [...prev, { sku: '', name: '', qty: 1, cost_price: 0, sale_price: 0, is_bonus: false, matched: false }]);
+    setLines(prev => [...prev, { sku: '', name: '', qty: 1, cost_price: 0, sale_price: 0, price_wholesale: 0, price_drop: 0, is_bonus: false, matched: false }]);
+  }
+
+  function copyLine(idx: number) {
+    setLines(prev => {
+      const copy = { ...prev[idx], sku: '', name: '', matched: false };
+      const next = [...prev];
+      next.splice(idx + 1, 0, copy);
+      return next;
+    });
   }
 
   function handlePickerAdd(items: { sku: string; name: string; qty: number; cost_price: number }[]) {
@@ -255,33 +269,35 @@ export default function NewReceiptModal({
       const filtered = prev.filter(l => l.sku.trim() || l.name.trim());
       return [
         ...filtered,
-        ...items.map(item => ({ sku: item.sku, name: item.name, qty: item.qty, cost_price: item.cost_price, sale_price: 0, is_bonus: false, matched: true })),
+        ...items.map(item => ({ sku: item.sku, name: item.name, qty: item.qty, cost_price: item.cost_price, sale_price: 0, price_wholesale: 0, price_drop: 0, is_bonus: false, matched: true })),
       ];
     });
   }
 
-  // Apply markup to all non-bonus lines: sale_price = cost_price × (1 + markup%)
+  function roundPrice(raw: number) {
+    return raw >= 10 ? Math.ceil(raw) : Math.round(raw * 100) / 100;
+  }
+
+  // Apply markup to retail, wholesale (−10%), drop (−15%) for all non-bonus lines
   function applyMarkup() {
     const markup = markupPct !== '' ? Number(markupPct) / 100 : 0;
     if (markup === 0) return;
     setLines(prev => prev.map(l => {
       if (l.is_bonus) return l;
-      const saleRaw    = l.cost_price * (1 + markup);
-      // Round: ≥10 ₴ → ceil to whole; <10 ₴ → 2 decimal places
-      const sale_price = saleRaw >= 10
-        ? Math.ceil(saleRaw)
-        : Math.round(saleRaw * 100) / 100;
-      return { ...l, sale_price };
+      return {
+        ...l,
+        sale_price:      roundPrice(l.cost_price * (1 + markup)),
+        price_wholesale: roundPrice(l.cost_price * (1 + markup * 0.9)),
+        price_drop:      roundPrice(l.cost_price * (1 + markup * 0.85)),
+      };
     }));
   }
 
   function calcExample(): string {
     const ex = lines.find(l => !l.is_bonus && l.cost_price > 0);
     if (!ex) return '';
-    const markup  = markupPct !== '' ? Number(markupPct) / 100 : 0;
-    const saleRaw = ex.cost_price * (1 + markup);
-    const sale    = saleRaw >= 10 ? Math.ceil(saleRaw) : Math.round(saleRaw * 100) / 100;
-    return `${fmt(ex.cost_price)} → ${fmt(sale)} ₴`;
+    const markup = markupPct !== '' ? Number(markupPct) / 100 : 0;
+    return `${fmt(ex.cost_price)} → ${fmt(roundPrice(ex.cost_price * (1 + markup)))} ₴`;
   }
 
   function toggleBonus(idx: number) {
@@ -313,12 +329,14 @@ export default function NewReceiptModal({
         const res = await fetch(`/api/admin/procurement/${initialData.poId}/receive`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            actualQties:    Object.fromEntries(valid.map(l => [l.sku.trim(), l.qty])),
-            actualPrices:   Object.fromEntries(valid.map(l => [l.sku.trim(), l.is_bonus ? 0 : l.cost_price])),
-            sale_prices:    Object.fromEntries(valid.map(l => [l.sku.trim(), l.sale_price])),
-            notes:          notes || undefined,
-            draft:          !autoConfirm,
-            draftReceiptId: currentDraftReceiptId ?? undefined,
+            actualQties:      Object.fromEntries(valid.map(l => [l.sku.trim(), l.qty])),
+            actualPrices:     Object.fromEntries(valid.map(l => [l.sku.trim(), l.is_bonus ? 0 : l.cost_price])),
+            sale_prices:      Object.fromEntries(valid.map(l => [l.sku.trim(), l.sale_price])),
+            wholesale_prices: Object.fromEntries(valid.map(l => [l.sku.trim(), l.price_wholesale])),
+            drop_prices:      Object.fromEntries(valid.map(l => [l.sku.trim(), l.price_drop])),
+            notes:            notes || undefined,
+            draft:            !autoConfirm,
+            draftReceiptId:   currentDraftReceiptId ?? undefined,
           }),
         });
         const data = await res.json();
@@ -496,14 +514,22 @@ export default function NewReceiptModal({
           <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
 
             {/* Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: COLS, padding: '8px 12px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', gap: '8px' }}>
-              <span>Наш артикул</span>
+            <div style={{ display: 'grid', gridTemplateColumns: COLS, padding: '8px 12px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', gap: '8px', alignItems: 'end' }}>
+              <span>Артикул</span>
               <span>Найменування</span>
-              <span style={{ textAlign: 'right' }}>Кількість</span>
-              <span style={{ textAlign: 'right' }}>Ціна закупки</span>
-              <span style={{ textAlign: 'right' }}>Ціна продажу</span>
+              <span style={{ textAlign: 'right' }}>Факт / Зам.</span>
+              <span style={{ textAlign: 'right' }}>Закупка</span>
+              <div>
+                <div style={{ fontSize: '10px', marginBottom: '2px' }}>Ціна продажу</div>
+                <div style={{ display: 'flex', gap: '2px', fontSize: '9px', fontWeight: 600 }}>
+                  <span style={{ flex: 1, textAlign: 'center', color: '#1E3A5F' }}>Роздріб</span>
+                  <span style={{ flex: 1, textAlign: 'center', color: '#7C3AED' }}>Опт</span>
+                  <span style={{ flex: 1, textAlign: 'center', color: '#15803D' }}>Дроп</span>
+                </div>
+              </div>
               <span style={{ textAlign: 'right' }}>Сума</span>
               <span style={{ textAlign: 'center' }} title="Бонусний товар">🎁</span>
+              <span />
               <span />
             </div>
 
@@ -550,18 +576,24 @@ export default function NewReceiptModal({
                       }}
                     />
 
-                    {/* Qty */}
+                    {/* Qty + ordered_qty */}
                     <div>
                       <input style={{ ...inp, textAlign: 'right' }} type="number" min="0.001" step="1"
                         value={line.qty || ''}
                         onChange={e => setLineField(idx, 'qty', parseFloat(e.target.value) || 1)}
                         onBlur={() => { if (!line.qty || line.qty < 0.001) setLineField(idx, 'qty', 1); }} />
-                      {line.ordered_qty != null && (
-                        <div style={{ fontSize: '9px', marginTop: '2px', textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 600,
-                          color: line.qty === line.ordered_qty ? '#15803D' : line.qty < line.ordered_qty ? '#F59E0B' : '#EF4444' }}>
-                          Зам: {line.ordered_qty}
-                        </div>
-                      )}
+                      {line.ordered_qty != null && (() => {
+                        const diff = line.qty - line.ordered_qty;
+                        const color = diff === 0 ? '#15803D' : diff < 0 ? '#F59E0B' : '#EF4444';
+                        const label = diff === 0 ? `= ${line.ordered_qty} зам.`
+                                    : diff < 0  ? `↓${Math.abs(diff)} (зам. ${line.ordered_qty})`
+                                    :             `↑${diff} (зам. ${line.ordered_qty})`;
+                        return (
+                          <div style={{ fontSize: '9px', marginTop: '2px', textAlign: 'right', fontWeight: 700, color, whiteSpace: 'nowrap' }}>
+                            {label}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Cost price */}
@@ -574,55 +606,67 @@ export default function NewReceiptModal({
                       <span style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
                     </div>
 
-                    {/* Sale price */}
-                    <div style={{ position: 'relative' }}>
-                      <input style={{ ...inp, textAlign: 'right', paddingRight: '18px' }}
-                        type="number" min="0" step="0.01"
-                        value={line.sale_price || ''} placeholder="0.00"
-                        onChange={e => setLineField(idx, 'sale_price', parseFloat(e.target.value) || 0)} />
-                      <span style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
+                    {/* 3 sale prices: Роздріб / Опт / Дроп */}
+                    <div style={{ display: 'flex', gap: '3px' }}>
+                      {([
+                        { key: 'sale_price'      as const, color: '#1E3A5F', label: 'Р' },
+                        { key: 'price_wholesale' as const, color: '#7C3AED', label: 'О' },
+                        { key: 'price_drop'      as const, color: '#15803D', label: 'Д' },
+                      ] as const).map(({ key, color, label }) => (
+                        <div key={key} style={{ flex: 1, position: 'relative' }}>
+                          <div style={{ fontSize: '8px', fontWeight: 700, color, textAlign: 'center', marginBottom: '1px' }}>{label}</div>
+                          <input
+                            style={{ ...inp, textAlign: 'right', paddingRight: '14px', fontSize: '11px' }}
+                            type="number" min="0" step="0.01"
+                            value={line[key] || ''} placeholder="0"
+                            onChange={e => setLineField(idx, key, parseFloat(e.target.value) || 0)} />
+                          <span style={{ position: 'absolute', right: '4px', bottom: '4px', fontSize: '9px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
+                        </div>
+                      ))}
                     </div>
 
                     {/* Row sum */}
-                    <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: rowSum > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                    <div style={{ textAlign: 'right', fontSize: '12px', fontWeight: 600, color: rowSum > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>
                       {rowSum > 0 ? `${fmt(rowSum)} ₴` : '—'}
                     </div>
 
                     {/* Bonus toggle */}
-                    <button onClick={() => toggleBonus(idx)} title={line.is_bonus ? 'Скасувати бонус' : 'Бонусний товар (собівартість = 0)'}
+                    <button onClick={() => toggleBonus(idx)} title={line.is_bonus ? 'Скасувати бонус' : 'Бонусний товар'}
                       style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: line.is_bonus ? '#FEF3C7' : 'none', border: line.is_bonus ? '1px solid #FCD34D' : '1px solid transparent', borderRadius: '5px', cursor: 'pointer', fontSize: '13px', height: '24px', width: '24px', padding: 0 }}>
                       🎁
+                    </button>
+
+                    {/* Copy line */}
+                    <button onClick={() => copyLine(idx)} title="Копіювати рядок"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                      <Copy size={12} />
                     </button>
 
                     {/* Delete */}
                     <button onClick={() => setLines(prev => prev.filter((_, i) => i !== idx))}
                       disabled={lines.length === 1}
                       style={{ background: 'none', border: 'none', cursor: lines.length > 1 ? 'pointer' : 'default', color: lines.length > 1 ? '#EF4444' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-                      <Trash2 size={13} />
+                      <Trash2 size={12} />
                     </button>
                   </div>
                 );
               })}
             </div>
 
-            {/* Footer */}
-            <div style={{ display: 'grid', gridTemplateColumns: COLS, padding: '8px 12px', gap: '8px', borderTop: '2px solid var(--border)', background: 'var(--bg-soft)', alignItems: 'center' }}>
-              <div style={{ gridColumn: '1 / 3', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <button onClick={addLine} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#1E3A5F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}>
-                  + Додати рядок
-                </button>
-                <button onClick={() => setShowPicker(true)} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#7C3AED', background: 'none', border: '1px solid #DDD6FE', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, padding: '3px 8px' }}>
-                  ⋯ З каталогу
-                </button>
-              </div>
-              {/* col 3: "Разом:" label aligned right */}
-              <span style={{ textAlign: 'right', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Разом:</span>
-              {/* col 4: total under "Ціна закупки" */}
-              <span style={{ textAlign: 'right', fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                {fmt(total)} ₴
-              </span>
-              {/* cols 5–8: empty */}
-              <span /><span /><span /><span />
+            {/* Footer — actions only */}
+            <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button onClick={addLine} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#1E3A5F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}>
+                + Додати рядок
+              </button>
+              <button onClick={() => setShowPicker(true)} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#7C3AED', background: 'none', border: '1px solid #DDD6FE', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, padding: '3px 8px' }}>
+                ⋯ З каталогу
+              </button>
+            </div>
+
+            {/* Total — окремо під рядками */}
+            <div style={{ padding: '10px 16px', borderTop: '2px solid var(--border)', background: 'var(--bg-card)', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Разом закупка:</span>
+              <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)' }}>{fmt(total)} ₴</span>
             </div>
           </div>
 

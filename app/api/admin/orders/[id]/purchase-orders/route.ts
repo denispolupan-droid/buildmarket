@@ -10,7 +10,8 @@ export async function GET(
 ) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') {
+  const role = user?.user_metadata?.role ?? '';
+  if (!user || !['admin', 'manager'].includes(role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -18,7 +19,7 @@ export async function GET(
 
   const { data: pos } = await db
     .from('acc_documents')
-    .select('id, doc_number, doc_date, procurement_status, total_cost, supplier:supplier_id(name)')
+    .select('id, doc_number, doc_date, created_at, procurement_status, total_cost, supplier:supplier_id(name)')
     .eq('order_id', id)
     .eq('doc_type', 'purchase_order')
     .neq('status', 'cancelled')

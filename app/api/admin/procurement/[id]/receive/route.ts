@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
-import { createDocument, confirmDocument } from '../../../../../../lib/accounting/documents';
+import { createDocument, confirmDocument, maybeAutoClose } from '../../../../../../lib/accounting/documents';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createSupabaseServer();
@@ -10,12 +10,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   const body = await req.json() as {
-    actualQties?:    Record<string, number>;
-    actualPrices?:   Record<string, number>;
-    sale_prices?:    Record<string, number>;
-    notes?:          string;
-    draft?:          boolean;
-    draftReceiptId?: string;
+    actualQties?:       Record<string, number>;
+    actualPrices?:      Record<string, number>;
+    sale_prices?:       Record<string, number>;  // роздріб
+    wholesale_prices?:  Record<string, number>;  // опт
+    drop_prices?:       Record<string, number>;  // дроп
+    notes?:             string;
+    draft?:             boolean;
+    draftReceiptId?:    string;
   };
   const db = createServiceClient();
 
@@ -98,20 +100,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .update({ procurement_status: allReceived ? 'received' : 'partially_received' })
     .eq('id', id);
 
-  // Record AP: ми винні постачальнику (debit stock_asset → credit supplier)
-  if (po.total_cost && po.total_cost > 0 && po.supplier_id) {
-    await db.rpc('record_money_txn', {
-      p_debit_account:  'variance',
-      p_credit_account: 'supplier',
-      p_debit_party:    null,
-      p_credit_party:   String(po.supplier_id),
-      p_amount:         po.total_cost,
-      p_business_date:  new Date().toISOString().slice(0, 10),
-      p_doc_id:         receipt.id,
-      p_doc_type:       'receipt',
-      p_description:    `Кредиторка: ${po.doc_number}`,
-      p_created_by:     user.email,
-    });
+  if (allReceived) await maybeAutoClose(id);
+
+  // Якщо вказані ціни продажу — фіксуємо їх в product_stock і блокуємо від перезапису синком
+  const skusWithPrices = [...new Set([
+    ...Object.keys(body.sale_prices      ?? {}).filter(s => (body.sale_prices![s]      ?? 0) > 0),
+    ...Object.keys(body.wholesale_prices ?? {}).filter(s => (body.wholesale_prices![s] ?? 0) > 0),
+    ...Object.keys(body.drop_prices      ?? {}).filter(s => (body.drop_prices![s]      ?? 0) > 0),
+  ])];
+
+  if (skusWithPrices.length > 0) {
+    await Promise.allSettled(skusWithPrices.map(sku => {
+      const retail    = body.sale_prices?.[sku]      ?? 0;
+      const wholesale = body.wholesale_prices?.[sku] ?? 0;
+      const drop      = body.drop_prices?.[sku]      ?? 0;
+      const row: Record<string, unknown> = { sku, price_locked: true };
+      if (retail    > 0) row.price_retail = retail;
+      if (wholesale > 0) row.price_unit   = wholesale;
+      if (drop      > 0) row.price_drop   = drop;
+      return db.from('product_stock').upsert(row, { onConflict: 'sku' });
+    }));
   }
 
   return NextResponse.json({ ok: true, receiptId: receipt.id, draft: false });

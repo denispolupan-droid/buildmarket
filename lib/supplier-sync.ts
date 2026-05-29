@@ -288,6 +288,8 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
     { data: productBrands },
     { data: productOverrides },
     { data: promotions },
+    { data: priceLockRows },
+    { data: physStockRows },
   ] = await Promise.all([
     supabase.from('supplier_sku_map').select('supplier_sku, our_sku').eq('supplier_id', supplierId),
     supabase.from('product_stock').select('sku, supplier_sku'),
@@ -301,7 +303,15 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
       .eq('is_active', true)
       .or(`starts_at.is.null,starts_at.lte.${now}`)
       .or(`ends_at.is.null,ends_at.gte.${now}`),
+    // Заблоковані ціни (встановлені при приході товару)
+    supabase.from('product_stock').select('sku').eq('price_locked', true),
+    // Фізичні залишки на власних складах
+    supabase.from('stock_balance').select('sku').gt('qty_total', 0),
   ]);
+
+  // SKU з заблокованими цінами, які ще є в наявності → не перезаписуємо
+  const priceLockSet  = new Set((priceLockRows  ?? []).map(r => r.sku));
+  const physStockSet  = new Set((physStockRows  ?? []).map(r => r.sku));
 
   // supplier_sku → our_sku
   // Primary source: supplier_sku_map; fallback: product_stock.supplier_sku
@@ -453,19 +463,25 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
     const rowTime = new Date().toISOString();
 
     // ── product_stock (ціни + публічна наявність) ─────────────────────────────
+    // Якщо ціни заблоковані (встановлені при приході) і товар ще є на складі → не перезаписуємо ціни
+    const isPriceLocked = priceLockSet.has(ourSku) && physStockSet.has(ourSku);
+
     const { error } = await supabase
       .from('product_stock')
       .upsert({
-        sku:              ourSku,
-        price_cost:       parseFloat(priceCost.toFixed(2)),
-        price_unit:       priceUnit,
-        price_old:        priceOld,
-        price_retail:     priceRetail,
-        price_retail_old: priceRetailOld,
-        price_drop:       priceDrop,
-        stock_qty:        stockQty,
-        stock_status:     stockStatus,
-        updated_at:       rowTime,
+        sku:          ourSku,
+        price_cost:   parseFloat(priceCost.toFixed(2)),
+        stock_qty:    stockQty,
+        stock_status: stockStatus,
+        updated_at:   rowTime,
+        // Ціни перезаписуємо тільки якщо не заблоковані
+        ...(!isPriceLocked && {
+          price_unit:       priceUnit,
+          price_old:        priceOld,
+          price_retail:     priceRetail,
+          price_retail_old: priceRetailOld,
+          price_drop:       priceDrop,
+        }),
       }, { onConflict: 'sku' });
 
     // ── supplier_stock (наявність per-supplier для multi-supplier логіки) ──────

@@ -26,6 +26,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const catsListRef = useRef<HTMLDivElement>(null);
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sidebarRef = useRef<HTMLElement>(null);
+  const pillsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     getSupabaseBrowser().auth.getUser().then(({ data }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
@@ -58,6 +59,18 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     };
     document.addEventListener('wheel', handleWheel, { passive: false, capture: true });
     return () => document.removeEventListener('wheel', handleWheel, { capture: true });
+  }, []);
+
+  useEffect(() => {
+    const el = pillsRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
   useEffect(() => {
@@ -574,7 +587,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 wrapperClassName="search-bar"
                 iconClassName="search-icon"
               />
-              <div className="catalog-cats-pills">
+              <div className="catalog-cats-pills" ref={pillsRef}>
                 <button
                   className={'catalog-cat-pill' + (!selCat ? ' active' : '')}
                   onClick={() => { setSelCat(''); router.replace('?', { scroll: false } as never); setVisibleCount(50); }}

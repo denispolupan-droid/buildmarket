@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
     supplier_id:    number;
     expected_date?: string;
     notes?:         string;
+    order_id?:      string;   // ID замовлення покупця, якщо ЗП створено на основі замовлення
     parent_doc_id?: string;   // якщо це додатковий прихід до існуючого PO
     is_receipt?:    boolean;  // створити як прихід (receipt), а не PO
     conduct?:       boolean;  // одразу провести (procurement_status: 'new')
@@ -77,6 +78,11 @@ export async function POST(req: NextRequest) {
       await db.from('acc_documents')
         .update({ procurement_status: allReceived ? 'received' : 'partially_received' })
         .eq('id', body.parent_doc_id);
+
+      if (allReceived) {
+        const { maybeAutoClose } = await import('../../../../lib/accounting/documents');
+        await maybeAutoClose(body.parent_doc_id);
+      }
     }
 
     return NextResponse.json({ receiptId: receipt.id, doc_number: receipt.doc_number }, { status: 201 });
@@ -108,6 +114,7 @@ export async function POST(req: NextRequest) {
     procurement_status: body.conduct ? 'ordered' : 'draft',
     total_amount:       total,
     total_cost:         total,
+    ...(body.order_id ? { order_id: body.order_id } : {}),
   }).eq('id', doc.id);
 
   if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });

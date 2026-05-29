@@ -163,8 +163,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  // shipped → фіксуємо продаж в обліку + знімаємо резерв
+  // shipped → знімаємо резерв спочатку, потім фіксуємо продаж в обліку
+  // Порядок важливий: якщо спочатку списати FIFO а потім не зняти резерв —
+  // qty_available стане штучно заниженим (qty_total↓, qty_reserved залишається).
   if (status === 'shipped') {
+    try {
+      await releaseReservation(id, 'shipped');
+    } catch (err) {
+      console.error('[reservation] release on ship failed:', err);
+    }
+
     try {
       const { data: order } = await db
         .from('orders')
@@ -177,7 +185,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           ? new Date(order.created_at).toISOString().slice(0, 10)
           : new Date().toISOString().slice(0, 10);
 
-        // Шукаємо активний договір клієнта, щоб прив'язати проводки до нього
         let saleContractId: string | undefined;
         if (order.customer_id) {
           const { data: ctr } = await db
@@ -204,12 +211,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     } catch (err) {
       console.error('[accounting] recordDropshipSale failed:', err);
-    }
-
-    try {
-      await releaseReservation(id, 'shipped');
-    } catch (err) {
-      console.error('[reservation] release on ship failed:', err);
     }
   }
 
