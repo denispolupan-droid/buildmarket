@@ -82,8 +82,8 @@ function parseExcel(buffer: ArrayBuffer): { sku: string; name: string; qty: numb
   return result;
 }
 
-// Grid: Артикул | Найменування | Кількість | Ціна закупки | Ціни продажу (Р/О/Д) | Сума | 🎁 | Копія | Del
-const COLS = '110px 1.8fr 90px 110px 165px 100px 28px 28px 28px';
+// Grid: Артикул | Найменування | Зам. | Факт | Закупка | Роздріб | Опт | Дроп | Сума | 🎁 | ⧉ | Del
+const COLS = '90px 1.5fr 66px 76px 100px 90px 90px 90px 88px 24px 24px 24px';
 
 export default function NewReceiptModal({
   initialData, warehouses, suppliers,
@@ -91,6 +91,7 @@ export default function NewReceiptModal({
 }: Props) {
   const router  = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   const [warehouseId,       setWarehouseId]       = useState(initialData.warehouseId || warehouses[0]?.id || 0);
   const [supplierId,        setSupplierId]         = useState<number | ''>(initialData.supplierId ?? '');
@@ -104,6 +105,25 @@ export default function NewReceiptModal({
   );
 
   const [currentDraftReceiptId, setCurrentDraftReceiptId] = useState<string | null>(initialData.draftReceiptId ?? null);
+
+  // Додаткові витрати (landed costs)
+  type LCLine = { cost_type: string; description: string; amount: number; payment_method: 'cash' | 'bank' };
+  const [landedCosts,  setLandedCosts]  = useState<LCLine[]>([]);
+  const [lcMethod,     setLcMethod]     = useState<'by_cost' | 'by_qty' | 'equal'>('by_cost');
+  const [showLC,       setShowLC]       = useState(false);
+  const LC_TYPES = [
+    { key: 'delivery',  label: 'Доставка' },
+    { key: 'loading',   label: 'Навантаж./розвантаж.' },
+    { key: 'customs',   label: 'Мито' },
+    { key: 'packaging', label: 'Пакування' },
+    { key: 'broker',    label: 'Брокер' },
+    { key: 'other',     label: 'Інше' },
+  ];
+  function addLC() { setLandedCosts(prev => [...prev, { cost_type: 'delivery', description: '', amount: 0, payment_method: 'bank' }]); }
+  function setLCField<K extends keyof LCLine>(i: number, k: K, v: LCLine[K]) {
+    setLandedCosts(prev => prev.map((l, idx) => idx === i ? { ...l, [k]: v } : l));
+  }
+  const lcTotal = landedCosts.reduce((s, l) => s + (l.amount || 0), 0);
   const [savedAsDraft,          setSavedAsDraft]          = useState(false);
 
   const [dragging,    setDragging]    = useState(false);
@@ -112,8 +132,10 @@ export default function NewReceiptModal({
   const [error,       setError]       = useState('');
   const [showPicker,  setShowPicker]  = useState(false);
 
-  // Pricing calculator
-  const [markupPct, setMarkupPct] = useState<number | ''>('');
+  // Pricing calculator — три окремі наценки
+  const [markupRetail,    setMarkupRetail]    = useState<number | ''>('');
+  const [markupWholesale, setMarkupWholesale] = useState<number | ''>('');
+  const [markupDrop,      setMarkupDrop]      = useState<number | ''>('');
 
   // Per-row name autocomplete (same pattern as NewPOModal)
   const nameTimers    = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
@@ -256,12 +278,7 @@ export default function NewReceiptModal({
   }
 
   function copyLine(idx: number) {
-    setLines(prev => {
-      const copy = { ...prev[idx], sku: '', name: '', matched: false };
-      const next = [...prev];
-      next.splice(idx + 1, 0, copy);
-      return next;
-    });
+    setLines(prev => [...prev, { ...prev[idx], ordered_qty: 0, qty: 1 }]);
   }
 
   function handlePickerAdd(items: { sku: string; name: string; qty: number; cost_price: number }[]) {
@@ -278,26 +295,22 @@ export default function NewReceiptModal({
     return raw >= 10 ? Math.ceil(raw) : Math.round(raw * 100) / 100;
   }
 
-  // Apply markup to retail, wholesale (−10%), drop (−15%) for all non-bonus lines
   function applyMarkup() {
-    const markup = markupPct !== '' ? Number(markupPct) / 100 : 0;
-    if (markup === 0) return;
     setLines(prev => prev.map(l => {
       if (l.is_bonus) return l;
       return {
         ...l,
-        sale_price:      roundPrice(l.cost_price * (1 + markup)),
-        price_wholesale: roundPrice(l.cost_price * (1 + markup * 0.9)),
-        price_drop:      roundPrice(l.cost_price * (1 + markup * 0.85)),
+        ...(markupRetail    !== '' ? { sale_price:      roundPrice(l.cost_price * (1 + Number(markupRetail)    / 100)) } : {}),
+        ...(markupWholesale !== '' ? { price_wholesale: roundPrice(l.cost_price * (1 + Number(markupWholesale) / 100)) } : {}),
+        ...(markupDrop      !== '' ? { price_drop:      roundPrice(l.cost_price * (1 + Number(markupDrop)      / 100)) } : {}),
       };
     }));
   }
 
   function calcExample(): string {
     const ex = lines.find(l => !l.is_bonus && l.cost_price > 0);
-    if (!ex) return '';
-    const markup = markupPct !== '' ? Number(markupPct) / 100 : 0;
-    return `${fmt(ex.cost_price)} → ${fmt(roundPrice(ex.cost_price * (1 + markup)))} ₴`;
+    if (!ex || markupRetail === '') return '';
+    return `${fmt(ex.cost_price)} → ${fmt(roundPrice(ex.cost_price * (1 + Number(markupRetail) / 100)))} ₴`;
   }
 
   function toggleBonus(idx: number) {
@@ -314,6 +327,14 @@ export default function NewReceiptModal({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [warehouseId, supplierId, docDate, supplierInvNum, supplierInvDate, supplierInvAmount, notes, lines]);
   useEffect(() => { syncDraft(); }, [syncDraft]);
+
+  // Автоскрол вниз коли відкривається секція витрат
+  useEffect(() => {
+    if (showLC && bodyRef.current) {
+      const el = bodyRef.current;
+      setTimeout(() => el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }), 50);
+    }
+  }, [showLC]);
 
   const total          = lines.reduce((s, l) => s + l.qty * (l.is_bonus ? 0 : l.cost_price), 0);
   const filledLines    = lines.filter(l => l.sku || l.name).length;
@@ -337,6 +358,10 @@ export default function NewReceiptModal({
             notes:            notes || undefined,
             draft:            !autoConfirm,
             draftReceiptId:   currentDraftReceiptId ?? undefined,
+            ...(autoConfirm && landedCosts.length > 0 ? {
+              landed_costs: landedCosts.filter(c => c.amount > 0),
+              lc_method:    lcMethod,
+            } : {}),
           }),
         });
         const data = await res.json();
@@ -405,13 +430,14 @@ export default function NewReceiptModal({
         <ProductPickerModal zIndex={zIndex + 100} onClose={() => setShowPicker(false)} onAdd={handlePickerAdd} />
       )}
 
-      {/* Panel — identical position/size to NewPOModal */}
+      {/* Panel — весь модаль скролиться, header/footer sticky */}
       <div
         className="receipt-panel-enter"
-        style={{ position: 'fixed', top: 0, left: '220px', bottom: '42px', zIndex, width: 'min(1040px, 74vw)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', boxShadow: '8px 0 32px rgba(0,0,0,0.22)', borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}
+        ref={bodyRef}
+        style={{ position: 'fixed', top: 0, left: '220px', right: 0, bottom: '42px', zIndex, overflowY: 'auto', background: 'var(--bg-card)', boxShadow: '8px 0 32px rgba(0,0,0,0.22)', borderBottom: '1px solid var(--border)' }}
       >
-        {/* ── Header ── */}
-        <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+        {/* ── Header sticky ── */}
+        <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--bg-card)', padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
               {initialData.poId ? `Прихід за ${initialData.poDocNumber ?? 'ЗП'}` : 'Новий прихід товару'}
@@ -427,7 +453,7 @@ export default function NewReceiptModal({
         </div>
 
         {/* ── Scrollable body ── */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
           {/* Top fields */}
           <div style={{ display: 'grid', gridTemplateColumns: '180px 160px 200px 1fr', gap: '12px' }}>
@@ -497,10 +523,16 @@ export default function NewReceiptModal({
 
           {/* ── Pricing calculator ── */}
           <PricingCalculator
-            markupPct={markupPct}
-            onMarkupChange={setMarkupPct}
+            markupRetail={markupRetail}
+            markupWholesale={markupWholesale}
+            markupDrop={markupDrop}
+            onMarkupChange={(field, v) => {
+              if (field === 'retail')    setMarkupRetail(v);
+              if (field === 'wholesale') setMarkupWholesale(v);
+              if (field === 'drop')      setMarkupDrop(v);
+            }}
             onApply={applyMarkup}
-            example={markupPct !== '' && lines.some(l => !l.is_bonus && l.cost_price > 0) ? calcExample() : ''}
+            example={lines.some(l => !l.is_bonus && l.cost_price > 0) ? calcExample() : ''}
           />
 
           {unmatchedCount > 0 && (
@@ -514,27 +546,22 @@ export default function NewReceiptModal({
           <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
 
             {/* Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: COLS, padding: '8px 12px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', gap: '8px', alignItems: 'end' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: COLS, padding: '8px 12px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', gap: '8px', alignItems: 'center' }}>
               <span>Артикул</span>
               <span>Найменування</span>
-              <span style={{ textAlign: 'right' }}>Факт / Зам.</span>
+              <span style={{ textAlign: 'right', color: '#7C3AED' }}>Зам.</span>
+              <span style={{ textAlign: 'right' }}>Факт</span>
               <span style={{ textAlign: 'right' }}>Закупка</span>
-              <div>
-                <div style={{ fontSize: '10px', marginBottom: '2px' }}>Ціна продажу</div>
-                <div style={{ display: 'flex', gap: '2px', fontSize: '9px', fontWeight: 600 }}>
-                  <span style={{ flex: 1, textAlign: 'center', color: '#1E3A5F' }}>Роздріб</span>
-                  <span style={{ flex: 1, textAlign: 'center', color: '#7C3AED' }}>Опт</span>
-                  <span style={{ flex: 1, textAlign: 'center', color: '#15803D' }}>Дроп</span>
-                </div>
-              </div>
+              <span style={{ textAlign: 'right', color: '#1E3A5F' }}>Роздріб</span>
+              <span style={{ textAlign: 'right', color: '#7C3AED' }}>Опт</span>
+              <span style={{ textAlign: 'right', color: '#15803D' }}>Дроп</span>
               <span style={{ textAlign: 'right' }}>Сума</span>
               <span style={{ textAlign: 'center' }} title="Бонусний товар">🎁</span>
-              <span />
-              <span />
+              <span /><span />
             </div>
 
             {/* Rows */}
-            <div style={{ maxHeight: '340px', overflowY: 'auto' }}>
+            <div>
               {lines.map((line, idx) => {
                 const rowSum = line.qty * (line.is_bonus ? 0 : line.cost_price);
                 const warn   = line.sku && !line.matched;
@@ -576,24 +603,29 @@ export default function NewReceiptModal({
                       }}
                     />
 
-                    {/* Qty + ordered_qty */}
+                    {/* Замовлено (read-only) */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                      {line.ordered_qty != null ? (
+                        <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: '#7C3AED',
+                          background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: '6px',
+                          padding: '3px 8px', width: '100%', boxSizing: 'border-box' }}>
+                          {line.ordered_qty}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', width: '100%', textAlign: 'right' }}>—</span>
+                      )}
+                    </div>
+
+                    {/* Факт (editable) */}
                     <div>
-                      <input style={{ ...inp, textAlign: 'right' }} type="number" min="0.001" step="1"
+                      <input style={{ ...inp, textAlign: 'right',
+                        borderColor: line.ordered_qty != null
+                          ? (line.qty === line.ordered_qty ? '#86EFAC' : line.qty < line.ordered_qty ? '#FCD34D' : '#FCA5A5')
+                          : undefined }}
+                        type="number" min="0.001" step="1"
                         value={line.qty || ''}
                         onChange={e => setLineField(idx, 'qty', parseFloat(e.target.value) || 1)}
                         onBlur={() => { if (!line.qty || line.qty < 0.001) setLineField(idx, 'qty', 1); }} />
-                      {line.ordered_qty != null && (() => {
-                        const diff = line.qty - line.ordered_qty;
-                        const color = diff === 0 ? '#15803D' : diff < 0 ? '#F59E0B' : '#EF4444';
-                        const label = diff === 0 ? `= ${line.ordered_qty} зам.`
-                                    : diff < 0  ? `↓${Math.abs(diff)} (зам. ${line.ordered_qty})`
-                                    :             `↑${diff} (зам. ${line.ordered_qty})`;
-                        return (
-                          <div style={{ fontSize: '9px', marginTop: '2px', textAlign: 'right', fontWeight: 700, color, whiteSpace: 'nowrap' }}>
-                            {label}
-                          </div>
-                        );
-                      })()}
                     </div>
 
                     {/* Cost price */}
@@ -606,23 +638,26 @@ export default function NewReceiptModal({
                       <span style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
                     </div>
 
-                    {/* 3 sale prices: Роздріб / Опт / Дроп */}
-                    <div style={{ display: 'flex', gap: '3px' }}>
-                      {([
-                        { key: 'sale_price'      as const, color: '#1E3A5F', label: 'Р' },
-                        { key: 'price_wholesale' as const, color: '#7C3AED', label: 'О' },
-                        { key: 'price_drop'      as const, color: '#15803D', label: 'Д' },
-                      ] as const).map(({ key, color, label }) => (
-                        <div key={key} style={{ flex: 1, position: 'relative' }}>
-                          <div style={{ fontSize: '8px', fontWeight: 700, color, textAlign: 'center', marginBottom: '1px' }}>{label}</div>
-                          <input
-                            style={{ ...inp, textAlign: 'right', paddingRight: '14px', fontSize: '11px' }}
-                            type="number" min="0" step="0.01"
-                            value={line[key] || ''} placeholder="0"
-                            onChange={e => setLineField(idx, key, parseFloat(e.target.value) || 0)} />
-                          <span style={{ position: 'absolute', right: '4px', bottom: '4px', fontSize: '9px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
-                        </div>
-                      ))}
+                    {/* Роздріб */}
+                    <div style={{ position: 'relative' }}>
+                      <input style={{ ...inp, textAlign: 'right', paddingRight: '16px' }} type="number" min="0" step="0.01"
+                        value={line.sale_price || ''} placeholder="0"
+                        onChange={e => setLineField(idx, 'sale_price', parseFloat(e.target.value) || 0)} />
+                      <span style={{ position: 'absolute', right: '5px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
+                    </div>
+                    {/* Опт */}
+                    <div style={{ position: 'relative' }}>
+                      <input style={{ ...inp, textAlign: 'right', paddingRight: '16px' }} type="number" min="0" step="0.01"
+                        value={line.price_wholesale || ''} placeholder="0"
+                        onChange={e => setLineField(idx, 'price_wholesale', parseFloat(e.target.value) || 0)} />
+                      <span style={{ position: 'absolute', right: '5px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
+                    </div>
+                    {/* Дроп */}
+                    <div style={{ position: 'relative' }}>
+                      <input style={{ ...inp, textAlign: 'right', paddingRight: '16px' }} type="number" min="0" step="0.01"
+                        value={line.price_drop || ''} placeholder="0"
+                        onChange={e => setLineField(idx, 'price_drop', parseFloat(e.target.value) || 0)} />
+                      <span style={{ position: 'absolute', right: '5px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
                     </div>
 
                     {/* Row sum */}
@@ -670,6 +705,60 @@ export default function NewReceiptModal({
             </div>
           </div>
 
+          {/* ── Додаткові витрати — всередині body, скролиться разом ── */}
+          <div style={{ border: '1px solid #DDD6FE', borderRadius: '10px', overflow: 'hidden' }}>
+            <div style={{ padding: '8px 12px', background: showLC ? '#F5F3FF' : '#FAFBFF', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button onClick={() => { setShowLC(v => !v); if (!showLC && landedCosts.length === 0) addLC(); }}
+                style={{ fontSize: '13px', fontWeight: 600, color: showLC ? '#7C3AED' : 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                📦 Додаткові витрати {lcTotal > 0 ? `· ${fmt(lcTotal)} ₴` : ''}
+                <span style={{ fontSize: '10px' }}>{showLC ? '▲' : '▼'}</span>
+              </button>
+              {showLC && <>
+                <button onClick={addLC} style={{ fontSize: '12px', color: '#7C3AED', background: 'none', border: '1px solid #DDD6FE', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, padding: '3px 10px' }}>
+                  + Додати
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginLeft: 'auto' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Розподіл:</span>
+                  <select value={lcMethod} onChange={e => setLcMethod(e.target.value as typeof lcMethod)}
+                    style={{ height: '28px', padding: '0 8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', fontSize: '11px', cursor: 'pointer' }}>
+                    <option value="by_cost">за собівартістю</option>
+                    <option value="by_qty">за кількістю</option>
+                    <option value="equal">порівну</option>
+                  </select>
+                </div>
+              </>}
+            </div>
+            {showLC && (
+              <div style={{ borderTop: '1px solid #DDD6FE', background: '#FAFBFF', display: 'flex', flexDirection: 'column', gap: '6px', padding: '8px 12px' }}>
+                {landedCosts.map((lc, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <select value={lc.cost_type} onChange={e => setLCField(i, 'cost_type', e.target.value)}
+                      style={{ ...sinp, fontSize: '12px', cursor: 'pointer', flex: '0 0 160px' }}>
+                      {LC_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+                    </select>
+                    <input value={lc.description} onChange={e => setLCField(i, 'description', e.target.value)}
+                      placeholder="Опис (необов'язково)" style={{ ...sinp, fontSize: '12px', flex: '1 1 auto', minWidth: 0, maxWidth: '400px' }} />
+                    <div style={{ position: 'relative', flex: '0 0 120px' }}>
+                      <input type="number" min={0} step={0.01} value={lc.amount || ''}
+                        onChange={e => setLCField(i, 'amount', parseFloat(e.target.value) || 0)}
+                        placeholder="0.00" style={{ ...sinp, fontSize: '12px', textAlign: 'right', paddingRight: '22px', width: '100%' }} />
+                      <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '11px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
+                    </div>
+                    <select value={lc.payment_method} onChange={e => setLCField(i, 'payment_method', e.target.value as 'cash' | 'bank')}
+                      style={{ ...sinp, fontSize: '12px', cursor: 'pointer', flex: '0 0 120px' }}>
+                      <option value="bank">🏦 Банк</option>
+                      <option value="cash">💵 Готівка</option>
+                    </select>
+                    <button onClick={() => setLandedCosts(prev => prev.filter((_, idx) => idx !== i))}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', display: 'flex', padding: 0, alignItems: 'center', flexShrink: 0 }}>
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {error && (
             <div style={{ padding: '10px 14px', background: '#FEF2F2', borderRadius: '8px', color: '#DC2626', fontSize: '13px', display: 'flex', gap: '7px', alignItems: 'center' }}>
               <AlertCircle size={14} /> {error}
@@ -677,8 +766,8 @@ export default function NewReceiptModal({
           )}
         </div>
 
-        {/* ── Footer ── */}
-        <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+        {/* ── Footer sticky ── */}
+        <div style={{ position: 'sticky', bottom: 0, zIndex: 20, background: 'var(--bg-card)', padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
             {filledLines} позицій · {fmt(total)} ₴
           </div>

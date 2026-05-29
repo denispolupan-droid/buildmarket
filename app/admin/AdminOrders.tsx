@@ -83,7 +83,7 @@ const STATUS_RANK: Record<string, number> = {
   new: 0, confirmed: 1, awaiting_stock: 2, picking: 3, shipped: 4, delivered: 5,
 };
 
-export default function AdminOrders({ initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin', hasRecentReceipts = false }: { initialOrders: Order[]; currentPage?: number; totalPages?: number; userRole?: string; hasRecentReceipts?: boolean }) {
+export default function AdminOrders({ initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin', hasRecentReceipts = false, expandOrderId }: { initialOrders: Order[]; currentPage?: number; totalPages?: number; userRole?: string; hasRecentReceipts?: boolean; expandOrderId?: string }) {
   const isAdmin = userRole === 'admin';
   const router = useRouter();
   const [orders, setOrders]         = useState<Order[]>(initialOrders);
@@ -137,7 +137,9 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
 
   // PO-звязки для кожного замовлення
   type LinkedPO = { id: string; doc_number: string; doc_date: string; created_at: string; procurement_status: string | null; total_cost: number | null; supplier: { name: string } | null };
-  const [linkedPOs, setLinkedPOs] = useState<Record<string, LinkedPO[]>>({});
+  type LinkedReceipt = { id: string; doc_number: string; doc_date: string; created_at: string; total_cost: number | null; parent_doc_id: string };
+  const [linkedPOs,       setLinkedPOs]       = useState<Record<string, LinkedPO[]>>({});
+  const [linkedReceipts,  setLinkedReceipts]  = useState<Record<string, LinkedReceipt[]>>({});
 
   async function loadLinkedPOs(orderId: string) {
     if (linkedPOs[orderId]) return;
@@ -145,6 +147,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
       const res = await fetch(`/api/admin/orders/${orderId}/purchase-orders`);
       const data = await res.json();
       setLinkedPOs(prev => ({ ...prev, [orderId]: data.pos ?? [] }));
+      setLinkedReceipts(prev => ({ ...prev, [orderId]: data.receipts ?? [] }));
     } catch { /* silent */ }
   }
 
@@ -294,6 +297,19 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
     if (expandedId) loadFulfillment(expandedId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedId]);
+
+  // Відкриваємо замовлення з пропу expandOrderId (передається через ?expand= з page.tsx)
+  useEffect(() => {
+    if (expandOrderId) {
+      setExpandedId(expandOrderId);
+      loadLinkedPOs(expandOrderId);
+      loadFulfillment(expandOrderId);
+      setTimeout(() => {
+        document.getElementById(`order-${expandOrderId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 600);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandOrderId]);
 
   // Pre-load current registry TTNs so button shows correct state on mount
   useEffect(() => {
@@ -786,7 +802,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
               && !['delivered', 'cancelled'].includes(order.status);
 
             return (
-              <div key={order.id} style={{
+              <div key={order.id} id={`order-${order.id}`} style={{
                 background: isUnpaidInvoice ? '#FFFBF0' : 'var(--bg-card)',
                 border: `1px solid ${isExpanded ? 'var(--brand-blue)' : isUnpaidInvoice ? '#FCD34D' : 'var(--border)'}`,
                 borderRadius: '10px', overflow: 'hidden',
@@ -1442,23 +1458,30 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                                     </div>
                                   </button>
                                 )}
-                                {order.status === 'awaiting_stock' && (
-                                  <button onClick={() => changeStatus(order.id, 'picking')} disabled={!!loading}
-                                    style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
-                                    <Package size={13} /> Товар надійшов — збираємо
-                                  </button>
-                                )}
                                 {(order.status === 'confirmed' || order.status === 'awaiting_stock' || order.status === 'picking') && (
                                   <button onClick={() => changeStatus(order.id, 'shipped')} disabled={!!loading}
                                     style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
                                     <Truck size={13} /> Позначити відправленим
                                   </button>
                                 )}
-                                {order.status === 'awaiting_stock' && (
-                                  <a href="/admin/accounting/documents/new" style={{ ...btnPrimary }}>
-                                    <Package size={13} /> Оформити поступлення
-                                  </a>
-                                )}
+                                {order.status === 'awaiting_stock' && (() => {
+                                  const pos = linkedPOs[order.id] ?? [];
+                                  const hasReceipt = pos.some(p => ['received','closed','partially_received'].includes(p.procurement_status ?? ''));
+                                  const linkedPO   = pos.find(p => p.id);
+                                  if (hasReceipt) {
+                                    return (
+                                      <button onClick={() => changeStatus(order.id, 'picking')} disabled={!!loading}
+                                        style={{ ...btnPrimary, background: '#0E7490', opacity: loading ? 0.6 : 1 }}>
+                                        <Package size={13} /> Товар надійшов — збираємо
+                                      </button>
+                                    );
+                                  }
+                                  return (
+                                    <a href={linkedPO ? `/admin/procurement/${linkedPO.id}` : '/admin/procurement'} style={{ ...btnPrimary }}>
+                                      <Package size={13} /> Оформити прихід
+                                    </a>
+                                  );
+                                })()}
                                 {order.status === 'shipped' && (
                                   <button onClick={() => changeStatus(order.id, 'delivered')} disabled={!!loading}
                                     style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
@@ -1527,7 +1550,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                       else evs.splice(insertAt, 0, sentEv);
                     }
 
-                    // Insert linked PO events at correct position
+                    // Insert linked PO events
                     for (const po of (linkedPOs[order.id] ?? [])) {
                       const poAt = po.created_at;
                       const poEv: Ev = {
@@ -1540,6 +1563,21 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                       const insertAt = evs.findIndex(e => e.at > poAt);
                       if (insertAt === -1) evs.push(poEv);
                       else evs.splice(insertAt, 0, poEv);
+                    }
+
+                    // Insert receipt events
+                    for (const r of (linkedReceipts[order.id] ?? [])) {
+                      const rAt = r.created_at;
+                      const rEv: Ev = {
+                        icon: '📦',
+                        label: r.doc_number,
+                        at: rAt,
+                        href: `/admin/procurement/receipts/${r.id}`,
+                        sub: r.total_cost ? `${Number(r.total_cost).toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴` : undefined,
+                      };
+                      const insertAt = evs.findIndex(e => e.at > rAt);
+                      if (insertAt === -1) evs.push(rEv);
+                      else evs.splice(insertAt, 0, rEv);
                     }
 
                     if (evs.length <= 1) return null;

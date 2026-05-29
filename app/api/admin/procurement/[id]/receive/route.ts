@@ -12,12 +12,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const body = await req.json() as {
     actualQties?:       Record<string, number>;
     actualPrices?:      Record<string, number>;
-    sale_prices?:       Record<string, number>;  // роздріб
-    wholesale_prices?:  Record<string, number>;  // опт
-    drop_prices?:       Record<string, number>;  // дроп
+    sale_prices?:       Record<string, number>;
+    wholesale_prices?:  Record<string, number>;
+    drop_prices?:       Record<string, number>;
     notes?:             string;
     draft?:             boolean;
     draftReceiptId?:    string;
+    landed_costs?:      { cost_type: string; description?: string; amount: number; payment_method?: 'cash' | 'bank' }[];
+    lc_method?:         'by_cost' | 'by_qty' | 'equal';
   };
   const db = createServiceClient();
 
@@ -101,6 +103,65 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .eq('id', id);
 
   if (allReceived) await maybeAutoClose(id);
+
+  // Додаткові витрати (landed costs) — застосовуємо одразу після проведення
+  const activeCosts = (body.landed_costs ?? []).filter(c => c.amount > 0);
+  if (activeCosts.length > 0) {
+    const lcMethod = body.lc_method ?? 'by_cost';
+    const expenseAccountMap: Record<string, string> = {
+      delivery: 'logistics', loading: 'loading', customs: 'customs',
+      packaging: 'opex', broker: 'customs', other: 'opex',
+    };
+    const costTypeLabel: Record<string, string> = {
+      delivery: 'Доставка', loading: 'Навантаж./розвантаж.', customs: 'Мито',
+      packaging: 'Пакування', broker: 'Брокер', other: 'Інше',
+    };
+    const today = new Date().toISOString().slice(0, 10);
+
+    await db.from('landed_cost_lines').insert(
+      activeCosts.map(c => ({
+        document_id: receipt.id,
+        cost_type:   c.cost_type,
+        description: c.description ?? null,
+        amount:      c.amount,
+        distributed: false,
+      }))
+    );
+    await db.rpc('apply_landed_costs', { p_document_id: receipt.id, p_method: lcMethod });
+
+    for (const cost of activeCosts) {
+      const accountType = expenseAccountMap[cost.cost_type] ?? 'opex';
+      const payMethod   = cost.payment_method === 'cash' ? 'cash' : 'bank';
+      const description = cost.description
+        ? `${cost.description} — ${receipt.doc_number}`
+        : `${costTypeLabel[cost.cost_type] ?? cost.cost_type} — ${receipt.doc_number}`;
+
+      const { data: txnId } = await db.rpc('record_money_txn', {
+        p_debit_account:  accountType,
+        p_credit_account: payMethod,
+        p_debit_party:    null,
+        p_credit_party:   null,
+        p_amount:         cost.amount,
+        p_business_date:  today,
+        p_doc_id:         receipt.id,
+        p_doc_type:       'landed_cost',
+        p_description:    description,
+        p_created_by:     user.email,
+      });
+
+      await db.from('expenses').insert({
+        expense_type:   accountType,
+        description,
+        amount:         cost.amount,
+        payment_method: payMethod,
+        source:         'landed_cost',
+        source_id:      receipt.id,
+        txn_id:         txnId ?? null,
+        business_date:  today,
+        created_by:     user.email,
+      });
+    }
+  }
 
   // Якщо вказані ціни продажу — фіксуємо їх в product_stock і блокуємо від перезапису синком
   const skusWithPrices = [...new Set([

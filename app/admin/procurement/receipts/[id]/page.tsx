@@ -134,7 +134,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
             <div>
               {linkedOrder?.status === 'awaiting_stock' ? (
                 <div style={{ fontSize: '13px', fontWeight: 700, color: '#6D28D9' }}>
-                  Замовлення <a href={`/admin#order-${linkedOrder.id}`} style={{ color: '#7C3AED', textDecoration: 'underline' }}>#{linkedOrder.order_number}</a> очікувало цей товар — переведіть у &ldquo;Збирається&rdquo;
+                  Замовлення <a href={`/admin?expand=${linkedOrder.id}`} style={{ color: '#7C3AED', textDecoration: 'underline' }}>#{linkedOrder.order_number}</a> очікувало цей товар — переведіть у &ldquo;Збирається&rdquo;
                 </div>
               ) : (
                 <div style={{ fontSize: '13px', fontWeight: 700, color: '#6D28D9' }}>
@@ -148,8 +148,10 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
               )}
             </div>
           </div>
-          <Link href="/admin" style={{ height: '32px', padding: '0 14px', borderRadius: '7px', border: '1.5px solid #A78BFA', background: '#EDE9FE', color: '#6D28D9', fontSize: '12px', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            До замовлень →
+          <Link
+            href={linkedOrder ? `/admin?expand=${linkedOrder.id}` : '/admin'}
+            style={{ height: '32px', padding: '0 14px', borderRadius: '7px', border: '1.5px solid #A78BFA', background: '#EDE9FE', color: '#6D28D9', fontSize: '12px', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+            Відкрити замовлення →
           </Link>
         </div>
       )}

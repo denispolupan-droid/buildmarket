@@ -28,16 +28,16 @@ const STATUS_TABS = [
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; status?: string }>;
+  searchParams: Promise<{ page?: string; status?: string; expand?: string }>;
 }) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   const userRole = user?.user_metadata?.role ?? '';
   if (!user || !['admin', 'manager'].includes(userRole)) redirect('/');
 
-  const { page: pageStr, status: statusParam } = await searchParams;
-  // undefined → default to 'new'; empty string → all orders
-  const status = statusParam ?? 'new';
+  const { page: pageStr, status: statusParam, expand: expandOrderId } = await searchParams;
+  // Якщо відкриваємо конкретне замовлення — показуємо всі статуси
+  const status = expandOrderId ? (statusParam ?? '') : (statusParam ?? 'new');
   const page = Math.max(1, parseInt(pageStr ?? '1'));
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -141,7 +141,7 @@ export default async function AdminPage({
         {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
       </p>
 
-      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} />
+      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} />
     </div>
   );
 }

@@ -44,9 +44,9 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
       .select('id, doc_number, doc_date')
       .eq('parent_doc_id', id).eq('status', 'confirmed').in('doc_type', ['receipt', 'stock_in']),
     db.from('money_entries')
-      .select('created_at, amount, doc_type, description, account_type, meta')
+      .select('created_at, amount, doc_type, description, account_type, meta, txn_id')
       .eq('doc_id', id)
-      .eq('account_type', 'supplier')
+      .in('account_type', ['supplier', 'bank', 'cash', 'acquiring'])
       .in('doc_type', ['supplier_payment', 'supplier_payment_reversal'])
       .order('created_at'),
   ]);
@@ -170,13 +170,33 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
 
   // Платіжна історія для відображення в компоненті
   type PaymentHistoryEntry = { created_at: string; amount: number; payment_mode: string | null; doc_type: string };
-  const allEntries = (paymentEntries ?? []) as { created_at: string; amount: number; doc_type: string; description: string | null; account_type: string; meta?: Record<string, unknown> | null }[];
+  const allEntries = (paymentEntries ?? []) as { created_at: string; amount: number; doc_type: string; description: string | null; account_type: string; meta?: Record<string, unknown> | null; txn_id?: string }[];
+
+  // Визначаємо тип оплати з кредитної ноги (cash/bank/acquiring) бо meta може бути пустою
+  const txnCreditAccount = new Map<string, string>();
+  for (const e of allEntries) {
+    if (e.txn_id && Number(e.amount) < 0 && ['cash','bank','acquiring'].includes(e.account_type)) {
+      txnCreditAccount.set(e.txn_id, e.account_type);
+    }
+  }
+  function payModeFromTxn(e: typeof allEntries[0]): string | null {
+    const mode = e.meta?.payment_mode as string | null;
+    if (mode) return mode;
+    if (e.txn_id) {
+      const acct = txnCreditAccount.get(e.txn_id);
+      if (acct === 'cash') return 'cash';
+      if (acct === 'bank') return 'transfer';
+      if (acct === 'acquiring') return 'acquiring';
+    }
+    return null;
+  }
+
   const paymentHistory: PaymentHistoryEntry[] = allEntries
-    .filter(e => e.doc_type === 'supplier_payment' && Number(e.amount) > 0)
+    .filter(e => e.doc_type === 'supplier_payment' && e.account_type === 'supplier' && Number(e.amount) > 0)
     .map(e => ({
       created_at:   e.created_at,
       amount:       Number(e.amount),
-      payment_mode: (e.meta?.payment_mode as string | null) ?? null,
+      payment_mode: payModeFromTxn(e),
       doc_type:     e.doc_type,
     }));
   const totalPaid = paymentHistory.reduce((s, e) => s + e.amount, 0);
@@ -200,11 +220,11 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
   }
 
   for (const p of allEntries) {
-    if (p.doc_type === 'supplier_payment' && Number(p.amount) > 0) {
-      const mode = p.meta?.payment_mode as string | null;
-      const icon = mode === 'cash' ? '💵' : mode === 'transfer' ? '🏦' : '💳';
+    if (p.doc_type === 'supplier_payment' && p.account_type === 'supplier' && Number(p.amount) > 0) {
+      const mode = payModeFromTxn(p);
+      const icon = mode === 'cash' ? '💵' : mode === 'transfer' ? '🏦' : mode === 'acquiring' ? '💳' : '💳';
       events.push({ icon, label: 'Оплата проведена', detail: `${Math.abs(Number(p.amount)).toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴`, date: p.created_at, isDatetime: true });
-    } else if (p.doc_type === 'supplier_payment_reversal') {
+    } else if (p.doc_type === 'supplier_payment_reversal' && p.account_type === 'supplier') {
       events.push({ icon: '↩️', label: 'Оплату скасовано', date: p.created_at, isDatetime: true });
     }
   }

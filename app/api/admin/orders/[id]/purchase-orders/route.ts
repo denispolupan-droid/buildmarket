@@ -25,5 +25,17 @@ export async function GET(
     .neq('status', 'cancelled')
     .order('created_at');
 
-  return NextResponse.json({ pos: pos ?? [] });
+  // Приходи товару для цих PO
+  const poIds = (pos ?? []).map(p => p.id);
+  const { data: receipts } = poIds.length
+    ? await db
+        .from('acc_documents')
+        .select('id, doc_number, doc_date, created_at, total_cost, parent_doc_id')
+        .in('parent_doc_id', poIds)
+        .eq('status', 'confirmed')
+        .in('doc_type', ['receipt', 'stock_in'])
+        .order('created_at')
+    : { data: [] };
+
+  return NextResponse.json({ pos: pos ?? [], receipts: receipts ?? [] });
 }
