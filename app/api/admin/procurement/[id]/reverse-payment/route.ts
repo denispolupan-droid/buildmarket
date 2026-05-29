@@ -65,7 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Відновлюємо procurement_status тільки якщо він був перезаписаний старим механізмом оплати
   // (new add-payment flow не змінює procurement_status — він залишається 'received'/'sent'/etc.)
   const docStatus = (doc as { procurement_status?: string }).procurement_status ?? '';
-  const updateFields: Record<string, unknown> = { meta: restMeta };
+  const updateFields: Record<string, unknown> = { meta: { ...restMeta, payment_reversed: true } };
   if (docStatus === 'paid' || docStatus === 'invoiced') {
     updateFields.procurement_status = (pre_payment_status as string | undefined) ?? 'ordered';
   }

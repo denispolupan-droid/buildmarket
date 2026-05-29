@@ -355,8 +355,14 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
               {/* Оплата */}
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 {statusKey !== 'draft' && (() => {
-                  const isPaid     = po.meta?.is_paid === true || po.procurement_status === 'paid';
-                  const isInvoiced = po.meta?.payment_status === 'invoiced' || po.procurement_status === 'invoiced';
+                  const isPaid          = po.meta?.is_paid === true || po.procurement_status === 'paid';
+                  const isInvoiced      = po.meta?.payment_status === 'invoiced' || po.procurement_status === 'invoiced';
+                  const isReversed      = po.meta?.payment_reversed === true;
+                  if (isReversed) return (
+                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#DC2626', background: '#FEF2F2', whiteSpace: 'nowrap' }}>
+                      ↩ Оплату скасовано
+                    </span>
+                  );
                   if (isPaid) {
                     const { icon, text } = payBadge(po.meta);
                     return (
