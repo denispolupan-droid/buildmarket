@@ -783,7 +783,8 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                     <div style={{ fontSize: '13px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {order.company
                         ? <><span style={{ fontWeight: 600 }}>{order.company}</span><span style={{ color: 'var(--text-muted)' }}> · {order.contact}</span></>
-                        : order.contact}
+                        : <span style={{ fontWeight: 600 }}>{order.contact}</span>}
+                      {order.phone && <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--text-muted)', marginLeft: '6px' }}>{order.phone}</span>}
                     </div>
                     {order.items[0] && (
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
@@ -800,7 +801,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                   <span style={{ flex: 1, minWidth: '100px', fontSize: '12px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {order.delivery_type === 'pickup' ? 'Самовивіз'
                       : order.delivery_city_name
-                        ? `${order.delivery_city_name}${order.delivery_subtype === 'courier' ? ' · кур.' : ''}`
+                        ? `${order.delivery_city_name}${order.delivery_subtype === 'courier' ? ' · кур.' : ''}${order.delivery_address ? ` · ${order.delivery_address}` : ''}`
                         : (order.delivery_address ?? delivery)}
                   </span>
 

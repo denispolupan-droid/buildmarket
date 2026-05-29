@@ -51,7 +51,7 @@ function payIcon(meta?: Record<string, unknown> | null): string {
   return '✅';
 }
 
-const COLS = '28px 130px 160px 1fr 110px 110px 160px 80px';
+const COLS = '28px 130px 155px 1fr 90px 110px 100px 115px 115px 75px';
 
 export default function ProcurementList({ orders }: { orders: PO[] }) {
   const router = useRouter();
@@ -276,6 +276,8 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
         <span style={{ textAlign: 'right' }}>Сума</span>
         <span style={{ textAlign: 'center' }}>Прихід</span>
         <span style={{ textAlign: 'center' }}>Статус</span>
+        <span style={{ textAlign: 'center' }}>Email</span>
+        <span style={{ textAlign: 'center' }}>Оплата</span>
         <span />
       </div>
 
@@ -320,9 +322,8 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                   <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>⏳ Очікуємо</span>
                 )}
               </div>
-              {/* Статуси: Проведено/Чернетка + Email + Оплата */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
-                {/* Бейдж 1: чи проведено */}
+              {/* Статус: Проведено / Чернетка */}
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 {statusKey === 'draft' ? (
                   <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#64748B', background: '#F1F5F9', whiteSpace: 'nowrap' }}>
                     📝 Чернетка
@@ -332,7 +333,9 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                     ✅ Проведено
                   </span>
                 )}
-                {/* Бейдж 2: статус email */}
+              </div>
+              {/* Email: Відправлено / Не відправлено */}
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 {statusKey !== 'draft' && (
                   po.email_sent_at ? (
                     <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#1E3A5F', background: '#EFF4FF', whiteSpace: 'nowrap' }}>
@@ -344,7 +347,9 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                     </span>
                   )
                 )}
-                {/* Бейдж 3: статус оплати */}
+              </div>
+              {/* Оплата */}
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 {statusKey !== 'draft' && (() => {
                   const isPaid     = po.meta?.is_paid === true || po.procurement_status === 'paid';
                   const isInvoiced = po.meta?.payment_status === 'invoiced' || po.procurement_status === 'invoiced';
@@ -358,7 +363,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                     const overdue = deferDate && deferDate < new Date().toISOString().slice(0, 10);
                     return (
                       <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: overdue ? '#DC2626' : '#B45309', background: overdue ? '#FEF2F2' : '#FEF3C7', whiteSpace: 'nowrap' }}>
-                        {overdue ? '⚠ Відстрочка прострочена' : '📅 Відстрочка'}
+                        {overdue ? '⚠ Відстрочка' : '📅 Відстрочка'}
                       </span>
                     );
                   }
@@ -418,7 +423,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
               <div style={{ borderTop: '1px dashed var(--border)' }}>
                 {po.receipts.map(receipt => (
                   <Link key={receipt.id} href={`/admin/procurement/receipts/${receipt.id}`}
-                    style={{ display: 'grid', gridTemplateColumns: '130px 160px 1fr 110px 110px 130px 40px', padding: '8px 16px 8px 28px', alignItems: 'center', textDecoration: 'none', background: 'var(--bg-soft)', borderTop: '1px solid var(--border-light)' }}>
+                    style={{ display: 'grid', gridTemplateColumns: '130px 155px 1fr 90px 110px 100px 115px 115px 75px', padding: '8px 16px 8px 28px', alignItems: 'center', gap: '8px', textDecoration: 'none', background: 'var(--bg-soft)', borderTop: '1px solid var(--border-light)' }}>
                     <div>
                       <div style={{ fontSize: '12px', fontWeight: 600, color: '#15803D' }}>↳ {receipt.doc_number}</div>
                       <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{new Date(receipt.doc_date).toLocaleDateString('uk-UA')}</div>
@@ -431,7 +436,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                     <div style={{ display: 'flex', justifyContent: 'center' }}>
                       <span style={{ fontSize: '10px', fontWeight: 700, color: '#15803D' }}>✅ Проведено</span>
                     </div>
-                    <span />
+                    <span /><span /><span />
                     <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--text-muted)' }}>
                       <ArrowRight size={13} />
                     </div>
