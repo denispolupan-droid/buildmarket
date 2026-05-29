@@ -15,7 +15,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { data: doc } = await db
     .from('acc_documents')
-    .select('meta, supplier_id, doc_number')
+    .select('meta, supplier_id, doc_number, procurement_status')
     .eq('id', id).single();
 
   if (!doc) return NextResponse.json({ error: 'Не знайдено' }, { status: 404 });
@@ -59,12 +59,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // Скидаємо поля оплати в meta, зберігаємо решту
-  const { is_paid, payment_status, payment_mode, payment_defer_date, ...restMeta } = meta;
+  const { is_paid, payment_status, payment_mode, payment_defer_date, pre_payment_status, ...restMeta } = meta;
   void is_paid; void payment_status; void payment_mode; void payment_defer_date;
+
+  // Відновлюємо procurement_status тільки якщо він був перезаписаний старим механізмом оплати
+  // (new add-payment flow не змінює procurement_status — він залишається 'received'/'sent'/etc.)
+  const docStatus = (doc as { procurement_status?: string }).procurement_status ?? '';
+  const updateFields: Record<string, unknown> = { meta: restMeta };
+  if (docStatus === 'paid' || docStatus === 'invoiced') {
+    updateFields.procurement_status = (pre_payment_status as string | undefined) ?? 'ordered';
+  }
 
   const { error } = await db
     .from('acc_documents')
-    .update({ meta: restMeta })
+    .update(updateFields)
     .eq('id', id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

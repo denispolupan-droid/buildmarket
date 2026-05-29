@@ -43,12 +43,16 @@ const DEFAULT_STATUS = { label: 'Нове', color: '#1E3A5F', bg: '#EFF4FF', emo
 
 function fmt(n: number) { return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 }); }
 
-function payIcon(meta?: Record<string, unknown> | null): string {
+function payBadge(meta?: Record<string, unknown> | null): { icon: string; text: string } {
   const mode = meta?.payment_mode;
-  if (mode === 'cash')     return '💵';
-  if (mode === 'transfer') return '🏦';
-  if (mode === 'deferred') return '📅';
-  return '✅';
+  if (mode === 'cash')     return { icon: '💵', text: 'Готівка' };
+  if (mode === 'transfer') return { icon: '🏦', text: 'Безнал' };
+  if (mode === 'deferred') return { icon: '📅', text: 'Відстрочка' };
+  return { icon: '✅', text: 'Оплачено' };
+}
+
+function payIcon(meta?: Record<string, unknown> | null): string {
+  return payBadge(meta).icon;
 }
 
 const COLS = '28px 130px 155px 1fr 90px 110px 100px 115px 115px 75px';
@@ -353,11 +357,14 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                 {statusKey !== 'draft' && (() => {
                   const isPaid     = po.meta?.is_paid === true || po.procurement_status === 'paid';
                   const isInvoiced = po.meta?.payment_status === 'invoiced' || po.procurement_status === 'invoiced';
-                  if (isPaid) return (
-                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', whiteSpace: 'nowrap' }}>
-                      {payIcon(po.meta)} Оплачено
-                    </span>
-                  );
+                  if (isPaid) {
+                    const { icon, text } = payBadge(po.meta);
+                    return (
+                      <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', whiteSpace: 'nowrap' }}>
+                        {icon} {text}
+                      </span>
+                    );
+                  }
                   if (isInvoiced) {
                     const deferDate = po.meta?.payment_defer_date as string | undefined;
                     const overdue = deferDate && deferDate < new Date().toISOString().slice(0, 10);
