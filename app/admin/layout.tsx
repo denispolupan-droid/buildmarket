@@ -6,6 +6,7 @@ import PoDraftManagerLoader from './PoDraftManagerLoader';
 import ReceiptDraftManagerLoader from './ReceiptDraftManagerLoader';
 import OrderDraftManagerLoader from './OrderDraftManagerLoader';
 import PageTransition from './PageTransition';
+import ToastProvider from '../components/ToastProvider';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,6 +38,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <PoDraftManagerLoader />
       <ReceiptDraftManagerLoader />
       <OrderDraftManagerLoader />
+      <ToastProvider />
     </div>
   );
 }

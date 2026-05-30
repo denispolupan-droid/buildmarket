@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '../../../../lib/supabase-browser';
 import { Plus, Trash2, Search, ChevronLeft } from 'lucide-react';
+import { showToast } from '../../../../lib/toast';
 import Link from 'next/link';
 import NovaPoshtaSelect from '../../../components/NovaPoshtaSelect';
 
@@ -45,7 +46,6 @@ export default function NewOrderClient() {
   const [comment,           setComment]           = useState('');
   const [items,             setItems]             = useState<Item[]>([]);
   const [submitting,        setSubmitting]        = useState(false);
-  const [error,             setError]             = useState('');
 
   const [prodSearch,   setProdSearch]   = useState('');
   const [prodResults,  setProdResults]  = useState<{ sku: string; name: string; brand: string; price: number }[]>([]);
@@ -101,10 +101,9 @@ export default function NewOrderClient() {
   const totalPrice = items.reduce((s, i) => s + i.qty * i.price, 0);
 
   async function handleSubmit() {
-    if (!contact.trim()) { setError('Вкажіть контактну особу'); return; }
-    if (items.length === 0) { setError('Додайте хоча б один товар'); return; }
+    if (!contact.trim()) { showToast('Вкажіть контактну особу', 'error'); return; }
+    if (items.length === 0) { showToast('Додайте хоча б один товар', 'error'); return; }
     setSubmitting(true);
-    setError('');
     try {
       // Manual orders always have "no callback" flag
       const fullComment = ['⛔ Не передзвонювати для підтвердження', comment].filter(Boolean).join('\n');
@@ -132,7 +131,7 @@ export default function NewOrderClient() {
       if (!res.ok) throw new Error(data.error ?? 'Помилка');
       router.push('/admin?status=new');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Невідома помилка');
+      showToast(e instanceof Error ? e.message : 'Невідома помилка', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -322,8 +321,6 @@ export default function NewOrderClient() {
           </div>
         </div>
       </div>
-
-      {error && <div style={{ color: '#DC2626', fontSize: '13px', marginBottom: '12px' }}>{error}</div>}
 
       <button onClick={handleSubmit} disabled={submitting}
         style={{ width: '100%', height: '44px', borderRadius: '10px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.7 : 1 }}>

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Plus, X, Loader2, Package, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { showToast } from '../../../../lib/toast';
 
 type RemainingLine = {
   sku: string; name: string; ordered_qty: number; received_qty: number;
@@ -28,13 +29,12 @@ export default function AdditionalReceiptButton({ poId, supplierName }: { poId: 
   const [remaining, setRemaining] = useState<RemainingLine[]>([]);
   const [qtys,      setQtys]      = useState<Record<string, number>>({});
   const [notes,     setNotes]     = useState('Додатковий прихід');
-  const [error,     setError]     = useState('');
   const [extras,    setExtras]    = useState<ExtraLine[]>([]);
   const [defaultSupplierId,  setDefaultSupplierId]  = useState<number | null>(null);
   const [defaultWarehouseId, setDefaultWarehouseId] = useState<number | null>(null);
 
   async function handleOpen() {
-    setOpen(true); setLoading(true); setError(''); setExtras([]);
+    setOpen(true); setLoading(true); setExtras([]);
     try {
       const res  = await fetch(`/api/admin/procurement/${poId}/remaining`);
       const data = await res.json();
@@ -45,7 +45,7 @@ export default function AdditionalReceiptButton({ poId, supplierName }: { poId: 
       const initial: Record<string, number> = {};
       lines.forEach(l => { initial[l.sku] = l.remaining_qty; });
       setQtys(initial);
-    } catch { setError('Помилка завантаження'); }
+    } catch { showToast('Помилка завантаження', 'error'); }
     finally { setLoading(false); }
   }
 
@@ -73,9 +73,9 @@ export default function AdditionalReceiptButton({ poId, supplierName }: { poId: 
                    supplier_id: defaultSupplierId, warehouse_id: defaultWarehouseId }));
 
     const allLines = [...poLines, ...extraLines];
-    if (!allLines.length) { setError('Вкажіть кількість для хоча б одного товару'); return; }
+    if (!allLines.length) { showToast('Вкажіть кількість для хоча б одного товару', 'error'); return; }
 
-    setSaving(true); setError('');
+    setSaving(true);
     try {
       const res = await fetch('/api/admin/procurement', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -89,11 +89,11 @@ export default function AdditionalReceiptButton({ poId, supplierName }: { poId: 
         }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? 'Помилка'); return; }
+      if (!res.ok) { showToast(data.error ?? 'Помилка', 'error'); return; }
       setOpen(false);
       router.push(`/admin/procurement/receipts/${data.receiptId ?? data.id}`);
       router.refresh();
-    } catch { setError('Мережева помилка'); }
+    } catch { showToast('Мережева помилка', 'error'); }
     finally { setSaving(false); }
   }
 
@@ -212,7 +212,6 @@ export default function AdditionalReceiptButton({ poId, supplierName }: { poId: 
                     <input style={{ ...inp, width: '100%', textAlign: 'left' }} value={notes} onChange={e => setNotes(e.target.value)} />
                   </div>
 
-                  {error && <div style={{ padding: '8px 12px', background: '#FEF2F2', borderRadius: '8px', color: '#DC2626', fontSize: '13px', marginTop: '12px' }}>{error}</div>}
                 </>
               )}
             </div>

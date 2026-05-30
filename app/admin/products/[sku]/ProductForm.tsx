@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Save, Trash2, Plus, X, Loader2, Wand2 } from 'lucide-react';
+import { showToast } from '../../../../lib/toast';
 import type { ProductFull, Category, ProductCharacteristic } from '../../../../types';
 import CharValueInput from './CharValueInput';
 
@@ -31,8 +32,6 @@ const sectionStyle: React.CSSProperties = {
 export default function ProductForm({ product, categories, isNew }: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const [sku, setSku] = useState(product?.sku ?? '');
   const [name, setName] = useState(product?.name ?? '');
@@ -149,12 +148,9 @@ export default function ProductForm({ product, categories, isNew }: Props) {
   }
 
   async function handleSave() {
-    setError('');
-    setSuccess('');
-
-    if (!isNew && !sku.trim()) { setError('SKU обов\'язковий'); return; }
-    if (!name.trim()) { setError('Назва обов\'язкова'); return; }
-    if (!brand.trim()) { setError('Бренд обов\'язковий'); return; }
+    if (!isNew && !sku.trim()) { showToast('SKU обов\'язковий', 'error'); return; }
+    if (!name.trim()) { showToast('Назва обов\'язкова', 'error'); return; }
+    if (!brand.trim()) { showToast('Бренд обов\'язковий', 'error'); return; }
 
     setSaving(true);
 
@@ -203,20 +199,20 @@ export default function ProductForm({ product, categories, isNew }: Props) {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error ?? 'Помилка збереження');
+        showToast(data.error ?? 'Помилка збереження', 'error');
         setSaving(false);
         return;
       }
 
       const generatedSku = data.sku || sku;
-      setSuccess(`Збережено! SKU: ${generatedSku}`);
+      showToast(`Збережено! SKU: ${generatedSku}`, 'success');
       setSaving(false);
 
       setTimeout(() => {
         router.push('/admin/products');
       }, 800);
     } catch (e) {
-      setError('Помилка з\'єднання');
+      showToast('Помилка з\'єднання', 'error');
       setSaving(false);
     }
   }
@@ -230,28 +226,17 @@ export default function ProductForm({ product, categories, isNew }: Props) {
       if (res.ok) {
         router.push('/admin/products');
       } else {
-        setError('Помилка видалення');
+        showToast('Помилка видалення', 'error');
         setSaving(false);
       }
     } catch {
-      setError('Помилка з\'єднання');
+      showToast('Помилка з\'єднання', 'error');
       setSaving(false);
     }
   }
 
   return (
     <div>
-      {error && (
-        <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px', color: '#DC2626', fontSize: '14px' }}>
-          {error}
-        </div>
-      )}
-      {success && (
-        <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px', color: '#16A34A', fontSize: '14px' }}>
-          {success}
-        </div>
-      )}
-
       {/* Basic Info */}
       <div style={sectionStyle}>
         <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '20px' }}>Основна інформація</h2>

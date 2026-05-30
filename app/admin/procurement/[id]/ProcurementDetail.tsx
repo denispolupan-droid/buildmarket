@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { showToast } from '../../../../lib/toast';
 import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, X, Upload, Download, Trash2, Copy, Check, MoreHorizontal, Printer, Send, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -141,33 +142,33 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
     }
   }
   async function handleSendToSupplier() {
-    if (!sendEmail.includes('@')) { setError('Вкажіть коректний email'); return; }
-    setSendingMail(true); setError('');
+    if (!sendEmail.includes('@')) { showToast('Вкажіть коректний email', 'error'); return; }
+    setSendingMail(true);
     try {
       const res = await fetch('/api/admin/procurement/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: [po.id], overrideEmail: sendEmail }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? 'Помилка відправки'); return; }
-      setSuccess('✅ Замовлення відправлено постачальнику');
+      if (!res.ok) { showToast(data.error ?? 'Помилка відправки', 'error'); return; }
+      showToast('✅ Замовлення відправлено постачальнику', 'success');
       setNewStatus('sent');
       setShowSendModal(false);
-    } catch { setError('Мережева помилка'); }
+    } catch { showToast('Мережева помилка', 'error'); }
     finally { setSendingMail(false); }
   }
 
   async function handleCancel() {
-    setCancelling(true); setError('');
+    setCancelling(true);
     try {
       const res = await fetch(`/api/admin/procurement/${po.id}/status`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ procurement_status: 'cancelled', cancel_reason: cancelReason || undefined }),
       });
-      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Помилка скасування'); return; }
+      if (!res.ok) { const d = await res.json(); showToast(d.error ?? 'Помилка скасування', 'error'); return; }
       setShowCancelModal(false);
       window.location.reload();
-    } catch { setError('Мережева помилка'); }
+    } catch { showToast('Мережева помилка', 'error'); }
     finally { setCancelling(false); }
   }
 
@@ -213,9 +214,9 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
           bank_name:    ibanDraft.bank_name  || undefined,
         }),
       });
-      setSuccess('✅ Реквізити збережено. Оновіть сторінку.');
+      showToast('✅ Реквізити збережено', 'success');
       setEditingIban(false);
-    } catch { setError('Помилка збереження реквізитів'); }
+    } catch { showToast('Помилка збереження реквізитів', 'error'); }
     finally { setSavingIban(false); }
   }
   const [deferDate,   setDeferDate]   = useState(() => {
@@ -297,8 +298,6 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
     setDeletingInvoiceFile(false);
   }
 
-  const [error,   setError]   = useState('');
-  const [success, setSuccess] = useState('');
 
   const currentStepIdx = Math.max(
     statusToStep(newStatus || po.procurement_status || ''),
@@ -336,21 +335,21 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
   }
 
   async function handleStatusUpdate(status: string) {
-    setUpdatingStatus(true); setError('');
+    setUpdatingStatus(true);
     try {
       const res = await fetch(`/api/admin/procurement/${po.id}/status`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ procurement_status: status }),
       });
-      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Помилка'); return; }
+      if (!res.ok) { const d = await res.json(); showToast(d.error ?? 'Помилка', 'error'); return; }
       setNewStatus(status);
-      setSuccess(`Статус оновлено: ${STATUS_STEPS.find(s => s.key === status)?.label}`);
-    } catch { setError('Мережева помилка'); }
+      showToast(`Статус оновлено: ${STATUS_STEPS.find(s => s.key === status)?.label}`, 'success');
+    } catch { showToast('Мережева помилка', 'error'); }
     finally { setUpdatingStatus(false); }
   }
 
   async function handleSaveInvoice() {
-    setSavingInvoice(true); setError('');
+    setSavingInvoice(true);
     try {
       const res = await fetch(`/api/admin/procurement/${po.id}/status`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -361,34 +360,34 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
           supplier_invoice_amount: parseFloat(invoiceAmt) || undefined,
         }),
       });
-      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Помилка'); return; }
+      if (!res.ok) { const d = await res.json(); showToast(d.error ?? 'Помилка', 'error'); return; }
       setNewStatus('confirmed_by_supplier');
-      setSuccess('✅ Рахунок збережено — статус змінено на «Рахунок отримано»');
+      showToast('✅ Рахунок збережено — статус змінено на «Рахунок отримано»', 'success');
       setInvoiceSaved(true);
       setEditingInvoice(false);
-    } catch { setError('Мережева помилка'); }
+    } catch { showToast('Мережева помилка', 'error'); }
     finally { setSavingInvoice(false); }
   }
 
   async function handleConfirmWithoutInvoice() {
-    setUpdatingStatus(true); setError('');
+    setUpdatingStatus(true);
     try {
       const res = await fetch(`/api/admin/procurement/${po.id}/status`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ procurement_status: 'confirmed_by_supplier' }),
       });
-      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Помилка'); return; }
+      if (!res.ok) { const d = await res.json(); showToast(d.error ?? 'Помилка', 'error'); return; }
       setNewStatus('confirmed_by_supplier');
-      setSuccess('✅ Підтверджено без рахунку-фактури');
+      showToast('✅ Підтверджено без рахунку-фактури', 'success');
       setNoInvoice(true);
       setInvoiceSaved(true);
       setEditingInvoice(false);
-    } catch { setError('Мережева помилка'); }
+    } catch { showToast('Мережева помилка', 'error'); }
     finally { setUpdatingStatus(false); }
   }
 
   async function handlePay() {
-    setPaying(true); setError('');
+    setPaying(true);
     try {
       const res = await fetch(`/api/admin/procurement/${po.id}/status`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -399,49 +398,49 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
           payment_mode:       payMode,
         }),
       });
-      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Помилка'); return; }
-      setSuccess('✅ Оплату зафіксовано в леджері');
+      if (!res.ok) { const d = await res.json(); showToast(d.error ?? 'Помилка', 'error'); return; }
+      showToast('✅ Оплату зафіксовано в леджері', 'success');
       setIsPaid(true);      // не чіпаємо newStatus — прогрес-бар доставки не змінюється
       setPaymentSaved(true);
       setEditingPayment(false);
-    } catch { setError('Мережева помилка'); }
+    } catch { showToast('Мережева помилка', 'error'); }
     finally { setPaying(false); }
   }
 
   async function handleReversePayment() {
-    setReversing(true); setError('');
+    setReversing(true);
     try {
       const res = await fetch(`/api/admin/procurement/${po.id}/reverse-payment`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: reverseReason.trim() || undefined }),
       });
-      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Помилка скасування оплати'); return; }
+      if (!res.ok) { const d = await res.json(); showToast(d.error ?? 'Помилка скасування оплати', 'error'); return; }
       setIsPaid(false);
       setIsInvoiced(false);
       setPaymentSaved(false);
       setEditingPayment(true);
       setShowReverseModal(false);
       setReverseReason('');
-      setSuccess('✅ Оплату скасовано. Компенсуюча проводка проведена.');
-    } catch { setError('Мережева помилка'); }
+      showToast('✅ Оплату скасовано. Компенсуюча проводка проведена.', 'success');
+    } catch { showToast('Мережева помилка', 'error'); }
     finally { setReversing(false); }
   }
 
   async function handleAddPayment() {
-    if (!addPayAmount || parseFloat(addPayAmount) <= 0) { setError('Вкажіть суму'); return; }
-    setAddingPayment(true); setError('');
+    if (!addPayAmount || parseFloat(addPayAmount) <= 0) { showToast('Вкажіть суму', 'error'); return; }
+    setAddingPayment(true);
     try {
       const res = await fetch(`/api/admin/procurement/${po.id}/add-payment`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: parseFloat(addPayAmount), payment_mode: addPayMode, payment_date: addPayDate }),
       });
-      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Помилка'); return; }
+      if (!res.ok) { const d = await res.json(); showToast(d.error ?? 'Помилка', 'error'); return; }
       const data = await res.json();
-      setSuccess(`✅ Оплату ${Number(addPayAmount).toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴ додано`);
+      showToast(`✅ Оплату ${Number(addPayAmount).toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴ додано`, 'success');
       setShowAddPayment(false);
       if (data.is_fully_paid) setIsPaid(true);
       window.location.reload();
-    } catch { setError('Мережева помилка'); }
+    } catch { showToast('Мережева помилка', 'error'); }
     finally { setAddingPayment(false); }
   }
 
@@ -685,8 +684,6 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
         )}
       </div>
 
-      {error   && <div style={{ padding: '10px 14px', background: '#FEF2F2', borderRadius: '8px', color: '#DC2626', fontSize: '13px', marginBottom: '12px' }}>{error}</div>}
-      {success && <div style={{ padding: '10px 14px', background: '#F0FDF4', borderRadius: '8px', color: '#15803D', fontSize: '13px', marginBottom: '12px' }}>{success}</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '1fr 360px', gap: '20px' }}>
         {/* Left: Lines */}
@@ -1172,7 +1169,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                             style={{ width: '100%', height: '38px', borderRadius: '8px', border: `1px solid ${copied ? '#86EFAC' : 'var(--border)'}`, background: copied ? '#F0FDF4' : 'var(--bg-soft)', color: copied ? '#15803D' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                             {copied ? <><Check size={13} /> Реквізити скопійовано</> : <><Copy size={13} /> Копіювати реквізити</>}
                           </button>
-                          <button onClick={() => { if (!payAmount || parseFloat(payAmount) <= 0) { setError('Вкажіть суму'); return; } setPayConfirm(true); }}
+                          <button onClick={() => { if (!payAmount || parseFloat(payAmount) <= 0) { showToast('Вкажіть суму', 'error'); return; } setPayConfirm(true); }}
                             disabled={paying || !payAmount || parseFloat(payAmount) <= 0}
                             style={{ width: '100%', height: '42px', borderRadius: '8px', border: 'none', background: !payAmount || parseFloat(payAmount) <= 0 ? '#E2E8F0' : '#15803D', color: !payAmount || parseFloat(payAmount) <= 0 ? '#94A3B8' : '#fff', fontSize: '14px', fontWeight: 700, cursor: !payAmount || parseFloat(payAmount) <= 0 ? 'not-allowed' : 'pointer' }}>
                             💳 Підтвердити переказ
@@ -1191,8 +1188,8 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                       <input style={inp} type="date" value={deferDate2} min={new Date().toISOString().slice(0, 10)} onChange={e => setDeferDate2(e.target.value)} />
                     </div>
                     <button onClick={async () => {
-                        if (!payAmount || parseFloat(payAmount) <= 0) { setError('Вкажіть суму'); return; }
-                        setUpdatingStatus(true); setError('');
+                        if (!payAmount || parseFloat(payAmount) <= 0) { showToast('Вкажіть суму', 'error'); return; }
+                        setUpdatingStatus(true);
                         try {
                           const res = await fetch(`/api/admin/procurement/${po.id}/status`, {
                             method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -1204,12 +1201,12 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                             }),
                           });
                           if (res.ok) {
-                            setSuccess(`✅ Відстрочку зафіксовано до ${new Date(deferDate2).toLocaleDateString('uk-UA')}`);
+                            showToast(`✅ Відстрочку зафіксовано до ${new Date(deferDate2).toLocaleDateString('uk-UA')}`, 'success');
                             setIsInvoiced(true);  // прогрес-бар доставки не змінюється
                             setPaymentSaved(true);
                             setEditingPayment(false);
                           }
-                        } catch { setError('Помилка'); }
+                        } catch { showToast('Помилка', 'error'); }
                         finally { setUpdatingStatus(false); }
                       }}
                       disabled={updatingStatus || !payAmount || parseFloat(payAmount) <= 0}
@@ -1227,7 +1224,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                     </div>
                     <div><label style={lbl}>Сума, ₴</label><input style={inp} type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" /></div>
                     <div><label style={lbl}>Дата оплати</label><input style={inp} type="date" value={payDate} onChange={e => setPayDate(e.target.value)} /></div>
-                    <button onClick={() => { if (!payAmount || parseFloat(payAmount) <= 0) { setError('Вкажіть суму'); return; } setPayConfirm(true); }}
+                    <button onClick={() => { if (!payAmount || parseFloat(payAmount) <= 0) { showToast('Вкажіть суму', 'error'); return; } setPayConfirm(true); }}
                       disabled={paying || !payAmount || parseFloat(payAmount) <= 0}
                       style={{ height: '36px', borderRadius: '8px', border: 'none', background: !payAmount || parseFloat(payAmount) <= 0 ? '#E2E8F0' : '#15803D', color: !payAmount || parseFloat(payAmount) <= 0 ? '#94A3B8' : '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
                       💵 Підтвердити готівкову оплату

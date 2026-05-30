@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Trash2, Send, Loader2, UserPlus, ShieldCheck, User } from 'lucide-react';
+import { showToast } from '../../../lib/toast';
 
 type UserEntry = {
   id: string;
@@ -26,8 +27,6 @@ export default function UsersSettings() {
   const [name,    setName]    = useState('');
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [error,   setError]   = useState('');
-  const [success, setSuccess] = useState('');
 
   async function load() {
     setLoading(true);
@@ -41,8 +40,8 @@ export default function UsersSettings() {
   useEffect(() => { load(); }, []);
 
   async function invite() {
-    if (!email.includes('@')) { setError('Введіть коректний email'); return; }
-    setSending(true); setError(''); setSuccess('');
+    if (!email.includes('@')) { showToast('Введіть коректний email', 'error'); return; }
+    setSending(true);
     try {
       const res = await fetch('/api/admin/users', {
         method: 'POST',
@@ -50,8 +49,8 @@ export default function UsersSettings() {
         body: JSON.stringify({ email: email.trim(), name: name.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? 'Помилка'); return; }
-      setSuccess(`✅ Запрошення надіслано на ${email}`);
+      if (!res.ok) { showToast(data.error ?? 'Помилка', 'error'); return; }
+      showToast(`Запрошення надіслано на ${email}`, 'success');
       setEmail(''); setName('');
       await load();
     } finally { setSending(false); }
@@ -59,11 +58,11 @@ export default function UsersSettings() {
 
   async function remove(id: string) {
     if (!confirm('Видалити менеджера?')) return;
-    setDeleting(id); setError('');
+    setDeleting(id);
     try {
       const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? 'Помилка видалення'); return; }
+      if (!res.ok) { showToast(data.error ?? 'Помилка видалення', 'error'); return; }
       setUsers(prev => prev.filter(u => u.id !== id));
     } finally { setDeleting(null); }
   }
@@ -186,8 +185,6 @@ export default function UsersSettings() {
           </button>
         </div>
 
-        {error   && <div style={{ marginTop: '8px', fontSize: '12px', color: '#DC2626', background: '#FEF2F2', padding: '6px 10px', borderRadius: '6px' }}>{error}</div>}
-        {success && <div style={{ marginTop: '8px', fontSize: '12px', color: '#15803D', background: '#F0FDF4', padding: '6px 10px', borderRadius: '6px' }}>{success}</div>}
       </div>
 
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Minus, Upload, Loader2, Trash2, AlertCircle, Copy } from 'lucide-react';
+import { showToast } from '../../../lib/toast';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import type { ReceiptDraft, ReceiptLine } from '../ReceiptDraftManager';
@@ -129,7 +130,6 @@ export default function NewReceiptModal({
   const [dragging,    setDragging]    = useState(false);
   const [parsing,     setParsing]     = useState(false);
   const [saving,      setSaving]      = useState(false);
-  const [error,       setError]       = useState('');
   const [showPicker,  setShowPicker]  = useState(false);
 
   // Pricing calculator — три окремі наценки
@@ -261,15 +261,15 @@ export default function NewReceiptModal({
   }
 
   async function processFile(file: File) {
-    setParsing(true); setError('');
+    setParsing(true);
     try {
       const buf     = await file.arrayBuffer();
       const raw     = parseExcel(buf);
-      if (!raw.length) { setError('Не знайдено рядків у файлі. Перевірте формат.'); return; }
+      if (!raw.length) { showToast('Не знайдено рядків у файлі. Перевірте формат.', 'error'); return; }
       const resolved = await resolveLines(raw);
       setLines(resolved);
     } catch (e) {
-      setError('Помилка читання файлу: ' + (e instanceof Error ? e.message : String(e)));
+      showToast('Помилка читання файлу: ' + (e instanceof Error ? e.message : String(e)), 'error');
     } finally { setParsing(false); }
   }
 
@@ -342,8 +342,8 @@ export default function NewReceiptModal({
 
   async function handleSave(autoConfirm: boolean) {
     const valid = lines.filter(l => l.sku.trim() && l.qty > 0);
-    if (!valid.length) { setError('Додайте хоча б один товар з артикулом'); return; }
-    setSaving(true); setError('');
+    if (!valid.length) { showToast('Додайте хоча б один товар з артикулом', 'error'); return; }
+    setSaving(true);
     try {
       // ── PO-linked receipt ──────────────────────────────────────────────────
       if (initialData.poId) {
@@ -365,7 +365,7 @@ export default function NewReceiptModal({
           }),
         });
         const data = await res.json();
-        if (!res.ok) { setError(data.error ?? 'Помилка проведення приходу'); return; }
+        if (!res.ok) { showToast(data.error ?? 'Помилка проведення приходу', 'error'); return; }
         if (!autoConfirm) {
           setCurrentDraftReceiptId(data.receiptId);
           onDraftChange({ draftReceiptId: data.receiptId });
@@ -403,7 +403,7 @@ export default function NewReceiptModal({
         }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? 'Помилка збереження'); return; }
+      if (!res.ok) { showToast(data.error ?? 'Помилка збереження', 'error'); return; }
       if (autoConfirm) {
         const res2 = await fetch('/api/admin/accounting/documents', {
           method: 'POST',
@@ -412,7 +412,7 @@ export default function NewReceiptModal({
         });
         if (!res2.ok) {
           const d2 = await res2.json();
-          setError(`Збережено як чернетку, але помилка проведення: ${d2.error}`);
+          showToast(`Збережено як чернетку, але помилка проведення: ${d2.error}`, 'error');
           return;
         }
       }
@@ -420,7 +420,7 @@ export default function NewReceiptModal({
       router.push('/admin/procurement/receipts');
       router.refresh();
     } catch {
-      setError('Мережева помилка');
+      showToast('Мережева помилка', 'error');
     } finally { setSaving(false); }
   }
 
@@ -759,11 +759,6 @@ export default function NewReceiptModal({
             )}
           </div>
 
-          {error && (
-            <div style={{ padding: '10px 14px', background: '#FEF2F2', borderRadius: '8px', color: '#DC2626', fontSize: '13px', display: 'flex', gap: '7px', alignItems: 'center' }}>
-              <AlertCircle size={14} /> {error}
-            </div>
-          )}
         </div>
 
         {/* ── Footer sticky ── */}

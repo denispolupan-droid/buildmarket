@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Check, Loader2, Mail } from 'lucide-react';
+import { showToast } from '../../../lib/toast';
 
 type Props = {
   initialFromEmail:    string;
@@ -29,10 +30,9 @@ export default function EmailSettings({ initialFromEmail, initialFromName, initi
   const [contactPhone,  setContactPhone]  = useState(initialContactPhone);
   const [saving,      setSaving]      = useState(false);
   const [saved,       setSaved]       = useState(false);
-  const [error,       setError]       = useState('');
 
   async function handleSave() {
-    setSaving(true); setSaved(false); setError('');
+    setSaving(true); setSaved(false);
     try {
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
@@ -46,10 +46,10 @@ export default function EmailSettings({ initialFromEmail, initialFromName, initi
         }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? 'Помилка збереження'); return; }
+      if (!res.ok) { showToast(data.error ?? 'Помилка збереження', 'error'); return; }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-    } catch { setError('Помилка мережі'); }
+    } catch { showToast('Помилка мережі', 'error'); }
     finally { setSaving(false); }
   }
 
@@ -111,8 +111,6 @@ export default function EmailSettings({ initialFromEmail, initialFromName, initi
             </div>
           </div>
         </div>
-
-        {error && <div style={{ fontSize: '13px', color: '#DC2626', padding: '8px 12px', background: '#FEF2F2', borderRadius: '8px' }}>{error}</div>}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button onClick={handleSave} disabled={saving}

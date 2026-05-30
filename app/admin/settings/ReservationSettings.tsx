@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Clock } from 'lucide-react';
+import { showToast } from '../../../lib/toast';
 
 type Props = {
   initialTtlDays: number;
@@ -16,6 +17,7 @@ export default function ReservationSettings({ initialTtlDays }: Props) {
   async function handleSave() {
     const n = parseInt(ttl, 10);
     if (isNaN(n) || n < 1 || n > 365) {
+      showToast('Введіть число від 1 до 365', 'error');
       setError('Введіть число від 1 до 365');
       return;
     }
@@ -30,7 +32,7 @@ export default function ReservationSettings({ initialTtlDays }: Props) {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Помилка збереження');
+      showToast(e instanceof Error ? e.message : 'Помилка збереження', 'error');
     } finally {
       setSaving(false);
     }
@@ -84,10 +86,6 @@ export default function ReservationSettings({ initialTtlDays }: Props) {
           {saving ? 'Збереження…' : saved ? '✓ Збережено' : 'Зберегти'}
         </button>
       </div>
-
-      {error && (
-        <div style={{ marginTop: '8px', fontSize: '12px', color: '#DC2626' }}>{error}</div>
-      )}
 
       <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
         Після резервування товар блокується на вказану кількість днів. Прострочені резерви
