@@ -93,18 +93,11 @@ export default function CatalogClient({ products, categories, initialSearch = ''
 
   const scrollCatToTop = useCallback((slug: string) => {
     const catEl = catRefs.current[slug];
-    const container = catsListRef.current;
-    if (!catEl || !container) return;
-
-    if (container.scrollHeight > container.clientHeight + 4) {
-      const offset = catEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-      container.scrollTo({ top: Math.max(0, container.scrollTop + offset - 8), behavior: 'smooth' });
-    } else {
-      const sidebar = sidebarRef.current;
-      if (!sidebar) return;
-      const offset = catEl.getBoundingClientRect().top - sidebar.getBoundingClientRect().top;
-      sidebar.scrollTo({ top: Math.max(0, sidebar.scrollTop + offset - 8), behavior: 'smooth' });
-    }
+    const sidebar = sidebarRef.current;
+    if (!catEl || !sidebar) return;
+    // Завжди прокручуємо сайдбар — кат-ліст залишається на початку
+    const offset = catEl.getBoundingClientRect().top - sidebar.getBoundingClientRect().top;
+    sidebar.scrollTo({ top: Math.max(0, sidebar.scrollTop + offset - 8), behavior: 'smooth' });
   }, []);
 
   const selectCat = (slug: string, scrollSlug?: string) => {
@@ -112,6 +105,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     sidebarRef.current?.scrollTo({ top: 0 });
+    if (catsListRef.current) catsListRef.current.scrollTop = 0; // завжди на початок
     setVisibleCount(50);
     setMobilePanel(null);
     const target = scrollSlug ?? slug;
@@ -391,7 +385,9 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 ref={catsListRef}
                 className="cat-list"
                 style={{
-                  overflowY: 'visible',
+                  maxHeight: catsOpen ? 'calc(100vh - 220px)' : '370px',
+                  overflowY: 'auto',
+                  scrollbarWidth: 'none',
                 }}
               >
                 <div

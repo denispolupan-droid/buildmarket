@@ -251,20 +251,10 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
 
   const scrollCatToTop = useCallback((slug: string) => {
     const catEl = catRefs.current[slug];
-    const container = catsListRef.current;
-    if (!catEl || !container) return;
-
-    if (container.scrollHeight > container.clientHeight + 4) {
-      // Cats list прокручується — скролимо всередині неї
-      const offset = catEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-      container.scrollTo({ top: Math.max(0, container.scrollTop + offset - 8), behavior: 'smooth' });
-    } else {
-      // Весь список видно — скролимо sidebar щоб категорія опинилась вгорі
-      const sidebar = sidebarRef.current;
-      if (!sidebar) return;
-      const offset = catEl.getBoundingClientRect().top - sidebar.getBoundingClientRect().top;
-      sidebar.scrollTo({ top: Math.max(0, sidebar.scrollTop + offset - 8), behavior: 'smooth' });
-    }
+    const sidebar = sidebarRef.current;
+    if (!catEl || !sidebar) return;
+    const offset = catEl.getBoundingClientRect().top - sidebar.getBoundingClientRect().top;
+    sidebar.scrollTo({ top: Math.max(0, sidebar.scrollTop + offset - 8), behavior: 'smooth' });
   }, []);
 
   const selectCat = (slug: string | null, scrollSlug?: string) => {
@@ -272,6 +262,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     window.history.pushState(null, '', slug ? `/shop/${slug}` : '/shop');
     window.scrollTo({ top: 0, behavior: 'smooth' });
     sidebarRef.current?.scrollTo({ top: 0 });
+    if (catsListRef.current) catsListRef.current.scrollTop = 0;
     setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup('');
     setVisibleCount(24);
     setMobilePanel(null);
@@ -442,7 +433,10 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         <div
           ref={catsListRef}
           style={{
-            overflowY: 'visible',
+            maxHeight: catsOpen ? 'calc(100vh - 220px)' : '370px',
+            overflowY: 'auto',
+            transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+            scrollbarWidth: 'none',
           }}
           className="shop-cats-list"
         >
