@@ -27,8 +27,10 @@ export default function ToastProvider() {
       const { message, type, duration } = (e as CustomEvent).detail as { message: string; type: ToastType; duration: number };
       if (!message) return;
       const id = nextId++;
+      // Помилки і попередження не зникають автоматично
+      const autoDismiss = type !== 'error' && type !== 'warning';
       setToasts(prev => [...prev, { id, message, type, duration }]);
-      setTimeout(() => remove(id), duration);
+      if (autoDismiss) setTimeout(() => remove(id), duration);
     }
     window.addEventListener('show-toast', handler);
     return () => window.removeEventListener('show-toast', handler);
