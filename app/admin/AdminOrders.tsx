@@ -574,7 +574,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
   return (
     <>
       {/* Merge bar */}
-      {selectedIds.size >= 2 && (
+      {selectedIds.size >= 1 && (
         <div style={{
           position: 'sticky', top: '52px', zIndex: 50,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -585,7 +585,28 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
           <span style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>
             Вибрано замовлень: {selectedIds.size} · Сума: {orders.filter(o => selectedIds.has(o.id)).reduce((s, o) => s + o.total_price, 0).toFixed(2)} грн
           </span>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Bulk status change */}
+            <select
+              defaultValue=""
+              onChange={async e => {
+                const newStatus = e.target.value;
+                if (!newStatus) return;
+                e.target.value = '';
+                const ids = [...selectedIds];
+                await Promise.allSettled(ids.map(id => fetch(`/api/admin/orders/${id}`, {
+                  method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ status: newStatus }),
+                })));
+                setSelectedIds(new Set());
+                router.refresh();
+              }}
+              style={{ height: '34px', padding: '0 10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.12)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>
+              <option value="" disabled style={{ color: '#000' }}>Змінити статус...</option>
+              {STATUSES.filter(s => s.value).map(s => (
+                <option key={s.value} value={s.value} style={{ color: '#000' }}>{s.label}</option>
+              ))}
+            </select>
             <button onClick={() => setSelectedIds(new Set())} style={{
               height: '34px', padding: '0 14px', borderRadius: '8px',
               border: '1px solid rgba(255,255,255,0.2)', background: 'transparent',
@@ -817,7 +838,17 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
           textTransform: 'uppercase', letterSpacing: '0.06em',
           borderBottom: '1px solid var(--border-light)',
         }}>
-          <div style={{ width: '16px', flexShrink: 0 }} />
+          {/* Select all */}
+          <div
+            onClick={() => {
+              const allIds = filtered.map(o => o.id);
+              const allSelected = allIds.every(id => selectedIds.has(id));
+              setSelectedIds(allSelected ? new Set() : new Set(allIds));
+            }}
+            title={filtered.every(o => selectedIds.has(o.id)) ? 'Зняти всі' : 'Вибрати всі'}
+            style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, cursor: 'pointer', border: `2px solid ${filtered.length > 0 && filtered.every(o => selectedIds.has(o.id)) ? '#3DBFB8' : 'var(--border)'}`, background: filtered.length > 0 && filtered.every(o => selectedIds.has(o.id)) ? '#3DBFB8' : 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {filtered.length > 0 && filtered.every(o => selectedIds.has(o.id)) && <Check size={9} color="#fff" strokeWidth={3} />}
+          </div>
           <span style={{ width: '70px', flexShrink: 0 }}>№</span>
           <span style={{ width: '90px', flexShrink: 0 }}>Дата</span>
           <span style={{ flex: '0 1 calc(50% - 230px)', minWidth: 0 }}>Клієнт / Товар</span>
