@@ -54,7 +54,16 @@ export default async function AdminPage({
 
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const [{ data: orders, count }, { data: statusRows }, { count: recentReceiptCount }] = await Promise.all([
+  // Sum query — same filters but aggregate
+  let sumQuery = serviceClient
+    .from('orders')
+    .select('total_price')
+    .neq('status', 'cancelled');
+  if (status)   sumQuery = sumQuery.eq('status', status);
+  if (dateFrom) sumQuery = sumQuery.gte('created_at', `${dateFrom}T00:00:00`);
+  if (dateTo)   sumQuery = sumQuery.lte('created_at', `${dateTo}T23:59:59`);
+
+  const [{ data: orders, count }, { data: statusRows }, { count: recentReceiptCount }, { data: sumRows }] = await Promise.all([
     query,
     serviceClient.from('orders').select('status'),
     serviceClient.from('acc_documents')
@@ -62,7 +71,10 @@ export default async function AdminPage({
       .in('doc_type', ['receipt', 'stock_in'])
       .eq('status', 'confirmed')
       .gte('confirmed_at', oneDayAgo),
+    sumQuery,
   ]);
+
+  const totalAmount = (sumRows ?? []).reduce((s, o) => s + Number(o.total_price ?? 0), 0);
 
   // Count orders per status
   const statusCounts = (statusRows ?? []).reduce<Record<string, number>>((acc, row) => {
@@ -143,7 +155,7 @@ export default async function AdminPage({
         {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
       </p>
 
-      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} />
+      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} totalAmount={totalAmount} totalCount={count ?? 0} />
     </div>
   );
 }

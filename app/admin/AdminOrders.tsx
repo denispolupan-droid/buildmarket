@@ -83,7 +83,7 @@ const STATUS_RANK: Record<string, number> = {
   new: 0, confirmed: 1, awaiting_stock: 2, picking: 3, shipped: 4, delivered: 5,
 };
 
-export default function AdminOrders({ initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin', hasRecentReceipts = false, expandOrderId, dateFrom, dateTo, statusCounts = {}, currentStatus = '' }: { initialOrders: Order[]; currentPage?: number; totalPages?: number; userRole?: string; hasRecentReceipts?: boolean; expandOrderId?: string; dateFrom?: string; dateTo?: string; statusCounts?: Record<string, number>; currentStatus?: string }) {
+export default function AdminOrders({ initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin', hasRecentReceipts = false, expandOrderId, dateFrom, dateTo, statusCounts = {}, currentStatus = '', totalAmount = 0, totalCount = 0 }: { initialOrders: Order[]; currentPage?: number; totalPages?: number; userRole?: string; hasRecentReceipts?: boolean; expandOrderId?: string; dateFrom?: string; dateTo?: string; statusCounts?: Record<string, number>; currentStatus?: string; totalAmount?: number; totalCount?: number }) {
   const isAdmin = userRole === 'admin';
   const router = useRouter();
   const [orders, setOrders]         = useState<Order[]>(initialOrders);
@@ -573,6 +573,29 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
 
   return (
     <>
+      {/* Stats bar */}
+      {totalCount > 0 && (
+        <div style={{
+          display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap',
+        }}>
+          {[
+            { label: 'Замовлень',  value: totalCount.toLocaleString('uk-UA'), color: '#1E3A5F', bg: '#EFF4FF' },
+            { label: 'На суму',    value: `${totalAmount.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴`, color: '#15803D', bg: '#F0FDF4' },
+            { label: 'Середнє',   value: `${Math.round(totalAmount / totalCount).toLocaleString('uk-UA')} ₴`, color: '#7C3AED', bg: '#F5F3FF' },
+            ...Object.entries({
+              new: 'Нових', confirmed: 'Підтверджено', awaiting_stock: 'Очікує товар',
+              picking: 'Збирається', shipped: 'Відправлено', delivered: 'Доставлено',
+            }).filter(([k]) => (statusCounts[k] ?? 0) > 0)
+              .map(([k, label]) => ({ label, value: String(statusCounts[k]), color: STATUSES.find(s => s.value === k)?.color ?? '#64748B', bg: STATUSES.find(s => s.value === k)?.bg ?? '#F8FAFC' })),
+          ].map((stat, i) => (
+            <div key={i} style={{ padding: '8px 14px', borderRadius: '10px', background: stat.bg, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '90px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: stat.color, opacity: 0.75 }}>{stat.label}</span>
+              <span style={{ fontSize: '16px', fontWeight: 800, color: stat.color }}>{stat.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Merge bar */}
       {selectedIds.size >= 1 && (
         <div style={{
