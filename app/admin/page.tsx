@@ -28,14 +28,17 @@ const STATUS_TABS = [
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; status?: string; expand?: string; dateFrom?: string; dateTo?: string }>;
+  searchParams: Promise<{ page?: string; status?: string; expand?: string; dateFrom?: string; dateTo?: string; sortBy?: string; sortDir?: string }>;
 }) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   const userRole = user?.user_metadata?.role ?? '';
   if (!user || !['admin', 'manager'].includes(userRole)) redirect('/');
 
-  const { page: pageStr, status: statusParam, expand: expandOrderId, dateFrom, dateTo } = await searchParams;
+  const { page: pageStr, status: statusParam, expand: expandOrderId, dateFrom, dateTo, sortBy: sortByParam, sortDir: sortDirParam } = await searchParams;
+  const SORT_COLS: Record<string, string> = { created_at: 'created_at', total_price: 'total_price', order_number: 'order_number' };
+  const sortBy  = SORT_COLS[sortByParam ?? ''] ?? 'created_at';
+  const sortAsc = sortDirParam === 'asc';
   // Якщо відкриваємо конкретне замовлення — показуємо всі статуси
   const status = expandOrderId ? (statusParam ?? '') : (statusParam ?? '');
   const page = Math.max(1, parseInt(pageStr ?? '1'));
@@ -45,7 +48,7 @@ export default async function AdminPage({
   let query = serviceClient
     .from('orders')
     .select('*', { count: 'exact' })
-    .order('created_at', { ascending: false })
+    .order(sortBy, { ascending: sortAsc })
     .range(from, to);
 
   if (status)   query = query.eq('status', status);
@@ -155,7 +158,7 @@ export default async function AdminPage({
         {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
       </p>
 
-      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} totalAmount={totalAmount} totalCount={count ?? 0} />
+      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} totalAmount={totalAmount} totalCount={count ?? 0} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} />
     </div>
   );
 }

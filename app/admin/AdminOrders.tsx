@@ -83,7 +83,29 @@ const STATUS_RANK: Record<string, number> = {
   new: 0, confirmed: 1, awaiting_stock: 2, picking: 3, shipped: 4, delivered: 5,
 };
 
-export default function AdminOrders({ initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin', hasRecentReceipts = false, expandOrderId, dateFrom, dateTo, statusCounts = {}, currentStatus = '', totalAmount = 0, totalCount = 0 }: { initialOrders: Order[]; currentPage?: number; totalPages?: number; userRole?: string; hasRecentReceipts?: boolean; expandOrderId?: string; dateFrom?: string; dateTo?: string; statusCounts?: Record<string, number>; currentStatus?: string; totalAmount?: number; totalCount?: number }) {
+interface AdminOrdersProps {
+  initialOrders: Order[];
+  currentPage?: number;
+  totalPages?: number;
+  userRole?: string;
+  hasRecentReceipts?: boolean;
+  expandOrderId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  statusCounts?: Record<string, number>;
+  currentStatus?: string;
+  totalAmount?: number;
+  totalCount?: number;
+  sortBy?: string;
+  sortDir?: string;
+}
+
+export default function AdminOrders({
+  initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin',
+  hasRecentReceipts = false, expandOrderId, dateFrom, dateTo,
+  statusCounts = {}, currentStatus = '', totalAmount = 0, totalCount = 0,
+  sortBy = 'created_at', sortDir = 'desc',
+}: AdminOrdersProps) {
   const isAdmin = userRole === 'admin';
   const router = useRouter();
   const [orders, setOrders]         = useState<Order[]>(initialOrders);
@@ -872,8 +894,26 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
             style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, cursor: 'pointer', border: `2px solid ${filtered.length > 0 && filtered.every(o => selectedIds.has(o.id)) ? '#3DBFB8' : 'var(--border)'}`, background: filtered.length > 0 && filtered.every(o => selectedIds.has(o.id)) ? '#3DBFB8' : 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {filtered.length > 0 && filtered.every(o => selectedIds.has(o.id)) && <Check size={9} color="#fff" strokeWidth={3} />}
           </div>
-          <span style={{ width: '70px', flexShrink: 0 }}>№</span>
-          <span style={{ width: '90px', flexShrink: 0 }}>Дата</span>
+          {/* Sortable columns */}
+          {[
+            { key: 'order_number', label: '№',    width: '70px',  align: 'left'  },
+            { key: 'created_at',   label: 'Дата',  width: '90px',  align: 'left'  },
+          ].map(col => {
+            const active = sortBy === col.key;
+            const nextDir = active && sortDir === 'desc' ? 'asc' : 'desc';
+            return (
+              <button key={col.key}
+                onClick={() => {
+                  const p = new URLSearchParams(window.location.search);
+                  p.set('sortBy', col.key); p.set('sortDir', nextDir); p.delete('page');
+                  router.push(`/admin?${p.toString()}`);
+                }}
+                style={{ width: col.width, flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', textAlign: col.align as 'left', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '10px', fontWeight: 700, color: active ? '#1E3A5F' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: 0 }}>
+                {col.label}
+                <span style={{ fontSize: '9px' }}>{active ? (sortDir === 'desc' ? '↓' : '↑') : '⇅'}</span>
+              </button>
+            );
+          })}
           <span style={{ flex: '0 1 calc(50% - 230px)', minWidth: 0 }}>Клієнт / Товар</span>
           <span style={{ flex: 1, minWidth: '100px', overflow: 'hidden', whiteSpace: 'nowrap' }}>Доставка</span>
           <span style={{ width: '104px', flexShrink: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>Статус</span>
@@ -881,7 +921,18 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
           <span style={{ width: '64px', flexShrink: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>Відпр.</span>
           <span style={{ width: '46px', flexShrink: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>Опл.</span>
           <span style={{ width: '34px', flexShrink: 0, textAlign: 'center', overflow: 'hidden', whiteSpace: 'nowrap' }}>Дзв.</span>
-          <span style={{ width: '84px', flexShrink: 0, textAlign: 'right' }}>Сума</span>
+          {/* Sortable: Сума */}
+          {(() => {
+            const active = sortBy === 'total_price';
+            const nextDir = active && sortDir === 'desc' ? 'asc' : 'desc';
+            return (
+              <button onClick={() => { const p = new URLSearchParams(window.location.search); p.set('sortBy', 'total_price'); p.set('sortDir', nextDir); p.delete('page'); router.push(`/admin?${p.toString()}`); }}
+                style={{ width: '84px', flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '3px', fontSize: '10px', fontWeight: 700, color: active ? '#1E3A5F' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: 0 }}>
+                <span style={{ fontSize: '9px' }}>{active ? (sortDir === 'desc' ? '↓' : '↑') : '⇅'}</span>
+                Сума
+              </button>
+            );
+          })()}
           <div style={{ width: '14px', flexShrink: 0 }} />
         </div>
       )}
