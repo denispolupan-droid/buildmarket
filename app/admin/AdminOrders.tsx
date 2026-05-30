@@ -83,7 +83,7 @@ const STATUS_RANK: Record<string, number> = {
   new: 0, confirmed: 1, awaiting_stock: 2, picking: 3, shipped: 4, delivered: 5,
 };
 
-export default function AdminOrders({ initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin', hasRecentReceipts = false, expandOrderId, dateFrom, dateTo }: { initialOrders: Order[]; currentPage?: number; totalPages?: number; userRole?: string; hasRecentReceipts?: boolean; expandOrderId?: string; dateFrom?: string; dateTo?: string }) {
+export default function AdminOrders({ initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin', hasRecentReceipts = false, expandOrderId, dateFrom, dateTo, statusCounts = {}, currentStatus = '' }: { initialOrders: Order[]; currentPage?: number; totalPages?: number; userRole?: string; hasRecentReceipts?: boolean; expandOrderId?: string; dateFrom?: string; dateTo?: string; statusCounts?: Record<string, number>; currentStatus?: string }) {
   const isAdmin = userRole === 'admin';
   const router = useRouter();
   const [orders, setOrders]         = useState<Order[]>(initialOrders);
@@ -835,10 +835,30 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
       {filtered.length === 0 ? (
         <div style={{
           background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px',
-          padding: '48px', textAlign: 'center', color: 'var(--text-muted)',
+          padding: '40px 32px', textAlign: 'center', color: 'var(--text-muted)',
         }}>
-          <Package size={36} strokeWidth={1} style={{ marginBottom: '10px' }} />
-          <p>Замовлень немає</p>
+          <Package size={36} strokeWidth={1} style={{ marginBottom: '10px', opacity: 0.4 }} />
+          <p style={{ marginBottom: '16px', fontSize: '14px' }}>
+            {currentStatus
+              ? `Немає замовлень зі статусом «${STATUSES.find(s => s.value === currentStatus)?.label ?? currentStatus}»`
+              : 'Замовлень немає'}
+          </p>
+          {/* Банер з підказкою про інші статуси */}
+          {currentStatus && Object.keys(statusCounts).length > 0 && (() => {
+            const others = STATUSES.filter(s => s.value && s.value !== currentStatus && (statusCounts[s.value] ?? 0) > 0);
+            if (!others.length) return null;
+            return (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginTop: '8px' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)', alignSelf: 'center' }}>Є замовлення в:</span>
+                {others.map(s => (
+                  <a key={s.value} href={`/admin?status=${s.value}`}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '30px', padding: '0 12px', borderRadius: '8px', background: s.bg, color: s.color, fontSize: '13px', fontWeight: 700, textDecoration: 'none', border: `1px solid ${s.color}22` }}>
+                    {s.label} <span style={{ background: s.color, color: '#fff', borderRadius: '10px', padding: '0 6px', fontSize: '11px' }}>{statusCounts[s.value]}</span>
+                  </a>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

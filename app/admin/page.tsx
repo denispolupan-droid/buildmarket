@@ -37,7 +37,7 @@ export default async function AdminPage({
 
   const { page: pageStr, status: statusParam, expand: expandOrderId, dateFrom, dateTo } = await searchParams;
   // Якщо відкриваємо конкретне замовлення — показуємо всі статуси
-  const status = expandOrderId ? (statusParam ?? '') : (statusParam ?? 'new');
+  const status = expandOrderId ? (statusParam ?? '') : (statusParam ?? '');
   const page = Math.max(1, parseInt(pageStr ?? '1'));
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -143,7 +143,7 @@ export default async function AdminPage({
         {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
       </p>
 
-      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} />
+      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} />
     </div>
   );
 }
