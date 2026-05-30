@@ -28,14 +28,14 @@ const STATUS_TABS = [
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; status?: string; expand?: string }>;
+  searchParams: Promise<{ page?: string; status?: string; expand?: string; dateFrom?: string; dateTo?: string }>;
 }) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   const userRole = user?.user_metadata?.role ?? '';
   if (!user || !['admin', 'manager'].includes(userRole)) redirect('/');
 
-  const { page: pageStr, status: statusParam, expand: expandOrderId } = await searchParams;
+  const { page: pageStr, status: statusParam, expand: expandOrderId, dateFrom, dateTo } = await searchParams;
   // Якщо відкриваємо конкретне замовлення — показуємо всі статуси
   const status = expandOrderId ? (statusParam ?? '') : (statusParam ?? 'new');
   const page = Math.max(1, parseInt(pageStr ?? '1'));
@@ -48,7 +48,9 @@ export default async function AdminPage({
     .order('created_at', { ascending: false })
     .range(from, to);
 
-  if (status) query = query.eq('status', status);
+  if (status)   query = query.eq('status', status);
+  if (dateFrom) query = query.gte('created_at', `${dateFrom}T00:00:00`);
+  if (dateTo)   query = query.lte('created_at', `${dateTo}T23:59:59`);
 
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
@@ -141,7 +143,7 @@ export default async function AdminPage({
         {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
       </p>
 
-      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} />
+      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} />
     </div>
   );
 }

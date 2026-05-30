@@ -83,7 +83,7 @@ const STATUS_RANK: Record<string, number> = {
   new: 0, confirmed: 1, awaiting_stock: 2, picking: 3, shipped: 4, delivered: 5,
 };
 
-export default function AdminOrders({ initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin', hasRecentReceipts = false, expandOrderId }: { initialOrders: Order[]; currentPage?: number; totalPages?: number; userRole?: string; hasRecentReceipts?: boolean; expandOrderId?: string }) {
+export default function AdminOrders({ initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin', hasRecentReceipts = false, expandOrderId, dateFrom, dateTo }: { initialOrders: Order[]; currentPage?: number; totalPages?: number; userRole?: string; hasRecentReceipts?: boolean; expandOrderId?: string; dateFrom?: string; dateTo?: string }) {
   const isAdmin = userRole === 'admin';
   const router = useRouter();
   const [orders, setOrders]         = useState<Order[]>(initialOrders);
@@ -682,7 +682,64 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
           </div>
         </div>
 
-        {/* Row 2: Search */}
+        {/* Row 2: Date filter */}
+        {(() => {
+          const today = new Date().toISOString().slice(0, 10);
+          const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+          const monthStart = `${today.slice(0, 7)}-01`;
+
+          function applyDate(from: string, to: string) {
+            const params = new URLSearchParams(window.location.search);
+            params.set('dateFrom', from);
+            params.set('dateTo', to);
+            params.delete('page');
+            router.push(`/admin?${params.toString()}`);
+          }
+          function clearDate() {
+            const params = new URLSearchParams(window.location.search);
+            params.delete('dateFrom');
+            params.delete('dateTo');
+            params.delete('page');
+            router.push(`/admin?${params.toString()}`);
+          }
+
+          const hasDateFilter = !!(dateFrom || dateTo);
+          const inpStyle: React.CSSProperties = { height: '32px', padding: '0 8px', border: '1.5px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none', background: 'var(--bg-card)', color: 'var(--text-primary)' };
+
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {/* Quick presets */}
+              {[
+                { label: 'Сьогодні', from: today,      to: today },
+                { label: '7 днів',   from: weekAgo,    to: today },
+                { label: 'Місяць',   from: monthStart,  to: today },
+              ].map(p => {
+                const active = dateFrom === p.from && dateTo === p.to;
+                return (
+                  <button key={p.label} onClick={() => applyDate(p.from, p.to)}
+                    style={{ height: '32px', padding: '0 12px', borderRadius: '7px', border: `1.5px solid ${active ? '#1E3A5F' : 'var(--border)'}`, background: active ? '#1E3A5F' : 'var(--bg-card)', color: active ? '#fff' : 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    {p.label}
+                  </button>
+                );
+              })}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <input type="date" style={inpStyle} value={dateFrom ?? ''}
+                  onChange={e => applyDate(e.target.value, dateTo ?? today)} />
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>—</span>
+                <input type="date" style={inpStyle} value={dateTo ?? ''}
+                  onChange={e => applyDate(dateFrom ?? monthStart, e.target.value)} />
+              </div>
+              {hasDateFilter && (
+                <button onClick={clearDate}
+                  style={{ height: '32px', padding: '0 10px', borderRadius: '7px', border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#DC2626', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+                  ✕ Скинути дату
+                </button>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Row 3: Search */}
         <div style={{ position: 'relative' }}>
           <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           <input
