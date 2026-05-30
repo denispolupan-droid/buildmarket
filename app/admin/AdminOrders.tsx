@@ -17,6 +17,7 @@ type FulfillmentData = OrderFulfillmentInfo & {
 };
 import CreateTTNModal from '../components/admin/CreateTTNModal';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
+import SmartDateInput from '../components/SmartDateInput';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number; is_bonus?: boolean; supplier_sku?: string };
 
@@ -94,8 +95,6 @@ interface AdminOrdersProps {
   dateTo?: string;
   statusCounts?: Record<string, number>;
   currentStatus?: string;
-  totalAmount?: number;
-  totalCount?: number;
   sortBy?: string;
   sortDir?: string;
 }
@@ -103,7 +102,7 @@ interface AdminOrdersProps {
 export default function AdminOrders({
   initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin',
   hasRecentReceipts = false, expandOrderId, dateFrom, dateTo,
-  statusCounts = {}, currentStatus = '', totalAmount = 0, totalCount = 0,
+  statusCounts = {}, currentStatus = '',
   sortBy = 'created_at', sortDir = 'desc',
 }: AdminOrdersProps) {
   const isAdmin = userRole === 'admin';
@@ -770,11 +769,17 @@ export default function AdminOrders({
                 );
               })}
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <input type="date" style={inpStyle} value={dateFrom ?? ''}
-                  onChange={e => applyDate(e.target.value, dateTo ?? today)} />
+                <SmartDateInput
+                  value={dateFrom ?? ''}
+                  onChange={v => applyDate(v, dateTo ?? today)}
+                  style={{ height: '32px', ...inpStyle }}
+                />
                 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>—</span>
-                <input type="date" style={inpStyle} value={dateTo ?? ''}
-                  onChange={e => applyDate(dateFrom ?? monthStart, e.target.value)} />
+                <SmartDateInput
+                  value={dateTo ?? ''}
+                  onChange={v => applyDate(dateFrom ?? monthStart, v)}
+                  style={{ height: '32px', ...inpStyle }}
+                />
               </div>
               {hasDateFilter && (
                 <button onClick={clearDate}
@@ -937,7 +942,7 @@ export default function AdminOrders({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginTop: '8px' }}>
                 <span style={{ fontSize: '13px', color: 'var(--text-secondary)', alignSelf: 'center' }}>Є замовлення в:</span>
                 {others.map(s => (
-                  <a key={s.value} href={`/admin?status=${s.value}`}
+                  <a key={s.value} href={`/admin?status=${s.value}${dateFrom ? `&dateFrom=${dateFrom}` : ''}${dateTo ? `&dateTo=${dateTo}` : ''}`}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '30px', padding: '0 12px', borderRadius: '8px', background: s.bg, color: s.color, fontSize: '13px', fontWeight: 700, textDecoration: 'none', border: `1px solid ${s.color}22` }}>
                     {s.label} <span style={{ background: s.color, color: '#fff', borderRadius: '10px', padding: '0 6px', fontSize: '11px' }}>{statusCounts[s.value]}</span>
                   </a>

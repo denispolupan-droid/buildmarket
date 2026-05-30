@@ -57,16 +57,21 @@ export default async function AdminPage({
 
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
+  // Status counts + amounts — with same date filter as the main list
+  let statusQuery = serviceClient.from('orders').select('status');
+  let amountQuery = serviceClient.from('orders').select('status, total_price').neq('status', 'cancelled');
+  if (dateFrom) { statusQuery = statusQuery.gte('created_at', `${dateFrom}T00:00:00`); amountQuery = amountQuery.gte('created_at', `${dateFrom}T00:00:00`); }
+  if (dateTo)   { statusQuery = statusQuery.lte('created_at', `${dateTo}T23:59:59`);   amountQuery = amountQuery.lte('created_at', `${dateTo}T23:59:59`); }
+
   const [{ data: orders, count }, { data: statusRows }, { count: recentReceiptCount }, { data: allAmountRows }] = await Promise.all([
     query,
-    serviceClient.from('orders').select('status'),
+    statusQuery,
     serviceClient.from('acc_documents')
       .select('id', { count: 'exact', head: true })
       .in('doc_type', ['receipt', 'stock_in'])
       .eq('status', 'confirmed')
       .gte('confirmed_at', oneDayAgo),
-    // Per-status amounts (no date filter — for tab totals)
-    serviceClient.from('orders').select('status, total_price').neq('status', 'cancelled'),
+    amountQuery,
   ]);
 
   // Sum per status
@@ -107,33 +112,41 @@ export default async function AdminPage({
             return (
               <Link
                 key={tab.value}
-                href={`/admin?status=${tab.value}`}
+                href={`/admin?status=${tab.value}${dateFrom ? `&dateFrom=${dateFrom}` : ''}${dateTo ? `&dateTo=${dateTo}` : ''}`}
                 style={{
-                  display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
-                  gap: '1px', padding: '5px 14px', borderRadius: '8px',
+                  display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start',
+                  gap: '3px', padding: '7px 14px', borderRadius: '10px',
                   textDecoration: 'none',
                   background: isActive ? '#1E3A5F' : 'var(--bg-card)',
                   color: isActive ? '#fff' : 'var(--text-secondary)',
                   border: `1px solid ${isActive ? '#1E3A5F' : 'var(--border)'}`,
-                  transition: 'all 0.15s', minWidth: '60px',
+                  transition: 'all 0.15s', minWidth: '80px',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: isActive ? 700 : 400 }}>{tab.label}</span>
+                  <span style={{ fontSize: '13px', fontWeight: isActive ? 700 : 500 }}>{tab.label}</span>
                   {cnt > 0 && (
                     <span style={{
-                      background: isActive ? 'rgba(255,255,255,0.25)' : isNew ? '#EF4444' : '#E2E8F0',
+                      background: isActive ? 'rgba(255,255,255,0.22)' : isNew ? '#EF4444' : '#E2E8F0',
                       color: isActive ? '#fff' : isNew ? '#fff' : '#475569',
                       fontSize: '10px', fontWeight: 700,
                       borderRadius: '5px', padding: '0 5px', lineHeight: '16px',
                     }}>{cnt}</span>
                   )}
                 </div>
-                {tab.value && (statusAmounts[tab.value] ?? 0) > 0 && (
-                  <span style={{ fontSize: '10px', fontWeight: 600, opacity: isActive ? 0.8 : 0.55, whiteSpace: 'nowrap' }}>
-                    {(statusAmounts[tab.value]!).toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
-                  </span>
-                )}
+                {(() => {
+                  const amount = tab.value === '' ? totalAmount : (statusAmounts[tab.value] ?? 0);
+                  return (
+                    <span style={{
+                      fontSize: '13px', fontWeight: 800,
+                      color: isActive ? '#93C5FD' : '#15803D',
+                      whiteSpace: 'nowrap', letterSpacing: '-0.3px',
+                      visibility: amount > 0 ? 'visible' : 'hidden',
+                    }}>
+                      {amount.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
+                    </span>
+                  );
+                })()}
               </Link>
             );
           })}
@@ -171,7 +184,7 @@ export default async function AdminPage({
         {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
       </p>
 
-      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} totalAmount={totalAmount} totalCount={count ?? 0} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} />
+      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} />
     </div>
   );
 }

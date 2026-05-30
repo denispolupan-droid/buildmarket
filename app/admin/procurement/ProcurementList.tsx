@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, ChevronDown, ChevronUp, Send, Loader2, X, Mail, Trash2, Copy } from 'lucide-react';
@@ -221,20 +221,6 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
     setSelected(prev => prev.size === orders.length ? new Set() : new Set(orders.map(o => o.id)));
   }
 
-  const sendOrders = useCallback(async (ids: string[]) => {
-    setSending(prev => new Set([...prev, ...ids]));
-    setSendResult(null);
-    try {
-      const res  = await fetch('/api/admin/procurement/send', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids }),
-      });
-      const data = await res.json();
-      setSendResult({ ok: data.ok ?? 0, fails: data.fails ?? 0 });
-      if (data.ok > 0) setSelected(new Set()); // знімаємо вибір після відправки
-    } catch { setSendResult({ ok: 0, fails: ids.length }); }
-    finally { setSending(prev => { const n = new Set(prev); ids.forEach(id => n.delete(id)); return n; }); }
-  }, []);
 
   if (orders.length === 0) {
     return (
@@ -286,8 +272,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
       </div>
 
       {orders.map((po, idx) => {
-        // Пріоритет: po_status (новий) → procurement_status (старий) → default
-        const statusKey = (po as { po_status?: string }).po_status ?? po.procurement_status ?? '';
+        const statusKey = po.procurement_status ?? '';
         const hasReceipts = po.receipts.length > 0;
         const isExpanded  = expanded.has(po.id);
 

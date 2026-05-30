@@ -516,8 +516,11 @@ export async function maybeAutoClose(id: string): Promise<void> {
     .eq('id', id)
     .single();
   if (!data) return;
-  const isReceived = data.procurement_status === 'received';
-  const isPaid = (data.meta as Record<string, unknown> | null)?.is_paid === true;
+  const meta = (data.meta as Record<string, unknown> | null);
+  // Повний прихід: received або paid (legacy)
+  const isReceived = ['received', 'paid'].includes(data.procurement_status ?? '');
+  // Оплачено: через новий flow (meta.is_paid) або через legacy (procurement_status=paid)
+  const isPaid = meta?.is_paid === true || data.procurement_status === 'paid';
   if (isReceived && isPaid) {
     await db.from('acc_documents').update({ procurement_status: 'closed' }).eq('id', id);
   }
