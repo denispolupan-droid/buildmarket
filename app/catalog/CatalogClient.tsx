@@ -34,10 +34,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     if (!sidebar) return;
     const check = () => {
       setShowScrollHint(sidebar.scrollTop < sidebar.scrollHeight - sidebar.clientHeight - 40);
-      // Коли сайдбар повернувся на початок — скидаємо прокрутку категорій
-      if (sidebar.scrollTop === 0 && catsListRef.current) {
-        catsListRef.current.scrollTop = 0;
-      }
     };
     check();
     sidebar.addEventListener('scroll', check, { passive: true });
@@ -395,9 +391,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 ref={catsListRef}
                 className="cat-list"
                 style={{
-                  maxHeight: catsOpen ? 'calc(100vh - 220px)' : '370px',
-                  overflowY: 'auto',
-                  scrollbarWidth: 'none',
+                  overflowY: 'visible',
                 }}
               >
                 <div

@@ -194,9 +194,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     if (!sidebar) return;
     const check = () => {
       setShowScrollHint(sidebar.scrollTop < sidebar.scrollHeight - sidebar.clientHeight - 40);
-      if (sidebar.scrollTop === 0 && catsListRef.current) {
-        catsListRef.current.scrollTop = 0;
-      }
     };
     check();
     sidebar.addEventListener('scroll', check, { passive: true });
@@ -445,10 +442,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         <div
           ref={catsListRef}
           style={{
-            maxHeight: catsOpen ? 'calc(100vh - 220px)' : '370px',
-            overflowY: 'auto',
-            transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-            scrollbarWidth: 'none',
+            overflowY: 'visible',
           }}
           className="shop-cats-list"
         >
