@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowDownLeft, ArrowUpRight, Minus } from 'lucide-react';
 
 export type CashflowEntry = {
@@ -47,8 +48,15 @@ type Props = {
 };
 
 export default function CashflowClient({ entries, openingBalance, defaultFrom, defaultTo }: Props) {
-  const [from,    setFrom]    = useState(defaultFrom);
-  const [to,      setTo]      = useState(defaultTo);
+  const router = useRouter();
+  const [from, setFrom] = useState(defaultFrom);
+  const [to,   setTo]   = useState(defaultTo);
+
+  function applyDates(newFrom: string, newTo: string) {
+    if (newFrom && newTo) {
+      router.push(`/admin/finance/cashflow?from=${newFrom}&to=${newTo}`);
+    }
+  }
   const [account, setAccount] = useState<'all' | 'cash' | 'bank' | 'acquiring'>('all');
   const [dir,     setDir]     = useState<'all' | 'in' | 'out'>('all');
   const [search,  setSearch]  = useState('');
@@ -117,9 +125,13 @@ export default function CashflowClient({ entries, openingBalance, defaultFrom, d
       {/* ── Filters ── */}
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap' }}>
         {/* Date range */}
-        <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={{ ...inp, width: '138px' }} />
+        <input type="date" value={from}
+          onChange={e => { setFrom(e.target.value); applyDates(e.target.value, to); }}
+          style={{ ...inp, width: '138px' }} />
         <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>—</span>
-        <input type="date" value={to}   onChange={e => setTo(e.target.value)}   style={{ ...inp, width: '138px' }} />
+        <input type="date" value={to}
+          onChange={e => { setTo(e.target.value); applyDates(from, e.target.value); }}
+          style={{ ...inp, width: '138px' }} />
 
         {/* Account tabs */}
         <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)', marginLeft: '8px' }}>

@@ -12,15 +12,19 @@ const db = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-export default async function CashflowPage() {
+export default async function CashflowPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.user_metadata?.role !== 'admin') redirect('/');
 
-  // Default period: current month
-  const now       = new Date();
-  const from      = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-  const to        = now.toISOString().slice(0, 10);
+  const params = await searchParams;
+  const now    = new Date();
+  const from   = params.from ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  const to     = params.to   ?? now.toISOString().slice(0, 10);
 
   // ── 1. Fetch cash/bank/acquiring entries for the period ──────────────────────
   const { data: rawEntries } = await db
