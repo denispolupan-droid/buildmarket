@@ -139,17 +139,30 @@ export default async function AdminPage({
           })}
         </div>
 
-        {/* Реєстр НП — окрема кнопка-посилання */}
-        <Link href="/admin/dispatch" style={{
-          display: 'inline-flex', alignItems: 'center', gap: '6px',
-          height: '32px', padding: '0 14px', borderRadius: '8px',
-          textDecoration: 'none', fontSize: '13px', fontWeight: 500,
-          background: '#EFF6FF', color: '#1D4ED8',
-          border: '1px solid #BFDBFE',
-        }}>
-          <Send size={13} />
-          Реєстр НП
-        </Link>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {/* Експорт Excel */}
+          {(() => {
+            const p = new URLSearchParams();
+            if (curStatus) p.set('status', curStatus);
+            if (dateFrom)  p.set('dateFrom', dateFrom);
+            if (dateTo)    p.set('dateTo', dateTo);
+            return (
+              <a href={`/api/admin/orders/export?${p.toString()}`} download
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 500, background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0' }}>
+                ↓ Excel
+              </a>
+            );
+          })()}
+          {/* Реєстр НП */}
+          <Link href="/admin/dispatch" style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            height: '32px', padding: '0 14px', borderRadius: '8px',
+            textDecoration: 'none', fontSize: '13px', fontWeight: 500,
+            background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE',
+          }}>
+            <Send size={13} /> Реєстр НП
+          </Link>
+        </div>
       </div>
 
       {/* Subtitle */}
