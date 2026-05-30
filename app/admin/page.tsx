@@ -57,16 +57,7 @@ export default async function AdminPage({
 
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  // Sum query — same filters but aggregate
-  let sumQuery = serviceClient
-    .from('orders')
-    .select('total_price')
-    .neq('status', 'cancelled');
-  if (status)   sumQuery = sumQuery.eq('status', status);
-  if (dateFrom) sumQuery = sumQuery.gte('created_at', `${dateFrom}T00:00:00`);
-  if (dateTo)   sumQuery = sumQuery.lte('created_at', `${dateTo}T23:59:59`);
-
-  const [{ data: orders, count }, { data: statusRows }, { count: recentReceiptCount }, { data: sumRows }] = await Promise.all([
+  const [{ data: orders, count }, { data: statusRows }, { count: recentReceiptCount }, { data: allAmountRows }] = await Promise.all([
     query,
     serviceClient.from('orders').select('status'),
     serviceClient.from('acc_documents')
@@ -74,10 +65,16 @@ export default async function AdminPage({
       .in('doc_type', ['receipt', 'stock_in'])
       .eq('status', 'confirmed')
       .gte('confirmed_at', oneDayAgo),
-    sumQuery,
+    // Per-status amounts (no date filter — for tab totals)
+    serviceClient.from('orders').select('status, total_price').neq('status', 'cancelled'),
   ]);
 
-  const totalAmount = (sumRows ?? []).reduce((s, o) => s + Number(o.total_price ?? 0), 0);
+  // Sum per status
+  const statusAmounts = (allAmountRows ?? []).reduce<Record<string, number>>((acc, row) => {
+    if (row.status) acc[row.status] = (acc[row.status] ?? 0) + Number(row.total_price ?? 0);
+    return acc;
+  }, {});
+  const totalAmount = Object.values(statusAmounts).reduce((s, n) => s + n, 0);
 
   // Count orders per status
   const statusCounts = (statusRows ?? []).reduce<Record<string, number>>((acc, row) => {
@@ -112,26 +109,29 @@ export default async function AdminPage({
                 key={tab.value}
                 href={`/admin?status=${tab.value}`}
                 style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '5px',
-                  height: '32px', padding: '0 14px', borderRadius: '8px',
-                  textDecoration: 'none', fontSize: '13px', fontWeight: isActive ? 700 : 400,
+                  display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
+                  gap: '1px', padding: '5px 14px', borderRadius: '8px',
+                  textDecoration: 'none',
                   background: isActive ? '#1E3A5F' : 'var(--bg-card)',
                   color: isActive ? '#fff' : 'var(--text-secondary)',
                   border: `1px solid ${isActive ? '#1E3A5F' : 'var(--border)'}`,
-                  transition: 'all 0.15s',
+                  transition: 'all 0.15s', minWidth: '60px',
                 }}
               >
-                {tab.label}
-                {cnt > 0 && (
-                  <span style={{
-                    background: isActive
-                      ? 'rgba(255,255,255,0.25)'
-                      : isNew ? '#EF4444' : '#E2E8F0',
-                    color: isActive ? '#fff' : isNew ? '#fff' : '#475569',
-                    fontSize: '10px', fontWeight: 700,
-                    borderRadius: '5px', padding: '0 5px', lineHeight: '16px',
-                  }}>
-                    {cnt}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: isActive ? 700 : 400 }}>{tab.label}</span>
+                  {cnt > 0 && (
+                    <span style={{
+                      background: isActive ? 'rgba(255,255,255,0.25)' : isNew ? '#EF4444' : '#E2E8F0',
+                      color: isActive ? '#fff' : isNew ? '#fff' : '#475569',
+                      fontSize: '10px', fontWeight: 700,
+                      borderRadius: '5px', padding: '0 5px', lineHeight: '16px',
+                    }}>{cnt}</span>
+                  )}
+                </div>
+                {tab.value && (statusAmounts[tab.value] ?? 0) > 0 && (
+                  <span style={{ fontSize: '10px', fontWeight: 600, opacity: isActive ? 0.8 : 0.55, whiteSpace: 'nowrap' }}>
+                    {(statusAmounts[tab.value]!).toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
                   </span>
                 )}
               </Link>

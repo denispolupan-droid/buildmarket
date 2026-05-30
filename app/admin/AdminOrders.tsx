@@ -109,6 +109,8 @@ export default function AdminOrders({
   const isAdmin = userRole === 'admin';
   const router = useRouter();
   const [orders, setOrders]         = useState<Order[]>(initialOrders);
+  // Sync when server re-renders with new sort/filter
+  useEffect(() => { setOrders(initialOrders); }, [initialOrders]);
   const [channelFilter, setChannelFilter] = useState('');
   const [search, setSearch]         = useState('');
   const [loading, setLoading]       = useState<string | null>(null);
@@ -595,29 +597,6 @@ export default function AdminOrders({
 
   return (
     <>
-      {/* Stats bar */}
-      {totalCount > 0 && (
-        <div style={{
-          display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap',
-        }}>
-          {[
-            { label: 'Замовлень',  value: totalCount.toLocaleString('uk-UA'), color: '#1E3A5F', bg: '#EFF4FF' },
-            { label: 'На суму',    value: `${totalAmount.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴`, color: '#15803D', bg: '#F0FDF4' },
-            { label: 'Середнє',   value: `${Math.round(totalAmount / totalCount).toLocaleString('uk-UA')} ₴`, color: '#7C3AED', bg: '#F5F3FF' },
-            ...Object.entries({
-              new: 'Нових', confirmed: 'Підтверджено', awaiting_stock: 'Очікує товар',
-              picking: 'Збирається', shipped: 'Відправлено', delivered: 'Доставлено',
-            }).filter(([k]) => (statusCounts[k] ?? 0) > 0)
-              .map(([k, label]) => ({ label, value: String(statusCounts[k]), color: STATUSES.find(s => s.value === k)?.color ?? '#64748B', bg: STATUSES.find(s => s.value === k)?.bg ?? '#F8FAFC' })),
-          ].map((stat, i) => (
-            <div key={i} style={{ padding: '8px 14px', borderRadius: '10px', background: stat.bg, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '90px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 600, color: stat.color, opacity: 0.75 }}>{stat.label}</span>
-              <span style={{ fontSize: '16px', fontWeight: 800, color: stat.color }}>{stat.value}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Merge bar */}
       {selectedIds.size >= 1 && (
         <div style={{
@@ -633,6 +612,7 @@ export default function AdminOrders({
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             {/* Bulk status change */}
             <select
+
               defaultValue=""
               onChange={async e => {
                 const newStatus = e.target.value;
@@ -652,11 +632,6 @@ export default function AdminOrders({
                 <option key={s.value} value={s.value} style={{ color: '#000' }}>{s.label}</option>
               ))}
             </select>
-            <button onClick={() => setSelectedIds(new Set())} style={{
-              height: '34px', padding: '0 14px', borderRadius: '8px',
-              border: '1px solid rgba(255,255,255,0.2)', background: 'transparent',
-              color: '#fff', fontSize: '13px', cursor: 'pointer',
-            }}>Скасувати</button>
             {(() => {
               const sel = orders.filter(o => selectedIds.has(o.id));
               const supplierSel = sel.filter(o => o.fulfillment_mode === 'supplier' || o.fulfillment_mode === 'mixed' || (o.status === 'new' && (o.fulfillment_mode == null || o.fulfillment_mode === 'supplier')));
@@ -679,6 +654,12 @@ export default function AdminOrders({
             }}>
               <Truck size={14} /> Об&apos;єднати в ТТН
             </button>
+            {/* Скасувати — в кінці, виділено червоним */}
+            <button onClick={() => setSelectedIds(new Set())} style={{
+              height: '34px', padding: '0 16px', borderRadius: '8px',
+              border: '1px solid #FCA5A5', background: 'rgba(239,68,68,0.15)',
+              color: '#FCA5A5', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+            }}>✕ Скасувати</button>
           </div>
         </div>
       )}
