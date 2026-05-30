@@ -232,16 +232,23 @@ export default function PayablesClient({ groups }: Props) {
                             {fmt(po.outstanding)} ₴
                           </span>
 
-                          <div style={{ textAlign: 'right' }}>
+                          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
                             {dl ? (
-                              <div style={{
-                                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                fontSize: '11px', fontWeight: 700,
-                                color: dl.color, background: dl.bg,
-                                padding: '3px 8px', borderRadius: '20px',
-                              }}>
-                                {dl.icon} {dl.text}
-                              </div>
+                              <>
+                                <div style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                  fontSize: '11px', fontWeight: 700,
+                                  color: dl.color, background: dl.bg,
+                                  padding: '3px 8px', borderRadius: '20px',
+                                }}>
+                                  {dl.icon} {dl.text}
+                                </div>
+                                {po.payment_defer_date && (
+                                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500 }}>
+                                    {new Date(po.payment_defer_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                  </span>
+                                )}
+                              </>
                             ) : (
                               <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                                 {po.procurement_status === 'received' ? 'Очікує оплати' : '—'}
