@@ -1,6 +1,6 @@
 ﻿import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
-import { Package, Warehouse, ChevronRight } from 'lucide-react';
+import { Package, Warehouse, ChevronRight, AlertTriangle } from 'lucide-react';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,12 +13,16 @@ export default async function StockHubPage() {
     { count: supplierTotal },
     { count: ownPositions },
     { data: suppliers },
+    { data: allWithMin },
   ] = await Promise.all([
     db.from('product_stock').select('*', { count: 'exact', head: true }).eq('stock_status', 'in_stock'),
     db.from('product_stock').select('*', { count: 'exact', head: true }),
     db.from('stock_balance').select('*', { count: 'exact', head: true }).gt('qty_available', 0),
     db.from('suppliers').select('id').order('name'),
+    db.from('stock_balance').select('qty_total, min_reorder_qty').not('min_reorder_qty', 'is', null).gt('min_reorder_qty', 0),
   ]);
+
+  const reorderCount = (allWithMin ?? []).filter(r => Number(r.qty_total) <= Number(r.min_reorder_qty)).length;
 
   return (
     <div style={{ padding: '28px 32px', maxWidth: '960px' }}>
@@ -39,6 +43,20 @@ export default async function StockHubPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        {reorderCount > 0 && (
+          <Link href="/admin/accounting/stock/reorder" style={{ textDecoration: 'none', gridColumn: '1 / -1' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 20px', background: '#FEF3C7', border: '1.5px solid #FCD34D', borderRadius: '12px', cursor: 'pointer' }}>
+              <AlertTriangle size={20} color="#D97706" />
+              <div style={{ flex: 1 }}>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: '#92400E' }}>
+                  {reorderCount} {reorderCount === 1 ? 'позиція потребує' : reorderCount < 5 ? 'позиції потребують' : 'позицій потребують'} поповнення
+                </span>
+                <span style={{ fontSize: '12px', color: '#B45309', marginLeft: '8px' }}>— залишок нижче мінімального рівня</span>
+              </div>
+              <ChevronRight size={18} color="#D97706" />
+            </div>
+          </Link>
+        )}
         <Link href="/admin/accounting/stock/suppliers" style={{ textDecoration: 'none' }}>
           <div className="stock-card" style={{
             background: 'var(--bg-card)', border: '1.5px solid var(--border)',
@@ -100,3 +118,4 @@ export default async function StockHubPage() {
     </div>
   );
 }
+

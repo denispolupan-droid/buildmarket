@@ -19,7 +19,7 @@ export async function GET(
 
   const { data: pos } = await db
     .from('acc_documents')
-    .select('id, doc_number, doc_date, created_at, procurement_status, total_cost, supplier:supplier_id(name)')
+    .select('id, doc_number, doc_date, expected_date, created_at, procurement_status, total_cost, supplier:supplier_id(name)')
     .eq('order_id', id)
     .eq('doc_type', 'purchase_order')
     .neq('status', 'cancelled')
@@ -37,5 +37,14 @@ export async function GET(
         .order('created_at')
     : { data: [] };
 
-  return NextResponse.json({ pos: pos ?? [], receipts: receipts ?? [] });
+  // Лінії підтверджених приходів — для відображення скільки кожного SKU отримано
+  const receiptIds = (receipts ?? []).map(r => r.id);
+  const { data: receiptLines } = receiptIds.length
+    ? await db
+        .from('acc_document_lines')
+        .select('document_id, sku, qty_actual, qty')
+        .in('document_id', receiptIds)
+    : { data: [] };
+
+  return NextResponse.json({ pos: pos ?? [], receipts: receipts ?? [], receiptLines: receiptLines ?? [] });
 }

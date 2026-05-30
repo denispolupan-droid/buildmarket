@@ -13,7 +13,7 @@ type ChainData = {
   adjLines:     { document_id: string; sku: string; qty: number; cost_price: number | null }[];
   payments:     { id: string; txn_id: string; amount: number; business_date: string; description: string | null; account_type: string; doc_type: string }[];
   batches:      { id: string; sku: string; initial_qty: number; cost_price: number; received_at: string }[];
-  relatedDocs:  { id: string; doc_number: string; doc_type: string; doc_date: string; total_amount: number | null; total_cost: number | null }[];
+  relatedDocs:  { id: string; doc_number: string; doc_type: string; doc_date: string; total_amount: number | null; total_cost: number | null; order_id: string | null }[];
   landedCosts:  LandedCostLine[];
 };
 
@@ -251,12 +251,16 @@ export default function DocChain({ poId }: { poId: string }) {
                         }
                         if (ev.kind === 'sale') {
                           const d = ev.data;
+                          const saleHref = d.order_id
+                            ? `/admin?expand=${d.order_id}`
+                            : `/admin/accounting/documents/${d.id}`;
                           return (
                             <TimelineNode key={`sale-${idx}`}
                               icon="📤" title={`${d.doc_number} — Продаж`}
                               sub={fmtDate(d.doc_date)}
                               amount={d.total_amount ? `${fmt(Number(d.total_amount))} ₴` : undefined}
                               amountColor="#15803D"
+                              href={saleHref}
                             />
                           );
                         }

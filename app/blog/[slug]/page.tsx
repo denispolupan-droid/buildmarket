@@ -1332,7 +1332,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
   const articleLd = {
     '@context': 'https://schema.org',
-    '@type': 'Article',
+    '@type': 'BlogPosting',
     headline: article.title,
     description: article.description,
     image: `https://fixline.com.ua${article.image}`,

@@ -64,7 +64,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   // 6. Продажі пов'язані через order_id (якщо PO пов'язаний із замовленням)
   const { data: orderDocs } = po.order_id ? await db
     .from('acc_documents')
-    .select('id, doc_number, doc_type, doc_date, total_amount, total_cost')
+    .select('id, doc_number, doc_type, doc_date, total_amount, total_cost, order_id')
     .eq('order_id', po.order_id)
     .neq('id', id)
     : { data: [] };

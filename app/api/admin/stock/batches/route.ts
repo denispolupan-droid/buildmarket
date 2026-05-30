@@ -22,7 +22,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'sku and warehouse_id required' }, { status: 400 });
   }
 
-  const { data: batches, error } = await db
+  const include_empty = searchParams.get('include_empty') === 'true';
+
+  const baseQuery = db
     .from('stock_batches')
     .select(`
       id,
@@ -39,8 +41,11 @@ export async function GET(req: NextRequest) {
     `)
     .eq('sku', sku)
     .eq('warehouse_id', Number(warehouse_id))
-    .gt('remaining_qty', 0)
     .order('received_at', { ascending: true });
+
+  const { data: batches, error } = include_empty
+    ? await baseQuery
+    : await baseQuery.gt('remaining_qty', 0);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

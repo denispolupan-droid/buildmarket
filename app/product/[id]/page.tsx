@@ -110,17 +110,21 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   const categoryName = productCat?.name ?? 'Каталог';
   const parentCat    = productCat?.parent_slug ? categories.find(c => c.slug === productCat.parent_slug) : null;
 
+  const breadcrumbItems: { '@type': string; position: number; name: string; item: string }[] = [
+    { '@type': 'ListItem', position: 1, name: 'Головна', item: BASE },
+  ];
+  if (parentCat) {
+    breadcrumbItems.push({ '@type': 'ListItem', position: 2, name: parentCat.name, item: `${BASE}/shop/${parentCat.slug}` });
+  }
+  if (productCat) {
+    breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: productCat.name, item: `${BASE}/shop/${productCat.slug}` });
+  }
+  breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: `${product.brand} ${product.name}`, item: `${BASE}/product/${product.sku}` });
+
   const breadcrumbLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Головна', item: BASE },
-      ...(isRetail && productCat
-        ? [{ '@type': 'ListItem', position: 2, name: productCat.name, item: `${BASE}/shop/${productCat.slug}` }]
-        : [{ '@type': 'ListItem', position: 2, name: 'Каталог', item: `${BASE}/catalog` }]
-      ),
-      { '@type': 'ListItem', position: 3, name: `${product.brand} ${product.name}`, item: `${BASE}/product/${product.sku}` },
-    ],
+    itemListElement: breadcrumbItems,
   };
 
   const productFullName = `${product.brand} ${product.name}${product.volume ? ' ' + product.volume : ''}`;
@@ -236,7 +240,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
               <div className="product-info__meta-row">
                 <span className="product-info__meta-label">Категорія:</span>
                 <span className="product-info__meta-value">
-                  <Link href="/catalog" style={{color:'var(--brand-main)'}}>{categoryName}</Link>
+                  <Link href={productCat ? `/shop/${productCat.slug}` : '/shop'} style={{color:'var(--brand-main)'}}>{categoryName}</Link>
                 </span>
               </div>
               <div className="product-info__meta-row">

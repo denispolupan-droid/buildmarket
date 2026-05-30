@@ -20,14 +20,18 @@ export async function generateMetadata(
 
   if (!cat) return { robots: { index: false, follow: false } };
 
+  const meta = getCategoryMeta(category);
+  const fallbackDesc = `Купити ${cat.name.toLowerCase()} в роздріб від 1 одиниці. Широкий асортимент, низькі ціни, швидка доставка по всій Україні. Купить ${cat.name.toLowerCase()} с доставкой по Украине.`;
+  const description = meta?.description ?? fallbackDesc;
+
   return {
     title: `${cat.name} купити — ціни, доставка по Україні | FIXLINE`,
-    description: `Купити ${cat.name.toLowerCase()} в роздріб від 1 одиниці. Широкий асортимент, низькі ціни, швидка доставка по всій Україні. Купить ${cat.name.toLowerCase()} с доставкой по Украине.`,
+    description,
     keywords: [cat.name, 'купити', 'купить', 'будівельна хімія', 'строительная химия', 'Україна', 'Украина'],
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
     alternates: {
       canonical: `${BASE}/shop/${category}`,
-      languages: { 'uk': `${BASE}/shop/${category}`, 'x-default': `${BASE}/shop/${category}` },
+      languages: { 'uk': `${BASE}/shop/${category}`, 'ru': `${BASE}/shop/${category}`, 'x-default': `${BASE}/shop/${category}` },
     },
     openGraph: {
       title: `${cat.name} | Магазин FIXLINE`,

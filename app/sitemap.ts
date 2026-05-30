@@ -9,7 +9,7 @@ function brandToSlug(brand: string): string {
 const BASE = 'https://fixline.com.ua';
 
 // Дата запуску/останнього суттєвого оновлення сайту — оновлюй вручну при великих змінах
-const SITE_UPDATED = new Date('2025-06-01');
+const SITE_UPDATED = new Date('2026-05-30');
 
 export const revalidate = 3600;
 

@@ -446,3 +446,8 @@
 @media (max-width: 480px) {
   .shop-grid { grid-template-columns: 1fr; }
 }
+
+@keyframes hint-bounce {
+  0%, 100% { transform: translateY(0); opacity: 0.35; }
+  50%       { transform: translateY(4px); opacity: 0.6; }
+}

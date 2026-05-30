@@ -15,7 +15,7 @@ export default async function OwnStockPage() {
 
   const { data: ownBalance } = physicalIds.length ? await db
     .from('stock_balance')
-    .select('sku, qty_total, qty_reserved, qty_available, avg_cost, warehouse_id')
+    .select('sku, qty_total, qty_reserved, qty_available, avg_cost, min_reorder_qty, warehouse_id')
     .in('warehouse_id', physicalIds)
     .gt('qty_total', 0)
     .order('qty_total', { ascending: false })
@@ -26,11 +26,20 @@ export default async function OwnStockPage() {
     ? await db.from('products').select('sku, name, brand').in('sku', skus)
     : { data: [] };
 
+  const { data: allProducts } = await db
+    .from('products')
+    .select('sku, name, brand')
+    .eq('is_active', true)
+    .order('brand', { ascending: true })
+    .limit(2000);
+
   const nameMap: Record<string, { brand: string; name: string }> = {};
   for (const p of products ?? []) nameMap[p.sku] = { brand: p.brand ?? '', name: p.name ?? '' };
 
   const whMap: Record<number, string> = {};
   for (const w of physicalWarehouses ?? []) whMap[w.id] = w.name;
+
+  const defaultWarehouseId = physicalIds[0] ?? 0;
 
   return (
     <div style={{ padding: '28px 32px', maxWidth: '1400px' }}>
@@ -54,9 +63,11 @@ export default async function OwnStockPage() {
         </div>
       ) : (
         <OwnStockTable
-          rows={ownBalance as { sku: string; qty_total: number; qty_reserved: number; qty_available: number; avg_cost: number; warehouse_id: number }[]}
+          rows={ownBalance as { sku: string; qty_total: number; qty_reserved: number; qty_available: number; avg_cost: number; min_reorder_qty: number | null; warehouse_id: number }[]}
           nameMap={nameMap}
           whMap={whMap}
+          allProducts={(allProducts ?? []) as { sku: string; name: string; brand: string }[]}
+          defaultWarehouseId={defaultWarehouseId}
         />
       )}
     </div>

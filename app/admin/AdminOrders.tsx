@@ -160,10 +160,12 @@ export default function AdminOrders({
   const [fulfillmentLoading, setFulfillmentLoading] = useState<Set<string>>(new Set());
 
   // PO-звязки для кожного замовлення
-  type LinkedPO = { id: string; doc_number: string; doc_date: string; created_at: string; procurement_status: string | null; total_cost: number | null; supplier: { name: string } | null };
+  type LinkedPO = { id: string; doc_number: string; doc_date: string; expected_date: string | null; created_at: string; procurement_status: string | null; total_cost: number | null; supplier: { name: string } | null };
   type LinkedReceipt = { id: string; doc_number: string; doc_date: string; created_at: string; total_cost: number | null; parent_doc_id: string };
+  type ReceiptLine   = { document_id: string; sku: string; qty_actual: number | null; qty: number };
   const [linkedPOs,       setLinkedPOs]       = useState<Record<string, LinkedPO[]>>({});
   const [linkedReceipts,  setLinkedReceipts]  = useState<Record<string, LinkedReceipt[]>>({});
+  const [receiptLines,    setReceiptLines]    = useState<Record<string, ReceiptLine[]>>({});
 
   async function loadLinkedPOs(orderId: string) {
     if (linkedPOs[orderId]) return;
@@ -172,6 +174,7 @@ export default function AdminOrders({
       const data = await res.json();
       setLinkedPOs(prev => ({ ...prev, [orderId]: data.pos ?? [] }));
       setLinkedReceipts(prev => ({ ...prev, [orderId]: data.receipts ?? [] }));
+      setReceiptLines(prev => ({ ...prev, [orderId]: data.receiptLines ?? [] }));
     } catch { /* silent */ }
   }
 
@@ -1270,6 +1273,47 @@ export default function AdminOrders({
                               </tbody>
                             </table>
 
+                            {/* Прогрес отримання — показується якщо є хоча б один прихід */}
+                            {(() => {
+                              const lines = receiptLines[order.id] ?? [];
+                              if (!lines.length) return null;
+                              // Агрегуємо отриману кількість по SKU
+                              const received: Record<string, number> = {};
+                              for (const l of lines) {
+                                received[l.sku] = (received[l.sku] ?? 0) + (l.qty_actual ?? l.qty ?? 0);
+                              }
+                              const hasAny = order.items.some(i => (received[i.sku] ?? 0) > 0);
+                              if (!hasAny) return null;
+                              return (
+                                <div style={{ marginTop: '10px', padding: '10px 12px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px' }}>
+                                  <div style={{ fontSize: '10px', fontWeight: 700, color: '#15803D', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                                    📥 Відвантажено
+                                  </div>
+                                  {order.items.map(item => {
+                                    const rcv = received[item.sku] ?? 0;
+                                    if (rcv === 0) return null;
+                                    const pct = Math.min(100, Math.round((rcv / item.qty) * 100));
+                                    const full = rcv >= item.qty;
+                                    return (
+                                      <div key={item.sku} style={{ marginBottom: '6px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '3px' }}>
+                                          <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>
+                                            {item.name}
+                                          </span>
+                                          <span style={{ fontWeight: 700, color: full ? '#15803D' : '#B45309', flexShrink: 0 }}>
+                                            {rcv} / {item.qty} шт {full ? '✓' : ''}
+                                          </span>
+                                        </div>
+                                        <div style={{ height: '4px', background: '#D1FAE5', borderRadius: '2px', overflow: 'hidden' }}>
+                                          <div style={{ height: '100%', width: `${pct}%`, background: full ? '#15803D' : '#F59E0B', borderRadius: '2px', transition: 'width 0.3s' }} />
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
+
                             {/* Fulfillment mode selector — only for new orders */}
                             {order.status === 'new' && (() => {
                               const plan = fulfillmentData[order.id]?.plan;
@@ -1653,18 +1697,28 @@ export default function AdminOrders({
                                   const pos = linkedPOs[order.id] ?? [];
                                   const hasReceipt = pos.some(p => ['received','closed','partially_received'].includes(p.procurement_status ?? ''));
                                   const linkedPO   = pos.find(p => p.id);
-                                  if (hasReceipt) {
-                                    return (
-                                      <button onClick={() => changeStatus(order.id, 'picking')} disabled={!!loading}
-                                        style={{ ...btnPrimary, background: '#0E7490', opacity: loading ? 0.6 : 1 }}>
-                                        <Package size={13} /> Товар надійшов — збираємо
-                                      </button>
-                                    );
-                                  }
+                                  const expectedDate = pos
+                                    .map(p => p.expected_date)
+                                    .filter(Boolean)
+                                    .sort()[0];
                                   return (
-                                    <a href={linkedPO ? `/admin/procurement/${linkedPO.id}` : '/admin/procurement'} style={{ ...btnPrimary }}>
-                                      <Package size={13} /> Оформити прихід
-                                    </a>
+                                    <>
+                                      {expectedDate && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '7px', background: '#FFF7ED', border: '1px solid #FED7AA', fontSize: '12px', color: '#92400E', fontWeight: 600 }}>
+                                          📅 Очікується: {new Date(expectedDate).toLocaleDateString('uk-UA', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </div>
+                                      )}
+                                      {hasReceipt ? (
+                                        <button onClick={() => changeStatus(order.id, 'picking')} disabled={!!loading}
+                                          style={{ ...btnPrimary, background: '#0E7490', opacity: loading ? 0.6 : 1 }}>
+                                          <Package size={13} /> Товар надійшов — збираємо
+                                        </button>
+                                      ) : (
+                                        <a href={linkedPO ? `/admin/procurement/${linkedPO.id}` : '/admin/procurement'} style={{ ...btnPrimary }}>
+                                          <Package size={13} /> Оформити прихід
+                                        </a>
+                                      )}
+                                    </>
                                   );
                                 })()}
                                 {order.status === 'shipped' && (

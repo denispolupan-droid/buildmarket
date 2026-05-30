@@ -77,7 +77,7 @@ export async function generateMetadata(
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
     alternates: {
       canonical: `${BASE}/shop/${category}/${brandSlug}`,
-      languages: { 'uk': `${BASE}/shop/${category}/${brandSlug}`, 'x-default': `${BASE}/shop/${category}/${brandSlug}` },
+      languages: { 'uk': `${BASE}/shop/${category}/${brandSlug}`, 'ru': `${BASE}/shop/${category}/${brandSlug}`, 'x-default': `${BASE}/shop/${category}/${brandSlug}` },
     },
     openGraph: {
       title: `${brandName} ${cat.name} | FIXLINE`,

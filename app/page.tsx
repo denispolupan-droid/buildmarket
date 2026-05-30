@@ -69,7 +69,10 @@ export default async function Home() {
     name: 'FIXLINE',
     url: 'https://fixline.com.ua',
     logo: 'https://fixline.com.ua/fixline-logo.png',
-    contactPoint: { '@type': 'ContactPoint', contactType: 'sales', availableLanguage: ['Ukrainian', 'Russian'] },
+    telephone: '+380991997788',
+    email: 'info@fixline.com.ua',
+    address: { '@type': 'PostalAddress', addressCountry: 'UA', addressRegion: 'Харківська область' },
+    contactPoint: { '@type': 'ContactPoint', telephone: '+380991997788', contactType: 'sales', availableLanguage: ['Ukrainian', 'Russian'] },
   };
 
   const websiteLd = {

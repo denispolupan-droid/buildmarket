@@ -191,6 +191,8 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
     };
   }, []);
 
+  const [demandMap, setDemandMap] = useState<Record<string, { orders: number; qty: number }>>({});
+
   // Підтягуємо останні закупівельні ціни для всіх знайдених SKU
   useEffect(() => {
     const matchedSkus = lines.filter(l => l.matched && l.sku).map(l => l.sku);
@@ -202,6 +204,16 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
         for (const [sku, v] of Object.entries(data)) map[sku] = v.last_price;
         setLastPriceMap(map);
       })
+      .catch(() => {});
+  }, [lines.map(l => l.sku + ':' + l.matched).join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Попит з відкритих замовлень покупців
+  useEffect(() => {
+    const matchedSkus = lines.filter(l => l.matched && l.sku).map(l => l.sku);
+    if (!matchedSkus.length) { setDemandMap({}); return; }
+    fetch(`/api/admin/procurement/demand?skus=${matchedSkus.map(encodeURIComponent).join(',')}`)
+      .then(r => r.json())
+      .then((data: { demand: Record<string, { orders: number; qty: number }> }) => setDemandMap(data.demand ?? {}))
       .catch(() => {});
   }, [lines.map(l => l.sku + ':' + l.matched).join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -627,8 +639,16 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
                       })()}
                     </div>
 
-                    <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: rowSum > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                      {rowSum > 0 ? `${fmt(rowSum)} ₴` : '—'}
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: rowSum > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                        {rowSum > 0 ? `${fmt(rowSum)} ₴` : '—'}
+                      </div>
+                      {line.matched && demandMap[line.sku] && (
+                        <div title={`${demandMap[line.sku].orders} замовлень клієнтів очікують цей товар`}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', marginTop: '2px', fontSize: '9px', fontWeight: 700, color: '#92400E', background: '#FEF3C7', border: '1px solid #FDE68A', padding: '1px 5px', borderRadius: '4px', cursor: 'default' }}>
+                          🛒 {demandMap[line.sku].orders} зам. · {demandMap[line.sku].qty} шт
+                        </div>
+                      )}
                     </div>
 
                     <button onClick={() => setLines(prev => prev.filter((_, i) => i !== idx))}

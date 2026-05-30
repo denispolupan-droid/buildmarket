@@ -41,7 +41,7 @@ export async function generateMetadata(
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
     alternates: {
       canonical: `${BASE}/shop/brand/${slug}`,
-      languages: { 'uk': `${BASE}/shop/brand/${slug}`, 'x-default': `${BASE}/shop/brand/${slug}` },
+      languages: { 'uk': `${BASE}/shop/brand/${slug}`, 'ru': `${BASE}/shop/brand/${slug}`, 'x-default': `${BASE}/shop/brand/${slug}` },
     },
     openGraph: {
       title: `${brand} | Магазин FIXLINE`,

@@ -27,6 +27,19 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sidebarRef = useRef<HTMLElement>(null);
   const pillsRef = useRef<HTMLDivElement>(null);
+  const [showScrollHint, setShowScrollHint] = useState(false);
+
+  useEffect(() => {
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
+    const check = () => {
+      setShowScrollHint(sidebar.scrollTop < sidebar.scrollHeight - sidebar.clientHeight - 40);
+    };
+    check();
+    sidebar.addEventListener('scroll', check, { passive: true });
+    window.addEventListener('resize', check, { passive: true });
+    return () => { sidebar.removeEventListener('scroll', check); window.removeEventListener('resize', check); };
+  }, []);
 
   useEffect(() => {
     getSupabaseBrowser().auth.getUser().then(({ data }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
@@ -504,6 +517,13 @@ export default function CatalogClient({ products, categories, initialSearch = ''
               </label>
             </div>
             </div>{/* end sidebar-filters-section */}
+
+            {/* Scroll hint arrow */}
+            {showScrollHint && (
+              <div style={{ position: 'sticky', bottom: 0, left: 0, right: 0, display: 'flex', justifyContent: 'center', paddingBottom: '8px', pointerEvents: 'none', background: 'linear-gradient(transparent, var(--bg-card) 60%)', zIndex: 2 }}>
+                <span style={{ fontSize: '18px', opacity: 0.4, animation: 'hint-bounce 1.6s ease-in-out infinite' }}>↓</span>
+              </div>
+            )}
 
           </aside>
 

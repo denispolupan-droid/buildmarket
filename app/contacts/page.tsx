@@ -39,7 +39,6 @@ export default function ContactsPage() {
     },
     priceRange: '$$',
     areaServed: { '@type': 'Country', name: 'Ukraine' },
-    servesCuisine: undefined,
     sameAs: ['https://fixline.com.ua'],
   };
 
