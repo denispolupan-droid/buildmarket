@@ -111,6 +111,7 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sourceOverrides, setSourceOverrides] = useState<Record<string, Record<string, 'own' | 'dropship'>>>({});
+  const [shipConfirmId, setShipConfirmId] = useState<string | null>(null);
   const [reserving, setReserving] = useState<string | null>(null);
   const [selectedMode, setSelectedMode] = useState<Record<string, 'supplier' | 'own' | 'mixed'>>({});
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -1459,10 +1460,26 @@ export default function AdminOrders({ initialOrders, currentPage = 1, totalPages
                                   </button>
                                 )}
                                 {(order.status === 'confirmed' || order.status === 'awaiting_stock' || order.status === 'picking') && (
-                                  <button onClick={() => changeStatus(order.id, 'shipped')} disabled={!!loading}
-                                    style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
-                                    <Truck size={13} /> Позначити відправленим
-                                  </button>
+                                  shipConfirmId === order.id ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px 10px', background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: '8px', fontSize: '12px' }}>
+                                      <span style={{ fontWeight: 600, color: '#92400E' }}>Товар вже у дорозі до клієнта?</span>
+                                      <div style={{ display: 'flex', gap: '6px' }}>
+                                        <button onClick={() => { setShipConfirmId(null); changeStatus(order.id, 'shipped'); }} disabled={!!loading}
+                                          style={{ height: '26px', padding: '0 10px', borderRadius: '6px', border: 'none', background: '#15803D', color: '#fff', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                                          Так, відправлено
+                                        </button>
+                                        <button onClick={() => setShipConfirmId(null)}
+                                          style={{ height: '26px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', fontSize: '11px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                                          Скасувати
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <button onClick={() => setShipConfirmId(order.id)} disabled={!!loading}
+                                      style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
+                                      <Truck size={13} /> Позначити відправленим
+                                    </button>
+                                  )
                                 )}
                                 {order.status === 'awaiting_stock' && (() => {
                                   const pos = linkedPOs[order.id] ?? [];
