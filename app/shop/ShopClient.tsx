@@ -194,6 +194,9 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     if (!sidebar) return;
     const check = () => {
       setShowScrollHint(sidebar.scrollTop < sidebar.scrollHeight - sidebar.clientHeight - 40);
+      if (sidebar.scrollTop === 0 && catsListRef.current) {
+        catsListRef.current.scrollTop = 0;
+      }
     };
     check();
     sidebar.addEventListener('scroll', check, { passive: true });
@@ -214,10 +217,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         if (e.clientX >= catsRect.left && e.clientX <= catsRect.right &&
             e.clientY >= catsRect.top  && e.clientY <= catsRect.bottom) {
           if (catsList.scrollHeight > catsList.clientHeight) {
-            const atTop    = catsList.scrollTop <= 0;
-            const atBottom = catsList.scrollTop >= catsList.scrollHeight - catsList.clientHeight - 1;
-            const canScroll = (e.deltaY > 0 && !atBottom) || (e.deltaY < 0 && !atTop);
-            if (canScroll) { catsList.scrollTop += e.deltaY; return; }
+            catsList.scrollTop += e.deltaY;
+            return;
           }
         }
       }
