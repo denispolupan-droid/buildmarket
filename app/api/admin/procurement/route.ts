@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
     order_id?:      string;   // ID замовлення покупця, якщо ЗП створено на основі замовлення
     parent_doc_id?: string;   // якщо це додатковий прихід до існуючого PO
     is_receipt?:    boolean;  // створити як прихід (receipt), а не PO
+    draft?:         boolean;  // зберегти як чернетку (не проводити)
     conduct?:       boolean;  // одразу провести (procurement_status: 'new')
     lines: { sku: string; qty: number; cost_price: number }[];
   };
@@ -50,6 +51,12 @@ export async function POST(req: NextRequest) {
     if (body.parent_doc_id) {
       await db.from('acc_documents').update({ parent_doc_id: body.parent_doc_id }).eq('id', receipt.id);
     }
+
+    // Чернетка — не проводимо, повертаємо одразу
+    if (body.draft) {
+      return NextResponse.json({ receiptId: receipt.id, doc_number: receipt.doc_number, draft: true }, { status: 201 });
+    }
+
     await confirmDocument(receipt.id, user.email ?? 'admin');
 
     // After additional receipt — update parent PO status based on remaining items

@@ -42,18 +42,28 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
+  // Product names
+  const skus = poLines.map(l => l.sku);
+  const { data: products } = await db.from('products').select('sku, name, brand').in('sku', skus);
+  const nameMap = new Map((products ?? []).map(p => [p.sku, `${p.brand ?? ''} ${p.name ?? ''}`.trim()]));
+
+  // Supplier / warehouse defaults (from first PO line)
+  const defaultSupplierId  = poLines[0]?.supplier_id  ?? null;
+  const defaultWarehouseId = poLines[0]?.warehouse_id ?? null;
+
   // Calculate remaining
   const remaining = poLines
     .map(line => ({
-      sku:          line.sku,
-      ordered_qty:  Number(line.qty),
-      received_qty: receivedMap.get(line.sku) ?? 0,
+      sku:           line.sku,
+      name:          nameMap.get(line.sku) ?? '',
+      ordered_qty:   Number(line.qty),
+      received_qty:  receivedMap.get(line.sku) ?? 0,
       remaining_qty: Number(line.qty) - (receivedMap.get(line.sku) ?? 0),
-      cost_price:   Number(line.cost_price ?? 0),
-      supplier_id:  line.supplier_id,
-      warehouse_id: line.warehouse_id,
+      cost_price:    Number(line.cost_price ?? 0),
+      supplier_id:   line.supplier_id,
+      warehouse_id:  line.warehouse_id,
     }))
     .filter(l => l.remaining_qty > 0);
 
-  return NextResponse.json({ remaining, hasRemaining: remaining.length > 0 });
+  return NextResponse.json({ remaining, hasRemaining: remaining.length > 0, defaultSupplierId, defaultWarehouseId });
 }
