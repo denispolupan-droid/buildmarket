@@ -42,21 +42,23 @@ export default async function StockHubPage() {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-        {reorderCount > 0 && (
-          <Link href="/admin/accounting/stock/reorder" style={{ textDecoration: 'none', gridColumn: '1 / -1' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 20px', background: '#FEF3C7', border: '1.5px solid #FCD34D', borderRadius: '12px', cursor: 'pointer' }}>
-              <AlertTriangle size={20} color="#D97706" />
-              <div style={{ flex: 1 }}>
-                <span style={{ fontSize: '14px', fontWeight: 700, color: '#92400E' }}>
-                  {reorderCount} {reorderCount === 1 ? 'позиція потребує' : reorderCount < 5 ? 'позиції потребують' : 'позицій потребують'} поповнення
-                </span>
-                <span style={{ fontSize: '12px', color: '#B45309', marginLeft: '8px' }}>— залишок нижче мінімального рівня</span>
-              </div>
-              <ChevronRight size={18} color="#D97706" />
+      {/* Банер-алерт — тільки коли є позиції нижче мінімуму */}
+      {reorderCount > 0 && (
+        <Link href="/admin/accounting/stock/reorder" style={{ textDecoration: 'none', display: 'block', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 20px', background: '#FEF3C7', border: '1.5px solid #FCD34D', borderRadius: '12px', cursor: 'pointer' }}>
+            <AlertTriangle size={20} color="#D97706" />
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: '14px', fontWeight: 700, color: '#92400E' }}>
+                {reorderCount} {reorderCount === 1 ? 'позиція потребує' : reorderCount < 5 ? 'позиції потребують' : 'позицій потребують'} поповнення
+              </span>
+              <span style={{ fontSize: '12px', color: '#B45309', marginLeft: '8px' }}>— залишок нижче мінімального рівня</span>
             </div>
-          </Link>
-        )}
+            <ChevronRight size={18} color="#D97706" />
+          </div>
+        </Link>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
         <Link href="/admin/accounting/stock/suppliers" style={{ textDecoration: 'none' }}>
           <div className="stock-card" style={{
             background: 'var(--bg-card)', border: '1.5px solid var(--border)',
@@ -112,6 +114,29 @@ export default async function StockHubPage() {
                 позицій
               </span>
             </div>
+          </div>
+        </Link>
+        <Link href="/admin/accounting/stock/reorder" style={{ textDecoration: 'none', gridColumn: '1 / -1' }}>
+          <div className="stock-card" style={{
+            background: reorderCount > 0 ? '#FEF3C7' : 'var(--bg-card)',
+            border: `1.5px solid ${reorderCount > 0 ? '#FCD34D' : 'var(--border)'}`,
+            borderRadius: '16px', padding: '20px 24px',
+            display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer',
+          }}>
+            <div style={{ padding: '10px', background: reorderCount > 0 ? '#FDE68A' : 'var(--bg-soft)', borderRadius: '12px', display: 'inline-flex', flexShrink: 0 }}>
+              <AlertTriangle size={24} color={reorderCount > 0 ? '#D97706' : '#94A3B8'} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '16px', fontWeight: 800, color: reorderCount > 0 ? '#92400E' : 'var(--text-primary)', marginBottom: '2px' }}>
+                Що потрібно докупити
+              </div>
+              <div style={{ fontSize: '13px', color: reorderCount > 0 ? '#B45309' : 'var(--text-secondary)' }}>
+                {reorderCount > 0
+                  ? `${reorderCount} позицій нижче мінімального залишку`
+                  : 'Встановіть мінімальні залишки в таблиці «Власний склад»'}
+              </div>
+            </div>
+            <ChevronRight size={20} color={reorderCount > 0 ? '#D97706' : '#94A3B8'} />
           </div>
         </Link>
       </div>
