@@ -214,6 +214,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         if (e.clientX >= catsRect.left && e.clientX <= catsRect.right &&
             e.clientY >= catsRect.top  && e.clientY <= catsRect.bottom) {
           if (catsList.scrollHeight > catsList.clientHeight) {
+            const atTop = catsList.scrollTop <= 0;
+            if (e.deltaY < 0 && atTop) { sidebar.scrollTop += e.deltaY; return; }
             catsList.scrollTop += e.deltaY;
             return;
           }
@@ -251,10 +253,10 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
 
   const scrollCatToTop = useCallback((slug: string) => {
     const catEl = catRefs.current[slug];
-    const sidebar = sidebarRef.current;
-    if (!catEl || !sidebar) return;
-    const offset = catEl.getBoundingClientRect().top - sidebar.getBoundingClientRect().top;
-    sidebar.scrollTo({ top: Math.max(0, sidebar.scrollTop + offset - 8), behavior: 'smooth' });
+    const container = catsListRef.current;
+    if (!catEl || !container) return;
+    const offset = catEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+    container.scrollTo({ top: Math.max(0, container.scrollTop + offset - 8), behavior: 'smooth' });
   }, []);
 
   const selectCat = (slug: string | null, scrollSlug?: string) => {
@@ -266,6 +268,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup('');
     setVisibleCount(24);
     setMobilePanel(null);
+    const target = scrollSlug ?? slug;
+    if (target) setTimeout(() => scrollCatToTop(target), 80);
   };
   const { skus: wishSkus, toggle: toggleWish } = useWishlist();
 

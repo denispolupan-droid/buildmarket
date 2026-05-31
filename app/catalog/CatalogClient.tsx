@@ -63,6 +63,9 @@ export default function CatalogClient({ products, categories, initialSearch = ''
         if (e.clientX >= catsRect.left && e.clientX <= catsRect.right &&
             e.clientY >= catsRect.top  && e.clientY <= catsRect.bottom) {
           if (catsList.scrollHeight > catsList.clientHeight) {
+            const atTop = catsList.scrollTop <= 0;
+            // Скрол вгору з початку кат-ліста → передаємо сайдбару
+            if (e.deltaY < 0 && atTop) { sidebar.scrollTop += e.deltaY; return; }
             catsList.scrollTop += e.deltaY;
             return;
           }
@@ -93,11 +96,11 @@ export default function CatalogClient({ products, categories, initialSearch = ''
 
   const scrollCatToTop = useCallback((slug: string) => {
     const catEl = catRefs.current[slug];
-    const sidebar = sidebarRef.current;
-    if (!catEl || !sidebar) return;
-    // Завжди прокручуємо сайдбар — кат-ліст залишається на початку
-    const offset = catEl.getBoundingClientRect().top - sidebar.getBoundingClientRect().top;
-    sidebar.scrollTo({ top: Math.max(0, sidebar.scrollTop + offset - 8), behavior: 'smooth' });
+    const container = catsListRef.current;
+    if (!catEl || !container) return;
+    // Скролимо кат-ліст щоб категорія була видима зверху — сайдбар не чіпаємо
+    const offset = catEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+    container.scrollTo({ top: Math.max(0, container.scrollTop + offset - 8), behavior: 'smooth' });
   }, []);
 
   const selectCat = (slug: string, scrollSlug?: string) => {
@@ -108,6 +111,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     if (catsListRef.current) catsListRef.current.scrollTop = 0; // завжди на початок
     setVisibleCount(50);
     setMobilePanel(null);
+    const target = scrollSlug ?? slug;
+    if (target) setTimeout(() => scrollCatToTop(target), 80);
   };
   const [filterValues,   setFilterValues]   = useState<Record<string, string>>({});
   const [filterVolume,   setFilterVolume]   = useState('');
