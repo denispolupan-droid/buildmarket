@@ -158,6 +158,29 @@ export async function recordCustomerPayment(params: {
   });
 }
 
+/** Комісія маркетплейсу (Prom, Rozetka тощо): дебет correction, кредит revenue */
+export async function recordMarketplaceCommission(params: {
+  orderId:       string;
+  amount:        number;
+  marketplace:   string;
+  commissionPct: number;
+  businessDate?: string;
+  createdBy?:    string;
+}): Promise<string> {
+  return recordTxn({
+    debitAccount:   'correction',
+    creditAccount:  'revenue',
+    amount:         params.amount,
+    businessDate:   params.businessDate,
+    docType:        'commission',
+    orderId:        params.orderId,
+    description:    `Комісія ${params.marketplace} ${params.commissionPct}%`,
+    idempotencyKey: `commission:${params.marketplace}:${params.orderId}`,
+    createdBy:      params.createdBy,
+    meta:           { category: 'marketplace_fee', marketplace: params.marketplace, pct: params.commissionPct, auto: true },
+  });
+}
+
 /** Аванс від клієнта: дебет bank/cash, кредит advance */
 export async function recordAdvanceReceived(params: {
   customerId:    string;

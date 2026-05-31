@@ -63,7 +63,7 @@ export default async function AdminPage({
   if (dateFrom) { statusQuery = statusQuery.gte('created_at', `${dateFrom}T00:00:00`); amountQuery = amountQuery.gte('created_at', `${dateFrom}T00:00:00`); }
   if (dateTo)   { statusQuery = statusQuery.lte('created_at', `${dateTo}T23:59:59`);   amountQuery = amountQuery.lte('created_at', `${dateTo}T23:59:59`); }
 
-  const [{ data: orders, count }, { data: statusRows }, { count: recentReceiptCount }, { data: allAmountRows }] = await Promise.all([
+  const [{ data: orders, count }, { data: statusRows }, { count: recentReceiptCount }, { data: allAmountRows }, { data: promSetting }] = await Promise.all([
     query,
     statusQuery,
     serviceClient.from('acc_documents')
@@ -72,7 +72,9 @@ export default async function AdminPage({
       .eq('status', 'confirmed')
       .gte('confirmed_at', oneDayAgo),
     amountQuery,
+    serviceClient.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle(),
   ]);
+  const promCommissionPct = parseFloat(promSetting?.value ?? '3');
 
   // Sum per status
   const statusAmounts = (allAmountRows ?? []).reduce<Record<string, number>>((acc, row) => {
@@ -184,7 +186,7 @@ export default async function AdminPage({
         {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
       </p>
 
-      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} />
+      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} />
     </div>
   );
 }

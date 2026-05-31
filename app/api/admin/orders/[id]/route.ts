@@ -4,7 +4,7 @@ import { createServiceClient } from '../../../../../lib/supabase';
 import { recordDropshipSale } from '../../../../../lib/accounting/dropship';
 import { releaseReservation } from '../../../../../lib/accounting/reservations';
 import { notifyAdminStatusChange, notifyCustomerStatus } from '../../../../../lib/telegram';
-import { recordCustomerPayment } from '../../../../../lib/accounting/money';
+import { recordCustomerPayment, recordMarketplaceCommission } from '../../../../../lib/accounting/money';
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/prom-api';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -223,6 +223,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         .select('id, order_number, total_price, payment_type, channel_code, partner_code')
         .eq('id', id)
         .single();
+
+      // Prom.ua commission — записуємо при доставці
+      if (order?.channel_code === 'prom') {
+        try {
+          const { data: setting } = await db
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'prom_commission_pct')
+            .maybeSingle();
+          const commissionPct = parseFloat(setting?.value ?? '3');
+          const commissionAmt = Math.round(Number(order.total_price) * commissionPct) / 100;
+          if (commissionAmt > 0) {
+            await recordMarketplaceCommission({
+              orderId:       id,
+              amount:        commissionAmt,
+              marketplace:   'Prom.ua',
+              commissionPct,
+              businessDate:  new Date().toISOString().slice(0, 10),
+              createdBy:     user.email ?? 'admin',
+            });
+          }
+        } catch (err) {
+          console.error('[prom] commission record failed:', err);
+        }
+      }
 
       if (order?.channel_code === 'dropship' && order.partner_code && order.payment_type === 'cod') {
         const { data: customer } = await db

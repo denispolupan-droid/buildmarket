@@ -28,6 +28,7 @@ interface Props {
   totalOrders:   number;
   stats:         StatRow[];
   totalRevenue:  number;
+  commissionPct: number;
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
@@ -50,10 +51,13 @@ function relTime(iso: string) {
   return `${Math.floor(h / 24)} дн тому`;
 }
 
-export default function PromDashboardClient({ hasToken, feedUrl, recentOrders, totalOrders, stats, totalRevenue }: Props) {
-  const [syncing, setSyncing]   = useState(false);
-  const [syncMsg, setSyncMsg]   = useState<string | null>(null);
-  const [copied,  setCopied]    = useState(false);
+export default function PromDashboardClient({ hasToken, feedUrl, recentOrders, totalOrders, stats, totalRevenue, commissionPct: initialCommissionPct }: Props) {
+  const [syncing, setSyncing]         = useState(false);
+  const [syncMsg, setSyncMsg]         = useState<string | null>(null);
+  const [copied,  setCopied]          = useState(false);
+  const [commissionPct, setCommissionPct] = useState(initialCommissionPct);
+  const [commissionInput, setCommissionInput] = useState(String(initialCommissionPct));
+  const [savingPct, setSavingPct]     = useState(false);
 
   async function doSync() {
     setSyncing(true);
@@ -75,6 +79,22 @@ export default function PromDashboardClient({ hasToken, feedUrl, recentOrders, t
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  }
+
+  async function saveCommissionPct() {
+    const pct = parseFloat(commissionInput);
+    if (isNaN(pct) || pct < 0 || pct > 50) return;
+    setSavingPct(true);
+    try {
+      await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prom_commission_pct: String(pct) }),
+      });
+      setCommissionPct(pct);
+    } finally {
+      setSavingPct(false);
+    }
   }
 
   return (
@@ -151,6 +171,48 @@ export default function PromDashboardClient({ hasToken, feedUrl, recentOrders, t
             </div>
           );
         })}
+      </div>
+
+      {/* Commission setting */}
+      <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB', padding: 20, marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#111', marginBottom: 4 }}>Комісія Prom.ua</div>
+            <div style={{ fontSize: 13, color: '#6B7280' }}>
+              Відображається у картці замовлення та записується у витрати при доставці.
+              Поточна: <strong>{commissionPct}%</strong> від суми замовлення.
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="number"
+              min={0}
+              max={50}
+              step={0.5}
+              value={commissionInput}
+              onChange={e => setCommissionInput(e.target.value)}
+              style={{
+                width: 72, height: 36, padding: '0 10px', borderRadius: 8,
+                border: '1px solid #E5E7EB', fontSize: 14, fontWeight: 700,
+                textAlign: 'center', outline: 'none',
+              }}
+            />
+            <span style={{ fontSize: 14, color: '#374151', fontWeight: 600 }}>%</span>
+            <button
+              onClick={saveCommissionPct}
+              disabled={savingPct || parseFloat(commissionInput) === commissionPct}
+              style={{
+                padding: '8px 16px', borderRadius: 8,
+                background: savingPct || parseFloat(commissionInput) === commissionPct ? '#F3F4F6' : '#1D4ED8',
+                color: savingPct || parseFloat(commissionInput) === commissionPct ? '#9CA3AF' : '#fff',
+                border: 'none', cursor: savingPct || parseFloat(commissionInput) === commissionPct ? 'default' : 'pointer',
+                fontSize: 13, fontWeight: 600,
+              }}
+            >
+              {savingPct ? 'Зберігаю…' : 'Зберегти'}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Product Feed URL */}

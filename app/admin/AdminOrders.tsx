@@ -97,6 +97,7 @@ interface AdminOrdersProps {
   currentStatus?: string;
   sortBy?: string;
   sortDir?: string;
+  promCommissionPct?: number;
 }
 
 export default function AdminOrders({
@@ -104,6 +105,7 @@ export default function AdminOrders({
   hasRecentReceipts = false, expandOrderId, dateFrom, dateTo,
   statusCounts = {}, currentStatus = '',
   sortBy = 'created_at', sortDir = 'desc',
+  promCommissionPct = 3,
 }: AdminOrdersProps) {
   const isAdmin = userRole === 'admin';
   const router = useRouter();
@@ -1481,6 +1483,25 @@ export default function AdminOrders({
                         return displayComment ? (
                           <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>«{displayComment}»</div>
                         ) : null;
+                      })()}
+
+                      {/* Prom.ua commission block */}
+                      {order.channel_code === 'prom' && (() => {
+                        const pct        = promCommissionPct;
+                        const commission = Math.round(order.total_price * pct) / 100;
+                        const net        = order.total_price - commission;
+                        return (
+                          <div style={{ padding: '8px 10px', borderRadius: '8px', background: '#FFF7ED', border: '1px solid #FED7AA', fontSize: '12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#92400E', marginBottom: '3px' }}>
+                              <span>Комісія Prom.ua {pct}%</span>
+                              <span style={{ fontWeight: 700 }}>−{commission.toFixed(0)} ₴</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#15803D', fontWeight: 700 }}>
+                              <span>Чистий дохід</span>
+                              <span>{net.toFixed(0)} ₴</span>
+                            </div>
+                          </div>
+                        );
                       })()}
 
                       {order.delivery_type === 'nova' && (
