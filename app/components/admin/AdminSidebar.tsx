@@ -8,23 +8,24 @@ import {
   ShoppingBag, Package, Truck, Store,
   Settings, BookOpen, Warehouse, BarChart3, Users, Star,
   MessageSquare, ShoppingCart, Mail, ExternalLink, TrendingUp,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, ShoppingBasket,
 } from 'lucide-react';
 
 const NAV = [
-  { href: '/admin',                      label: 'Замовлення',     icon: ShoppingBag,   exact: true  },
-  { href: '/admin/products',             label: 'Товари',         icon: Package,       exact: false },
-  { href: '/admin/suppliers',            label: 'Постачальники',  icon: Truck,         exact: false },
-  { href: '/admin/partners',             label: 'Контрагенти',    icon: Users,         exact: false },
-  { href: '/admin/procurement',          label: 'Закупівля',      icon: ShoppingCart,  exact: false },
-  { href: '/admin/pricing',             label: 'Аналіз цін',     icon: TrendingUp,    exact: false },
-  { href: '/admin/finance',              label: 'Фінанси',        icon: BarChart3,     exact: false },
-  { href: '/admin/accounting/documents', label: 'Облік',          icon: BookOpen,      exact: false },
-  { href: '/admin/accounting/stock',     label: 'Залишки',        icon: Warehouse,     exact: false },
-  { href: '/admin/mail',                 label: 'Пошта',          icon: Mail,          exact: false },
-  { href: '/admin/reviews',              label: 'Відгуки',        icon: Star,          exact: false },
-  { href: '/admin/chat',                 label: 'Чат',            icon: MessageSquare, exact: false },
-  { href: '/admin/settings',             label: 'Налаштування',   icon: Settings,      exact: false },
+  { href: '/admin',                      label: 'Замовлення',     icon: ShoppingBag,    exact: true  },
+  { href: '/admin/products',             label: 'Товари',         icon: Package,        exact: false },
+  { href: '/admin/suppliers',            label: 'Постачальники',  icon: Truck,          exact: false },
+  { href: '/admin/partners',             label: 'Контрагенти',    icon: Users,          exact: false },
+  { href: '/admin/procurement',          label: 'Закупівля',      icon: ShoppingCart,   exact: false },
+  { href: '/admin/prom',                 label: 'Prom.ua',        icon: ShoppingBasket, exact: false },
+  { href: '/admin/pricing',              label: 'Аналіз цін',     icon: TrendingUp,     exact: false },
+  { href: '/admin/finance',              label: 'Фінанси',        icon: BarChart3,      exact: false },
+  { href: '/admin/accounting/documents', label: 'Облік',          icon: BookOpen,       exact: false },
+  { href: '/admin/accounting/stock',     label: 'Залишки',        icon: Warehouse,      exact: false },
+  { href: '/admin/mail',                 label: 'Пошта',          icon: Mail,           exact: false },
+  { href: '/admin/reviews',              label: 'Відгуки',        icon: Star,           exact: false },
+  { href: '/admin/chat',                 label: 'Чат',            icon: MessageSquare,  exact: false },
+  { href: '/admin/settings',             label: 'Налаштування',   icon: Settings,       exact: false },
 ];
 
 const T = {

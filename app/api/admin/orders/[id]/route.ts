@@ -5,6 +5,7 @@ import { recordDropshipSale } from '../../../../../lib/accounting/dropship';
 import { releaseReservation } from '../../../../../lib/accounting/reservations';
 import { notifyAdminStatusChange, notifyCustomerStatus } from '../../../../../lib/telegram';
 import { recordCustomerPayment } from '../../../../../lib/accounting/money';
+import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/prom-api';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createSupabaseServer();
@@ -265,6 +266,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     } catch (err) {
       console.error('[telegram]', err);
+    }
+  }
+
+  // Push status to Prom.ua (fire-and-forget) if this is a Prom order
+  if (status) {
+    try {
+      const { data: promOrder } = await db
+        .from('orders')
+        .select('prom_order_id, channel_code')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (promOrder?.channel_code === 'prom' && promOrder.prom_order_id) {
+        const promStatus = ourStatusToPromStatus(status);
+        if (promStatus) {
+          setPromOrderStatus(Number(promOrder.prom_order_id), promStatus).catch(err =>
+            console.error('[prom] setPromOrderStatus failed:', err),
+          );
+        }
+      }
+    } catch (err) {
+      console.error('[prom] status push lookup failed:', err);
     }
   }
 
