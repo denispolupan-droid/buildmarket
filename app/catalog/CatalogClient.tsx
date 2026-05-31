@@ -106,7 +106,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const selectCat = (slug: string, scrollSlug?: string) => {
     setSelCat(slug);
     router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0 });
     sidebarRef.current?.scrollTo({ top: 0 });
     if (catsListRef.current) catsListRef.current.scrollTop = 0;
     setVisibleCount(50);
