@@ -268,6 +268,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup('');
     setVisibleCount(24);
     setMobilePanel(null);
+    const target = scrollSlug ?? slug;
+    if (target) setTimeout(() => scrollCatToTop(target), 120);
   };
   const { skus: wishSkus, toggle: toggleWish } = useWishlist();
 
@@ -737,11 +739,13 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       </div>
     </div>
 
-    {/* Category description + FAQ — shown when a category is selected via sidebar */}
+    {/* Category description + FAQ — shown only when category selected via sidebar filter,
+        NOT when already on a dedicated /shop/[category] page (it renders this server-side) */}
     {(() => {
       const meta = selCat ? getCategoryMeta(selCat) : null;
       const catName = selCat ? categories.find(c => c.slug === selCat)?.name : null;
-      if (!meta || !catName) return null;
+      // initialCategory means we're on /shop/[category] — server page already shows this block
+      if (!meta || !catName || initialCategory) return null;
       return (
         <div style={{ padding: '0 0 32px' }}>
           <div style={{ padding: '16px 20px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>

@@ -108,9 +108,11 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     sidebarRef.current?.scrollTo({ top: 0 });
-    if (catsListRef.current) catsListRef.current.scrollTop = 0; // завжди на початок
+    if (catsListRef.current) catsListRef.current.scrollTop = 0;
     setVisibleCount(50);
     setMobilePanel(null);
+    const target = scrollSlug ?? slug;
+    if (target) setTimeout(() => scrollCatToTop(target), 120);
   };
   const [filterValues,   setFilterValues]   = useState<Record<string, string>>({});
   const [filterVolume,   setFilterVolume]   = useState('');
