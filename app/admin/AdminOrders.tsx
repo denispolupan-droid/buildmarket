@@ -21,6 +21,13 @@ import SmartDateInput from '../components/SmartDateInput';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number; is_bonus?: boolean; supplier_sku?: string };
 
+type PromCommissionItem = {
+  sku: string; item_total: number; commission_pct: number; commission_amt: number; category_slug: string | null;
+};
+type PromCommissionData = {
+  total_commission: number; net_revenue: number; plan: string; items: PromCommissionItem[];
+};
+
 type Order = {
   id: string;
   order_number: number;
@@ -51,6 +58,7 @@ type Order = {
   cancelled_at:       string | null;
   status_history:     { status: string; at: string; by: string }[] | null;
   items: OrderItem[];
+  prom_data:          ({ _commission?: PromCommissionData } & Record<string, unknown>) | null;
 };
 
 const CHANNEL_LABEL: Record<string, { label: string; color: string; bg: string }> = {
@@ -1487,13 +1495,35 @@ export default function AdminOrders({
 
                       {/* Prom.ua commission block */}
                       {order.channel_code === 'prom' && (() => {
+                        const cd = order.prom_data?._commission;
+                        if (cd) {
+                          return (
+                            <div style={{ padding: '8px 10px', borderRadius: '8px', background: '#FFF7ED', border: '1px solid #FED7AA', fontSize: '12px' }}>
+                              <div style={{ fontWeight: 700, color: '#92400E', marginBottom: '5px', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Комісія Prom.ua ({cd.plan === 'econom' ? 'Економ' : 'Єдина'})</span>
+                                <span>−{cd.total_commission.toFixed(0)} ₴</span>
+                              </div>
+                              {cd.items.map(ci => (
+                                <div key={ci.sku} style={{ display: 'flex', justifyContent: 'space-between', color: '#92400E', opacity: 0.75, marginBottom: '2px' }}>
+                                  <span>{ci.sku} · {ci.commission_pct}%</span>
+                                  <span>−{ci.commission_amt.toFixed(0)} ₴</span>
+                                </div>
+                              ))}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#15803D', fontWeight: 700, marginTop: '5px', paddingTop: '5px', borderTop: '1px solid #FED7AA' }}>
+                                <span>Чистий дохід</span>
+                                <span>{cd.net_revenue.toFixed(0)} ₴</span>
+                              </div>
+                            </div>
+                          );
+                        }
+                        // Fallback: flat rate estimate
                         const pct        = promCommissionPct;
                         const commission = Math.round(order.total_price * pct) / 100;
                         const net        = order.total_price - commission;
                         return (
                           <div style={{ padding: '8px 10px', borderRadius: '8px', background: '#FFF7ED', border: '1px solid #FED7AA', fontSize: '12px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#92400E', marginBottom: '3px' }}>
-                              <span>Комісія Prom.ua {pct}%</span>
+                              <span>Комісія Prom.ua ~{pct}%</span>
                               <span style={{ fontWeight: 700 }}>−{commission.toFixed(0)} ₴</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#15803D', fontWeight: 700 }}>

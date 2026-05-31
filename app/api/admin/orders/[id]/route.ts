@@ -6,6 +6,7 @@ import { releaseReservation } from '../../../../../lib/accounting/reservations';
 import { notifyAdminStatusChange, notifyCustomerStatus } from '../../../../../lib/telegram';
 import { recordCustomerPayment, recordMarketplaceCommission } from '../../../../../lib/accounting/money';
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/prom-api';
+import { computePromCommission } from '../../../../../lib/prom-commission';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createSupabaseServer();
@@ -224,25 +225,34 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         .eq('id', id)
         .single();
 
-      // Prom.ua commission — записуємо при доставці
+      // Prom.ua commission — точний розрахунок по SKU при доставці
       if (order?.channel_code === 'prom') {
         try {
-          const { data: setting } = await db
-            .from('app_settings')
-            .select('value')
-            .eq('key', 'prom_commission_pct')
-            .maybeSingle();
-          const commissionPct = parseFloat(setting?.value ?? '3');
-          const commissionAmt = Math.round(Number(order.total_price) * commissionPct) / 100;
-          if (commissionAmt > 0) {
-            await recordMarketplaceCommission({
-              orderId:       id,
-              amount:        commissionAmt,
-              marketplace:   'Prom.ua',
-              commissionPct,
-              businessDate:  new Date().toISOString().slice(0, 10),
-              createdBy:     user.email ?? 'admin',
-            });
+          const [{ data: planRow }, { data: fallbackRow }, { data: fullOrder }] = await Promise.all([
+            db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
+            db.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle(),
+            db.from('orders').select('items, total_price').eq('id', id).single(),
+          ]);
+
+          const plan        = (planRow?.value ?? 'single') as 'single' | 'econom';
+          const fallbackPct = parseFloat(fallbackRow?.value ?? '3');
+          const items       = (fullOrder?.items ?? []) as { sku: string; qty: number; price: number }[];
+
+          if (items.length > 0) {
+            const result = await computePromCommission(items, { plan, fallbackPct });
+            if (result.total_commission > 0) {
+              const avgPct = Number(fullOrder?.total_price) > 0
+                ? Math.round(result.total_commission / Number(fullOrder?.total_price) * 10000) / 100
+                : fallbackPct;
+              await recordMarketplaceCommission({
+                orderId:       id,
+                amount:        result.total_commission,
+                marketplace:   'Prom.ua',
+                commissionPct: avgPct,
+                businessDate:  new Date().toISOString().slice(0, 10),
+                createdBy:     user.email ?? 'admin',
+              });
+            }
           }
         } catch (err) {
           console.error('[prom] commission record failed:', err);

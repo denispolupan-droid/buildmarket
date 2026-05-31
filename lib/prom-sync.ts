@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { getPromOrders, promOrderToOurFormat } from './prom-api';
+import { computePromCommission } from './prom-commission';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,6 +17,12 @@ export async function syncPromOrders() {
   const orders   = await getPromOrders({ dateFrom, limit: 100 });
 
   if (!orders.length) return { ok: true, created: 0, skipped: 0 };
+
+  // Read plan setting once for all orders in this batch
+  const { data: planRow } = await db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle();
+  const { data: fallbackRow } = await db.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle();
+  const plan        = (planRow?.value ?? 'single') as 'single' | 'econom';
+  const fallbackPct = parseFloat(fallbackRow?.value ?? '3');
 
   let created = 0;
   let skipped = 0;
@@ -35,6 +42,10 @@ export async function syncPromOrders() {
     }
 
     const mapped = promOrderToOurFormat(promOrder);
+
+    // Compute per-item commission breakdown and store with the order
+    const commissionResult = await computePromCommission(mapped.items, { plan, fallbackPct });
+    const enrichedPromData = { ...mapped.prom_data, _commission: commissionResult };
 
     let customerId: string | null = null;
     if (mapped.phone) {
@@ -71,6 +82,7 @@ export async function syncPromOrders() {
       customer_id:      customerId,
       contact:          mapped.contact,
       phone:            mapped.phone,
+      prom_data:        enrichedPromData,
       email:            mapped.email,
       delivery_type:    mapped.delivery_type,
       delivery_address: mapped.delivery_address,
@@ -81,7 +93,6 @@ export async function syncPromOrders() {
       status:           'new',
       channel_code:     'prom',
       prom_order_id:    mapped.prom_order_id,
-      prom_data:        mapped.prom_data,
     });
 
     if (error) {

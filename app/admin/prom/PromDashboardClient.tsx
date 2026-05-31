@@ -29,6 +29,7 @@ interface Props {
   stats:         StatRow[];
   totalRevenue:  number;
   commissionPct: number;
+  plan:          'single' | 'econom';
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
@@ -51,13 +52,15 @@ function relTime(iso: string) {
   return `${Math.floor(h / 24)} дн тому`;
 }
 
-export default function PromDashboardClient({ hasToken, feedUrl, recentOrders, totalOrders, stats, totalRevenue, commissionPct: initialCommissionPct }: Props) {
+export default function PromDashboardClient({ hasToken, feedUrl, recentOrders, totalOrders, stats, totalRevenue, commissionPct: initialCommissionPct, plan: initialPlan }: Props) {
   const [syncing, setSyncing]         = useState(false);
   const [syncMsg, setSyncMsg]         = useState<string | null>(null);
   const [copied,  setCopied]          = useState(false);
   const [commissionPct, setCommissionPct] = useState(initialCommissionPct);
   const [commissionInput, setCommissionInput] = useState(String(initialCommissionPct));
   const [savingPct, setSavingPct]     = useState(false);
+  const [plan, setPlan]               = useState<'single' | 'econom'>(initialPlan);
+  const [savingPlan, setSavingPlan]   = useState(false);
 
   async function doSync() {
     setSyncing(true);
@@ -79,6 +82,20 @@ export default function PromDashboardClient({ hasToken, feedUrl, recentOrders, t
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  }
+
+  async function savePlan(newPlan: 'single' | 'econom') {
+    setSavingPlan(true);
+    try {
+      await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prom_plan: newPlan }),
+      });
+      setPlan(newPlan);
+    } finally {
+      setSavingPlan(false);
+    }
   }
 
   async function saveCommissionPct() {
@@ -175,43 +192,58 @@ export default function PromDashboardClient({ hasToken, feedUrl, recentOrders, t
 
       {/* Commission setting */}
       <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB', padding: 20, marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#111', marginBottom: 4 }}>Комісія Prom.ua</div>
-            <div style={{ fontSize: 13, color: '#6B7280' }}>
-              Відображається у картці замовлення та записується у витрати при доставці.
-              Поточна: <strong>{commissionPct}%</strong> від суми замовлення.
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input
-              type="number"
-              min={0}
-              max={50}
-              step={0.5}
-              value={commissionInput}
-              onChange={e => setCommissionInput(e.target.value)}
-              style={{
-                width: 72, height: 36, padding: '0 10px', borderRadius: 8,
-                border: '1px solid #E5E7EB', fontSize: 14, fontWeight: 700,
-                textAlign: 'center', outline: 'none',
-              }}
-            />
-            <span style={{ fontSize: 14, color: '#374151', fontWeight: 600 }}>%</span>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#111', marginBottom: 4 }}>Комісія Prom.ua</div>
+        <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 16 }}>
+          Розраховується точно по кожному товару на основі категорії Prom.ua.
+          Запасний % — для товарів без прив'язки до категорії.
+        </div>
+
+        {/* Plan selector */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          {(['single', 'econom'] as const).map(p => (
             <button
-              onClick={saveCommissionPct}
-              disabled={savingPct || parseFloat(commissionInput) === commissionPct}
+              key={p}
+              onClick={() => !savingPlan && p !== plan && savePlan(p)}
               style={{
-                padding: '8px 16px', borderRadius: 8,
-                background: savingPct || parseFloat(commissionInput) === commissionPct ? '#F3F4F6' : '#1D4ED8',
-                color: savingPct || parseFloat(commissionInput) === commissionPct ? '#9CA3AF' : '#fff',
-                border: 'none', cursor: savingPct || parseFloat(commissionInput) === commissionPct ? 'default' : 'pointer',
-                fontSize: 13, fontWeight: 600,
+                flex: 1, padding: '10px 16px', borderRadius: 10,
+                border: `2px solid ${plan === p ? '#1D4ED8' : '#E5E7EB'}`,
+                background: plan === p ? '#EFF6FF' : '#F9FAFB',
+                color: plan === p ? '#1D4ED8' : '#374151',
+                fontWeight: plan === p ? 700 : 500,
+                cursor: savingPlan ? 'not-allowed' : 'pointer',
+                fontSize: 13, textAlign: 'left',
               }}
             >
-              {savingPct ? 'Зберігаю…' : 'Зберегти'}
+              <div style={{ fontWeight: 700 }}>{p === 'single' ? 'Єдина комісія' : 'Економ'}</div>
+              <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>
+                {p === 'single' ? 'Стандартний план (герметики ~15.29%, піна ~11.53%)' : 'Знижена вдвічі (герметики ~7.65%, піна ~5.77%)'}
+              </div>
             </button>
-          </div>
+          ))}
+        </div>
+
+        {/* Fallback % */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13, color: '#6B7280', flex: 1 }}>Запасний % (для категорій без прив&apos;язки):</span>
+          <input
+            type="number" min={0} max={50} step={0.5} value={commissionInput}
+            onChange={e => setCommissionInput(e.target.value)}
+            style={{ width: 64, height: 34, padding: '0 8px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 14, fontWeight: 700, textAlign: 'center', outline: 'none' }}
+          />
+          <span style={{ fontSize: 13, color: '#374151', fontWeight: 600 }}>%</span>
+          <button
+            onClick={saveCommissionPct}
+            disabled={savingPct || parseFloat(commissionInput) === commissionPct}
+            style={{
+              padding: '7px 14px', borderRadius: 8,
+              background: savingPct || parseFloat(commissionInput) === commissionPct ? '#F3F4F6' : '#1D4ED8',
+              color: savingPct || parseFloat(commissionInput) === commissionPct ? '#9CA3AF' : '#fff',
+              border: 'none', cursor: savingPct || parseFloat(commissionInput) === commissionPct ? 'default' : 'pointer',
+              fontSize: 13, fontWeight: 600,
+            }}
+          >
+            {savingPct ? 'Зберігаю…' : 'Зберегти'}
+          </button>
         </div>
       </div>
 

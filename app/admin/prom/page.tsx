@@ -19,7 +19,7 @@ export default async function PromPage() {
   const siteUrl  = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua';
   const feedKey  = process.env.FEED_SECRET_KEY ?? '';
 
-  const [{ data: recentOrders, count }, { data: statsRows }, { data: commissionSetting }] = await Promise.all([
+  const [{ data: recentOrders, count }, { data: statsRows }, { data: commissionSetting }, { data: planSetting }] = await Promise.all([
     db.from('orders')
       .select('id, order_number, created_at, status, contact, phone, total_price, prom_order_id', { count: 'exact' })
       .eq('channel_code', 'prom')
@@ -29,8 +29,10 @@ export default async function PromPage() {
       .select('status, total_price')
       .eq('channel_code', 'prom'),
     db.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle(),
+    db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
   ]);
   const commissionPct = parseFloat(commissionSetting?.value ?? '3');
+  const plan          = (planSetting?.value ?? 'single') as 'single' | 'econom';
 
   const statuses = ['new', 'confirmed', 'shipped', 'delivered', 'cancelled'];
   const stats = statuses.map(s => ({
@@ -51,6 +53,7 @@ export default async function PromPage() {
       stats={stats}
       totalRevenue={totalRevenue}
       commissionPct={commissionPct}
+      plan={plan}
     />
   );
 }
