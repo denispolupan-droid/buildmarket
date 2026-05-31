@@ -111,8 +111,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     if (catsListRef.current) catsListRef.current.scrollTop = 0; // завжди на початок
     setVisibleCount(50);
     setMobilePanel(null);
-    const target = scrollSlug ?? slug;
-    if (target) setTimeout(() => scrollCatToTop(target), 80);
   };
   const [filterValues,   setFilterValues]   = useState<Record<string, string>>({});
   const [filterVolume,   setFilterVolume]   = useState('');

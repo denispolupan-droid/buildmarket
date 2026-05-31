@@ -268,8 +268,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup('');
     setVisibleCount(24);
     setMobilePanel(null);
-    const target = scrollSlug ?? slug;
-    if (target) setTimeout(() => scrollCatToTop(target), 80);
   };
   const { skus: wishSkus, toggle: toggleWish } = useWishlist();
 
