@@ -202,12 +202,10 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   }, []);
 
   useEffect(() => {
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
     const handleWheel = (e: WheelEvent) => {
-      const sidebar = sidebarRef.current;
       const catsList = catsListRef.current;
-      if (!sidebar) return;
-      const sidebarRect = sidebar.getBoundingClientRect();
-      if (e.clientX > sidebarRect.right) return;
       e.preventDefault();
       if (catsList) {
         const catsRect = catsList.getBoundingClientRect();
@@ -223,8 +221,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       }
       sidebar.scrollTop += e.deltaY;
     };
-    document.addEventListener('wheel', handleWheel, { passive: false });
-    return () => document.removeEventListener('wheel', handleWheel);
+    sidebar.addEventListener('wheel', handleWheel, { passive: false });
+    return () => sidebar.removeEventListener('wheel', handleWheel);
   }, []);
 
   useEffect(() => {

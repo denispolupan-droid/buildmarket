@@ -49,22 +49,17 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   }, []);
 
   useEffect(() => {
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
     const handleWheel = (e: WheelEvent) => {
-      const sidebar = sidebarRef.current;
       const catsList = catsListRef.current;
-      if (!sidebar) return;
-      const sidebarRect = sidebar.getBoundingClientRect();
-      // If mouse is to the right of the sidebar — let the page scroll normally
-      if (e.clientX > sidebarRect.right) return;
       e.preventDefault();
-      // If mouse is over the cats list and it's scrollable — scroll it, otherwise sidebar
       if (catsList) {
         const catsRect = catsList.getBoundingClientRect();
         if (e.clientX >= catsRect.left && e.clientX <= catsRect.right &&
             e.clientY >= catsRect.top  && e.clientY <= catsRect.bottom) {
           if (catsList.scrollHeight > catsList.clientHeight) {
             const atTop = catsList.scrollTop <= 0;
-            // Скрол вгору з початку кат-ліста → передаємо сайдбару
             if (e.deltaY < 0 && atTop) { sidebar.scrollTop += e.deltaY; return; }
             catsList.scrollTop += e.deltaY;
             return;
@@ -73,8 +68,9 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       }
       sidebar.scrollTop += e.deltaY;
     };
-    document.addEventListener('wheel', handleWheel, { passive: false, capture: true });
-    return () => document.removeEventListener('wheel', handleWheel, { capture: true });
+    // Listener тільки на сайдбар — товари скролять без затримки
+    sidebar.addEventListener('wheel', handleWheel, { passive: false });
+    return () => sidebar.removeEventListener('wheel', handleWheel);
   }, []);
 
   useEffect(() => {
