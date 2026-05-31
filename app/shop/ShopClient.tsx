@@ -262,7 +262,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const selectCat = (slug: string | null, scrollSlug?: string) => {
     setSelCat(slug);
     window.history.pushState(null, '', slug ? `/shop/${slug}` : '/shop');
-    window.scrollTo({ top: 0 });
+    document.documentElement.scrollTop = 0; document.body.scrollTop = 0;
     sidebarRef.current?.scrollTo({ top: 0 });
     if (catsListRef.current) catsListRef.current.scrollTop = 0;
     setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup('');
@@ -491,7 +491,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                         onClick={() => {
                           selectCat(selCat === child.slug ? null : child.slug, cat.slug);
                           if (grandchildren.length > 0) setExpandedCats(prev => { const n = new Set(prev); n.has(child.slug) ? n.delete(child.slug) : n.add(child.slug); return n; });
-                          window.scrollTo({ top: 0 });
+                          document.documentElement.scrollTop = 0; document.body.scrollTop = 0;
                         }}
                       >
                         <span>{child.name}</span>
