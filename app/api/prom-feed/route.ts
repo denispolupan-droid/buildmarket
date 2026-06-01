@@ -17,8 +17,12 @@ function x(s: string | null | undefined): string {
     .replace(/"/g, '&quot;');
 }
 
-function imageUrl(product: { sku: string; image: string | null }): string {
-  return product.image ?? `${BASE_URL}/product/${product.sku}/opengraph-image`;
+function imageUrl(product: { sku: string; image: string | null }): string | null {
+  if (!product.image) return null;
+  // Relative path → prepend base URL
+  if (product.image.startsWith('/')) return `${BASE_URL}${product.image}`;
+  // Already absolute
+  return product.image;
 }
 
 // Builds a flat category map: slug → sequential integer id
@@ -75,12 +79,13 @@ export async function GET(request: NextRequest) {
       const fullName  = x([p.brand, p.name, p.volume].filter(Boolean).join(' '));
       const desc      = x(p.description ?? `${p.brand} ${p.name} — будівельна хімія.`);
 
+      const img = imageUrl(p);
       return `      <offer id="${x(p.sku)}" available="${available}">
         <url>${BASE_URL}/product/${x(p.sku)}</url>
         <price>${price.toFixed(2)}</price>
         <currencyId>UAH</currencyId>
         <categoryId>${catId}</categoryId>
-        <picture>${x(imageUrl(p))}</picture>
+        ${img ? `<picture>${x(img)}</picture>` : ''}
         <name>${fullName}</name>
         <description>${desc}</description>
         <vendor>${x(p.brand)}</vendor>
