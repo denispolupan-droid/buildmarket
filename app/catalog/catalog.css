@@ -35,9 +35,9 @@
 
 /* ── Main content ── */
 .catalog-main { min-width: 0; }
-.catalog-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
-.catalog-title { font-size: 24px; font-weight: 800; color: var(--text-primary); }
-.catalog-count { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+.catalog-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
+.catalog-title { font-size: 18px; font-weight: 800; color: var(--text-primary); }
+.catalog-count { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
 .catalog-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .action-btn {
   display: inline-flex; align-items: center; gap: 6px;
@@ -179,10 +179,11 @@
   position: sticky;
   top: 66px;
   z-index: 50;
-  background: var(--bg-soft);
-  padding: 10px 0 0;
+  background: var(--bg-page);
+  padding: 8px 0 0;
   margin-bottom: 4px;
 }
+[data-theme="dark"] .catalog-sticky-bar { background: var(--bg-page); }
 .catalog-cats-pills {
   display: flex;
   gap: 8px;

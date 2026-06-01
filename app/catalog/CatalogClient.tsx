@@ -337,7 +337,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   return (
     <>
       <div className="page-container">
-        <nav aria-label="Breadcrumb" style={{ padding: '32px 0 0', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+        <nav aria-label="Breadcrumb" style={{ padding: '12px 0 0', fontSize: '12px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           <Link href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</Link>
           <span>/</span>
           {selCat ? (
@@ -371,9 +371,9 @@ export default function CatalogClient({ products, categories, initialSearch = ''
         {isWholesale && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: '10px',
-            padding: '10px 16px', margin: '12px 0 0',
-            background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '10px',
-            fontSize: '13px', color: '#1E40AF',
+            padding: '7px 14px', margin: '6px 0 0',
+            background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '8px',
+            fontSize: '12px', color: '#1E40AF',
           }}>
             <span style={{ fontSize: '16px' }}>ℹ️</span>
             <span>
