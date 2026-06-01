@@ -254,7 +254,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   useEffect(() => {
     if (selCat !== prevSelCat.current) {
       prevSelCat.current = selCat;
-      window.scrollTo({ top: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
     }
   }, [selCat]);
 
