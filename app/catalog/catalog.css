@@ -94,7 +94,7 @@
 .product-table tr:hover td { background: var(--bg-soft); }
 .tr-link { position: absolute; inset: 0; }
 
-.cell-photo { width: 84px; height: 84px; background: var(--bg-soft); border-radius: 8px; overflow: visible; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-muted); flex-shrink: 0; position: relative; z-index: 0; cursor: zoom-in; }
+.cell-photo { width: 84px; height: 84px; background: #fff; border-radius: 8px; overflow: visible; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-muted); flex-shrink: 0; position: relative; z-index: 0; cursor: zoom-in; }
 .cell-photo > * { transition: transform 0.28s ease; border-radius: 8px; transform-origin: left 35%; }
 .cell-photo:hover { z-index: 20; }
 .cell-photo:hover > * { transform: scale(4); box-shadow: 0 12px 36px rgba(0,0,0,0.25); }

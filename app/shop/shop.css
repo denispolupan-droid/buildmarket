@@ -380,7 +380,7 @@
 }
 
 /* ── Dark theme ── */
-[data-theme="dark"] .shop-card__img { background: #1a2332; }
+[data-theme="dark"] .shop-card__img { background: #fff; }
 [data-theme="dark"] .shop-card__btn:disabled { background: #334155; color: #64748B; }
 [data-theme="dark"] .shop-filter-select.active { background: #1E3A5F55; color: #93B8D8; }
 [data-theme="dark"] .shop-topbar button { color: var(--text-secondary); }
