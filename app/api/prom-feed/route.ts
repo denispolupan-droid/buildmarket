@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       .select('sku, price_retail, price_unit, stock_qty, stock_status'),
     serviceClient
       .from('categories')
-      .select('id, slug, name, parent_slug')
+      .select('id, slug, name, parent_slug, prom_section_id, prom_section_url')
       .order('sort_order'),
     serviceClient
       .from('product_characteristics')
@@ -63,6 +63,32 @@ export async function GET(request: NextRequest) {
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
   const catIdMap = buildCategoryIds(categories ?? []);
 
+  // Build slug → Prom section ID map (use Prom ID when available, else our sequential ID)
+  type CatRow = { slug: string; name: string; parent_slug: string | null; prom_section_id: number | null; prom_section_url: string | null };
+  const catData = (categories ?? []) as CatRow[];
+  const slugToPromId = new Map<string, number>(
+    catData.map(c => [c.slug, c.prom_section_id ?? (catIdMap.get(c.slug) ?? 0)]),
+  );
+
+  // Unique Prom sections for <categories> block
+  const promSections = new Map<number, string>(); // id → name
+  for (const c of catData) {
+    if (c.prom_section_id) {
+      if (!promSections.has(c.prom_section_id)) {
+        // Derive section name from URL slug (e.g. Germetiki → Герметики)
+        const sectionName = c.prom_section_url?.split('/').pop() ?? c.name;
+        promSections.set(c.prom_section_id, sectionName);
+      }
+    }
+  }
+  // Also add our sequential IDs for categories without Prom mapping
+  for (const c of catData) {
+    if (!c.prom_section_id) {
+      const seqId = catIdMap.get(c.slug) ?? 0;
+      if (!promSections.has(seqId)) promSections.set(seqId, c.name);
+    }
+  }
+
   // Group characteristics by SKU
   const charsMap = new Map<string, { label: string; value: string }[]>();
   for (const c of (characteristics ?? [])) {
@@ -70,14 +96,10 @@ export async function GET(request: NextRequest) {
     charsMap.get(c.product_sku)!.push({ label: c.label, value: c.value });
   }
 
-  // Categories XML
-  const catsXml = (categories ?? []).map(c => {
-    const cid      = catIdMap.get(c.slug) ?? 0;
-    const parentId = c.parent_slug ? catIdMap.get(c.parent_slug) : null;
-    return parentId
-      ? `      <category id="${cid}" parentId="${parentId}">${x(c.name)}</category>`
-      : `      <category id="${cid}">${x(c.name)}</category>`;
-  }).join('\n');
+  // Categories XML — output Prom's own section IDs so they're recognized directly
+  const catsXml = [...promSections.entries()]
+    .map(([id, name]) => `      <category id="${id}">${x(name)}</category>`)
+    .join('\n');
 
   // Offers XML
   const offersXml = (products ?? [])
@@ -89,7 +111,7 @@ export async function GET(request: NextRequest) {
 
       const available = s.stock_status === 'in_stock' ? 'true' : 'false';
       const qty       = s.stock_qty ?? 0;
-      const catId     = p.category_slug ? (catIdMap.get(p.category_slug) ?? 1) : 1;
+      const catId     = p.category_slug ? (slugToPromId.get(p.category_slug) ?? 1) : 1;
 
       // Name: don't append volume if already in name
       const nameHasVolume = p.volume ? p.name.includes(p.volume) : false;

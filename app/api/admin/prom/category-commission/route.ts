@@ -16,21 +16,23 @@ async function checkAdmin() {
 export async function PATCH(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { slug, single, econom } = await req.json() as {
-    slug:   string;
-    single: number | null;
-    econom: number | null;
+  const { slug, single, econom, prom_section_url, prom_section_id } = await req.json() as {
+    slug:             string;
+    single?:          number | null;
+    econom?:          number | null;
+    prom_section_url?: string | null;
+    prom_section_id?:  number | null;
   };
 
   if (!slug) return NextResponse.json({ error: 'slug required' }, { status: 400 });
 
-  const { error } = await db
-    .from('categories')
-    .update({
-      prom_commission_pct:        single,
-      prom_commission_pct_econom: econom,
-    })
-    .eq('slug', slug);
+  const update: Record<string, unknown> = {};
+  if (single !== undefined)          update.prom_commission_pct        = single;
+  if (econom !== undefined)          update.prom_commission_pct_econom = econom;
+  if (prom_section_url !== undefined) update.prom_section_url           = prom_section_url;
+  if (prom_section_id  !== undefined) update.prom_section_id            = prom_section_id;
+
+  const { error } = await db.from('categories').update(update).eq('slug', slug);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
