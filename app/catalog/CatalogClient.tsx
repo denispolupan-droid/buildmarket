@@ -26,6 +26,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const catsListRef = useRef<HTMLDivElement>(null);
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sidebarRef = useRef<HTMLElement>(null);
+  const prevSelCat = useRef(initialCategory);
   const pillsRef = useRef<HTMLDivElement>(null);
   const [showScrollHint, setShowScrollHint] = useState(false);
 
@@ -89,6 +90,17 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     if (initialCategory) setTimeout(() => scrollCatToTop(initialCategory), 150);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Scroll page + sidebar to top on any category change (including parent expand)
+  useEffect(() => {
+    if (selCat !== prevSelCat.current) {
+      prevSelCat.current = selCat;
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      sidebarRef.current?.scrollTo({ top: 0 });
+      if (catsListRef.current) catsListRef.current.scrollTop = 0;
+    }
+  }, [selCat]);
 
   const scrollCatToTop = useCallback((slug: string) => {
     const catEl = catRefs.current[slug];
@@ -408,13 +420,11 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                         onClick={() => {
                           const expanding = !expandedCats.has(cat.slug);
                           if (children.length > 0) {
-                            // Розкриваємо/згортаємо без скролу сторінки
                             setExpandedCats(prev => { const next = new Set(prev); next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug); return next; });
                             if (expanding) {
                               setSelCat(cat.slug);
                               router.replace(`?category=${cat.slug}`, { scroll: false } as never);
                               setVisibleCount(50);
-                              // Скролимо тільки сайдбар після завершення анімації
                               setTimeout(() => scrollCatToTop(cat.slug), 450);
                             }
                           } else {
@@ -423,6 +433,11 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                         }}
                       >
                         <span>{cat.name}</span>
+                        {children.length > 0 && (
+                          isExpanded
+                            ? <ChevronUp size={13} style={{ flexShrink: 0, opacity: 0.5 }} />
+                            : <ChevronDown size={13} style={{ flexShrink: 0, opacity: 0.5 }} />
+                        )}
                       </div>
                       <div style={{
                         overflow: 'hidden',
