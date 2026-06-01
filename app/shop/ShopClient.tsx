@@ -260,12 +260,15 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const selectCat = (slug: string | null, scrollSlug?: string) => {
     setSelCat(slug);
     window.history.pushState(null, '', slug ? `/shop/${slug}` : '/shop');
-    document.documentElement.scrollTop = 0; document.body.scrollTop = 0;
     sidebarRef.current?.scrollTo({ top: 0 });
     if (catsListRef.current) catsListRef.current.scrollTop = 0;
     setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup('');
     setVisibleCount(24);
     setMobilePanel(null);
+    // Скрол вгору після ре-рендеру (без затримки — requestAnimationFrame)
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    });
     const target = scrollSlug ?? slug;
     if (target) setTimeout(() => scrollCatToTop(target), 120);
   };
@@ -489,7 +492,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                         onClick={() => {
                           selectCat(selCat === child.slug ? null : child.slug, cat.slug);
                           if (grandchildren.length > 0) setExpandedCats(prev => { const n = new Set(prev); n.has(child.slug) ? n.delete(child.slug) : n.add(child.slug); return n; });
-                          document.documentElement.scrollTop = 0; document.body.scrollTop = 0;
                         }}
                       >
                         <span>{child.name}</span>
