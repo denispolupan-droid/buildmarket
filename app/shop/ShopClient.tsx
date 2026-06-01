@@ -187,7 +187,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sidebarRef = useRef<HTMLElement>(null);
   const pillsRef = useRef<HTMLDivElement>(null);
-  const prevSelCat = useRef<string | null | undefined>(initialCategory);
+  const prevSelCat = useRef<string | null>(initialCategory ?? null);
   const [showScrollHint, setShowScrollHint] = useState(false);
 
   useEffect(() => {
@@ -250,12 +250,14 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Скрол сторінки вгору після того як React завершив рендер нових товарів
+  // Скрол вгору (сторінка + сайдбар) після зміни категорії — спрацьовує після рендеру
   useEffect(() => {
     if (selCat !== prevSelCat.current) {
       prevSelCat.current = selCat;
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
+      sidebarRef.current?.scrollTo({ top: 0 });
+      if (catsListRef.current) catsListRef.current.scrollTop = 0;
     }
   }, [selCat]);
 
