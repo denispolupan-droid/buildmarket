@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { Search, Edit, Package, AlertCircle } from 'lucide-react';
 import type { ProductFull, Category } from '../../../types';
@@ -17,6 +17,27 @@ export default function ProductsTable({ products, categories }: Props) {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [activeOverrides, setActiveOverrides] = useState<Record<string, boolean>>({});
+  const [toggling, setToggling] = useState<Set<string>>(new Set());
+
+  const toggleActive = useCallback(async (sku: string, current: boolean) => {
+    if (toggling.has(sku)) return;
+    const next = !current;
+    setActiveOverrides(prev => ({ ...prev, [sku]: next }));
+    setToggling(prev => new Set(prev).add(sku));
+    try {
+      await fetch(`/api/admin/products?sku=${encodeURIComponent(sku)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: next }),
+      });
+    } catch {
+      // Відкочуємо при помилці
+      setActiveOverrides(prev => ({ ...prev, [sku]: current }));
+    } finally {
+      setToggling(prev => { const s = new Set(prev); s.delete(sku); return s; });
+    }
+  }, [toggling]);
 
   const categoryMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -133,8 +154,11 @@ export default function ProductsTable({ products, categories }: Props) {
           <tbody>
             {filtered.slice(0, visibleCount).map(p => {
               const hasIssue = !p.stock?.price_retail || p.stock?.stock_status === 'out_of_stock';
+              const isActive = (s: string) => activeOverrides[s] !== undefined ? activeOverrides[s] : p.is_active;
+              const active = isActive(p.sku);
+              const isToggling = toggling.has(p.sku);
               return (
-                <tr key={p.sku} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                <tr key={p.sku} style={{ borderBottom: '1px solid var(--border-light)', opacity: active ? 1 : 0.55 }}>
                   <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-secondary)' }}>
                     {p.sku}
                   </td>
@@ -161,13 +185,29 @@ export default function ProductsTable({ products, categories }: Props) {
                     {(p.stock?.stock_qty ?? 0) > 0 ? p.stock!.stock_qty : p.stock?.stock_status === 'in_stock' ? 'є' : p.stock?.stock_status === 'out_of_stock' ? 'нема' : '—'}
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                    {hasIssue ? (
-                      <AlertCircle size={16} color="#F59E0B" />
-                    ) : p.is_active ? (
-                      <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#22C55E' }} />
-                    ) : (
-                      <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--border)' }} />
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      {hasIssue && <AlertCircle size={14} color="#F59E0B" />}
+                      <button
+                        onClick={e => { e.stopPropagation(); toggleActive(p.sku, active); }}
+                        disabled={isToggling}
+                        title={active ? 'Натисни щоб приховати' : 'Натисни щоб показати'}
+                        style={{
+                          position: 'relative', width: '36px', height: '20px', borderRadius: '10px',
+                          border: 'none', cursor: isToggling ? 'wait' : 'pointer', padding: 0,
+                          background: active ? '#22C55E' : '#CBD5E1',
+                          transition: 'background 0.2s', opacity: isToggling ? 0.6 : 1,
+                          flexShrink: 0,
+                        }}
+                      >
+                        <span style={{
+                          position: 'absolute', top: '2px',
+                          left: active ? '18px' : '2px',
+                          width: '16px', height: '16px', borderRadius: '50%',
+                          background: '#fff', transition: 'left 0.2s',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                        }} />
+                      </button>
+                    </div>
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                     <Link

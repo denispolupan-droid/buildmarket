@@ -187,6 +187,28 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
+export async function PATCH(req: NextRequest) {
+  if (!await checkAdmin()) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  const sku = req.nextUrl.searchParams.get('sku');
+  if (!sku) return NextResponse.json({ error: 'SKU required' }, { status: 400 });
+
+  const body = await req.json() as Record<string, unknown>;
+  const allowed = ['is_active', 'sort_order'];
+  const update: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (key in body) update[key] = body[key];
+  }
+  if (!Object.keys(update).length) {
+    return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
+  }
+
+  const { error } = await serviceClient.from('products').update(update).eq('sku', sku);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
+
 export async function DELETE(req: NextRequest) {
   if (!await checkAdmin()) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -197,15 +219,14 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'SKU required' }, { status: 400 });
   }
 
-  await serviceClient
-    .from('product_characteristics')
-    .delete()
-    .eq('product_sku', sku);
-
-  await serviceClient
-    .from('product_stock')
-    .delete()
-    .eq('sku', sku);
+  // Видаляємо всі пов'язані записи перед продуктом
+  await Promise.allSettled([
+    serviceClient.from('product_characteristics').delete().eq('product_sku', sku),
+    serviceClient.from('product_stock').delete().eq('sku', sku),
+    serviceClient.from('supplier_stock').delete().eq('sku', sku),
+    serviceClient.from('supplier_sku_map').delete().eq('our_sku', sku),
+    serviceClient.from('product_reviews').delete().eq('product_sku', sku),
+  ]);
 
   const { error } = await serviceClient
     .from('products')
