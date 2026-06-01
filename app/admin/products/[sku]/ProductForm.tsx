@@ -55,6 +55,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
   const [nl1, setNl1] = useState(product?.nl1 ?? '');
   const [nl2, setNl2] = useState(product?.nl2 ?? '');
   const [imageUrl, setImageUrl] = useState(product?.image ?? '');
+  const [promKeywords, setPromKeywords] = useState((product as any)?.prom_keywords ?? '');
 
   const [priceUnit, setPriceUnit] = useState(product?.stock?.price_unit ?? 0);
   const [priceOld, setPriceOld] = useState(product?.stock?.price_old ?? 0);
@@ -179,6 +180,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
             nl1: nl1 || null,
             nl2: nl2 || null,
             image: imageUrl || null,
+            prom_keywords: promKeywords || null,
           },
           stock: {
             sku,
@@ -367,6 +369,30 @@ export default function ProductForm({ product, categories, isNew }: Props) {
             <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Сортування:</label>
             <input type="number" value={sortOrder} onChange={e => setSortOrder(Number(e.target.value))} style={{ ...inputStyle, width: '80px' }} />
           </div>
+        </div>
+      </div>
+
+      {/* Marketplaces */}
+      <div style={sectionStyle}>
+        <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Маркетплейси</h2>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>
+          Ці поля виводяться у YML фід для Prom.ua та інших маркетплейсів. Характеристики та ціни беруться з відповідних секцій автоматично.
+        </p>
+        <div>
+          <label style={labelStyle}>
+            Пошукові запити Prom.ua{' '}
+            <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>— через кому, допомагають покупцям знайти товар</span>
+          </label>
+          <textarea
+            value={promKeywords}
+            onChange={e => setPromKeywords(e.target.value)}
+            rows={2}
+            placeholder="герметик силіконовий білий, герметик для ванни, силіконовий герметик санітарний"
+            style={{ ...inputStyle, height: 'auto', padding: '12px 14px', resize: 'vertical' }}
+          />
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+            Рекомендовано 5-10 запитів. Наприклад: «{(product?.name ?? '').split(',')[0]}» + популярні синоніми, область застосування.
+          </p>
         </div>
       </div>
 

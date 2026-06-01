@@ -25,13 +25,10 @@ function x(s: string | null | undefined): string {
 
 function imageUrl(product: { sku: string; image: string | null }): string | null {
   if (!product.image) return null;
-  // Relative path → prepend base URL
   if (product.image.startsWith('/')) return `${BASE_URL}${product.image}`;
-  // Already absolute
   return product.image;
 }
 
-// Builds a flat category map: slug → sequential integer id
 function buildCategoryIds(categories: { id: number; slug: string; name: string; parent_slug: string | null }[]) {
   const map = new Map<string, number>();
   categories.forEach((c, i) => map.set(c.slug, i + 1));
@@ -44,10 +41,10 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  const [{ data: products }, { data: stock }, { data: categories }] = await Promise.all([
+  const [{ data: products }, { data: stock }, { data: categories }, { data: characteristics }] = await Promise.all([
     serviceClient
       .from('products')
-      .select('sku, name, brand, category_slug, volume, description, image')
+      .select('sku, name, brand, category_slug, volume, description, image, prom_keywords')
       .eq('is_active', true)
       .order('sort_order'),
     serviceClient
@@ -57,10 +54,21 @@ export async function GET(request: NextRequest) {
       .from('categories')
       .select('id, slug, name, parent_slug')
       .order('sort_order'),
+    serviceClient
+      .from('product_characteristics')
+      .select('product_sku, label, value')
+      .order('sort_order'),
   ]);
 
-  const stockMap    = new Map((stock    ?? []).map(s => [s.sku, s]));
-  const catIdMap    = buildCategoryIds(categories ?? []);
+  const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
+  const catIdMap = buildCategoryIds(categories ?? []);
+
+  // Group characteristics by SKU
+  const charsMap = new Map<string, { label: string; value: string }[]>();
+  for (const c of (characteristics ?? [])) {
+    if (!charsMap.has(c.product_sku)) charsMap.set(c.product_sku, []);
+    charsMap.get(c.product_sku)!.push({ label: c.label, value: c.value });
+  }
 
   // Categories XML
   const catsXml = (categories ?? []).map(c => {
@@ -82,12 +90,31 @@ export async function GET(request: NextRequest) {
       const available = s.stock_status === 'in_stock' ? 'true' : 'false';
       const qty       = s.stock_qty ?? 0;
       const catId     = p.category_slug ? (catIdMap.get(p.category_slug) ?? 1) : 1;
-      // Don't append volume if it's already present in the name (prevents "5 кг 5 кг")
+
+      // Name: don't append volume if already in name
       const nameHasVolume = p.volume ? p.name.includes(p.volume) : false;
       const fullName = x([p.brand, p.name, (!nameHasVolume ? p.volume : null)].filter(Boolean).join(' '));
-      const desc      = x(p.description ?? `${p.brand} ${p.name} — будівельна хімія.`);
+      const desc     = x(p.description ?? `${p.brand} ${p.name} — будівельна хімія.`);
+      const img      = imageUrl(p);
 
-      const img = imageUrl(p);
+      // Characteristics → <param> tags
+      const chars    = charsMap.get(p.sku) ?? [];
+      const paramsXml = chars
+        .map(c => `        <param name="${x(c.label)}">${x(c.value)}</param>`)
+        .join('\n');
+
+      // Volume as param (if not already in characteristics)
+      const hasVolumeParam = chars.some(c =>
+        c.label.toLowerCase().includes('об') || c.label.toLowerCase().includes('вага') ||
+        c.label.toLowerCase().includes('розмір') || c.label.toLowerCase().includes('маса'),
+      );
+      const volumeParam = p.volume && !hasVolumeParam
+        ? `        <param name="Об'єм / Вага">${x(p.volume)}</param>`
+        : '';
+
+      // Keywords
+      const keywords = p.prom_keywords ? `        <keywords>${x(p.prom_keywords)}</keywords>` : '';
+
       return `      <offer id="${x(p.sku)}" available="${available}">
         <url>${BASE_URL}/product/${x(p.sku)}</url>
         <price>${price.toFixed(2)}</price>
@@ -99,6 +126,9 @@ export async function GET(request: NextRequest) {
         ${!PROM_UNKNOWN_BRANDS.has(p.brand ?? '') ? `<vendor>${x(p.brand)}</vendor>` : ''}
         <vendorCode>${x(p.sku)}</vendorCode>
         <stock_quantity>${qty}</stock_quantity>
+${paramsXml}
+${volumeParam}
+${keywords}
       </offer>`;
     })
     .filter(Boolean)
