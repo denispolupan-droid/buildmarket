@@ -39,7 +39,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title,
     description,
-    keywords: [product.brand, product.name, 'купити', 'купить', 'оптом', 'будівельна хімія', 'строительная химия', 'Україна', 'Украина', product.sku],
+    keywords: [
+      ...((product as any).keywords?.split(',').map((k: string) => k.trim()).filter(Boolean) ?? []),
+      product.brand, product.name, 'купити', 'оптом', 'будівельна хімія', product.sku,
+    ],
     openGraph: {
       title,
       description,

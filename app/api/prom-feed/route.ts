@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
   const [{ data: products }, { data: stock }, { data: categories }, { data: characteristics }] = await Promise.all([
     serviceClient
       .from('products')
-      .select('sku, name, brand, category_slug, volume, description, image, prom_keywords')
+      .select('sku, name, brand, category_slug, volume, description, image, keywords')
       .eq('is_active', true)
       .order('sort_order'),
     serviceClient
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
         : '';
 
       // Keywords
-      const keywords = p.prom_keywords ? `        <keywords>${x(p.prom_keywords)}</keywords>` : '';
+      const keywords = p.keywords ? `        <keywords>${x(p.keywords)}</keywords>` : '';
 
       return `      <offer id="${x(p.sku)}" available="${available}">
         <url>${BASE_URL}/product/${x(p.sku)}</url>

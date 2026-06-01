@@ -55,7 +55,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
   const [nl1, setNl1] = useState(product?.nl1 ?? '');
   const [nl2, setNl2] = useState(product?.nl2 ?? '');
   const [imageUrl, setImageUrl] = useState(product?.image ?? '');
-  const [promKeywords, setPromKeywords] = useState((product as any)?.prom_keywords ?? '');
+  const [promKeywords, setPromKeywords] = useState((product as any)?.keywords ?? '');
 
   const [priceUnit, setPriceUnit] = useState(product?.stock?.price_unit ?? 0);
   const [priceOld, setPriceOld] = useState(product?.stock?.price_old ?? 0);
@@ -180,7 +180,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
             nl1: nl1 || null,
             nl2: nl2 || null,
             image: imageUrl || null,
-            prom_keywords: promKeywords || null,
+            keywords: promKeywords || null,
           },
           stock: {
             sku,
