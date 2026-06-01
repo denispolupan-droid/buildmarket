@@ -108,8 +108,8 @@ export default async function ShopCategoryPage({ params }: { params: Promise<{ c
       {itemListLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }} />}
       {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />}
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
-        <div style={{ margin: '0 auto', padding: '24px 16px 64px' }} className="mobile-pad">
-          <nav aria-label="Breadcrumb" style={{ marginBottom: '24px', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ margin: '0 auto', padding: '12px 16px 64px' }} className="mobile-pad">
+          <nav aria-label="Breadcrumb" style={{ marginBottom: '6px', fontSize: '12px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Link href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</Link>
             <span>/</span>
             <Link href="/shop" style={{ color: '#94A3B8', textDecoration: 'none' }}>Магазин</Link>
@@ -122,7 +122,7 @@ export default async function ShopCategoryPage({ params }: { params: Promise<{ c
             <span>/</span>
             <span style={{ color: '#475569' }}>{cat.name}</span>
           </nav>
-          <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 24px' }}>
+          <h1 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 10px' }}>
             {cat.name}
           </h1>
           <ShopLoader initialCategory={category} />

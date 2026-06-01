@@ -63,17 +63,14 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
-        <div style={{ margin: '0 auto', padding: '24px 16px 64px' }} className="mobile-pad">
-          <nav aria-label="Breadcrumb" style={{ marginBottom: '24px', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ margin: '0 auto', padding: '12px 16px 64px' }} className="mobile-pad">
+          <nav aria-label="Breadcrumb" style={{ marginBottom: '8px', fontSize: '12px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Link href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</Link>
             <span>/</span>
             <Link href="/shop" style={{ color: brand || sale ? '#94A3B8' : '#475569', textDecoration: 'none' }}>Магазин</Link>
             {brand && <><span>/</span><span style={{ color: '#475569' }}>{brand}</span></>}
             {sale === '1' && <><span>/</span><span style={{ color: '#475569' }}>Акції</span></>}
           </nav>
-          <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 24px' }}>
-            {brand ? `${brand} — каталог товарів` : sale === '1' ? 'Акційні товари' : 'Магазин будівельної хімії'}
-          </h1>
           <ShopLoader initialSaleOnly={sale === '1'} initialBrand={brand} />
         </div>
       </div>

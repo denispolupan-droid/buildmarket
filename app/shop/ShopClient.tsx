@@ -612,7 +612,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       <div style={{ minWidth: 0 }}>
         <div className="shop-topbar">
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-            <h1 className="shop-title">{saleOnly ? 'Акційні товари' : 'Магазин'}</h1>
+            <div className="shop-title">{saleOnly ? 'Акційні товари' : 'Магазин'}</div>
             <span className="shop-count">{filtered.length} товарів</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
