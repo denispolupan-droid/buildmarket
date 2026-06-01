@@ -187,6 +187,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sidebarRef = useRef<HTMLElement>(null);
   const pillsRef = useRef<HTMLDivElement>(null);
+  const prevSelCat = useRef<string | null | undefined>(initialCategory);
   const [showScrollHint, setShowScrollHint] = useState(false);
 
   useEffect(() => {
@@ -249,6 +250,14 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Скрол сторінки вгору після того як React завершив рендер нових товарів
+  useEffect(() => {
+    if (selCat !== prevSelCat.current) {
+      prevSelCat.current = selCat;
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [selCat]);
+
   const scrollCatToTop = useCallback((slug: string) => {
     const catEl = catRefs.current[slug];
     const container = catsListRef.current;
@@ -265,10 +274,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup('');
     setVisibleCount(24);
     setMobilePanel(null);
-    // Скрол вгору після ре-рендеру (без затримки — requestAnimationFrame)
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: 'instant' });
-    });
     const target = scrollSlug ?? slug;
     if (target) setTimeout(() => scrollCatToTop(target), 120);
   };
