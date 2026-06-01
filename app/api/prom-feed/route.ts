@@ -76,7 +76,9 @@ export async function GET(request: NextRequest) {
       const available = s.stock_status === 'in_stock' ? 'true' : 'false';
       const qty       = s.stock_qty ?? 0;
       const catId     = p.category_slug ? (catIdMap.get(p.category_slug) ?? 1) : 1;
-      const fullName  = x([p.brand, p.name, p.volume].filter(Boolean).join(' '));
+      // Don't append volume if it's already present in the name (prevents "5 кг 5 кг")
+      const nameHasVolume = p.volume ? p.name.includes(p.volume) : false;
+      const fullName = x([p.brand, p.name, (!nameHasVolume ? p.volume : null)].filter(Boolean).join(' '));
       const desc      = x(p.description ?? `${p.brand} ${p.name} — будівельна хімія.`);
 
       const img = imageUrl(p);
