@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { RefreshCw, ExternalLink, Copy, CheckCircle, Package, ShoppingBag } from 'lucide-react';
+import { RefreshCw, ExternalLink, Copy, CheckCircle, Package, ShoppingBag, TableProperties } from 'lucide-react';
 import Link from 'next/link';
 
 interface Order {
@@ -249,9 +249,19 @@ export default function PromDashboardClient({ hasToken, feedUrl, recentOrders, t
 
       {/* Product Feed URL */}
       <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB', padding: 20, marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          <Package size={18} color="#6B7280" />
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>YML-фід товарів</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Package size={18} color="#6B7280" />
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>YML-фід товарів</h2>
+          </div>
+          <Link href="/admin/prom/commissions" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '6px 12px', borderRadius: 8, textDecoration: 'none',
+            background: '#F5F3FF', border: '1px solid #DDD6FE',
+            color: '#6D28D9', fontSize: 13, fontWeight: 600,
+          }}>
+            <TableProperties size={13} /> Таблиця комісій
+          </Link>
         </div>
         <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B7280' }}>
           Додайте цей URL у кабінеті Prom.ua → «Товари» → «Імпорт» → «Завантажити за посиланням».
