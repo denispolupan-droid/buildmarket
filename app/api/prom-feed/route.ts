@@ -9,6 +9,12 @@ const serviceClient = createClient(
 const BASE_URL  = 'https://fixline.com.ua';
 const SHOP_NAME = 'FIXLINE';
 
+// Brands not in Prom.ua manufacturer database — omit <vendor> to avoid "Невідомий виробник" error
+const PROM_UNKNOWN_BRANDS = new Set([
+  'Bitugum', 'Байрис', 'Aqua Protect', 'Хімконтакт', 'Хімік',
+  'Aqua-protect', 'БАЙРИС', 'BITUGUM',
+]);
+
 function x(s: string | null | undefined): string {
   return (s ?? '')
     .replace(/&/g, '&amp;')
@@ -90,7 +96,7 @@ export async function GET(request: NextRequest) {
         ${img ? `<picture>${x(img)}</picture>` : ''}
         <name>${fullName}</name>
         <description>${desc}</description>
-        <vendor>${x(p.brand)}</vendor>
+        ${!PROM_UNKNOWN_BRANDS.has(p.brand ?? '') ? `<vendor>${x(p.brand)}</vendor>` : ''}
         <vendorCode>${x(p.sku)}</vendorCode>
         <stock_quantity>${qty}</stock_quantity>
       </offer>`;
