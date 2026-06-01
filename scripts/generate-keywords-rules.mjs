@@ -19,6 +19,74 @@ const env = Object.fromEntries(
 
 const supabase = createClient(env['NEXT_PUBLIC_SUPABASE_URL'], env['SUPABASE_SERVICE_ROLE_KEY']);
 
+// ── Category → RU keyword variants ───────────────────────────────────────────
+const CATEGORY_KEYWORDS_RU = {
+  'sylikonovi-germetyky':      ['силиконовый герметик', 'герметик для ванной'],
+  'akrylovi-germetyky':        ['акриловый герметик', 'герметик под покраску'],
+  'poliuretanovi-germetyky':   ['полиуретановый герметик', 'герметик для бетона'],
+  'bitumni-germetyky':         ['битумный герметик', 'герметик для кровли'],
+  'ms-polymerni-hermetyky':    ['МС-полимерный герметик', 'клей-герметик гибридный'],
+  'zharostiyki-germetyky':     ['термостойкий герметик', 'жаростойкий герметик'],
+  'nytka-dlya-trub':           ['уплотнительная нить', 'нить для труб', 'пакля'],
+  'germetyky':                 ['герметик строительный', 'герметик купить'],
+  'montazhna-pina':            ['монтажная пена', 'строительная пена'],
+  'pistoletna-pina':           ['пена под пистолет', 'профессиональная пена'],
+  'pobutova-pina':             ['бытовая пена', 'монтажная пена одноразовая'],
+  'vohnezakhysna-pina':        ['огнезащитная пена', 'противопожарная пена'],
+  'pina-klei':                 ['пена-клей', 'монтажная пена клей'],
+  'ochysnyky':                 ['очиститель монтажной пены', 'растворитель пены'],
+  'montazhnyi-klei':           ['монтажный клей', 'клей для монтажа'],
+  'ridki-tsvyakhy':            ['жидкие гвозди', 'монтажный клей жидкие гвозди'],
+  'kontaktnyi-klei':           ['контактный клей', 'клей для резины'],
+  'pva-ta-stolyarnyi':         ['клей ПВА', 'столярный клей', 'клей для дерева'],
+  'epoksydni-klei':            ['эпоксидный клей', 'холодная сварка'],
+  'super-klei':                ['суперклей', 'секундный клей'],
+  'klei-dlya-shpaler':         ['клей для обоев', 'обойный клей'],
+  'klei':                      ['строительный клей', 'клей купить'],
+  'gruntivky-gotovi':          ['грунтовка', 'грунтовка для стен'],
+  'gruntivky-kontsentraty':    ['грунтовка концентрат'],
+  'betonokontakt':             ['бетоноконтакт', 'адгезионная грунтовка'],
+  'antygrybok':                ['антигрибок', 'средство от плесени', 'противогрибковая'],
+  'shpaklivky':                ['шпаклевка', 'шпатлевка финишная'],
+  'gruntivky':                 ['грунтовка строительная'],
+  'bitumni-mastyky':           ['битумная мастика', 'мастика кровельная'],
+  'hidroizolyatsiyni-mastyky': ['гидроизоляционная мастика', 'жидкая гидроизоляция'],
+  'izolyatsiyni-strichky':     ['изоляционная лента', 'гидроизоляционная лента'],
+  'praimery':                  ['битумный праймер', 'праймер'],
+  'hidroizolyatsiya':          ['гидроизоляция', 'гидроизоляционный материал'],
+  'alkidni-farby':             ['алкидная эмаль', 'эмаль ПФ-115', 'краска по металлу'],
+  'vodoemiulsiyni-interierni': ['краска для стен', 'водоэмульсионная краска', 'латексная краска'],
+  'vodoemiulsiyni-fasadni':    ['фасадная краска', 'краска для фасада'],
+  'farby-dlya-pidlohy':        ['краска для пола', 'напольная краска'],
+  'farby-3v1':                 ['краска 3 в 1', 'грунт-краска', 'краска по ржавчине'],
+  'koloranty':                 ['колорант', 'краситель для краски'],
+  'laky':                      ['лак для дерева', 'акриловый лак'],
+  'morylky':                   ['морилка', 'тонирующая пропитка'],
+  'rozchynnyky':               ['растворитель', 'уайт-спирит'],
+  'farby':                     ['краска строительная', 'лакокрасочные материалы'],
+  'antyseptyki':               ['антисептик для дерева', 'защита дерева', 'пропитка для дерева'],
+  'zakhysni-pokryttya':        ['защитное покрытие для дерева', 'масло для дерева'],
+  'zakhyst-derevyny':          ['защита древесины', 'пропитка для дерева'],
+  'malyarna-strichka':         ['малярная лента', 'малярный скотч'],
+  'hermetyzuyucha-strichka':   ['герметизирующая лента', 'бутиловая лента'],
+  'zvukoizolyatsiyna-strichka':['звукоизоляционная лента', 'демпферная лента'],
+  'strichka-dlya-shviv':       ['серпянка', 'армирующая лента'],
+  'strichky':                  ['строительная лента'],
+  'pistolety-dlya-piny':       ['пистолет для пены', 'монтажный пистолет'],
+  'pistolety':                 ['пистолет для пены и герметика'],
+  'kysti-ta-valy':             ['малярный валик', 'малярная кисть'],
+  'shpateli':                  ['шпатель', 'кельма строительная'],
+  'shlifuvalny':               ['шлифовальный круг', 'отрезной круг', 'диск для болгарки'],
+  'dyubeli-ta-ankery':         ['дюбель', 'анкер', 'крепеж'],
+  'shurupy-ta-samorizy':       ['шуруп', 'саморез', 'крепеж строительный'],
+  'zamazky-epoksydni':         ['эпоксидная затирка', 'затирка для плитки'],
+  'zamazky-tsementni':         ['цементная затирка', 'фуга для плитки'],
+  'zamazky-dlya-shviv':        ['затирка для плитки', 'фуга', 'шовная масса'],
+  'plastyfikatory-dlya-betonu':['пластификатор для бетона', 'добавка в бетон'],
+  'plastyfikatory':            ['пластификатор строительный'],
+  'vologopoglinachi':          ['влагопоглотитель', 'осушитель воздуха'],
+};
+
 // ── Category → keyword templates ─────────────────────────────────────────────
 const CATEGORY_KEYWORDS = {
   'sylikonovi-germetyky':      ['герметик силіконовий', 'силіконовий герметик', 'герметизація', 'ущільнення швів'],
@@ -145,13 +213,18 @@ function generateKeywords(product, chars, catName) {
     parts.add(`${catKws[0] ?? nameClean} ${product.volume}`);
   }
 
-  // General buying intent
+  // General buying intent (Ukrainian)
   parts.add(`купити ${catKws[0] ?? nameClean}`);
   parts.add(`${catKws[0] ?? nameClean} оптом`);
   parts.add(`${nameClean.toLowerCase()}`);
 
-  // Cap at 8 keywords, join
-  return [...parts].filter(Boolean).slice(0, 8).join(', ');
+  // Russian synonyms (2-3 most important)
+  const ruKws = CATEGORY_KEYWORDS_RU[product.category_slug] ?? [];
+  ruKws.slice(0, 2).forEach(k => parts.add(k));
+  if (ruKws[0]) parts.add(`купить ${ruKws[0]}`);
+
+  // Cap at 12 keywords, join
+  return [...parts].filter(Boolean).slice(0, 12).join(', ');
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
