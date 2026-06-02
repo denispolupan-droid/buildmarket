@@ -13,7 +13,7 @@
   padding: 20px; display: flex; flex-direction: column;
 }
 .product-gallery__main {
-  height: 380px; flex-shrink: 0; background: var(--bg-soft); border-radius: 14px;
+  height: 380px; flex-shrink: 0; background: #fff; border-radius: 14px;
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 16px; position: relative; overflow: hidden;
 }
