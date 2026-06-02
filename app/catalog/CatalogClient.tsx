@@ -155,6 +155,20 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const cartMet       = cartTotal >= WHOLESALE_MIN;
   const cartRemaining = WHOLESALE_MIN - cartTotal;
 
+  const prevCartTotalRef = useRef<number>(-1);
+  const flashTimeoutRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [cartFlash, setCartFlash] = useState(false);
+  useEffect(() => {
+    if (prevCartTotalRef.current === -1) { prevCartTotalRef.current = cartTotal; return; }
+    if (cartTotal !== prevCartTotalRef.current) {
+      prevCartTotalRef.current = cartTotal;
+      if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+      setCartFlash(true);
+      flashTimeoutRef.current = setTimeout(() => setCartFlash(false), 900);
+    }
+  }, [cartTotal]);
+
+
   const parentCats = useMemo(() => categories.filter(c => !c.parent_slug), [categories]);
   const childrenOf = useMemo(() => {
     const map: Record<string, Category[]> = {};
@@ -947,7 +961,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
         );
       })()}
       {isWholesale && (
-        <a href="/cart" className="wholesale-float-bar">
+        <a href="/cart" className={`wholesale-float-bar${cartFlash ? ' flash' : ''}`}>
+          <span className="wholesale-float-label">мін. замовлення</span>
           <div className="wholesale-float-track">
             <div className="wholesale-float-fill" style={{
               width: `${cartPct}%`,
