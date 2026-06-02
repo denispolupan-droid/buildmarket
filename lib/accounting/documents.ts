@@ -340,23 +340,28 @@ async function assertNoDependencies(
     }
   }
 
-  // ── 2. ПН / stock_in — перевірити чи продані FIFO-партії ────────────────
+  // ── 2. ПН / stock_in — перевірити чи є достатньо доступного залишку ────────
+  // Перевіряємо qty_available, а не remaining_qty батчу, бо сторно продажів
+  // створює нові батчі замість відновлення старих — net-залишок при цьому коректний.
   if (doc.doc_type === 'receipt' || doc.doc_type === 'stock_in') {
-    const { data: batches } = await db
-      .from('stock_batches')
-      .select('sku, initial_qty, remaining_qty')
-      .eq('document_id', id);
-
-    const consumed = (batches ?? []).filter(
-      b => Number(b.remaining_qty) < Number(b.initial_qty) - 0.001,
-    );
-
-    if (consumed.length > 0) {
-      const skus = consumed
-        .map(b => `${b.sku} (залишок ${b.remaining_qty} з ${b.initial_qty})`)
-        .join(', ');
+    const insufficient: string[] = [];
+    for (const line of doc.lines ?? []) {
+      const whId = line.warehouse_id ?? doc.warehouse_id;
+      const { data: bal } = await db
+        .from('stock_balance')
+        .select('qty_available')
+        .eq('sku', line.sku)
+        .eq('warehouse_id', whId)
+        .maybeSingle();
+      const available = Number(bal?.qty_available ?? 0);
+      const needed    = Number(line.qty);
+      if (available < needed - 0.001) {
+        insufficient.push(`${line.sku} (доступно ${available}, потрібно ${needed})`);
+      }
+    }
+    if (insufficient.length > 0) {
       throw new Error(
-        `Неможливо сторнувати прихід: товар уже відпущено зі складу — ${skus}. ` +
+        `Неможливо сторнувати прихід: недостатньо залишку — ${insufficient.join(', ')}. ` +
         `Спочатку сторнуйте пов'язані продажі або переміщення.`,
       );
     }
