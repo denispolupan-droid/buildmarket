@@ -73,7 +73,7 @@
 /* Floating progress pill — frosted glass, unobtrusive */
 .wholesale-float-bar {
   position: fixed; bottom: 20px; left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(10px);
   z-index: 98; display: flex; align-items: center; gap: 10px;
   height: 34px; padding: 0 14px; white-space: nowrap; text-decoration: none;
   background: rgba(255, 255, 255, 0.82);
@@ -81,11 +81,12 @@
   border: 1px solid rgba(0, 0, 0, 0.11);
   border-radius: 17px;
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.11);
-  opacity: 0.75;
-  transition: opacity 0.2s ease;
-  animation: wfb-in 0.25s ease;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
-.wholesale-float-bar:hover { opacity: 1; }
+.wholesale-float-bar.entered { opacity: 0.75; transform: translateX(-50%) translateY(0); }
+.wholesale-float-bar.entered:hover { opacity: 1; }
+.wholesale-float-bar.entered.flash { opacity: 1; transition: opacity 0s, transform 0.25s ease; }
 [data-theme="dark"] .wholesale-float-bar {
   background: rgba(28, 32, 46, 0.82);
   border-color: rgba(255, 255, 255, 0.13);
@@ -97,16 +98,10 @@
 .wholesale-float-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease, background-color 0.4s ease; }
 .wholesale-float-amount { font-size: 11.5px; color: var(--text-secondary); }
 .wholesale-float-amount strong { font-weight: 700; color: var(--text-primary); }
-.wholesale-float-bar.flash { animation: wfb-flash 0.9s ease forwards; }
-@keyframes wfb-in {
-  from { transform: translateX(-50%) translateY(16px); opacity: 0; }
-  to   { transform: translateX(-50%) translateY(0);   opacity: 0.75; }
-}
-@keyframes wfb-flash {
-  0%, 55% { opacity: 1; }
-  100%    { opacity: 0.75; }
-}
 @media (max-width: 768px) { .wholesale-float-bar { display: none; } }
+
+/* Sidebar filters — padding-top prevents border-radius clipping when scrolled to top */
+.sidebar-filters-section { padding-top: 6px; }
 
 .action-btn {
   display: inline-flex; align-items: center; gap: 6px;

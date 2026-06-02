@@ -164,6 +164,15 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     return () => obs.disconnect();
   }, [isWholesale]);
 
+  const [pillEntered, setPillEntered] = useState(false);
+  useEffect(() => {
+    if (!badgeVisible && isWholesale) {
+      const t = setTimeout(() => setPillEntered(true), 20);
+      return () => clearTimeout(t);
+    }
+    setPillEntered(false);
+  }, [badgeVisible, isWholesale]);
+
   const prevCartTotalRef = useRef<number>(-1);
   const flashTimeoutRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [cartFlash, setCartFlash] = useState(false);
@@ -970,7 +979,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
         );
       })()}
       {isWholesale && !badgeVisible && (
-        <a href="/cart" className={`wholesale-float-bar${cartFlash ? ' flash' : ''}`}>
+        <a href="/cart" className={`wholesale-float-bar${pillEntered ? ' entered' : ''}${cartFlash ? ' flash' : ''}`}>
           <span className="wholesale-float-label">мін. замовлення</span>
           <div className="wholesale-float-track">
             <div className="wholesale-float-fill" style={{
