@@ -368,21 +368,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
           })()}
         </nav>
 
-        {isWholesale && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '10px',
-            padding: '7px 14px', margin: '6px 0 0',
-            background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '8px',
-            fontSize: '12px', color: '#1E40AF',
-          }}>
-            <span style={{ fontSize: '16px' }}>ℹ️</span>
-            <span>
-              Мінімальна сума оптового замовлення — <strong>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong>.
-              Перевірити поточну суму можна у{' '}
-              <a href="/cart" style={{ color: '#1E3A5F', fontWeight: 700 }}>кошику</a>.
-            </span>
-          </div>
-        )}
 
         <div className="catalog-page">
 
@@ -546,6 +531,14 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 </h1>
                 <p className="catalog-count">{filtered.length} товарів</p>
               </div>
+              {isWholesale && (
+                <a href="/cart" style={{
+                  fontSize: '12px', color: 'var(--text-secondary)', textDecoration: 'none',
+                  whiteSpace: 'nowrap', alignSelf: 'center',
+                }}>
+                  мін. замовлення — <strong style={{ color: 'var(--text)' }}>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong>
+                </a>
+              )}
               <div className="catalog-actions">
                 {/* Mobile only: two panel buttons */}
                 <button

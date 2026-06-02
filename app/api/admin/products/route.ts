@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -184,6 +185,9 @@ export async function PUT(req: NextRequest) {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  revalidateTag('products', 'max');
   return NextResponse.json({ ok: true });
 }
 
@@ -206,6 +210,9 @@ export async function PATCH(req: NextRequest) {
 
   const { error } = await serviceClient.from('products').update(update).eq('sku', sku);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  revalidateTag('products', 'max');
   return NextResponse.json({ ok: true });
 }
 
@@ -237,5 +244,8 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  revalidateTag('products', 'max');
   return NextResponse.json({ ok: true });
 }
