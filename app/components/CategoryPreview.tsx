@@ -234,7 +234,6 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
                 {priceUnit > 0 ? <span style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{priceUnit} грн</span> : <span style={{ fontSize: '13px', color: '#94A3B8' }}>За запитом</span>}
               </div>
               {inStock && <div style={{ fontSize: '11px', color: '#15803D', fontWeight: 600 }}>● в наявності</div>}
-              {!isRetail && <div style={{ fontSize: '11px', color: '#64748B' }}>Уп: {product.pack_qty} шт</div>}
             </div>
           </div>
 
