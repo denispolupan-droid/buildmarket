@@ -230,7 +230,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
                 {isSale && <span style={{ display: 'inline-block', background: '#EF4444', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '5px', marginBottom: '2px' }}>−{discount}%</span>}
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px', justifyContent: 'flex-end' }}>
                   {isSale && priceOld && <span style={{ fontSize: '11px', color: '#EF4444', textDecoration: 'line-through', fontWeight: 600 }}>{priceOld}</span>}
-                  {priceUnit > 0 ? <span style={{ fontSize: '25px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{priceUnit} грн</span> : <span style={{ fontSize: '13px', color: '#94A3B8' }}>За запитом</span>}
+                  {priceUnit > 0 ? <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{priceUnit} грн</span> : <span style={{ fontSize: '13px', color: '#94A3B8' }}>За запитом</span>}
                 </div>
               </div>
               {inStock && <div style={{ fontSize: '11px', color: '#15803D', fontWeight: 600 }}>● в наявності</div>}
