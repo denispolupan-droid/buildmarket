@@ -147,7 +147,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const [quantities,    setQuantities]    = useState<Record<string, number>>({});
   const [inputVals,     setInputVals]     = useState<Record<string, string>>({});
   const [added,         setAdded]         = useState<Record<string, boolean>>({});
-  const { addItem, items: cartItems } = useCart();
+  const { addItem, items: cartItems, totalPrice: cartTotal } = useCart();
   const { toggle, isLiked } = useWishlist();
   const inCartSkus = useMemo(() => new Set(cartItems.map(i => i.sku)), [cartItems]);
 
@@ -531,11 +531,29 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 </h1>
                 <p className="catalog-count">{filtered.length} товарів</p>
               </div>
-              {isWholesale && (
-                <a href="/cart" className="wholesale-min-badge">
-                  мін. замовлення —&nbsp;<strong>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong>
-                </a>
-              )}
+              {isWholesale && (() => {
+                const pct = Math.min(100, Math.round((cartTotal / WHOLESALE_MIN) * 100));
+                const met = cartTotal >= WHOLESALE_MIN;
+                const remaining = WHOLESALE_MIN - cartTotal;
+                return (
+                  <a href="/cart" className={`wholesale-min-badge${met ? ' wholesale-min-met' : ''}`}>
+                    <div className="wholesale-min-row">
+                      <span>Мінімальне замовлення — <strong>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong></span>
+                      {cartTotal > 0 && (
+                        <span className="wholesale-min-status">
+                          {met
+                            ? 'виконано ✓'
+                            : <>У кошику: <strong>{cartTotal.toLocaleString('uk-UA')} ₴</strong>&nbsp;·&nbsp;ще <strong>{remaining.toLocaleString('uk-UA')} ₴</strong></>
+                          }
+                        </span>
+                      )}
+                    </div>
+                    <div className="wholesale-min-track">
+                      <div className="wholesale-min-fill" style={{ width: `${pct}%` }} />
+                    </div>
+                  </a>
+                );
+              })()}
               <div className="catalog-actions">
                 {/* Mobile only: two panel buttons */}
                 <button
