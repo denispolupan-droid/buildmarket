@@ -158,11 +158,11 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const badgeRef = useRef<HTMLAnchorElement>(null);
   const [badgeVisible, setBadgeVisible] = useState(true);
   useEffect(() => {
-    if (!badgeRef.current) return;
+    if (!isWholesale || !badgeRef.current) return;
     const obs = new IntersectionObserver(([e]) => setBadgeVisible(e.isIntersecting), { threshold: 0 });
     obs.observe(badgeRef.current);
     return () => obs.disconnect();
-  }, []);
+  }, [isWholesale]);
 
   const prevCartTotalRef = useRef<number>(-1);
   const flashTimeoutRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
