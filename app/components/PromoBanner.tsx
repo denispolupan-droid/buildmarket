@@ -27,8 +27,8 @@ export default function PromoBanner() {
         <Link href={href} style={{ color: '#FCD34D', textDecoration: 'underline', textUnderlineOffset: '2px', fontWeight: 800 }}>
           {topBar.label}
         </Link>
-        {' '}—{' '}
-        <span style={{ color: '#FCD34D', fontWeight: 800 }}>−{topBar.discount}</span>{' '}
+        {' '}
+        <span style={{ color: '#FCD34D', fontWeight: 800 }}>{topBar.discount}</span>{' '}
         {topBar.text} {topBar.detail} {topBar.emoji}
       </span>
     </div>

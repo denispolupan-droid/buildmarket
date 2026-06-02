@@ -8,7 +8,7 @@ export const PROMO = {
   topBar: {
     emoji: '☀️',
     label: 'ЛІТНЯ АКЦІЯ',
-    discount: '10%',
+    discount: '−10%',
     text: 'на герметики Ceresit',
     detail: 'до кінця червня',
   },

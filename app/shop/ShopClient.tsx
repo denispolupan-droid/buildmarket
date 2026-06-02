@@ -7,6 +7,7 @@ import SearchAutocomplete from '../components/SearchAutocomplete';
 import ProductImage from '../components/ProductImage';
 import ScrollToTop from '../components/ScrollToTop';
 import { PROMO } from '../promo.config';
+import SalesBanner from '../components/SalesBanner';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
@@ -722,6 +723,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           </div>
         </div>
 
+        <SalesBanner mode="shop" />
         <div className="shop-grid">
           {sorted.length === 0 && (
             <div className="shop-empty">Нічого не знайдено</div>

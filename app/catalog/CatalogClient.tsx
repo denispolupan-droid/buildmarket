@@ -8,6 +8,7 @@ import Link from 'next/link';
 import ProductImage from '../components/ProductImage';
 import ScrollToTop from '../components/ScrollToTop';
 import { PROMO } from '../promo.config';
+import SalesBanner from '../components/SalesBanner';
 import type { ProductFull, Category } from '../../lib/supabase';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
@@ -683,6 +684,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
               </div>
             </div>
 
+
+            <SalesBanner mode="catalog" />
 
             {/* Grid view */}
             {viewMode === 'grid' && (

@@ -9,7 +9,7 @@ type Props = { mode: 'shop' | 'catalog' };
 
 export default function SalesBanner({ mode }: Props) {
   const [visible, setVisible] = useState(false);
-  const { banner } = PROMO;
+  const { banner, topBar } = PROMO;
   const href = mode === 'catalog'
     ? `/catalog?category=${banner.categorySlug}&sale=1`
     : `/shop?category=${banner.categorySlug}&sale=1`;
@@ -28,74 +28,56 @@ export default function SalesBanner({ mode }: Props) {
 
   return (
     <div style={{
-      margin: '10px 0 4px',
-      borderRadius: '12px',
-      background: 'linear-gradient(135deg, #F97316 0%, #FBBF24 100%)',
-      padding: '11px 14px',
-      display: 'flex', alignItems: 'center', gap: '12px',
-      position: 'relative', overflow: 'hidden',
+      margin: '8px 0 2px',
+      borderRadius: '10px',
+      background: '#FFFBEB',
+      border: '1px solid #FDE68A',
+      padding: '8px 12px',
+      display: 'flex', alignItems: 'center', gap: '10px',
     }}>
-      {/* Декоративное солнце */}
-      <div style={{
-        position: 'absolute', right: '-20px', top: '-20px',
-        width: '90px', height: '90px', borderRadius: '50%',
-        background: 'rgba(255,255,255,0.1)', pointerEvents: 'none',
-      }} />
-      <div style={{
-        position: 'absolute', right: '20px', top: '-30px',
-        width: '60px', height: '60px', borderRadius: '50%',
-        background: 'rgba(255,255,255,0.07)', pointerEvents: 'none',
-      }} />
+      <span style={{ fontSize: '18px', flexShrink: 0, lineHeight: 1 }}>☀️</span>
 
-      {/* Иконка */}
-      <span style={{ fontSize: '22px', flexShrink: 0, lineHeight: 1 }}>☀️</span>
-
-      {/* Текст */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span style={{
-            background: 'rgba(255,255,255,0.25)', color: '#fff',
-            fontSize: '10px', fontWeight: 700, letterSpacing: '0.5px',
-            padding: '2px 7px', borderRadius: '20px', textTransform: 'uppercase',
+            background: '#FDE68A', color: '#92400E',
+            fontSize: '10px', fontWeight: 700, letterSpacing: '0.4px',
+            padding: '1px 7px', borderRadius: '20px', textTransform: 'uppercase',
           }}>
             {banner.tag}
           </span>
-          <span style={{ fontSize: '14px', fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>
-            {banner.title}
+          <span style={{ fontSize: '13px', fontWeight: 700, color: '#78350F' }}>
+            {topBar.discount} {topBar.text}
           </span>
         </div>
-        <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.3 }}>
+        <p style={{ margin: '1px 0 0', fontSize: '11px', color: '#A16207', lineHeight: 1.3 }}>
           {banner.subtitle}
         </p>
       </div>
 
-      {/* CTA */}
       <Link
         href={href}
         style={{
           flexShrink: 0,
-          background: 'rgba(255,255,255,0.2)',
-          border: '1px solid rgba(255,255,255,0.4)',
-          color: '#fff', fontSize: '12px', fontWeight: 700,
-          padding: '6px 12px', borderRadius: '8px', textDecoration: 'none',
-          whiteSpace: 'nowrap', backdropFilter: 'blur(4px)',
+          background: '#F59E0B', color: '#fff',
+          fontSize: '11.5px', fontWeight: 700,
+          padding: '5px 11px', borderRadius: '7px', textDecoration: 'none',
+          whiteSpace: 'nowrap',
         }}
       >
         {banner.ctaText} →
       </Link>
 
-      {/* Закрыть */}
       <button
         onClick={dismiss}
         style={{
-          flexShrink: 0, background: 'rgba(255,255,255,0.15)',
-          border: 'none', borderRadius: '6px', cursor: 'pointer',
-          color: 'rgba(255,255,255,0.8)', padding: '4px', display: 'flex',
-          alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0, background: 'none', border: 'none',
+          cursor: 'pointer', color: '#D97706', padding: '2px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.7,
         }}
         title="Закрити"
       >
-        <X size={14} strokeWidth={2.5} />
+        <X size={13} strokeWidth={2.5} />
       </button>
     </div>
   );
