@@ -955,18 +955,20 @@ export default function CatalogClient({ products, categories, initialSearch = ''
         );
       })()}
       {isWholesale && !badgeVisible && (
-        <div className={`wholesale-float-bar${cartMet ? ' met' : ''}`}>
-          <span className="wholesale-float-label">Мінімальне замовлення</span>
+        <a href="/cart" className="wholesale-float-bar">
           <div className="wholesale-float-track">
-            <div className="wholesale-float-fill" style={{ width: `${cartPct}%` }} />
+            <div className="wholesale-float-fill" style={{
+              width: `${cartPct}%`,
+              backgroundColor: `hsl(${Math.round(cartPct * 1.2)}, 72%, 44%)`,
+            }} />
           </div>
-          <a href="/cart" className="wholesale-float-amount">
+          <span className="wholesale-float-amount">
             {cartMet
-              ? '✓ виконано'
-              : <>{cartTotal.toLocaleString('uk-UA')} / <strong>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong></>
+              ? <span style={{ color: '#16A34A', fontWeight: 600 }}>✓</span>
+              : <>{cartTotal.toLocaleString('uk-UA')} / <strong>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong></>
             }
-          </a>
-        </div>
+          </span>
+        </a>
       )}
       <ScrollToTop />
     </>
