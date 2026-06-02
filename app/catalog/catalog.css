@@ -69,6 +69,31 @@
 [data-theme="dark"] .wholesale-min-track { background: #3D2E05; }
 [data-theme="dark"] .wholesale-min-fill { background: #D97706; }
 [data-theme="dark"] .wholesale-min-met .wholesale-min-fill { background: #16A34A; }
+
+/* Sticky bottom progress bar — appears when top badge scrolls out of view */
+.wholesale-float-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 98;
+  display: flex; align-items: center; gap: 14px;
+  height: 40px; padding: 0 20px; padding-right: 130px;
+  background: var(--bg-card); border-top: 1px solid var(--border);
+  animation: wfb-slide-up 0.22s ease;
+}
+.wholesale-float-bar.met { border-top-color: #86EFAC; }
+[data-theme="dark"] .wholesale-float-bar.met { border-top-color: #166534; }
+.wholesale-float-label { font-size: 12px; color: var(--text-secondary); white-space: nowrap; flex-shrink: 0; }
+.wholesale-float-track { flex: 1; max-width: 260px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.wholesale-float-fill { height: 100%; background: #F59E0B; border-radius: 2px; transition: width 0.4s ease; }
+.wholesale-float-bar.met .wholesale-float-fill { background: #22C55E; }
+[data-theme="dark"] .wholesale-float-fill { background: #D97706; }
+[data-theme="dark"] .wholesale-float-bar.met .wholesale-float-fill { background: #16A34A; }
+.wholesale-float-amount { font-size: 12px; color: var(--text-secondary); white-space: nowrap; text-decoration: none; flex-shrink: 0; }
+.wholesale-float-amount:hover { color: var(--text-primary); }
+.wholesale-float-amount strong { font-weight: 700; color: var(--text-primary); }
+.wholesale-float-bar.met .wholesale-float-amount { color: #16A34A; font-weight: 600; }
+[data-theme="dark"] .wholesale-float-bar.met .wholesale-float-amount { color: #4ADE80; }
+@keyframes wfb-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@media (max-width: 768px) { .wholesale-float-bar { display: none; } }
+
 .action-btn {
   display: inline-flex; align-items: center; gap: 6px;
   height: 36px; padding: 0 14px; border-radius: 8px;

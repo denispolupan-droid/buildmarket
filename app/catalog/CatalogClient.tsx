@@ -151,6 +151,19 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const { toggle, isLiked } = useWishlist();
   const inCartSkus = useMemo(() => new Set(cartItems.map(i => i.sku)), [cartItems]);
 
+  const cartPct       = Math.min(100, Math.round((cartTotal / WHOLESALE_MIN) * 100));
+  const cartMet       = cartTotal >= WHOLESALE_MIN;
+  const cartRemaining = WHOLESALE_MIN - cartTotal;
+
+  const badgeRef = useRef<HTMLAnchorElement>(null);
+  const [badgeVisible, setBadgeVisible] = useState(true);
+  useEffect(() => {
+    if (!isWholesale || !badgeRef.current) return;
+    const obs = new IntersectionObserver(([e]) => setBadgeVisible(e.isIntersecting), { threshold: 0 });
+    obs.observe(badgeRef.current);
+    return () => obs.disconnect();
+  }, [isWholesale]);
+
   const parentCats = useMemo(() => categories.filter(c => !c.parent_slug), [categories]);
   const childrenOf = useMemo(() => {
     const map: Record<string, Category[]> = {};
@@ -531,29 +544,24 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 </h1>
                 <p className="catalog-count">{filtered.length} товарів</p>
               </div>
-              {isWholesale && (() => {
-                const pct = Math.min(100, Math.round((cartTotal / WHOLESALE_MIN) * 100));
-                const met = cartTotal >= WHOLESALE_MIN;
-                const remaining = WHOLESALE_MIN - cartTotal;
-                return (
-                  <a href="/cart" className={`wholesale-min-badge${met ? ' wholesale-min-met' : ''}`}>
-                    <div className="wholesale-min-row">
-                      <span>Мінімальне замовлення — <strong>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong></span>
-                      {cartTotal > 0 && (
-                        <span className="wholesale-min-status">
-                          {met
-                            ? 'виконано ✓'
-                            : <>У кошику: <strong>{cartTotal.toLocaleString('uk-UA')} ₴</strong>&nbsp;·&nbsp;ще <strong>{remaining.toLocaleString('uk-UA')} ₴</strong></>
-                          }
-                        </span>
-                      )}
-                    </div>
-                    <div className="wholesale-min-track">
-                      <div className="wholesale-min-fill" style={{ width: `${pct}%` }} />
-                    </div>
-                  </a>
-                );
-              })()}
+              {isWholesale && (
+                <a ref={badgeRef} href="/cart" className={`wholesale-min-badge${cartMet ? ' wholesale-min-met' : ''}`}>
+                  <div className="wholesale-min-row">
+                    <span>Мінімальне замовлення — <strong>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong></span>
+                    {cartTotal > 0 && (
+                      <span className="wholesale-min-status">
+                        {cartMet
+                          ? 'виконано ✓'
+                          : <>У кошику: <strong>{cartTotal.toLocaleString('uk-UA')} ₴</strong>&nbsp;·&nbsp;ще <strong>{cartRemaining.toLocaleString('uk-UA')} ₴</strong></>
+                        }
+                      </span>
+                    )}
+                  </div>
+                  <div className="wholesale-min-track">
+                    <div className="wholesale-min-fill" style={{ width: `${cartPct}%` }} />
+                  </div>
+                </a>
+              )}
               <div className="catalog-actions">
                 {/* Mobile only: two panel buttons */}
                 <button
@@ -946,6 +954,20 @@ export default function CatalogClient({ products, categories, initialSearch = ''
           </div>
         );
       })()}
+      {isWholesale && !badgeVisible && (
+        <div className={`wholesale-float-bar${cartMet ? ' met' : ''}`}>
+          <span className="wholesale-float-label">Мінімальне замовлення</span>
+          <div className="wholesale-float-track">
+            <div className="wholesale-float-fill" style={{ width: `${cartPct}%` }} />
+          </div>
+          <a href="/cart" className="wholesale-float-amount">
+            {cartMet
+              ? '✓ виконано'
+              : <>{cartTotal.toLocaleString('uk-UA')} / <strong>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong></>
+            }
+          </a>
+        </div>
+      )}
       <ScrollToTop />
     </>
   );
