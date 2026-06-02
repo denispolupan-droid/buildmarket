@@ -631,11 +631,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             <div className="shop-title">{saleOnly ? 'Акційні товари' : 'Магазин'}</div>
             <span className="shop-count">{filtered.length} товарів</span>
           </div>
-          {PROMO.banner.active && !saleOnly && (
-            <Link href={`/shop?category=${PROMO.banner.categorySlug}&sale=1`} className="promo-chip">
-              ☀️ <strong>−{PROMO.topBar.discount}</strong>&nbsp;{PROMO.topBar.text}
-            </Link>
-          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               className={'shop-mobile-filter-btn' + (mobilePanel === 'cats' ? ' active' : '')}

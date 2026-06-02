@@ -563,11 +563,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 </h1>
                 <p className="catalog-count">{filtered.length} товарів</p>
               </div>
-              {!isWholesale && PROMO.banner.active && !saleOnly && (
-                <Link href={`/catalog?category=${PROMO.banner.categorySlug}&sale=1`} className="promo-chip">
-                  ☀️ <strong>−{PROMO.topBar.discount}</strong>&nbsp;{PROMO.topBar.text}
-                </Link>
-              )}
               {isWholesale && (
                 <a ref={badgeRef} href="/cart" className={`wholesale-min-badge${cartMet ? ' wholesale-min-met' : ''}`}>
                   <div className="wholesale-min-row">
