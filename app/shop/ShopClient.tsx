@@ -195,19 +195,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const filtersRef  = useRef<HTMLDivElement>(null);
   const pillsRef = useRef<HTMLDivElement>(null);
   const prevSelCat = useRef<string | null>(initialCategory ?? null);
-  const [showScrollHint, setShowScrollHint] = useState(false);
-
-  useEffect(() => {
-    const sidebar = sidebarRef.current;
-    if (!sidebar) return;
-    const check = () => {
-      setShowScrollHint(sidebar.scrollTop < sidebar.scrollHeight - sidebar.clientHeight - 40);
-    };
-    check();
-    sidebar.addEventListener('scroll', check, { passive: true });
-    window.addEventListener('resize', check, { passive: true });
-    return () => { sidebar.removeEventListener('scroll', check); window.removeEventListener('resize', check); };
-  }, []);
 
   useEffect(() => {
     const sidebar = sidebarRef.current;
@@ -616,11 +603,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         </label>
         </div>{/* end sidebar-filters-section */}
 
-        {showScrollHint && (
-          <div style={{ position: 'sticky', bottom: 0, display: 'flex', justifyContent: 'center', paddingBottom: '8px', pointerEvents: 'none', background: 'linear-gradient(transparent, var(--bg-card) 60%)', zIndex: 2 }}>
-            <span style={{ fontSize: '18px', opacity: 0.4, animation: 'hint-bounce 1.6s ease-in-out infinite' }}>↓</span>
-          </div>
-        )}
 
       </aside>
 
