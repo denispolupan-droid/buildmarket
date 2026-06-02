@@ -155,6 +155,15 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const cartMet       = cartTotal >= WHOLESALE_MIN;
   const cartRemaining = WHOLESALE_MIN - cartTotal;
 
+  const badgeRef = useRef<HTMLAnchorElement>(null);
+  const [badgeVisible, setBadgeVisible] = useState(true);
+  useEffect(() => {
+    if (!badgeRef.current) return;
+    const obs = new IntersectionObserver(([e]) => setBadgeVisible(e.isIntersecting), { threshold: 0 });
+    obs.observe(badgeRef.current);
+    return () => obs.disconnect();
+  }, []);
+
   const prevCartTotalRef = useRef<number>(-1);
   const flashTimeoutRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [cartFlash, setCartFlash] = useState(false);
@@ -551,7 +560,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 <p className="catalog-count">{filtered.length} товарів</p>
               </div>
               {isWholesale && (
-                <a href="/cart" className={`wholesale-min-badge${cartMet ? ' wholesale-min-met' : ''}`}>
+                <a ref={badgeRef} href="/cart" className={`wholesale-min-badge${cartMet ? ' wholesale-min-met' : ''}`}>
                   <div className="wholesale-min-row">
                     <span>Мінімальне замовлення — <strong>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong></span>
                     {cartTotal > 0 && (
@@ -960,7 +969,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
           </div>
         );
       })()}
-      {isWholesale && (
+      {isWholesale && !badgeVisible && (
         <a href="/cart" className={`wholesale-float-bar${cartFlash ? ' flash' : ''}`}>
           <span className="wholesale-float-label">мін. замовлення</span>
           <div className="wholesale-float-track">
