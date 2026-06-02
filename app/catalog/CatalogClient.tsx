@@ -532,11 +532,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 <p className="catalog-count">{filtered.length} товарів</p>
               </div>
               {isWholesale && (
-                <a href="/cart" style={{
-                  fontSize: '12px', color: 'var(--text-secondary)', textDecoration: 'none',
-                  whiteSpace: 'nowrap', alignSelf: 'center',
-                }}>
-                  мін. замовлення — <strong style={{ color: 'var(--text)' }}>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong>
+                <a href="/cart" className="wholesale-min-badge">
+                  мін. замовлення —&nbsp;<strong>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong>
                 </a>
               )}
               <div className="catalog-actions">
