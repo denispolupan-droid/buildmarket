@@ -6,6 +6,7 @@ import { Plus, Minus, Heart, ChevronDown, ChevronUp, Check, SlidersHorizontal, L
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import ProductImage from '../components/ProductImage';
 import ScrollToTop from '../components/ScrollToTop';
+import SalesBanner from '../components/SalesBanner';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
@@ -715,6 +716,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           })}
           </div>
         </div>
+
+        <SalesBanner mode="shop" />
 
         <div className="shop-grid">
           {sorted.length === 0 && (
