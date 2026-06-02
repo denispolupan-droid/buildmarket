@@ -31,15 +31,13 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const [showScrollHint, setShowScrollHint] = useState(false);
 
   useEffect(() => {
-    const sidebar = sidebarRef.current;
-    if (!sidebar) return;
-    const check = () => {
-      setShowScrollHint(sidebar.scrollTop < sidebar.scrollHeight - sidebar.clientHeight - 40);
-    };
+    const el = catsListRef.current;
+    if (!el) return;
+    const check = () => setShowScrollHint(el.scrollTop < el.scrollHeight - el.clientHeight - 4);
     check();
-    sidebar.addEventListener('scroll', check, { passive: true });
+    el.addEventListener('scroll', check, { passive: true });
     window.addEventListener('resize', check, { passive: true });
-    return () => { sidebar.removeEventListener('scroll', check); window.removeEventListener('resize', check); };
+    return () => { el.removeEventListener('scroll', check); window.removeEventListener('resize', check); };
   }, []);
 
   useEffect(() => {
@@ -480,6 +478,11 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                     </div>
                   );
                 })}
+                {showScrollHint && (
+                  <div style={{ position: 'sticky', bottom: 0, left: 0, right: 0, display: 'flex', justifyContent: 'center', paddingBottom: '6px', pointerEvents: 'none', background: 'linear-gradient(transparent, var(--bg-card) 55%)', zIndex: 2 }}>
+                    <span style={{ fontSize: '16px', opacity: 0.35, animation: 'hint-bounce 1.6s ease-in-out infinite' }}>↓</span>
+                  </div>
+                )}
               </div>
               {parentCats.length > 10 && (
                 <button
@@ -547,12 +550,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
             </div>
             </div>{/* end sidebar-filters-section */}
 
-            {/* Scroll hint arrow */}
-            {showScrollHint && (
-              <div style={{ position: 'sticky', bottom: 0, left: 0, right: 0, display: 'flex', justifyContent: 'center', paddingBottom: '8px', pointerEvents: 'none', background: 'linear-gradient(transparent, var(--bg-card) 60%)', zIndex: 2 }}>
-                <span style={{ fontSize: '18px', opacity: 0.4, animation: 'hint-bounce 1.6s ease-in-out infinite' }}>↓</span>
-              </div>
-            )}
 
           
           </aside>

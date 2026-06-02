@@ -100,8 +100,6 @@
 .wholesale-float-amount strong { font-weight: 700; color: var(--text-primary); }
 @media (max-width: 768px) { .wholesale-float-bar { display: none; } }
 
-/* Sidebar filters — padding-top prevents border-radius clipping when scrolled to top */
-.sidebar-filters-section { padding-top: 6px; }
 
 .action-btn {
   display: inline-flex; align-items: center; gap: 6px;
