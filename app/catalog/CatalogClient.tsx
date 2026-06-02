@@ -522,20 +522,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
               </div>
             )}
 
-          {isWholesale && (
-            <a href="/cart" className="wholesale-sidebar-bar">
-              <div className="wholesale-sidebar-track">
-                <div className="wholesale-sidebar-fill" style={{
-                  width: `${cartPct}%`,
-                  backgroundColor: `hsl(${Math.round(cartPct * 1.2)}, 72%, 44%)`,
-                }} />
-              </div>
-              <div className="wholesale-sidebar-info">
-                <span>мін. замовлення</span>
-                <strong>{cartMet ? '✓' : `${cartTotal.toLocaleString('uk-UA')} ₴`}</strong>
-              </div>
-            </a>
-          )}
+          
           </aside>
 
           {/* Main */}
@@ -959,6 +946,22 @@ export default function CatalogClient({ products, categories, initialSearch = ''
           </div>
         );
       })()}
+      {isWholesale && (
+        <a href="/cart" className="wholesale-float-bar">
+          <div className="wholesale-float-track">
+            <div className="wholesale-float-fill" style={{
+              width: `${cartPct}%`,
+              backgroundColor: `hsl(${Math.round(cartPct * 1.2)}, 72%, 44%)`,
+            }} />
+          </div>
+          <span className="wholesale-float-amount">
+            {cartMet
+              ? <span style={{ color: '#16A34A', fontWeight: 600 }}>✓</span>
+              : <>{cartTotal.toLocaleString('uk-UA')} / <strong>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong></>
+            }
+          </span>
+        </a>
+      )}
       <ScrollToTop />
     </>
   );
