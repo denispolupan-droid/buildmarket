@@ -233,7 +233,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
           </div>
 
           {/* Фото товару */}
-          <Link href={prodHref(product.sku)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 24px', background: '#fff', margin: '0 0 0 0' }}>
+          <Link href={prodHref(product.sku)} style={{ height: '170px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 24px', background: '#fff', overflow: 'hidden' }}>
             <ProductImage brand={product.brand} nl1={product.nl1 ?? ''} nl2={product.nl2 ?? undefined} volume={product.volume ?? ''} bc={product.bc} ac={product.ac} type={product.img_type} imageUrl={product.image ?? undefined} />
           </Link>
 
