@@ -72,14 +72,16 @@
 
 /* Sticky bottom progress bar — appears when top badge scrolls out of view */
 .wholesale-float-bar {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 98;
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 98;
   display: flex; align-items: center; gap: 14px;
-  height: 40px; padding: 0 20px; padding-right: 130px;
-  background: var(--bg-card); border-top: 1px solid var(--border);
+  height: 40px; padding: 0 18px; white-space: nowrap;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
   animation: wfb-slide-up 0.22s ease;
 }
-.wholesale-float-bar.met { border-top-color: #86EFAC; }
-[data-theme="dark"] .wholesale-float-bar.met { border-top-color: #166534; }
+.wholesale-float-bar.met { border-color: #86EFAC; }
+[data-theme="dark"] .wholesale-float-bar.met { border-color: #166534; }
+[data-theme="dark"] .wholesale-float-bar { box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
 .wholesale-float-label { font-size: 12px; color: var(--text-secondary); white-space: nowrap; flex-shrink: 0; }
 .wholesale-float-track { flex: 1; max-width: 260px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
 .wholesale-float-fill { height: 100%; background: #F59E0B; border-radius: 2px; transition: width 0.4s ease; }
