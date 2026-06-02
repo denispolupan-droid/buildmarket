@@ -489,28 +489,20 @@ export default function CatalogClient({ products, categories, initialSearch = ''
               )}
             </div>
 
-            <button
-              className="sidebar-filters-hint"
-              onClick={() => {
-                const s = sidebarRef.current, f = filtersRef.current;
-                if (s && f) s.scrollBy({ top: f.getBoundingClientRect().top - s.getBoundingClientRect().top - 16, behavior: 'smooth' });
-              }}
-            >
-              <SlidersHorizontal size={12} strokeWidth={2} />
-              <span>Фільтри</span>
-              {activeFilterCount > 0 && <span className="sidebar-filter-badge">{activeFilterCount}</span>}
-            </button>
-
             <div className="sidebar-filters-section">
-            <hr className="sidebar-divider" />
-
             {/* Filters */}
             <div ref={filtersRef} className="sidebar-section">
-              <div className="sidebar-heading" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <SlidersHorizontal size={13} strokeWidth={2} />
+              <button
+                className="sidebar-section-divider"
+                onClick={() => {
+                  const s = sidebarRef.current, f = filtersRef.current;
+                  if (s && f) s.scrollBy({ top: f.getBoundingClientRect().top - s.getBoundingClientRect().top - 16, behavior: 'smooth' });
+                }}
+              >
+                <SlidersHorizontal size={12} strokeWidth={2} />
                 Фільтри
                 {activeFilterCount > 0 && <span className="sidebar-filter-badge">{activeFilterCount}</span>}
-              </div>
+              </button>
 
               {volumesL.length > 1 && (
                 <div className="filter-group">

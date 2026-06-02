@@ -548,25 +548,18 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         )}
 
         </div>{/* end sidebar-cats-section */}
+        <div ref={filtersRef} className="sidebar-filters-section">
         <button
-          className="sidebar-filters-hint"
+          className="sidebar-section-divider"
           onClick={() => {
             const s = sidebarRef.current, f = filtersRef.current;
             if (s && f) s.scrollBy({ top: f.getBoundingClientRect().top - s.getBoundingClientRect().top - 16, behavior: 'smooth' });
           }}
         >
           <SlidersHorizontal size={12} strokeWidth={2} />
-          <span>Фільтри</span>
-          {activeFilterCount > 0 && <span className="sidebar-filter-badge">{activeFilterCount}</span>}
-        </button>
-
-        <div ref={filtersRef} className="sidebar-filters-section">
-        <hr className="shop-sidebar__divider" />
-        <p className="shop-sidebar__heading" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '0 0 12px' }}>
-          <SlidersHorizontal size={13} strokeWidth={2} />
           Фільтри
           {activeFilterCount > 0 && <span className="sidebar-filter-badge">{activeFilterCount}</span>}
-        </p>
+        </button>
 
         {volumesL.length > 0 && (
           <div className="shop-filter-group">

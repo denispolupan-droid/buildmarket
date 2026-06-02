@@ -909,15 +909,22 @@ input, select { font-family: inherit; }
   a[href]:after { content: none !important; }
 }
 
-/* Sidebar: filters hint button + active badge */
-.sidebar-filters-hint {
-  display: flex; align-items: center; gap: 5px;
+/* Sidebar: labeled divider + active badge */
+.sidebar-section-divider {
+  display: flex; align-items: center; gap: 7px;
   width: 100%; background: none; border: none; cursor: pointer;
-  padding: 5px 10px; margin-top: 6px; border-radius: 8px;
-  font-size: 12px; color: var(--text-muted); text-align: left;
-  transition: background 0.15s, color 0.15s;
+  padding: 0; margin: 16px 0 14px; font-size: 12px;
+  color: var(--text-muted); white-space: nowrap;
+  transition: color 0.15s;
 }
-.sidebar-filters-hint:hover { background: var(--bg-soft); color: var(--text-secondary); }
+.sidebar-section-divider::before,
+.sidebar-section-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+  transition: background 0.15s;
+}
+.sidebar-section-divider:hover { color: var(--text-secondary); }
+.sidebar-section-divider:hover::before,
+.sidebar-section-divider:hover::after { background: var(--text-muted); }
 .sidebar-filter-badge {
   display: inline-flex; align-items: center; justify-content: center;
   background: #3B82F6; color: #fff;
