@@ -27,7 +27,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sidebarRef = useRef<HTMLElement>(null);
   const prevSelCat = useRef(initialCategory);
-  const pillsRef = useRef<HTMLDivElement>(null);
+  const pillsRef    = useRef<HTMLDivElement>(null);
+  const filtersRef  = useRef<HTMLDivElement>(null);
   useEffect(() => {
     getSupabaseBrowser().auth.getUser().then(({ data }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
       const type = data.user?.user_metadata?.account_type as string | undefined;
@@ -140,6 +141,10 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const cartPct       = Math.min(100, Math.round((cartTotal / WHOLESALE_MIN) * 100));
   const cartMet       = cartTotal >= WHOLESALE_MIN;
   const cartRemaining = WHOLESALE_MIN - cartTotal;
+  const activeFilterCount =
+    Object.values(filterValues).filter(Boolean).length +
+    (filterVolume ? 1 : 0) + (filterVolumeKg ? 1 : 0) +
+    (inStockOnly ? 1 : 0) + (saleOnly ? 1 : 0);
 
   const badgeRef = useRef<HTMLAnchorElement>(null);
   const [badgeVisible, setBadgeVisible] = useState(true);
@@ -484,12 +489,28 @@ export default function CatalogClient({ products, categories, initialSearch = ''
               )}
             </div>
 
+            <button
+              className="sidebar-filters-hint"
+              onClick={() => {
+                const s = sidebarRef.current, f = filtersRef.current;
+                if (s && f) s.scrollBy({ top: f.getBoundingClientRect().top - s.getBoundingClientRect().top - 16, behavior: 'smooth' });
+              }}
+            >
+              <SlidersHorizontal size={12} strokeWidth={2} />
+              <span>Фільтри</span>
+              {activeFilterCount > 0 && <span className="sidebar-filter-badge">{activeFilterCount}</span>}
+            </button>
+
             <div className="sidebar-filters-section">
             <hr className="sidebar-divider" />
 
             {/* Filters */}
-            <div className="sidebar-section">
-              <div className="sidebar-heading">Фільтри</div>
+            <div ref={filtersRef} className="sidebar-section">
+              <div className="sidebar-heading" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <SlidersHorizontal size={13} strokeWidth={2} />
+                Фільтри
+                {activeFilterCount > 0 && <span className="sidebar-filter-badge">{activeFilterCount}</span>}
+              </div>
 
               {volumesL.length > 1 && (
                 <div className="filter-group">

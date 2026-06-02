@@ -166,6 +166,10 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const [filterVolumeKg,     setFilterVolumeKg]     = useState('');
   const [filterPlasticGroup, setFilterPlasticGroup] = useState('');
   const [inStockOnly,  setInStockOnly]  = useState(false);
+  const activeFilterCount =
+    Object.values(filterValues).filter(Boolean).length +
+    (filterVolume ? 1 : 0) + (filterVolumeKg ? 1 : 0) +
+    (filterPlasticGroup ? 1 : 0) + (inStockOnly ? 1 : 0) + (saleOnly ? 1 : 0);
   const [visibleCount,  setVisibleCount]  = useState(24);
   const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'sale'>('default');
   const [catsOpen,      setCatsOpen]      = useState(false);
@@ -186,6 +190,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const catsListRef = useRef<HTMLDivElement>(null);
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sidebarRef = useRef<HTMLElement>(null);
+  const filtersRef  = useRef<HTMLDivElement>(null);
   const pillsRef = useRef<HTMLDivElement>(null);
   const prevSelCat = useRef<string | null>(initialCategory ?? null);
   const [showScrollHint, setShowScrollHint] = useState(false);
@@ -543,9 +548,25 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         )}
 
         </div>{/* end sidebar-cats-section */}
-        <div className="sidebar-filters-section">
+        <button
+          className="sidebar-filters-hint"
+          onClick={() => {
+            const s = sidebarRef.current, f = filtersRef.current;
+            if (s && f) s.scrollBy({ top: f.getBoundingClientRect().top - s.getBoundingClientRect().top - 16, behavior: 'smooth' });
+          }}
+        >
+          <SlidersHorizontal size={12} strokeWidth={2} />
+          <span>Фільтри</span>
+          {activeFilterCount > 0 && <span className="sidebar-filter-badge">{activeFilterCount}</span>}
+        </button>
+
+        <div ref={filtersRef} className="sidebar-filters-section">
         <hr className="shop-sidebar__divider" />
-        <p className="shop-sidebar__heading">Фільтри</p>
+        <p className="shop-sidebar__heading" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '0 0 12px' }}>
+          <SlidersHorizontal size={13} strokeWidth={2} />
+          Фільтри
+          {activeFilterCount > 0 && <span className="sidebar-filter-badge">{activeFilterCount}</span>}
+        </p>
 
         {volumesL.length > 0 && (
           <div className="shop-filter-group">
