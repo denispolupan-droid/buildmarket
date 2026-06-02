@@ -7,7 +7,7 @@ import SearchAutocomplete from '../components/SearchAutocomplete';
 import Link from 'next/link';
 import ProductImage from '../components/ProductImage';
 import ScrollToTop from '../components/ScrollToTop';
-import SalesBanner from '../components/SalesBanner';
+import { PROMO } from '../promo.config';
 import type { ProductFull, Category } from '../../lib/supabase';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
@@ -562,6 +562,11 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 </h1>
                 <p className="catalog-count">{filtered.length} товарів</p>
               </div>
+              {!isWholesale && PROMO.banner.active && !saleOnly && (
+                <Link href={`/catalog?category=${PROMO.banner.categorySlug}&sale=1`} className="promo-chip">
+                  ☀️ <strong>−{PROMO.topBar.discount}</strong>&nbsp;{PROMO.topBar.text}
+                </Link>
+              )}
               {isWholesale && (
                 <a ref={badgeRef} href="/cart" className={`wholesale-min-badge${cartMet ? ' wholesale-min-met' : ''}`}>
                   <div className="wholesale-min-row">
@@ -678,8 +683,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
               </div>
             </div>
 
-
-            <SalesBanner mode="catalog" />
 
             {/* Grid view */}
             {viewMode === 'grid' && (
