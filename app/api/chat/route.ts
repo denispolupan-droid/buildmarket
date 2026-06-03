@@ -11,7 +11,7 @@ const db = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-const SYSTEM_PROMPT = `Ти — AI-помічник FIXLINE, B2B-платформи для закупівель будівельної хімії в Україні (fixline.com.ua).
+const SYSTEM_PROMPT = `Ти — AI-помічник FIXLINE, платформи для закупівель будівельної хімії в Україні (fixline.com.ua).
 
 Асортимент: герметики (акрилові, силіконові, поліуретанові, MS-полімерні), монтажна піна, рідкі цвяхи, ґрунтовки, фарби, клеї, стрічки, замазки для швів, свердла та кріплення.
 
@@ -22,16 +22,18 @@ const SYSTEM_PROMPT = `Ти — AI-помічник FIXLINE, B2B-платфор�
 
 Доставка: Нова Пошта по всій Україні.
 
-Інструменти:
-- Використовуй search_products коли клієнт питає про товар, категорію або бренд
-- Використовуй get_product_details для точної ціни та наявності конкретного товару
+Правила пошуку товарів:
+- ЗАВЖДИ перекладай пошуковий запит на українську перед викликом search_products
+- Приклади перекладу: "белый силикон" → "білий силікон", "монтажная пена" → "монтажна піна", "грунтовка" → "ґрунтовка"
+- Якщо не знайдено — спробуй ширший запит (тільки тип товару без кольору/розміру)
 
 Правила відповіді:
-- Завжди відповідай українською, незалежно від мови запиту
-- Виняток: якщо запит англійською — відповідай англійською
-- Будь конкретним: називай реальні ціни та наявність з інструментів
-- Коротко — 2–4 речення, без зайвого
-- Якщо товару немає або питання поза компетенцією — пропонуй зв'язатися з менеджером`;
+- ЗАВЖДИ відповідай українською мовою, навіть якщо питання російською або іншою мовою
+- Єдиний виняток: якщо питання написане англійською — відповідай англійською
+- Ніколи не використовуй markdown (**, *, #) — тільки звичайний текст
+- Будь конкретним: називай реальні назви товарів, ціни та наявність
+- Коротко — 3–5 речень максимум
+- Якщо товар не знайдено — запропонуй звернутись до менеджера`;
 
 // ── Tool definitions ──────────────────────────────────────────────────────────
 
@@ -64,14 +66,20 @@ const TOOLS: Anthropic.Tool[] = [
 // ── Tool executors ────────────────────────────────────────────────────────────
 
 async function searchProducts(query: string, category?: string): Promise<string> {
-  const term = `%${query}%`;
+  // Split into words, search each word separately (implicit AND between words)
+  const words = query.trim().split(/\s+/).filter(w => w.length > 1).slice(0, 4);
+
   let q = db
     .from('products')
     .select(`sku, name, brand, volume, category_slug, description,
              stock:product_stock(price_retail, price_unit, stock_status)`)
     .eq('is_active', true)
-    .or(`name.ilike.${term},brand.ilike.${term},description.ilike.${term}`)
-    .limit(5);
+    .limit(6);
+
+  for (const word of words) {
+    const term = `%${word}%`;
+    q = q.or(`name.ilike.${term},brand.ilike.${term},description.ilike.${term},category_slug.ilike.${term}`);
+  }
 
   if (category) q = q.eq('category_slug', category);
 
