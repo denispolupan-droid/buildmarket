@@ -215,10 +215,15 @@ export async function POST(req: NextRequest) {
       .order('created_at', { ascending: true })
       .limit(20);
 
-    const messages: Anthropic.MessageParam[] = (history ?? []).map(m => ({
-      role:    m.role as 'user' | 'assistant',
-      content: m.content,
-    }));
+    const isEnglish = /^[\x20-\x7E\s]+$/.test(message.trim());
+
+    const messages: Anthropic.MessageParam[] = (history ?? []).map((m, i) => {
+      const isLast = i === (history ?? []).length - 1;
+      if (isLast && m.role === 'user' && !isEnglish) {
+        return { role: 'user' as const, content: m.content + '\n\n[ВАЖЛИВО: відповідай виключно українською мовою]' };
+      }
+      return { role: m.role as 'user' | 'assistant', content: m.content };
+    });
 
     // ── AI agent ──────────────────────────────────────────────────────────────
     let reply: string;
