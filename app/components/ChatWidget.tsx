@@ -33,7 +33,18 @@ export default function ChatWidget() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [mode, setMode] = useState<'ai' | 'manager'>('ai');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const lastMsgCount = useRef(0);
+
+  const scrollToBottom = (force = false) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (force || nearBottom) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
     const saved = sessionStorage.getItem(SESSION_KEY);
@@ -49,8 +60,14 @@ export default function ChatWidget() {
   }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, open]);
+    if (open) { scrollToBottom(true); return; }
+  }, [open]);
+
+  useEffect(() => {
+    const isNew = messages.length > lastMsgCount.current;
+    lastMsgCount.current = messages.length;
+    if (isNew) scrollToBottom(true);
+  }, [messages]);
 
   // Poll for new messages (manager replies) every 5s when chat is open
   useEffect(() => {
@@ -156,7 +173,7 @@ export default function ChatWidget() {
           </div>
 
           {/* Messages */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {messages.map((m, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
                 <div style={{
