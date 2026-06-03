@@ -36,7 +36,7 @@ export default function ChatWidget() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem(SESSION_KEY);
+    const saved = sessionStorage.getItem(SESSION_KEY);
     if (saved) {
       setSessionId(saved);
       fetch(`/api/chat?sessionId=${saved}`)
@@ -88,7 +88,7 @@ export default function ChatWidget() {
       }
       if (data.sessionId && !sessionId) {
         setSessionId(data.sessionId);
-        localStorage.setItem(SESSION_KEY, data.sessionId);
+        sessionStorage.setItem(SESSION_KEY, data.sessionId);
       }
       if (data.mode === 'manager') setMode('manager');
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
@@ -135,6 +135,18 @@ export default function ChatWidget() {
                 {mode === 'manager' ? 'Менеджер • відповість найближчим часом' : 'AI-помічник • відповідає одразу'}
               </div>
             </div>
+            <button
+              onClick={() => {
+                sessionStorage.removeItem(SESSION_KEY);
+                setSessionId(null);
+                setMessages([WELCOME]);
+                setMode('ai');
+              }}
+              title="Нова розмова"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', opacity: 0.6, color: '#fff', fontSize: '11px' }}
+            >
+              ↺
+            </button>
             <button
               onClick={() => setOpen(false)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'rgba(255,255,255,0.7)' }}
