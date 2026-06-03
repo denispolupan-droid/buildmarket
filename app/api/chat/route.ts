@@ -24,8 +24,8 @@ Email: info@fixline.com.ua
 
 === ФОРМАТИ РОБОТИ ===
 Роздріб: від 1 одиниці, без реєстрації, розділ "Магазин" на сайті
-Опт (B2B): після реєстрації та верифікації — оптові ціни, персональний менеджер, умови оплати
-Дропшип: продаж без свого складу — реєструєшся, поповнюєш баланс, оформлюєш замовлення, ми відправляємо від свого імені
+Опт (B2B): після реєстрації та верифікації — оптові ціни, персональний менеджер, умови оплати. Мінімальне замовлення — від 1 упаковки (ящика) кожного товару, зазвичай 4–12 штук залежно від позиції. Конкретна мінімальна кількість вказана на сторінці кожного товару.
+Дропшип: продаж без свого складу — реєструєшся, поповнюєш баланс (мінімум 500 грн), оформлюєш замовлення, ми відправляємо від свого імені. Мінімальної суми замовлення немає.
 
 === ДОСТАВКА ===
 Нова Пошта по всій Україні, 1–2 дні
@@ -121,7 +121,7 @@ async function searchProducts(query: string, category?: string): Promise<string>
 async function getProductDetails(sku: string): Promise<string> {
   const { data: p } = await db
     .from('products')
-    .select(`sku, name, brand, volume, description,
+    .select(`sku, name, brand, volume, description, min_order,
              stock:product_stock(price_retail, price_unit, price_drop, stock_status, stock_qty)`)
     .eq('sku', sku)
     .eq('is_active', true)
@@ -133,8 +133,9 @@ async function getProductDetails(sku: string): Promise<string> {
   const url   = `https://fixline.com.ua/product/${p.sku}`;
   const lines = [
     `${p.name}`,
-    `Ціна: ${stock?.price_retail ? stock.price_retail + ' грн' : '—'}`,
+    `Ціна роздріб: ${stock?.price_retail ? stock.price_retail + ' грн' : '—'}`,
     stock?.stock_status === 'in_stock' ? 'Є в наявності' : 'Немає в наявності',
+    p.min_order && p.min_order > 1 ? `Мін. замовлення (опт): ${p.min_order} шт` : null,
     p.description ?? null,
     url,
   ].filter(Boolean);
