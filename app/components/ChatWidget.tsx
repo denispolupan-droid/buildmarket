@@ -6,6 +6,17 @@ import { MessageSquare, X, Send, Bot, Loader2 } from 'lucide-react';
 
 type Message = { role: 'user' | 'assistant'; content: string };
 
+function renderContent(text: string) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, i) =>
+    urlRegex.test(part)
+      ? <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+           style={{ color: '#3DBFB8', textDecoration: 'underline', wordBreak: 'break-all' }}>{part}</a>
+      : <span key={i}>{part}</span>
+  );
+}
+
 const WELCOME: Message = {
   role: 'assistant',
   content: 'Привіт! 👋 Я AI-помічник FIXLINE. Запитайте про товари, умови оптової співпраці або доставку — відповім одразу.',
@@ -145,7 +156,7 @@ export default function ChatWidget() {
                   fontSize: '13.5px', lineHeight: '1.5',
                   whiteSpace: 'pre-wrap',
                 }}>
-                  {m.content}
+                  {m.role === 'assistant' ? renderContent(m.content) : m.content}
                 </div>
               </div>
             ))}

@@ -123,11 +123,13 @@ async function getProductDetails(sku: string): Promise<string> {
 
 async function runAgent(messages: Anthropic.MessageParam[]): Promise<string> {
   const MAX_ROUNDS = 3;
+  // Haiku for simple questions, Sonnet when tools are needed (product search)
+  let model = 'claude-haiku-4-5-20251001';
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
     const response = await anthropic.messages.create({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
+      model,
+      max_tokens: 600,
       system:     SYSTEM_PROMPT,
       tools:      TOOLS,
       messages,
@@ -139,6 +141,9 @@ async function runAgent(messages: Anthropic.MessageParam[]): Promise<string> {
     }
 
     if (response.stop_reason !== 'tool_use') break;
+
+    // Switch to Sonnet when tools are needed — better quality for product responses
+    model = 'claude-sonnet-4-6';
 
     // Execute tool calls
     const toolResults: Anthropic.ToolResultBlockParam[] = [];
