@@ -87,11 +87,11 @@ async function searchProducts(query: string, category?: string): Promise<string>
   if (!data?.length) return 'Товарів не знайдено.';
 
   return data.map(p => {
-    const stock = Array.isArray(p.stock) ? p.stock[0] : p.stock;
+    const stock  = Array.isArray(p.stock) ? p.stock[0] : p.stock;
     const retail = stock?.price_retail ? `${stock.price_retail} грн` : '—';
-    const unit   = stock?.price_unit   ? `${stock.price_unit} грн` : '—';
-    const status = stock?.stock_status === 'in_stock' ? '✅ є в наявності' : '❌ немає';
-    return `• ${p.name} (${p.brand}${p.volume ? ', ' + p.volume : ''})\n  SKU: ${p.sku} | Роздріб: ${retail} | Опт: ${unit} | ${status}`;
+    const status = stock?.stock_status === 'in_stock' ? 'є в наявності' : 'немає в наявності';
+    const url    = `https://fixline.com.ua/product/${p.sku}`;
+    return `${p.name} — ${retail}, ${status}\n${url}`;
   }).join('\n\n');
 }
 
@@ -107,14 +107,13 @@ async function getProductDetails(sku: string): Promise<string> {
   if (!p) return `Товар з SKU ${sku} не знайдено.`;
 
   const stock = Array.isArray(p.stock) ? p.stock[0] : p.stock;
+  const url   = `https://fixline.com.ua/product/${p.sku}`;
   const lines = [
-    `${p.name} (${p.brand}${p.volume ? ', ' + p.volume : ''})`,
-    `SKU: ${p.sku}`,
-    stock?.price_retail ? `Роздріб: ${stock.price_retail} грн` : null,
-    stock?.price_unit   ? `Опт: ${stock.price_unit} грн`       : null,
-    stock?.price_drop   ? `Дроп: ${stock.price_drop} грн`      : null,
-    stock?.stock_status === 'in_stock' ? '✅ Є в наявності' : '❌ Немає в наявності',
-    p.description ? `\n${p.description}` : null,
+    `${p.name}`,
+    `Ціна: ${stock?.price_retail ? stock.price_retail + ' грн' : '—'}`,
+    stock?.stock_status === 'in_stock' ? 'Є в наявності' : 'Немає в наявності',
+    p.description ?? null,
+    url,
   ].filter(Boolean);
 
   return lines.join('\n');
