@@ -16,6 +16,8 @@ export const PROMO = {
     borderColor:  '#FDE68A',
     textColor:    '#78350F',
     ctaBgColor:   '#F59E0B',
+    bgImage:      '',
+    bgOverlay:    40,
     tag:          'Літня акція',
     title:        '−10% на герметики Ceresit',
     subtitle:     'Акція діє до 30 червня 2026 · Автоматично застосовується при замовленні',
@@ -32,6 +34,7 @@ export type PromoConfig = {
   };
   banner: {
     active: boolean; size: 'compact' | 'medium' | 'large'; emoji: string;
+    bgImage: string; bgOverlay: number;
     bgColor: string; borderColor: string; textColor: string; ctaBgColor: string;
     tag: string; title: string; subtitle: string; ctaText: string;
     categorySlug: string; dismissKey: string;

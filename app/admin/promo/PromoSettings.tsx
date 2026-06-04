@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Check, Loader2 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Check, Loader2, Upload, X as XIcon } from 'lucide-react';
 import { type PromoConfig } from '../../promo.config';
 
 /* ── Shared styles ─────────────────────────────────────────────────────────── */
@@ -81,14 +81,29 @@ function SizeSelector({ value, onChange }: { value: string; onChange: (v: 'compa
 
 /* ── Main component ────────────────────────────────────────────────────────── */
 export default function PromoSettings({ initial }: { initial: PromoConfig }) {
-  const [cfg, setCfg]   = useState<PromoConfig>(initial);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved]   = useState(false);
+  const [cfg, setCfg]         = useState<PromoConfig>(initial);
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const setTop    = <K extends keyof PromoConfig['topBar']>(k: K, v: PromoConfig['topBar'][K]) =>
     setCfg(c => ({ ...c, topBar: { ...c.topBar, [k]: v } }));
   const setBanner = <K extends keyof PromoConfig['banner']>(k: K, v: PromoConfig['banner'][K]) =>
     setCfg(c => ({ ...c, banner: { ...c.banner, [k]: v } }));
+
+  async function uploadImage(file: File) {
+    setUploading(true);
+    const fd = new FormData(); fd.append('file', file);
+    const res = await fetch('/api/admin/promo-image', { method: 'POST', body: fd });
+    setUploading(false);
+    if (res.ok) { const { url } = await res.json(); setBanner('bgImage', url); }
+  }
+
+  async function removeImage() {
+    await fetch('/api/admin/promo-image', { method: 'DELETE' });
+    setBanner('bgImage', '');
+  }
 
   async function save() {
     setSaving(true); setSaved(false);
@@ -198,6 +213,46 @@ export default function PromoSettings({ initial }: { initial: PromoConfig }) {
             <input style={inp} value={banner.categorySlug} onChange={e => setBanner('categorySlug', e.target.value)} />
             <p style={hint}>URL: ?category=...</p>
           </div>
+        </div>
+
+        {/* Background image */}
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', marginTop: '4px', marginBottom: '16px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '12px' }}>Фонове зображення</div>
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) uploadImage(f); e.target.value = ''; }} />
+
+          {banner.bgImage ? (
+            <div style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: '1.5px solid var(--border)', marginBottom: '12px' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={banner.bgImage} alt="banner bg" style={{ width: '100%', height: '100px', objectFit: 'cover', display: 'block' }} />
+              <button onClick={removeImage} style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#fff', padding: '4px', display: 'flex' }}>
+                <XIcon size={14} strokeWidth={2.5} />
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => fileRef.current?.click()} disabled={uploading}
+              style={{ width: '100%', height: '80px', border: '2px dashed var(--border)', borderRadius: '10px', background: 'var(--bg-soft)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', color: 'var(--text-muted)', marginBottom: '12px', transition: 'border-color 0.15s' }}>
+              {uploading ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={18} />}
+              <span style={{ fontSize: '12px' }}>{uploading ? 'Завантажуємо...' : 'Натисніть або перетягніть зображення'}</span>
+            </button>
+          )}
+
+          {banner.bgImage && (
+            <button onClick={() => fileRef.current?.click()} disabled={uploading}
+              style={{ ...inp, height: '36px', background: 'var(--bg-soft)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+              <Upload size={14} />{uploading ? 'Завантажуємо...' : 'Замінити зображення'}
+            </button>
+          )}
+
+          {banner.bgImage && (
+            <div>
+              <label style={lbl}>Затемнення фону: {banner.bgOverlay ?? 40}%</label>
+              <input type="range" min={0} max={80} value={banner.bgOverlay ?? 40}
+                onChange={e => setBanner('bgOverlay', Number(e.target.value))}
+                style={{ width: '100%', accentColor: '#4880B8' }} />
+              <p style={hint}>0% = без затемнення · 40% = стандарт · 80% = темно</p>
+            </div>
+          )}
         </div>
 
         {/* Colors */}
