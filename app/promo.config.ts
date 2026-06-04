@@ -1,28 +1,39 @@
-/**
- * Налаштування акцій — редагуйте цей файл щоб змінити акцію на сайті.
- * Після збереження зробіть git push — сайт оновиться за ~2 хвилини.
- */
-
 export const PROMO = {
-  // ── Верхній рядок-банер (показується на всіх сторінках) ──────────────────
   topBar: {
-    emoji: '☀️',
-    label: 'ЛІТНЯ АКЦІЯ',
+    visible:  true,
+    bgColor:  '#243F63',
+    emoji:    '☀️',
+    label:    'ЛІТНЯ АКЦІЯ',
     discount: '−10%',
-    text: 'на герметики Ceresit',
-    detail: 'до кінця червня',
+    text:     'на герметики Ceresit',
+    detail:   'до кінця червня',
   },
-
-  // ── Великий банер у магазині та опт каталозі ────────────────────────────
   banner: {
-    active: true,            // ← false = банер схований, true = показується
-    tag: 'Літня акція',
-    title: '−10% на герметики Ceresit',
-    subtitle: 'Акція діє до 30 червня 2026 · Автоматично застосовується при замовленні',
-    ctaText: 'Переглянути герметики',
-    // Категорія slug (відповідає URL ?category=...)
+    active:       true,
+    size:         'medium' as 'compact' | 'medium' | 'large',
+    emoji:        '☀️',
+    bgColor:      '#FFFBEB',
+    borderColor:  '#FDE68A',
+    textColor:    '#78350F',
+    ctaBgColor:   '#F59E0B',
+    tag:          'Літня акція',
+    title:        '−10% на герметики Ceresit',
+    subtitle:     'Акція діє до 30 червня 2026 · Автоматично застосовується при замовленні',
+    ctaText:      'Переглянути герметики',
     categorySlug: 'hermetyky',
-    // localStorage-ключ — змінюйте при кожній новій акції щоб банер знову показувався
-    dismissKey: 'promo_summer_ceresit_june_2026',
+    dismissKey:   'promo_summer_ceresit_june_2026',
   },
 } as const;
+
+export type PromoConfig = {
+  topBar: {
+    visible: boolean; bgColor: string; emoji: string;
+    label: string; discount: string; text: string; detail: string;
+  };
+  banner: {
+    active: boolean; size: 'compact' | 'medium' | 'large'; emoji: string;
+    bgColor: string; borderColor: string; textColor: string; ctaBgColor: string;
+    tag: string; title: string; subtitle: string; ctaText: string;
+    categorySlug: string; dismissKey: string;
+  };
+};

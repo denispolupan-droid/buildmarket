@@ -3,21 +3,24 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import Link from 'next/link';
-import { PROMO } from '../promo.config';
+import { PROMO, type PromoConfig } from '../promo.config';
 
 type Props = { mode: 'shop' | 'catalog' };
 
+const PADDING = { compact: '6px 10px', medium: '8px 12px', large: '12px 16px' };
+const FONT    = { compact: '12px',      medium: '13px',      large: '14px'      };
+
 export default function SalesBanner({ mode }: Props) {
-  const [visible, setVisible]   = useState(false);
-  const [banner, setBanner]     = useState(PROMO.banner);
-  const [topBar, setTopBar]     = useState(PROMO.topBar);
+  const [visible, setVisible] = useState(false);
+  const [cfg, setCfg]         = useState<PromoConfig>(PROMO as unknown as PromoConfig);
 
   useEffect(() => {
-    fetch('/api/promo').then(r => r.json()).then(cfg => {
-      if (cfg?.banner) setBanner(cfg.banner);
-      if (cfg?.topBar) setTopBar(cfg.topBar);
+    fetch('/api/promo').then(r => r.json()).then(data => {
+      if (data?.banner) setCfg(data as PromoConfig);
     }).catch(() => {});
   }, []);
+
+  const { banner, topBar } = cfg;
 
   useEffect(() => {
     if (!banner.active) { setVisible(false); return; }
@@ -29,36 +32,43 @@ export default function SalesBanner({ mode }: Props) {
   const href = mode === 'catalog'
     ? `/catalog?category=${banner.categorySlug}&sale=1`
     : `/shop?category=${banner.categorySlug}&sale=1`;
-
-  const dismiss = () => {
-    localStorage.setItem(banner.dismissKey, '1');
-    setVisible(false);
-  };
+  const size = banner.size ?? 'medium';
 
   return (
     <div style={{
       margin: '8px 0 2px', borderRadius: '10px',
-      background: '#FFFBEB', border: '1px solid #FDE68A',
-      padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '10px',
+      background: banner.bgColor, border: `1px solid ${banner.borderColor}`,
+      padding: PADDING[size], display: 'flex', alignItems: 'center', gap: '10px',
     }}>
-      <span style={{ fontSize: '18px', flexShrink: 0, lineHeight: 1 }}>☀️</span>
+      <span style={{ fontSize: size === 'large' ? '22px' : '18px', flexShrink: 0, lineHeight: 1 }}>
+        {banner.emoji}
+      </span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span style={{ background: '#FDE68A', color: '#92400E', fontSize: '10px', fontWeight: 700, padding: '1px 7px', borderRadius: '20px', textTransform: 'uppercase' }}>
+          <span style={{
+            background: banner.borderColor, color: banner.textColor,
+            fontSize: '10px', fontWeight: 700, padding: '1px 7px',
+            borderRadius: '20px', textTransform: 'uppercase',
+          }}>
             {banner.tag}
           </span>
-          <span style={{ fontSize: '13px', fontWeight: 700, color: '#78350F' }}>
+          <span style={{ fontSize: FONT[size], fontWeight: 700, color: banner.textColor }}>
             {topBar.discount} {topBar.text}
           </span>
         </div>
-        <p style={{ margin: '1px 0 0', fontSize: '11px', color: '#A16207', lineHeight: 1.3 }}>
+        <p style={{ margin: '1px 0 0', fontSize: '11px', color: banner.textColor, opacity: 0.75, lineHeight: 1.3 }}>
           {banner.subtitle}
         </p>
       </div>
-      <Link href={href} style={{ flexShrink: 0, background: '#F59E0B', color: '#fff', fontSize: '11.5px', fontWeight: 700, padding: '5px 11px', borderRadius: '7px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+      <Link href={href} style={{
+        flexShrink: 0, background: banner.ctaBgColor, color: '#fff',
+        fontSize: '11.5px', fontWeight: 700, padding: '5px 11px',
+        borderRadius: '7px', textDecoration: 'none', whiteSpace: 'nowrap',
+      }}>
         {banner.ctaText} →
       </Link>
-      <button onClick={dismiss} style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: '#D97706', padding: '2px', display: 'flex', alignItems: 'center', opacity: 0.7 }} title="Закрити">
+      <button onClick={() => { localStorage.setItem(banner.dismissKey, '1'); setVisible(false); }}
+        style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: banner.ctaBgColor, padding: '2px', display: 'flex', alignItems: 'center', opacity: 0.7 }}>
         <X size={13} strokeWidth={2.5} />
       </button>
     </div>
