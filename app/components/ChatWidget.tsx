@@ -23,6 +23,25 @@ const WELCOME: Message = {
 };
 
 const SESSION_KEY = 'fixline_chat_session';
+const TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+function loadSession(): string | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const { id, ts } = JSON.parse(raw) as { id: string; ts: number };
+    if (Date.now() - ts > TTL_MS) { localStorage.removeItem(SESSION_KEY); return null; }
+    return id;
+  } catch { return null; }
+}
+
+function saveSession(id: string) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ id, ts: Date.now() }));
+}
+
+function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
+}
 
 export default function ChatWidget() {
   const pathname = usePathname();
@@ -47,7 +66,7 @@ export default function ChatWidget() {
   };
 
   useEffect(() => {
-    const saved = sessionStorage.getItem(SESSION_KEY);
+    const saved = loadSession();
     if (saved) {
       setSessionId(saved);
       fetch(`/api/chat?sessionId=${saved}`)
@@ -105,7 +124,7 @@ export default function ChatWidget() {
       }
       if (data.sessionId && !sessionId) {
         setSessionId(data.sessionId);
-        sessionStorage.setItem(SESSION_KEY, data.sessionId);
+        saveSession(data.sessionId);
       }
       if (data.mode === 'manager') setMode('manager');
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
@@ -154,7 +173,7 @@ export default function ChatWidget() {
             </div>
             <button
               onClick={() => {
-                sessionStorage.removeItem(SESSION_KEY);
+                clearSession();
                 setSessionId(null);
                 setMessages([WELCOME]);
                 setMode('ai');
