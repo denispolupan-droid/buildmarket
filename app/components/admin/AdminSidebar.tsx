@@ -8,7 +8,7 @@ import {
   ShoppingBag, Package, Truck, Store,
   Settings, BookOpen, Warehouse, BarChart3, Users, Star,
   MessageSquare, ShoppingCart, Mail, ExternalLink, TrendingUp,
-  ChevronLeft, ChevronRight, ShoppingBasket, Sparkles,
+  ChevronLeft, ChevronRight, ShoppingBasket, Sparkles, Megaphone,
 } from 'lucide-react';
 
 const NAV = [
@@ -26,6 +26,7 @@ const NAV = [
   { href: '/admin/mail',                 label: 'Пошта',          icon: Mail,           exact: false },
   { href: '/admin/reviews',              label: 'Відгуки',        icon: Star,           exact: false },
   { href: '/admin/chat',                 label: 'Чат',            icon: MessageSquare,  exact: false },
+  { href: '/admin/promo',                label: 'Акції та банери', icon: Megaphone,      exact: false },
   { href: '/admin/settings',             label: 'Налаштування',   icon: Settings,       exact: false },
 ];
 

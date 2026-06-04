@@ -6,18 +6,27 @@ import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { PROMO } from '../promo.config';
 
 const WHOLESALE_TYPES = ['dealer', 'contractor', 'shop_owner'];
-const { topBar } = PROMO;
 
 export default function PromoBanner() {
-  const [href, setHref] = useState(`/shop?category=${PROMO.banner.categorySlug}&sale=1`);
+  const [href, setHref]     = useState(`/shop?category=${PROMO.banner.categorySlug}&sale=1`);
+  const [topBar, setTopBar] = useState(PROMO.topBar);
 
   useEffect(() => {
-    getSupabaseBrowser().auth.getUser().then(({ data }: { data: { user: { user_metadata?: { account_type?: string } } | null } }) => {
-      const type = data.user?.user_metadata?.account_type;
-      if (WHOLESALE_TYPES.includes(type ?? '')) {
-        setHref(`/catalog?category=${PROMO.banner.categorySlug}&sale=1`);
-      }
-    });
+    const init = async () => {
+      const [promoRes, { data: authData }] = await Promise.all([
+        fetch('/api/promo').then(r => r.json()).catch(() => null),
+        getSupabaseBrowser().auth.getUser(),
+      ]);
+
+      const cfg = promoRes ?? PROMO;
+      if (cfg?.topBar) setTopBar(cfg.topBar);
+
+      const slug = cfg?.banner?.categorySlug ?? PROMO.banner.categorySlug;
+      const type = (authData.user?.user_metadata as Record<string, string> | undefined)?.account_type;
+      const isWholesale = WHOLESALE_TYPES.includes(type ?? '');
+      setHref(isWholesale ? `/catalog?category=${slug}&sale=1` : `/shop?category=${slug}&sale=1`);
+    };
+    init();
   }, []);
 
   return (
