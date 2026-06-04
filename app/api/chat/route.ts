@@ -218,7 +218,7 @@ export async function POST(req: NextRequest) {
     let isNew = false;
 
     if (sessionId) {
-      const { data } = await db.from('chat_sessions').select('id, unread_count').eq('id', sessionId).single();
+      const { data } = await db.from('chat_sessions').select('id, unread_count, ai_enabled').eq('id', sessionId).single();
       session = data;
     }
 
@@ -257,12 +257,19 @@ export async function POST(req: NextRequest) {
     let reply: string;
     let mode: 'ai' | 'manager' = 'ai';
 
-    try {
-      reply = await runAgent(messages);
-      if (!reply) throw new Error('empty reply');
-    } catch {
+    const aiEnabled = (session as { ai_enabled?: boolean }).ai_enabled ?? true;
+
+    if (!aiEnabled) {
       mode  = 'manager';
-      reply = 'Зараз AI-помічник недоступний — передаю вас до менеджера. Ми відповімо найближчим часом у цьому чаті.';
+      reply = 'Менеджер вже підключився до розмови — відповість найближчим часом.';
+    } else {
+      try {
+        reply = await runAgent(messages);
+        if (!reply) throw new Error('empty reply');
+      } catch {
+        mode  = 'manager';
+        reply = 'Зараз AI-помічник недоступний — передаю вас до менеджера. Ми відповімо найближчим часом у цьому чаті.';
+      }
     }
 
     // ── Save & notify ─────────────────────────────────────────────────────────

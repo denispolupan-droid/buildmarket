@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { Bot, User, UserCheck } from 'lucide-react';
 import ResolveButton from './ResolveButton';
 import ReplyBox from './ReplyBox';
+import TakeoverButton from './TakeoverButton';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,6 +38,10 @@ export default async function ChatSessionPage({ params }: { params: Promise<{ id
           <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', fontFamily: 'monospace' }}>{id}</p>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>
             Розпочато: {formatTime(session.created_at)}
+            {' · '}
+            <span style={{ color: (session.ai_enabled ?? true) ? '#16A34A' : '#DC2626', fontWeight: 600 }}>
+              {(session.ai_enabled ?? true) ? '🤖 AI активний' : '👤 Менеджер веде'}
+            </span>
             {session.status === 'resolved' && (
               <span style={{
                 marginLeft: '10px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)',
@@ -45,7 +50,10 @@ export default async function ChatSessionPage({ params }: { params: Promise<{ id
             )}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {session.status === 'open' && (
+            <TakeoverButton sessionId={id} initialAiEnabled={session.ai_enabled ?? true} />
+          )}
           {session.status === 'open' && <ResolveButton sessionId={id} />}
         </div>
       </div>
