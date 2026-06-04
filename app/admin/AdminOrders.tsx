@@ -1050,17 +1050,17 @@ export default function AdminOrders({
                   </span>
 
                   {/* Статус */}
-                  <div style={{ width: '104px', flexShrink: 0 }}>
+                  <div style={{ width: '104px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
                     <span
                       className={order.status === 'awaiting_stock' ? 'status-awaiting-pulse' : undefined}
-                      style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '20px', color: status.color, background: status.bg, display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '20px', color: status.color, background: status.bg, display: 'inline-flex', alignItems: 'center', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {status.label}
                     </span>
                   </div>
 
                   {/* Канал */}
-                  <div style={{ width: '64px', flexShrink: 0, overflow: 'hidden' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '1px 6px', borderRadius: '20px', color: channel.color, background: channel.bg, whiteSpace: 'nowrap' }}>
+                  <div style={{ width: '64px', flexShrink: 0, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '1px 6px', borderRadius: '20px', color: channel.color, background: channel.bg, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>
                       {channel.label}
                     </span>
                   </div>
@@ -1083,8 +1083,8 @@ export default function AdminOrders({
                   </div>
 
                   {/* Оплата */}
-                  <div style={{ width: '46px', flexShrink: 0 }}>
-                    <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '20px', background: 'var(--border-light)', color: 'var(--text-secondary)', display: 'inline-block' }}>
+                  <div style={{ width: '46px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+                    <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '20px', background: 'var(--border-light)', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center' }}>
                       {order.payment_type === 'cod' ? 'НП' : order.payment_type === 'card' ? '💳' : order.payment_type === 'cash' ? 'Гот.' : 'Рах.'}
                     </span>
                   </div>
