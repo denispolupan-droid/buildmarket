@@ -283,12 +283,18 @@ export async function POST(req: NextRequest) {
 
     const adminId = process.env.TELEGRAM_ADMIN_CHAT_ID;
     if (adminId) {
-      if (mode === 'manager') {
+      const link = `fixline.com.ua/admin/chat/${session!.id}`;
+      const text = message.length > 200 ? message.slice(0, 200) + '…' : message;
+
+      if (isNew) {
         sendTelegram(adminId,
-          `🔴 <b>Потрібна відповідь менеджера!</b>\n\n💬 ${message}\n\n🔗 fixline.com.ua/admin/chat/${session!.id}`);
-      } else if (isNew) {
+          `💬 <b>Новий чат</b>\n\n${text}\n\n🔗 ${link}`);
+      } else if (mode === 'manager') {
         sendTelegram(adminId,
-          `💬 <b>Новий чат на сайті</b>\n\n💬 ${message}\n\n🔗 fixline.com.ua/admin/chat/${session!.id}`);
+          `👤 <b>Повідомлення (ви ведете чат)</b>\n\n${text}\n\n🔗 ${link}`);
+      } else {
+        sendTelegram(adminId,
+          `💬 <b>Повідомлення в чаті</b>\n\n${text}\n\nAI відповідає автоматично\n🔗 ${link}`);
       }
     }
 
