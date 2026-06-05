@@ -1,7 +1,7 @@
 .catalog-page { display: grid; grid-template-columns: 250px 1fr; gap: 24px; padding: 28px 0 48px; align-items: start; }
 
 /* ── Sidebar ── */
-.sidebar { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 16px 64px; position: sticky; top: 80px; max-height: calc(100vh - 100px); overflow-y: scroll; scrollbar-width: none; overscroll-behavior: contain; }
+.sidebar { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 16px 20px; position: sticky; top: 80px; max-height: calc(100vh - 88px); overflow-y: scroll; scrollbar-width: none; overscroll-behavior: contain; }
 .sidebar::-webkit-scrollbar { display: none; }
 .sidebar-section { margin-bottom: 24px; }
 .sidebar-section:last-child { margin-bottom: 0; }
@@ -18,8 +18,8 @@
 [data-theme="dark"] .cat-item.active { background: #1E3A5F; color: #93C5FD; }
 .cat-item.parent-active { background: #F5F8FF; color: #3B6EC4; font-weight: 600; }
 [data-theme="dark"] .cat-item.parent-active { background: #172B47; color: #7EB5E8; }
-.filter-label { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
-.filter-group { margin-bottom: 14px; }
+.filter-label { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px; }
+.filter-group { margin-bottom: 10px; }
 .filter-group:last-of-type { margin-bottom: 0; }
 .filter-select {
   width: 100%; height: 34px; padding: 0 10px;
@@ -30,7 +30,7 @@
 .filter-select:focus { border-color: #1E3A5F; }
 .filter-select.active { border-color: #1E3A5F; background: #E8EEF5; color: #1E3A5F; font-weight: 600; }
 [data-theme="dark"] .filter-select.active { background: #1E3A5F44; border-color: #4880B8; color: #93C5FD; }
-.filter-check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-secondary); cursor: pointer; margin-top: 14px; }
+.filter-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer; margin-top: 10px; }
 .filter-check:last-child { margin-bottom: 0; }
 .filter-check input { accent-color: #3DBFB8; width: 15px; height: 15px; }
 

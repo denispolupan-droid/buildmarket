@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Minus, Heart, ChevronDown, ChevronUp, ChevronRight, Check, SlidersHorizontal, LayoutList } from 'lucide-react';
 import { CATEGORY_ICONS } from '../../lib/category-icons';
@@ -163,6 +164,7 @@ type Props = {
 };
 
 export default function ShopClient({ products, categories, initialSaleOnly = false, initialCategory, initialBrand }: Props) {
+  const router = useRouter();
   const [isWholesale,   setIsWholesale]   = useState(false);
   const [showWholesaleModal, setShowWholesaleModal] = useState(false);
   const [search,       setSearch]       = useState('');
@@ -269,6 +271,11 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   }, []);
 
   const selectCat = (slug: string | null, scrollSlug?: string) => {
+    // На brand-сторінці заголовок рендериться сервером — потрібна повна навігація
+    if (initialBrand) {
+      router.push(slug ? `/shop/${slug}` : '/shop');
+      return;
+    }
     setSelCat(slug);
     window.history.pushState(null, '', slug ? `/shop/${slug}` : '/shop');
     sidebarRef.current?.scrollTo({ top: 0 });
