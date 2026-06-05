@@ -61,33 +61,18 @@ export async function GET(request: NextRequest) {
   ]);
 
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
-  const catIdMap = buildCategoryIds(categories ?? []);
+  const catIdMap = buildCategoryIds(categories ?? []); // sequential 1…N — our group IDs in the feed
 
-  // Build slug → Prom section ID map (use Prom ID when available, else our sequential ID)
   type CatRow = { slug: string; name: string; parent_slug: string | null; prom_section_id: number | null; prom_section_url: string | null };
   const catData = (categories ?? []) as CatRow[];
-  const slugToPromId = new Map<string, number>(
-    catData.map(c => [c.slug, c.prom_section_id ?? (catIdMap.get(c.slug) ?? 0)]),
-  );
 
-  // Unique Prom sections for <categories> block
-  const promSections = new Map<number, string>(); // id → name
-  for (const c of catData) {
-    if (c.prom_section_id) {
-      if (!promSections.has(c.prom_section_id)) {
-        // Derive section name from URL slug (e.g. Germetiki → Герметики)
-        const sectionName = c.prom_section_url?.split('/').pop() ?? c.name;
-        promSections.set(c.prom_section_id, sectionName);
-      }
-    }
-  }
-  // Also add our sequential IDs for categories without Prom mapping
-  for (const c of catData) {
-    if (!c.prom_section_id) {
-      const seqId = catIdMap.get(c.slug) ?? 0;
-      if (!promSections.has(seqId)) promSections.set(seqId, c.name);
-    }
-  }
+  // slug → sequential group ID (used in <categoryId> and <categories> block)
+  const slugToGroupId = catIdMap;
+
+  // slug → Prom portal section ID (used in <portal_category_id> only)
+  const slugToPortalId = new Map<string, number>(
+    catData.map(c => [c.slug, c.prom_section_id ?? 0]),
+  );
 
   // Group characteristics by SKU
   const charsMap = new Map<string, { label: string; value: string }[]>();
@@ -96,9 +81,12 @@ export async function GET(request: NextRequest) {
     charsMap.get(c.product_sku)!.push({ label: c.label, value: c.value });
   }
 
-  // Categories XML — output Prom's own section IDs so they're recognized directly
-  const catsXml = [...promSections.entries()]
-    .map(([id, name]) => `      <category id="${id}">${x(name)}</category>`)
+  // Categories XML — use our own sequential IDs to avoid conflicting with Prom's section IDs
+  const catsXml = catData
+    .map(c => {
+      const id = catIdMap.get(c.slug) ?? 0;
+      return `      <category id="${id}">${x(c.name)}</category>`;
+    })
     .join('\n');
 
   // Offers XML
@@ -109,9 +97,10 @@ export async function GET(request: NextRequest) {
       const price = s.price_retail ?? s.price_unit;
       if (!price || price <= 0) return null;
 
-      const available = s.stock_status === 'in_stock' ? 'true' : 'false';
-      const qty       = s.stock_qty ?? 0;
-      const catId     = p.category_slug ? (slugToPromId.get(p.category_slug) ?? 1) : 1;
+      const available  = s.stock_status === 'in_stock' ? 'true' : 'false';
+      const qty        = s.stock_qty ?? 0;
+      const groupId    = p.category_slug ? (slugToGroupId.get(p.category_slug) ?? 1) : 1;
+      const portalId   = p.category_slug ? (slugToPortalId.get(p.category_slug) ?? 0) : 0;
 
       // Name: don't append volume if already in name
       const nameHasVolume = p.volume ? p.name.includes(p.volume) : false;
@@ -141,8 +130,8 @@ export async function GET(request: NextRequest) {
         <url>${BASE_URL}/product/${x(p.sku)}</url>
         <price>${price.toFixed(2)}</price>
         <currencyId>UAH</currencyId>
-        <categoryId>${catId}</categoryId>
-        <portal_category_id>${catId}</portal_category_id>
+        <categoryId>${groupId}</categoryId>
+        ${portalId ? `<portal_category_id>${portalId}</portal_category_id>` : ''}
         ${img ? `<picture>${x(img)}</picture>` : ''}
         <name>${fullName}</name>
         <description>${desc}</description>
