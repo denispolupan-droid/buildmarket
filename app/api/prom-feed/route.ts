@@ -142,6 +142,7 @@ export async function GET(request: NextRequest) {
         <price>${price.toFixed(2)}</price>
         <currencyId>UAH</currencyId>
         <categoryId>${catId}</categoryId>
+        <portal_category_id>${catId}</portal_category_id>
         ${img ? `<picture>${x(img)}</picture>` : ''}
         <name>${fullName}</name>
         <description>${desc}</description>
@@ -178,7 +179,7 @@ ${offersXml}
   return new NextResponse(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': 'no-store',
     },
   });
 }
