@@ -9,6 +9,7 @@ import ProductGallery from './ProductGallery';
 import ProductImage from '../../components/ProductImage';
 import RelatedCarousel from './RelatedCarousel';
 import BackButton from './BackButton';
+import CoverageCalculator from './CoverageCalculator';
 import Footer from '../../components/Footer';
 import ProductReviews from './ProductReviews';
 import { createClient } from '@supabase/supabase-js';
@@ -236,6 +237,12 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
               bc={product.bc}
               ac={product.ac}
               imgType={product.img_type}
+            />
+
+            <CoverageCalculator
+              characteristics={product.characteristics}
+              volume={product.volume}
+              priceUnit={priceUnit}
             />
 
             <hr className="product-info__divider" />

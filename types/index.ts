@@ -29,6 +29,8 @@ export type Product = {
   ac: string;
   img_type: 'tube' | 'canister';
   is_active: boolean;
+  is_hit: boolean;
+  is_new: boolean;
   sort_order: number;
   created_at: string;
   updated_at: string;

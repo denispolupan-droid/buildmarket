@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Minus, Heart, ChevronDown, ChevronUp, Check, SlidersHorizontal, LayoutList } from 'lucide-react';
+import { Plus, Minus, Heart, ChevronDown, ChevronUp, ChevronRight, Check, SlidersHorizontal, LayoutList } from 'lucide-react';
+import { CATEGORY_ICONS } from '../../lib/category-icons';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import ProductImage from '../components/ProductImage';
 import ScrollToTop from '../components/ScrollToTop';
@@ -56,9 +57,13 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
     <div className="shop-card">
       <Link href={`/product/${p.sku}?from=shop`} className="shop-card__clickable">
         <div className="shop-card__img">
-          {salePercent && salePercent > 0 && (
-            <span className="shop-card__badge-sale">-{salePercent}%</span>
-          )}
+          <div className="shop-card__badge-stack">
+            {salePercent && salePercent > 0 && (
+              <span className="shop-card__badge-sale">-{salePercent}%</span>
+            )}
+            {p.is_hit && <span className="shop-card__badge-hit">ХІТ</span>}
+            {p.is_new && <span className="shop-card__badge-new">НОВИНКА</span>}
+          </div>
           <ProductImage
             brand={p.brand} nl1={p.nl1 ?? ''} nl2={p.nl2 ?? undefined}
             volume={p.volume ?? ''} bc={p.bc} ac={p.ac} type={p.img_type}
@@ -478,7 +483,13 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                     }
                   }}
                 >
-                  <span>{cat.name}</span>
+                  {(() => { const Icon = CATEGORY_ICONS[cat.slug]; return Icon ? <Icon size={14} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.65 }} /> : null; })()}
+                  <span style={{ flex: 1, textAlign: 'left' }}>{cat.name}</span>
+                  {children.length > 0 && (
+                    isExpanded
+                      ? <ChevronDown size={13} style={{ flexShrink: 0, opacity: 0.45 }} />
+                      : <ChevronRight size={13} style={{ flexShrink: 0, opacity: 0.45 }} />
+                  )}
                 </button>
                 <div style={{ overflow: 'hidden', maxHeight: isExpanded ? '2000px' : '0', transition: 'max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1)' }}>
                 {children.map(child => {

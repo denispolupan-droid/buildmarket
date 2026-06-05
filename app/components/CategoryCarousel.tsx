@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Package, Pen, SprayCan, Paintbrush, Bolt, FlaskConical, Layers, AlignJustify, Shield, Droplets, Hammer, Grid3x3, CloudRain } from 'lucide-react';
 import type { Category } from '../../lib/supabase';
+import { CATEGORY_ICONS } from '../../lib/category-icons';
 
 type CardData = {
   key: string;
@@ -53,7 +54,7 @@ const SLUG_COLOR: Record<string, string> = {
 };
 
 export function getCatIcon(slug: string, fallbackIdx: number) {
-  return SLUG_ICON[slug] ?? CAT_ICONS[fallbackIdx % CAT_ICONS.length];
+  return CATEGORY_ICONS[slug] ?? SLUG_ICON[slug] ?? CAT_ICONS[fallbackIdx % CAT_ICONS.length];
 }
 export function getCatColor(slug: string, fallbackIdx: number) {
   return SLUG_COLOR[slug] ?? CAT_COLORS[fallbackIdx % CAT_COLORS.length];

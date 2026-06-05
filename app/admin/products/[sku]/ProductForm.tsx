@@ -47,6 +47,8 @@ export default function ProductForm({ product, categories, isNew }: Props) {
   const [descriptionFull, setDescriptionFull] = useState(product?.description_full ?? '');
   const [descriptionFullRu, setDescriptionFullRu] = useState(product?.description_full_ru ?? '');
   const [isActive, setIsActive] = useState(product?.is_active ?? true);
+  const [isHit, setIsHit] = useState(product?.is_hit ?? false);
+  const [isNewBadge, setIsNewBadge] = useState(product?.is_new ?? false);
   const [sortOrder, setSortOrder] = useState(product?.sort_order ?? 0);
 
   const [imgType, setImgType] = useState<'tube' | 'canister'>(product?.img_type ?? 'tube');
@@ -174,6 +176,8 @@ export default function ProductForm({ product, categories, isNew }: Props) {
             description_full: descriptionFull || null,
             description_full_ru: descriptionFullRu || null,
             is_active: isActive,
+            is_hit: isHit,
+            is_new: isNewBadge,
             sort_order: sortOrder,
             img_type: imgType,
             bc, ac,
@@ -360,10 +364,18 @@ export default function ProductForm({ product, categories, isNew }: Props) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
             <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
             <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Активний (відображається на сайті)</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={isHit} onChange={e => setIsHit(e.target.checked)} style={{ accentColor: '#F97316' }} />
+            <span style={{ fontSize: '14px', fontWeight: isHit ? 700 : 400, color: isHit ? '#EA580C' : 'var(--text-secondary)' }}>🔥 ХІТ</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={isNewBadge} onChange={e => setIsNewBadge(e.target.checked)} style={{ accentColor: '#22C55E' }} />
+            <span style={{ fontSize: '14px', fontWeight: isNewBadge ? 700 : 400, color: isNewBadge ? '#16A34A' : 'var(--text-secondary)' }}>✨ НОВИНКА</span>
           </label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Сортування:</label>

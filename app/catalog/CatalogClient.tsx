@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2 } from 'lucide-react';
+import { CATEGORY_ICONS } from '../../lib/category-icons';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import Link from 'next/link';
 import ProductImage from '../components/ProductImage';
@@ -15,6 +16,7 @@ import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 
 const WHOLESALE_MIN = 3000;
+
 import { getCategoryMeta } from '../../lib/category-descriptions';
 import './catalog.css';
 
@@ -446,7 +448,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                           }
                         }}
                       >
-                        <span>{cat.name}</span>
+                        {(() => { const Icon = CATEGORY_ICONS[cat.slug]; return Icon ? <Icon size={14} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.65 }} /> : null; })()}
+                        <span style={{ flex: 1, textAlign: 'left' }}>{cat.name}</span>
                         {children.length > 0 && (
                           isExpanded
                             ? <ChevronUp size={13} style={{ flexShrink: 0, opacity: 0.5 }} />
@@ -699,7 +702,11 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                       return (
                         <div key={p.sku} className="catalog-card">
                           <Link href={`/product/${p.sku}`} className="catalog-card__img-wrap">
-                            {isSale && <span className="catalog-card__badge">АКЦІЯ</span>}
+                            <div className="catalog-card__badge-stack">
+                              {isSale && <span className="catalog-card__badge">АКЦІЯ</span>}
+                              {p.is_hit && <span className="catalog-card__badge catalog-card__badge--hit">ХІТ</span>}
+                              {p.is_new && <span className="catalog-card__badge catalog-card__badge--new">НОВИНКА</span>}
+                            </div>
                             <ProductImage
                               brand={p.brand} nl1={p.nl1 ?? ''} nl2={p.nl2 ?? undefined}
                               volume={p.volume ?? ''} bc={p.bc} ac={p.ac} type={p.img_type}
