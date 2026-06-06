@@ -346,10 +346,6 @@
   font-size: 11px; color: var(--text-muted); margin-bottom: 2px;
   flex-wrap: nowrap; overflow: hidden; height: 18px;
 }
-.catalog-card__sku {
-  font-size: 10px; color: var(--text-muted); text-align: right;
-  margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
 .catalog-card__vol {
   font-size: 10px; color: var(--text-secondary);
   background: var(--bg-soft); border-radius: 4px;
@@ -361,7 +357,7 @@
 }
 .catalog-card__stock.out { color: var(--text-muted); }
 .catalog-card__dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-.catalog-card__price { font-size: 18px; font-weight: 800; color: var(--text-primary); line-height: 1.1; }
+.catalog-card__price { font-size: 18px; font-weight: 800; color: var(--text-primary); line-height: 1.1; white-space: nowrap; }
 .catalog-card__price em { font-size: 11px; font-weight: 500; color: var(--text-muted); font-style: normal; }
 .catalog-card__price-old { font-size: 11px; color: #EF4444; text-decoration: line-through; display: block; }
 .catalog-card__price-na { font-size: 12px; color: var(--text-muted); font-weight: 600; }
@@ -370,7 +366,7 @@
   margin-top: auto; padding-top: 6px; gap: 6px;
 }
 .catalog-card__bottom-left { min-width: 0; }
-.catalog-card__pack { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+.catalog-card__pack { font-size: 10px; color: var(--text-muted); margin-top: 1px; white-space: nowrap; }
 .catalog-card__actions { display: flex; flex-direction: row; gap: 4px; align-items: center; flex-shrink: 0; }
 
 /* ── Responsive ── */
