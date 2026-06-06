@@ -119,7 +119,14 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const [inStockOnly,   setInStockOnly]   = useState(false);
   const [saleOnly,      setSaleOnly]      = useState(initialSaleOnly);
   const [visibleCount,  setVisibleCount]  = useState(50);
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>(() => {
+    if (typeof window === 'undefined') return 'table';
+    return (localStorage.getItem('catalog-view') as 'table' | 'grid') ?? 'table';
+  });
+  function changeViewMode(mode: 'table' | 'grid') {
+    setViewMode(mode);
+    localStorage.setItem('catalog-view', mode);
+  }
   const [expandedCats, setExpandedCats]  = useState<Set<string>>(() => {
     if (!initialCategory) return new Set<string>();
     const expanded = new Set<string>();
@@ -648,14 +655,14 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   <button
                     className={'catalog-view-btn' + (viewMode === 'table' ? ' active' : '')}
                     title="Таблиця"
-                    onClick={() => setViewMode('table')}
+                    onClick={() => changeViewMode('table')}
                   >
                     <Table2 size={15} strokeWidth={2} />
                   </button>
                   <button
                     className={'catalog-view-btn' + (viewMode === 'grid' ? ' active' : '')}
                     title="Карточки"
-                    onClick={() => setViewMode('grid')}
+                    onClick={() => changeViewMode('grid')}
                   >
                     <LayoutGrid size={15} strokeWidth={2} />
                   </button>
@@ -737,6 +744,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                             <div className="catalog-card__meta">
                               <span>{p.brand}</span>
                               {p.volume && <span className="catalog-card__vol">{p.volume}</span>}
+                              {(() => { const c = p.color ?? p.characteristics?.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="catalog-card__vol">{c}</span> : null; })()}
                               <span>Арт. {p.sku}</span>
                             </div>
                             <div className="catalog-card__bottom">
