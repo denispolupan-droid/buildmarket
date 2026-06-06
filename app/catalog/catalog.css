@@ -43,22 +43,21 @@
 
 /* Wholesale minimum order badge */
 .wholesale-min-badge {
-  display: inline-flex; flex-direction: column; gap: 6px; align-self: center;
-  padding: 8px 16px; border-radius: 8px; min-width: 280px;
-  font-size: 12.5px; text-decoration: none;
-  background: #FEF3C7; border: 1px solid #F59E0B; color: #78350F;
-  box-shadow: 0 1px 4px rgba(245,158,11,0.15);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  display: inline-flex; flex-direction: column; gap: 5px; align-self: center;
+  padding: 6px 14px; border-radius: 8px; min-width: 280px;
+  font-size: 12px; text-decoration: none;
+  background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E;
+  transition: border-color 0.2s;
 }
-.wholesale-min-badge:hover { border-color: #D97706; box-shadow: 0 2px 8px rgba(245,158,11,0.25); }
-.wholesale-min-badge.wholesale-min-met { background: #F0FDF4; border-color: #22C55E; color: #166534; box-shadow: 0 1px 4px rgba(34,197,94,0.15); }
+.wholesale-min-badge:hover { border-color: #F59E0B; }
+.wholesale-min-badge.wholesale-min-met { background: #F0FDF4; border-color: #86EFAC; color: #166534; }
 .wholesale-min-row { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; white-space: nowrap; }
-.wholesale-min-row strong { font-weight: 700; color: #92400E; }
+.wholesale-min-row strong { font-weight: 700; color: #78350F; }
 .wholesale-min-met .wholesale-min-row strong { color: #15803D; }
-.wholesale-min-status { color: #92400E; font-size: 12px; flex-shrink: 0; font-weight: 500; }
+.wholesale-min-status { color: #92400E; font-size: 11.5px; flex-shrink: 0; }
 .wholesale-min-met .wholesale-min-status { color: #16A34A; font-weight: 600; }
-.wholesale-min-track { height: 5px; background: #FDE68A; border-radius: 3px; overflow: hidden; }
-.wholesale-min-fill { height: 100%; background: linear-gradient(90deg, #F59E0B, #D97706); border-radius: 3px; transition: width 0.4s ease; }
+.wholesale-min-track { height: 3px; background: #FDE68A; border-radius: 2px; overflow: hidden; }
+.wholesale-min-fill { height: 100%; background: #F59E0B; border-radius: 2px; transition: width 0.4s ease; }
 .wholesale-min-met .wholesale-min-fill { background: #22C55E; }
 
 [data-theme="dark"] .wholesale-min-badge { background: #1E1A09; border-color: #4D3A04; color: #D4A017; }
@@ -86,7 +85,7 @@
   opacity: 0;
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
-.wholesale-float-bar.entered { opacity: 0.75; transform: translateX(-50%) translateY(0); }
+.wholesale-float-bar.entered { opacity: 0.92; transform: translateX(-50%) translateY(0); }
 .wholesale-float-bar.entered:hover { opacity: 1; }
 .wholesale-float-bar.entered.flash { opacity: 1; transition: opacity 0s, transform 0.25s ease; }
 [data-theme="dark"] .wholesale-float-bar {
@@ -94,12 +93,12 @@
   border-color: rgba(255, 255, 255, 0.13);
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
 }
-.wholesale-float-label { font-size: 10.5px; color: var(--text-muted); flex-shrink: 0; }
-.wholesale-float-track { width: 88px; height: 4px; background: rgba(0,0,0,0.1); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
+.wholesale-float-label { font-size: 11px; color: var(--text-secondary); font-weight: 500; flex-shrink: 0; }
+.wholesale-float-track { width: 100px; height: 5px; background: rgba(0,0,0,0.1); border-radius: 3px; overflow: hidden; flex-shrink: 0; }
 [data-theme="dark"] .wholesale-float-track { background: rgba(255,255,255,0.1); }
-.wholesale-float-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease, background-color 0.4s ease; }
-.wholesale-float-amount { font-size: 11.5px; color: var(--text-secondary); }
-.wholesale-float-amount strong { font-weight: 700; color: var(--text-primary); }
+.wholesale-float-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease, background-color 0.4s ease; background: linear-gradient(90deg, #F59E0B, #D97706); }
+.wholesale-float-amount { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.wholesale-float-amount strong { font-weight: 800; color: var(--text-primary); }
 @media (max-width: 768px) { .wholesale-float-bar { display: none; } }
 
 

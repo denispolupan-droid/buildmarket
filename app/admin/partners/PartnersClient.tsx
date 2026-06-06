@@ -309,7 +309,7 @@ export default function PartnersClient({
       {/* ── Table ───────────────────────────────────────────────────────────── */}
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
         {/* Header */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px 90px 90px 90px 36px', padding: '10px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', gap: '8px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 120px 130px 110px 120px 36px', padding: '10px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', gap: '8px' }}>
           <span>Контрагент</span>
           <span style={{ textAlign: 'right' }}>Замовлень</span>
           <span style={{ textAlign: 'right' }}>Виручка</span>
@@ -335,7 +335,7 @@ export default function PartnersClient({
             return (
               <div key={c.id} id={`partner-row-${c.id}`} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
                 {/* Main row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px 90px 90px 90px 36px', padding: '12px 20px', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 120px 130px 110px 120px 36px', padding: '12px 20px', alignItems: 'center', gap: '8px' }}>
                   {/* Name + contact */}
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
