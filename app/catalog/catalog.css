@@ -342,10 +342,10 @@
 }
 .catalog-card__name:hover { color: #1E3A5F; }
 .catalog-card__meta {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 11px; color: var(--text-muted); margin-bottom: 6px; flex-wrap: nowrap;
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; color: var(--text-muted); margin-bottom: 6px; flex-wrap: wrap;
+  overflow: hidden; max-height: 34px;
 }
-.catalog-card__meta span:last-child { margin-left: auto; }
 .catalog-card__vol {
   font-size: 10px; color: var(--text-secondary);
   background: var(--bg-soft); border-radius: 4px;
