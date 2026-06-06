@@ -527,19 +527,24 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   </select>
                 </div>
               )}
-              {allFilters.map(({ label, values }) => (
-                <div key={label} className="filter-group">
-                  <div className="filter-label">{label}</div>
-                  <select
-                    className={'filter-select' + (filterValues[label] ? ' active' : '')}
-                    value={filterValues[label] ?? ''}
-                    onChange={e => setFilterValues(prev => ({ ...prev, [label]: e.target.value }))}
-                  >
-                    <option value="">{label === 'Колір' ? 'Всі кольори' : label === 'Бренд' ? 'Всі бренди' : 'Всі'}</option>
-                    {values.map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                </div>
-              ))}
+              {allFilters.map(({ label, values }) => {
+                const active = filterValues[label] ?? '';
+                const missingActive = active && !values.includes(active);
+                return (
+                  <div key={label} className="filter-group">
+                    <div className="filter-label">{label}</div>
+                    <select
+                      className={'filter-select' + (active ? ' active' : '')}
+                      value={active}
+                      onChange={e => setFilterValues(prev => ({ ...prev, [label]: e.target.value }))}
+                    >
+                      <option value="">{label === 'Колір' ? 'Всі кольори' : label === 'Бренд' ? 'Всі бренди' : 'Всі'}</option>
+                      {missingActive && <option value={active}>{active} ⚠ немає в категорії</option>}
+                      {values.map(v => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                  </div>
+                );
+              })}
               <label className="filter-check">
                 <input type="checkbox" checked={inStockOnly} onChange={e => setInStockOnly(e.target.checked)} />
                 Тільки в наявності
@@ -548,6 +553,20 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 <input type="checkbox" checked={saleOnly} onChange={e => setSaleOnly(e.target.checked)} />
                 Тільки акційні
               </label>
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={() => { setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setInStockOnly(false); setSaleOnly(false); }}
+                  style={{
+                    marginTop: '12px', width: '100%', padding: '7px 0',
+                    border: '1px solid var(--border)', borderRadius: '6px',
+                    background: 'none', cursor: 'pointer',
+                    fontSize: '12px', fontWeight: 600, color: '#EF4444',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  Скинути фільтри ({activeFilterCount})
+                </button>
+              )}
             </div>
             </div>{/* end sidebar-filters-section */}
 
