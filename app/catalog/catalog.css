@@ -343,8 +343,12 @@
 .catalog-card__name:hover { color: #1E3A5F; }
 .catalog-card__meta {
   display: flex; align-items: center; gap: 4px;
-  font-size: 11px; color: var(--text-muted); margin-bottom: 6px; flex-wrap: wrap;
-  overflow: hidden; max-height: 34px;
+  font-size: 11px; color: var(--text-muted); margin-bottom: 2px;
+  flex-wrap: nowrap; overflow: hidden; height: 18px;
+}
+.catalog-card__sku {
+  font-size: 10px; color: var(--text-muted); text-align: right;
+  margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .catalog-card__vol {
   font-size: 10px; color: var(--text-secondary);
