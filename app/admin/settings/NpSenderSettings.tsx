@@ -188,8 +188,8 @@ export default function NpSenderSettings({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
       {/* ── Крок 1: API ключ ──────────────────────────────────────────── */}
-      <div style={{ background: 'var(--bg-card)', border: '1.5px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+      <div style={{ background: 'var(--bg-card)', border: '1.5px solid var(--border)', borderRadius: '14px', overflow: 'visible' }}>
+        <div style={{ padding: '14px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', borderRadius: '14px 14px 0 0' }}>
           1. API ключ Нової Пошти
         </div>
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -232,8 +232,8 @@ export default function NpSenderSettings({
       </div>
 
       {/* ── Крок 2: Місто ─────────────────────────────────────────────── */}
-      <div style={{ background: 'var(--bg-card)', border: `1.5px solid ${step2Active ? 'var(--border)' : 'var(--border-light)'}`, borderRadius: '14px', overflow: 'hidden', opacity: step2Active ? 1 : 0.5 }}>
-        <div style={{ padding: '14px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+      <div style={{ background: 'var(--bg-card)', border: `1.5px solid ${step2Active ? 'var(--border)' : 'var(--border-light)'}`, borderRadius: '14px', overflow: 'visible', opacity: step2Active ? 1 : 0.5 }}>
+        <div style={{ padding: '14px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', borderRadius: '14px 14px 0 0' }}>
           2. Місто відправлення
         </div>
         <div style={{ padding: '20px' }}>
@@ -270,8 +270,8 @@ export default function NpSenderSettings({
       </div>
 
       {/* ── Крок 3: Звідки відправляємо ───────────────────────────────── */}
-      <div style={{ background: 'var(--bg-card)', border: `1.5px solid ${step3Active ? 'var(--border)' : 'var(--border-light)'}`, borderRadius: '14px', overflow: 'hidden', opacity: step3Active ? 1 : 0.5 }}>
-        <div style={{ padding: '14px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+      <div style={{ background: 'var(--bg-card)', border: `1.5px solid ${step3Active ? 'var(--border)' : 'var(--border-light)'}`, borderRadius: '14px', overflow: 'visible', opacity: step3Active ? 1 : 0.5 }}>
+        <div style={{ padding: '14px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', borderRadius: '14px 14px 0 0' }}>
           3. Звідки відправляємо
         </div>
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
