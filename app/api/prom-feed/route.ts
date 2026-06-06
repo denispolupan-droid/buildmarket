@@ -12,7 +12,7 @@ const SHOP_NAME = 'FIXLINE';
 // Brands not in Prom.ua manufacturer database — omit <vendor> to avoid "Невідомий виробник" error
 const PROM_UNKNOWN_BRANDS = new Set([
   'Bitugum', 'Байрис', 'Aqua Protect', 'Хімконтакт', 'Хімік',
-  'Aqua-protect', 'БАЙРИС', 'BITUGUM',
+  'Aqua-protect', 'БАЙРИС', 'BITUGUM', 'ПОЛЯРА-ХИМ',
 ]);
 
 function x(s: string | null | undefined): string {
@@ -29,11 +29,6 @@ function imageUrl(product: { sku: string; image: string | null }): string | null
   return product.image;
 }
 
-function buildCategoryIds(categories: { id: number; slug: string; name: string; parent_slug: string | null }[]) {
-  const map = new Map<string, number>();
-  categories.forEach((c, i) => map.set(c.slug, i + 1));
-  return map;
-}
 
 export async function GET(request: NextRequest) {
   const key = request.nextUrl.searchParams.get('key');
@@ -61,17 +56,14 @@ export async function GET(request: NextRequest) {
   ]);
 
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
-  const catIdMap = buildCategoryIds(categories ?? []); // sequential 1…N — our group IDs in the feed
 
   type CatRow = { slug: string; name: string; parent_slug: string | null; prom_section_id: number | null; prom_section_url: string | null };
   const catData = (categories ?? []) as CatRow[];
 
-  // slug → sequential group ID (used in <categoryId> and <categories> block)
-  const slugToGroupId = catIdMap;
-
-  // slug → Prom portal section ID (used in <portal_category_id> only)
-  const slugToPortalId = new Map<string, number>(
-    catData.map(c => [c.slug, c.prom_section_id ?? 0]),
+  // slug → group ID: use prom_section_id when available (keeps stable mappings in Prom),
+  // fall back to sequential index so every category always has a unique ID
+  const slugToGroupId = new Map<string, number>(
+    catData.map((c, i) => [c.slug, c.prom_section_id ?? (i + 1)]),
   );
 
   // Group characteristics by SKU
@@ -81,10 +73,9 @@ export async function GET(request: NextRequest) {
     charsMap.get(c.product_sku)!.push({ label: c.label, value: c.value });
   }
 
-  // Categories XML — use our own sequential IDs to avoid conflicting with Prom's section IDs
   const catsXml = catData
     .map(c => {
-      const id = catIdMap.get(c.slug) ?? 0;
+      const id = slugToGroupId.get(c.slug) ?? 0;
       return `      <category id="${id}">${x(c.name)}</category>`;
     })
     .join('\n');
@@ -100,7 +91,6 @@ export async function GET(request: NextRequest) {
       const available  = s.stock_status === 'in_stock' ? 'true' : 'false';
       const qty        = s.stock_qty ?? 0;
       const groupId    = p.category_slug ? (slugToGroupId.get(p.category_slug) ?? 1) : 1;
-      const portalId   = p.category_slug ? (slugToPortalId.get(p.category_slug) ?? 0) : 0;
 
       // Name: don't append volume if already in name
       const nameHasVolume = p.volume ? p.name.includes(p.volume) : false;
@@ -131,7 +121,6 @@ export async function GET(request: NextRequest) {
         <price>${price.toFixed(2)}</price>
         <currencyId>UAH</currencyId>
         <categoryId>${groupId}</categoryId>
-        ${portalId ? `<portal_category_id>${portalId}</portal_category_id>` : ''}
         ${img ? `<picture>${x(img)}</picture>` : ''}
         <name>${fullName}</name>
         <description>${desc}</description>
