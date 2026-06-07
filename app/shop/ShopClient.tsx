@@ -75,33 +75,18 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
           <div className="shop-card__name" title={`${p.name}${p.volume && !p.name.includes(p.volume) ? ` ${p.volume}` : ''}`}>
             {p.name}{p.volume && !p.name.includes(p.volume) ? ` ${p.volume}` : ''}
           </div>
-          <div className="shop-card__badges">
+          <div className="shop-card__meta">
             {(() => {
               const volL = p.volume ? (/кг|г$/.test(p.volume) ? 'Вага' : "Об'єм") : null;
               const colorVal = p.color ?? p.characteristics?.find(c => /^Колір/i.test(c.label))?.value ?? null;
               return (<>
-                {volL      && <span className="shop-card__tag" title={`${volL}: ${p.volume}`}>{volL}: {p.volume}</span>}
-                {colorVal  && <span className="shop-card__tag shop-card__tag--color" title={`Колір: ${colorVal}`}>Колір: {colorVal}</span>}
+                <span className="shop-card__meta-brand">{p.brand}</span>
+                {volL     && <span className="shop-card__meta-badge">{p.volume}</span>}
+                {colorVal && <span className="shop-card__meta-badge shop-card__meta-color">{colorVal}</span>}
               </>);
             })()}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '2px' }}>
-            <span className="shop-card__brand" style={{ margin: 0 }}>{p.brand}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-              <span style={{ fontSize: '11px', color: '#94A3B8' }}>Арт. {p.sku}</span>
-              <button
-                onClick={handleCopySku}
-                title="Копіювати артикул"
-                style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: copied ? '#16A34A' : '#CBD5E1', lineHeight: 1, display: 'flex', alignItems: 'center' }}
-              >
-                {copied
-                  ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                }
-              </button>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: 'auto', paddingTop: '6px' }}>
             <div className={'shop-card__stock' + (inStock ? '' : ' out')}>
               <span className="shop-card__stock-dot" />
               {inStock ? 'В наявності' : 'Немає'}
@@ -150,6 +135,20 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
         >
           {inCart ? <><Check size={14} strokeWidth={2.5} /> В кошику</> : <><Plus size={14} strokeWidth={2.5} /> В кошик</>}
         </button>
+      </div>
+      <div className="shop-card__pack-row">
+        <span>уп. {p.pack_qty} шт</span>
+        <span
+          onClick={handleCopySku}
+          title="Копіювати артикул"
+          style={{ cursor: 'pointer', color: copied ? '#16A34A' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}
+        >
+          Арт. {p.sku}
+          {copied
+            ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          }
+        </span>
       </div>
     </div>
   );
