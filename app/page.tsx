@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: 'FIXLINE — професійна будівельна хімія оптом та в роздріб',
   description: 'Герметики, монтажні піни, клеї, ґрунтовки від провідних брендів. Оптові ціни для дилерів та підрядників. Доставка по всій Україні. Строительная химия оптом — герметики, монтажная пена, клеи.',
   keywords: ['будівельна хімія', 'строительная химия', 'герметики', 'монтажна піна', 'монтажная пена', 'клеї', 'клеи', 'ґрунтовки', 'грунтовки', 'будівельна хімія оптом', 'строительная химия оптом', 'купити', 'купить', 'Україна', 'Украина'],
-  alternates: { canonical: 'https://fixline.com.ua', languages: { 'uk': 'https://fixline.com.ua', 'ru': 'https://fixline.com.ua', 'x-default': 'https://fixline.com.ua' } },
+  alternates: { canonical: 'https://fixline.com.ua', languages: { 'uk': 'https://fixline.com.ua', 'ru': 'https://fixline.com.ua/ru', 'x-default': 'https://fixline.com.ua' } },
   openGraph: {
     title: 'FIXLINE — професійна будівельна хімія',
     description: 'Герметики, монтажні піни, клеї, ґрунтовки. Оптові ціни, доставка по Україні.',

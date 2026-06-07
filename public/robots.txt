@@ -7,5 +7,8 @@ Disallow: /login
 Disallow: /register
 Disallow: /order-success
 Disallow: /invoice
+Disallow: /catalog
+Disallow: /cabinet
+Disallow: /api/
 
 Sitemap: https://fixline.com.ua/sitemap.xml

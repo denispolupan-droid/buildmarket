@@ -1,54 +1,59 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import Footer from '../components/Footer';
+import Footer from '../../components/Footer';
 import { ShieldCheck, Users, Package, Award, Truck, MessageCircle } from 'lucide-react';
 
+const BASE = 'https://fixline.com.ua';
+
 export const metadata: Metadata = {
-  title: 'Про компанію FIXLINE — постачальник будівельної хімії',
-  description: 'FIXLINE — лінія фіксації. FIX (фіксувати, кріпити) + LINE (лінія матеріалів). Постачальник будівельної хімії в Україні: герметики, клеї, монтажні піни, ґрунтовки від перевірених виробників.',
-  keywords: ['про компанію FIXLINE', 'постачальник будівельної хімії', 'поставщик строительной химии Украина', 'оптова будівельна хімія', 'герметики оптом постачальник', 'Харків будівельна хімія'],
-  alternates: { canonical: 'https://fixline.com.ua/about', languages: { 'uk': 'https://fixline.com.ua/about', 'ru': 'https://fixline.com.ua/ru/about', 'x-default': 'https://fixline.com.ua/about' } },
+  title: 'О компании FIXLINE — поставщик строительной химии',
+  description: 'FIXLINE — линия фиксации. FIX (фиксировать, крепить) + LINE (линия материалов). Поставщик строительной химии на Украине: герметики, клеи, монтажные пены, грунтовки от проверенных производителей.',
+  keywords: ['о компании FIXLINE', 'поставщик строительной химии', 'оптовая строительная химия', 'герметики оптом поставщик', 'Харьков строительная химия'],
+  alternates: {
+    canonical: `${BASE}/ru/about`,
+    languages: { 'uk': `${BASE}/about`, 'ru': `${BASE}/ru/about`, 'x-default': `${BASE}/about` },
+  },
   openGraph: {
-    title: 'Про компанію FIXLINE',
-    description: 'Офіційний постачальник будівельної хімії в Україні. 10+ років, 500+ клієнтів, 1000+ артикулів.',
-    url: 'https://fixline.com.ua/about',
+    title: 'О компании FIXLINE',
+    description: 'Официальный поставщик строительной химии на Украине. 10+ лет, 500+ клиентов, 1000+ артикулов.',
+    url: `${BASE}/ru/about`,
     siteName: 'FIXLINE',
-    locale: 'uk_UA',
+    locale: 'ru_RU',
     type: 'website',
   },
 };
 
 const stats = [
-  { icon: Award,         stat: '10+',   label: 'років на ринку',        text: 'Надійний постачальник з підтвердженою репутацією серед дилерів та підрядників.' },
-  { icon: Users,         stat: '500+',  label: 'активних клієнтів',     text: 'B2B партнери по всій Україні: будівельні магазини, підрядники, дропшипери.' },
-  { icon: Package,       stat: '1000+', label: 'артикулів',             text: 'Широкий асортимент у наявності на складі з постійним поповненням.' },
-  { icon: ShieldCheck,   stat: '100%',  label: 'сертифікована продукція', text: 'Тільки оригінальні товари з документами якості та технічними паспортами.' },
+  { icon: Award,       stat: '10+',   label: 'лет на рынке',          text: 'Надёжный поставщик с подтверждённой репутацией среди дилеров и подрядчиков.' },
+  { icon: Users,       stat: '500+',  label: 'активных клиентов',      text: 'B2B партнёры по всей Украине: строительные магазины, подрядчики, дропшиперы.' },
+  { icon: Package,     stat: '1000+', label: 'артикулов',              text: 'Широкий ассортимент в наличии на складе с постоянным пополнением.' },
+  { icon: ShieldCheck, stat: '100%',  label: 'сертифицированная продукция', text: 'Только оригинальные товары с документами качества и техническими паспортами.' },
 ];
 
 const brands = [
-  { name: 'Lacrysil',      src: '/brands/Lacrysil.png' },
-  { name: 'Ceresit',       src: '/brands/ceresit.webp' },
-  { name: 'Pattex',        src: '/brands/pattex.webp' },
-  { name: 'Ataman',        src: '/brands/ataman.jpg' },
-  { name: 'Aqua Protect',  src: '/brands/Aqua Protect.png' },
-  { name: 'Bitugum',       src: '/brands/bitugum.webp' },
+  { name: 'Lacrysil',     src: '/brands/Lacrysil.png' },
+  { name: 'Ceresit',      src: '/brands/ceresit.webp' },
+  { name: 'Pattex',       src: '/brands/pattex.webp' },
+  { name: 'Ataman',       src: '/brands/ataman.jpg' },
+  { name: 'Aqua Protect', src: '/brands/Aqua Protect.png' },
+  { name: 'Bitugum',      src: '/brands/bitugum.webp' },
 ];
 
 const values = [
-  { icon: ShieldCheck,   title: 'Якість без компромісів',  text: 'Ми працюємо тільки з перевіреними виробниками та офіційними дистриб\'юторами. Кожна партія супроводжується документами якості.' },
-  { icon: Truck,         title: 'Надійна логістика',       text: 'Власна логістика та Нова Пошта по всій Україні. Замовлення, прийняті до 14:00, відправляємо того ж дня.' },
-  { icon: MessageCircle, title: 'Персональний підхід',     text: 'За кожним клієнтом закріплений менеджер. Консультуємо щодо вибору матеріалів і підбору аналогів.' },
-  { icon: Package,       title: 'Гнучкі умови',            text: 'Від 1 одиниці в роздріб до великого опту. Індивідуальні ціни та умови оплати для постійних партнерів.' },
+  { icon: ShieldCheck,   title: 'Качество без компромиссов', text: 'Мы работаем только с проверенными производителями и официальными дистрибьюторами. Каждая партия сопровождается документами качества.' },
+  { icon: Truck,         title: 'Надёжная логистика',        text: 'Собственная логистика и Новая Почта по всей Украине. Заказы, принятые до 14:00, отправляем в тот же день.' },
+  { icon: MessageCircle, title: 'Персональный подход',        text: 'За каждым клиентом закреплён менеджер. Консультируем по выбору материалов и подбору аналогов.' },
+  { icon: Package,       title: 'Гибкие условия',            text: 'От 1 единицы в розницу до крупного опта. Индивидуальные цены и условия оплаты для постоянных партнёров.' },
 ];
 
-export default function AboutPage() {
+export default function AboutRuPage() {
   const breadcrumbLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Головна', item: 'https://fixline.com.ua' },
-      { '@type': 'ListItem', position: 2, name: 'Про компанію', item: 'https://fixline.com.ua/about' },
+      { '@type': 'ListItem', position: 1, name: 'Главная', item: `${BASE}/ru` },
+      { '@type': 'ListItem', position: 2, name: 'О компании', item: `${BASE}/ru/about` },
     ],
   };
 
@@ -56,14 +61,10 @@ export default function AboutPage() {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: 'FIXLINE',
-    url: 'https://fixline.com.ua',
-    logo: 'https://fixline.com.ua/fixline-logo.png',
-    description: 'Постачальник будівельної хімії в Україні: герметики, монтажні піни, клеї, ґрунтовки оптом і в роздріб.',
-    address: {
-      '@type': 'PostalAddress',
-      addressLocality: 'Харків',
-      addressCountry: 'UA',
-    },
+    url: BASE,
+    logo: `${BASE}/fixline-logo.png`,
+    description: 'Поставщик строительной химии на Украине: герметики, монтажные пены, клеи, грунтовки оптом и в розницу.',
+    address: { '@type': 'PostalAddress', addressLocality: 'Харьков', addressCountry: 'UA' },
     contactPoint: {
       '@type': 'ContactPoint',
       telephone: '+380991997788',
@@ -84,11 +85,10 @@ export default function AboutPage() {
         <section style={{ background: 'linear-gradient(160deg, #1E293B 0%, #1E3A5F 100%)', padding: '64px 0 56px' }}>
           <div className="page-container">
             <nav style={{ fontSize: '13px', color: '#64748B', marginBottom: '24px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-              <Link href="/" style={{ color: '#64748B', textDecoration: 'none' }}>Головна</Link>
+              <Link href="/ru" style={{ color: '#64748B', textDecoration: 'none' }}>Главная</Link>
               <span>/</span>
-              <span style={{ color: '#94A3B8' }}>Про компанію</span>
+              <span style={{ color: '#94A3B8' }}>О компании</span>
             </nav>
-            {/* Name breakdown */}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0', marginBottom: '28px', userSelect: 'none' }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <span style={{
@@ -97,7 +97,7 @@ export default function AboutPage() {
                   WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
                 }}>FIX</span>
                 <span style={{ fontSize: '11px', fontWeight: 600, color: '#4880B8', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: '4px' }}>
-                  фіксація
+                  фиксация
                 </span>
               </div>
               <span style={{ fontSize: 'clamp(40px, 6vw, 72px)', fontWeight: 900, color: 'rgba(255,255,255,0.15)', margin: '0 2px', lineHeight: 1, alignSelf: 'flex-start', paddingTop: '2px' }}>+</span>
@@ -108,17 +108,16 @@ export default function AboutPage() {
                   WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
                 }}>LINE</span>
                 <span style={{ fontSize: '11px', fontWeight: 600, color: '#5EEAD4', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: '4px' }}>
-                  лінія
+                  линия
                 </span>
               </div>
             </div>
-
             <h1 style={{ fontSize: 'clamp(20px, 2.5vw, 30px)', fontWeight: 700, color: '#fff', lineHeight: 1.3, marginBottom: '16px', letterSpacing: '-0.3px' }}>
-              Лінія фіксації — все для надійного монтажу
+              Линия фиксации — всё для надёжного монтажа
             </h1>
             <p style={{ fontSize: '16px', color: '#94A3B8', lineHeight: 1.7, maxWidth: '580px', margin: 0 }}>
-              Герметики, клеї, монтажні піни, ґрунтовки — матеріали, що фіксують,
-              захищають і тримають. Від перевірених виробників за конкурентними цінами.
+              Герметики, клеи, монтажные пены, грунтовки — материалы, которые фиксируют,
+              защищают и держат. От проверенных производителей по конкурентным ценам.
             </p>
           </div>
         </section>
@@ -127,12 +126,10 @@ export default function AboutPage() {
         <section style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', padding: '48px 0' }}>
           <div className="page-container">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px', alignItems: 'center' }} className="about-content-grid">
-
-              {/* Left — concept cards */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 {[
-                  { word: 'FIX',      color: '#4880B8', bg: 'rgba(72,128,184,0.08)', border: 'rgba(72,128,184,0.2)',  meanings: ['Фіксувати',  'Кріпити',    'Склеювати', 'Герметизувати'] },
-                  { word: 'LINE',     color: '#14B8A6', bg: 'rgba(20,184,166,0.08)',  border: 'rgba(20,184,166,0.2)', meanings: ['Лінія',      'Асортимент', 'Підбір',    'Система'] },
+                  { word: 'FIX',  color: '#4880B8', bg: 'rgba(72,128,184,0.08)', border: 'rgba(72,128,184,0.2)',  meanings: ['Фиксировать', 'Крепить',      'Склеивать', 'Герметизировать'] },
+                  { word: 'LINE', color: '#14B8A6', bg: 'rgba(20,184,166,0.08)',  border: 'rgba(20,184,166,0.2)', meanings: ['Линия',       'Ассортимент', 'Подбор',    'Система'] },
                 ].map(({ word, color, bg, border, meanings }) => (
                   <div key={word} style={{ background: bg, border: `1px solid ${border}`, borderRadius: '16px', padding: '24px 20px' }}>
                     <div style={{ fontSize: '36px', fontWeight: 900, color, marginBottom: '16px', letterSpacing: '-1px', lineHeight: 1 }}>{word}</div>
@@ -146,38 +143,32 @@ export default function AboutPage() {
                     </div>
                   </div>
                 ))}
-
-                {/* Combined */}
                 <div style={{ gridColumn: '1 / -1', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px 24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
                   <div style={{ fontSize: '22px', fontWeight: 900, letterSpacing: '-0.5px', flexShrink: 0 }}>
-                    <span style={{ color: '#4880B8' }}>FIX</span>
-                    <span style={{ color: '#14B8A6' }}>LINE</span>
+                    <span style={{ color: '#4880B8' }}>FIX</span><span style={{ color: '#14B8A6' }}>LINE</span>
                   </div>
                   <div style={{ width: '1px', height: '32px', background: 'var(--border)', flexShrink: 0 }} />
                   <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-                    Лінія матеріалів для фіксації — повний асортимент того, що кріпить, клеїть, герметизує та захищає в будівництві та ремонті.
+                    Линия материалов для фиксации — полный ассортимент того, что крепит, клеит, герметизирует и защищает в строительстве и ремонте.
                   </p>
                 </div>
               </div>
-
-              {/* Right — text */}
               <div>
                 <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px', lineHeight: 1.3 }}>
-                  Назва — це концепція
+                  Название — это концепция
                 </h2>
                 <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.8, display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <p>
-                    <strong style={{ color: 'var(--text-primary)' }}>FIX</strong> — від англійського {'"'}fix{'"'}: фіксувати, кріпити, усувати. Це суть будівельної хімії: клей тримає, герметик захищає, піна фіксує.
+                    <strong style={{ color: 'var(--text-primary)' }}>FIX</strong> — от английского &ldquo;fix&rdquo;: фиксировать, крепить, устранять. Это суть строительной химии: клей держит, герметик защищает, пена фиксирует.
                   </p>
                   <p>
-                    <strong style={{ color: 'var(--text-primary)' }}>LINE</strong> — лінія, асортимент, система. Не один продукт, а повна лінійка матеріалів для будь-якого завдання на будмайданчику або в ремонті.
+                    <strong style={{ color: 'var(--text-primary)' }}>LINE</strong> — линия, ассортимент, система. Не один продукт, а полная линейка материалов для любой задачи на стройплощадке или в ремонте.
                   </p>
                   <p>
-                    Разом <strong style={{ color: 'var(--text-primary)' }}>FIXLINE</strong> — це лінія фіксації: все що потрібно, щоб усе трималося надійно.
+                    Вместе <strong style={{ color: 'var(--text-primary)' }}>FIXLINE</strong> — это линия фиксации: всё что нужно, чтобы всё держалось надёжно.
                   </p>
                 </div>
               </div>
-
             </div>
           </div>
         </section>
@@ -206,41 +197,41 @@ export default function AboutPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '64px', alignItems: 'start' }} className="about-content-grid">
               <div>
                 <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '20px' }}>
-                  Хто ми
+                  Кто мы
                 </h2>
                 <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.8, display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <p>
-                    FIXLINE — B2B постачальник будівельної хімії для дилерів, підрядників,
-                    будівельних магазинів та дропшиперів по всій Україні.
+                    FIXLINE — B2B поставщик строительной химии для дилеров, подрядчиков,
+                    строительных магазинов и дропшиперов по всей Украине.
                   </p>
                   <p>
-                    Ми не виробник — ми зв&apos;язуємо клієнтів з перевіреними виробниками та
-                    брендами. Наша задача: широкий асортимент, актуальні ціни та швидка
-                    доставка Новою Поштою в будь-яку точку України.
+                    Мы не производитель — мы связываем клиентов с проверенными производителями и
+                    брендами. Наша задача: широкий ассортимент, актуальные цены и быстрая
+                    доставка Новой Почтой в любую точку Украины.
                   </p>
                   <p>
-                    Працюємо як з роздрібними покупцями від 1 одиниці, так і з оптовими
-                    клієнтами. Пропонуємо гнучкі умови та підбір аналогів під бюджет.
+                    Работаем как с розничными покупателями от 1 единицы, так и с оптовыми
+                    клиентами. Предлагаем гибкие условия и подбор аналогов под бюджет.
                   </p>
                 </div>
               </div>
               <div>
                 <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '20px' }}>
-                  Доставка та логістика
+                  Доставка и логистика
                 </h2>
                 <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.8, display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <p>
-                    Відправляємо Новою Поштою по всій Україні. Замовлення до 14:00 — відправка
-                    того ж дня. Широкий асортимент підтримується в постійній наявності.
+                    Отправляем Новой Почтой по всей Украине. Заказы до 14:00 — отправка
+                    в тот же день. Широкий ассортимент поддерживается в постоянном наличии.
                   </p>
                   <p>
-                    Для великих оптових партій — адресна доставка по Харкову та регіону,
-                    умови обговорюються з менеджером індивідуально.
+                    Для крупных оптовых партий — адресная доставка по Харькову и региону,
+                    условия обсуждаются с менеджером индивидуально.
                   </p>
                   <p>
-                    Дропшиперам надаємо XML/YML-фід з актуальними залишками та цінами,
-                    що оновлюється кілька разів на день. Доставляємо напряму клієнту
-                    від імені вашого магазину.
+                    Дропшиперам предоставляем XML/YML-фид с актуальными остатками и ценами,
+                    который обновляется несколько раз в день. Доставляем напрямую клиенту
+                    от имени вашего магазина.
                   </p>
                 </div>
               </div>
@@ -252,7 +243,7 @@ export default function AboutPage() {
         <section style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border)', padding: '64px 0' }}>
           <div className="page-container">
             <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '40px', textAlign: 'center' }}>
-              Наші принципи
+              Наши принципы
             </h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }} className="about-values-grid">
               {values.map(({ icon: Icon, title, text }) => (
@@ -272,10 +263,10 @@ export default function AboutPage() {
         <section style={{ padding: '64px 0', borderTop: '1px solid var(--border)' }}>
           <div className="page-container">
             <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', textAlign: 'center' }}>
-              Бренди, з якими ми працюємо
+              Бренды, с которыми мы работаем
             </h2>
             <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '40px' }}>
-              Продукція від перевірених виробників будівельної хімії
+              Продукция от проверенных производителей строительной химии
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px' }} className="brands-grid">
               {brands.map(({ name, src }) => (
@@ -296,18 +287,18 @@ export default function AboutPage() {
         <section style={{ background: '#1E3059', padding: '56px 0', textAlign: 'center' }}>
           <div className="page-container">
             <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', marginBottom: '12px' }}>
-              Стати партнером FIXLINE
+              Стать партнёром FIXLINE
             </h2>
             <p style={{ fontSize: '14px', color: '#94A3B8', marginBottom: '32px', maxWidth: '480px', margin: '0 auto 32px' }}>
-              Дилери, підрядники, будівельні магазини — реєструйтесь та отримуйте
-              доступ до оптових цін і персонального менеджера.
+              Дилеры, подрядчики, строительные магазины — регистрируйтесь и получайте
+              доступ к оптовым ценам и персональному менеджеру.
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link href="/register" style={{ height: '48px', padding: '0 28px', borderRadius: '10px', background: '#4880B8', color: '#fff', fontSize: '14px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
-                Зареєструватись
+                Зарегистрироваться
               </Link>
-              <Link href="/contacts" style={{ height: '48px', padding: '0 28px', borderRadius: '10px', border: '1.5px solid rgba(255,255,255,0.2)', color: '#E2E8F0', fontSize: '14px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', textDecoration: 'none', background: 'transparent' }}>
-                Зв&apos;язатися з нами
+              <Link href="/ru/contacts" style={{ height: '48px', padding: '0 28px', borderRadius: '10px', border: '1.5px solid rgba(255,255,255,0.2)', color: '#E2E8F0', fontSize: '14px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', textDecoration: 'none', background: 'transparent' }}>
+                Связаться с нами
               </Link>
             </div>
           </div>

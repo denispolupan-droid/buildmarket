@@ -20,8 +20,8 @@ export async function generateMetadata(
     return {
       title: 'Акційні товари — будівельна хімія зі знижкою | FIXLINE',
       description: 'Акції на герметики, монтажні піни, клеї та ґрунтовки. Купити зі знижкою від 1 одиниці з доставкою по Україні.',
-      alternates: { canonical: `${BASE}/shop?sale=1`, languages: { 'uk': `${BASE}/shop?sale=1`, 'x-default': `${BASE}/shop?sale=1` } },
-      openGraph: { title: 'Акційні товари | FIXLINE', url: `${BASE}/shop?sale=1`, locale: 'uk_UA', type: 'website' },
+      alternates: { canonical: `${BASE}/shop/sale`, languages: { 'uk': `${BASE}/shop/sale`, 'ru': `${BASE}/ru/shop/sale`, 'x-default': `${BASE}/shop/sale` } },
+      openGraph: { title: 'Акційні товари | FIXLINE', url: `${BASE}/shop/sale`, locale: 'uk_UA', type: 'website' },
     };
   }
 
@@ -34,7 +34,7 @@ export async function generateMetadata(
     description: 'Купити будівельну хімію в роздріб: герметики, монтажні піни, клеї, ґрунтовки. Доставка по всій Україні. Купить строительную химию в розницу: герметики, монтажная пена, клеи.',
     keywords: ['магазин будівельної хімії', 'магазин строительной химии', 'герметики купити', 'герметики купить', 'монтажна піна', 'монтажная пена', 'клей будівельний', 'клей строительный', 'ґрунтовка', 'грунтовка'],
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
-    alternates: { canonical: `${BASE}/shop`, languages: { 'uk': `${BASE}/shop`, 'x-default': `${BASE}/shop` } },
+    alternates: { canonical: `${BASE}/shop`, languages: { 'uk': `${BASE}/shop`, 'ru': `${BASE}/ru/shop`, 'x-default': `${BASE}/shop` } },
     openGraph: {
       title: 'Магазин будівельної хімії | FIXLINE',
       description: 'Герметики, монтажні піни, клеї, ґрунтовки. Від 1 одиниці з доставкою по Україні.',
@@ -47,6 +47,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   const { sale, brand } = await searchParams;
 
   if (brand) redirect(`/shop/brand/${brandToSlug(brand)}`);
+  if (sale === '1') redirect('/shop/sale');
 
   const breadcrumbLd = {
     '@context': 'https://schema.org',

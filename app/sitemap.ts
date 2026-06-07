@@ -93,5 +93,65 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  return [...staticRoutes, ...blogRoutes, ...shopCategoryRoutes, ...brandRoutes, ...categoryBrandRoutes, ...productRoutes];
+  // ── Russian mirror routes (/ru/*) ──────────────────────────────────────────
+  const ruStaticRoutes: MetadataRoute.Sitemap = [
+    { url: `${BASE}/ru`,            lastModified: SITE_UPDATED, changeFrequency: 'weekly',  priority: 0.9 },
+    { url: `${BASE}/ru/shop`,       lastModified: SITE_UPDATED, changeFrequency: 'daily',   priority: 0.8 },
+    { url: `${BASE}/ru/shop/sale`,  lastModified: SITE_UPDATED, changeFrequency: 'daily',   priority: 0.75 },
+    { url: `${BASE}/ru/blog`,       lastModified: SITE_UPDATED, changeFrequency: 'weekly',  priority: 0.65 },
+    { url: `${BASE}/ru/about`,      lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.55 },
+    { url: `${BASE}/ru/contacts`,   lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${BASE}/ru/dropship`,   lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.55 },
+    { url: `${BASE}/ru/delivery`,   lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.4 },
+    { url: `${BASE}/ru/returns`,    lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.4 },
+  ];
+
+  const ruShopCategoryRoutes: MetadataRoute.Sitemap = categories.map(cat => ({
+    url: `${BASE}/ru/shop/${cat.slug}`,
+    lastModified: new Date(cat.created_at),
+    changeFrequency: 'daily',
+    priority: 0.75,
+  }));
+
+  const ruBrandRoutes: MetadataRoute.Sitemap = significantBrands.map(brand => ({
+    url: `${BASE}/ru/shop/brand/${brandToSlug(brand)}`,
+    lastModified: SITE_UPDATED,
+    changeFrequency: 'weekly',
+    priority: 0.7,
+  }));
+
+  const ruCategoryBrandRoutes: MetadataRoute.Sitemap = [];
+  for (const [key, count] of brandCategoryMap) {
+    if (count < 5) continue;
+    const sep = key.indexOf('::');
+    const categorySlug = key.slice(0, sep);
+    const brandName = key.slice(sep + 2);
+    ruCategoryBrandRoutes.push({
+      url: `${BASE}/ru/shop/${categorySlug}/${brandToSlug(brandName)}`,
+      lastModified: SITE_UPDATED,
+      changeFrequency: 'weekly',
+      priority: 0.68,
+    });
+  }
+
+  const ruProductRoutes: MetadataRoute.Sitemap = products.map(p => ({
+    url: `${BASE}/ru/product/${p.sku}`,
+    lastModified: p.updated_at ? new Date(p.updated_at) : SITE_UPDATED,
+    changeFrequency: 'weekly',
+    priority: 0.65,
+  }));
+
+  return [
+    ...staticRoutes,
+    ...blogRoutes,
+    ...shopCategoryRoutes,
+    ...brandRoutes,
+    ...categoryBrandRoutes,
+    ...productRoutes,
+    ...ruStaticRoutes,
+    ...ruShopCategoryRoutes,
+    ...ruBrandRoutes,
+    ...ruCategoryBrandRoutes,
+    ...ruProductRoutes,
+  ];
 }

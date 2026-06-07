@@ -1,7 +1,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Mail, Phone, MapPin, Clock4 } from 'lucide-react';
+import { headers } from 'next/headers';
 import { getCategoriesCached, getProductsCached } from '../../lib/supabase';
+import { getCategoryNameRu } from '../../lib/ru';
+import LanguageSwitcher from './LanguageSwitcher';
 
 function brandToSlug(brand: string): string {
   return brand.trim().toLowerCase().replace(/\s+/g, '-');
@@ -32,15 +35,22 @@ const socials: { label: string; href: string; icon: React.ReactNode }[] = [
 ];
 
 const serviceLinks = [
-  { label: "Про компанію",        href: '/about' },
-  { label: "Зв'яжіться з нами",   href: '/contacts' },
-  { label: 'Умови доставки',      href: '/delivery' },
-  { label: 'Політика повернення', href: '/returns' },
-  { label: 'Часті питання',       href: '/blog' },
+  { labelUk: "Про компанію",        labelRu: 'О компании',               hrefUk: '/about',    hrefRu: '/ru/about' },
+  { labelUk: "Зв'яжіться з нами",   labelRu: 'Свяжитесь с нами',         hrefUk: '/contacts', hrefRu: '/ru/contacts' },
+  { labelUk: 'Умови доставки',      labelRu: 'Условия доставки',          hrefUk: '/delivery', hrefRu: '/ru/delivery' },
+  { labelUk: 'Політика повернення', labelRu: 'Политика возврата',         hrefUk: '/returns',  hrefRu: '/ru/returns' },
+  { labelUk: 'Часті питання',       labelRu: 'Часто задаваемые вопросы',  hrefUk: '/blog',     hrefRu: '/ru/blog' },
 ];
 
 export default async function Footer() {
-  const [categories, allProducts] = await Promise.all([getCategoriesCached(), getProductsCached()]);
+  const [categories, allProducts, headersList] = await Promise.all([
+    getCategoriesCached(),
+    getProductsCached(),
+    headers(),
+  ]);
+  const pathname = headersList.get('x-pathname') ?? '';
+  const isRu = pathname.startsWith('/ru');
+  const shopBase = isRu ? '/ru/shop' : '/shop';
   const parentCats = categories.filter(c => !c.parent_slug);
 
   const brandCounts = new Map<string, number>();
@@ -85,21 +95,21 @@ export default async function Footer() {
           {/* Categories */}
           <div>
             <p style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '18px' }}>
-              Категорії
+              {isRu ? 'Категории' : 'Категорії'}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {parentCats.slice(0, 6).map(cat => (
-                <Link key={cat.slug} href={`/shop/${cat.slug}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
-                  {cat.name}
+                <Link key={cat.slug} href={`${shopBase}/${cat.slug}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
+                  {isRu ? getCategoryNameRu(cat.slug, cat.name) : cat.name}
                 </Link>
               ))}
               {parentCats.length > 6 && (
                 <details className="footer-details">
-                  <summary>Ще {parentCats.length - 6}</summary>
+                  <summary>{isRu ? `Ещё ${parentCats.length - 6}` : `Ще ${parentCats.length - 6}`}</summary>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                     {parentCats.slice(6).map(cat => (
-                      <Link key={cat.slug} href={`/shop/${cat.slug}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
-                        {cat.name}
+                      <Link key={cat.slug} href={`${shopBase}/${cat.slug}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
+                        {isRu ? getCategoryNameRu(cat.slug, cat.name) : cat.name}
                       </Link>
                     ))}
                   </div>
@@ -111,7 +121,7 @@ export default async function Footer() {
           {/* Brands */}
           <div>
             <p style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '18px' }}>
-              Бренди
+              {isRu ? 'Бренды' : 'Бренди'}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {topBrands.slice(0, 6).map(brand => (
@@ -121,7 +131,7 @@ export default async function Footer() {
               ))}
               {topBrands.length > 6 && (
                 <details className="footer-details">
-                  <summary>Ще {topBrands.length - 6}</summary>
+                  <summary>{isRu ? `Ещё ${topBrands.length - 6}` : `Ще ${topBrands.length - 6}`}</summary>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                     {topBrands.slice(6).map(brand => (
                       <Link key={brand} href={`/shop/brand/${brandToSlug(brand)}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
@@ -137,11 +147,13 @@ export default async function Footer() {
           {/* Service */}
           <div>
             <p style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '18px' }}>
-              Обслуговування
+              {isRu ? 'Сервис' : 'Обслуговування'}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {serviceLinks.map(({ label, href }) => (
-                <Link key={label} href={href} style={{ fontSize: '14px', color: '#94A3B8', textDecoration: 'none' }}>{label}</Link>
+              {serviceLinks.map(({ labelUk, labelRu, hrefUk, hrefRu }) => (
+                <Link key={hrefUk} href={isRu ? hrefRu : hrefUk} style={{ fontSize: '14px', color: '#94A3B8', textDecoration: 'none' }}>
+                  {isRu ? labelRu : labelUk}
+                </Link>
               ))}
             </div>
           </div>
@@ -179,9 +191,13 @@ export default async function Footer() {
 
         <div style={{
           borderTop: '1px solid rgba(255,255,255,0.07)',
-          padding: '18px 0', textAlign: 'center',
+          padding: '18px 0',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          <span style={{ fontSize: '13px', color: '#64748B' }}>© 2026 FIXLINE. Всі права захищені.</span>
+          <span style={{ fontSize: '13px', color: '#64748B' }}>
+            {isRu ? '© 2026 FIXLINE. Все права защищены.' : '© 2026 FIXLINE. Всі права захищені.'}
+          </span>
+          <LanguageSwitcher />
         </div>
       </div>
     </footer>

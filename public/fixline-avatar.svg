@@ -1,0 +1,16 @@
+<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="400" fill="#FFFFFF" rx="32"/>
+
+  <!-- Three left-aligned bars of decreasing width -->
+  <rect x="130" y="100" width="140" height="32" rx="16" fill="#4880B8"/>
+  <rect x="130" y="148" width="104" height="32" rx="16" fill="#1E3A5F"/>
+  <rect x="130" y="196" width="65"  height="32" rx="16" fill="#1E3A5F"/>
+
+  <!-- fix(bold) + line(light) centred -->
+  <text x="200" y="294"
+    text-anchor="middle"
+    font-family="Inter, system-ui, -apple-system, sans-serif"
+    font-size="52" letter-spacing="-2"
+    fill="#1E3A5F"
+  ><tspan font-weight="700">fix</tspan><tspan font-weight="300">line</tspan></text>
+</svg>

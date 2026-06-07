@@ -1,29 +1,34 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import Footer from '../components/Footer';
+import Footer from '../../components/Footer';
 import { Truck, Clock, MapPin, Package, CreditCard, Phone } from 'lucide-react';
 
+const BASE = 'https://fixline.com.ua';
+
 export const metadata: Metadata = {
-  title: 'Умови доставки | FIXLINE',
-  description: 'Доставка будівельної хімії по всій Україні. Нова Пошта, адресна доставка. Замовлення до 14:00 — відправка в той самий день.',
-  keywords: ['доставка будівельна хімія', 'Нова Пошта будматеріали', 'доставка строительная химия Украина', 'умови доставки'],
-  alternates: { canonical: 'https://fixline.com.ua/delivery', languages: { 'uk': 'https://fixline.com.ua/delivery', 'ru': 'https://fixline.com.ua/ru/delivery', 'x-default': 'https://fixline.com.ua/delivery' } },
+  title: 'Условия доставки | FIXLINE',
+  description: 'Доставка строительной химии по всей Украине. Новая Почта, адресная доставка. Заказ до 14:00 — отправка в тот же день.',
+  keywords: ['доставка строительная химия', 'Новая Почта стройматериалы', 'условия доставки'],
+  alternates: {
+    canonical: `${BASE}/ru/delivery`,
+    languages: { 'uk': `${BASE}/delivery`, 'ru': `${BASE}/ru/delivery`, 'x-default': `${BASE}/delivery` },
+  },
   openGraph: {
-    title: 'Умови доставки — FIXLINE',
-    description: 'Доставка по всій Україні. Нова Пошта, адресна доставка. Відправка в день замовлення.',
-    url: 'https://fixline.com.ua/delivery',
+    title: 'Условия доставки — FIXLINE',
+    description: 'Доставка по всей Украине. Новая Почта, адресная доставка. Отправка в день заказа.',
+    url: `${BASE}/ru/delivery`,
     siteName: 'FIXLINE',
-    locale: 'uk_UA',
+    locale: 'ru_RU',
   },
 };
 
-export default function DeliveryPage() {
+export default function DeliveryRuPage() {
   const breadcrumbLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Головна', item: 'https://fixline.com.ua' },
-      { '@type': 'ListItem', position: 2, name: 'Умови доставки', item: 'https://fixline.com.ua/delivery' },
+      { '@type': 'ListItem', position: 1, name: 'Главная', item: `${BASE}/ru` },
+      { '@type': 'ListItem', position: 2, name: 'Условия доставки', item: `${BASE}/ru/delivery` },
     ],
   };
 
@@ -34,13 +39,13 @@ export default function DeliveryPage() {
         <div style={{ maxWidth: '860px', margin: '0 auto', padding: '48px 32px 80px' }}>
 
           <nav style={{ fontSize: '13px', color: '#94A3B8', marginBottom: '24px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <Link href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</Link>
+            <Link href="/ru" style={{ color: '#94A3B8', textDecoration: 'none' }}>Главная</Link>
             <span>/</span>
-            <span>Умови доставки</span>
+            <span>Условия доставки</span>
           </nav>
 
-          <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>Умови доставки</h1>
-          <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '48px' }}>Відправляємо по всій Україні щоденно, пн–пт</p>
+          <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>Условия доставки</h1>
+          <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '48px' }}>Отправляем по всей Украине ежедневно, пн–пт</p>
 
           {/* Methods */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '48px' }} className="delivery-grid">
@@ -50,13 +55,13 @@ export default function DeliveryPage() {
                 <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Truck size={20} color="#4880B8" strokeWidth={2} />
                 </div>
-                <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Нова Пошта</h2>
+                <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Новая Почта</h2>
               </div>
               <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 12px' }}>
-                Доставка до відділення або поштомату Нової Пошти по всій Україні. Найшвидший і найзручніший спосіб для більшості замовлень.
+                Доставка до отделения или постамата Новой Почты по всей Украине. Самый быстрый и удобный способ для большинства заказов.
               </p>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {['Доставка 1–2 дні', 'Понад 6000 відділень по Україні', 'Відстеження посилки в реальному часі', 'Накладений платіж або передоплата'].map(i => (
+                {['Доставка 1–2 дня', 'Более 6000 отделений по Украине', 'Отслеживание посылки в реальном времени', 'Наложенный платёж или предоплата'].map(i => (
                   <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                     <span style={{ color: '#4880B8', flexShrink: 0, marginTop: '2px' }}>✓</span>{i}
                   </li>
@@ -69,13 +74,13 @@ export default function DeliveryPage() {
                 <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <MapPin size={20} color="#4880B8" strokeWidth={2} />
                 </div>
-                <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Адресна доставка</h2>
+                <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Адресная доставка</h2>
               </div>
               <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 12px' }}>
-                Для великих оптових замовлень — доставка власним транспортом або перевізником по Харкову та найближчих регіонах.
+                Для крупных оптовых заказов — доставка собственным транспортом или перевозчиком по Харькову и ближайшим регионам.
               </p>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {['Від 50 кг або від 5000 грн', 'Харків та область — безкоштовно', 'Умови обговорюються з менеджером'].map(i => (
+                {['От 50 кг или от 5000 грн', 'Харьков и область — бесплатно', 'Условия обсуждаются с менеджером'].map(i => (
                   <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                     <span style={{ color: '#4880B8', flexShrink: 0, marginTop: '2px' }}>✓</span>{i}
                   </li>
@@ -87,12 +92,12 @@ export default function DeliveryPage() {
 
           {/* Terms */}
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '32px', marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '24px' }}>Терміни та умови</h2>
+            <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '24px' }}>Сроки и условия</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {[
-                { icon: Clock,      title: 'Обробка замовлення',  text: 'Замовлення, розміщені до 14:00 у робочі дні, відправляємо в той самий день. Замовлення після 14:00 — наступного робочого дня.' },
-                { icon: Package,    title: 'Упаковка',            text: 'Товар упаковується в картонні коробки з наповнювачем. Для крихких і рідких матеріалів — посилена упаковка без додаткової оплати.' },
-                { icon: CreditCard, title: 'Оплата при отриманні', text: 'Накладений платіж через Нову Пошту — оплачуєте при отриманні посилки. Для оптових клієнтів — передоплата на рахунок або через платіжну систему.' },
+                { icon: Clock,      title: 'Обработка заказа',   text: 'Заказы, размещённые до 14:00 в рабочие дни, отправляем в тот же день. Заказы после 14:00 — на следующий рабочий день.' },
+                { icon: Package,    title: 'Упаковка',            text: 'Товар упаковывается в картонные коробки с наполнителем. Для хрупких и жидких материалов — усиленная упаковка без дополнительной оплаты.' },
+                { icon: CreditCard, title: 'Оплата при получении', text: 'Наложенный платёж через Новую Почту — оплачиваете при получении посылки. Для оптовых клиентов — предоплата на счёт или через платёжную систему.' },
               ].map(({ icon: Icon, title, text }) => (
                 <div key={title} style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
                   <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--border)' }}>
@@ -110,15 +115,15 @@ export default function DeliveryPage() {
           {/* Questions */}
           <div style={{ background: '#1E3A5F', borderRadius: '16px', padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
             <div>
-              <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>Залишились питання щодо доставки?</div>
-              <div style={{ fontSize: '13px', color: '#94A3B8' }}>Менеджер відповість протягом кількох хвилин</div>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>Остались вопросы по доставке?</div>
+              <div style={{ fontSize: '13px', color: '#94A3B8' }}>Менеджер ответит в течение нескольких минут</div>
             </div>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <a href="tel:+380991997788" style={{ height: '40px', padding: '0 20px', borderRadius: '8px', background: '#4880B8', color: '#fff', fontSize: '13px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
-                <Phone size={14} /> Зателефонувати
+                <Phone size={14} /> Позвонить
               </a>
-              <Link href="/contacts" style={{ height: '40px', padding: '0 20px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', color: '#E2E8F0', fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', textDecoration: 'none', background: 'transparent' }}>
-                Написати
+              <Link href="/ru/contacts" style={{ height: '40px', padding: '0 20px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', color: '#E2E8F0', fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', textDecoration: 'none', background: 'transparent' }}>
+                Написать
               </Link>
             </div>
           </div>

@@ -1,32 +1,35 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import Footer from '../components/Footer';
-import { ARTICLES } from '../../lib/blog';
+import Footer from '../../components/Footer';
+import { ARTICLES } from '../../../lib/blog';
 import { BookOpen, Clock, ArrowRight } from 'lucide-react';
-
-export const metadata: Metadata = {
-  title: 'Блог | Поради щодо будівельної хімії — FIXLINE',
-  description: 'Корисні статті про герметики, монтажну піну, клеї та ґрунтовки. Як вибрати, як використовувати, типові помилки та поради від практиків.',
-  keywords: ['як вибрати герметик', 'як вибрати монтажну піну', 'будівельна хімія поради', 'как выбрать герметик', 'как выбрать монтажную пену', 'строительная химия советы', 'герметик для ванной', 'монтажная пена как использовать'],
-  alternates: { canonical: 'https://fixline.com.ua/blog', languages: { 'uk': 'https://fixline.com.ua/blog', 'ru': 'https://fixline.com.ua/ru/blog', 'x-default': 'https://fixline.com.ua/blog' } },
-  openGraph: {
-    title: 'Блог FIXLINE — поради щодо будівельної хімії',
-    description: 'Статті про герметики, монтажну піну та клеї: вибір, застосування, типові помилки.',
-    url: 'https://fixline.com.ua/blog',
-    siteName: 'FIXLINE',
-    locale: 'uk_UA',
-  },
-};
 
 const BASE = 'https://fixline.com.ua';
 
-export default function BlogPage() {
+export const metadata: Metadata = {
+  title: 'Блог | Советы по строительной химии — FIXLINE',
+  description: 'Полезные статьи о герметиках, монтажной пене, клеях и грунтовках. Как выбрать, как использовать, типичные ошибки и советы от практиков.',
+  keywords: ['как выбрать герметик', 'как выбрать монтажную пену', 'строительная химия советы', 'герметик для ванной', 'монтажная пена как использовать'],
+  alternates: {
+    canonical: `${BASE}/ru/blog`,
+    languages: { 'uk': `${BASE}/blog`, 'ru': `${BASE}/ru/blog`, 'x-default': `${BASE}/blog` },
+  },
+  openGraph: {
+    title: 'Блог FIXLINE — советы по строительной химии',
+    description: 'Статьи о герметиках, монтажной пене и клеях: выбор, применение, типичные ошибки.',
+    url: `${BASE}/ru/blog`,
+    siteName: 'FIXLINE',
+    locale: 'ru_RU',
+  },
+};
+
+export default function BlogRuPage() {
   const blogLd = {
     '@context': 'https://schema.org',
     '@type': 'Blog',
-    name: 'Блог FIXLINE — поради щодо будівельної хімії',
-    url: `${BASE}/blog`,
-    description: 'Корисні статті про герметики, монтажну піну, клеї та ґрунтовки.',
+    name: 'Блог FIXLINE — советы по строительной химии',
+    url: `${BASE}/ru/blog`,
+    description: 'Полезные статьи о герметиках, монтажной пене, клеях и грунтовках.',
     publisher: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
     blogPost: ARTICLES.map(a => ({
       '@type': 'BlogPosting',
@@ -51,7 +54,7 @@ export default function BlogPage() {
             </h1>
           </div>
           <p style={{ fontSize: '15px', color: 'var(--text-muted)', marginBottom: '40px' }}>
-            Поради, порівняння та відповіді на часті питання щодо будівельної хімії
+            Советы, сравнения и ответы на часто задаваемые вопросы о строительной химии
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -76,7 +79,7 @@ export default function BlogPage() {
                       {article.category}
                     </span>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Clock size={12} /> {article.readTime} хв читання
+                      <Clock size={12} /> {article.readTime} мин чтения
                     </span>
                   </div>
                   <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px', lineHeight: 1.4 }}>
@@ -86,7 +89,7 @@ export default function BlogPage() {
                     {article.description}
                   </p>
                   <span style={{ fontSize: '13px', fontWeight: 600, color: '#4880B8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    Читати статтю <ArrowRight size={14} />
+                    Читать статью <ArrowRight size={14} />
                   </span>
                 </div>
               </Link>

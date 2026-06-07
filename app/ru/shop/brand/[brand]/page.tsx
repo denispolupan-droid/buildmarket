@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import Footer from '../../../components/Footer';
-import ShopLoader from '../../ShopLoader';
-import { getBrandsCached, getProductsCached } from '../../../../lib/supabase';
-import '../../shop.css';
+import Footer from '../../../../components/Footer';
+import ShopLoader from '../../../../shop/ShopLoader';
+import '../../../../shop/shop.css';
+import { getBrandsCached, getProductsCached } from '../../../../../lib/supabase';
 
 const BASE = 'https://fixline.com.ua';
 
@@ -35,26 +35,30 @@ export async function generateMetadata(
   if (brandProductCount < 5) return { robots: { index: false, follow: true } };
 
   return {
-    title: `${brand} купити в Україні — вигідні ціни | FIXLINE`,
-    description: `Купити ${brand} в роздріб та оптом. Широкий асортимент, вигідні ціни, доставка по всій Україні. Купить ${brand} с доставкой по Украине.`,
-    keywords: [brand, 'купити', 'купить', 'будівельна хімія', 'Україна', 'оптом'],
+    title: `${brand} купить на Украине — выгодные цены | FIXLINE`,
+    description: `Купить ${brand} в розницу и оптом. Широкий ассортимент, выгодные цены, доставка по всей Украине.`,
+    keywords: [brand, 'купить', 'строительная химия', 'Украина', 'оптом'],
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
     alternates: {
-      canonical: `${BASE}/shop/brand/${slug}`,
-      languages: { 'uk': `${BASE}/shop/brand/${slug}`, 'ru': `${BASE}/ru/shop/brand/${slug}`, 'x-default': `${BASE}/shop/brand/${slug}` },
+      canonical: `${BASE}/ru/shop/brand/${slug}`,
+      languages: {
+        'uk': `${BASE}/shop/brand/${slug}`,
+        'ru': `${BASE}/ru/shop/brand/${slug}`,
+        'x-default': `${BASE}/shop/brand/${slug}`,
+      },
     },
     openGraph: {
       title: `${brand} | Магазин FIXLINE`,
-      description: `${brand} — купити від 1 шт з доставкою по Україні. Широкий асортимент, доставка по всій Україні.`,
-      url: `${BASE}/shop/brand/${slug}`,
+      description: `${brand} — купить от 1 шт с доставкой по Украине. Широкий ассортимент.`,
+      url: `${BASE}/ru/shop/brand/${slug}`,
       siteName: 'FIXLINE',
-      locale: 'uk_UA',
+      locale: 'ru_RU',
       type: 'website',
     },
   };
 }
 
-export default async function ShopBrandPage({ params }: { params: Promise<{ brand: string }> }) {
+export default async function ShopBrandRuPage({ params }: { params: Promise<{ brand: string }> }) {
   const { brand: slug } = await params;
   const [brands, allProducts] = await Promise.all([
     getBrandsCached(),
@@ -72,17 +76,17 @@ export default async function ShopBrandPage({ params }: { params: Promise<{ bran
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Головна', item: BASE },
-      { '@type': 'ListItem', position: 2, name: 'Магазин', item: `${BASE}/shop` },
-      { '@type': 'ListItem', position: 3, name: brand, item: `${BASE}/shop/brand/${slug}` },
+      { '@type': 'ListItem', position: 1, name: 'Главная', item: `${BASE}/ru` },
+      { '@type': 'ListItem', position: 2, name: 'Магазин', item: `${BASE}/ru/shop` },
+      { '@type': 'ListItem', position: 3, name: brand, item: `${BASE}/ru/shop/brand/${slug}` },
     ],
   };
 
   const itemListLd = brandProducts.length > 0 ? {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: `${brand} — каталог товарів`,
-    url: `${BASE}/shop/brand/${slug}`,
+    name: `${brand} — каталог товаров`,
+    url: `${BASE}/ru/shop/brand/${slug}`,
     numberOfItems: brandProducts.length,
     itemListElement: brandProducts.map((p, i) => ({
       '@type': 'ListItem',
@@ -90,7 +94,7 @@ export default async function ShopBrandPage({ params }: { params: Promise<{ bran
       item: {
         '@type': 'Product',
         name: p.name,
-        url: `${BASE}/product/${p.sku}`,
+        url: `${BASE}/ru/product/${p.sku}`,
         brand: { '@type': 'Brand', name: p.brand },
         ...(p.image ? { image: `${BASE}${p.image.startsWith('/') ? '' : '/'}${p.image}` } : {}),
         ...(p.stock ? {
@@ -114,17 +118,17 @@ export default async function ShopBrandPage({ params }: { params: Promise<{ bran
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
         <div style={{ margin: '0 auto', padding: '24px 16px 64px' }} className="mobile-pad">
           <nav aria-label="Breadcrumb" style={{ marginBottom: '24px', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Link href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</Link>
+            <Link href="/ru" style={{ color: '#94A3B8', textDecoration: 'none' }}>Главная</Link>
             <span>/</span>
-            <Link href="/shop" style={{ color: '#94A3B8', textDecoration: 'none' }}>Магазин</Link>
+            <Link href="/ru/shop" style={{ color: '#94A3B8', textDecoration: 'none' }}>Магазин</Link>
             <span>/</span>
             <span style={{ color: '#475569' }}>{brand}</span>
           </nav>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px' }}>
-            {brand} — купити в Україні
+            {brand} — купить на Украине
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '0 0 24px', lineHeight: 1.6 }}>
-            Широкий асортимент продукції {brand} за вигідними цінами. Оптові та роздрібні умови, швидка доставка Новою Поштою по всій Україні.
+            Широкий ассортимент продукции {brand} по выгодным ценам. Оптовые и розничные условия, быстрая доставка Новой Почтой по всей Украине.
           </p>
           <ShopLoader initialBrand={brand} />
         </div>

@@ -9,20 +9,27 @@ import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
 import { useTheme } from '../../lib/theme';
+import { getLang, localizeHref } from '../../lib/lang';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-const NAV = [
-  { href: '/',          icon: Home,         label: 'Головна'    },
-  { href: '/shop',      icon: Store,        label: 'Магазин'    },
-  { href: '/catalog',   icon: LayoutGrid,   label: 'Опт'        },
-  { href: '/dropship',  icon: PackageCheck, label: 'Дропшипінг' },
-  { href: '/blog',      icon: BookOpen,     label: 'Блог'       },
-  { href: '/contacts',  icon: Phone,        label: 'Контакти'   },
+const BASE_NAV = [
+  { href: '/',          icon: Home,         labelUk: 'Головна',    labelRu: 'Главная'     },
+  { href: '/shop',      icon: Store,        labelUk: 'Магазин',    labelRu: 'Магазин'     },
+  { href: '/catalog',   icon: LayoutGrid,   labelUk: 'Опт',        labelRu: 'Опт'         },
+  { href: '/dropship',  icon: PackageCheck, labelUk: 'Дропшипінг', labelRu: 'Дропшиппинг' },
+  { href: '/blog',      icon: BookOpen,     labelUk: 'Блог',       labelRu: 'Блог'        },
+  { href: '/contacts',  icon: Phone,        labelUk: 'Контакти',   labelRu: 'Контакты'    },
 ];
 
 export default function Header() {
   const pathname = usePathname();
   const router   = useRouter();
+  const lang     = getLang(pathname);
+  const nav      = BASE_NAV.map(item => ({
+    href:  localizeHref(item.href, lang),
+    icon:  item.icon,
+    label: lang === 'ru' ? item.labelRu : item.labelUk,
+  }));
   const [user,       setUser]       = useState<SupabaseUser | null>(null);
   const [menuOpen,   setMenuOpen]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -78,7 +85,7 @@ export default function Header() {
         }} className="header-inner">
 
           {/* Logo */}
-          <Link href="/" onClick={e => handleNavClick(e, '/')} style={{ justifySelf: 'start', flexShrink: 0 }}>
+          <Link href={lang === 'ru' ? '/ru' : '/'} onClick={e => handleNavClick(e, lang === 'ru' ? '/ru' : '/')} style={{ justifySelf: 'start', flexShrink: 0 }}>
             <Image
               src={theme === 'dark' ? '/fixline-logo-white.svg' : '/fixline-logo.svg'}
               alt="fixline" width={178} height={42} priority
@@ -88,8 +95,9 @@ export default function Header() {
 
           {/* Desktop nav */}
           <nav className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-            {NAV.map(({ href, icon: Icon, label }) => {
-              const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
+            {nav.map(({ href, icon: Icon, label }) => {
+              const homeHref = lang === 'ru' ? '/ru' : '/';
+              const active = href === homeHref ? pathname === homeHref : pathname.startsWith(href);
               return (
                 <Link key={href} href={href} onClick={e => handleNavClick(e, href)} className="btn-nav" style={{
                   display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -277,8 +285,9 @@ export default function Header() {
           padding: '16px',
           display: 'flex', flexDirection: 'column', gap: '4px',
         }}>
-          {NAV.map(({ href, icon: Icon, label }) => {
-            const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
+          {nav.map(({ href, icon: Icon, label }) => {
+            const homeHref = lang === 'ru' ? '/ru' : '/';
+            const active = href === homeHref ? pathname === homeHref : pathname.startsWith(href);
             return (
               <Link key={href} href={href} onClick={e => handleNavClick(e, href)} style={{
                 display: 'flex', alignItems: 'center', gap: '12px',

@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import Footer from '../../../components/Footer';
-import ShopLoader from '../../ShopLoader';
-import { getCategoriesCached, getProductsCached } from '../../../../lib/supabase';
-import '../../shop.css';
+import Footer from '../../../../components/Footer';
+import ShopLoader from '../../../../shop/ShopLoader';
+import '../../../../shop/shop.css';
+import { getCategoriesCached, getProductsCached } from '../../../../../lib/supabase';
+import { getCategoryNameRu } from '../../../../../lib/ru';
 
 const BASE = 'https://fixline.com.ua';
 
@@ -70,27 +71,33 @@ export async function generateMetadata(
   if (!resolved) return { robots: { index: false, follow: false } };
   const { cat, brandName, count } = resolved;
 
+  const catNameRu = getCategoryNameRu(cat.slug, cat.name);
+
   return {
-    title: `${brandName} ${cat.name.toLowerCase()} купити — ціни | FIXLINE`,
-    description: `${brandName} ${cat.name.toLowerCase()} — ${count} товарів в наявності. Вигідні ціни, доставка Новою Поштою по всій Україні. Купити ${brandName} ${cat.name.toLowerCase()} від 1 шт.`,
-    keywords: [brandName, cat.name, 'купити', 'ціни', 'Україна'],
+    title: `${brandName} ${catNameRu.toLowerCase()} купить — цены | FIXLINE`,
+    description: `${brandName} ${catNameRu.toLowerCase()} — ${count} товаров в наличии. Выгодные цены, доставка Новой Почтой по всей Украине. Купить ${brandName} ${catNameRu.toLowerCase()} от 1 шт.`,
+    keywords: [brandName, catNameRu, 'купить', 'цены', 'Украина'],
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
     alternates: {
-      canonical: `${BASE}/shop/${category}/${brandSlug}`,
-      languages: { 'uk': `${BASE}/shop/${category}/${brandSlug}`, 'ru': `${BASE}/ru/shop/${category}/${brandSlug}`, 'x-default': `${BASE}/shop/${category}/${brandSlug}` },
+      canonical: `${BASE}/ru/shop/${category}/${brandSlug}`,
+      languages: {
+        'uk': `${BASE}/shop/${category}/${brandSlug}`,
+        'ru': `${BASE}/ru/shop/${category}/${brandSlug}`,
+        'x-default': `${BASE}/shop/${category}/${brandSlug}`,
+      },
     },
     openGraph: {
-      title: `${brandName} ${cat.name} | FIXLINE`,
-      description: `${brandName} ${cat.name.toLowerCase()} — купити від 1 шт з доставкою по Україні.`,
-      url: `${BASE}/shop/${category}/${brandSlug}`,
+      title: `${brandName} ${catNameRu} | FIXLINE`,
+      description: `${brandName} ${catNameRu.toLowerCase()} — купить от 1 шт с доставкой по Украине.`,
+      url: `${BASE}/ru/shop/${category}/${brandSlug}`,
       siteName: 'FIXLINE',
-      locale: 'uk_UA',
+      locale: 'ru_RU',
       type: 'website',
     },
   };
 }
 
-export default async function ShopCategoryBrandPage(
+export default async function ShopCategoryBrandRuPage(
   { params }: { params: Promise<{ category: string; brand: string }> }
 ) {
   const { category, brand: brandSlug } = await params;
@@ -99,15 +106,18 @@ export default async function ShopCategoryBrandPage(
   if (!resolved) notFound();
   const { cat, brandName, count, parentCat, products } = resolved;
 
+  const catNameRu = getCategoryNameRu(cat.slug, cat.name);
+  const parentCatNameRu = parentCat ? getCategoryNameRu(parentCat.slug, parentCat.name) : null;
+
   const breadcrumbLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Головна', item: BASE },
-      { '@type': 'ListItem', position: 2, name: 'Магазин', item: `${BASE}/shop` },
-      ...(parentCat ? [{ '@type': 'ListItem', position: 3, name: parentCat.name, item: `${BASE}/shop/${parentCat.slug}` }] : []),
-      { '@type': 'ListItem', position: parentCat ? 4 : 3, name: cat.name, item: `${BASE}/shop/${category}` },
-      { '@type': 'ListItem', position: parentCat ? 5 : 4, name: brandName, item: `${BASE}/shop/${category}/${brandSlug}` },
+      { '@type': 'ListItem', position: 1, name: 'Главная', item: `${BASE}/ru` },
+      { '@type': 'ListItem', position: 2, name: 'Магазин', item: `${BASE}/ru/shop` },
+      ...(parentCat ? [{ '@type': 'ListItem', position: 3, name: parentCatNameRu ?? parentCat.name, item: `${BASE}/ru/shop/${parentCat.slug}` }] : []),
+      { '@type': 'ListItem', position: parentCat ? 4 : 3, name: catNameRu, item: `${BASE}/ru/shop/${category}` },
+      { '@type': 'ListItem', position: parentCat ? 5 : 4, name: brandName, item: `${BASE}/ru/shop/${category}/${brandSlug}` },
     ],
   };
 
@@ -118,8 +128,8 @@ export default async function ShopCategoryBrandPage(
   const itemListLd = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: `${brandName} ${cat.name}`,
-    url: `${BASE}/shop/${category}/${brandSlug}`,
+    name: `${brandName} ${catNameRu}`,
+    url: `${BASE}/ru/shop/${category}/${brandSlug}`,
     numberOfItems: pageProducts.length,
     itemListElement: pageProducts.map((p, i) => ({
       '@type': 'ListItem',
@@ -127,7 +137,7 @@ export default async function ShopCategoryBrandPage(
       item: {
         '@type': 'Product',
         name: p.name,
-        url: `${BASE}/product/${p.sku}`,
+        url: `${BASE}/ru/product/${p.sku}`,
         brand: { '@type': 'Brand', name: p.brand },
         ...(p.image ? { image: `${BASE}${p.image.startsWith('/') ? '' : '/'}${p.image}` } : {}),
         ...(p.stock ? {
@@ -151,26 +161,26 @@ export default async function ShopCategoryBrandPage(
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
         <div style={{ margin: '0 auto', padding: '24px 16px 64px' }} className="mobile-pad">
           <nav aria-label="Breadcrumb" style={{ marginBottom: '24px', fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Link href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</Link>
+            <Link href="/ru" style={{ color: '#94A3B8', textDecoration: 'none' }}>Главная</Link>
             <span>/</span>
-            <Link href="/shop" style={{ color: '#94A3B8', textDecoration: 'none' }}>Магазин</Link>
+            <Link href="/ru/shop" style={{ color: '#94A3B8', textDecoration: 'none' }}>Магазин</Link>
             {parentCat && (
               <>
                 <span>/</span>
-                <Link href={`/shop/${parentCat.slug}`} style={{ color: '#94A3B8', textDecoration: 'none' }}>{parentCat.name}</Link>
+                <Link href={`/ru/shop/${parentCat.slug}`} style={{ color: '#94A3B8', textDecoration: 'none' }}>{parentCatNameRu ?? parentCat.name}</Link>
               </>
             )}
             <span>/</span>
-            <Link href={`/shop/${category}`} style={{ color: '#94A3B8', textDecoration: 'none' }}>{cat.name}</Link>
+            <Link href={`/ru/shop/${category}`} style={{ color: '#94A3B8', textDecoration: 'none' }}>{catNameRu}</Link>
             <span>/</span>
             <span style={{ color: '#475569' }}>{brandName}</span>
           </nav>
 
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px' }}>
-            {brandName} — {cat.name.toLowerCase()}
+            {brandName} — {catNameRu.toLowerCase()}
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '0 0 24px', lineHeight: 1.6 }}>
-            {count} товарів бренду {brandName} в категорії «{cat.name}». Вигідні ціни, доставка Новою Поштою по всій Україні.
+            {count} товаров бренда {brandName} в категории «{catNameRu}». Выгодные цены, доставка Новой Почтой по всей Украине.
           </p>
 
           <ShopLoader initialCategory={category} initialBrand={brandName} />

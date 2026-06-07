@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { Inter } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 import Header from "./components/Header";
 import ChatWidget from "./components/ChatWidget";
@@ -24,7 +25,7 @@ export const metadata: Metadata = {
     canonical: 'https://fixline.com.ua',
     languages: {
       'uk': 'https://fixline.com.ua',
-      'ru': 'https://fixline.com.ua',
+      'ru': 'https://fixline.com.ua/ru',
       'x-default': 'https://fixline.com.ua',
     },
   },
@@ -45,9 +46,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const headersList = await headers();
+  const pathname = headersList.get('x-pathname') ?? '';
+  const lang = pathname.startsWith('/ru') ? 'ru' : 'uk';
   return (
-    <html lang="uk" className={inter.className} suppressHydrationWarning>
+    <html lang={lang} className={inter.className} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://boaztnparrdoeknajprn.supabase.co" />
         <link rel="dns-prefetch" href="https://boaztnparrdoeknajprn.supabase.co" />

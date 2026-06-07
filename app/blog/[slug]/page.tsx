@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: `${article.title} | FIXLINE`,
     description: article.description,
     keywords: article.keywords,
-    alternates: { canonical: `https://fixline.com.ua/blog/${slug}`, languages: { 'uk': `https://fixline.com.ua/blog/${slug}`, 'ru': `https://fixline.com.ua/blog/${slug}`, 'x-default': `https://fixline.com.ua/blog/${slug}` } },
+    alternates: { canonical: `https://fixline.com.ua/blog/${slug}`, languages: { 'uk': `https://fixline.com.ua/blog/${slug}`, 'ru': 'https://fixline.com.ua/ru/blog', 'x-default': `https://fixline.com.ua/blog/${slug}` } },
     openGraph: {
       title: article.title,
       description: article.description,

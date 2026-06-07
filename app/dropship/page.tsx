@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: 'Дропшипінг будівельної хімії | FIXLINE',
   description: 'Продавайте будівельну хімію без складу. Баланс-система, автоматичне оформлення замовлень, доставка напряму клієнту від нашого імені. Дропшиппинг строительной химии — работа по Украине.',
   keywords: ['дропшипінг будівельна хімія', 'дропшиппинг строительная химия', 'продавати без складу', 'продавать без склада', 'XML прайс будівельна хімія', 'дропшип Україна'],
-  alternates: { canonical: 'https://fixline.com.ua/dropship', languages: { 'uk': 'https://fixline.com.ua/dropship', 'ru': 'https://fixline.com.ua/dropship', 'x-default': 'https://fixline.com.ua/dropship' } },
+  alternates: { canonical: 'https://fixline.com.ua/dropship', languages: { 'uk': 'https://fixline.com.ua/dropship', 'ru': 'https://fixline.com.ua/ru/dropship', 'x-default': 'https://fixline.com.ua/dropship' } },
   openGraph: {
     title: 'Дропшипінг будівельної хімії | FIXLINE',
     description: 'Продавайте будівельну хімію без складу. Баланс-система, автоматичне оформлення замовлень по Україні.',

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
   alternates: {
     canonical: `${BASE}/shop/sale`,
-    languages: { 'uk': `${BASE}/shop/sale`, 'x-default': `${BASE}/shop/sale` },
+    languages: { 'uk': `${BASE}/shop/sale`, 'ru': `${BASE}/ru/shop/sale`, 'x-default': `${BASE}/shop/sale` },
   },
   openGraph: {
     title: 'Акційні товари | Магазин FIXLINE',

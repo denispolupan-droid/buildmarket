@@ -1,35 +1,40 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import Footer from '../components/Footer';
+import Footer from '../../components/Footer';
 import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 
+const BASE = 'https://fixline.com.ua';
+
 export const metadata: Metadata = {
-  title: 'Контакти | FIXLINE — будівельна хімія B2B',
-  description: 'Зв\'яжіться з FIXLINE: +38 (099) 199-77-88, info@fixline.com.ua. Доставка по всій Україні. Будівельна хімія оптом — контакти постачальника.',
-  keywords: ['контакти FIXLINE', 'постачальник будівельна хімія', 'поставщик строительная химия Украина', 'оптова будівельна хімія контакти', 'Харків будівельна хімія'],
-  alternates: { canonical: 'https://fixline.com.ua/contacts', languages: { 'uk': 'https://fixline.com.ua/contacts', 'ru': 'https://fixline.com.ua/ru/contacts', 'x-default': 'https://fixline.com.ua/contacts' } },
+  title: 'Контакты | FIXLINE — строительная химия B2B',
+  description: 'Свяжитесь с FIXLINE: +38 (099) 199-77-88, info@fixline.com.ua. Доставка по всей Украине. Строительная химия оптом — контакты поставщика.',
+  keywords: ['контакты FIXLINE', 'поставщик строительная химия', 'оптовая строительная химия контакты', 'Харьков строительная химия'],
+  alternates: {
+    canonical: `${BASE}/ru/contacts`,
+    languages: { 'uk': `${BASE}/contacts`, 'ru': `${BASE}/ru/contacts`, 'x-default': `${BASE}/contacts` },
+  },
   openGraph: {
-    title: 'Контакти FIXLINE — будівельна хімія оптом',
-    description: 'Телефон: +38 (099) 199-77-88 | Email: info@fixline.com.ua | Графік: пн–пт 9–16 | Харків',
-    url: 'https://fixline.com.ua/contacts',
+    title: 'Контакты FIXLINE — строительная химия оптом',
+    description: 'Телефон: +38 (099) 199-77-88 | Email: info@fixline.com.ua | График: пн–пт 9–16 | Харьков',
+    url: `${BASE}/ru/contacts`,
     siteName: 'FIXLINE',
-    locale: 'uk_UA',
+    locale: 'ru_RU',
   },
 };
 
-export default function ContactsPage() {
+export default function ContactsRuPage() {
   const localBusinessLd = {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
     name: 'FIXLINE',
-    description: 'B2B постачальник будівельної хімії: герметики, клеї, монтажні піни',
-    url: 'https://fixline.com.ua',
+    description: 'B2B поставщик строительной химии: герметики, клеи, монтажные пены',
+    url: BASE,
     telephone: '+380991997788',
     email: 'info@fixline.com.ua',
     address: {
       '@type': 'PostalAddress',
       addressCountry: 'UA',
-      addressRegion: 'Харківська область',
+      addressRegion: 'Харьковская область',
     },
     openingHoursSpecification: {
       '@type': 'OpeningHoursSpecification',
@@ -39,7 +44,7 @@ export default function ContactsPage() {
     },
     priceRange: '$$',
     areaServed: { '@type': 'Country', name: 'Ukraine' },
-    sameAs: ['https://fixline.com.ua'],
+    sameAs: [BASE],
   };
 
   return (
@@ -48,21 +53,19 @@ export default function ContactsPage() {
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
         <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 32px 64px' }}>
 
-          <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>Контакти</h1>
+          <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>Контакты</h1>
           <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '40px' }}>
-            Працюємо з B2B клієнтами по всій Україні
+            Работаем с B2B клиентами по всей Украине
           </p>
 
           <div className="contacts-grid">
-
-            {/* Info cards */}
             {[
               {
                 icon: Phone,
                 title: 'Телефон',
                 lines: [
                   <a key="p1" href="tel:+380991997788" style={{ color: 'var(--brand-blue)', fontWeight: 600, fontSize: '15px' }}>+38 (099) 199-77-88</a>,
-                  <span key="p2" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Менеджер з продажу</span>,
+                  <span key="p2" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Менеджер по продажам</span>,
                 ],
               },
               {
@@ -70,23 +73,23 @@ export default function ContactsPage() {
                 title: 'Email',
                 lines: [
                   <a key="e1" href="mailto:info@fixline.com.ua" style={{ color: 'var(--brand-blue)', fontWeight: 600, fontSize: '15px' }}>info@fixline.com.ua</a>,
-                  <span key="e2" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Відповідаємо протягом дня</span>,
+                  <span key="e2" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Отвечаем в течение дня</span>,
                 ],
               },
               {
                 icon: MapPin,
-                title: 'Регіон',
+                title: 'Регион',
                 lines: [
-                  <span key="a1" style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-primary)' }}>м. Харків, Україна</span>,
-                  <span key="a2" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Відправка по всій Україні</span>,
+                  <span key="a1" style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-primary)' }}>г. Харьков, Украина</span>,
+                  <span key="a2" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Отправка по всей Украине</span>,
                 ],
               },
               {
                 icon: Clock,
-                title: 'Графік роботи',
+                title: 'График работы',
                 lines: [
                   <span key="h1" style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-primary)' }}>Пн–Пт: 9:00 – 16:00</span>,
-                  <span key="h2" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Сб–Нд: вихідний</span>,
+                  <span key="h2" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Сб–Вс: выходной</span>,
                 ],
               },
             ].map(({ icon: Icon, title, lines }) => (
@@ -112,7 +115,6 @@ export default function ContactsPage() {
             ))}
           </div>
 
-          {/* CTA */}
           <div style={{
             marginTop: '32px', background: '#1E3A5F', borderRadius: '16px',
             padding: '32px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -120,10 +122,10 @@ export default function ContactsPage() {
           }}>
             <div>
               <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
-                Готові до співпраці?
+                Готовы к сотрудничеству?
               </div>
               <div style={{ fontSize: '14px', color: '#94A3B8' }}>
-                Зареєструйтесь і отримайте доступ до оптових цін
+                Зарегистрируйтесь и получите доступ к оптовым ценам
               </div>
             </div>
             <Link href="/register" style={{
@@ -131,7 +133,7 @@ export default function ContactsPage() {
               borderRadius: '10px', background: '#fff', color: '#1E3A5F',
               fontSize: '14px', fontWeight: 700,
             }}>
-              Зареєструватися →
+              Зарегистрироваться →
             </Link>
           </div>
 

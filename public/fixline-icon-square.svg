@@ -1,0 +1,10 @@
+<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Deep navy with generous rounding — works as app icon or compact avatar -->
+  <rect width="400" height="400" fill="#1E3A5F" rx="80"/>
+
+  <!-- Bars: larger, icon-only (no text) -->
+  <!-- widths ratio 15:11:7, max=220px -->
+  <rect x="90" y="122" width="220" height="40" rx="20" fill="#4880B8"/>
+  <rect x="90" y="180" width="161" height="40" rx="20" fill="#7EB8E8"/>
+  <rect x="90" y="238" width="103" height="40" rx="20" fill="#7EB8E8"/>
+</svg>

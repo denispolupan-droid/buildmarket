@@ -2,18 +2,19 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached } from '../../../lib/supabase';
-import ProductTabs from './ProductTabs';
-import ProductOrderPanel from './ProductOrderPanel';
-import ProductGallery from './ProductGallery';
-import ProductImage from '../../components/ProductImage';
-import RelatedCarousel from './RelatedCarousel';
-import BackButton from './BackButton';
-import CoverageCalculator from './CoverageCalculator';
-import Footer from '../../components/Footer';
-import ProductReviews from './ProductReviews';
+import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached } from '../../../../lib/supabase';
+import { getCategoryNameRu } from '../../../../lib/ru';
+import ProductTabs from '../../../product/[id]/ProductTabs';
+import ProductOrderPanel from '../../../product/[id]/ProductOrderPanel';
+import ProductGallery from '../../../product/[id]/ProductGallery';
+import ProductImage from '../../../components/ProductImage';
+import RelatedCarousel from '../../../product/[id]/RelatedCarousel';
+import BackButton from '../../../product/[id]/BackButton';
+import CoverageCalculator from '../../../product/[id]/CoverageCalculator';
+import Footer from '../../../components/Footer';
+import ProductReviews from '../../../product/[id]/ProductReviews';
 import { createClient } from '@supabase/supabase-js';
-import './product.css';
+import '../../../product/[id]/product.css';
 
 const service = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,29 +33,31 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const price = product.stock?.price_unit;
   const priceStr = price ? ` — ${price} грн` : '';
   const volume = product.volume && !product.name.includes(product.volume) ? ` ${product.volume}` : '';
-  const title = `${product.brand} ${product.name}${volume}${priceStr} | FIXLINE`;
-  const rawDesc = product.description
-    ?? `Купити ${product.brand} ${product.name}${volume} оптом. Артикул ${product.sku}. Оптові ціни для дилерів та підрядників на FIXLINE. Купить ${product.brand} ${product.name}${volume} оптом в Украине.`;
+  const title = `${product.brand} ${product.name}${volume}${priceStr} купить оптом | FIXLINE`;
+
+  const rawDesc = (product as { description_ru?: string | null }).description_ru
+    ?? product.description
+    ?? `Купить ${product.brand} ${product.name}${volume} оптом. Артикул ${product.sku}. Оптовые цены для дилеров и подрядчиков на FIXLINE.`;
   const description = rawDesc.length <= 155 ? rawDesc : rawDesc.slice(0, rawDesc.lastIndexOf(' ', 155)) + '…';
 
   return {
     title,
     description,
     keywords: [
-      ...((product as any).keywords?.split(',').map((k: string) => k.trim()).filter(Boolean) ?? []),
-      product.brand, product.name, 'купити', 'оптом', 'будівельна хімія', product.sku,
+      ...((product as { keywords?: string }).keywords?.split(',').map((k: string) => k.trim()).filter(Boolean) ?? []),
+      product.brand, product.name, 'купить', 'оптом', 'строительная химия', product.sku,
     ],
     openGraph: {
       title,
       description,
-      url: `${BASE}/product/${sku}`,
+      url: `${BASE}/ru/product/${sku}`,
       siteName: 'FIXLINE',
-      locale: 'uk_UA',
+      locale: 'ru_RU',
       type: 'website',
       images: [{ url: `${BASE}/product/${sku}/opengraph-image`, width: 1200, height: 630, alt: title }],
     },
     alternates: {
-      canonical: `${BASE}/product/${sku}`,
+      canonical: `${BASE}/ru/product/${sku}`,
       languages: {
         'uk': `${BASE}/product/${sku}`,
         'ru': `${BASE}/ru/product/${sku}`,
@@ -65,25 +68,24 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 function volLabel(v: string) {
-  return /кг|г$/.test(v) ? 'Вага' : "Об'єм";
+  return /кг|г$/.test(v) ? 'Вес' : 'Объём';
 }
 
 function isInStock(stockStatus: string | undefined, stockQty: number, minOrder: number) {
-  // stock_status = 'in_stock' — товар є (навіть якщо qty=0 через qty_is_flag постачальника)
   if (stockStatus === 'in_stock')     return true;
   if (stockStatus === 'out_of_stock') return false;
   return stockQty >= minOrder;
 }
 
 function stockLabel(stockStatus: string | undefined, stockQty: number, minOrder: number) {
-  return isInStock(stockStatus, stockQty, minOrder) ? 'В наявності' : 'Немає в наявності';
+  return isInStock(stockStatus, stockQty, minOrder) ? 'В наличии' : 'Нет в наличии';
 }
 
 function stockDot(stockStatus: string | undefined, stockQty: number, minOrder: number) {
   return isInStock(stockStatus, stockQty, minOrder) ? 'stock-dot' : 'stock-dot out';
 }
 
-export default async function ProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ from?: string }> }) {
+export default async function RuProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ from?: string }> }) {
   const [{ id: sku }, sp] = await Promise.all([params, searchParams]);
   const isRetail = sp.from === 'shop';
 
@@ -108,56 +110,54 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   const priceUnit = isRetail
     ? (product.stock?.price_retail ?? 0)
     : (product.stock?.price_unit ?? 0);
-  const priceOld  = isRetail
+  const priceOld = isRetail
     ? (product.stock?.price_retail_old ?? null)
     : (product.stock?.price_old ?? null);
   const stockQty    = product.stock?.stock_qty    ?? 0;
   const stockStatus = product.stock?.stock_status;
   const minOrder    = isRetail ? 1 : product.min_order;
   const inStock     = isInStock(stockStatus, stockQty, minOrder);
-  const pricePack = isRetail ? priceUnit : priceUnit * product.pack_qty;
+  const pricePack   = isRetail ? priceUnit : priceUnit * product.pack_qty;
 
   const productCat   = categories.find((c) => c.slug === product.category_slug);
-  const categoryName = productCat?.name ?? 'Каталог';
+  const categoryName = productCat
+    ? getCategoryNameRu(productCat.slug, productCat.name)
+    : 'Каталог';
   const parentCat    = productCat?.parent_slug ? categories.find(c => c.slug === productCat.parent_slug) : null;
+  const parentNameRu = parentCat ? getCategoryNameRu(parentCat.slug, parentCat.name) : null;
 
   const breadcrumbItems: { '@type': string; position: number; name: string; item: string }[] = [
-    { '@type': 'ListItem', position: 1, name: 'Головна', item: BASE },
+    { '@type': 'ListItem', position: 1, name: 'Главная', item: `${BASE}/ru` },
   ];
   if (parentCat) {
-    breadcrumbItems.push({ '@type': 'ListItem', position: 2, name: parentCat.name, item: `${BASE}/shop/${parentCat.slug}` });
+    breadcrumbItems.push({ '@type': 'ListItem', position: 2, name: getCategoryNameRu(parentCat.slug, parentCat.name), item: `${BASE}/ru/shop/${parentCat.slug}` });
   }
   if (productCat) {
-    breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: productCat.name, item: `${BASE}/shop/${productCat.slug}` });
+    breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: categoryName, item: `${BASE}/ru/shop/${productCat.slug}` });
   }
-  breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: `${product.brand} ${product.name}`, item: `${BASE}/product/${product.sku}` });
+  breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: `${product.brand} ${product.name}`, item: `${BASE}/ru/product/${product.sku}` });
 
-  const breadcrumbLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: breadcrumbItems,
-  };
+  const breadcrumbLd = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: breadcrumbItems };
 
   const productFullName = `${product.brand} ${product.name}${product.volume ? ' ' + product.volume : ''}`;
-  const productImage = (product as { image?: string }).image
-    || `${BASE}/product/${product.sku}/opengraph-image`;
+  const productImage = (product as { image?: string }).image || `${BASE}/product/${product.sku}/opengraph-image`;
+
+  const descriptionRu = (product as { description_ru?: string | null }).description_ru ?? product.description ?? undefined;
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: productFullName,
-    alternateName: productFullName,
     sku: product.sku,
     brand: { '@type': 'Brand', name: product.brand },
-    description: product.description ?? undefined,
+    description: descriptionRu,
     image: productImage,
-    url: `${BASE}/product/${product.sku}`,
+    url: `${BASE}/ru/product/${product.sku}`,
     offers: {
       '@type': 'Offer',
       priceCurrency: 'UAH',
       price: priceUnit,
-      availability: inStock
-        ? 'https://schema.org/InStock'
-        : 'https://schema.org/OutOfStock',
+      availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
       seller: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
     },
     ...(reviewCount >= 1 ? {
@@ -171,6 +171,8 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     } : {}),
   };
 
+  const descriptionFullRu = (product as { description_full_ru?: string | null }).description_full_ru ?? product.description_full ?? null;
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
@@ -180,28 +182,26 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
       <div className="page-container" style={{paddingTop: '8px', paddingBottom: '48px'}}>
 
         <div className="breadcrumb" id="product-breadcrumb">
-          <Link href="/">Головна</Link>
+          <Link href="/ru">Главная</Link>
           <span>›</span>
-          <Link href={isRetail ? '/shop' : '/catalog'}>{isRetail ? 'Магазин' : 'Каталог'}</Link>
-          {parentCat && (<><span>›</span><Link href={isRetail ? `/shop/${parentCat.slug}` : `/catalog?category=${parentCat.slug}`}>{parentCat.name}</Link></>)}
-          {productCat && (<><span>›</span><Link href={isRetail ? `/shop/${productCat.slug}` : `/catalog?category=${productCat.slug}`}>{categoryName}</Link></>)}
+          <Link href={isRetail ? '/ru/shop' : '/catalog'}>{isRetail ? 'Магазин' : 'Каталог'}</Link>
+          {parentCat && (<><span>›</span><Link href={isRetail ? `/ru/shop/${parentCat.slug}` : `/catalog?category=${parentCat.slug}`}>{parentNameRu}</Link></>)}
+          {productCat && (<><span>›</span><Link href={isRetail ? `/ru/shop/${productCat.slug}` : `/catalog?category=${productCat.slug}`}>{categoryName}</Link></>)}
           <span>›</span>
           <span>{product.name}</span>
         </div>
 
         <div className="product-layout">
 
-          {/* Галерея */}
           <ProductGallery product={product} priceOld={priceOld} priceUnit={priceUnit} />
 
-          {/* Інформація */}
           <div className="product-info">
             <div className="product-info__brand">{product.brand}</div>
             <h1 className="product-info__title">{product.name}</h1>
 
             <div className="product-info__badges">
               {product.volume && <span className="badge">{volLabel(product.volume)}: {product.volume}</span>}
-              {(() => { const c = product.color ?? product.characteristics.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="badge">Колір: {c}</span> : null; })()}
+              {(() => { const c = product.color ?? product.characteristics.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="badge">Цвет: {c}</span> : null; })()}
             </div>
 
             <div className="product-info__stock">
@@ -225,7 +225,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
                 </div>
               </>
             ) : (
-              <div className="product-info__price-unit" style={{fontSize:'20px',color:'var(--text-muted)'}}>Ціна за запитом</div>
+              <div className="product-info__price-unit" style={{fontSize:'20px',color:'var(--text-muted)'}}>Цена по запросу</div>
             )}
 
             <hr className="product-info__divider" />
@@ -255,9 +255,9 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
             <hr className="product-info__divider" />
             <div className="product-info__meta">
               <div className="product-info__meta-row">
-                <span className="product-info__meta-label">Категорія:</span>
+                <span className="product-info__meta-label">Категория:</span>
                 <span className="product-info__meta-value">
-                  <Link href={productCat ? `/shop/${productCat.slug}` : '/shop'} style={{color:'var(--brand-main)'}}>{categoryName}</Link>
+                  <Link href={productCat ? `/ru/shop/${productCat.slug}` : '/ru/shop'} style={{color:'var(--brand-main)'}}>{categoryName}</Link>
                 </span>
               </div>
               <div className="product-info__meta-row">
@@ -270,29 +270,26 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
               </div>
               <div className="product-info__meta-row">
                 <span className="product-info__meta-label">Доставка:</span>
-                <span className="product-info__meta-value">Нова Пошта</span>
+                <span className="product-info__meta-value">Новая Почта</span>
               </div>
             </div>
           </div>
         </div>
 
         <ProductTabs
-          description={product.description}
-          descriptionFull={product.description_full ?? null}
+          description={descriptionRu ?? null}
+          descriptionFull={descriptionFullRu}
           characteristics={product.characteristics}
         />
 
-        {/* Схожі товари */}
         {related.length > 0 && <RelatedCarousel products={related} retail={isRetail} />}
 
-        {/* Відгуки */}
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: '32px', marginTop: '32px' }}>
           <ProductReviews sku={product.sku} productName={`${product.brand} ${product.name}`} />
         </div>
 
       </div>
       </div>
-
       <Footer />
     </>
   );

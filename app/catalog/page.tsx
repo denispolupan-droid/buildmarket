@@ -21,8 +21,9 @@ export async function generateMetadata({
         title,
         description,
         keywords: [cat.name, 'оптом', 'будівельна хімія', 'строительная химия', 'Україна', 'Украина', 'купити', 'купить'],
+        robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
         openGraph: { title, description, url: `${BASE}/catalog?category=${category}`, siteName: 'FIXLINE', locale: 'uk_UA' },
-        alternates: { canonical: `${BASE}/catalog?category=${category}`, languages: { 'uk': `${BASE}/catalog?category=${category}`, 'ru': `${BASE}/catalog?category=${category}`, 'x-default': `${BASE}/catalog?category=${category}` } },
+        alternates: { canonical: `${BASE}/catalog?category=${category}` },
       };
     }
   }
