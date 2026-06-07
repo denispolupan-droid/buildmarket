@@ -745,6 +745,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                               <span>{p.brand}</span>
                               {p.volume && <span className="catalog-card__vol">{p.volume}</span>}
                               {(() => { const c = p.color ?? p.characteristics?.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="catalog-card__vol catalog-card__vol--color">{c}</span> : null; })()}
+                              <span style={{ marginLeft: 'auto', flexShrink: 0 }}>Арт. {p.sku}</span>
                             </div>
                             <div className="catalog-card__bottom">
                             <div className="catalog-card__bottom-left">
@@ -787,7 +788,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                                 <Heart size={13} strokeWidth={2} fill={isLiked(p.sku) ? '#EF4444' : 'none'} />
                               </button>
                             </div>
-                            <div className="catalog-card__sku-row">Арт. {p.sku}</div>
                           </div>
                           </div>
                         </div>
