@@ -786,10 +786,10 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                                 <Heart size={13} strokeWidth={2} fill={isLiked(p.sku) ? '#EF4444' : 'none'} />
                               </button>
                             </div>
-                            <div className="catalog-card__pack-row">
-                              <span>уп. {p.pack_qty} шт</span>
-                              <span>Арт. {p.sku}</span>
-                            </div>
+                          </div>
+                          <div className="catalog-card__pack-row">
+                            <span>уп. {p.pack_qty} шт</span>
+                            <span>Арт. {p.sku}</span>
                           </div>
                           </div>
                         </div>
