@@ -86,7 +86,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
               </>);
             })()}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '2px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '1px' }}>
             <div className={'shop-card__stock' + (inStock ? '' : ' out')}>
               <span className="shop-card__stock-dot" />
               {inStock ? 'В наявності' : 'Немає'}
