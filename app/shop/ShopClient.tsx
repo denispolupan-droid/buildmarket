@@ -81,7 +81,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
               const colorVal = p.color ?? p.characteristics?.find(c => /^Колір/i.test(c.label))?.value ?? null;
               return (<>
                 {volL      && <span className="shop-card__tag" title={`${volL}: ${p.volume}`}>{volL}: {p.volume}</span>}
-                {colorVal  && <span className="shop-card__tag" title={`Колір: ${colorVal}`}>Колір: {colorVal}</span>}
+                {colorVal  && <span className="shop-card__tag shop-card__tag--color" title={`Колір: ${colorVal}`}>Колір: {colorVal}</span>}
               </>);
             })()}
           </div>
