@@ -137,11 +137,10 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
         </button>
       </div>
       <div className="shop-card__pack-row">
-        <span>уп. {p.pack_qty} шт</span>
         <span
           onClick={handleCopySku}
           title="Копіювати артикул"
-          style={{ cursor: 'pointer', color: copied ? '#16A34A' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}
+          style={{ cursor: 'pointer', color: copied ? '#16A34A' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px', marginLeft: 'auto' }}
         >
           Арт. {p.sku}
           {copied
