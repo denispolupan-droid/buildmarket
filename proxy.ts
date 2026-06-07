@@ -34,6 +34,11 @@ const AUTH_ROUTES = ['/login', '/register'];
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
+  // Inject x-pathname so server components (layout, Footer, Header) can detect language
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-pathname', pathname);
+  const nextWithPathname = { request: { headers: requestHeaders } };
+
   // Rate limiting
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
     ?? request.headers.get('x-real-ip')
@@ -43,7 +48,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (PUBLIC_OVERRIDES.some(route => pathname.startsWith(route))) {
-    return NextResponse.next();
+    return NextResponse.next(nextWithPathname);
   }
 
   const needsAuth =
@@ -52,10 +57,10 @@ export async function proxy(request: NextRequest) {
     AUTH_ROUTES.some(route => pathname.startsWith(route));
 
   if (!needsAuth) {
-    return NextResponse.next();
+    return NextResponse.next(nextWithPathname);
   }
 
-  let response = NextResponse.next({ request });
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -67,7 +72,7 @@ export async function proxy(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
+          response = NextResponse.next({ request: { headers: requestHeaders } });
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           );
