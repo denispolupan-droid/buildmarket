@@ -366,7 +366,9 @@
   margin-top: auto; padding-top: 6px; gap: 6px;
 }
 .catalog-card__bottom-left { min-width: 0; }
-.catalog-card__pack { font-size: 10px; color: var(--text-muted); margin-top: 1px; white-space: nowrap; }
+.catalog-card__pack { font-size: 10px; color: var(--text-muted); margin-top: 1px; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.catalog-card__pack-sku { color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+.catalog-card__vol--color { flex: 1 1 auto; max-width: 100px; overflow: hidden; text-overflow: ellipsis; }
 .catalog-card__actions { display: flex; flex-direction: row; gap: 4px; align-items: center; flex-shrink: 0; }
 
 /* ── Responsive ── */

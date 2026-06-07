@@ -744,7 +744,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                             <div className="catalog-card__meta">
                               <span>{p.brand}</span>
                               {p.volume && <span className="catalog-card__vol">{p.volume}</span>}
-                              <span style={{ marginLeft: 'auto', flexShrink: 0 }}>Арт. {p.sku}</span>
+                              {(() => { const c = p.color ?? p.characteristics?.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="catalog-card__vol catalog-card__vol--color">{c}</span> : null; })()}
                             </div>
                             <div className="catalog-card__bottom">
                             <div className="catalog-card__bottom-left">
@@ -760,7 +760,10 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                               ) : (
                                 <div className="catalog-card__price-na">За запитом</div>
                               )}
-                              <div className="catalog-card__pack">уп. {p.pack_qty} шт</div>
+                              <div className="catalog-card__pack">
+                                <span>уп. {p.pack_qty} шт</span>
+                                <span className="catalog-card__pack-sku">Арт. {p.sku}</span>
+                              </div>
                             </div>
                             <div className="catalog-card__actions">
                               <input
