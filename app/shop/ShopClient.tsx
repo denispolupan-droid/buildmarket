@@ -140,7 +140,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
         <span
           onClick={handleCopySku}
           title="Копіювати артикул"
-          style={{ cursor: 'pointer', color: copied ? '#16A34A' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px', marginLeft: 'auto' }}
+          style={{ cursor: 'pointer', color: copied ? '#16A34A' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}
         >
           Арт. {p.sku}
           {copied
