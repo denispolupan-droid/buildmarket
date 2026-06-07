@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { Maximize2 } from 'lucide-react';
 import ProductImage from '../../components/ProductImage';
 import type { ProductFull } from '../../../lib/supabase';
@@ -12,6 +13,8 @@ type Props = {
 };
 
 export default function ProductGallery({ product, priceOld, priceUnit }: Props) {
+  const pathname = usePathname();
+  const lang = pathname.startsWith('/ru') ? 'ru' : 'uk';
   const [lightbox, setLightbox] = useState(false);
   const hasRealImage = !!product.image;
 
@@ -87,7 +90,7 @@ export default function ProductGallery({ product, priceOld, priceUnit }: Props) 
             </div>
           </div>
           <button
-            aria-label="Закрити перегляд"
+            aria-label={lang === 'ru' ? 'Закрыть просмотр' : 'Закрити перегляд'}
             onClick={() => setLightbox(false)}
             style={{
               position: 'fixed', top: '24px', right: '32px',

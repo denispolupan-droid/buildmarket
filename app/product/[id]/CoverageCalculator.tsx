@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { Calculator, ChevronDown } from 'lucide-react';
 import type { ProductCharacteristic } from '../../../types';
 
@@ -80,6 +81,9 @@ function parseDilutionOptions(s: string): number[] {
 
 // ─── component ────────────────────────────────────────────────────────────────
 export default function CoverageCalculator({ characteristics, volume, priceUnit }: Props) {
+  const pathname = usePathname();
+  const lang = pathname.startsWith('/ru') ? 'ru' : 'uk';
+  const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
   // Find consumption characteristic (any label containing "витрат" or "розхід")
   const coverageChar = characteristics.find(c => /витрат|розхід/i.test(c.label));
   if (!coverageChar) return null;
@@ -103,7 +107,7 @@ export default function CoverageCalculator({ characteristics, volume, priceUnit 
   const detectedOptions = explicitOptions.length ? explicitOptions : embeddedOptions;
 
   // Build select options shown to user
-  const selectOptions: { label: string; n: number }[] = [{ label: 'Без розведення', n: 0 }];
+  const selectOptions: { label: string; n: number }[] = [{ label: t('Без розведення', 'Без разбавления'), n: 0 }];
   if (!isConcentrateLabel) {
     detectedOptions.forEach(n => {
       selectOptions.push({ label: `1:${n}  (×${1 + n})`, n });
@@ -163,7 +167,7 @@ export default function CoverageCalculator({ characteristics, volume, priceUnit 
         }}
       >
         <Calculator size={14} strokeWidth={2} style={{ flexShrink: 0 }} />
-        <span>Розрахувати витрату</span>
+        <span>{t('Розрахувати витрату', 'Рассчитать расход')}</span>
         <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--text-muted)', marginLeft: 'auto', marginRight: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }}>
           {parsed.label}
         </span>
@@ -178,7 +182,7 @@ export default function CoverageCalculator({ characteristics, volume, priceUnit 
           <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', marginBottom: '10px' }}>
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                Площа (м²)
+                {t('Площа (м²)', 'Площадь (м²)')}
               </label>
               <input
                 type="number"
@@ -198,12 +202,12 @@ export default function CoverageCalculator({ characteristics, volume, priceUnit 
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                Шарів
+                {t('Шарів', 'Слоёв')}
               </label>
               <select value={coats} onChange={e => setCoats(Number(e.target.value))} style={selectStyle}>
-                <option value={1}>1 шар</option>
-                <option value={2}>2 шари</option>
-                <option value={3}>3 шари</option>
+                <option value={1}>{t('1 шар', '1 слой')}</option>
+                <option value={2}>{t('2 шари', '2 слоя')}</option>
+                <option value={3}>{t('3 шари', '3 слоя')}</option>
               </select>
             </div>
           </div>
@@ -212,7 +216,7 @@ export default function CoverageCalculator({ characteristics, volume, priceUnit 
           {!isConcentrateLabel && (
             <div style={{ marginBottom: '12px' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                Розведення водою
+                {t('Розведення водою', 'Разбавление водой')}
                 {autoTag && (
                   <span style={{ fontSize: '10px', background: '#DCFCE7', color: '#15803D', borderRadius: '4px', padding: '1px 5px', fontWeight: 600 }}>
                     авто
@@ -230,7 +234,7 @@ export default function CoverageCalculator({ characteristics, volume, priceUnit 
               </select>
               {dilutionN > 0 && (
                 <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
-                  З 1 {/кг/.test(volume ?? '') ? 'кг' : 'л'} концентрату → ~{1 + dilutionN} {/кг/.test(volume ?? '') ? 'кг' : 'л'} робочого розчину
+                  {t('З', 'Из')} 1 {/кг/.test(volume ?? '') ? 'кг' : 'л'} {t('концентрату → ~', 'концентрата → ~')}{1 + dilutionN} {/кг/.test(volume ?? '') ? 'кг' : 'л'} {t('робочого розчину', 'рабочего раствора')}
                 </div>
               )}
             </div>
@@ -245,7 +249,7 @@ export default function CoverageCalculator({ characteristics, volume, priceUnit 
             }}>
               <div>
                 <div style={{ fontSize: '10px', color: '#3B82F6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '2px' }}>
-                  Потрібно
+                  {t('Потрібно', 'Необходимо')}
                 </div>
                 <div style={{ fontSize: '24px', fontWeight: 800, color: '#1E3A5F', lineHeight: 1 }}>
                   {units} <span style={{ fontSize: '14px', fontWeight: 500, color: '#64748B' }}>шт</span>
@@ -254,7 +258,7 @@ export default function CoverageCalculator({ characteristics, volume, priceUnit 
               {totalCost !== null && (
                 <div>
                   <div style={{ fontSize: '10px', color: '#3B82F6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '2px' }}>
-                    Орієнтовна сума
+                    {t('Орієнтовна сума', 'Примерная сумма')}
                   </div>
                   <div style={{ fontSize: '24px', fontWeight: 800, color: '#1E3A5F', lineHeight: 1 }}>
                     {totalCost.toLocaleString('uk-UA')} <span style={{ fontSize: '14px', fontWeight: 500, color: '#64748B' }}>грн</span>
@@ -263,14 +267,14 @@ export default function CoverageCalculator({ characteristics, volume, priceUnit 
               )}
               {dilutionN > 0 && (
                 <div style={{ fontSize: '11px', color: '#64748B', borderLeft: '1px solid #BFDBFE', paddingLeft: '16px', lineHeight: 1.5 }}>
-                  З урахуванням<br />розведення 1:{dilutionN}
+                  {t('З урахуванням', 'С учётом')}<br />{t('розведення', 'разбавления')} 1:{dilutionN}
                 </div>
               )}
             </div>
           )}
 
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
-            Розрахунок орієнтовний. Витрата залежить від типу поверхні та техніки нанесення.
+            {t('Розрахунок орієнтовний. Витрата залежить від типу поверхні та техніки нанесення.', 'Расчёт ориентировочный. Расход зависит от типа поверхности и техники нанесения.')}
           </div>
         </div>
       )}

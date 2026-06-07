@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { Plus, Check, Bell, Heart } from 'lucide-react';
 import { useCart } from '../../../lib/cart';
 import { useWishlist } from '../../../lib/wishlist';
@@ -23,6 +24,9 @@ type Props = {
 };
 
 export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, name, brand, volume, nl1, nl2, bc, ac, imgType, isRetailPage }: Props) {
+  const pathname = usePathname();
+  const lang = pathname.startsWith('/ru') ? 'ru' : 'uk';
+  const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
   const [qty, setQty]           = useState(minOrder);
   const [added, setAdded]       = useState(false);
   const [notified,   setNotified]   = useState(false);
@@ -78,7 +82,7 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
     <>
       {inStock ? (
         <>
-          <div style={{ fontSize: '13px', color: '#64748B', marginBottom: '8px' }}>Кількість:</div>
+          <div style={{ fontSize: '13px', color: '#64748B', marginBottom: '8px' }}>{t('Кількість:', 'Количество:')}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
 
             <div className="qty-stepper">
@@ -89,7 +93,7 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
 
             {priceUnit > 0 && (
               <span style={{ whiteSpace: 'nowrap', minWidth: '160px', display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Сума</span>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.6px' }}>{t('Сума', 'Сумма')}</span>
                 <span style={{ fontSize: '20px', fontWeight: 700, color: '#0F172A', lineHeight: 1 }}>
                   {subtotal} <span style={{ fontSize: '13px', fontWeight: 500, color: '#64748B' }}>грн</span>
                 </span>
@@ -109,16 +113,16 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
               }}
             >
               {added
-                ? <><Check size={15} strokeWidth={2.5} /> Додано</>
+                ? <><Check size={15} strokeWidth={2.5} /> {t('Додано', 'Добавлено')}</>
                 : inCart
-                  ? <><Check size={15} strokeWidth={2.5} /> В кошику</>
-                  : <><Plus size={15} strokeWidth={2.5} /> В кошик</>
+                  ? <><Check size={15} strokeWidth={2.5} /> {t('В кошику', 'В корзине')}</>
+                  : <><Plus size={15} strokeWidth={2.5} /> {t('В кошик', 'В корзину')}</>
               }
             </button>
 
             <button
               onClick={() => toggleWish(sku)}
-              aria-label={liked ? 'Прибрати з обраного' : 'Додати в обране'}
+              aria-label={liked ? t('Прибрати з обраного', 'Убрать из избранного') : t('Додати в обране', 'Добавить в избранное')}
               style={{
                 width: '44px', height: '44px', borderRadius: '50%', flexShrink: 0,
                 border: `1px solid ${liked ? '#FECACA' : 'var(--border)'}`,
@@ -131,7 +135,7 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
             </button>
           </div>
           <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '6px' }}>
-            Мін. замовлення: {minOrder} шт
+            {t('Мін. замовлення:', 'Мин. заказ:')} {minOrder} {t('шт', 'шт')}
           </div>
         </>
       ) : (
@@ -143,7 +147,7 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
             fontSize: '13px', fontWeight: 600,
           }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#DC2626', flexShrink: 0 }} />
-            Немає в наявності
+            {t('Немає в наявності', 'Нет в наличии')}
           </div>
 
           <div style={{ marginTop: '16px' }}>
@@ -154,13 +158,13 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
               background: '#DCFCE7', color: '#15803D', fontSize: '14px', fontWeight: 600,
             }}>
               <Check size={16} strokeWidth={2.5} />
-              Ми повідомимо вас про появу товару
+              {t('Ми повідомимо вас про появу товару', 'Мы уведомим вас о появлении товара')}
             </div>
           ) : showInput ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <input
                 type="email"
-                placeholder="Ваш email"
+                placeholder={t('Ваш email', 'Ваш email')}
                 value={notifyEmail}
                 onChange={e => setNotifyEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleNotify()}
@@ -182,7 +186,7 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
                     opacity: sending ? 0.7 : 1,
                   }}
                 >
-                  {sending ? 'Відправляємо...' : 'Підписатись'}
+                  {sending ? t('Відправляємо...', 'Отправляем...') : t('Підписатись', 'Подписаться')}
                 </button>
                 <button
                   onClick={() => setShowInput(false)}
@@ -192,7 +196,7 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
                     fontSize: '14px', color: '#64748B', cursor: 'pointer',
                   }}
                 >
-                  Скасувати
+                  {t('Скасувати', 'Отмена')}
                 </button>
               </div>
             </div>
@@ -207,7 +211,7 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
               }}
             >
               <Bell size={15} strokeWidth={2} />
-              Повідомити про появу
+              {t('Повідомити про появу', 'Уведомить о появлении')}
             </button>
           )}
           </div>
@@ -227,10 +231,10 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
         }}>
           <div style={{ fontSize: '36px', marginBottom: '12px' }}>🏢</div>
           <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '10px' }}>
-            Ви увійшли як оптовий клієнт
+            {t('Ви увійшли як оптовий клієнт', 'Вы вошли как оптовый клиент')}
           </h2>
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '24px' }}>
-            У магазині вказані роздрібні ціни. Для замовлення за вашими цінами перейдіть до оптового каталогу.
+            {t('У магазині вказані роздрібні ціни. Для замовлення за вашими цінами перейдіть до оптового каталогу.', 'В магазине указаны розничные цены. Для заказа по вашим ценам перейдите в оптовый каталог.')}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <a href="/catalog" style={{
@@ -238,14 +242,14 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
               height: '44px', borderRadius: '10px', background: '#1E3A5F', color: '#fff',
               fontSize: '14px', fontWeight: 700, textDecoration: 'none',
             }}>
-              Перейти до оптового каталогу →
+              {t('Перейти до оптового каталогу →', 'Перейти в оптовый каталог →')}
             </a>
             <button onClick={() => setShowModal(false)} style={{
               height: '40px', borderRadius: '10px', border: '1px solid var(--border)',
               background: 'transparent', color: 'var(--text-secondary)',
               fontSize: '13px', cursor: 'pointer',
             }}>
-              Залишитись і переглянути магазин
+              {t('Залишитись і переглянути магазин', 'Остаться и просматривать магазин')}
             </button>
           </div>
         </div>

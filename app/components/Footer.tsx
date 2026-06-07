@@ -77,7 +77,10 @@ export default async function Footer() {
               style={{ width: 'auto', height: '26px', display: 'block', marginBottom: '16px' }}
             />
             <p style={{ fontSize: '14px', color: '#94A3B8', lineHeight: '1.7', maxWidth: '300px', marginBottom: '20px' }}>
-              Професійний B2B постачальник будівельної хімії: герметиків, клеїв, монтажних пін та супутніх матеріалів.
+              {isRu
+                ? 'Профессиональный B2B поставщик строительной химии: герметики, клеи, монтажные пены и сопутствующие материалы.'
+                : 'Професійний B2B постачальник будівельної хімії: герметиків, клеїв, монтажних пін та супутніх матеріалів.'
+              }
             </p>
             <div style={{ display: 'flex', gap: '8px' }}>
               {socials.map(({ label, href, icon }) => (
@@ -160,7 +163,7 @@ export default async function Footer() {
 
           {/* Contacts */}
           <div>
-            <p style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '18px' }}>Контакти</p>
+            <p style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '18px' }}>{isRu ? 'Контакты' : 'Контакти'}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <a href="mailto:info@fixline.com.ua" style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
@@ -182,7 +185,7 @@ export default async function Footer() {
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#7B90B2' }}>
                 <MapPin size={15} strokeWidth={2} />
-                Україна
+                {isRu ? 'Украина' : 'Україна'}
               </span>
             </div>
           </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 
 type Characteristic = { id: number; label: string; value: string };
 
@@ -26,12 +27,16 @@ function formatDescription(text: string): string[] {
 }
 
 export default function ProductTabs({ description, descriptionFull, characteristics }: Props) {
+  const pathname = usePathname();
+  const lang = pathname.startsWith('/ru') ? 'ru' : 'uk';
+  const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
+
   const displayDesc = descriptionFull || description;
   const [tab, setTab] = useState<'desc' | 'chars' | 'docs'>('desc');
   const tabsRef = useRef<HTMLDivElement>(null);
 
-  function switchTab(t: 'desc' | 'chars' | 'docs') {
-    setTab(t);
+  function switchTab(next: 'desc' | 'chars' | 'docs') {
+    setTab(next);
     setTimeout(() => {
       if (!tabsRef.current) return;
       const header = document.querySelector('header') ?? document.querySelector('nav');
@@ -48,19 +53,19 @@ export default function ProductTabs({ description, descriptionFull, characterist
           className={'product-tabs__tab' + (tab === 'desc' ? ' is-active' : '')}
           onClick={() => switchTab('desc')}
         >
-          Опис
+          {t('Опис', 'Описание')}
         </button>
         <button
           className={'product-tabs__tab' + (tab === 'chars' ? ' is-active' : '')}
           onClick={() => switchTab('chars')}
         >
-          Характеристики
+          {t('Характеристики', 'Характеристики')}
         </button>
         <button
           className={'product-tabs__tab' + (tab === 'docs' ? ' is-active' : '')}
           onClick={() => switchTab('docs')}
         >
-          Документи
+          {t('Документи', 'Документы')}
         </button>
       </div>
 
@@ -74,7 +79,7 @@ export default function ProductTabs({ description, descriptionFull, characterist
                   </p>
                 ))}
               </div>
-            : <p className="product-tabs__desc" style={{color:'var(--text-muted)'}}>Опис відсутній</p>
+            : <p className="product-tabs__desc" style={{color:'var(--text-muted)'}}>{t('Опис відсутній', 'Описание отсутствует')}</p>
         )}
 
         {tab === 'chars' && (
@@ -91,12 +96,12 @@ export default function ProductTabs({ description, descriptionFull, characterist
                 </tbody>
               </table>
             )
-            : <p className="product-tabs__desc" style={{color:'var(--text-muted)'}}>Характеристики відсутні</p>
+            : <p className="product-tabs__desc" style={{color:'var(--text-muted)'}}>{t('Характеристики відсутні', 'Характеристики отсутствуют')}</p>
         )}
 
         {tab === 'docs' && (
           <p className="product-tabs__desc" style={{color:'var(--text-muted)'}}>
-            Документи поки що не завантажені
+            {t('Документи поки що не завантажені', 'Документы пока не загружены')}
           </p>
         )}
       </div>

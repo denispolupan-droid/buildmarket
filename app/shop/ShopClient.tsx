@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import { getCategoryNameRu } from '../../lib/ru';
 import Link from 'next/link';
 import { Plus, Minus, Heart, ChevronDown, ChevronUp, ChevronRight, Check, SlidersHorizontal, LayoutList } from 'lucide-react';
 import { CATEGORY_ICONS } from '../../lib/category-icons';
@@ -26,9 +27,11 @@ type CardProps = {
   onToggleWish: () => void;
   onWholesaleBlock: () => void;
   isWholesale: boolean;
+  lang: 'uk' | 'ru';
 };
 
-function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggleWish, onWholesaleBlock, isWholesale }: CardProps) {
+function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggleWish, onWholesaleBlock, isWholesale, lang }: CardProps) {
+  const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
   const [qty, setQty] = useState(1);
   const [inputVal, setInputVal] = useState('1');
   const [copied, setCopied] = useState(false);
@@ -62,7 +65,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
             {salePercent && salePercent > 0 && (
               <span className="shop-card__badge-sale">-{salePercent}%</span>
             )}
-            {p.is_hit && <span className="shop-card__badge-hit">ХІТ</span>}
+            {p.is_hit && <span className="shop-card__badge-hit">{t('ХІТ', 'ХИТ')}</span>}
             {p.is_new && <span className="shop-card__badge-new">НОВИНКА</span>}
           </div>
           <ProductImage
@@ -89,13 +92,13 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '1px' }}>
             <div className={'shop-card__stock' + (inStock ? '' : ' out')}>
               <span className="shop-card__stock-dot" />
-              {inStock ? 'В наявності' : 'Немає'}
+              {inStock ? t('В наявності', 'В наличии') : t('Немає', 'Нет')}
             </div>
             <div className="shop-card__price-wrap" style={{ textAlign: 'right' }}>
               {priceOld && <span className="shop-card__price-old">{priceOld} грн</span>}
               {price
                 ? <div className="shop-card__price">{price} <span>грн</span></div>
-                : <div className="shop-card__price-na">Ціна за запитом</div>
+                : <div className="shop-card__price-na">{t('Ціна за запитом', 'Цена по запросу')}</div>
               }
             </div>
           </div>
@@ -105,25 +108,25 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
       <div className="shop-card__footer">
         <button
           className={'shop-card__wish' + (isWished ? ' active' : '')}
-          aria-label={isWished ? 'Прибрати з обраного' : 'Додати в обране'}
+          aria-label={isWished ? t('Прибрати з обраного', 'Убрать из избранного') : t('Додати в обране', 'Добавить в избранное')}
           onClick={onToggleWish}
         >
           <Heart size={14} fill={isWished ? '#EF4444' : 'none'} strokeWidth={2} />
         </button>
         <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: '7px', overflow: 'hidden', height: '34px', background: 'var(--bg-card)' }}>
-          <button aria-label="Зменшити кількість" onClick={() => { const v = Math.max(1, qty - 1); setQty(v); setInputVal(String(v)); }} style={{ width: '34px', height: '34px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+          <button aria-label={t('Зменшити кількість', 'Уменьшить количество')} onClick={() => { const v = Math.max(1, qty - 1); setQty(v); setInputVal(String(v)); }} style={{ width: '34px', height: '34px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
             <Minus size={11} strokeWidth={2.5} />
           </button>
           <input
             type="number"
-            aria-label="Кількість"
+            aria-label={t('Кількість', 'Количество')}
             value={inputVal}
             min={1}
             onChange={e => setInputVal(e.target.value)}
             onBlur={() => { const v = parseInt(inputVal, 10); const valid = !isNaN(v) && v >= 1 ? v : 1; setQty(valid); setInputVal(String(valid)); }}
             style={{ width: '28px', height: '34px', border: 'none', background: 'none', textAlign: 'center', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', outline: 'none', padding: 0 }}
           />
-          <button aria-label="Збільшити кількість" onClick={() => { const v = qty + 1; setQty(v); setInputVal(String(v)); }} style={{ width: '34px', height: '34px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+          <button aria-label={t('Збільшити кількість', 'Увеличить количество')} onClick={() => { const v = qty + 1; setQty(v); setInputVal(String(v)); }} style={{ width: '34px', height: '34px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
             <Plus size={11} strokeWidth={2.5} />
           </button>
         </div>
@@ -133,13 +136,13 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
           onClick={handleAdd}
           style={inCart ? { background: '#0D9488' } : undefined}
         >
-          {inCart ? <><Check size={14} strokeWidth={2.5} /> В кошику</> : <><Plus size={14} strokeWidth={2.5} /> В кошик</>}
+          {inCart ? <><Check size={14} strokeWidth={2.5} /> {t('В кошику', 'В корзине')}</> : <><Plus size={14} strokeWidth={2.5} /> {t('В кошик', 'В корзину')}</>}
         </button>
       </div>
       <div className="shop-card__pack-row">
         <span
           onClick={handleCopySku}
-          title="Копіювати артикул"
+          title={t('Копіювати артикул', 'Копировать артикул')}
           style={{ cursor: 'pointer', color: copied ? '#16A34A' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}
         >
           Арт. {p.sku}
@@ -163,6 +166,10 @@ type Props = {
 
 export default function ShopClient({ products, categories, initialSaleOnly = false, initialCategory, initialBrand }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const lang = pathname.startsWith('/ru') ? 'ru' as const : 'uk' as const;
+  const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
+  const catDisplayName = (slug: string, name: string) => lang === 'ru' ? getCategoryNameRu(slug, name) : name;
   const [isWholesale,   setIsWholesale]   = useState(false);
   const [showWholesaleModal, setShowWholesaleModal] = useState(false);
   const [search,       setSearch]       = useState('');
@@ -443,7 +450,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       {/* Sidebar */}
       <aside className={`shop-sidebar${mobilePanel ? ' mobile-open' : ''}${mobilePanel === 'cats' ? ' mobile-cats' : ''}${mobilePanel === 'filters' ? ' mobile-filters' : ''}`} ref={sidebarRef}>
         <div className="sidebar-cats-section">
-        <h3>Категорії</h3>
+        <h3>{t('Категорії', 'Категории')}</h3>
 
         <div
           ref={catsListRef}
@@ -459,7 +466,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             className={'shop-cat-item' + (!selCat ? ' active' : '')}
             onClick={() => { selectCat(null); setExpandedCats(new Set()); }}
           >
-            Всі категорії
+            {t('Всі категорії', 'Все категории')}
           </button>
           {parentCats.map(cat => {
             const children = childrenOf[cat.slug] ?? [];
@@ -489,7 +496,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                   }}
                 >
                   {(() => { const Icon = CATEGORY_ICONS[cat.slug]; return Icon ? <Icon size={14} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.65 }} /> : null; })()}
-                  <span style={{ flex: 1, textAlign: 'left' }}>{cat.name}</span>
+                  <span style={{ flex: 1, textAlign: 'left' }}>{catDisplayName(cat.slug, cat.name)}</span>
                   {children.length > 0 && (
                     isExpanded
                       ? <ChevronDown size={13} style={{ flexShrink: 0, opacity: 0.45 }} />
@@ -512,7 +519,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                           if (grandchildren.length > 0) setExpandedCats(prev => { const n = new Set(prev); n.has(child.slug) ? n.delete(child.slug) : n.add(child.slug); return n; });
                         }}
                       >
-                        <span>{child.name}</span>
+                        <span>{catDisplayName(child.slug, child.name)}</span>
                       </button>
                       <div style={{ overflow: 'hidden', maxHeight: childExpanded ? '1000px' : '0', transition: 'max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1)' }}>
                         {grandchildren.map(gc => (
@@ -523,7 +530,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                             style={{ paddingLeft: '36px', fontSize: '12px', width: '100%', textAlign: 'left' }}
                             onClick={() => selectCat(selCat === gc.slug ? null : gc.slug, cat.slug)}
                           >
-                            {gc.name}
+                            {catDisplayName(gc.slug, gc.name)}
                           </button>
                         ))}
                       </div>
@@ -547,8 +554,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             }}
           >
             {catsOpen
-              ? <><ChevronUp size={13} strokeWidth={2} />Згорнути</>
-              : <><ChevronDown size={13} strokeWidth={2} />Показати всі</>}
+              ? <><ChevronUp size={13} strokeWidth={2} />{t('Згорнути', 'Свернуть')}</>
+              : <><ChevronDown size={13} strokeWidth={2} />{t('Показати всі', 'Показать все')}</>}
           </button>
         )}
 
@@ -562,13 +569,13 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           }}
         >
           <SlidersHorizontal size={12} strokeWidth={2} />
-          Фільтри
+          {t('Фільтри', 'Фильтры')}
           {activeFilterCount > 0 && <span className="sidebar-filter-badge">{activeFilterCount}</span>}
         </button>
 
         {volumesL.length > 0 && (
           <div className="shop-filter-group">
-            <label className="shop-filter-label" htmlFor="filter-volume">Об&apos;єм</label>
+            <label className="shop-filter-label" htmlFor="filter-volume">{t("Об'єм", 'Объём')}</label>
             <select id="filter-volume" className={'shop-filter-select' + (filterVolume ? ' active' : '')} value={filterVolume} onChange={e => setFilterVolume(e.target.value)}>
               <option value="">Всі</option>
               {volumesL.map(v => <option key={v} value={v}>{v}</option>)}
@@ -577,7 +584,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         )}
         {volumesKg.length > 0 && (
           <div className="shop-filter-group">
-            <label className="shop-filter-label" htmlFor="filter-volume-kg">Вага</label>
+            <label className="shop-filter-label" htmlFor="filter-volume-kg">{t('Вага', 'Вес')}</label>
             <select id="filter-volume-kg" className={'shop-filter-select' + (filterVolumeKg ? ' active' : '')} value={filterVolumeKg} onChange={e => setFilterVolumeKg(e.target.value)}>
               <option value="">Всі</option>
               {volumesKg.map(v => <option key={v} value={v}>{v}</option>)}
@@ -588,10 +595,10 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           <div className="shop-filter-group">
             <label className="shop-filter-label" htmlFor="filter-plastic">Тип</label>
             <select id="filter-plastic" className={'shop-filter-select' + (filterPlasticGroup ? ' active' : '')} value={filterPlasticGroup} onChange={e => setFilterPlasticGroup(e.target.value)}>
-              <option value="">Всі</option>
-              <option value="universal">Універсальний</option>
-              <option value="frost">Протиморозний</option>
-              <option value="warm">Для теплих підлог</option>
+              <option value="">{t('Всі', 'Все')}</option>
+              <option value="universal">{t('Універсальний', 'Универсальный')}</option>
+              <option value="frost">{t('Протиморозний', 'Противоморозный')}</option>
+              <option value="warm">{t('Для теплих підлог', 'Для тёплых полов')}</option>
             </select>
           </div>
         )}
@@ -600,15 +607,19 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           const missingActive = active && !values.includes(active);
           return (
             <div key={label} className="shop-filter-group">
-              <label className="shop-filter-label" htmlFor={`filter-${label}`}>{label}</label>
+              <label className="shop-filter-label" htmlFor={`filter-${label}`}>{lang === 'ru' && label === 'Колір' ? 'Цвет' : label}</label>
               <select
                 id={`filter-${label}`}
                 className={'shop-filter-select' + (active ? ' active' : '')}
                 value={active}
                 onChange={e => setFilterValues(prev => ({ ...prev, [label]: e.target.value }))}
               >
-                <option value="">{label === 'Колір' ? 'Всі кольори' : label === 'Бренд' ? 'Всі бренди' : 'Всі'}</option>
-                {missingActive && <option value={active}>{active} ⚠ немає в категорії</option>}
+                <option value="">{
+                  label === 'Колір' ? t('Всі кольори', 'Все цвета') :
+                  label === 'Бренд' ? t('Всі бренди', 'Все бренды') :
+                  t('Всі', 'Все')
+                }</option>
+                {missingActive && <option value={active}>{active} {t('⚠ немає в категорії', '⚠ нет в категории')}</option>}
                 {values.map(v => <option key={v} value={v}>{v}</option>)}
               </select>
             </div>
@@ -616,11 +627,11 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         })}
         <label className="shop-filter-check">
           <input type="checkbox" checked={inStockOnly} onChange={e => setInStockOnly(e.target.checked)} />
-          Тільки в наявності
+          {t('Тільки в наявності', 'Только в наличии')}
         </label>
         <label className="shop-filter-check">
           <input type="checkbox" checked={saleOnly} onChange={e => setSaleOnly(e.target.checked)} />
-          Тільки акційні
+          {t('Тільки акційні', 'Только акционные')}
         </label>
         {activeFilterCount > 0 && (
           <button
@@ -633,7 +644,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
               transition: 'background 0.15s',
             }}
           >
-            Скинути фільтри ({activeFilterCount})
+            {t('Скинути фільтри', 'Сбросить фильтры')} ({activeFilterCount})
           </button>
         )}
         </div>{/* end sidebar-filters-section */}
@@ -645,8 +656,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       <div style={{ minWidth: 0 }}>
         <div className="shop-topbar">
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-            <div className="shop-title">{saleOnly ? 'Акційні товари' : 'Магазин'}</div>
-            <span className="shop-count">{filtered.length} товарів</span>
+            <div className="shop-title">{saleOnly ? t('Акційні товари', 'Акционные товары') : t('Магазин', 'Магазин')}</div>
+            <span className="shop-count">{filtered.length} {t('товарів', 'товаров')}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
@@ -654,7 +665,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
               onClick={() => setMobilePanel(v => v === 'cats' ? null : 'cats')}
             >
               <LayoutList size={14} strokeWidth={2} />
-              Категорії
+              {t('Категорії', 'Категории')}
             </button>
             {(() => {
               const count = Object.values(filterValues).filter(Boolean).length +
@@ -666,7 +677,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                   onClick={() => setMobilePanel(v => v === 'filters' ? null : 'filters')}
                 >
                   <SlidersHorizontal size={14} strokeWidth={2} />
-                  Фільтри
+                  {t('Фільтри', 'Фильтры')}
                   {count > 0 && <span className="shop-mobile-filter-badge">{count}</span>}
                 </button>
               );
@@ -682,17 +693,17 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                 display: 'flex', alignItems: 'center', gap: '5px',
               }}
             >
-              🔥 Акція
+              🔥 {t('Акція', 'Акция')}
             </button>
             <select
               className="shop-sort-select"
               value={sortBy}
               onChange={e => { setSortBy(e.target.value as typeof sortBy); setVisibleCount(24); }}
             >
-              <option value="default">За замовчуванням</option>
-              <option value="price_asc">Ціна: від низької</option>
-              <option value="price_desc">Ціна: від високої</option>
-              <option value="sale">Спочатку акційні</option>
+              <option value="default">{t('За замовчуванням', 'По умолчанию')}</option>
+              <option value="price_asc">{t('Ціна: від низької', 'Цена: по возрастанию')}</option>
+              <option value="price_desc">{t('Ціна: від високої', 'Цена: по убыванию')}</option>
+              <option value="sale">{t('Спочатку акційні', 'Сначала акционные')}</option>
             </select>
           </div>
         </div>
@@ -701,7 +712,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           <SearchAutocomplete
             value={search}
             onChange={setSearch}
-            placeholder="Пошук за назвою, артикулом, брендом..."
+            placeholder={t('Пошук за назвою, артикулом, брендом...', 'Поиск по названию, артикулу, бренду...')}
             wrapperClassName="shop-search"
             iconClassName="shop-search__icon"
           />
@@ -711,7 +722,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             className={'shop-cat-pill' + (!selCat ? ' active' : '')}
             onClick={() => { selectCat(null); setExpandedCats(new Set()); }}
           >
-            Всі категорії
+            {t('Всі категорії', 'Все категории')}
           </button>
           {parentCats.map(cat => {
             const isActive = selCat === cat.slug || (childrenOf[cat.slug] ?? []).some(c => c.slug === selCat || (childrenOf[c.slug] ?? []).some(g => g.slug === selCat));
@@ -728,7 +739,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                   }
                 }}
               >
-                {cat.name}
+                {catDisplayName(cat.slug, cat.name)}
               </button>
             );
           })}
@@ -738,7 +749,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         <SalesBanner mode="shop" />
         <div className="shop-grid">
           {sorted.length === 0 && (
-            <div className="shop-empty">Нічого не знайдено</div>
+            <div className="shop-empty">{t('Нічого не знайдено', 'Ничего не найдено')}</div>
           )}
           {sorted.slice(0, visibleCount).map(p => {
             const price = p.stock?.price_retail ?? null;
@@ -759,6 +770,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                 onWholesaleBlock={() => setShowWholesaleModal(true)}
                 isWished={wishSkus.has(p.sku)}
                 onToggleWish={() => toggleWish(p.sku)}
+                lang={lang}
               />
             );
           })}
@@ -774,7 +786,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                 fontSize: '14px', fontWeight: 700, cursor: 'pointer',
               }}
             >
-              Показати більше ({sorted.length - visibleCount} залишилось)
+              {t('Показати більше', 'Показать больше')} ({sorted.length - visibleCount} {t('залишилось', 'осталось')})
             </button>
           </div>
         )}
@@ -793,11 +805,11 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           <div style={{ padding: '16px 20px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '8px' }}>
               <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', margin: 0 }}>
-                Про категорію «{catName}»
+                {t('Про категорію', 'О категории')} «{catName}»
               </p>
               {meta.blogSlug && (
                 <Link href={`/blog/${meta.blogSlug}`} style={{ fontSize: '12px', color: '#4880B8', fontWeight: 600, whiteSpace: 'nowrap', textDecoration: 'none' }}>
-                  Читати статтю →
+                  {t('Читати статтю →', 'Читать статью →')}
                 </Link>
               )}
             </div>
@@ -808,7 +820,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             {meta.faq && meta.faq.length > 0 && (
               <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
                 <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Часті запитання
+                  {t('Часті запитання', 'Частые вопросы')}
                 </p>
                 {meta.faq.map((item, i) => (
                   <div key={i} style={{ marginBottom: i < meta.faq!.length - 1 ? '12px' : 0 }}>
@@ -845,10 +857,10 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         >
           <div style={{ fontSize: '36px', marginBottom: '12px' }}>🏢</div>
           <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '10px' }}>
-            Ви увійшли як оптовий клієнт
+            {t('Ви увійшли як оптовий клієнт', 'Вы вошли как оптовый клиент')}
           </h2>
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '24px' }}>
-            У магазині вказані роздрібні ціни. Для замовлення за вашими цінами перейдіть до оптового каталогу.
+            {t('У магазині вказані роздрібні ціни. Для замовлення за вашими цінами перейдіть до оптового каталогу.', 'В магазине указаны розничные цены. Для заказа по вашим ценам перейдите в оптовый каталог.')}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <a href="/catalog" style={{
@@ -856,7 +868,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
               height: '44px', borderRadius: '10px', background: '#1E3A5F', color: '#fff',
               fontSize: '14px', fontWeight: 700, textDecoration: 'none',
             }}>
-              Перейти до оптового каталогу →
+              {t('Перейти до оптового каталогу →', 'Перейти в оптовый каталог →')}
             </a>
             <button
               onClick={() => setShowWholesaleModal(false)}
@@ -866,7 +878,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                 fontSize: '13px', cursor: 'pointer',
               }}
             >
-              Залишитись і переглянути магазин
+              {t('Залишитись і переглянути магазин', 'Остаться и просматривать магазин')}
             </button>
           </div>
         </div>

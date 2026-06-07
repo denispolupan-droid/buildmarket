@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 
 type Review = {
   id: string;
@@ -35,6 +36,9 @@ function Stars({ rating, size = 16, interactive = false, onRate }: {
 }
 
 export default function ProductReviews({ sku, productName }: { sku: string; productName: string }) {
+  const pathname = usePathname();
+  const lang = pathname.startsWith('/ru') ? 'ru' : 'uk';
+  const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -61,8 +65,8 @@ export default function ProductReviews({ sku, productName }: { sku: string; prod
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    if (!name.trim()) { setError('Вкажіть ваше ім\'я'); return; }
-    if (!rating) { setError('Виберіть оцінку'); return; }
+    if (!name.trim()) { setError(t('Вкажіть ваше ім\'я', 'Укажите ваше имя')); return; }
+    if (!rating) { setError(t('Виберіть оцінку', 'Выберите оценку')); return; }
 
     setSending(true);
     try {
@@ -77,7 +81,7 @@ export default function ProductReviews({ sku, productName }: { sku: string; prod
         setName(''); setRating(0); setText('');
       } else {
         const d = await res.json();
-        setError(d.error ?? 'Помилка');
+        setError(d.error ?? t('Помилка', 'Ошибка'));
       }
     } finally {
       setSending(false);
@@ -91,7 +95,7 @@ export default function ProductReviews({ sku, productName }: { sku: string; prod
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-            Відгуки
+            {t('Відгуки', 'Отзывы')}
           </h2>
           {reviews.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -116,39 +120,39 @@ export default function ProductReviews({ sku, productName }: { sku: string; prod
               fontSize: '13px', fontWeight: 600, cursor: 'pointer',
             }}
           >
-            {showForm ? 'Скасувати' : '+ Залишити відгук'}
+            {showForm ? t('Скасувати', 'Отмена') : `+ ${t('Залишити відгук', 'Оставить отзыв')}`}
           </button>
         )}
       </div>
 
       {submitted && (
         <div style={{ padding: '16px 20px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '10px', marginBottom: '20px', fontSize: '14px', color: '#16A34A' }}>
-          Дякуємо за відгук! Він з&apos;явиться після перевірки.
+          {t('Дякуємо за відгук! Він з\'явиться після перевірки.', 'Спасибо за отзыв! Он появится после проверки.')}
         </div>
       )}
 
       {showForm && (
         <form onSubmit={handleSubmit} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
           <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 16px' }}>
-            Ваш відгук про «{productName}»
+            {t('Ваш відгук про', 'Ваш отзыв о')} «{productName}»
           </p>
 
           <div style={{ marginBottom: '14px' }}>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
-              Оцінка *
+              {t('Оцінка *', 'Оценка *')}
             </label>
             <Stars rating={rating} size={28} interactive onRate={setRating} />
           </div>
 
           <div style={{ marginBottom: '14px' }}>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
-              Ваше ім&apos;я *
+              {t('Ваше ім\'я *', 'Ваше имя *')}
             </label>
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="Іван"
+              placeholder={t('Іван', 'Иван')}
               maxLength={80}
               style={{ width: '100%', height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '14px', background: 'var(--bg-soft)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }}
             />
@@ -156,12 +160,12 @@ export default function ProductReviews({ sku, productName }: { sku: string; prod
 
           <div style={{ marginBottom: '14px' }}>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
-              Коментар (необов&apos;язково)
+              {t('Коментар (необов\'язково)', 'Комментарий (необязательно)')}
             </label>
             <textarea
               value={text}
               onChange={e => setText(e.target.value)}
-              placeholder="Розкажіть про ваш досвід використання..."
+              placeholder={t('Розкажіть про ваш досвід використання...', 'Расскажите о вашем опыте использования...')}
               maxLength={2000}
               rows={4}
               style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '14px', background: 'var(--bg-soft)', color: 'var(--text-primary)', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
@@ -177,16 +181,16 @@ export default function ProductReviews({ sku, productName }: { sku: string; prod
             disabled={sending}
             style={{ height: '40px', padding: '0 24px', borderRadius: '8px', background: '#4880B8', color: '#fff', fontSize: '14px', fontWeight: 700, border: 'none', cursor: sending ? 'not-allowed' : 'pointer', opacity: sending ? 0.7 : 1 }}
           >
-            {sending ? 'Надсилаємо...' : 'Надіслати відгук'}
+            {sending ? t('Надсилаємо...', 'Отправляем...') : t('Надіслати відгук', 'Отправить отзыв')}
           </button>
         </form>
       )}
 
       {loading ? (
-        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Завантаження...</p>
+        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('Завантаження...', 'Загрузка...')}</p>
       ) : reviews.length === 0 ? (
         <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
-          Відгуків ще немає. Будьте першим!
+          {t('Відгуків ще немає. Будьте першим!', 'Отзывов пока нет. Будьте первым!')}
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -201,7 +205,7 @@ export default function ProductReviews({ sku, productName }: { sku: string; prod
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Stars rating={r.rating} size={13} />
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                      {new Date(r.created_at).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      {new Date(r.created_at).toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'uk-UA', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </span>
                   </div>
                 </div>

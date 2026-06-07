@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Plus, Heart } from 'lucide-react';
 import ProductImage from '../../components/ProductImage';
@@ -12,6 +13,9 @@ const VISIBLE = 5;
 const GAP = 16;
 
 export default function RelatedCarousel({ products, retail = false }: { products: ProductFull[]; retail?: boolean }) {
+  const pathname = usePathname();
+  const lang = pathname.startsWith('/ru') ? 'ru' : 'uk';
+  const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
   const [cur, setCur] = useState(0);
   const [offset, setOffset] = useState(0);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -58,7 +62,7 @@ export default function RelatedCarousel({ products, retail = false }: { products
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <h2 className="section-title" style={{ margin: 0 }}>Схожі товари</h2>
+        <h2 className="section-title" style={{ margin: 0 }}>{t('Схожі товари', 'Похожие товары')}</h2>
         <div className="related-carousel-arrows" style={{ display: 'flex', gap: '8px' }}>
           <button onClick={() => moveTo(cur - 1)} disabled={cur === 0} style={arrowStyle(cur > 0)}>
             <ChevronLeft size={18} strokeWidth={2} />
@@ -90,8 +94,8 @@ export default function RelatedCarousel({ products, retail = false }: { products
             const packStr     = packFrac % 1 === 0 ? `${packFrac}` : packFrac.toFixed(1);
             const specs: { label: string; value: string }[] = [];
             const colorVal = p.color ?? p.characteristics.find(c => /^Колір/i.test(c.label))?.value ?? null;
-            if (p.volume) specs.push({ label: /кг|г$/.test(p.volume) ? 'Вага' : "Об'єм", value: p.volume });
-            if (colorVal) specs.push({ label: 'Колір', value: colorVal });
+            if (p.volume) specs.push({ label: /кг|г$/.test(p.volume) ? t('Вага', 'Вес') : t("Об'єм", 'Объём'), value: p.volume });
+            if (colorVal) specs.push({ label: t('Колір', 'Цвет'), value: colorVal });
 
             return (
               <div
@@ -116,12 +120,12 @@ export default function RelatedCarousel({ products, retail = false }: { products
                       {isSale && relPriceOld && <span className="pc-price-old">{relPriceOld} грн</span>}
                       {relPrice > 0
                         ? <span className="pc-price">{relPrice} грн</span>
-                        : <span style={{ fontSize: 13, color: '#94A3B8' }}>За запитом</span>}
+                        : <span style={{ fontSize: 13, color: '#94A3B8' }}>{t('За запитом', 'По запросу')}</span>}
                     </div>
                     {inStock
-                      ? <div style={{ fontSize: '11px', color: '#15803D', fontWeight: 600, marginBottom: '3px' }}>● в наявності</div>
-                      : <div style={{ fontSize: '11px', color: '#DC2626', fontWeight: 600, marginBottom: '3px' }}>● немає</div>}
-                    <div style={{ fontSize: '11px', color: '#64748B' }}>В упаковці: {p.pack_qty} шт</div>
+                      ? <div style={{ fontSize: '11px', color: '#15803D', fontWeight: 600, marginBottom: '3px' }}>● {t('в наявності', 'в наличии')}</div>
+                      : <div style={{ fontSize: '11px', color: '#DC2626', fontWeight: 600, marginBottom: '3px' }}>● {t('немає', 'нет')}</div>}
+                    <div style={{ fontSize: '11px', color: '#64748B' }}>{t('В упаковці:', 'В упаковке:')} {p.pack_qty} шт</div>
                   </div>
                 </Link>
 
@@ -134,7 +138,7 @@ export default function RelatedCarousel({ products, retail = false }: { products
 
                 {!retail && (
                   <>
-                    <div className="pc-minorder">Мінімальне замовлення</div>
+                    <div className="pc-minorder">{t('Мінімальне замовлення', 'Минимальный заказ')}</div>
                     <div className="pc-minorder-val">{relMinOrder} рс / {packStr} уп</div>
                   </>
                 )}
@@ -156,7 +160,7 @@ export default function RelatedCarousel({ products, retail = false }: { products
                     style={!inStock ? { opacity: 0.4, cursor: 'default' } : undefined}
                     onClick={() => inStock && addItem({ sku: p.sku, name: p.name, brand: p.brand, volume: p.volume, price: relPrice, min_order: relMinOrder, nl1: p.nl1 ?? '', nl2: p.nl2 ?? undefined, bc: p.bc, ac: p.ac, img_type: p.img_type, imageUrl: p.image ?? undefined }, getQty(p.sku, relMinOrder))}
                   >
-                    <Plus size={13} strokeWidth={2.5} /> В кошик
+                    <Plus size={13} strokeWidth={2.5} /> {t('В кошик', 'В корзину')}
                   </button>
                   <button
                     className="pc-btn-icon"

@@ -153,20 +153,20 @@ export default function Header() {
                         display: 'flex', alignItems: 'center', gap: '8px',
                         padding: '8px 12px', borderRadius: '7px', fontSize: '14px', color: 'var(--text-primary)',
                       }}>
-                        <User size={15} strokeWidth={2} />Особистий кабінет
+                        <User size={15} strokeWidth={2} />{lang === 'ru' ? 'Личный кабинет' : 'Особистий кабінет'}
                       </Link>
                       <Link href="/account/wishlist" onClick={() => setMenuOpen(false)} style={{
                         display: 'flex', alignItems: 'center', gap: '8px',
                         padding: '8px 12px', borderRadius: '7px', fontSize: '14px', color: 'var(--text-primary)',
                       }}>
-                        <Heart size={15} strokeWidth={2} />Обране
+                        <Heart size={15} strokeWidth={2} />{lang === 'ru' ? 'Избранное' : 'Обране'}
                       </Link>
                       {user.user_metadata?.role === 'admin' && (
                         <Link href="/admin" onClick={() => setMenuOpen(false)} style={{
                           display: 'flex', alignItems: 'center', gap: '8px',
                           padding: '8px 12px', borderRadius: '7px', fontSize: '14px', color: 'var(--text-primary)',
                         }}>
-                          <LayoutGrid size={15} strokeWidth={2} />Панель менеджера
+                          <LayoutGrid size={15} strokeWidth={2} />{lang === 'ru' ? 'Панель менеджера' : 'Панель менеджера'}
                         </Link>
                       )}
                       <hr style={{ border: 'none', borderTop: '1px solid #F1F5F9', margin: '4px 0' }} />
@@ -175,7 +175,7 @@ export default function Header() {
                         padding: '8px 12px', borderRadius: '7px', fontSize: '14px',
                         color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer',
                       }}>
-                        <LogOut size={15} strokeWidth={2} />Вийти
+                        <LogOut size={15} strokeWidth={2} />{lang === 'ru' ? 'Выйти' : 'Вийти'}
                       </button>
                     </div>
                   )}
@@ -186,13 +186,13 @@ export default function Header() {
                   height: '38px', padding: '0 18px', borderRadius: '8px',
                   background: '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 600,
                 }}>
-                  <User size={15} strokeWidth={2} />Вхід
+                  <User size={15} strokeWidth={2} />{lang === 'ru' ? 'Вход' : 'Вхід'}
                 </Link>
               )}
             </div>
 
             {/* Wishlist */}
-            <Link href="/account/wishlist" aria-label="Обране" className="btn-icon" style={{
+            <Link href="/account/wishlist" aria-label={lang === 'ru' ? 'Избранное' : 'Обране'} className="btn-icon" style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               width: '38px', height: '38px', borderRadius: '8px',
               border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)',
@@ -222,7 +222,7 @@ export default function Header() {
               position: 'relative',
             }}>
               <ShoppingCart size={15} strokeWidth={2} />
-              <span className="desktop-nav">Кошик</span>
+              <span className="desktop-nav">{lang === 'ru' ? 'Корзина' : 'Кошик'}</span>
               {totalItems > 0 && (
                 <span style={{
                   position: 'absolute', top: '-6px', right: '-6px',
@@ -261,7 +261,7 @@ export default function Header() {
             {/* Hamburger */}
             <button
               className="hamburger-btn"
-              aria-label={mobileOpen ? 'Закрити меню' : 'Відкрити меню'}
+              aria-label={mobileOpen ? (lang === 'ru' ? 'Закрыть меню' : 'Закрити меню') : (lang === 'ru' ? 'Открыть меню' : 'Відкрити меню')}
               onClick={() => setMobileOpen(o => !o)}
               style={{
                 display: 'none',
@@ -311,14 +311,14 @@ export default function Header() {
                   display: 'flex', alignItems: 'center', gap: '12px',
                   padding: '12px 16px', borderRadius: '10px', fontSize: '15px', color: '#374151',
                 }}>
-                  <User size={18} strokeWidth={2} />Особистий кабінет
+                  <User size={18} strokeWidth={2} />{lang === 'ru' ? 'Личный кабинет' : 'Особистий кабінет'}
                 </Link>
                 {user.user_metadata?.role === 'admin' && (
                   <Link href="/admin" style={{
                     display: 'flex', alignItems: 'center', gap: '12px',
                     padding: '12px 16px', borderRadius: '10px', fontSize: '15px', color: '#374151',
                   }}>
-                    <LayoutGrid size={18} strokeWidth={2} />Панель менеджера
+                    <LayoutGrid size={18} strokeWidth={2} />{lang === 'ru' ? 'Панель менеджера' : 'Панель менеджера'}
                   </Link>
                 )}
                 <button onClick={handleLogout} style={{
@@ -326,7 +326,7 @@ export default function Header() {
                   padding: '12px 16px', borderRadius: '10px', fontSize: '15px',
                   color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer',
                 }}>
-                  <LogOut size={18} strokeWidth={2} />Вийти
+                  <LogOut size={18} strokeWidth={2} />{lang === 'ru' ? 'Выйти' : 'Вийти'}
                 </button>
               </>
             ) : (
@@ -335,7 +335,7 @@ export default function Header() {
                 height: '48px', borderRadius: '10px', background: '#1E3A5F',
                 color: '#fff', fontSize: '15px', fontWeight: 700, margin: '4px 0',
               }}>
-                <User size={16} />Вхід
+                <User size={16} />{lang === 'ru' ? 'Вход' : 'Вхід'}
               </Link>
             )}
           </div>

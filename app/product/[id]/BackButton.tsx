@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 
 export default function BackButton({ breadcrumbId }: { breadcrumbId: string }) {
+  const pathname = usePathname();
+  const lang = pathname.startsWith('/ru') ? 'ru' : 'uk';
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -61,7 +64,7 @@ export default function BackButton({ breadcrumbId }: { breadcrumbId: string }) {
       }}
     >
       <ArrowLeft size={14} strokeWidth={2.5} />
-      Назад
+      {lang === 'ru' ? 'Назад' : 'Назад'}
     </button>
   );
 }
