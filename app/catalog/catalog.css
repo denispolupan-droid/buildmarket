@@ -370,7 +370,7 @@
   display: flex; justify-content: space-between; align-items: center;
   font-size: 10px; color: var(--text-muted); margin-top: 6px; white-space: nowrap;
 }
-.catalog-card__vol--color { flex: 1 1 auto; max-width: 100px; overflow: hidden; text-overflow: ellipsis; }
+.catalog-card__vol--color { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
 .catalog-card__actions { display: flex; flex-direction: row; gap: 4px; align-items: center; flex-shrink: 0; }
 
 /* ── Responsive ── */
