@@ -760,10 +760,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                               ) : (
                                 <div className="catalog-card__price-na">За запитом</div>
                               )}
-                              <div className="catalog-card__pack">
-                                <span>уп. {p.pack_qty} шт</span>
-                                <span className="catalog-card__pack-sku">Арт. {p.sku}</span>
-                              </div>
+                              <div className="catalog-card__pack">уп. {p.pack_qty} шт</div>
                             </div>
                             <div className="catalog-card__actions">
                               <input
@@ -790,6 +787,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                                 <Heart size={13} strokeWidth={2} fill={isLiked(p.sku) ? '#EF4444' : 'none'} />
                               </button>
                             </div>
+                            <div className="catalog-card__sku-row">Арт. {p.sku}</div>
                           </div>
                           </div>
                         </div>
