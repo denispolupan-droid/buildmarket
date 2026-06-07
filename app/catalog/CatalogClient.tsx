@@ -744,7 +744,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                             <div className="catalog-card__meta">
                               <span>{p.brand}</span>
                               {p.volume && <span className="catalog-card__vol">{p.volume}</span>}
-                              {(() => { const c = p.color ?? p.characteristics?.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="catalog-card__vol">{c}</span> : null; })()}
                               <span style={{ marginLeft: 'auto', flexShrink: 0 }}>Арт. {p.sku}</span>
                             </div>
                             <div className="catalog-card__bottom">
