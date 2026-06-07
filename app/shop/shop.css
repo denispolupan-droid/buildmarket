@@ -263,7 +263,7 @@
   gap: 5px;
   font-size: 12px;
   color: var(--status-instock);
-  margin-top: 6px;
+  margin-top: 3px;
 }
 .shop-card__stock-dot {
   width: 6px; height: 6px;
