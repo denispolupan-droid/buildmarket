@@ -20,6 +20,15 @@ export default async function NewProductPage() {
     .select('*')
     .order('sort_order');
 
+  const seenUrls = new Set<string>();
+  const promUrls: { url: string; name: string }[] = [];
+  for (const c of categories ?? []) {
+    if (c.prom_section_url && !seenUrls.has(c.prom_section_url)) {
+      seenUrls.add(c.prom_section_url);
+      promUrls.push({ url: c.prom_section_url, name: c.name });
+    }
+  }
+
   return (
     <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
       <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '32px' }}>
@@ -38,7 +47,7 @@ export default async function NewProductPage() {
           </p>
         </div>
 
-        <ProductForm product={null} categories={categories ?? []} isNew={true} />
+        <ProductForm product={null} categories={categories ?? []} isNew={true} promUrls={promUrls} />
       </div>
     </div>
   );

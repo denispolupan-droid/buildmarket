@@ -11,6 +11,7 @@ type Props = {
   product: ProductFull | null;
   categories: Category[];
   isNew: boolean;
+  promUrls?: { url: string; name: string }[];
 };
 
 const inputStyle: React.CSSProperties = {
@@ -29,7 +30,7 @@ const sectionStyle: React.CSSProperties = {
   padding: '24px', marginBottom: '20px',
 };
 
-export default function ProductForm({ product, categories, isNew }: Props) {
+export default function ProductForm({ product, categories, isNew, promUrls = [] }: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
 
@@ -439,14 +440,22 @@ export default function ProductForm({ product, categories, isNew }: Props) {
           </label>
           <input
             type="text"
+            list="prom-urls-datalist"
             value={promPortalUrl}
             onChange={e => setPromPortalUrl(e.target.value)}
             placeholder="https://prom.ua/Germetiki"
             style={inputStyle}
           />
+          {promUrls.length > 0 && (
+            <datalist id="prom-urls-datalist">
+              {promUrls.map(({ url, name }) => (
+                <option key={url} value={url}>{name}</option>
+              ))}
+            </datalist>
+          )}
           <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
             Якщо вказано — цей товар потрапить саме в цей розділ Prom, ігноруючи налаштування категорії.
-            URL береться зі сторінки розділу на prom.ua (напр. <code>https://prom.ua/Zhidkie-gvozdi-1</code>).
+            Підказки беруться з налаштувань категорій (розділ <em>Prom → Комісії</em>).
           </p>
         </div>
       </div>
