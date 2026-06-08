@@ -54,7 +54,7 @@ export async function getCategories(): Promise<Category[]> {
 
 // Поля для списку — без description (зберігає ~200KB на запит)
 const PRODUCT_LIST_SELECT = `
-  id, sku, name, brand, category_slug, is_active, sort_order,
+  id, sku, name, name_ru, brand, category_slug, is_active, sort_order,
   nl1, nl2, bc, ac, img_type, color, product_type, volume, image,
   min_order, pack_qty,
   stock:product_stock(*),

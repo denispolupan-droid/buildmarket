@@ -76,17 +76,17 @@ export default function BlogRuPage() {
                       fontSize: '12px', fontWeight: 600, padding: '3px 10px', borderRadius: '20px',
                       background: '#EFF6FF', color: '#4880B8',
                     }}>
-                      {article.category}
+                      {article.categoryRu ?? article.category}
                     </span>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <Clock size={12} /> {article.readTime} мин чтения
                     </span>
                   </div>
                   <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px', lineHeight: 1.4 }}>
-                    {article.title}
+                    {article.titleRu ?? article.title}
                   </h2>
                   <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 14px' }}>
-                    {article.description}
+                    {article.descriptionRu ?? article.description}
                   </p>
                   <span style={{ fontSize: '13px', fontWeight: 600, color: '#4880B8', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     Читать статью <ArrowRight size={14} />

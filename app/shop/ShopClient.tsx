@@ -32,6 +32,7 @@ type CardProps = {
 
 function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggleWish, onWholesaleBlock, isWholesale, lang }: CardProps) {
   const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
+  const displayName = lang === 'ru' ? ((p as { name_ru?: string | null }).name_ru ?? p.name) : p.name;
   const [qty, setQty] = useState(1);
   const [inputVal, setInputVal] = useState('1');
   const [copied, setCopied] = useState(false);
@@ -75,8 +76,8 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
           />
         </div>
         <div className="shop-card__body">
-          <div className="shop-card__name" title={`${p.name}${p.volume && !p.name.includes(p.volume) ? ` ${p.volume}` : ''}`}>
-            {p.name}{p.volume && !p.name.includes(p.volume) ? ` ${p.volume}` : ''}
+          <div className="shop-card__name" title={`${displayName}${p.volume && !displayName.includes(p.volume) ? ` ${p.volume}` : ''}`}>
+            {displayName}{p.volume && !displayName.includes(p.volume) ? ` ${p.volume}` : ''}
           </div>
           <div className="shop-card__meta">
             {(() => {

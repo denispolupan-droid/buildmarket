@@ -126,6 +126,8 @@ export default async function RuProductPage({ params, searchParams }: { params: 
   const parentCat    = productCat?.parent_slug ? categories.find(c => c.slug === productCat.parent_slug) : null;
   const parentNameRu = parentCat ? getCategoryNameRu(parentCat.slug, parentCat.name) : null;
 
+  const nameRu = (product as { name_ru?: string | null }).name_ru ?? product.name;
+
   const breadcrumbItems: { '@type': string; position: number; name: string; item: string }[] = [
     { '@type': 'ListItem', position: 1, name: 'Главная', item: `${BASE}/ru` },
   ];
@@ -135,7 +137,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
   if (productCat) {
     breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: categoryName, item: `${BASE}/ru/shop/${productCat.slug}` });
   }
-  breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: `${product.brand} ${product.name}`, item: `${BASE}/ru/product/${product.sku}` });
+  breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: `${product.brand} ${nameRu}`, item: `${BASE}/ru/product/${product.sku}` });
 
   const breadcrumbLd = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: breadcrumbItems };
 
@@ -188,7 +190,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
           {parentCat && (<><span>›</span><Link href={isRetail ? `/ru/shop/${parentCat.slug}` : `/catalog?category=${parentCat.slug}`}>{parentNameRu}</Link></>)}
           {productCat && (<><span>›</span><Link href={isRetail ? `/ru/shop/${productCat.slug}` : `/catalog?category=${productCat.slug}`}>{categoryName}</Link></>)}
           <span>›</span>
-          <span>{product.name}</span>
+          <span>{nameRu}</span>
         </div>
 
         <div className="product-layout">
@@ -197,7 +199,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
 
           <div className="product-info">
             <div className="product-info__brand">{product.brand}</div>
-            <h1 className="product-info__title">{product.name}</h1>
+            <h1 className="product-info__title">{nameRu}</h1>
 
             <div className="product-info__badges">
               {product.volume && <span className="badge">{volLabel(product.volume)}: {product.volume}</span>}
@@ -285,7 +287,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
         {related.length > 0 && <RelatedCarousel products={related} retail={isRetail} />}
 
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: '32px', marginTop: '32px' }}>
-          <ProductReviews sku={product.sku} productName={`${product.brand} ${product.name}`} />
+          <ProductReviews sku={product.sku} productName={`${product.brand} ${nameRu}`} />
         </div>
 
       </div>

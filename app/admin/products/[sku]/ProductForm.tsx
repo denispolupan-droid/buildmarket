@@ -35,6 +35,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
 
   const [sku, setSku] = useState(product?.sku ?? '');
   const [name, setName] = useState(product?.name ?? '');
+  const [nameRu, setNameRu] = useState(product?.name_ru ?? '');
   const [brand, setBrand] = useState(product?.brand ?? '');
   const [categorySlug, setCategorySlug] = useState(product?.category_slug ?? '');
   const [productType, setProductType] = useState(product?.product_type ?? '');
@@ -171,6 +172,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
             volume: volume || null,
             pack_qty: packQty,
             min_order: minOrder,
+            name_ru: nameRu || null,
             description: description || null,
             description_ru: descriptionRu || null,
             description_full: descriptionFull || null,
@@ -276,6 +278,11 @@ export default function ProductForm({ product, categories, isNew }: Props) {
             <label style={labelStyle}>Назва товару *</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)} style={inputStyle} />
           </div>
+        </div>
+
+        <div style={{ marginBottom: '16px' }}>
+          <label style={labelStyle}>Назва товару (рос.) — для /ru/</label>
+          <input type="text" value={nameRu} onChange={e => setNameRu(e.target.value)} placeholder="Якщо порожньо — буде використано українську назву" style={inputStyle} />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>

@@ -18,6 +18,7 @@ export type Product = {
   volume: string | null;
   pack_qty: number;
   min_order: number;
+  name_ru: string | null;
   description: string | null;
   description_ru: string | null;
   description_full: string | null;
