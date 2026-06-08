@@ -167,9 +167,9 @@ const DRYING_LABELS = new Set([
   'Час повного затвердіння',
 ]);
 
-// Parse hours from Ukrainian time value: "30 хвилин" → 0.5, "2 години..." → 2
+// Parse hours from Ukrainian time value: "30 хв" → 0.5, "2 год" → 2
 function parseHours(v: string): number | null {
-  const hv = v.match(/(\d+(?:[.,]\d+)?)\s*хвилин/i);
+  const hv = v.match(/(\d+(?:[.,]\d+)?)\s*хв/i);  // matches хв, хвилин, хвилини
   if (hv) return Math.round(parseFloat(hv[1].replace(',', '.')) / 60 * 10) / 10;
   const god = v.match(/(\d+(?:[.,]\d+)?)\s*год/i);
   if (god) return parseFloat(god[1].replace(',', '.'));
@@ -290,7 +290,16 @@ export async function GET(request: NextRequest) {
     charsMap.get(c.product_sku)!.push({ label: c.label, value: c.value });
   }
 
+  // Each prom_section_id must appear only once in <categories> — keep first (parent-level) entry
+  const seenCatIds = new Set<number>();
   const catsXml = catData
+    .filter(c => {
+      const id = c.prom_section_id;
+      if (!id) return true;             // no prom ID — use index-based fallback, always include
+      if (seenCatIds.has(id)) return false;
+      seenCatIds.add(id);
+      return true;
+    })
     .map(c => {
       const id = slugToGroupId.get(c.slug) ?? 0;
       return `      <category id="${id}">${x(c.name)}</category>`;
