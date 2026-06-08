@@ -258,7 +258,7 @@ export async function GET(request: NextRequest) {
   const [{ data: products }, { data: stock }, { data: categories }, { data: characteristics }] = await Promise.all([
     serviceClient
       .from('products')
-      .select('sku, name, name_ru, brand, category_slug, volume, description, description_full, description_ru, description_full_ru, image, keywords, keywords_ru, min_order')
+      .select('sku, name, name_ru, brand, category_slug, volume, description, description_full, description_ru, description_full_ru, image, keywords, keywords_ru, min_order, prom_portal_url')
       .eq('is_active', true)
       .order('sort_order'),
     serviceClient
@@ -299,6 +299,20 @@ export async function GET(request: NextRequest) {
     })
     .join('\n');
 
+  // Virtual categories for products with per-product prom_portal_url override
+  // Maps portal_url → virtual numeric id (starting at 100000)
+  const virtualCatMap = new Map<string, number>();
+  let virtualIdCounter = 100000;
+  for (const p of (products ?? [])) {
+    const url = (p as { prom_portal_url?: string | null }).prom_portal_url;
+    if (url && !virtualCatMap.has(url)) {
+      virtualCatMap.set(url, ++virtualIdCounter);
+    }
+  }
+  const virtualCatsXml = [...virtualCatMap.entries()]
+    .map(([url, vid]) => `      <category id="${vid}" portal_url="${x(url)}">Prom override</category>`)
+    .join('\n');
+
   // Offers XML
   const offersXml = (products ?? [])
     .map(p => {
@@ -313,7 +327,10 @@ export async function GET(request: NextRequest) {
 
       const available = s.stock_status === 'in_stock' ? 'true' : 'false';
       const qty       = s.stock_qty ?? 0;
-      const groupId   = p.category_slug ? (slugToGroupId.get(p.category_slug) ?? 1) : 1;
+      const productPortalUrl = (p as { prom_portal_url?: string | null }).prom_portal_url;
+      const groupId = productPortalUrl && virtualCatMap.has(productPortalUrl)
+        ? virtualCatMap.get(productPortalUrl)!
+        : (p.category_slug ? (slugToGroupId.get(p.category_slug) ?? 1) : 1);
 
       // ── Names ──────────────────────────────────────────────────────────────
       const nameRu = (p as { name_ru?: string | null }).name_ru;
@@ -530,6 +547,7 @@ ${kwRu}
     </currencies>
     <categories>
 ${catsXml}
+${virtualCatsXml}
     </categories>
     <offers>
 ${offersXml}

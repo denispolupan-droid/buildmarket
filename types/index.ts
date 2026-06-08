@@ -33,6 +33,7 @@ export type Product = {
   is_hit: boolean;
   is_new: boolean;
   sort_order: number;
+  prom_portal_url: string | null;
   created_at: string;
   updated_at: string;
 };

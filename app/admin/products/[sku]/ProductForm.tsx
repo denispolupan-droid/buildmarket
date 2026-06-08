@@ -60,6 +60,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
   const [imageUrl, setImageUrl] = useState(product?.image ?? '');
   const [promKeywords, setPromKeywords] = useState((product as any)?.keywords ?? '');
   const [promKeywordsRu, setPromKeywordsRu] = useState((product as any)?.keywords_ru ?? '');
+  const [promPortalUrl, setPromPortalUrl] = useState((product as any)?.prom_portal_url ?? '');
 
   const [priceUnit, setPriceUnit] = useState(product?.stock?.price_unit ?? 0);
   const [priceOld, setPriceOld] = useState(product?.stock?.price_old ?? 0);
@@ -189,6 +190,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
             image: imageUrl || null,
             keywords: promKeywords || null,
             keywords_ru: promKeywordsRu || null,
+            prom_portal_url: promPortalUrl || null,
           },
           stock: {
             sku,
@@ -430,6 +432,23 @@ export default function ProductForm({ product, categories, isNew }: Props) {
         <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
           Рекомендовано 5–10 запитів: назва + синоніми + область застосування. Рос. запити потрапляють у <code>keywords_ru</code> фіду.
         </p>
+        <div style={{ marginTop: '16px' }}>
+          <label style={labelStyle}>
+            Розділ Prom (portal_url){' '}
+            <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>— залиш порожнім для автоматичного з категорії</span>
+          </label>
+          <input
+            type="text"
+            value={promPortalUrl}
+            onChange={e => setPromPortalUrl(e.target.value)}
+            placeholder="https://prom.ua/Germetiki"
+            style={inputStyle}
+          />
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+            Якщо вказано — цей товар потрапить саме в цей розділ Prom, ігноруючи налаштування категорії.
+            URL береться зі сторінки розділу на prom.ua (напр. <code>https://prom.ua/Zhidkie-gvozdi-1</code>).
+          </p>
+        </div>
       </div>
 
       {/* Pricing & Stock */}

@@ -24,6 +24,7 @@ const KNOWN_COLUMNS = new Set([
   'Тип SVG', 'SVG рядок 1', 'SVG рядок 2',
   'SVG колір тіла', 'SVG колір акценту',
   'Порядок сортування',
+  'Prom URL',
   // Старий формат — для зворотної сумісності
   ...Array.from({ length: 10 }, (_, i) => `Характеристика ${i + 1}`),
 ]);
@@ -146,6 +147,7 @@ export async function GET(req: NextRequest) {
     'Опис (УКР)', 'Опис (РУС)', 'Повний опис (УКР)', 'Повний опис (РУС)',
     'Фото (URL)', 'Тип SVG', 'SVG рядок 1', 'SVG рядок 2',
     'SVG колір тіла', 'SVG колір акценту', 'Порядок сортування',
+    'Prom URL',
   ];
 
   const headers = [...standardHeaders, ...uniqueLabels];
@@ -158,7 +160,7 @@ export async function GET(req: NextRequest) {
     50, 'in_stock',
     'Опис укр', 'Опис рус', 'Повний опис укр', 'Повний опис рус',
     '/img/products/lacrysil/example-001.jpg', 'tube', 'LACRYSIL', 'UNIVERSAL',
-    '#4A6080', '#2A4060', 0,
+    '#4A6080', '#2A4060', 0, '',
     // Значення для характеристик — порожні в прикладному рядку
     ...uniqueLabels.map(() => ''),
   ];
@@ -168,7 +170,7 @@ export async function GET(req: NextRequest) {
   const standardWidths = [
     12, 22, 55, 15, 25, 12, 18, 12, 14, 18,
     14, 16, 16, 18, 18, 16, 12, 12,
-    40, 40, 60, 60, 45, 10, 18, 18, 16, 18, 12,
+    40, 40, 60, 60, 45, 10, 18, 18, 16, 18, 12, 35,
   ];
   wsProducts['!cols'] = [
     ...standardWidths,
@@ -218,6 +220,7 @@ export async function GET(req: NextRequest) {
     { 'Поле': 'Тип SVG',              'Опис': 'Тип генерованого зображення: tube або canister',         'Приклад': 'tube' },
     { 'Поле': 'SVG рядок 1 / 2',      'Опис': 'Текст на заглушці товару',                              'Приклад': 'LACRYSIL' },
     { 'Поле': 'SVG колір тіла / акц.', 'Опис': 'HEX-кольори заглушки',                                 'Приклад': '#4A6080' },
+    { 'Поле': 'Prom URL',              'Опис': 'Розділ Prom для цього товару (portal_url). Залиш порожнім — використається налаштування категорії.',  'Приклад': 'https://prom.ua/Zhidkie-gvozdi-1' },
     { 'Поле': '<Назва характеристики>','Опис': 'Колонки після стандартних — це характеристики товару. Порожня клітинка = не відображається на сайті. Нова колонка = нова характеристика.', 'Приклад': 'Матеріал → Силіконовий' },
   ];
   const wsHelp = XLSX.utils.json_to_sheet(helpRows);
@@ -313,6 +316,7 @@ export async function POST(req: NextRequest) {
       bc:                  col(row, 'SVG колір тіла') || '#4A6080',
       ac:                  col(row, 'SVG колір акценту') || '#2A4060',
       sort_order:          Number(row['Порядок сортування'] ?? 0) || 0,
+      prom_portal_url:     col(row, 'Prom URL') || null,
       is_active:           true,
     };
 
