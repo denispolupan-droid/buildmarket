@@ -513,7 +513,7 @@ export async function GET(request: NextRequest) {
         ${descRu ? `<description_ru>${descRu}</description_ru>` : ''}
         ${!PROM_UNKNOWN_BRANDS.has(p.brand ?? '') ? `<vendor>${x(p.brand)}</vendor>` : ''}
         <vendorCode>${x(p.sku)}</vendorCode>
-        <stock_quantity>${qty}</stock_quantity>
+        ${qty > 0 ? `<stock_quantity>${qty}</stock_quantity>` : ''}
         ${minQty && minQty > 1 ? `<min_quantity>${minQty}</min_quantity>` : ''}
 ${paramsXml}
 ${volumeTextParam}
