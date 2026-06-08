@@ -52,7 +52,7 @@ export default function Header() {
     clearWishlist();
     setMenuOpen(false);
     setMobileOpen(false);
-    router.push('/');
+    router.push(lang === 'ru' ? '/ru' : '/');
     router.refresh();
   }
 
@@ -181,7 +181,7 @@ export default function Header() {
                   )}
                 </>
               ) : (
-                <Link href="/login" className="btn-dark" style={{
+                <Link href={localizeHref('/login', lang)} className="btn-dark" style={{
                   display: 'inline-flex', alignItems: 'center', gap: '7px',
                   height: '38px', padding: '0 18px', borderRadius: '8px',
                   background: '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 600,
@@ -241,8 +241,8 @@ export default function Header() {
             <button
               className="desktop-nav"
               onClick={toggleTheme}
-              aria-label={theme === 'dark' ? 'Світла тема' : 'Темна тема'}
-              data-tooltip={theme === 'dark' ? 'Світла тема' : 'Темна тема'}
+              aria-label={theme === 'dark' ? (lang === 'ru' ? 'Светлая тема' : 'Світла тема') : (lang === 'ru' ? 'Тёмная тема' : 'Темна тема')}
+              data-tooltip={theme === 'dark' ? (lang === 'ru' ? 'Светлая тема' : 'Світла тема') : (lang === 'ru' ? 'Тёмная тема' : 'Темна тема')}
               data-tooltip-right=""
               style={{
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -330,7 +330,7 @@ export default function Header() {
                 </button>
               </>
             ) : (
-              <Link href="/login" className="btn-dark" style={{
+              <Link href={localizeHref('/login', lang)} className="btn-dark" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                 height: '48px', borderRadius: '10px', background: '#1E3A5F',
                 color: '#fff', fontSize: '15px', fontWeight: 700, margin: '4px 0',
@@ -344,8 +344,8 @@ export default function Header() {
       {/* Theme toggle — fixed bottom-right */}
       <button
         onClick={toggleTheme}
-        aria-label={theme === 'dark' ? 'Перемкнути на світлу тему' : 'Перемкнути на темну тему'}
-        title={theme === 'dark' ? 'Світла тема' : 'Темна тема'}
+        aria-label={theme === 'dark' ? (lang === 'ru' ? 'Переключить на светлую тему' : 'Перемкнути на світлу тему') : (lang === 'ru' ? 'Переключить на тёмную тему' : 'Перемкнути на темну тему')}
+        title={theme === 'dark' ? (lang === 'ru' ? 'Светлая тема' : 'Світла тема') : (lang === 'ru' ? 'Тёмная тема' : 'Темна тема')}
         className="theme-toggle-btn"
         style={{
           background: theme === 'dark' ? '#1E293B' : '#0F172A',

@@ -1,5 +1,11 @@
-﻿import { redirect } from 'next/navigation';
+﻿import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+
+export const metadata: Metadata = {
+  title: 'Адмін | FIXLINE',
+  robots: { index: false, follow: false },
+};
 import { createSupabaseServer } from '../../lib/supabase-server';
 import AdminSidebar from '../components/admin/AdminSidebar';
 import PoDraftManagerLoader from './PoDraftManagerLoader';

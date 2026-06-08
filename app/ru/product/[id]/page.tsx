@@ -13,6 +13,7 @@ import BackButton from '../../../product/[id]/BackButton';
 import CoverageCalculator from '../../../product/[id]/CoverageCalculator';
 import Footer from '../../../components/Footer';
 import ProductReviews from '../../../product/[id]/ProductReviews';
+import { tFilterValue } from '../../../../lib/translations-ru';
 import { createClient } from '@supabase/supabase-js';
 import '../../../product/[id]/product.css';
 
@@ -28,24 +29,27 @@ export const revalidate = 60;
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id: sku } = await params;
   const product = await getProductBySkuCached(sku);
-  if (!product) return {};
+  if (!product) return { title: 'Товар не найден | FIXLINE', robots: { index: false } };
 
   const price = product.stock?.price_unit;
   const priceStr = price ? ` — ${price} грн` : '';
-  const volume = product.volume && !product.name.includes(product.volume) ? ` ${product.volume}` : '';
-  const title = `${product.brand} ${product.name}${volume}${priceStr} купить оптом | FIXLINE`;
+  const metaNameRu = (product as { name_ru?: string | null }).name_ru ?? product.name;
+  const volume = product.volume && !metaNameRu.includes(product.volume) ? ` ${product.volume}` : '';
+  const title = `${product.brand} ${metaNameRu}${volume}${priceStr} купить оптом | FIXLINE`;
 
   const rawDesc = (product as { description_ru?: string | null }).description_ru
     ?? product.description
-    ?? `Купить ${product.brand} ${product.name}${volume} оптом. Артикул ${product.sku}. Оптовые цены для дилеров и подрядчиков на FIXLINE.`;
+    ?? `Купить ${product.brand} ${metaNameRu}${volume} оптом. Артикул ${product.sku}. Оптовые цены для дилеров и подрядчиков на FIXLINE.`;
   const description = rawDesc.length <= 155 ? rawDesc : rawDesc.slice(0, rawDesc.lastIndexOf(' ', 155)) + '…';
 
   return {
     title,
     description,
     keywords: [
-      ...((product as { keywords?: string }).keywords?.split(',').map((k: string) => k.trim()).filter(Boolean) ?? []),
-      product.brand, product.name, 'купить', 'оптом', 'строительная химия', product.sku,
+      ...((product as { keywords_ru?: string | null }).keywords_ru?.split(',').map((k: string) => k.trim()).filter(Boolean)
+        ?? (product as { keywords?: string }).keywords?.split(',').map((k: string) => k.trim()).filter(Boolean)
+        ?? []),
+      product.brand, metaNameRu, 'купить', 'оптом', 'строительная химия', product.sku,
     ],
     openGraph: {
       title,
@@ -141,7 +145,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
 
   const breadcrumbLd = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: breadcrumbItems };
 
-  const productFullName = `${product.brand} ${product.name}${product.volume ? ' ' + product.volume : ''}`;
+  const productFullName = `${product.brand} ${nameRu}${product.volume ? ' ' + product.volume : ''}`;
   const productImage = (product as { image?: string }).image || `${BASE}/product/${product.sku}/opengraph-image`;
 
   const descriptionRu = (product as { description_ru?: string | null }).description_ru ?? product.description ?? undefined;
@@ -173,7 +177,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
     } : {}),
   };
 
-  const descriptionFullRu = (product as { description_full_ru?: string | null }).description_full_ru ?? product.description_full ?? null;
+  const descriptionFullRu = (product as { description_full_ru?: string | null }).description_full_ru ?? null;
 
   return (
     <>
@@ -186,9 +190,9 @@ export default async function RuProductPage({ params, searchParams }: { params: 
         <div className="breadcrumb" id="product-breadcrumb">
           <Link href="/ru">Главная</Link>
           <span>›</span>
-          <Link href={isRetail ? '/ru/shop' : '/catalog'}>{isRetail ? 'Магазин' : 'Каталог'}</Link>
-          {parentCat && (<><span>›</span><Link href={isRetail ? `/ru/shop/${parentCat.slug}` : `/catalog?category=${parentCat.slug}`}>{parentNameRu}</Link></>)}
-          {productCat && (<><span>›</span><Link href={isRetail ? `/ru/shop/${productCat.slug}` : `/catalog?category=${productCat.slug}`}>{categoryName}</Link></>)}
+          <Link href={isRetail ? '/ru/shop' : '/ru/catalog'}>{isRetail ? 'Магазин' : 'Каталог'}</Link>
+          {parentCat && (<><span>›</span><Link href={isRetail ? `/ru/shop/${parentCat.slug}` : `/ru/catalog?category=${parentCat.slug}`}>{parentNameRu}</Link></>)}
+          {productCat && (<><span>›</span><Link href={isRetail ? `/ru/shop/${productCat.slug}` : `/ru/catalog?category=${productCat.slug}`}>{categoryName}</Link></>)}
           <span>›</span>
           <span>{nameRu}</span>
         </div>
@@ -203,7 +207,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
 
             <div className="product-info__badges">
               {product.volume && <span className="badge">{volLabel(product.volume)}: {product.volume}</span>}
-              {(() => { const c = product.color ?? product.characteristics.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="badge">Цвет: {c}</span> : null; })()}
+              {(() => { const c = product.color ?? product.characteristics.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="badge">Цвет: {tFilterValue(c, 'ru')}</span> : null; })()}
             </div>
 
             <div className="product-info__stock">
@@ -238,7 +242,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
               isRetailPage={isRetail}
               inStock={inStock}
               sku={product.sku}
-              name={product.name}
+              name={nameRu}
               brand={product.brand}
               volume={product.volume}
               nl1={product.nl1}

@@ -1,6 +1,11 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import InvoicePrint from './InvoicePrint';
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

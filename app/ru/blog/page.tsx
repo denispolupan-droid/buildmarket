@@ -33,9 +33,9 @@ export default function BlogRuPage() {
     publisher: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
     blogPost: ARTICLES.map(a => ({
       '@type': 'BlogPosting',
-      headline: a.title,
-      description: a.description,
-      url: `${BASE}/blog/${a.slug}`,
+      headline: a.titleRu ?? a.title,
+      description: a.descriptionRu ?? a.description,
+      url: `${BASE}/ru/blog/${a.slug}`,
       datePublished: a.date,
       image: `${BASE}${a.image}`,
     })),
@@ -61,7 +61,7 @@ export default function BlogRuPage() {
             {ARTICLES.map(article => (
               <Link
                 key={article.slug}
-                href={`/blog/${article.slug}`}
+                href={`/ru/blog/${article.slug}`}
                 style={{ textDecoration: 'none' }}
               >
                 <div style={{

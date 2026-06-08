@@ -27,7 +27,7 @@ export const revalidate = 60;
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id: sku } = await params;
   const product = await getProductBySkuCached(sku);
-  if (!product) return {};
+  if (!product) return { title: 'Товар не знайдено | FIXLINE', robots: { index: false } };
 
   const price = product.stock?.price_unit;
   const priceStr = price ? ` — ${price} грн` : '';

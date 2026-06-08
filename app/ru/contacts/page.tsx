@@ -44,7 +44,7 @@ export default function ContactsRuPage() {
     },
     priceRange: '$$',
     areaServed: { '@type': 'Country', name: 'Ukraine' },
-    sameAs: [BASE],
+    sameAs: [],
   };
 
   return (
@@ -80,7 +80,7 @@ export default function ContactsRuPage() {
                 icon: MapPin,
                 title: 'Регион',
                 lines: [
-                  <span key="a1" style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-primary)' }}>г. Харьков, Украина</span>,
+                  <span key="a1" style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-primary)' }}>Украина</span>,
                   <span key="a2" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Отправка по всей Украине</span>,
                 ],
               },

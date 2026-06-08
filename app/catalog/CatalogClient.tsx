@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2 } from 'lucide-react';
 import { CATEGORY_ICONS } from '../../lib/category-icons';
 import SearchAutocomplete from '../components/SearchAutocomplete';
@@ -14,21 +14,23 @@ import type { ProductFull, Category } from '../../lib/supabase';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
+import { getCategoryNameRu } from '../../lib/ru';
+import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 
 const WHOLESALE_MIN = 3000;
 
 import { getCategoryMeta } from '../../lib/category-descriptions';
 import './catalog.css';
 
-function CopySkuBtn({ sku }: { sku: string }) {
+function CopySkuBtn({ sku, lang }: { sku: string; lang: 'uk' | 'ru' }) {
   const [copied, setCopied] = useState(false);
   function handleCopy(e: React.MouseEvent) {
     e.preventDefault(); e.stopPropagation();
     navigator.clipboard.writeText(sku).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); });
   }
   return (
-    <span onClick={handleCopy} title="Копіювати артикул" style={{ cursor: 'pointer', color: copied ? '#16A34A' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px', userSelect: 'none' }}>
-      Арт. {sku}
+    <span onClick={handleCopy} title={lang === 'ru' ? 'Копировать артикул' : 'Копіювати артикул'} style={{ cursor: 'pointer', color: copied ? '#16A34A' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px', userSelect: 'none' }}>
+      {lang === 'ru' ? 'Арт.' : 'Арт.'} {sku}
       {copied
         ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -43,7 +45,12 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const [isWholesale, setIsWholesale] = useState(false);
   const [search,        setSearch]        = useState(initialSearch);
   const [selCat,        setSelCat]        = useState(initialCategory);
-  const router = useRouter();
+  const router   = useRouter();
+  const pathname = usePathname();
+  const lang     = pathname.startsWith('/ru') ? 'ru' as const : 'uk' as const;
+  const t        = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
+  const cName    = (name: string, slug: string) => lang === 'ru' ? getCategoryNameRu(slug, name) : name;
+
   const catsListRef = useRef<HTMLDivElement>(null);
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sidebarRef = useRef<HTMLElement>(null);
@@ -77,7 +84,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       }
       sidebar.scrollTop += e.deltaY;
     };
-    // Listener тільки на сайдбар — товари скролять без затримки
     sidebar.addEventListener('wheel', handleWheel, { passive: false });
     return () => sidebar.removeEventListener('wheel', handleWheel);
   }, []);
@@ -99,7 +105,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Scroll page + sidebar to top on any category change (including parent expand)
   useEffect(() => {
     if (selCat !== prevSelCat.current) {
       prevSelCat.current = selCat;
@@ -114,7 +119,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     const catEl = catRefs.current[slug];
     const container = catsListRef.current;
     if (!catEl || !container) return;
-    // Скролимо кат-ліст щоб категорія була видима зверху — сайдбар не чіпаємо
     const offset = catEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
     container.scrollTo({ top: Math.max(0, container.scrollTop + offset - 8), behavior: 'smooth' });
   }, []);
@@ -186,8 +190,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const [pillEntered, setPillEntered] = useState(false);
   useEffect(() => {
     if (!badgeVisible && isWholesale) {
-      const t = setTimeout(() => setPillEntered(true), 20);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setPillEntered(true), 20);
+      return () => clearTimeout(timer);
     }
     setPillEntered(false);
   }, [badgeVisible, isWholesale]);
@@ -289,7 +293,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return products.filter(p => {
-      if (q && !p.name.toLowerCase().includes(q) && !p.sku.toLowerCase().includes(q) && !p.brand.toLowerCase().includes(q)) return false;
+      if (q && !p.name.toLowerCase().includes(q) && !p.sku.toLowerCase().includes(q) && !p.brand.toLowerCase().includes(q) && !(lang === 'ru' && ((p as { name_ru?: string | null }).name_ru ?? '').toLowerCase().includes(q))) return false;
       if (matchingSlugs && !matchingSlugs.has(p.category_slug ?? '')) return false;
       if (filterVolume   && p.volume !== filterVolume)   return false;
       if (filterVolumeKg && p.volume !== filterVolumeKg) return false;
@@ -318,18 +322,17 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const exportToExcel = useCallback(async () => {
     const XLSX = await import('xlsx');
     const rows = filtered.map(p => ({
-      'Артикул':         p.sku,
-      'Назва':           p.name,
-      'Бренд':           p.brand,
-      'Обʼєм':           p.volume ?? '',
-      'Мін. замовлення': 1,
-      'Ціна, грн':       p.stock?.price_unit ?? '',
+      [t('Артикул', 'Артикул')]:         p.sku,
+      [t('Назва', 'Название')]:          displayName(p),
+      [t('Бренд', 'Бренд')]:             p.brand,
+      [t('Обʼєм', 'Объём')]:             p.volume ?? '',
+      [t('Мін. замовлення', 'Мин. заказ')]: 1,
+      [t('Ціна, грн', 'Цена, грн')]:     p.stock?.price_unit ?? '',
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows);
     ws['!cols'] = [16, 50, 14, 10, 16, 12].map(w => ({ wch: w }));
 
-    // Bold header
     const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1');
     for (let c = range.s.c; c <= range.e.c; c++) {
       const cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
@@ -337,9 +340,9 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     }
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Каталог');
+    XLSX.utils.book_append_sheet(wb, ws, t('Каталог', 'Каталог'));
     XLSX.writeFile(wb, `fixline-catalog-${new Date().toISOString().slice(0,10)}.xlsx`);
-  }, [filtered]);
+  }, [filtered, t]);
 
   useEffect(() => {
     if (!selCat) return;
@@ -380,7 +383,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   }
   function handleAddToCart(p: ProductFull, qty: number) {
     addItem({
-      sku: p.sku, name: p.name, brand: p.brand, volume: p.volume,
+      sku: p.sku, name: displayName(p), brand: p.brand, volume: p.volume,
       price: p.stock?.price_unit ?? 0, min_order: 1,
       nl1: p.nl1 ?? '', nl2: p.nl2 ?? undefined,
       bc: p.bc, ac: p.ac, img_type: p.img_type, imageUrl: p.image ?? undefined,
@@ -389,18 +392,23 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     setTimeout(() => setAdded(prev => ({ ...prev, [p.sku]: false })), 1500);
   }
 
+  const catalogTitle = t('Оптовий каталог', 'Оптовый каталог');
+  const homeHref     = lang === 'ru' ? '/ru' : '/';
+  const displayName  = (p: ProductFull) =>
+    lang === 'ru' ? ((p as { name_ru?: string | null }).name_ru ?? p.name) : p.name;
+
   return (
     <>
       <div className="page-container">
         <nav aria-label="Breadcrumb" style={{ padding: '12px 0 0', fontSize: '12px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          <Link href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</Link>
+          <Link href={homeHref} style={{ color: '#94A3B8', textDecoration: 'none' }}>{t('Головна', 'Главная')}</Link>
           <span>/</span>
           {selCat ? (
             <button onClick={() => selectCat(null as unknown as string)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: '13px', padding: 0 }}>
-              Оптовий каталог
+              {catalogTitle}
             </button>
           ) : (
-            <span style={{ color: '#475569' }}>Оптовий каталог</span>
+            <span style={{ color: '#475569' }}>{catalogTitle}</span>
           )}
           {selCat && (() => {
             const cat = categories.find(c => c.slug === selCat);
@@ -412,12 +420,12 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   <>
                     <span>/</span>
                     <button onClick={() => selectCat(parent.slug)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: '13px', padding: 0 }}>
-                      {parent.name}
+                      {cName(parent.name, parent.slug)}
                     </button>
                   </>
                 )}
                 <span>/</span>
-                <span style={{ color: '#475569' }}>{cat.name}</span>
+                <span style={{ color: '#475569' }}>{cName(cat.name, cat.slug)}</span>
               </>
             );
           })()}
@@ -431,7 +439,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
 
             {/* Categories */}
             <div className="sidebar-section sidebar-cats-section">
-              <div className="sidebar-heading">Категорії</div>
+              <div className="sidebar-heading">{t('Категорії', 'Категории')}</div>
               <div
                 ref={catsListRef}
                 className="cat-list"
@@ -445,7 +453,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   className={'cat-item' + (!selCat ? ' active' : '')}
                   onClick={() => selectCat('')}
                 >
-                  Всі категорії
+                  {t('Всі категорії', 'Все категории')}
                 </div>
                 {parentCats.map(cat => {
                   const children = childrenOf[cat.slug] ?? [];
@@ -473,7 +481,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                         }}
                       >
                         {(() => { const Icon = CATEGORY_ICONS[cat.slug]; return Icon ? <Icon size={14} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.65 }} /> : null; })()}
-                        <span style={{ flex: 1, textAlign: 'left' }}>{cat.name}</span>
+                        <span style={{ flex: 1, textAlign: 'left' }}>{cName(cat.name, cat.slug)}</span>
                         {children.length > 0 && (
                           isExpanded
                             ? <ChevronUp size={13} style={{ flexShrink: 0, opacity: 0.5 }} />
@@ -493,7 +501,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                             style={{ paddingLeft: '20px', fontSize: '13px' }}
                             onClick={() => selectCat(selCat === child.slug ? '' : child.slug, cat.slug)}
                           >
-                            {child.name}
+                            {cName(child.name, child.slug)}
                           </div>
                         ))}
                       </div>
@@ -512,8 +520,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   }}
                 >
                   {catsOpen
-                    ? <><ChevronUp size={13} strokeWidth={2} />Згорнути</>
-                    : <><ChevronDown size={13} strokeWidth={2} />Показати всі</>}
+                    ? <><ChevronUp size={13} strokeWidth={2} />{t('Згорнути', 'Свернуть')}</>
+                    : <><ChevronDown size={13} strokeWidth={2} />{t('Показати всі', 'Показать все')}</>}
                 </button>
               )}
             </div>
@@ -529,24 +537,24 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 }}
               >
                 <SlidersHorizontal size={12} strokeWidth={2} />
-                Фільтри
+                {t('Фільтри', 'Фильтры')}
                 {activeFilterCount > 0 && <span className="sidebar-filter-badge">{activeFilterCount}</span>}
               </button>
 
               {volumesL.length > 1 && (
                 <div className="filter-group">
-                  <div className="filter-label">Об&apos;єм</div>
+                  <div className="filter-label">{t('Обʼєм', 'Объём')}</div>
                   <select className={'filter-select' + (filterVolume ? ' active' : '')} value={filterVolume} onChange={e => setFilterVolume(e.target.value)}>
-                    <option value="">Всі</option>
+                    <option value="">{t('Всі', 'Все')}</option>
                     {volumesL.map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                 </div>
               )}
               {volumesKg.length > 1 && (
                 <div className="filter-group">
-                  <div className="filter-label">Вага</div>
+                  <div className="filter-label">{t('Вага', 'Вес')}</div>
                   <select className={'filter-select' + (filterVolumeKg ? ' active' : '')} value={filterVolumeKg} onChange={e => setFilterVolumeKg(e.target.value)}>
-                    <option value="">Всі</option>
+                    <option value="">{t('Всі', 'Все')}</option>
                     {volumesKg.map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                 </div>
@@ -554,28 +562,35 @@ export default function CatalogClient({ products, categories, initialSearch = ''
               {allFilters.map(({ label, values }) => {
                 const active = filterValues[label] ?? '';
                 const missingActive = active && !values.includes(active);
+                const displayLabel = tFilterLabel(label, lang);
                 return (
                   <div key={label} className="filter-group">
-                    <div className="filter-label">{label}</div>
+                    <div className="filter-label">{displayLabel}</div>
                     <select
                       className={'filter-select' + (active ? ' active' : '')}
                       value={active}
                       onChange={e => setFilterValues(prev => ({ ...prev, [label]: e.target.value }))}
                     >
-                      <option value="">{label === 'Колір' ? 'Всі кольори' : label === 'Бренд' ? 'Всі бренди' : 'Всі'}</option>
-                      {missingActive && <option value={active}>{active} ⚠ немає в категорії</option>}
-                      {values.map(v => <option key={v} value={v}>{v}</option>)}
+                      <option value="">
+                        {label === 'Колір'
+                          ? t('Всі кольори', 'Все цвета')
+                          : label === 'Бренд'
+                            ? t('Всі бренди', 'Все бренды')
+                            : t('Всі', 'Все')}
+                      </option>
+                      {missingActive && <option value={active}>{tFilterValue(active, lang)} ⚠ {t('немає в категорії', 'нет в категории')}</option>}
+                      {values.map(v => <option key={v} value={v}>{tFilterValue(v, lang)}</option>)}
                     </select>
                   </div>
                 );
               })}
               <label className="filter-check">
                 <input type="checkbox" checked={inStockOnly} onChange={e => setInStockOnly(e.target.checked)} />
-                Тільки в наявності
+                {t('Тільки в наявності', 'Только в наличии')}
               </label>
               <label className="filter-check">
                 <input type="checkbox" checked={saleOnly} onChange={e => setSaleOnly(e.target.checked)} />
-                Тільки акційні
+                {t('Тільки акційні', 'Только акционные')}
               </label>
               {activeFilterCount > 0 && (
                 <button
@@ -588,14 +603,14 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                     transition: 'background 0.15s',
                   }}
                 >
-                  Скинути фільтри ({activeFilterCount})
+                  {t('Скинути фільтри', 'Сбросить фильтры')} ({activeFilterCount})
                 </button>
               )}
             </div>
             </div>{/* end sidebar-filters-section */}
 
 
-          
+
           </aside>
 
           {/* Main */}
@@ -605,19 +620,19 @@ export default function CatalogClient({ products, categories, initialSearch = ''
             <div className="catalog-title-row">
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                 <h1 className="catalog-title">
-                  {selCat ? (categories.find(c => c.slug === selCat)?.name ?? 'Оптовий каталог') : 'Оптовий каталог'}
+                  {selCat ? (cName(categories.find(c => c.slug === selCat)?.name ?? catalogTitle, selCat)) : catalogTitle}
                 </h1>
-                <p className="catalog-count">{filtered.length} товарів</p>
+                <p className="catalog-count">{filtered.length} {t('товарів', 'товаров')}</p>
               </div>
               {isWholesale && (
                 <a ref={badgeRef} href="/cart" className={`wholesale-min-badge${cartMet ? ' wholesale-min-met' : ''}`}>
                   <div className="wholesale-min-row">
-                    <span>Мінімальне замовлення — <strong>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong></span>
+                    <span>{t('Мінімальне замовлення', 'Минимальный заказ')} — <strong>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong></span>
                     {cartTotal > 0 && (
                       <span className="wholesale-min-status">
                         {cartMet
-                          ? 'виконано ✓'
-                          : <>У кошику: <strong>{cartTotal.toLocaleString('uk-UA')} ₴</strong>&nbsp;·&nbsp;ще <strong>{cartRemaining.toLocaleString('uk-UA')} ₴</strong></>
+                          ? t('виконано ✓', 'выполнено ✓')
+                          : <>{t('У кошику:', 'В корзине:')} <strong>{cartTotal.toLocaleString('uk-UA')} ₴</strong>&nbsp;·&nbsp;{t('ще', 'ещё')} <strong>{cartRemaining.toLocaleString('uk-UA')} ₴</strong></>
                         }
                       </span>
                     )}
@@ -634,7 +649,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   onClick={() => setMobilePanel(v => v === 'cats' ? null : 'cats')}
                 >
                   <LayoutList size={14} strokeWidth={2} />
-                  Категорії
+                  {t('Категорії', 'Категории')}
                 </button>
                 {(() => {
                   const count = Object.values(filterValues).filter(Boolean).length +
@@ -645,7 +660,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                       onClick={() => setMobilePanel(v => v === 'filters' ? null : 'filters')}
                     >
                       <SlidersHorizontal size={14} strokeWidth={2} />
-                      Фільтри
+                      {t('Фільтри', 'Фильтры')}
                       {count > 0 && <span className="catalog-mobile-badge">{count}</span>}
                     </button>
                   );
@@ -662,23 +677,23 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                     display: 'flex', alignItems: 'center', gap: '5px',
                   }}
                 >
-                  🔥 Акції
+                  🔥 {t('Акції', 'Акции')}
                 </button>
                 <button className="catalog-desktop-btn action-btn excel" onClick={exportToExcel}>
                   <Upload size={14} strokeWidth={2} />
-                  Завантажити Excel
+                  {t('Завантажити Excel', 'Скачать Excel')}
                 </button>
                 <div className="catalog-view-toggle">
                   <button
                     className={'catalog-view-btn' + (viewMode === 'table' ? ' active' : '')}
-                    title="Таблиця"
+                    title={t('Таблиця', 'Таблица')}
                     onClick={() => changeViewMode('table')}
                   >
                     <Table2 size={15} strokeWidth={2} />
                   </button>
                   <button
                     className={'catalog-view-btn' + (viewMode === 'grid' ? ' active' : '')}
-                    title="Карточки"
+                    title={t('Карточки', 'Карточки')}
                     onClick={() => changeViewMode('grid')}
                   >
                     <LayoutGrid size={15} strokeWidth={2} />
@@ -692,7 +707,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
               <SearchAutocomplete
                 value={search}
                 onChange={setSearch}
-                placeholder="Пошук за назвою, артикулом, брендом..."
+                placeholder={t('Пошук за назвою, артикулом, брендом...', 'Поиск по названию, артикулу, бренду...')}
                 wrapperClassName="search-bar"
                 iconClassName="search-icon"
               />
@@ -701,7 +716,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   className={'catalog-cat-pill' + (!selCat ? ' active' : '')}
                   onClick={() => { setSelCat(''); router.replace('?', { scroll: false } as never); setVisibleCount(50); }}
                 >
-                  Всі категорії
+                  {t('Всі категорії', 'Все категории')}
                 </button>
                 {parentCats.map(cat => {
                   const isActive = selCat === cat.slug || (childrenOf[cat.slug] ?? []).some(c => c.slug === selCat);
@@ -718,7 +733,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                         if (next) setTimeout(() => scrollCatToTop(next), 500);
                       }}
                     >
-                      {cat.name}
+                      {cName(cat.name, cat.slug)}
                     </button>
                   );
                 })}
@@ -731,7 +746,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
             {/* Grid view */}
             {viewMode === 'grid' && (
               filtered.length === 0 ? (
-                <div className="product-table-wrap"><div className="empty-state"><h3>Нічого не знайдено</h3><p>Спробуйте змінити фільтри або пошуковий запит</p></div></div>
+                <div className="product-table-wrap"><div className="empty-state"><h3>{t('Нічого не знайдено', 'Ничего не найдено')}</h3><p>{t('Спробуйте змінити фільтри або пошуковий запит', 'Попробуйте изменить фильтры или поисковый запрос')}</p></div></div>
               ) : (
                 <>
                   <div className="catalog-grid">
@@ -744,11 +759,11 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                       const qty       = getQty(p.sku, 1);
                       return (
                         <div key={p.sku} className="catalog-card">
-                          <Link href={`/product/${p.sku}`} className="catalog-card__img-wrap">
+                          <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}`} className="catalog-card__img-wrap">
                             <div className="catalog-card__badge-stack">
-                              {isSale && <span className="catalog-card__badge">АКЦІЯ</span>}
-                              {p.is_hit && <span className="catalog-card__badge catalog-card__badge--hit">ХІТ</span>}
-                              {p.is_new && <span className="catalog-card__badge catalog-card__badge--new">НОВИНКА</span>}
+                              {isSale && <span className="catalog-card__badge">{t('АКЦІЯ', 'АКЦИЯ')}</span>}
+                              {p.is_hit && <span className="catalog-card__badge catalog-card__badge--hit">{t('ХІТ', 'ХИТ')}</span>}
+                              {p.is_new && <span className="catalog-card__badge catalog-card__badge--new">{t('НОВИНКА', 'НОВИНКА')}</span>}
                             </div>
                             <ProductImage
                               brand={p.brand} nl1={p.nl1 ?? ''} nl2={p.nl2 ?? undefined}
@@ -757,17 +772,17 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                             />
                           </Link>
                           <div className="catalog-card__body">
-                            <Link href={`/product/${p.sku}`} className="catalog-card__name">{p.name}</Link>
+                            <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}`} className="catalog-card__name">{displayName(p)}</Link>
                             <div className="catalog-card__meta">
                               <span>{p.brand}</span>
                               {p.volume && <span className="catalog-card__vol">{p.volume}</span>}
-                              {(() => { const c = p.color ?? p.characteristics?.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="catalog-card__vol catalog-card__vol--color">{c}</span> : null; })()}
+                              {(() => { const c = p.color ?? p.characteristics?.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="catalog-card__vol catalog-card__vol--color">{tFilterValue(c, lang)}</span> : null; })()}
                             </div>
                             <div className="catalog-card__bottom">
                             <div className="catalog-card__bottom-left">
                               <span className={'catalog-card__stock' + (inStock ? '' : ' out')}>
                                 <span className="catalog-card__dot" />
-                                {inStock ? 'В наявності' : 'Немає'}
+                                {inStock ? t('В наявності', 'В наличии') : t('Немає', 'Нет')}
                               </span>
                               {priceUnit > 0 ? (
                                 <div className="catalog-card__price">
@@ -775,7 +790,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                                   <span>{Number(priceUnit).toFixed(2)} <em>грн</em></span>
                                 </div>
                               ) : (
-                                <div className="catalog-card__price-na">За запитом</div>
+                                <div className="catalog-card__price-na">{t('За запитом', 'По запросу')}</div>
                               )}
                             </div>
                             <div className="catalog-card__actions">
@@ -805,8 +820,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                             </div>
                           </div>
                           <div className="catalog-card__pack-row">
-                            <span>уп. {p.pack_qty} шт</span>
-                            <CopySkuBtn sku={p.sku} />
+                            <span>{t('уп.', 'уп.')} {p.pack_qty} {t('шт', 'шт')}</span>
+                            <CopySkuBtn sku={p.sku} lang={lang} />
                           </div>
                           </div>
                         </div>
@@ -816,7 +831,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   {filtered.length > visibleCount && (
                     <div style={{ textAlign: 'center', padding: '32px 0' }}>
                       <button onClick={() => setVisibleCount(v => v + 50)} style={{ height: '48px', padding: '0 32px', borderRadius: '12px', background: '#1E3A5F', color: '#fff', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
-                        Показати більше ({filtered.length - visibleCount} залишилось)
+                        {t('Показати більше', 'Показать ещё')} ({filtered.length - visibleCount} {t('залишилось', 'осталось')})
                       </button>
                     </div>
                   )}
@@ -828,8 +843,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
             {viewMode === 'table' && (filtered.length === 0 ? (
               <div className="product-table-wrap">
                 <div className="empty-state">
-                  <h3>Нічого не знайдено</h3>
-                  <p>Спробуйте змінити фільтри або пошуковий запит</p>
+                  <h3>{t('Нічого не знайдено', 'Ничего не найдено')}</h3>
+                  <p>{t('Спробуйте змінити фільтри або пошуковий запит', 'Попробуйте изменить фильтры или поисковый запрос')}</p>
                 </div>
               </div>
             ) : (
@@ -847,14 +862,14 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   </colgroup>
                   <thead>
                     <tr>
-                      <th>Фото</th>
-                      <th>Назва продукту</th>
-                      <th>Об&apos;єм</th>
-                      <th>Наявність</th>
-                      <th>Ціна</th>
-                      <th>Уп-ка</th>
-                      <th>К-ть</th>
-                      <th>Дії</th>
+                      <th>{t('Фото', 'Фото')}</th>
+                      <th>{t('Назва продукту', 'Название продукта')}</th>
+                      <th>{t('Обʼєм', 'Объём')}</th>
+                      <th>{t('Наявність', 'Наличие')}</th>
+                      <th>{t('Ціна', 'Цена')}</th>
+                      <th>{t('Уп-ка', 'Уп-ка')}</th>
+                      <th>{t('К-ть', 'К-во')}</th>
+                      <th>{t('Дії', 'Действия')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -866,12 +881,12 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                       const inStock   = stockSt === 'in_stock' || stockQty >= 1;
                       const isSale    = priceOld != null && priceUnit > 0 && priceUnit < priceOld;
                       const qty       = getQty(p.sku, 1);
-                      const packStr   = `${p.pack_qty} шт`;
+                      const packStr   = `${p.pack_qty} ${t('шт', 'шт')}`;
 
                       return (
                         <tr key={p.sku} style={{ position: 'relative' }}>
                           <td>
-                            <Link href={`/product/${p.sku}`} className="tr-link" aria-label={p.name} />
+                            <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}`} className="tr-link" aria-label={displayName(p)} />
                             <div className="cell-photo">
                               <ProductImage
                                 brand={p.brand} nl1={p.nl1 ?? ''} nl2={p.nl2 ?? undefined}
@@ -883,15 +898,15 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                           <td>
                             <div className="cell-meta">{p.brand} · {p.sku}</div>
                             <div className="cell-name">
-                              {p.name}
-                              {isSale && <span className="badge-sale">АКЦІЯ</span>}
+                              {displayName(p)}
+                              {isSale && <span className="badge-sale">{t('АКЦІЯ', 'АКЦИЯ')}</span>}
                             </div>
                             {(() => {
                               const colorVal = p.color ?? p.characteristics.find(c => /^Колір/i.test(c.label))?.value ?? null;
                               return (p.product_type || colorVal) ? (
                                 <div className="cell-chars">
-                                  {p.product_type && <span className="cell-char">{p.product_type}</span>}
-                                  {colorVal       && <span className="cell-char">Колір: {colorVal}</span>}
+                                  {p.product_type && <span className="cell-char">{tFilterValue(p.product_type, lang)}</span>}
+                                  {colorVal       && <span className="cell-char">{t('Колір', 'Цвет')}: {tFilterValue(colorVal, lang)}</span>}
                                 </div>
                               ) : null;
                             })()}
@@ -900,7 +915,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                           <td>
                             <span className={'stock-badge ' + (inStock ? 'in' : 'out')}>
                               <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
-                              {inStock ? 'в наявності' : 'Немає'}
+                              {inStock ? t('в наявності', 'в наличии') : t('Немає', 'Нет')}
                             </span>
                           </td>
                           <td>
@@ -910,7 +925,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                                 <div className={isSale ? 'price-new' : 'price-only'}>{Number(priceUnit).toFixed(2)} грн</div>
                               </div>
                             ) : (
-                              <span style={{ fontSize: 13, color: '#94A3B8' }}>За запитом</span>
+                              <span style={{ fontSize: 13, color: '#94A3B8' }}>{t('За запитом', 'По запросу')}</span>
                             )}
                           </td>
                           <td><span className="min-qty">{packStr}</span></td>
@@ -920,7 +935,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                               type="number"
                               value={getInputVal(p.sku, 1)}
                               min={1}
-                              placeholder="Мін."
+                              placeholder={t('Мін.', 'Мин.')}
                               onChange={e => setInputVals(prev => ({ ...prev, [p.sku]: e.target.value }))}
                               onBlur={() => commitInputVal(p.sku, 1)}
                             />
@@ -930,7 +945,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                               <button
                                 className={'action-icon-btn primary' + (added[p.sku] ? ' added' : '')}
-                                title={inStock ? 'В кошик' : 'Немає в наявності'}
+                                title={inStock ? t('В кошик', 'В корзину') : t('Немає в наявності', 'Нет в наличии')}
                                 disabled={!inStock}
                                 onClick={e => { e.preventDefault(); e.stopPropagation(); handleAddToCart(p, qty); }}
                                 style={!inStock ? { opacity: 0.4, cursor: 'default' } : undefined}
@@ -939,7 +954,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                               </button>
                               <button
                                 className="action-icon-btn"
-                                title="Обране"
+                                title={t('Обране', 'Избранное')}
                                 onClick={() => toggle(p.sku)}
                                 style={{
                                   color: isLiked(p.sku) ? '#EF4444' : undefined,
@@ -949,7 +964,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                               >
                                 <Heart size={13} strokeWidth={2} fill={isLiked(p.sku) ? '#EF4444' : 'none'} />
                               </button>
-                              <Link href={`/product/${p.sku}`} className="action-icon-btn" title="Переглянути" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}`} className="action-icon-btn" title={t('Переглянути', 'Просмотреть')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <Eye size={13} strokeWidth={2} />
                               </Link>
                             </div>
@@ -957,7 +972,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                               const cartQty = cartItems.find(i => i.sku === p.sku)?.qty ?? 0;
                               return (
                                 <span style={{ fontSize: '11px', fontWeight: 600, color: '#16A34A', whiteSpace: 'nowrap' }}>
-                                  додано {cartQty} шт
+                                  {t('додано', 'добавлено')} {cartQty} {t('шт', 'шт')}
                                 </span>
                               );
                             })()}
@@ -981,7 +996,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                     fontSize: '14px', fontWeight: 700, cursor: 'pointer',
                   }}
                 >
-                  Показати більше ({filtered.length - visibleCount} залишилось)
+                  {t('Показати більше', 'Показать ещё')} ({filtered.length - visibleCount} {t('залишилось', 'осталось')})
                 </button>
               </div>
             )}
@@ -992,18 +1007,18 @@ export default function CatalogClient({ products, categories, initialSearch = ''
 
       {(() => {
         const meta = selCat ? getCategoryMeta(selCat) : null;
-        const catName = selCat ? categories.find(c => c.slug === selCat)?.name : null;
-        if (!meta || !catName) return null;
+        const catNameStr = selCat ? cName(categories.find(c => c.slug === selCat)?.name ?? '', selCat) : null;
+        if (!meta || !catNameStr) return null;
         return (
           <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 20px 32px' }}>
             <div style={{ padding: '16px 20px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '8px' }}>
                 <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', margin: 0 }}>
-                  Про категорію «{catName}»
+                  {t('Про категорію', 'О категории')} «{catNameStr}»
                 </p>
                 {meta.blogSlug && (
-                  <Link href={`/blog/${meta.blogSlug}`} style={{ fontSize: '12px', color: '#4880B8', fontWeight: 600, whiteSpace: 'nowrap', textDecoration: 'none' }}>
-                    Читати статтю →
+                  <Link href={lang === 'ru' ? `/ru/blog/${meta.blogSlug}` : `/blog/${meta.blogSlug}`} style={{ fontSize: '12px', color: '#4880B8', fontWeight: 600, whiteSpace: 'nowrap', textDecoration: 'none' }}>
+                    {t('Читати статтю →', 'Читать статью →')}
                   </Link>
                 )}
               </div>
@@ -1014,7 +1029,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
               {meta.faq && meta.faq.length > 0 && (
                 <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
                   <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Часті запитання
+                    {t('Часті запитання', 'Часто задаваемые вопросы')}
                   </p>
                   {meta.faq.map((item, i) => (
                     <div key={i} style={{ marginBottom: i < meta.faq!.length - 1 ? '12px' : 0 }}>
@@ -1030,7 +1045,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       })()}
       {isWholesale && !badgeVisible && (
         <a href="/cart" className={`wholesale-float-bar${pillEntered ? ' entered' : ''}${cartFlash ? ' flash' : ''}`}>
-          <span className="wholesale-float-label">мін. замовлення</span>
+          <span className="wholesale-float-label">{t('мін. замовлення', 'мин. заказ')}</span>
           <div className="wholesale-float-track">
             <div className="wholesale-float-fill" style={{
               width: `${cartPct}%`,

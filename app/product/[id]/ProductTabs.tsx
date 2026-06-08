@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import { tFilterLabel, tFilterValue } from '../../../lib/translations-ru';
 
 type Characteristic = { id: number; label: string; value: string };
 
@@ -89,8 +90,8 @@ export default function ProductTabs({ description, descriptionFull, characterist
                 <tbody>
                   {characteristics.map((row) => (
                     <tr key={row.id}>
-                      <td>{row.label}</td>
-                      <td>{row.value}</td>
+                      <td>{tFilterLabel(row.label, lang)}</td>
+                      <td>{tFilterValue(row.value, lang)}</td>
                     </tr>
                   ))}
                 </tbody>

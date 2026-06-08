@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getCategoryNameRu } from '../../lib/ru';
+import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 import Link from 'next/link';
 import { Plus, Minus, Heart, ChevronDown, ChevronUp, ChevronRight, Check, SlidersHorizontal, LayoutList } from 'lucide-react';
 import { CATEGORY_ICONS } from '../../lib/category-icons';
@@ -60,7 +61,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
 
   return (
     <div className="shop-card">
-      <Link href={`/product/${p.sku}?from=shop`} className="shop-card__clickable">
+      <Link href={lang === 'ru' ? `/ru/product/${p.sku}?from=shop` : `/product/${p.sku}?from=shop`} className="shop-card__clickable">
         <div className="shop-card__img">
           <div className="shop-card__badge-stack">
             {salePercent && salePercent > 0 && (
@@ -171,6 +172,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const lang = pathname.startsWith('/ru') ? 'ru' as const : 'uk' as const;
   const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
   const catDisplayName = (slug: string, name: string) => lang === 'ru' ? getCategoryNameRu(slug, name) : name;
+  const shopBase = lang === 'ru' ? '/ru/shop' : '/shop';
   const [isWholesale,   setIsWholesale]   = useState(false);
   const [showWholesaleModal, setShowWholesaleModal] = useState(false);
   const [search,       setSearch]       = useState('');
@@ -279,11 +281,11 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const selectCat = (slug: string | null, scrollSlug?: string) => {
     // На brand-сторінці заголовок рендериться сервером — потрібна повна навігація
     if (initialBrand) {
-      router.push(slug ? `/shop/${slug}` : '/shop');
+      router.push(slug ? `${shopBase}/${slug}` : shopBase);
       return;
     }
     setSelCat(slug);
-    window.history.pushState(null, '', slug ? `/shop/${slug}` : '/shop');
+    window.history.pushState(null, '', slug ? `${shopBase}/${slug}` : shopBase);
     sidebarRef.current?.scrollTo({ top: 0 });
     if (catsListRef.current) catsListRef.current.scrollTop = 0;
     setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup('');
@@ -486,7 +488,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                       if (expanding) {
                         // Оновлюємо фільтр БЕЗ скролу сторінки
                         setSelCat(cat.slug);
-                        window.history.pushState(null, '', `/shop/${cat.slug}`);
+                        window.history.pushState(null, '', `${shopBase}/${cat.slug}`);
                         setVisibleCount(24);
                         // Тільки сайдбар — після анімації
                         setTimeout(() => scrollCatToTop(cat.slug), 450);
@@ -608,7 +610,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           const missingActive = active && !values.includes(active);
           return (
             <div key={label} className="shop-filter-group">
-              <label className="shop-filter-label" htmlFor={`filter-${label}`}>{lang === 'ru' && label === 'Колір' ? 'Цвет' : label}</label>
+              <label className="shop-filter-label" htmlFor={`filter-${label}`}>{tFilterLabel(label, lang)}</label>
               <select
                 id={`filter-${label}`}
                 className={'shop-filter-select' + (active ? ' active' : '')}
@@ -620,8 +622,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                   label === 'Бренд' ? t('Всі бренди', 'Все бренды') :
                   t('Всі', 'Все')
                 }</option>
-                {missingActive && <option value={active}>{active} {t('⚠ немає в категорії', '⚠ нет в категории')}</option>}
-                {values.map(v => <option key={v} value={v}>{v}</option>)}
+                {missingActive && <option value={active}>{tFilterValue(active, lang)} {t('⚠ немає в категорії', '⚠ нет в категории')}</option>}
+                {values.map(v => <option key={v} value={v}>{tFilterValue(v, lang)}</option>)}
               </select>
             </div>
           );
@@ -809,7 +811,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                 {t('Про категорію', 'О категории')} «{catName}»
               </p>
               {meta.blogSlug && (
-                <Link href={`/blog/${meta.blogSlug}`} style={{ fontSize: '12px', color: '#4880B8', fontWeight: 600, whiteSpace: 'nowrap', textDecoration: 'none' }}>
+                <Link href={lang === 'ru' ? `/ru/blog/${meta.blogSlug}` : `/blog/${meta.blogSlug}`} style={{ fontSize: '12px', color: '#4880B8', fontWeight: 600, whiteSpace: 'nowrap', textDecoration: 'none' }}>
                   {t('Читати статтю →', 'Читать статью →')}
                 </Link>
               )}

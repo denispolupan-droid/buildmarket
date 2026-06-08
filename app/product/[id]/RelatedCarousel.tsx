@@ -8,6 +8,7 @@ import ProductImage from '../../components/ProductImage';
 import { useCart } from '../../../lib/cart';
 import { useWishlist } from '../../../lib/wishlist';
 import type { ProductFull } from '../../../lib/supabase';
+import { tFilterValue } from '../../../lib/translations-ru';
 
 const VISIBLE = 5;
 const GAP = 16;
@@ -95,9 +96,9 @@ export default function RelatedCarousel({ products, retail = false }: { products
             const specs: { label: string; value: string }[] = [];
             const colorVal = p.color ?? p.characteristics.find(c => /^Колір/i.test(c.label))?.value ?? null;
             if (p.volume) specs.push({ label: /кг|г$/.test(p.volume) ? t('Вага', 'Вес') : t("Об'єм", 'Объём'), value: p.volume });
-            if (colorVal) specs.push({ label: t('Колір', 'Цвет'), value: colorVal });
+            if (colorVal) specs.push({ label: t('Колір', 'Цвет'), value: tFilterValue(colorVal, lang) });
 
-            const relDisplayName = lang === 'ru' ? ((p as { name_ru?: string | null }).name_ru ?? p.name) : p.name;
+            const relDisplayName = lang === 'ru' ? (p.name_ru ?? p.name) : p.name;
             return (
               <div
                 key={p.sku}
@@ -105,11 +106,11 @@ export default function RelatedCarousel({ products, retail = false }: { products
                 style={{ flex: `0 0 calc((100% - ${(VISIBLE - 1) * GAP + 2}px) / ${VISIBLE})` }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px', marginBottom: '10px' }}>
-                  <Link href={`/product/${p.sku}${retail ? '?from=shop' : ''}`} className="pc-name" style={{ textDecoration: 'none', color: 'inherit' }} title={relDisplayName}>{relDisplayName}</Link>
+                  <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}${retail ? '?from=shop' : ''}`} className="pc-name" style={{ textDecoration: 'none', color: 'inherit' }} title={relDisplayName}>{relDisplayName}</Link>
                   {isSale && <span style={{ flexShrink: 0, background: '#EF4444', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '5px', whiteSpace: 'nowrap' }}>−{Math.round((1 - relPrice / relPriceOld!) * 100)}%</span>}
                 </div>
 
-                <Link href={`/product/${p.sku}${retail ? '?from=shop' : ''}`} className="pc-top" style={{ textDecoration: 'none', display: 'flex' }}>
+                <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}${retail ? '?from=shop' : ''}`} className="pc-top" style={{ textDecoration: 'none', display: 'flex' }}>
                   <div className="pc-img">
                     <ProductImage brand={p.brand} nl1={p.nl1 ?? ''} nl2={p.nl2 ?? undefined}
                                   volume={p.volume ?? ''} bc={p.bc} ac={p.ac} type={p.img_type}
@@ -159,7 +160,7 @@ export default function RelatedCarousel({ products, retail = false }: { products
                     className="pc-btn-cart"
                     disabled={!inStock}
                     style={!inStock ? { opacity: 0.4, cursor: 'default' } : undefined}
-                    onClick={() => inStock && addItem({ sku: p.sku, name: p.name, brand: p.brand, volume: p.volume, price: relPrice, min_order: relMinOrder, nl1: p.nl1 ?? '', nl2: p.nl2 ?? undefined, bc: p.bc, ac: p.ac, img_type: p.img_type, imageUrl: p.image ?? undefined }, getQty(p.sku, relMinOrder))}
+                    onClick={() => inStock && addItem({ sku: p.sku, name: relDisplayName, brand: p.brand, volume: p.volume, price: relPrice, min_order: relMinOrder, nl1: p.nl1 ?? '', nl2: p.nl2 ?? undefined, bc: p.bc, ac: p.ac, img_type: p.img_type, imageUrl: p.image ?? undefined }, getQty(p.sku, relMinOrder))}
                   >
                     <Plus size={13} strokeWidth={2.5} /> {t('В кошик', 'В корзину')}
                   </button>

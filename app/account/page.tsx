@@ -1,6 +1,12 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseServer } from '../../lib/supabase-server';
+
+export const metadata: Metadata = {
+  title: 'Особистий кабінет | FIXLINE',
+  robots: { index: false, follow: false },
+};
 import { createClient } from '@supabase/supabase-js';
 import { getRole } from '../../lib/user-role';
 

@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { getCategoriesCached } from '../../lib/supabase';
+import { createSupabaseServer } from '../../lib/supabase-server';
 import CatalogLoader from './CatalogLoader';
 import Footer from '../components/Footer';
 
@@ -33,7 +35,7 @@ export async function generateMetadata({
     description: 'Герметики, монтажні піни, клеї, рідкі цвяхи та інша будівельна хімія оптом. Оптові ціни для дилерів, підрядників та будівельних компаній. Строительная химия оптом по Украине.',
     keywords: ['будівельна хімія оптом', 'строительная химия оптом', 'герметики оптом', 'монтажна піна оптом', 'монтажная пена оптом', 'клеї оптом', 'клеи оптом', 'купити оптом', 'купить оптом'],
     robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
-    alternates: { canonical: `${BASE}/catalog`, languages: { 'uk': `${BASE}/catalog`, 'ru': `${BASE}/catalog`, 'x-default': `${BASE}/catalog` } },
+    alternates: { canonical: `${BASE}/catalog`, languages: { 'uk': `${BASE}/catalog`, 'ru': `${BASE}/ru/catalog`, 'x-default': `${BASE}/catalog` } },
     openGraph: {
       title: 'Оптовий каталог будівельної хімії | FIXLINE',
       description: 'Герметики, монтажні піни, клеї оптом. Ціни для дилерів та підрядників.',
@@ -49,6 +51,10 @@ export default async function Catalog({
 }: {
   searchParams: Promise<{ q?: string; category?: string; sale?: string }>;
 }) {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login?next=/catalog');
+
   const { q, category, sale } = await searchParams;
 
   const breadcrumbLd = {

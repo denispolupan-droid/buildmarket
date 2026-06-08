@@ -128,7 +128,7 @@ export default async function Footer() {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {topBrands.slice(0, 6).map(brand => (
-                <Link key={brand} href={`/shop/brand/${brandToSlug(brand)}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
+                <Link key={brand} href={`${shopBase}/brand/${brandToSlug(brand)}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
                   {brand}
                 </Link>
               ))}
@@ -137,7 +137,7 @@ export default async function Footer() {
                   <summary>{isRu ? `Ещё ${topBrands.length - 6}` : `Ще ${topBrands.length - 6}`}</summary>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                     {topBrands.slice(6).map(brand => (
-                      <Link key={brand} href={`/shop/brand/${brandToSlug(brand)}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
+                      <Link key={brand} href={`${shopBase}/brand/${brandToSlug(brand)}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
                         {brand}
                       </Link>
                     ))}

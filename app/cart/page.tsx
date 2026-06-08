@@ -1,6 +1,12 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import CartPageContent from './CartPageContent';
 import Footer from '../components/Footer';
+
+export const metadata: Metadata = {
+  title: 'Кошик | FIXLINE',
+  robots: { index: false, follow: false },
+};
 
 function LoadingSpinner() {
   return (

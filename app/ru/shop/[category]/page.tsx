@@ -26,7 +26,7 @@ export async function generateMetadata(
   return {
     title: `${nameRu} купить — цены, доставка по Украине | FIXLINE`,
     description,
-    keywords: [nameRu, 'купить', 'оптом', 'строительная химия', 'Украина', cat.name],
+    keywords: [nameRu, 'купить', 'оптом', 'строительная химия', 'Украина'],
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
     alternates: {
       canonical: `${BASE}/ru/shop/${category}`,

@@ -59,6 +59,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
   const [nl2, setNl2] = useState(product?.nl2 ?? '');
   const [imageUrl, setImageUrl] = useState(product?.image ?? '');
   const [promKeywords, setPromKeywords] = useState((product as any)?.keywords ?? '');
+  const [promKeywordsRu, setPromKeywordsRu] = useState((product as any)?.keywords_ru ?? '');
 
   const [priceUnit, setPriceUnit] = useState(product?.stock?.price_unit ?? 0);
   const [priceOld, setPriceOld] = useState(product?.stock?.price_old ?? 0);
@@ -187,6 +188,7 @@ export default function ProductForm({ product, categories, isNew }: Props) {
             nl2: nl2 || null,
             image: imageUrl || null,
             keywords: promKeywords || null,
+            keywords_ru: promKeywordsRu || null,
           },
           stock: {
             sku,
@@ -397,22 +399,37 @@ export default function ProductForm({ product, categories, isNew }: Props) {
         <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>
           Ці поля виводяться у YML фід для Prom.ua та інших маркетплейсів. Характеристики та ціни беруться з відповідних секцій автоматично.
         </p>
-        <div>
-          <label style={labelStyle}>
-            Пошукові запити Prom.ua{' '}
-            <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>— через кому, допомагають покупцям знайти товар</span>
-          </label>
-          <textarea
-            value={promKeywords}
-            onChange={e => setPromKeywords(e.target.value)}
-            rows={2}
-            placeholder="герметик силіконовий білий, герметик для ванни, силіконовий герметик санітарний"
-            style={{ ...inputStyle, height: 'auto', padding: '12px 14px', resize: 'vertical' }}
-          />
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Рекомендовано 5-10 запитів. Наприклад: «{(product?.name ?? '').split(',')[0]}» + популярні синоніми, область застосування.
-          </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div>
+            <label style={labelStyle}>
+              Пошукові запити Prom.ua (укр){' '}
+              <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>— через кому</span>
+            </label>
+            <textarea
+              value={promKeywords}
+              onChange={e => setPromKeywords(e.target.value)}
+              rows={3}
+              placeholder="герметик силіконовий білий, герметик для ванни, силіконовий герметик санітарний"
+              style={{ ...inputStyle, height: 'auto', padding: '12px 14px', resize: 'vertical' }}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>
+              Пошукові запити Prom.ua (рос){' '}
+              <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>— через кому</span>
+            </label>
+            <textarea
+              value={promKeywordsRu}
+              onChange={e => setPromKeywordsRu(e.target.value)}
+              rows={3}
+              placeholder="силиконовый герметик белый, герметик для ванны, санитарный герметик"
+              style={{ ...inputStyle, height: 'auto', padding: '12px 14px', resize: 'vertical' }}
+            />
+          </div>
         </div>
+        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+          Рекомендовано 5–10 запитів: назва + синоніми + область застосування. Рос. запити потрапляють у <code>keywords_ru</code> фіду.
+        </p>
       </div>
 
       {/* Pricing & Stock */}

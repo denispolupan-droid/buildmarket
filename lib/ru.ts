@@ -7,12 +7,17 @@ export const CATEGORY_NAMES_RU: Record<string, string> = {
   'poliuretanovi-germetyky': 'Полиуретановые герметики',
   'bitumni-germetyky':       'Битумные герметики',
   'ms-polymerni-hermetyky':  'МС-полимерные герметики',
+  'neytralny-germetyky':     'Нейтральные герметики',
+  'zharostiyki-germetyky':   'Жаростойкие герметики',
+  'nytka-dlya-trub':         'Герметизирующая нить',
 
   // Монтажная пена
   'montazhna-pina':    'Монтажная пена',
   'pistoletna-pina':   'Пистолетная пена',
   'pobutova-pina':     'Бытовая монтажная пена',
   'vohnezakhysna-pina':'Огнезащитная пена',
+  'pina-klei':         'Пена-клей',
+  'ochysnyky':         'Очистители для пены',
 
   // Клеи
   'klei':              'Клеи',
@@ -20,13 +25,18 @@ export const CATEGORY_NAMES_RU: Record<string, string> = {
   'ridki-tsvyakhy':    'Жидкие гвозди',
   'pva-ta-stolyarnyi': 'ПВА и столярный клей',
   'epoksydni-klei':    'Эпоксидные клеи',
+  'kontaktnyi-klei':   'Контактный клей',
+  'klei-dlya-shpaler': 'Клей для обоев',
+  'super-klei':        'Супер клей (секундный)',
 
   // Грунтовки и шпаклёвки
-  'gruntivky':         'Грунтовки',
-  'gruntivky-gotovi':  'Готовые грунтовки',
-  'betonokontakt':     'Бетоноконтакт',
-  'antygrybok':        'Антигрибковые средства',
-  'shpaklivky':        'Шпаклёвки',
+  'gruntivky':              'Грунтовки',
+  'gruntivky-gotovi':       'Готовые грунтовки',
+  'gruntivky-kontsentraty': 'Грунтовки-концентраты',
+  'grunty':                 'Грунты',
+  'betonokontakt':          'Бетоноконтакт',
+  'antygrybok':             'Антигрибковые средства',
+  'shpaklivky':             'Шпаклёвки',
 
   // Гидроизоляция
   'hidroizolyatsiya':           'Гидроизоляция',
@@ -35,22 +45,27 @@ export const CATEGORY_NAMES_RU: Record<string, string> = {
   'praimery':                   'Праймеры',
 
   // Защита дерева
-  'zakhyst-derevyny': 'Защита дерева',
-  'antyseptyki':      'Антисептики',
-  'morylky':          'Морилки',
+  'zakhyst-derevyny':  'Защита дерева',
+  'antyseptyki':       'Антисептики',
+  'morylky':           'Морилки',
   'zakhysni-pokryttya':'Защитные покрытия',
+  'laky':              'Лаки и пропитки',
 
   // Влагопоглотители
   'vologopoglinachi': 'Влагопоглотители',
 
   // Ленты
-  'strichky':                'Строительные ленты',
-  'malyarna-strichka':       'Малярная лента',
-  'hermetyzuyucha-strichka': 'Герметизирующая лента',
+  'strichky':                   'Строительные ленты',
+  'malyarna-strichka':          'Малярная лента',
+  'hermetyzuyucha-strichka':    'Герметизирующая лента',
   'zvukoizolyatsiyna-strichka': 'Звукоизоляционная лента',
+  'izolyatsiyni-strichky':      'Изоляционные ленты',
+  'strichka-dlya-shviv':        'Лента для швов',
 
   // Крепёж
-  'kriplennya': 'Крепёж',
+  'kriplennya':          'Крепёж',
+  'dyubeli-ta-ankery':   'Дюбели и анкеры',
+  'shurupy-ta-samorizy': 'Шурупы и саморезы',
 
   // Затирки
   'zamazky-dlya-shviv': 'Затирки для швов',
@@ -58,23 +73,32 @@ export const CATEGORY_NAMES_RU: Record<string, string> = {
   'zamazky-epoksydni':  'Эпоксидные затирки',
 
   // Пластификаторы
-  'plastyfikatory': 'Пластификаторы',
+  'plastyfikatory':             'Пластификаторы',
+  'plastyfikatory-dlya-betonu': 'Пластификаторы для бетона',
 
   // Инструменты
-  'instrumenty': 'Инструменты',
-  'pistolety':   'Пистолеты',
+  'instrumenty':      'Инструменты',
+  'pistolety':        'Пистолеты',
+  'pistolety-dlya-piny': 'Пистолеты для пены',
+  'shlifuvalny':      'Шлифовальный инструмент',
+  'vymiriuvalny':     'Измерительный инструмент',
+  'kysti-ta-valy':    'Кисти и валики',
+  'shpateli':         'Шпатели и кельмы',
+  'koloranty':        'Колоранты',
 
   // Растворители
   'rozchynnyky': 'Растворители',
 
   // Краски
-  'farby':              'Краски',
-  'alkidni-farby':      'Алкидные краски',
-  'farby-3v1':          'Краски 3 в 1',
-  'farby-3v1-alkidni':  'Алкидные краски 3 в 1',
-  'farby-3v1-akrylovi': 'Акриловые краски 3 в 1',
-  'moltkovi-farby':     'Молотковые краски',
-  'farby-dlya-pidlohy': 'Краски для пола',
+  'farby':                    'Краски',
+  'alkidni-farby':            'Алкидные краски',
+  'farby-3v1':                'Краски 3 в 1',
+  'farby-3v1-alkidni':        'Алкидные краски 3 в 1',
+  'farby-3v1-akrylovi':       'Акриловые краски 3 в 1',
+  'moltkovi-farby':           'Молотковые краски',
+  'farby-dlya-pidlohy':       'Краски для пола',
+  'vodoemiulsiyni-fasadni':   'Водоэмульсионные фасадные',
+  'vodoemiulsiyni-interierni':'Водоэмульсионные интерьерные',
 };
 
 export function getCategoryNameRu(slug: string, fallback: string): string {

@@ -1,7 +1,7 @@
 export type Lang = 'uk' | 'ru';
 
 /** Paths that have a /ru/ mirror */
-const RU_PREFIXES = ['/', '/shop', '/product', '/about', '/contacts', '/delivery', '/returns', '/dropship', '/blog'];
+const RU_PREFIXES = ['/', '/shop', '/product', '/about', '/contacts', '/delivery', '/returns', '/dropship', '/blog', '/catalog', '/login'];
 
 export function getLang(pathname: string): Lang {
   return pathname.startsWith('/ru') ? 'ru' : 'uk';

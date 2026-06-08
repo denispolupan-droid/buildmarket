@@ -203,11 +203,7 @@ export const getProductBySkuCached = unstable_cache(
 export async function getRelatedProducts(categorySlug: string, excludeSku: string, limit = 5): Promise<ProductFull[]> {
   const { data, error } = await supabase
     .from('products')
-    .select(`
-      *,
-      stock:product_stock(*),
-      characteristics:product_characteristics(*)
-    `)
+    .select(PRODUCT_LIST_SELECT)
     .eq('is_active', true)
     .eq('category_slug', categorySlug)
     .neq('sku', excludeSku)
@@ -219,7 +215,7 @@ export async function getRelatedProducts(categorySlug: string, excludeSku: strin
 
 export const getRelatedProductsCached = unstable_cache(
   async (categorySlug: string, excludeSku: string, limit = 5) => getRelatedProducts(categorySlug, excludeSku, limit),
-  ['related-products'],
+  ['related-products-v2'],
   { revalidate: 60, tags: ['products'] }
 );
 

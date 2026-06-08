@@ -1,7 +1,13 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../lib/supabase-server';
 import { getRole } from '../../lib/user-role';
 import CabinetSidebar from './CabinetSidebar';
+
+export const metadata: Metadata = {
+  title: 'Кабінет | FIXLINE',
+  robots: { index: false, follow: false },
+};
 
 export default async function CabinetLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createSupabaseServer();

@@ -106,6 +106,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/ru/returns`,    lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.4 },
   ];
 
+  const ruBlogRoutes: MetadataRoute.Sitemap = ARTICLES.map(a => ({
+    url: `${BASE}/ru/blog/${a.slug}`,
+    lastModified: new Date(a.date),
+    changeFrequency: 'monthly' as const,
+    priority: 0.6,
+  }));
+
   const ruShopCategoryRoutes: MetadataRoute.Sitemap = categories.map(cat => ({
     url: `${BASE}/ru/shop/${cat.slug}`,
     lastModified: new Date(cat.created_at),
@@ -149,6 +156,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...categoryBrandRoutes,
     ...productRoutes,
     ...ruStaticRoutes,
+    ...ruBlogRoutes,
     ...ruShopCategoryRoutes,
     ...ruBrandRoutes,
     ...ruCategoryBrandRoutes,
