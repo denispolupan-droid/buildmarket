@@ -311,9 +311,13 @@ export async function GET(request: NextRequest) {
         if (label === 'Максимальна температура застосування' && maxTempApply === null) {
           maxTempApply = parseSignedInt(value);
         }
-        if (c.label === 'Температура нанесення' && minTempApply === null) {
-          // "+5°C до +30°C" → take the minimum (first) value
-          minTempApply = parseSignedInt(value);
+        if (c.label === 'Температура нанесення') {
+          // "+5°C до +30°C" → extract both min and max from the range
+          const nums = [...value.matchAll(/([+-]?\d+)/g)].map(m => parseInt(m[1]));
+          if (nums.length > 0) {
+            if (minTempApply === null) minTempApply = Math.min(...nums);
+            if (maxTempApply === null) maxTempApply = Math.max(...nums);
+          }
         }
         // Operating temperature range (sealants, adhesives, foams)
         if (c.label === 'Мінімальна температура експлуатації' && minTempOp === null) {
