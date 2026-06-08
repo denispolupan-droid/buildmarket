@@ -95,10 +95,11 @@ const GLOSS_FORM: Record<string, string> = {
 };
 
 // Labels that carry drying/working time — we also extract a numeric version
+// Note: 'Час початкового схоплення' is handled separately (minutes, not hours)
 const DRYING_LABELS = new Set([
   'Час висихання (від пилу)', 'Час висихання',
   'Час висихання (наступний шар)', 'Час повного висихання',
-  'Час початкового схоплення', 'Час повного затвердіння',
+  'Час повного затвердіння',
 ]);
 
 // Parse hours from Ukrainian time value: "30 хвилин" → 0.5, "2 години..." → 2
@@ -136,6 +137,17 @@ function parseMonths(v: string): number | null {
   if (mM) return parseInt(mM[1]);
   const mY = v.match(/(\d+)\s*рок/i);
   if (mY) return parseInt(mY[1]) * 12;
+  return null;
+}
+
+// Parse minutes: "15 хв" → 15, "30 сек" → 0.5, "2 год" → 120
+function parseMinutes(v: string): number | null {
+  const secM = v.match(/(\d+(?:[.,]\d+)?)\s*сек/i);
+  if (secM) return Math.round(parseFloat(secM[1].replace(',', '.')) / 60 * 10) / 10;
+  const hvM = v.match(/(\d+(?:[.,]\d+)?)\s*хв/i);
+  if (hvM) return parseFloat(hvM[1].replace(',', '.'));
+  const hrM = v.match(/(\d+(?:[.,]\d+)?)\s*год/i);
+  if (hrM) return parseFloat(hrM[1].replace(',', '.')) * 60;
   return null;
 }
 
@@ -181,12 +193,12 @@ export async function GET(request: NextRequest) {
   const [{ data: products }, { data: stock }, { data: categories }, { data: characteristics }] = await Promise.all([
     serviceClient
       .from('products')
-      .select('sku, name, name_ru, brand, category_slug, volume, description, description_full, description_ru, description_full_ru, image, keywords, keywords_ru')
+      .select('sku, name, name_ru, brand, category_slug, volume, description, description_full, description_ru, description_full_ru, image, keywords, keywords_ru, min_order')
       .eq('is_active', true)
       .order('sort_order'),
     serviceClient
       .from('product_stock')
-      .select('sku, price_retail, price_unit, stock_qty, stock_status'),
+      .select('sku, price_retail, price_unit, price_retail_old, price_old, stock_qty, stock_status'),
     serviceClient
       .from('categories')
       .select('id, slug, name, parent_slug, prom_section_id, prom_section_url')
@@ -227,6 +239,10 @@ export async function GET(request: NextRequest) {
       if (!s) return null;
       const price = s.price_retail ?? s.price_unit;
       if (!price || price <= 0) return null;
+      const priceOld = s.price_retail != null
+        ? ((s as { price_retail_old?: number | null }).price_retail_old ?? null)
+        : ((s as { price_old?: number | null }).price_old ?? null);
+      const hasDiscount = priceOld != null && priceOld > price;
 
       const available = s.stock_status === 'in_stock' ? 'true' : 'false';
       const qty       = s.stock_qty ?? 0;
@@ -256,6 +272,7 @@ export async function GET(request: NextRequest) {
       const descRu = descRuSource ? x(descRuSource) : null;
 
       const img = imageUrl(p);
+      if (!img) return null;
 
       // ── Characteristics ────────────────────────────────────────────────────
       const rawChars = charsMap.get(p.sku) ?? [];
@@ -267,6 +284,8 @@ export async function GET(request: NextRequest) {
       let minTempOp: number | null = null;
       let maxTempOp: number | null = null;
       let shelfLifeMonths: number | null = null;
+      let grabMinutes: number | null = null;
+      let foamLiters: number | null = null;
 
       // Process each characteristic:
       // • normalize label to Prom's expected name
@@ -307,6 +326,15 @@ export async function GET(request: NextRequest) {
         if (label === 'Термін зберігання' && shelfLifeMonths === null) {
           shelfLifeMonths = parseMonths(value);
         }
+        // Initial grab/set time in minutes (glues, sealants — separate from drying hours)
+        if (c.label === 'Час початкового схоплення' && grabMinutes === null) {
+          grabMinutes = parseMinutes(value);
+        }
+        // Foam yield in liters: "до 50 л" → 50
+        if (c.label === 'Вихід піни' && foamLiters === null) {
+          const fm = value.match(/(\d+)\s*л/i);
+          if (fm) foamLiters = parseInt(fm[1]);
+        }
 
         return { label, value };
       });
@@ -318,8 +346,16 @@ export async function GET(request: NextRequest) {
         ? [{ label: 'Країна виробник', value: inferredCountry }]
         : [];
 
+      // Deduplicate by normalized label — keep first occurrence (two DB labels may map to the same Prom label)
+      const seenLabels = new Set<string>();
+      const dedupedChars = processedChars.filter(c => {
+        if (seenLabels.has(c.label)) return false;
+        seenLabels.add(c.label);
+        return true;
+      });
+
       // Build text <param> tags (custom characteristics visible to buyers)
-      const paramsXml = [...countryParam, ...processedChars]
+      const paramsXml = [...countryParam, ...dedupedChars]
         .map(c => `        <param name="${x(c.label)}">${x(c.value)}</param>`)
         .join('\n');
 
@@ -353,6 +389,12 @@ export async function GET(request: NextRequest) {
       if (shelfLifeMonths !== null) {
         numericParts.push(`        <param name="Термін зберігання (міс.)">${shelfLifeMonths}</param>`);
       }
+      if (grabMinutes !== null) {
+        numericParts.push(`        <param name="Час початкового схоплення (хв.)">${grabMinutes}</param>`);
+      }
+      if (foamLiters !== null) {
+        numericParts.push(`        <param name="Вихід піни (л)">${foamLiters}</param>`);
+      }
       const liters = parseLiters(p.volume);
       if (liters !== null) {
         numericParts.push(`        <param name="Об'єм (л)">${liters}</param>`);
@@ -370,12 +412,14 @@ export async function GET(request: NextRequest) {
       const kwUk = ukKeywords ? `        <keywords>${x(ukKeywords)}</keywords>` : '';
       const kwRu = ruKeywords ? `        <keywords_ru>${x(ruKeywords)}</keywords_ru>` : '';
 
+      const minQty = (p as { min_order?: number | null }).min_order;
+
       return `      <offer id="${x(p.sku)}" available="${available}">
         <url>${BASE_URL}/product/${x(p.sku)}</url>
-        <price>${price.toFixed(2)}</price>
+        ${hasDiscount ? `<price>${priceOld!.toFixed(2)}</price>\n        <price_promo>${price.toFixed(2)}</price_promo>` : `<price>${price.toFixed(2)}</price>`}
         <currencyId>UAH</currencyId>
         <categoryId>${groupId}</categoryId>
-        ${img ? `<picture>${x(img)}</picture>` : ''}
+        <picture>${x(img)}</picture>
         <name>${fullName}</name>
         ${fullNameRu ? `<name_ru>${fullNameRu}</name_ru>` : ''}
         <description>${descUk}</description>
@@ -383,6 +427,7 @@ export async function GET(request: NextRequest) {
         ${!PROM_UNKNOWN_BRANDS.has(p.brand ?? '') ? `<vendor>${x(p.brand)}</vendor>` : ''}
         <vendorCode>${x(p.sku)}</vendorCode>
         <stock_quantity>${qty}</stock_quantity>
+        ${minQty && minQty > 1 ? `<min_quantity>${minQty}</min_quantity>` : ''}
 ${paramsXml}
 ${volumeTextParam}
 ${numericParamsXml}
