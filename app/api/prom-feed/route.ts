@@ -276,11 +276,12 @@ export async function GET(request: NextRequest) {
 
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
 
-  type CatRow = { slug: string; name: string; parent_slug: string | null; prom_section_id: number | null; prom_section_url: string | null };
+  type CatRow = { id: number; slug: string; name: string; parent_slug: string | null; prom_section_id: number | null; prom_section_url: string | null };
   const catData = (categories ?? []) as CatRow[];
 
+  // Each category gets its own DB id — guarantees each <category> has the correct name for its products
   const slugToGroupId = new Map<string, number>(
-    catData.map((c, i) => [c.slug, c.prom_section_id ?? (i + 1)]),
+    catData.map((c) => [c.slug, c.id]),
   );
 
   // Group characteristics by SKU
@@ -290,19 +291,11 @@ export async function GET(request: NextRequest) {
     charsMap.get(c.product_sku)!.push({ label: c.label, value: c.value });
   }
 
-  // Each prom_section_id must appear only once in <categories> — keep first (parent-level) entry
-  const seenCatIds = new Set<number>();
+  // Emit every category with its own id and portal_url where available
   const catsXml = catData
-    .filter(c => {
-      const id = c.prom_section_id;
-      if (!id) return true;             // no prom ID — use index-based fallback, always include
-      if (seenCatIds.has(id)) return false;
-      seenCatIds.add(id);
-      return true;
-    })
     .map(c => {
-      const id = slugToGroupId.get(c.slug) ?? 0;
-      return `      <category id="${id}">${x(c.name)}</category>`;
+      const portalUrl = c.prom_section_url ? ` portal_url="${x(c.prom_section_url)}"` : '';
+      return `      <category id="${c.id}"${portalUrl}>${x(c.name)}</category>`;
     })
     .join('\n');
 
