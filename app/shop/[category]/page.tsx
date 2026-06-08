@@ -25,7 +25,7 @@ export async function generateMetadata(
   const description = meta?.description ?? fallbackDesc;
 
   return {
-    title: `${cat.name} купити — ціни, доставка по Україні | FIXLINE`,
+    title: `${cat.name} купити — ціни, доставка по Україні`,
     description,
     keywords: [cat.name, 'купити', 'купить', 'будівельна хімія', 'строительная химия', 'Україна', 'Украина'],
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },

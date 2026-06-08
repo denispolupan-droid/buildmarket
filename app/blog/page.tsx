@@ -5,7 +5,7 @@ import { ARTICLES } from '../../lib/blog';
 import { BookOpen, Clock, ArrowRight } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Блог | Поради щодо будівельної хімії — FIXLINE',
+  title: 'Блог — поради щодо будівельної хімії',
   description: 'Корисні статті про герметики, монтажну піну, клеї та ґрунтовки. Як вибрати, як використовувати, типові помилки та поради від практиків.',
   keywords: ['як вибрати герметик', 'як вибрати монтажну піну', 'будівельна хімія поради', 'как выбрать герметик', 'как выбрать монтажную пену', 'строительная химия советы', 'герметик для ванной', 'монтажная пена как использовать'],
   alternates: { canonical: 'https://fixline.com.ua/blog', languages: { 'uk': 'https://fixline.com.ua/blog', 'ru': 'https://fixline.com.ua/ru/blog', 'x-default': 'https://fixline.com.ua/blog' } },

@@ -258,15 +258,15 @@ export async function GET(request: NextRequest) {
   const [{ data: products }, { data: stock }, { data: categories }, { data: characteristics }] = await Promise.all([
     serviceClient
       .from('products')
-      .select('sku, name, name_ru, brand, category_slug, volume, description, description_full, description_ru, description_full_ru, image, keywords, keywords_ru, min_order, prom_portal_url')
+      .select('sku, name, name_ru, brand, category_slug, volume, description, description_full, description_ru, description_full_ru, image, keywords, keywords_ru, min_order, prom_portal_url, prom_markup_pct')
       .eq('is_active', true)
       .order('sort_order'),
     serviceClient
       .from('product_stock')
-      .select('sku, price_retail, price_unit, price_retail_old, price_old, stock_qty, stock_status'),
+      .select('sku, price_retail, price_unit, price_retail_old, price_old, stock_qty, stock_status, price_wholesale, price_cost'),
     serviceClient
       .from('categories')
-      .select('id, slug, name, parent_slug, prom_section_id, prom_section_url')
+      .select('id, slug, name, parent_slug, prom_section_id, prom_section_url, prom_commission_pct, prom_markup_pct')
       .order('sort_order'),
     serviceClient
       .from('product_characteristics')
@@ -276,12 +276,18 @@ export async function GET(request: NextRequest) {
 
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
 
-  type CatRow = { id: number; slug: string; name: string; parent_slug: string | null; prom_section_id: number | null; prom_section_url: string | null };
+  type CatRow = { id: number; slug: string; name: string; parent_slug: string | null; prom_section_id: number | null; prom_section_url: string | null; prom_commission_pct: number | null; prom_markup_pct: number | null };
   const catData = (categories ?? []) as CatRow[];
 
   // Each category gets its own DB id — guarantees each <category> has the correct name for its products
   const slugToGroupId = new Map<string, number>(
     catData.map((c) => [c.slug, c.id]),
+  );
+  const catCommissionMap = new Map<string, number>(
+    catData.filter(c => c.prom_commission_pct != null).map(c => [c.slug, c.prom_commission_pct!]),
+  );
+  const catMarkupMap = new Map<string, number>(
+    catData.filter(c => c.prom_markup_pct != null).map(c => [c.slug, c.prom_markup_pct!]),
   );
 
   // Group characteristics by SKU
@@ -318,12 +324,34 @@ export async function GET(request: NextRequest) {
     .map(p => {
       const s = stockMap.get(p.sku);
       if (!s) return null;
-      const price = s.price_retail ?? s.price_unit;
-      if (!price || price <= 0) return null;
-      const priceOld = s.price_retail != null
+      const basePrice = s.price_retail ?? s.price_unit;
+      if (!basePrice || basePrice <= 0) return null;
+
+      // Prom price: manual override → auto-calculated from markup + commission
+      const priceWholesale = (s as { price_wholesale?: number | null }).price_wholesale;
+      let price: number;
+      if (priceWholesale && priceWholesale > 0) {
+        price = priceWholesale;
+      } else {
+        const productMarkup = (p as { prom_markup_pct?: number | null }).prom_markup_pct;
+        const markup     = productMarkup ?? (p.category_slug ? (catMarkupMap.get(p.category_slug) ?? 0) : 0);
+        const commission = p.category_slug ? (catCommissionMap.get(p.category_slug) ?? 0) : 0;
+        const raw = basePrice * (1 + markup / 100) / (1 - commission / 100);
+        price = Math.ceil(raw);
+      }
+
+      const priceOldBase = s.price_retail != null
         ? ((s as { price_retail_old?: number | null }).price_retail_old ?? null)
         : ((s as { price_old?: number | null }).price_old ?? null);
-      const hasDiscount = priceOld != null && priceOld > price;
+      // Calculate old Prom price the same way (only if not manual override)
+      let promPriceOld: number | null = null;
+      if (!priceWholesale && priceOldBase && priceOldBase > basePrice) {
+        const productMarkup = (p as { prom_markup_pct?: number | null }).prom_markup_pct;
+        const markup     = productMarkup ?? (p.category_slug ? (catMarkupMap.get(p.category_slug) ?? 0) : 0);
+        const commission = p.category_slug ? (catCommissionMap.get(p.category_slug) ?? 0) : 0;
+        promPriceOld = Math.ceil(priceOldBase * (1 + markup / 100) / (1 - commission / 100));
+      }
+      const hasDiscount = promPriceOld != null && promPriceOld > price;
 
       const available = s.stock_status === 'in_stock' ? 'true' : 'false';
       const qty       = s.stock_qty ?? 0;
@@ -513,7 +541,7 @@ export async function GET(request: NextRequest) {
 
       return `      <offer id="${x(p.sku)}" available="${available}">
         <url>${BASE_URL}/product/${x(p.sku)}</url>
-        ${hasDiscount ? `<price>${priceOld!.toFixed(2)}</price>\n        <price_promo>${price.toFixed(2)}</price_promo>` : `<price>${price.toFixed(2)}</price>`}
+        ${hasDiscount ? `<price>${promPriceOld!.toFixed(2)}</price>\n        <price_promo>${price.toFixed(2)}</price_promo>` : `<price>${price.toFixed(2)}</price>`}
         <currencyId>UAH</currencyId>
         <categoryId>${groupId}</categoryId>
         <picture>${x(img)}</picture>

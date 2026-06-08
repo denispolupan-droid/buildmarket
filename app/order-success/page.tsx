@@ -4,7 +4,7 @@ import SuccessContent from './SuccessContent';
 import Footer from '../components/Footer';
 
 export const metadata: Metadata = {
-  title: 'Замовлення оформлено | FIXLINE',
+  title: 'Замовлення оформлено',
   robots: { index: false, follow: false },
 };
 

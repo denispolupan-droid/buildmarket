@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const article = getArticle(slug);
   if (!article) return {};
   return {
-    title: `${article.title} | FIXLINE`,
+    title: article.title,
     description: article.description,
     keywords: article.keywords,
     alternates: { canonical: `https://fixline.com.ua/blog/${slug}`, languages: { 'uk': `https://fixline.com.ua/blog/${slug}`, 'ru': `https://fixline.com.ua/ru/blog/${slug}`, 'x-default': `https://fixline.com.ua/blog/${slug}` } },

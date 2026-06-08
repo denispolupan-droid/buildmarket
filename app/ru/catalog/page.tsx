@@ -7,7 +7,7 @@ import Footer from '../../components/Footer';
 const BASE = 'https://fixline.com.ua';
 
 export const metadata: Metadata = {
-  title: 'Оптовый каталог строительной химии | FIXLINE',
+  title: 'Оптовый каталог строительной химии',
   description: 'Герметики, монтажная пена, клеи, грунтовки оптом. Оптовые цены для дилеров, подрядчиков и строительных компаний. Доставка по всей Украине.',
   keywords: ['строительная химия оптом', 'герметики оптом', 'монтажная пена оптом', 'клеи оптом', 'купить оптом', 'Украина'],
   robots: { index: false, follow: false, googleBot: { index: false, follow: false } },

@@ -27,12 +27,12 @@ export const revalidate = 60;
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id: sku } = await params;
   const product = await getProductBySkuCached(sku);
-  if (!product) return { title: 'Товар не знайдено | FIXLINE', robots: { index: false } };
+  if (!product) return { title: 'Товар не знайдено', robots: { index: false } };
 
   const price = product.stock?.price_unit;
   const priceStr = price ? ` — ${price} грн` : '';
   const volume = product.volume && !product.name.includes(product.volume) ? ` ${product.volume}` : '';
-  const title = `${product.brand} ${product.name}${volume}${priceStr} | FIXLINE`;
+  const title = `${product.brand} ${product.name}${volume}${priceStr}`;
   const rawDesc = product.description
     ?? `Купити ${product.brand} ${product.name}${volume} оптом. Артикул ${product.sku}. Оптові ціни для дилерів та підрядників на FIXLINE. Купить ${product.brand} ${product.name}${volume} оптом в Украине.`;
   const description = rawDesc.length <= 155 ? rawDesc : rawDesc.slice(0, rawDesc.lastIndexOf(' ', 155)) + '…';

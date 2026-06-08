@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { createSupabaseServer } from '../../lib/supabase-server';
 
 export const metadata: Metadata = {
-  title: 'Особистий кабінет | FIXLINE',
+  title: 'Особистий кабінет',
   robots: { index: false, follow: false },
 };
 import { createClient } from '@supabase/supabase-js';

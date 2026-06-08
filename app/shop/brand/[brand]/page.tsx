@@ -35,7 +35,7 @@ export async function generateMetadata(
   if (brandProductCount < 5) return { robots: { index: false, follow: true } };
 
   return {
-    title: `${brand} купити в Україні — вигідні ціни | FIXLINE`,
+    title: `${brand} купити в Україні — вигідні ціни`,
     description: `Купити ${brand} в роздріб та оптом. Широкий асортимент, вигідні ціни, доставка по всій Україні. Купить ${brand} с доставкой по Украине.`,
     keywords: [brand, 'купити', 'купить', 'будівельна хімія', 'Україна', 'оптом'],
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },

@@ -6,7 +6,7 @@ import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 const BASE = 'https://fixline.com.ua';
 
 export const metadata: Metadata = {
-  title: 'Контакты | FIXLINE — строительная химия B2B',
+  title: { absolute: 'Контакты | FIXLINE — строительная химия B2B' },
   description: 'Свяжитесь с FIXLINE: +38 (099) 199-77-88, info@fixline.com.ua. Доставка по всей Украине. Строительная химия оптом — контакты поставщика.',
   keywords: ['контакты FIXLINE', 'поставщик строительная химия', 'оптовая строительная химия контакты', 'Харьков строительная химия'],
   alternates: {

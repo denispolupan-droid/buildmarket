@@ -7,7 +7,7 @@ import '../../../shop/shop.css';
 const BASE = 'https://fixline.com.ua';
 
 export const metadata: Metadata = {
-  title: 'Акционные товары — строительная химия со скидкой | FIXLINE',
+  title: 'Акционные товары — строительная химия со скидкой',
   description: 'Акции на герметики, монтажные пены, клеи, грунтовки и другие строительные материалы. Купить со скидкой от 1 единицы с доставкой по всей Украине.',
   keywords: ['акционные товары', 'строительная химия скидки', 'герметики акция', 'распродажа', 'купить со скидкой'],
   robots: { index: true, follow: true, googleBot: { index: true, follow: true } },

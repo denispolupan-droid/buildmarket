@@ -4,7 +4,7 @@ import CartPageContent from './CartPageContent';
 import Footer from '../components/Footer';
 
 export const metadata: Metadata = {
-  title: 'Кошик | FIXLINE',
+  title: 'Кошик',
   robots: { index: false, follow: false },
 };
 

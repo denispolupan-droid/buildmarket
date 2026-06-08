@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { ArrowLeft, Pencil, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Category {
-  slug:                      string;
-  name:                      string;
-  parent_slug:               string | null;
-  prom_commission_pct:       number | null;
+  slug:                       string;
+  name:                       string;
+  parent_slug:                string | null;
+  prom_commission_pct:        number | null;
   prom_commission_pct_econom: number | null;
-  prom_section_url:          string | null;
-  prom_section_id:           number | null;
+  prom_section_url:           string | null;
+  prom_section_id:            number | null;
+  prom_markup_pct:            number | null;
 }
 
 interface Props {
@@ -44,11 +45,12 @@ function PctBar({ pct, max = 16 }: { pct: number | null; max?: number }) {
 }
 
 export default function PromCommissionsClient({ categories, plan }: Props) {
-  const [editSlug, setEditSlug]       = useState<string | null>(null);
-  const [editVal, setEditVal]         = useState('');
-  const [editEco, setEditEco]         = useState('');
-  const [editPromUrl, setEditPromUrl] = useState('');
-  const [editPromId, setEditPromId]   = useState('');
+  const [editSlug, setEditSlug]         = useState<string | null>(null);
+  const [editVal, setEditVal]           = useState('');
+  const [editEco, setEditEco]           = useState('');
+  const [editMarkup, setEditMarkup]     = useState('');
+  const [editPromUrl, setEditPromUrl]   = useState('');
+  const [editPromId, setEditPromId]     = useState('');
   const [saving, setSaving]           = useState(false);
   const [data, setData]               = useState<Category[]>(categories);
   const [collapsed, setCollapsed]     = useState<Set<string>>(new Set());
@@ -72,6 +74,7 @@ export default function PromCommissionsClient({ categories, plan }: Props) {
     setEditSlug(c.slug);
     setEditVal(c.prom_commission_pct != null ? String(c.prom_commission_pct) : '');
     setEditEco(c.prom_commission_pct_econom != null ? String(c.prom_commission_pct_econom) : '');
+    setEditMarkup(c.prom_markup_pct != null ? String(c.prom_markup_pct) : '');
     setEditPromUrl(c.prom_section_url ?? '');
     setEditPromId(c.prom_section_id != null ? String(c.prom_section_id) : '');
   }
@@ -80,6 +83,7 @@ export default function PromCommissionsClient({ categories, plan }: Props) {
     setSaving(true);
     const single    = parseFloat(editVal);
     const econom    = parseFloat(editEco);
+    const markup    = parseFloat(editMarkup);
     const sectionId = parseInt(editPromId);
     try {
       await fetch('/api/admin/prom/category-commission', {
@@ -89,6 +93,7 @@ export default function PromCommissionsClient({ categories, plan }: Props) {
           slug,
           single:           isNaN(single)    ? null : single,
           econom:           isNaN(econom)    ? null : econom,
+          prom_markup_pct:  isNaN(markup)    ? null : markup,
           prom_section_url: editPromUrl || null,
           prom_section_id:  isNaN(sectionId) ? null : sectionId,
         }),
@@ -98,6 +103,7 @@ export default function PromCommissionsClient({ categories, plan }: Props) {
             ...c,
             prom_commission_pct:        isNaN(single)    ? null : single,
             prom_commission_pct_econom: isNaN(econom)    ? null : econom,
+            prom_markup_pct:            isNaN(markup)    ? null : markup,
             prom_section_url:           editPromUrl || null,
             prom_section_id:            isNaN(sectionId) ? null : sectionId,
           }
@@ -145,7 +151,15 @@ export default function PromCommissionsClient({ categories, plan }: Props) {
                 <span style={{ fontSize: 12, color: '#6B7280' }}>%</span>
               </div>
             </td>
-            <td style={{ padding: '8px 12px' }} colSpan={2}>
+            <td style={{ padding: '8px 12px', width: 100 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input type="number" step="0.01" min="0" max="100" value={editMarkup} onChange={e => setEditMarkup(e.target.value)}
+                  placeholder="0"
+                  style={{ width: 54, height: 30, padding: '0 6px', border: '1.5px solid #6B7280', borderRadius: 6, fontSize: 13, fontWeight: 700, outline: 'none' }} />
+                <span style={{ fontSize: 12, color: '#6B7280' }}>%</span>
+              </div>
+            </td>
+            <td style={{ padding: '8px 12px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <input type="text" value={editPromUrl} onChange={e => setEditPromUrl(e.target.value)}
                   placeholder="https://prom.ua/Germetiki"
@@ -177,6 +191,11 @@ export default function PromCommissionsClient({ categories, plan }: Props) {
             <td style={{ padding: '10px 16px', width: 110 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: pctColor(c.prom_commission_pct_econom) }}>
                 {c.prom_commission_pct_econom != null ? `${c.prom_commission_pct_econom.toFixed(2)}%` : <span style={{ color: '#D1D5DB' }}>—</span>}
+              </span>
+            </td>
+            <td style={{ padding: '10px 16px', width: 100 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#6B7280' }}>
+                {c.prom_markup_pct != null ? `+${c.prom_markup_pct.toFixed(1)}%` : <span style={{ color: '#D1D5DB' }}>—</span>}
               </span>
             </td>
             <td style={{ padding: '10px 16px' }}>
@@ -240,6 +259,14 @@ export default function PromCommissionsClient({ categories, plan }: Props) {
                     <span style={{ fontSize: 12, color: '#6B7280' }}>%</span>
                   </div>
                 </td>
+                <td style={{ padding: '8px 12px', width: 100 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <input type="number" step="0.01" min="0" max="100" value={editMarkup} onChange={e => setEditMarkup(e.target.value)}
+                      placeholder="0"
+                      style={{ width: 54, height: 30, padding: '0 6px', border: '1.5px solid #6B7280', borderRadius: 6, fontSize: 13, fontWeight: 700, outline: 'none' }} />
+                    <span style={{ fontSize: 12, color: '#6B7280' }}>%</span>
+                  </div>
+                </td>
                 <td style={{ padding: '8px 12px' }}>
                   <div style={{ display: 'flex', gap: 4 }}>
                     <button onClick={() => save(p.slug)} disabled={saving}
@@ -263,6 +290,11 @@ export default function PromCommissionsClient({ categories, plan }: Props) {
                 <td style={{ padding: '10px 16px' }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: pctColor(p.prom_commission_pct_econom) }}>
                     {p.prom_commission_pct_econom != null ? `${p.prom_commission_pct_econom.toFixed(2)}%` : <span style={{ color: '#D1D5DB' }}>—</span>}
+                  </span>
+                </td>
+                <td style={{ padding: '10px 16px', width: 100 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#6B7280' }}>
+                    {p.prom_markup_pct != null ? `+${p.prom_markup_pct.toFixed(1)}%` : <span style={{ color: '#D1D5DB' }}>—</span>}
                   </span>
                 </td>
                 <td style={{ padding: '10px 16px' }}>
@@ -326,6 +358,7 @@ export default function PromCommissionsClient({ categories, plan }: Props) {
               <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: plan === 'econom' ? '#1D4ED8' : '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', width: 110 }}>
                 {plan === 'econom' ? '★ Економ' : 'Економ %'}
               </th>
+              <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', width: 100 }}>Наценка</th>
               <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#C2410C', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Секція Prom.ua</th>
               <th style={{ width: 40 }} />
             </tr>

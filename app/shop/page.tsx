@@ -18,7 +18,7 @@ export async function generateMetadata(
 
   if (sale === '1') {
     return {
-      title: 'Акційні товари — будівельна хімія зі знижкою | FIXLINE',
+      title: 'Акційні товари — будівельна хімія зі знижкою',
       description: 'Акції на герметики, монтажні піни, клеї та ґрунтовки. Купити зі знижкою від 1 одиниці з доставкою по Україні.',
       alternates: { canonical: `${BASE}/shop/sale`, languages: { 'uk': `${BASE}/shop/sale`, 'ru': `${BASE}/ru/shop/sale`, 'x-default': `${BASE}/shop/sale` } },
       openGraph: { title: 'Акційні товари | FIXLINE', url: `${BASE}/shop/sale`, locale: 'uk_UA', type: 'website' },
@@ -30,7 +30,7 @@ export async function generateMetadata(
   }
 
   return {
-    title: 'Магазин — будівельна хімія в роздріб | FIXLINE',
+    title: 'Магазин — будівельна хімія в роздріб',
     description: 'Купити будівельну хімію в роздріб: герметики, монтажні піни, клеї, ґрунтовки. Доставка по всій Україні. Купить строительную химию в розницу: герметики, монтажная пена, клеи.',
     keywords: ['магазин будівельної хімії', 'магазин строительной химии', 'герметики купити', 'герметики купить', 'монтажна піна', 'монтажная пена', 'клей будівельний', 'клей строительный', 'ґрунтовка', 'грунтовка'],
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },

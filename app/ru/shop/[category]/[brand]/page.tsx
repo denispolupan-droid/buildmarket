@@ -74,7 +74,7 @@ export async function generateMetadata(
   const catNameRu = getCategoryNameRu(cat.slug, cat.name);
 
   return {
-    title: `${brandName} ${catNameRu.toLowerCase()} купить — цены | FIXLINE`,
+    title: `${brandName} ${catNameRu.toLowerCase()} купить — цены`,
     description: `${brandName} ${catNameRu.toLowerCase()} — ${count} товаров в наличии. Выгодные цены, доставка Новой Почтой по всей Украине. Купить ${brandName} ${catNameRu.toLowerCase()} от 1 шт.`,
     keywords: [brandName, catNameRu, 'купить', 'цены', 'Украина'],
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },

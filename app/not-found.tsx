@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Сторінку не знайдено | FIXLINE',
+  title: 'Сторінку не знайдено',
   robots: { index: false, follow: false },
 };
 

@@ -6,7 +6,7 @@ import { Truck, Clock, MapPin, Package, CreditCard, Phone } from 'lucide-react';
 const BASE = 'https://fixline.com.ua';
 
 export const metadata: Metadata = {
-  title: 'Условия доставки | FIXLINE',
+  title: 'Условия доставки',
   description: 'Доставка строительной химии по всей Украине. Новая Почта, адресная доставка. Заказ до 14:00 — отправка в тот же день.',
   keywords: ['доставка строительная химия', 'Новая Почта стройматериалы', 'условия доставки'],
   alternates: {

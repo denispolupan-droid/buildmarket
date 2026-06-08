@@ -29,13 +29,13 @@ export const revalidate = 60;
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id: sku } = await params;
   const product = await getProductBySkuCached(sku);
-  if (!product) return { title: 'Товар не найден | FIXLINE', robots: { index: false } };
+  if (!product) return { title: 'Товар не найден', robots: { index: false } };
 
   const price = product.stock?.price_unit;
   const priceStr = price ? ` — ${price} грн` : '';
   const metaNameRu = (product as { name_ru?: string | null }).name_ru ?? product.name;
   const volume = product.volume && !metaNameRu.includes(product.volume) ? ` ${product.volume}` : '';
-  const title = `${product.brand} ${metaNameRu}${volume}${priceStr} купить оптом | FIXLINE`;
+  const title = `${product.brand} ${metaNameRu}${volume}${priceStr} купить оптом`;
 
   const rawDesc = (product as { description_ru?: string | null }).description_ru
     ?? product.description

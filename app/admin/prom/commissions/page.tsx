@@ -17,7 +17,7 @@ export default async function PromCommissionsPage() {
 
   const [{ data: categories }, { data: planRow }] = await Promise.all([
     db.from('categories')
-      .select('slug, name, parent_slug, prom_commission_pct, prom_commission_pct_econom, prom_section_url, prom_section_id')
+      .select('slug, name, parent_slug, prom_commission_pct, prom_commission_pct_econom, prom_section_url, prom_section_id, prom_markup_pct')
       .order('parent_slug', { nullsFirst: true })
       .order('name'),
     db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),

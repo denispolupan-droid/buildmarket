@@ -71,7 +71,7 @@ export async function generateMetadata(
   const { cat, brandName, count } = resolved;
 
   return {
-    title: `${brandName} ${cat.name.toLowerCase()} купити — ціни | FIXLINE`,
+    title: `${brandName} ${cat.name.toLowerCase()} купити — ціни`,
     description: `${brandName} ${cat.name.toLowerCase()} — ${count} товарів в наявності. Вигідні ціни, доставка Новою Поштою по всій Україні. Купити ${brandName} ${cat.name.toLowerCase()} від 1 шт.`,
     keywords: [brandName, cat.name, 'купити', 'ціни', 'Україна'],
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },

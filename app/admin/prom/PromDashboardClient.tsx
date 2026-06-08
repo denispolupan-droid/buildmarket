@@ -254,14 +254,24 @@ export default function PromDashboardClient({ hasToken, feedUrl, recentOrders, t
             <Package size={18} color="#6B7280" />
             <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>YML-фід товарів</h2>
           </div>
-          <Link href="/admin/prom/commissions" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '6px 12px', borderRadius: 8, textDecoration: 'none',
-            background: '#F5F3FF', border: '1px solid #DDD6FE',
-            color: '#6D28D9', fontSize: 13, fontWeight: 600,
-          }}>
-            <TableProperties size={13} /> Таблиця комісій
-          </Link>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link href="/admin/prom/prices" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '6px 12px', borderRadius: 8, textDecoration: 'none',
+              background: '#F0FDF4', border: '1px solid #BBF7D0',
+              color: '#16A34A', fontSize: 13, fontWeight: 600,
+            }}>
+              Ціни Prom
+            </Link>
+            <Link href="/admin/prom/commissions" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '6px 12px', borderRadius: 8, textDecoration: 'none',
+              background: '#F5F3FF', border: '1px solid #DDD6FE',
+              color: '#6D28D9', fontSize: 13, fontWeight: 600,
+            }}>
+              <TableProperties size={13} /> Таблиця комісій
+            </Link>
+          </div>
         </div>
         <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B7280' }}>
           Додайте цей URL у кабінеті Prom.ua → «Товари» → «Імпорт» → «Завантажити за посиланням».

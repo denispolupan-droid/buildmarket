@@ -6,7 +6,7 @@ import { RefreshCw, CheckCircle, XCircle, Phone, Clock } from 'lucide-react';
 const BASE = 'https://fixline.com.ua';
 
 export const metadata: Metadata = {
-  title: 'Политика возврата | FIXLINE',
+  title: 'Политика возврата',
   description: 'Условия возврата и обмена товаров FIXLINE. Как вернуть товар, сроки и порядок действий.',
   keywords: ['возврат товара', 'обмен товара', 'политика возврата строительная химия'],
   alternates: {

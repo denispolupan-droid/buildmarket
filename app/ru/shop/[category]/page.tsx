@@ -5,6 +5,7 @@ import Footer from '../../../components/Footer';
 import ShopLoader from '../../../shop/ShopLoader';
 import { getCategoriesCached, getProductsCached } from '../../../../lib/supabase';
 import { getCategoryNameRu, getCategoryDescriptionRu } from '../../../../lib/ru';
+import { getCategoryMeta } from '../../../../lib/category-descriptions';
 import '../../../shop/shop.css';
 
 const BASE = 'https://fixline.com.ua';
@@ -24,7 +25,7 @@ export async function generateMetadata(
   const description = getCategoryDescriptionRu(cat.slug, nameRu);
 
   return {
-    title: `${nameRu} купить — цены, доставка по Украине | FIXLINE`,
+    title: `${nameRu} купить — цены, доставка по Украине`,
     description,
     keywords: [nameRu, 'купить', 'оптом', 'строительная химия', 'Украина'],
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
@@ -66,6 +67,8 @@ export default async function RuShopCategoryPage({ params }: { params: Promise<{
   ];
   const breadcrumbLd = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: breadcrumbItems };
 
+  const meta = getCategoryMeta(cat.slug);
+
   const itemListProducts = await getProductsCached({ category: cat.slug, limit: 10 });
   const itemListLd = itemListProducts.length > 0 ? {
     '@context': 'https://schema.org',
@@ -95,10 +98,21 @@ export default async function RuShopCategoryPage({ params }: { params: Promise<{
     })),
   } : null;
 
+  const faqLd = meta?.faq?.length ? {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: meta.faq.map(({ q, a }) => ({
+      '@type': 'Question',
+      name: q,
+      acceptedAnswer: { '@type': 'Answer', text: a },
+    })),
+  } : null;
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       {itemListLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }} />}
+      {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />}
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
         <div style={{ margin: '0 auto', padding: '12px 16px 64px' }} className="mobile-pad">
           <nav aria-label="Breadcrumb" style={{ marginBottom: '6px', fontSize: '12px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>

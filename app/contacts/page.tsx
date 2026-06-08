@@ -4,7 +4,7 @@ import Footer from '../components/Footer';
 import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Контакти | FIXLINE — будівельна хімія B2B',
+  title: { absolute: 'Контакти | FIXLINE — будівельна хімія B2B' },
   description: 'Зв\'яжіться з FIXLINE: +38 (099) 199-77-88, info@fixline.com.ua. Доставка по всій Україні. Будівельна хімія оптом — контакти постачальника.',
   keywords: ['контакти FIXLINE', 'постачальник будівельна хімія', 'поставщик строительная химия Украина', 'оптова будівельна хімія контакти', 'Харків будівельна хімія'],
   alternates: { canonical: 'https://fixline.com.ua/contacts', languages: { 'uk': 'https://fixline.com.ua/contacts', 'ru': 'https://fixline.com.ua/ru/contacts', 'x-default': 'https://fixline.com.ua/contacts' } },
