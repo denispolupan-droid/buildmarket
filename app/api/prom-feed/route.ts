@@ -57,6 +57,71 @@ const BRAND_COUNTRY: Record<string, string> = {
   'Soudal':      'Бельгія',
 };
 
+// "Тип використання" inferred from category when product has no such characteristic
+const CATEGORY_USAGE_TYPE: Record<string, string> = {
+  // Interior only
+  'vodoemiulsiyni-interierni':  'Для внутрішніх робіт',
+  'farby-dlya-pidlohy':         'Для внутрішніх робіт',
+  'klei-dlya-shpaler':          'Для внутрішніх робіт',
+  'pva-ta-stolyarnyi':          'Для внутрішніх робіт',
+  'zamazky-dlya-shviv':         'Для внутрішніх робіт',
+  'zamazky-epoksydni':          'Для внутрішніх робіт',
+  'zamazky-tsementni':          'Для внутрішніх робіт',
+  'vologopoglinachi':           'Для внутрішніх робіт',
+  // Exterior only
+  'vodoemiulsiyni-fasadni':     'Для зовнішніх робіт',
+  'alkidni-farby':              'Для зовнішніх робіт',
+  'farby-3v1-alkidni':          'Для зовнішніх робіт',
+  'moltkovi-farby':             'Для зовнішніх робіт',
+  'bitumni-mastyky':            'Для зовнішніх робіт',
+  'bitumni-germetyky':          'Для зовнішніх робіт',
+  'hidroizolyatsiya':           'Для зовнішніх робіт',
+  'hidroizolyatsiyni-mastyky':  'Для зовнішніх робіт',
+  'hermetyzuyucha-strichka':    'Для зовнішніх робіт',
+  'praimery':                   'Для зовнішніх робіт',
+  // Interior + exterior
+  'farby':                      'Для внутрішніх і зовнішніх робіт',
+  'farby-3v1':                  'Для внутрішніх і зовнішніх робіт',
+  'farby-3v1-akrylovi':         'Для внутрішніх і зовнішніх робіт',
+  'koloranty':                  'Для внутрішніх і зовнішніх робіт',
+  'laky':                       'Для внутрішніх і зовнішніх робіт',
+  'morylky':                    'Для внутрішніх і зовнішніх робіт',
+  'zakhyst-derevyny':           'Для внутрішніх і зовнішніх робіт',
+  'antyseptyki':                'Для внутрішніх і зовнішніх робіт',
+  'zakhysni-pokryttya':         'Для внутрішніх і зовнішніх робіт',
+  'antygrybok':                 'Для внутрішніх і зовнішніх робіт',
+  'gruntivky':                  'Для внутрішніх і зовнішніх робіт',
+  'grunty':                     'Для внутрішніх і зовнішніх робіт',
+  'gruntivky-gotovi':           'Для внутрішніх і зовнішніх робіт',
+  'gruntivky-kontsentraty':     'Для внутрішніх і зовнішніх робіт',
+  'betonokontakt':              'Для внутрішніх і зовнішніх робіт',
+  'shpaklivky':                 'Для внутрішніх і зовнішніх робіт',
+  'germetyky':                  'Для внутрішніх і зовнішніх робіт',
+  'akrylovi-germetyky':         'Для внутрішніх і зовнішніх робіт',
+  'sylikonovi-germetyky':       'Для внутрішніх і зовнішніх робіт',
+  'neytralny-germetyky':        'Для внутрішніх і зовнішніх робіт',
+  'poliuretanovi-germetyky':    'Для внутрішніх і зовнішніх робіт',
+  'zharostiyki-germetyky':      'Для внутрішніх і зовнішніх робіт',
+  'ms-polymerni-hermetyky':     'Для внутрішніх і зовнішніх робіт',
+  'nytka-dlya-trub':            'Для внутрішніх і зовнішніх робіт',
+  'izolyatsiyni-strichky':      'Для внутрішніх і зовнішніх робіт',
+  'montazhna-pina':             'Для внутрішніх і зовнішніх робіт',
+  'pistoletna-pina':            'Для внутрішніх і зовнішніх робіт',
+  'pobutova-pina':              'Для внутрішніх і зовнішніх робіт',
+  'vohnezakhysna-pina':         'Для внутрішніх і зовнішніх робіт',
+  'pina-klei':                  'Для внутрішніх і зовнішніх робіт',
+  'klei':                       'Для внутрішніх і зовнішніх робіт',
+  'kontaktnyi-klei':            'Для внутрішніх і зовнішніх робіт',
+  'montazhnyi-klei':            'Для внутрішніх і зовнішніх робіт',
+  'ridki-tsvyakhy':             'Для внутрішніх і зовнішніх робіт',
+  'super-klei':                 'Для внутрішніх і зовнішніх робіт',
+  'epoksydni-klei':             'Для внутрішніх і зовнішніх робіт',
+  'plastyfikatory':             'Для внутрішніх і зовнішніх робіт',
+  'plastyfikatory-dlya-betonu': 'Для внутрішніх і зовнішніх робіт',
+  'rozchynnyky':                'Для внутрішніх і зовнішніх робіт',
+  'ochysnyky':                  'Для внутрішніх і зовнішніх робіт',
+};
+
 // ── Prom.ua characteristic mapping ────────────────────────────────────────────
 
 // Normalize our labels to Prom's exact attribute names
@@ -350,6 +415,15 @@ export async function GET(request: NextRequest) {
         ? [{ label: 'Країна виробник', value: inferredCountry }]
         : [];
 
+      // Inject "Тип використання" from category if missing in characteristics
+      const hasUsageType = rawChars.some(c => c.label === 'Тип використання');
+      const inferredUsage = !hasUsageType && p.category_slug
+        ? CATEGORY_USAGE_TYPE[p.category_slug] ?? null
+        : null;
+      const usageTypeParam = inferredUsage
+        ? [{ label: 'Тип використання', value: inferredUsage }]
+        : [];
+
       // Deduplicate by normalized label — keep first occurrence (two DB labels may map to the same Prom label)
       const seenLabels = new Set<string>();
       const dedupedChars = processedChars.filter(c => {
@@ -359,7 +433,7 @@ export async function GET(request: NextRequest) {
       });
 
       // Build text <param> tags (custom characteristics visible to buyers)
-      const paramsXml = [...countryParam, ...dedupedChars]
+      const paramsXml = [...usageTypeParam, ...countryParam, ...dedupedChars]
         .map(c => `        <param name="${x(c.label)}">${x(c.value)}</param>`)
         .join('\n');
 
