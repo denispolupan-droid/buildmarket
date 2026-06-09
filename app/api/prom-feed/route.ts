@@ -361,26 +361,9 @@ export async function GET(request: NextRequest) {
         : (p.category_slug ? (slugToGroupId.get(p.category_slug) ?? 1) : 1);
 
       // ── Names ──────────────────────────────────────────────────────────────
-      const nameRu = (p as { name_ru?: string | null }).name_ru;
-
-      // volume is appended only if name doesn't already contain any weight/volume unit
-      const hasWeightInText = (text: string) => /\d[\d,.]*\s*(кг|г\b|мл|л\b)/i.test(text);
-      const brandInName     = (text: string) => text.toLowerCase().includes(p.brand.toLowerCase());
-
-      const nameHasVolume   = p.volume ? (p.name.includes(p.volume) || hasWeightInText(p.name)) : false;
-      const fullName        = x([
-        brandInName(p.name) ? null : p.brand,
-        p.name,
-        !nameHasVolume ? p.volume : null,
-      ].filter(Boolean).join(' '));
-      const nameRuHasVolume = nameRu && p.volume ? (nameRu.includes(p.volume) || hasWeightInText(nameRu)) : false;
-      const fullNameRu      = nameRu
-        ? x([
-            brandInName(nameRu) ? null : p.brand,
-            nameRu,
-            !nameRuHasVolume ? p.volume : null,
-          ].filter(Boolean).join(' '))
-        : null;
+      const nameRu   = (p as { name_ru?: string | null }).name_ru;
+      const fullName = x(p.name);
+      const fullNameRu = nameRu ? x(nameRu) : null;
 
       // ── Descriptions ───────────────────────────────────────────────────────
       // Ukrainian: prefer full text, fall back to short
