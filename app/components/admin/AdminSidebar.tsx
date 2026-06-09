@@ -9,11 +9,13 @@ import {
   Settings, BookOpen, Warehouse, BarChart3, Users, Star,
   MessageSquare, ShoppingCart, Mail, ExternalLink, TrendingUp,
   ChevronLeft, ChevronRight, ShoppingBasket, Sparkles, Megaphone,
+  Tags,
 } from 'lucide-react';
 
 const NAV = [
   { href: '/admin',                      label: 'Замовлення',     icon: ShoppingBag,    exact: true  },
   { href: '/admin/products',             label: 'Товари',         icon: Package,        exact: false },
+  { href: '/admin/prices',               label: 'Ціни',           icon: Tags,           exact: false },
   { href: '/admin/suppliers',            label: 'Постачальники',  icon: Truck,          exact: false },
   { href: '/admin/partners',             label: 'Контрагенти',    icon: Users,          exact: false },
   { href: '/admin/procurement',          label: 'Закупівля',      icon: ShoppingCart,   exact: false },
