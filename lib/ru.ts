@@ -22,7 +22,7 @@ export const CATEGORY_NAMES_RU: Record<string, string> = {
   // Клеи
   'klei':              'Клеи',
   'montazhnyi-klei':   'Монтажный клей',
-  'ridki-tsvyakhy':    'Жидкие гвозди',
+  'klei-dlya-plytky':  'Клей для плитки',
   'pva-ta-stolyarnyi': 'ПВА и столярный клей',
   'epoksydni-klei':    'Эпоксидные клеи',
   'kontaktnyi-klei':   'Контактный клей',
@@ -97,6 +97,7 @@ export const CATEGORY_NAMES_RU: Record<string, string> = {
   'farby-3v1-akrylovi':       'Акриловые краски 3 в 1',
   'moltkovi-farby':           'Молотковые краски',
   'farby-dlya-pidlohy':       'Краски для пола',
+  'farby-dlya-radiatoriv':    'Краски для радиаторов',
   'vodoemiulsiyni-fasadni':   'Водоэмульсионные фасадные',
   'vodoemiulsiyni-interierni':'Водоэмульсионные интерьерные',
 };

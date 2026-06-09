@@ -34,17 +34,18 @@ const categories = [
   { slug: 'vohnezakhysna-pina', name: 'Вогнезахисна піна',  parent_slug: 'montazhna-pina', sort_order: 23 },
 
   // ── Клеї ──────────────────────────────────────────────────────────────────
-  { slug: 'ridki-tsvyakhy',    name: 'Рідкі цвяхи',           parent_slug: 'klei', sort_order: 31 },
+  { slug: 'klei-dlya-plytky',  name: 'Клеї для плитки',        parent_slug: 'klei', sort_order: 31 },
   { slug: 'montazhnyi-klei',   name: 'Монтажний клей',         parent_slug: 'klei', sort_order: 32 },
   { slug: 'klei-dlya-shpaler', name: 'Клей для шпалер',        parent_slug: 'klei', sort_order: 33 },
   { slug: 'kontaktnyi-klei',   name: 'Контактний клей',        parent_slug: 'klei', sort_order: 34 },
   { slug: 'pva-ta-stolyarnyi', name: 'ПВА та столярний клей',  parent_slug: 'klei', sort_order: 35 },
 
   // ── Фарби та покриття ─────────────────────────────────────────────────────
-  { slug: 'fasadni-farby',       name: 'Фасадні фарби',          parent_slug: 'farby', sort_order: 41 },
-  { slug: 'interierni-farby',    name: "Інтер'єрні фарби",       parent_slug: 'farby', sort_order: 42 },
-  { slug: 'antykoroziyni-farby', name: 'Антикорозійні фарби',    parent_slug: 'farby', sort_order: 43 },
-  { slug: 'laky',                name: 'Лаки та просочення',     parent_slug: 'farby', sort_order: 44 },
+  { slug: 'fasadni-farby',          name: 'Фасадні фарби',          parent_slug: 'farby', sort_order: 41 },
+  { slug: 'interierni-farby',       name: "Інтер'єрні фарби",       parent_slug: 'farby', sort_order: 42 },
+  { slug: 'antykoroziyni-farby',    name: 'Антикорозійні фарби',    parent_slug: 'farby', sort_order: 43 },
+  { slug: 'laky',                   name: 'Лаки та просочення',     parent_slug: 'farby', sort_order: 44 },
+  { slug: 'farby-dlya-radiatoriv',  name: 'Фарби для радіаторів',   parent_slug: 'farby', sort_order: 130 },
 
   // ── Ґрунтовки та шпаклівки ───────────────────────────────────────────────
   { slug: 'gruntivky-hlyboki',  name: 'Ґрунтовки глибокого проникнення', parent_slug: 'gruntivky', sort_order: 51 },

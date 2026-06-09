@@ -62,6 +62,7 @@ const CATEGORY_USAGE_TYPE: Record<string, string> = {
   // Interior only
   'vodoemiulsiyni-interierni':  'Для внутрішніх робіт',
   'farby-dlya-pidlohy':         'Для внутрішніх робіт',
+  'farby-dlya-radiatoriv':      'Для внутрішніх робіт',
   'klei-dlya-shpaler':          'Для внутрішніх робіт',
   'pva-ta-stolyarnyi':          'Для внутрішніх робіт',
   'zamazky-dlya-shviv':         'Для внутрішніх робіт',
@@ -113,7 +114,7 @@ const CATEGORY_USAGE_TYPE: Record<string, string> = {
   'klei':                       'Для внутрішніх і зовнішніх робіт',
   'kontaktnyi-klei':            'Для внутрішніх і зовнішніх робіт',
   'montazhnyi-klei':            'Для внутрішніх і зовнішніх робіт',
-  'ridki-tsvyakhy':             'Для внутрішніх і зовнішніх робіт',
+  'klei-dlya-plytky':           'Для внутрішніх і зовнішніх робіт',
   'super-klei':                 'Для внутрішніх і зовнішніх робіт',
   'epoksydni-klei':             'Для внутрішніх і зовнішніх робіт',
   'plastyfikatory':             'Для внутрішніх і зовнішніх робіт',

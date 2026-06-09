@@ -20,7 +20,7 @@ export const CATEGORY_ICONS: Record<string, FC<LucideProps>> = {
   'klei':               Layers,
   'kley':               Layers,
   'montazhnyi-klei':    Layers,
-  'ridki-tsvyakhy':     Layers,
+  'klei-dlya-plytky':   Layers,
   'pva-ta-stolyarnyi':  Layers,
   'epoksydni-klei':     FlaskConical,
   'grunty':             Brush,
@@ -50,7 +50,8 @@ export const CATEGORY_ICONS: Record<string, FC<LucideProps>> = {
   'instrumenty':        Hammer,
   'pistolety':          Hammer,
   'rozchynnyky':        Flame,
-  'farby':              Palette,
-  'alkidni-farby':      Palette,
+  'farby':                  Palette,
+  'alkidni-farby':          Palette,
+  'farby-dlya-radiatoriv':  Palette,
 };
 

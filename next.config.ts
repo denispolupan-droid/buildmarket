@@ -51,6 +51,8 @@ const nextConfig: NextConfig = {
         destination: '/shop/sale',
         permanent: true,
       },
+      { source: '/shop/ridki-tsvyakhy', destination: '/shop/klei-dlya-plytky', permanent: true },
+      { source: '/ru/shop/ridki-tsvyakhy', destination: '/ru/shop/klei-dlya-plytky', permanent: true },
     ];
   },
   async rewrites() {
