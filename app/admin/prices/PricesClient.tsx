@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Pencil, Check, X, Lock, Unlock, FileSpreadsheet, Printer, ChevronDown, ChevronUp } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
 
@@ -116,6 +117,8 @@ export default function PricesClient({ products, stock, categories }: Props) {
   const [plIncludeOutOfStock, setPlIncludeOutOfStock] = useState(false);
   const [plShowBrand, setPlShowBrand]               = useState(true);
   const [plGenerating, setPlGenerating]             = useState(false);
+  const [mounted, setMounted]                       = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // ── Merged data ─────────────────────────────────────────────────────────────
 
@@ -621,9 +624,9 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
         );
       })}
 
-      {/* Pricelist modal */}
-      {showPricelist && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {/* Pricelist modal — rendered via portal to escape PageTransition transform context */}
+      {mounted && showPricelist && createPortal(
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: '#fff', borderRadius: 16, padding: 32, width: 480, maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Прайс-лист для клієнта</h2>
@@ -690,7 +693,8 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
