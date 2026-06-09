@@ -12,16 +12,137 @@ import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import ProductImage from '../components/ProductImage';
 import NovaPoshtaSelect from '../components/NovaPoshtaSelect';
 
+type Lang = 'uk' | 'ru';
 
-const DELIVERY_OPTIONS = [
-  { value: 'nova', label: 'Нова Пошта' },
-];
+const T = {
+  uk: {
+    deliveryNova: 'Нова Пошта',
+    payCard: 'Оплата карткою онлайн',
+    payCodLabel: 'Накладний платіж (оплата при отриманні)',
+    payInvoiceLabel: 'Безготівковий розрахунок по рахунку (IBAN)',
+    payInvoiceSub: 'Для ФОП та юридичних осіб · без РРО',
+    pageTitle: 'Оформлення замовлення',
+    itemsCount: (n: number, price: number) => `${n} товарів на суму ${price.toFixed(2)} грн`,
+    backShop: 'До магазину',
+    backCatalog: 'До каталогу',
+    backShopHref: '/shop',
+    backCatalogHref: '/catalog',
+    emptyTitle: 'Кошик порожній',
+    emptyText: 'Додайте товари з каталогу',
+    sectionContact: 'Контактні дані',
+    sectionDelivery: 'Спосіб доставки',
+    sectionPayment: 'Спосіб оплати',
+    sectionComment: 'Коментар до замовлення',
+    company: 'Назва компанії',
+    companyPh: 'ТОВ «Будмайстер»',
+    lastName: 'Прізвище',
+    lastNamePh: 'Іванченко',
+    firstName: 'Ім\'я',
+    firstNamePh: 'Іван',
+    middleName: 'По батькові',
+    middleNameOpt: '(необов\'язково)',
+    middleNamePh: 'Іванович',
+    phone: 'Телефон',
+    email: 'Email для підтвердження',
+    errCompany: 'Вкажіть назву компанії',
+    errLastName: 'Вкажіть прізвище',
+    errFirstName: 'Вкажіть ім\'я',
+    errPhone: 'Введіть коректний номер телефону',
+    errEmail: 'Вкажіть email',
+    errDelivery: 'Оберіть спосіб доставки',
+    errNovaSubtype: 'Оберіть відділення або кур\'єр',
+    errAddress: 'Оберіть місто та відділення Нової Пошти',
+    errPayment: 'Оберіть спосіб оплати',
+    novaWarehouse: 'Відділення',
+    novaPostomat: 'Поштомат',
+    novaCourier: 'Кур\'єр',
+    addressLabel: 'Адреса доставки',
+    addressPh: 'Вулиця, будинок, квартира / офіс',
+    change: 'змінити',
+    orderSummary: 'Ваше замовлення',
+    clearCart: 'Очистити',
+    itemsTotal: (n: number) => `Товарів (${n} шт)`,
+    deliveryLabel: 'Доставка',
+    deliveryByCarrier: 'За тарифами перевізника',
+    total: 'Разом',
+    minReached: '✓ Мінімум досягнуто',
+    minNeeded: (n: number) => `Мін. замовлення: ${n.toLocaleString('uk-UA')} ₴`,
+    minRemaining: (n: number) => `ще ${n.toFixed(0)} ₴`,
+    minWarning: (n: number) => `Додайте товарів ще на ${n.toFixed(0)} ₴ для оформлення замовлення`,
+    guestHint: '💡 Можна оформити замовлення без реєстрації — просто заповніть форму.',
+    noCallbackLabel: 'Не передзвонювати для підтвердження замовлення',
+    submitting: 'Завантаження...',
+    submitCard: 'Перейти до оплати →',
+    submitOrder: 'Підтвердити замовлення →',
+    commentPh: 'Побажання, уточнення до замовлення...',
+  },
+  ru: {
+    deliveryNova: 'Новая Почта',
+    payCard: 'Оплата картой онлайн',
+    payCodLabel: 'Наложенный платёж (оплата при получении)',
+    payInvoiceLabel: 'Безналичный расчёт по счёту (IBAN)',
+    payInvoiceSub: 'Для ФЛП и юридических лиц · без РРО',
+    pageTitle: 'Оформление заказа',
+    itemsCount: (n: number, price: number) => `${n} товаров на сумму ${price.toFixed(2)} грн`,
+    backShop: 'В магазин',
+    backCatalog: 'В каталог',
+    backShopHref: '/ru/shop',
+    backCatalogHref: '/ru/catalog',
+    emptyTitle: 'Корзина пуста',
+    emptyText: 'Добавьте товары из каталога',
+    sectionContact: 'Контактные данные',
+    sectionDelivery: 'Способ доставки',
+    sectionPayment: 'Способ оплаты',
+    sectionComment: 'Комментарий к заказу',
+    company: 'Название компании',
+    companyPh: 'ТОВ «Будмайстер»',
+    lastName: 'Фамилия',
+    lastNamePh: 'Иванченко',
+    firstName: 'Имя',
+    firstNamePh: 'Иван',
+    middleName: 'Отчество',
+    middleNameOpt: '(необязательно)',
+    middleNamePh: 'Иванович',
+    phone: 'Телефон',
+    email: 'Email для подтверждения',
+    errCompany: 'Укажите название компании',
+    errLastName: 'Укажите фамилию',
+    errFirstName: 'Укажите имя',
+    errPhone: 'Введите корректный номер телефона',
+    errEmail: 'Укажите email',
+    errDelivery: 'Выберите способ доставки',
+    errNovaSubtype: 'Выберите отделение или курьер',
+    errAddress: 'Выберите город и отделение Новой Почты',
+    errPayment: 'Выберите способ оплаты',
+    novaWarehouse: 'Отделение',
+    novaPostomat: 'Постомат',
+    novaCourier: 'Курьер',
+    addressLabel: 'Адрес доставки',
+    addressPh: 'Улица, дом, квартира / офис',
+    change: 'изменить',
+    orderSummary: 'Ваш заказ',
+    clearCart: 'Очистить',
+    itemsTotal: (n: number) => `Товаров (${n} шт)`,
+    deliveryLabel: 'Доставка',
+    deliveryByCarrier: 'По тарифам перевозчика',
+    total: 'Итого',
+    minReached: '✓ Минимум достигнут',
+    minNeeded: (n: number) => `Мин. заказ: ${n.toLocaleString('ru-UA')} ₴`,
+    minRemaining: (n: number) => `ещё ${n.toFixed(0)} ₴`,
+    minWarning: (n: number) => `Добавьте товаров ещё на ${n.toFixed(0)} ₴ для оформления заказа`,
+    guestHint: '💡 Можно оформить заказ без регистрации — просто заполните форму.',
+    noCallbackLabel: 'Не перезванивать для подтверждения заказа',
+    submitting: 'Загрузка...',
+    submitCard: 'Перейти к оплате →',
+    submitOrder: 'Подтвердить заказ →',
+    commentPh: 'Пожелания, уточнения к заказу...',
+  },
+} as const;
 
 function getLocalDigits(str: string): string {
   const raw = str.replace(/\D/g, '');
-  // Strip country code 38, keep the leading 0
-  if (raw.startsWith('380')) return raw.slice(2);   // "3806..." → "06..."
-  if (raw.startsWith('38'))  return '0' + raw.slice(2); // "38X..." → "0X..."
+  if (raw.startsWith('380')) return raw.slice(2);
+  if (raw.startsWith('38'))  return '0' + raw.slice(2);
   if (raw.startsWith('0'))   return raw;
   return raw.length ? '0' + raw : '';
 }
@@ -37,17 +158,6 @@ function formatPhone(localDigits: string): string {
   if (d.length <= 8) return r;
   return r + '-' + d.slice(8, 10);
 }
-
-const PAYMENT_OPTIONS_RETAIL = [
-  { value: 'card',    label: 'Оплата карткою онлайн',                      sub: 'Visa · Mastercard · Apple Pay · Google Pay' },
-  { value: 'cod',     label: 'Накладний платіж (оплата при отриманні)',     sub: null },
-];
-
-const PAYMENT_OPTIONS_WHOLESALE = [
-  { value: 'card',    label: 'Оплата карткою онлайн',                      sub: 'Visa · Mastercard · Apple Pay · Google Pay' },
-  { value: 'cod',     label: 'Накладний платіж (оплата при отриманні)',     sub: null },
-  { value: 'invoice', label: 'Безготівковий розрахунок по рахунку (IBAN)', sub: 'Для ФОП та юридичних осіб · без РРО' },
-];
 
 const inputStyle: React.CSSProperties = {
   width: '100%', height: '44px', padding: '0 14px',
@@ -87,10 +197,26 @@ function Section({ icon: Icon, title, children, error }: { icon: React.ElementTy
   );
 }
 
-export default function CartPageContent() {
+export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
+  const tr = T[lang];
   const { items, totalItems, totalPrice, loaded, addItem, removeItem, updateQty, clearCart } = useCart();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const DELIVERY_OPTIONS = [
+    { value: 'nova', label: tr.deliveryNova },
+  ];
+
+  const PAYMENT_OPTIONS_RETAIL = [
+    { value: 'card',    label: tr.payCard,         sub: 'Visa · Mastercard · Apple Pay · Google Pay' },
+    { value: 'cod',     label: tr.payCodLabel,     sub: null },
+  ];
+
+  const PAYMENT_OPTIONS_WHOLESALE = [
+    { value: 'card',    label: tr.payCard,         sub: 'Visa · Mastercard · Apple Pay · Google Pay' },
+    { value: 'cod',     label: tr.payCodLabel,     sub: null },
+    { value: 'invoice', label: tr.payInvoiceLabel, sub: tr.payInvoiceSub },
+  ];
 
   const [role, setRole] = useState<'wholesale' | 'retail' | 'guest'>('guest');
   const [company,    setCompany]    = useState('');
@@ -113,7 +239,6 @@ export default function CartPageContent() {
       setCompany(data.user.user_metadata?.company_name ?? '');
       setEmail(data.user.email ?? '');
 
-      // Auto-fill from last order
       if (wholesale) {
         const { data: orders } = await supabase
           .from('orders')
@@ -147,7 +272,7 @@ export default function CartPageContent() {
       .then(data => {
         if (data?.items?.length) {
           for (const item of data.items) addItem(item, item.qty);
-          router.replace('/cart', { scroll: false });
+          router.replace(lang === 'ru' ? '/ru/cart' : '/cart', { scroll: false });
         }
       })
       .catch(() => {});
@@ -241,7 +366,6 @@ export default function CartPageContent() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Помилка сервера');
       if (payment === 'card' && data.pageUrl) {
-        // Заказ создаётся только после подтверждения оплаты вебхуком — корзина очищается на success-странице
         window.location.href = data.pageUrl;
       } else {
         trackPurchase(String(data.id), items, totalPrice);
@@ -260,8 +384,8 @@ export default function CartPageContent() {
   }
 
   const isRetail     = role !== 'wholesale';
-  const backHref     = isRetail ? '/shop' : '/catalog';
-  const backLabel    = isRetail ? 'До магазину' : 'До каталогу';
+  const backHref     = isRetail ? tr.backShopHref : tr.backCatalogHref;
+  const backLabel    = isRetail ? tr.backShop : tr.backCatalog;
   const PAYMENT_OPTIONS = isRetail ? PAYMENT_OPTIONS_RETAIL : PAYMENT_OPTIONS_WHOLESALE;
 
   if (!loaded) return (
@@ -279,8 +403,8 @@ export default function CartPageContent() {
             <div style={{ color: '#CBD5E1', marginBottom: '16px' }}>
               <ShoppingCart size={64} strokeWidth={1} />
             </div>
-            <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>Кошик порожній</h1>
-            <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '24px' }}>Додайте товари з каталогу</p>
+            <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>{tr.emptyTitle}</h1>
+            <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '24px' }}>{tr.emptyText}</p>
             <Link href={backHref} style={{
               display: 'inline-flex', alignItems: 'center', gap: '8px',
               height: '44px', padding: '0 24px', borderRadius: '10px',
@@ -302,8 +426,8 @@ export default function CartPageContent() {
           {/* Page header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
             <div>
-              <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>Оформлення замовлення</h1>
-              <p style={{ fontSize: '14px', color: '#64748B' }}>{totalItems} товарів на суму {totalPrice.toFixed(2)} грн</p>
+              <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>{tr.pageTitle}</h1>
+              <p style={{ fontSize: '14px', color: '#64748B' }}>{tr.itemsCount(totalItems, totalPrice)}</p>
             </div>
             <Link href={backHref} style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -322,31 +446,31 @@ export default function CartPageContent() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
               {/* Contact info */}
-              <Section icon={User} title="Контактні дані">
+              <Section icon={User} title={tr.sectionContact}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                   {!isRetail && (
                     <div id="field-company" style={{ gridColumn: '1 / -1' }}>
-                      <label style={{ ...labelStyle, color: errors.has('company') ? '#EF4444' : undefined }}>Назва компанії</label>
-                      <input style={{ ...inputStyle, border: err('company') ?? inputStyle.border }} placeholder="ТОВ «Будмайстер»" value={company} onChange={e => { setCompany(e.target.value); setErrors(s => { const n = new Set(s); n.delete('company'); return n; }); }} />
-                      {errors.has('company') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Вкажіть назву компанії</p>}
+                      <label style={{ ...labelStyle, color: errors.has('company') ? '#EF4444' : undefined }}>{tr.company}</label>
+                      <input style={{ ...inputStyle, border: err('company') ?? inputStyle.border }} placeholder={tr.companyPh} value={company} onChange={e => { setCompany(e.target.value); setErrors(s => { const n = new Set(s); n.delete('company'); return n; }); }} />
+                      {errors.has('company') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errCompany}</p>}
                     </div>
                   )}
                   <div id="field-lastName">
-                    <label style={{ ...labelStyle, color: errors.has('lastName') ? '#EF4444' : undefined }}>Прізвище</label>
-                    <input style={{ ...inputStyle, border: err('lastName') ?? inputStyle.border }} placeholder="Іванченко" value={lastName} onChange={e => { setLastName(e.target.value); setErrors(s => { const n = new Set(s); n.delete('lastName'); return n; }); }} />
-                    {errors.has('lastName') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Вкажіть прізвище</p>}
+                    <label style={{ ...labelStyle, color: errors.has('lastName') ? '#EF4444' : undefined }}>{tr.lastName}</label>
+                    <input style={{ ...inputStyle, border: err('lastName') ?? inputStyle.border }} placeholder={tr.lastNamePh} value={lastName} onChange={e => { setLastName(e.target.value); setErrors(s => { const n = new Set(s); n.delete('lastName'); return n; }); }} />
+                    {errors.has('lastName') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errLastName}</p>}
                   </div>
                   <div id="field-firstName">
-                    <label style={{ ...labelStyle, color: errors.has('firstName') ? '#EF4444' : undefined }}>Ім&apos;я</label>
-                    <input style={{ ...inputStyle, border: err('firstName') ?? inputStyle.border }} placeholder="Іван" value={firstName} onChange={e => { setFirstName(e.target.value); setErrors(s => { const n = new Set(s); n.delete('firstName'); return n; }); }} />
-                    {errors.has('firstName') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Вкажіть ім&apos;я</p>}
+                    <label style={{ ...labelStyle, color: errors.has('firstName') ? '#EF4444' : undefined }}>{tr.firstName}</label>
+                    <input style={{ ...inputStyle, border: err('firstName') ?? inputStyle.border }} placeholder={tr.firstNamePh} value={firstName} onChange={e => { setFirstName(e.target.value); setErrors(s => { const n = new Set(s); n.delete('firstName'); return n; }); }} />
+                    {errors.has('firstName') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errFirstName}</p>}
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={labelStyle}>По батькові <span style={{ fontWeight: 400, color: '#94A3B8' }}>(необов&apos;язково)</span></label>
-                    <input style={inputStyle} placeholder="Іванович" value={middleName} onChange={e => setMiddleName(e.target.value)} />
+                    <label style={labelStyle}>{tr.middleName} <span style={{ fontWeight: 400, color: '#94A3B8' }}>{tr.middleNameOpt}</span></label>
+                    <input style={inputStyle} placeholder={tr.middleNamePh} value={middleName} onChange={e => setMiddleName(e.target.value)} />
                   </div>
                   <div id="field-phone">
-                    <label style={{ ...labelStyle, color: errors.has('phone') ? '#EF4444' : undefined }}>Телефон</label>
+                    <label style={{ ...labelStyle, color: errors.has('phone') ? '#EF4444' : undefined }}>{tr.phone}</label>
                     <input
                       style={{ ...inputStyle, border: err('phone') ?? inputStyle.border }}
                       placeholder="+38 (0__) ___-__-__"
@@ -363,19 +487,19 @@ export default function CartPageContent() {
                         setErrors(s => { const n = new Set(s); n.delete('phone'); return n; });
                       }}
                     />
-                    {errors.has('phone') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Введіть коректний номер телефону</p>}
+                    {errors.has('phone') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errPhone}</p>}
                   </div>
                   <div id="field-email" style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ ...labelStyle, color: errors.has('email') ? '#EF4444' : undefined }}>Email для підтвердження</label>
+                    <label style={{ ...labelStyle, color: errors.has('email') ? '#EF4444' : undefined }}>{tr.email}</label>
                     <input style={{ ...inputStyle, border: err('email') ?? inputStyle.border }} type="email" placeholder="company@email.com" value={email} onChange={e => { setEmail(e.target.value); setErrors(s => { const n = new Set(s); n.delete('email'); return n; }); }} />
-                    {errors.has('email') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Вкажіть email</p>}
+                    {errors.has('email') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errEmail}</p>}
                   </div>
                 </div>
               </Section>
 
               {/* Delivery */}
               <div id="field-delivery" /><div id="field-novaSubtype" /><div id="field-address" />
-              <Section icon={Truck} title="Спосіб доставки" error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
+              <Section icon={Truck} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {DELIVERY_OPTIONS.filter(opt => !delivery || delivery === opt.value).map(opt => (
                     <div key={opt.value}>
@@ -401,7 +525,7 @@ export default function CartPageContent() {
                             onClick={e => { e.preventDefault(); setDelivery(''); setAddress(''); setNovaSubtype(''); }}
                             style={{ fontSize: '12px', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
                           >
-                            змінити
+                            {tr.change}
                           </button>
                         )}
                       </label>
@@ -427,14 +551,14 @@ export default function CartPageContent() {
                               </div>
                               <input type="radio" name="nova_sub" value={sub} checked={novaSubtype === sub} onChange={() => { setNovaSubtype(sub); setErrors(s => { const n = new Set(s); n.delete('novaSubtype'); return n; }); }} style={{ display: 'none' }} />
                               <span style={{ fontSize: '13px', fontWeight: novaSubtype === sub ? 600 : 500, color: 'var(--text-primary)', flex: 1 }}>
-                                {sub === 'warehouse' ? 'Відділення' : sub === 'postomat' ? 'Поштомат' : 'Кур\'єр'}
+                                {sub === 'warehouse' ? tr.novaWarehouse : sub === 'postomat' ? tr.novaPostomat : tr.novaCourier}
                               </span>
                               {novaSubtype === sub && (
                                 <button
                                   onClick={e => { e.preventDefault(); setNovaSubtype(''); setAddress(''); }}
                                   style={{ fontSize: '12px', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
                                 >
-                                  змінити
+                                  {tr.change}
                                 </button>
                               )}
                             </label>
@@ -444,6 +568,7 @@ export default function CartPageContent() {
                               <NovaPoshtaSelect
                                 key={novaSubtype}
                                 mode={novaSubtype}
+                                lang={lang}
                                 onCityChange={city => { setNovaCityName(city); setAddress(city); setErrors(s => { const n = new Set(s); n.delete('address'); return n; }); }}
                                 onWarehouseChange={wh => { setAddress(wh); setErrors(s => { const n = new Set(s); n.delete('address'); return n; }); }}
                                 onAddressChange={addr => { setAddress(addr); setErrors(s => { const n = new Set(s); n.delete('address'); return n; }); }}
@@ -458,10 +583,10 @@ export default function CartPageContent() {
                       {/* Kharkiv delivery address */}
                       {opt.value === 'kharkiv' && delivery === 'kharkiv' && (
                         <div style={{ marginTop: '10px', paddingLeft: '14px' }}>
-                          <label style={labelStyle}>Адреса доставки</label>
+                          <label style={labelStyle}>{tr.addressLabel}</label>
                           <input
                             style={{ ...inputStyle, paddingLeft: '14px', border: err('address') ?? inputStyle.border }}
-                            placeholder="Вулиця, будинок, квартира / офіс"
+                            placeholder={tr.addressPh}
                             value={address}
                             onChange={e => { setAddress(e.target.value); setErrors(s => { const n = new Set(s); n.delete('address'); return n; }); }}
                           />
@@ -470,14 +595,14 @@ export default function CartPageContent() {
                     </div>
                   ))}
                 </div>
-                {errors.has('delivery') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>Оберіть спосіб доставки</p>}
-                {errors.has('novaSubtype') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>Оберіть відділення або кур&apos;єр</p>}
-                {errors.has('address') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>Оберіть місто та відділення Нової Пошти</p>}
+                {errors.has('delivery') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errDelivery}</p>}
+                {errors.has('novaSubtype') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errNovaSubtype}</p>}
+                {errors.has('address') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errAddress}</p>}
               </Section>
 
               {/* Payment */}
               <div id="field-payment" />
-              <Section icon={CreditCard} title="Спосіб оплати" error={errors.has('payment')}>
+              <Section icon={CreditCard} title={tr.sectionPayment} error={errors.has('payment')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {PAYMENT_OPTIONS.filter(opt => !payment || payment === opt.value).map(opt => (
                     <label key={opt.value} style={{
@@ -505,13 +630,13 @@ export default function CartPageContent() {
                           onClick={e => { e.preventDefault(); setPayment(''); }}
                           style={{ fontSize: '12px', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
                         >
-                          змінити
+                          {tr.change}
                         </button>
                       )}
                     </label>
                   ))}
                 </div>
-                {errors.has('payment') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>Оберіть спосіб оплати</p>}
+                {errors.has('payment') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errPayment}</p>}
               </Section>
 
               {/* Comment */}
@@ -528,7 +653,7 @@ export default function CartPageContent() {
                     <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#E8EEF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <MessageSquare size={16} color="#1E3A5F" strokeWidth={2} />
                     </div>
-                    <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>Коментар до замовлення</span>
+                    <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>{tr.sectionComment}</span>
                   </div>
                   {commentOpen ? <ChevronUp size={16} color="#64748B" /> : <ChevronDown size={16} color="#64748B" />}
                 </button>
@@ -537,7 +662,7 @@ export default function CartPageContent() {
                     <textarea
                       value={comment}
                       onChange={e => setComment(e.target.value)}
-                      placeholder="Побажання, уточнення до замовлення..."
+                      placeholder={tr.commentPh}
                       rows={4}
                       style={{
                         width: '100%', padding: '12px 14px',
@@ -562,7 +687,7 @@ export default function CartPageContent() {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '14px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)',
                 }}>
-                  <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>Ваше замовлення</span>
+                  <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>{tr.orderSummary}</span>
                   <button
                     onClick={clearCart}
                     style={{
@@ -571,7 +696,7 @@ export default function CartPageContent() {
                       border: 'none', cursor: 'pointer', fontWeight: 600,
                     }}
                   >
-                    <Trash2 size={12} />Очистити
+                    <Trash2 size={12} />{tr.clearCart}
                   </button>
                 </div>
 
@@ -635,16 +760,16 @@ export default function CartPageContent() {
               <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Товарів ({totalItems} шт)</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{tr.itemsTotal(totalItems)}</span>
                     <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{totalPrice.toFixed(2)} грн</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Доставка</span>
-                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>За тарифами перевізника</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{tr.deliveryLabel}</span>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{tr.deliveryByCarrier}</span>
                   </div>
                 </div>
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
-                  <span style={{ color: 'var(--text-primary)' }}>Разом</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{tr.total}</span>
                   <span style={{ color: 'var(--text-primary)' }}>{totalPrice.toFixed(2)} грн</span>
                 </div>
                 {role === 'wholesale' && (() => {
@@ -655,10 +780,10 @@ export default function CartPageContent() {
                     <div style={{ marginBottom: '14px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                         <span style={{ color: metMin ? '#15803D' : 'var(--text-secondary)', fontWeight: 600 }}>
-                          {metMin ? '✓ Мінімум досягнуто' : `Мін. замовлення: ${WHOLESALE_MIN.toLocaleString('uk-UA')} ₴`}
+                          {metMin ? tr.minReached : tr.minNeeded(WHOLESALE_MIN)}
                         </span>
                         <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
-                          {metMin ? '' : `ще ${need.toFixed(0)} ₴`}
+                          {metMin ? '' : tr.minRemaining(need)}
                         </span>
                       </div>
                       <div style={{ height: '6px', borderRadius: '4px', background: 'var(--bg-soft)', overflow: 'hidden' }}>
@@ -678,7 +803,7 @@ export default function CartPageContent() {
                     borderRadius: '10px', padding: '12px 14px', marginBottom: '12px',
                     fontSize: '13px', color: '#0369A1', lineHeight: 1.5,
                   }}>
-                    💡 Можна оформити замовлення без реєстрації — просто заповніть форму.
+                    {tr.guestHint}
                   </div>
                 )}
 
@@ -690,7 +815,7 @@ export default function CartPageContent() {
                     fontSize: '13px', color: '#92400E',
                   }}>
                     <AlertCircle size={15} style={{ flexShrink: 0 }} />
-                    Додайте товарів ще на {(WHOLESALE_MIN - totalPrice).toFixed(0)} ₴ для оформлення замовлення
+                    {tr.minWarning(WHOLESALE_MIN - totalPrice)}
                   </div>
                 )}
 
@@ -719,7 +844,7 @@ export default function CartPageContent() {
                     )}
                   </div>
                   <span style={{ fontSize: '13px', fontWeight: 600, color: noCallback ? '#15803D' : '#64748B', lineHeight: 1.4 }}>
-                    Не передзвонювати для підтвердження замовлення
+                    {tr.noCallbackLabel}
                   </span>
                 </div>
                 <button
@@ -735,7 +860,7 @@ export default function CartPageContent() {
                     transition: 'background 0.15s',
                   }}
                 >
-                  {submitting ? 'Завантаження...' : payment === 'card' ? 'Перейти до оплати →' : 'Підтвердити замовлення →'}
+                  {submitting ? tr.submitting : payment === 'card' ? tr.submitCard : tr.submitOrder}
                 </button>
                 {submitError && (
                   <p style={{ fontSize: '12px', color: '#EF4444', textAlign: 'center', marginTop: '8px' }}>{submitError}</p>

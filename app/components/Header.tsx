@@ -214,7 +214,7 @@ export default function Header() {
             </Link>
 
             {/* Cart */}
-            <Link href="/cart" className="btn-icon" style={{
+            <Link href={localizeHref('/cart', lang)} className="btn-icon" style={{
               display: 'inline-flex', alignItems: 'center', gap: '7px',
               height: '38px', padding: '0 18px', borderRadius: '8px',
               border: '1px solid var(--border)', background: 'var(--bg-card)',

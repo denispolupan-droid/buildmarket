@@ -191,6 +191,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     );
     await db.rpc('apply_landed_costs', { p_document_id: receipt.id, p_method: lcMethod });
 
+    // After landed costs are distributed, sync product_stock.price_cost to the updated
+    // avg_cost from stock_balance, and lock prices so supplier sync won't overwrite them.
+    const affectedSkus = lines.map((l: { sku: string }) => l.sku);
+    const { data: updatedBalances } = await db
+      .from('stock_balance')
+      .select('sku, avg_cost')
+      .in('sku', affectedSkus);
+    if (updatedBalances && updatedBalances.length > 0) {
+      await Promise.allSettled(updatedBalances.map(b =>
+        db.from('product_stock').update({
+          price_cost:  parseFloat(Number(b.avg_cost).toFixed(2)),
+          price_locked: true,
+        }).eq('sku', b.sku)
+      ));
+    }
+
     for (const cost of activeCosts) {
       const accountType = expenseAccountMap[cost.cost_type] ?? 'opex';
       const payMethod   = cost.payment_method === 'cash' ? 'cash' : 'bank';

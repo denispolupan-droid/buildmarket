@@ -866,7 +866,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             {t('У магазині вказані роздрібні ціни. Для замовлення за вашими цінами перейдіть до оптового каталогу.', 'В магазине указаны розничные цены. Для заказа по вашим ценам перейдите в оптовый каталог.')}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <a href="/catalog" style={{
+            <a href={lang === 'ru' ? '/ru/catalog' : '/catalog'} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               height: '44px', borderRadius: '10px', background: '#1E3A5F', color: '#fff',
               fontSize: '14px', fontWeight: 700, textDecoration: 'none',

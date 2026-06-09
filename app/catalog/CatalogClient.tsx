@@ -625,7 +625,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 <p className="catalog-count">{filtered.length} {t('товарів', 'товаров')}</p>
               </div>
               {isWholesale && (
-                <a ref={badgeRef} href="/cart" className={`wholesale-min-badge${cartMet ? ' wholesale-min-met' : ''}`}>
+                <a ref={badgeRef} href={lang === 'ru' ? '/ru/cart' : '/cart'} className={`wholesale-min-badge${cartMet ? ' wholesale-min-met' : ''}`}>
                   <div className="wholesale-min-row">
                     <span>{t('Мінімальне замовлення', 'Минимальный заказ')} — <strong>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong></span>
                     {cartTotal > 0 && (
@@ -1044,7 +1044,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
         );
       })()}
       {isWholesale && !badgeVisible && (
-        <a href="/cart" className={`wholesale-float-bar${pillEntered ? ' entered' : ''}${cartFlash ? ' flash' : ''}`}>
+        <a href={lang === 'ru' ? '/ru/cart' : '/cart'} className={`wholesale-float-bar${pillEntered ? ' entered' : ''}${cartFlash ? ' flash' : ''}`}>
           <span className="wholesale-float-label">{t('мін. замовлення', 'мин. заказ')}</span>
           <div className="wholesale-float-track">
             <div className="wholesale-float-fill" style={{

@@ -470,12 +470,12 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
       .from('product_stock')
       .upsert({
         sku:          ourSku,
-        price_cost:   parseFloat(priceCost.toFixed(2)),
         stock_qty:    stockQty,
         stock_status: stockStatus,
         updated_at:   rowTime,
-        // Ціни перезаписуємо тільки якщо не заблоковані
+        // Ціни і собівартість перезаписуємо тільки якщо не заблоковані
         ...(!isPriceLocked && {
+          price_cost:       parseFloat(priceCost.toFixed(2)),
           price_unit:       priceUnit,
           price_old:        priceOld,
           price_retail:     priceRetail,
