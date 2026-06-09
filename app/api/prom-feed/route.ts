@@ -554,8 +554,9 @@ export async function GET(request: NextRequest) {
         ? ruKeywordsRaw.slice(0, 251).replace(/,\s*[^,]*$/, '')
         : ruKeywordsRaw;
 
-      const kwUk = ukKeywords ? `        <keywords>${x(ukKeywords)}</keywords>` : '';
-      const kwRu = ruKeywords ? `        <keywords_ru>${x(ruKeywords)}</keywords_ru>` : '';
+      // Prom convention: base tags = Russian, _ua tags = Ukrainian
+      const kwRu = ruKeywords ? `        <keywords>${x(ruKeywords)}</keywords>` : '';
+      const kwUk = ukKeywords ? `        <keywords_ua>${x(ukKeywords)}</keywords_ua>` : '';
 
       const minQty = (p as { min_order?: number | null }).min_order;
 
@@ -565,10 +566,10 @@ export async function GET(request: NextRequest) {
         <currencyId>UAH</currencyId>
         <categoryId>${groupId}</categoryId>
         <picture>${x(img)}</picture>
-        <name>${fullName}</name>
-        ${fullNameRu ? `<name_ru>${fullNameRu}</name_ru>` : ''}
-        <description>${descUk}</description>
-        ${descRu ? `<description_ru>${descRu}</description_ru>` : ''}
+        ${fullNameRu ? `<name>${fullNameRu}</name>` : `<name>${fullName}</name>`}
+        <name_ua>${fullName}</name_ua>
+        ${descRu ? `<description>${descRu}</description>` : `<description>${descUk}</description>`}
+        <description_ua>${descUk}</description_ua>
         ${!PROM_UNKNOWN_BRANDS.has(p.brand ?? '') ? `<vendor>${x(p.brand)}</vendor>` : ''}
         <vendorCode>${x(p.sku)}</vendorCode>
         ${qty > 0 ? `<stock_quantity>${qty}</stock_quantity>` : ''}
