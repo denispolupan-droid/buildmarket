@@ -242,7 +242,13 @@ function dedup(parts: (string | null | undefined)[]): string {
   const seen = new Set<string>();
   return parts
     .filter(Boolean)
-    .flatMap(k => (k as string).split(',').map(s => s.trim()).filter(Boolean))
+    // replace decimal commas (e.g. "0,9 кг") with placeholder before splitting
+    .flatMap(k => (k as string)
+      .replace(/(\d),(\d)/g, '$1·$2')
+      .split(',')
+      .map(s => s.trim().replace(/·/g, ','))
+      .filter(Boolean)
+    )
     .filter(k => { const lk = k.toLowerCase(); if (seen.has(lk)) return false; seen.add(lk); return true; })
     .join(', ');
 }
@@ -537,9 +543,12 @@ export async function GET(request: NextRequest) {
       const numericParamsXml = numericParts.join('\n');
 
       // ── Keywords ───────────────────────────────────────────────────────────
-      const keywordsRuRaw = (p as { keywords_ru?: string | null }).keywords_ru;
-      const ukKeywords = dedup([p.keywords]);
-      const ruKeywordsRaw = dedup([keywordsRuRaw, nameRu && nameRu !== p.name ? nameRu : null]);
+      const COMMERCIAL = /купити|купить|купіт|ціна|цена|цену|оптом|украина|україна/i;
+      const filterCommercial = (kw: string) =>
+        dedup([kw]).split(', ').filter(k => !COMMERCIAL.test(k)).join(', ');
+
+      const ukKeywords   = filterCommercial(p.keywords ?? '');
+      const ruKeywordsRaw = filterCommercial((p as { keywords_ru?: string | null }).keywords_ru ?? '');
       // Trim at last comma boundary to stay within Prom's 250-char limit
       const ruKeywords = ruKeywordsRaw.length > 250
         ? ruKeywordsRaw.slice(0, 251).replace(/,\s*[^,]*$/, '')
