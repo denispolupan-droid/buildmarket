@@ -52,7 +52,8 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
   function handleAdd() {
     if (isWholesale) { onWholesaleBlock(); return; }
     addItem({
-      sku: p.sku, name: p.name, brand: p.brand, volume: p.volume ?? null,
+      sku: p.sku, name: p.name, name_ru: (p as { name_ru?: string | null }).name_ru ?? null,
+      brand: p.brand, volume: p.volume ?? null,
       price: price ?? 0, min_order: 1,
       nl1: p.nl1 ?? '', nl2: p.nl2 ?? undefined,
       bc: p.bc, ac: p.ac, img_type: p.img_type, imageUrl: p.image ?? undefined,

@@ -237,6 +237,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
               inStock={inStock}
               sku={product.sku}
               name={product.name}
+              name_ru={(product as { name_ru?: string | null }).name_ru ?? undefined}
               brand={product.brand}
               volume={product.volume}
               nl1={product.nl1}

@@ -716,7 +716,9 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                       </Link>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '1px' }}>{item.brand} · {item.sku}</div>
-                        <Link href={`/product/${item.sku}`} style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3, marginBottom: '6px', display: 'block', textDecoration: 'none' }}>{item.name}</Link>
+                        <Link href={`/product/${item.sku}`} style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3, marginBottom: '6px', display: 'block', textDecoration: 'none' }}>
+                          {lang === 'ru' && item.name_ru ? item.name_ru : item.name}
+                        </Link>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <button

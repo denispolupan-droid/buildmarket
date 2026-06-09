@@ -73,6 +73,7 @@ export type ProductListItem = Product & {
 export type CartItem = {
   sku: string;
   name: string;
+  name_ru?: string | null;
   brand: string;
   volume: string | null;
   price: number;

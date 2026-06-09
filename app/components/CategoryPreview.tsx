@@ -118,7 +118,8 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
   function handleAddToCart() {
     if (!product) return;
     addItem({
-      sku: product.sku, name: product.name, brand: product.brand, volume: product.volume,
+      sku: product.sku, name: product.name, name_ru: (product as { name_ru?: string | null }).name_ru ?? null,
+      brand: product.brand, volume: product.volume,
       price: priceUnit, min_order: curMinOrder,
       nl1: product.nl1 ?? '', nl2: product.nl2 ?? undefined,
       bc: product.bc, ac: product.ac, img_type: product.img_type, imageUrl: product.image ?? undefined,

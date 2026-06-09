@@ -383,7 +383,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   }
   function handleAddToCart(p: ProductFull, qty: number) {
     addItem({
-      sku: p.sku, name: displayName(p), brand: p.brand, volume: p.volume,
+      sku: p.sku, name: p.name, name_ru: (p as { name_ru?: string | null }).name_ru ?? null,
+      brand: p.brand, volume: p.volume,
       price: p.stock?.price_unit ?? 0, min_order: 1,
       nl1: p.nl1 ?? '', nl2: p.nl2 ?? undefined,
       bc: p.bc, ac: p.ac, img_type: p.img_type, imageUrl: p.image ?? undefined,
