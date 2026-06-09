@@ -86,9 +86,7 @@ export async function* enrichKeywordsRu(opts: {
         .filter(k => k.length > 1 && !COMMERCIAL.test(k) && !/ключевые слова|поисковые/i.test(k))
         .filter((k, i, arr) => arr.findIndex(x => x.toLowerCase() === k.toLowerCase()) === i)
         .slice(0, 10)
-        .join(', ')
-        .slice(0, 250)
-        .replace(/,\s*[^,]*$/, ''); // не обрізати посередині слова
+        .join(', ');
 
       await supabase
         .from('products')
