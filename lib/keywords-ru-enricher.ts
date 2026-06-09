@@ -77,15 +77,18 @@ export async function* enrichKeywordsRu(opts: {
         .replace(/^#[^\n]+\n+/gm, '')
         .trim();
 
-      // Sanitize: remove quotes, normalize commas, deduplicate
+      // Sanitize: remove quotes, normalize commas, strip commercial terms, deduplicate
+      const COMMERCIAL = /купить|купіт|цена|цену|цін|оптом|украина/i;
       const keywords_ru = stripped
         .replace(/^["']|["']$/g, '')
         .split(',')
         .map(k => k.trim().replace(/^[-•*#]\s*/, ''))
-        .filter(k => k.length > 1 && !/ключевые слова|поисковые/i.test(k))
+        .filter(k => k.length > 1 && !COMMERCIAL.test(k) && !/ключевые слова|поисковые/i.test(k))
         .filter((k, i, arr) => arr.findIndex(x => x.toLowerCase() === k.toLowerCase()) === i)
-        .slice(0, 12)
-        .join(', ');
+        .slice(0, 10)
+        .join(', ')
+        .slice(0, 250)
+        .replace(/,\s*[^,]*$/, ''); // не обрізати посередині слова
 
       await supabase
         .from('products')

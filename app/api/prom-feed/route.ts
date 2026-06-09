@@ -532,7 +532,11 @@ export async function GET(request: NextRequest) {
       // ── Keywords ───────────────────────────────────────────────────────────
       const keywordsRuRaw = (p as { keywords_ru?: string | null }).keywords_ru;
       const ukKeywords = dedup([p.keywords]);
-      const ruKeywords = dedup([keywordsRuRaw, nameRu && nameRu !== p.name ? nameRu : null]);
+      const ruKeywordsRaw = dedup([keywordsRuRaw, nameRu && nameRu !== p.name ? nameRu : null]);
+      // Trim at last comma boundary to stay within Prom's 250-char limit
+      const ruKeywords = ruKeywordsRaw.length > 250
+        ? ruKeywordsRaw.slice(0, 251).replace(/,\s*[^,]*$/, '')
+        : ruKeywordsRaw;
 
       const kwUk = ukKeywords ? `        <keywords>${x(ukKeywords)}</keywords>` : '';
       const kwRu = ruKeywords ? `        <keywords_ru>${x(ruKeywords)}</keywords_ru>` : '';
