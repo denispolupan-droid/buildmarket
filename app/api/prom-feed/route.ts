@@ -361,9 +361,21 @@ export async function GET(request: NextRequest) {
         : (p.category_slug ? (slugToGroupId.get(p.category_slug) ?? 1) : 1);
 
       // ── Names ──────────────────────────────────────────────────────────────
-      const nameRu   = (p as { name_ru?: string | null }).name_ru;
-      const fullName = x(p.name);
-      const fullNameRu = nameRu ? x(nameRu) : null;
+      // Prom recommends: Brand + Name + Volume.
+      // We build this in the feed only — the DB name is never modified.
+      // Guards prevent duplication when brand/volume are already in the name.
+      const nameRu = (p as { name_ru?: string | null }).name_ru;
+
+      const hasWeight  = (t: string) => /\d[\d,.]*\s*(кг|г\b|мл|л\b)/i.test(t);
+      const hasBrand   = (t: string) => t.toLowerCase().includes(p.brand.toLowerCase());
+      const promName   = (base: string) => x([
+        hasBrand(base)  ? null : p.brand,
+        base,
+        p.volume && !base.includes(p.volume) && !hasWeight(base) ? p.volume : null,
+      ].filter(Boolean).join(' '));
+
+      const fullName   = promName(p.name);
+      const fullNameRu = nameRu ? promName(nameRu) : null;
 
       // ── Descriptions ───────────────────────────────────────────────────────
       // Ukrainian: prefer full text, fall back to short
