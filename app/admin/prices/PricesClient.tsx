@@ -483,7 +483,7 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
                 <tbody>
                   {repricingPreview.map(row => (
                     <tr key={row.sku} style={{ borderBottom: '1px solid #F0F7FF' }}>
-                      <td style={{ padding: '5px 10px' }}>{row.brand} {row.name}{row.volume ? ` ${row.volume}` : ''}</td>
+                      <td style={{ padding: '5px 10px' }}>{row.brand} {row.name}{row.volume && !row.name.includes(row.volume) ? ` ${row.volume}` : ''}</td>
                       <td style={{ padding: '5px 10px' }}><PreviewChange before={row.before.unit} after={row.after.unit} /></td>
                       <td style={{ padding: '5px 10px' }}><PreviewChange before={row.before.retail} after={row.after.retail} /></td>
                       <td style={{ padding: '5px 10px' }}><PreviewChange before={row.before.drop} after={row.after.drop} /></td>
@@ -548,7 +548,7 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
                           </td>
                           <td style={{ padding: '8px 14px' }}>
                             <div style={{ fontSize: 13, fontWeight: 500, color: '#111' }}>
-                              {r.p.brand} {r.p.name}{r.p.volume ? ` ${r.p.volume}` : ''}
+                              {r.p.brand} {r.p.name}{r.p.volume && !r.p.name.includes(r.p.volume) ? ` ${r.p.volume}` : ''}
                             </div>
                             <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace' }}>{r.p.sku}</div>
                           </td>
