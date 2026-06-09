@@ -606,7 +606,9 @@ ${offersXml}
   return new NextResponse(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'no-store',
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Last-Modified': new Date().toUTCString(),
+      'Pragma': 'no-cache',
     },
   });
 }
