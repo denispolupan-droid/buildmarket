@@ -22,6 +22,7 @@ const BAD_PATTERN = `keywords_ru.ilike.%Украина%,keywords_ru.ilike.%оп�
 
 export async function* enrichKeywordsRu(opts: {
   limit?: number;
+  offset?: number;
   category?: string;
   sku?: string;
   force?: boolean; // rewrite even non-bad keywords
@@ -44,7 +45,9 @@ export async function* enrichKeywordsRu(opts: {
 
   if (opts.sku)      query = query.eq('sku', opts.sku);
   if (opts.category) query = query.eq('category_slug', opts.category);
-  if (opts.limit)    query = query.limit(opts.limit);
+  const from = opts.offset ?? 0;
+  const to   = opts.limit ? from + opts.limit - 1 : from + 999;
+  query = query.range(from, to);
 
   const { data: products, error } = await query;
   if (error) throw error;
