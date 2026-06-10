@@ -39,6 +39,7 @@ const TYPE_LABELS: Record<string, string> = {
   write_off:                 'Списання',
   transfer:                  'Переміщення',
   inventory:                 'Інвентаризація',
+  price_change:              'Переоцінка',
 };
 
 const STATUS_STYLE: Record<string, { label: string; color: string; bg: string; icon: typeof Clock }> = {

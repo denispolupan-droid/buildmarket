@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Pencil, Check, X, Lock, Unlock, FileSpreadsheet, Printer, ChevronDown, ChevronUp, RotateCcw, Tag } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
+import PricesLog from './PricesLog';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -121,6 +122,8 @@ export default function PricesClient({ products, stock, categories }: Props) {
   const [plGenerating, setPlGenerating]             = useState(false);
   const [mounted, setMounted]                       = useState(false);
   useEffect(() => setMounted(true), []);
+
+  const [activeTab, setActiveTab] = useState<'prices' | 'log'>('prices');
 
   // ── Merged data ─────────────────────────────────────────────────────────────
 
@@ -426,7 +429,7 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
     <div style={{ padding: '28px 32px 80px', maxWidth: 1300 }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#111' }}>Ціни</h1>
           <p style={{ margin: '4px 0 0', color: '#6B7280', fontSize: 13 }}>
@@ -443,6 +446,28 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1.5px solid var(--border)' }}>
+        {(['prices', 'log'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              border: 'none', background: 'none',
+              color: activeTab === tab ? '#1D4ED8' : '#6B7280',
+              borderBottom: activeTab === tab ? '2px solid #1D4ED8' : '2px solid transparent',
+              marginBottom: -1.5,
+            }}
+          >
+            {tab === 'prices' ? 'Ціни' : 'Журнал переоцінок'}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'log' && <PricesLog />}
+
+      {activeTab === 'prices' && <>
       {/* Search + filters */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center' }}>
         <input
@@ -809,6 +834,7 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
         </div>,
         document.body,
       )}
+      </>}
     </div>
   );
 }
