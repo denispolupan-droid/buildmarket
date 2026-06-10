@@ -484,11 +484,19 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
       return true;
     });
 
+    // Pre-populate in sort_order (categories prop is already ordered by sort_order)
     const grouped2 = new Map<string, typeof printRows>();
+    for (const cat of categories) {
+      grouped2.set(cat.slug, []);
+    }
     for (const r of printRows) {
       const key = r.p.category_slug ?? '__none__';
       if (!grouped2.has(key)) grouped2.set(key, []);
       grouped2.get(key)!.push(r);
+    }
+    // Remove empty
+    for (const [key, rows] of grouped2) {
+      if (rows.length === 0) grouped2.delete(key);
     }
 
     const descriptions = catDescriptions;

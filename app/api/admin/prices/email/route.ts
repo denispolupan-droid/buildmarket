@@ -207,7 +207,12 @@ export async function POST(req: NextRequest) {
     const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
     const catMap   = new Map((categories ?? []).map(c => [c.slug, c]));
 
+    // Pre-populate in sort_order so PDF follows catalog hierarchy
     const grouped = new Map<string, PdfGroup>();
+    for (const cat of (categories ?? [])) {
+      if (selectedCats && !selectedCats.has(cat.slug)) continue;
+      grouped.set(cat.slug, { catName: cat.name, description: cat.description ?? '', rows: [] });
+    }
 
     for (const prod of (products ?? [])) {
       const s = stockMap.get(prod.sku);
@@ -215,14 +220,19 @@ export async function POST(req: NextRequest) {
       if (!includeOOS && s.stock_status !== 'in_stock') continue;
       if (selectedCats && prod.category_slug && !selectedCats.has(prod.category_slug)) continue;
 
-      const price   = Number(s[priceType]) || null;
-      const slug    = prod.category_slug ?? '__other__';
-      const cat     = catMap.get(slug);
-      const catName = slug !== '__other__' ? (cat?.name ?? slug) : 'Інше';
-      const desc    = cat?.description ?? '';
+      const price = Number(s[priceType]) || null;
+      const slug  = prod.category_slug ?? '__other__';
 
-      if (!grouped.has(slug)) grouped.set(slug, { catName, description: desc, rows: [] });
+      if (!grouped.has(slug)) {
+        const cat = catMap.get(slug);
+        grouped.set(slug, { catName: cat?.name ?? slug, description: cat?.description ?? '', rows: [] });
+      }
       grouped.get(slug)!.rows.push({ name: prod.name, brand: prod.brand, volume: prod.volume, price });
+    }
+
+    // Drop empty groups (categories that have no matching products)
+    for (const [key, val] of grouped) {
+      if (val.rows.length === 0) grouped.delete(key);
     }
 
     const pdfBuffer = await buildPdf(grouped, showBrand, showDescriptions, priceLabel);
