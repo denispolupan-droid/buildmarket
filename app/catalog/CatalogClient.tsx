@@ -152,12 +152,14 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     if (!initialCategory) return new Set<string>();
     const expanded = new Set<string>();
     const catMap = new Map(categories.map(c => [c.slug, c]));
+    const childSlugs = new Set(categories.filter(c => c.parent_slug === initialCategory).map(c => c.slug));
     let slug: string | null = initialCategory;
     while (slug) {
       const cat = catMap.get(slug);
       if (cat?.parent_slug) { expanded.add(cat.parent_slug); slug = cat.parent_slug; }
       else break;
     }
+    if (childSlugs.size > 0) expanded.add(initialCategory);
     return expanded;
   });
   const [catsOpen,      setCatsOpen]      = useState(false);
@@ -346,12 +348,18 @@ export default function CatalogClient({ products, categories, initialSearch = ''
 
   useEffect(() => {
     if (!selCat) return;
-    const cat = categories.find(c => c.slug === selCat);
-    if (cat?.parent_slug) {
-      setExpandedCats(prev => new Set([...prev, cat.parent_slug!]));
-    } else if ((childrenOf[selCat] ?? []).length > 0) {
-      setExpandedCats(prev => new Set([...prev, selCat]));
-    }
+    const catMap = new Map(categories.map(c => [c.slug, c]));
+    setExpandedCats(prev => {
+      const next = new Set(prev);
+      let slug: string | null = selCat;
+      while (slug) {
+        const c = catMap.get(slug);
+        if (c?.parent_slug) { next.add(c.parent_slug); slug = c.parent_slug; }
+        else break;
+      }
+      if ((childrenOf[selCat] ?? []).length > 0) next.add(selCat);
+      return next;
+    });
     setFilterValues({}); setFilterVolume(''); setFilterVolumeKg('');
   }, [selCat, categories, childrenOf]);
 
@@ -460,7 +468,10 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   const children = childrenOf[cat.slug] ?? [];
                   const isExpanded = expandedCats.has(cat.slug);
                   const isDirectActive = selCat === cat.slug;
-                  const isParentActive = !isDirectActive && children.some(c => c.slug === selCat);
+                  const isParentActive = !isDirectActive && (
+                    children.some(c => c.slug === selCat) ||
+                    children.some(c => (childrenOf[c.slug] ?? []).some(gc => gc.slug === selCat))
+                  );
                   return (
                     <div key={cat.slug} ref={el => { catRefs.current[cat.slug] = el; }}>
                       <div
@@ -494,17 +505,55 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                         maxHeight: isExpanded ? '2000px' : '0',
                         transition: 'max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
                       }}>
-                        {children.map(child => (
-                          <div
-                            key={child.slug}
-                            ref={el => { catRefs.current[child.slug] = el; }}
-                            className={'cat-item' + (selCat === child.slug ? ' active' : '')}
-                            style={{ paddingLeft: '20px', fontSize: '13px' }}
-                            onClick={() => selectCat(selCat === child.slug ? '' : child.slug, cat.slug)}
-                          >
-                            {cName(child.name, child.slug)}
-                          </div>
-                        ))}
+                        {children.map(child => {
+                          const grandchildren = childrenOf[child.slug] ?? [];
+                          const isChildExpanded = expandedCats.has(child.slug);
+                          const isChildActive = selCat === child.slug;
+                          const isChildParentActive = !isChildActive && grandchildren.some(gc => gc.slug === selCat);
+                          return (
+                            <div key={child.slug} ref={el => { catRefs.current[child.slug] = el; }}>
+                              <div
+                                className={'cat-item' + (isChildActive ? ' active' : isChildParentActive ? ' parent-active' : '')}
+                                style={{ paddingLeft: '20px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                                onClick={() => {
+                                  if (grandchildren.length > 0) {
+                                    const expanding = !expandedCats.has(child.slug);
+                                    setExpandedCats(prev => { const next = new Set(prev); next.has(child.slug) ? next.delete(child.slug) : next.add(child.slug); return next; });
+                                    if (expanding) selectCat(child.slug, cat.slug);
+                                  } else {
+                                    selectCat(selCat === child.slug ? '' : child.slug, cat.slug);
+                                  }
+                                }}
+                              >
+                                <span style={{ flex: 1 }}>{cName(child.name, child.slug)}</span>
+                                {grandchildren.length > 0 && (
+                                  isChildExpanded
+                                    ? <ChevronUp size={12} style={{ flexShrink: 0, opacity: 0.5 }} />
+                                    : <ChevronDown size={12} style={{ flexShrink: 0, opacity: 0.5 }} />
+                                )}
+                              </div>
+                              {grandchildren.length > 0 && (
+                                <div style={{
+                                  overflow: 'hidden',
+                                  maxHeight: isChildExpanded ? '800px' : '0',
+                                  transition: 'max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+                                }}>
+                                  {grandchildren.map(gc => (
+                                    <div
+                                      key={gc.slug}
+                                      ref={el => { catRefs.current[gc.slug] = el; }}
+                                      className={'cat-item' + (selCat === gc.slug ? ' active' : '')}
+                                      style={{ paddingLeft: '36px', fontSize: '12px' }}
+                                      onClick={() => selectCat(selCat === gc.slug ? '' : gc.slug, child.slug)}
+                                    >
+                                      {cName(gc.name, gc.slug)}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
