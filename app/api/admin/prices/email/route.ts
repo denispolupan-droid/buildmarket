@@ -84,14 +84,7 @@ async function buildPdf(
   opts: { showBrand: boolean; showDescriptions: boolean; showImages: boolean; priceLabel: string },
   imageBuffers: Map<string, Buffer>,
 ): Promise<Buffer> {
-  const [fontReg, fontBold, logoBuffer] = await Promise.all([
-    fetchFont(false),
-    fetchFont(true),
-    (async () => {
-      try { return readFileSync(join(process.cwd(), 'public', 'fixline-logo.png')); }
-      catch { return null; }
-    })(),
-  ]);
+  const [fontReg, fontBold] = await Promise.all([fetchFont(false), fetchFont(true)]);
 
   const { showBrand, showDescriptions, showImages, priceLabel } = opts;
 
@@ -117,47 +110,65 @@ async function buildPdf(
 
     const date = new Date().toLocaleDateString('uk-UA');
 
-    // ── Page header ────────────────────────────────────────────────────────────
+    // ── Page header — drawn ONLY on the first page ────────────────────────────
+    let headerDrawn = false;
     function drawPageHeader() {
+      if (headerDrawn) return;  // subsequent pages: no header
+      headerDrawn = true;
+
       const y0 = M;
-      const H  = 66;
+      const H  = 68;
       doc.rect(M, y0, PW, H).fill('#1E3A5F');
 
-      // Logo: actual PNG is 1421×246 → at height 30 the width = round(30 * 1421/246) = 173px
-      const LOGO_H = 30;
-      const LOGO_W = Math.round(LOGO_H * 1421 / 246); // 173
-      let logoRightEdge = M + 12;
-      if (logoBuffer) {
-        try {
-          doc.image(logoBuffer, M + 10, y0 + (H - LOGO_H) / 2, { width: LOGO_W, height: LOGO_H });
-          logoRightEdge = M + 10 + LOGO_W + 10;
-        } catch { /* skip if image fails */ }
-      }
+      // ── Logo (replicate fixline-logo-white.svg geometry) ──────────────────
+      // SVG: three tapering rounded bars + thin vertical divider + "fixline" text
+      const bx      = M + 12;
+      const barTop  = y0 + (H - 28) / 2; // center 28px icon block in header
 
-      // Vertical divider
-      const divX = logoRightEdge + 10;
-      doc.moveTo(divX, y0 + 14).lineTo(divX, y0 + H - 14)
-         .strokeColor('rgba(255,255,255,0.25)').lineWidth(1).stroke();
+      doc.roundedRect(bx, barTop,      22, 6, 3).fill('#4880B8'); // longest, blue
+      doc.roundedRect(bx, barTop + 10, 16, 6, 3).fill('#fff');    // medium
+      doc.roundedRect(bx, barTop + 20, 10, 6, 3).fill('#fff');    // short
 
-      // Label + url + date
-      const txtX = divX + 12;
+      // Thin vertical line between icon and wordmark
+      const svgSepX = bx + 30;
+      doc.moveTo(svgSepX, y0 + 14).lineTo(svgSepX, y0 + H - 14)
+         .strokeColor('#4880B8').lineWidth(1.5).stroke();
+
+      // "fix" (bold) + "line" (regular) wordmark
+      const fSize = 22;
+      const wordX = svgSepX + 10;
+      const wordY = y0 + (H - fSize) / 2 - 1;
+      doc.font('B').fontSize(fSize);
+      const fixW = doc.widthOfString('fix');
+      doc.font('R').fontSize(fSize);
+      const lineW = doc.widthOfString('line');
+      doc.font('B').fontSize(fSize).fillColor('#fff').text('fix',  wordX,        wordY, { lineBreak: false });
+      doc.font('R').fontSize(fSize).fillColor('#fff').text('line', wordX + fixW, wordY, { lineBreak: false });
+
+      // Divider between wordmark and info block
+      const div2X = wordX + fixW + lineW + 14;
+      doc.moveTo(div2X, y0 + 14).lineTo(div2X, y0 + H - 14)
+         .strokeColor('rgba(255,255,255,0.2)').lineWidth(1).stroke();
+
+      // ПРАЙС-ЛИСТ / fixline.com.ua / date
+      const txtX = div2X + 10;
       doc.font('R').fontSize(7.5).fillColor('rgba(255,255,255,0.55)')
          .text('ПРАЙС-ЛИСТ', txtX, y0 + 14, { lineBreak: false });
       doc.font('R').fontSize(9).fillColor('rgba(255,255,255,0.85)')
          .text('fixline.com.ua', txtX, y0 + 27, { lineBreak: false });
       doc.font('R').fontSize(8.5).fillColor('rgba(255,255,255,0.55)')
-         .text(date, txtX, y0 + 41, { lineBreak: false });
+         .text(date, txtX, y0 + 42, { lineBreak: false });
 
-      // Phone
+      // Right: phone
       doc.font('B').fontSize(14).fillColor('#fff')
          .text('+380 99 199 77 88', M, y0 + 11, { width: PW - 4, align: 'right', lineBreak: false });
-      // Email
+      // Right: email
       doc.font('R').fontSize(8.5).fillColor('rgba(255,255,255,0.75)')
-         .text('info@fixline.com.ua', M, y0 + 31, { width: PW - 4, align: 'right', lineBreak: false });
-      // Social dots
-      const socY  = y0 + 47;
-      const socX  = M + PW - 4;
-      const socR  = 9;
+         .text('info@fixline.com.ua', M, y0 + 32, { width: PW - 4, align: 'right', lineBreak: false });
+      // Social circles (Viber / Telegram / Instagram)
+      const socY = y0 + H - 22;
+      const socX = M + PW - 4;
+      const socR = 9;
       const socColors = ['#7360F2', '#2AABEE', '#C13584'];
       const socLabels = ['V', 'T', 'I'];
       for (let s = 2; s >= 0; s--) {
