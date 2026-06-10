@@ -499,10 +499,11 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
     const dateStr   = new Date().toISOString().slice(0, 10);
     const dateLabel = new Date().toLocaleDateString('uk-UA');
     const xlsxParams = JSON.stringify({
-      priceType:         plPriceType,
-      categories:        plAllCats ? 'all' : [...plCategories].join(','),
-      includeOutOfStock: String(plIncludeOutOfStock),
-      showBrand:         String(plShowBrand),
+      priceType:          plPriceType,
+      categories:         plAllCats ? 'all' : [...plCategories].join(','),
+      includeOutOfStock:  String(plIncludeOutOfStock),
+      showBrand:          String(plShowBrand),
+      showDescriptions:   String(plShowDescriptions),
     });
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Прайс-лист</title>
@@ -515,16 +516,19 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
   .btn-p { background: #1D4ED8; color: #fff; border: none; }
   .btn-s { background: #fff; color: #374151; border: 1.5px solid #E5E7EB; }
   .content { max-width: 960px; margin: 24px auto; padding: 0 24px; }
-  .pl-label { font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px; }
-  .logo { height: 30px; display: block; margin-bottom: 3px; }
-  .site-url { font-size: 11px; color: #1D4ED8; text-decoration: none; display: block; margin-bottom: 3px; }
-  .meta { color: #9CA3AF; font-size: 11px; }
-  .pl-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-  .pl-contacts { text-align: right; padding-top: 18px; }
-  .pl-phone { font-size: 15px; font-weight: 700; color: #111; margin-bottom: 4px; letter-spacing: .01em; }
-  .pl-email { font-size: 11px; color: #1D4ED8; text-decoration: none; display: block; margin-bottom: 8px; }
-  .pl-socials { display: flex; gap: 5px; justify-content: flex-end; }
-  .pl-soc { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; text-decoration: none; }
+  .pl-banner { background: #1A2744; width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .pl-banner-inner { max-width: 960px; margin: 0 auto; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; }
+  .pl-brand { display: flex; align-items: center; gap: 18px; }
+  .logo { height: 42px; display: block; }
+  .pl-brand-meta { display: flex; flex-direction: column; gap: 3px; border-left: 1px solid rgba(255,255,255,0.15); padding-left: 18px; }
+  .site-url { font-size: 12px; color: rgba(255,255,255,0.5); text-decoration: none; }
+  .meta { color: rgba(255,255,255,0.35); font-size: 11px; }
+  .pl-label { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: .12em; margin-bottom: 2px; }
+  .pl-contacts { text-align: right; }
+  .pl-phone { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 3px; letter-spacing: .01em; }
+  .pl-email { font-size: 12px; color: rgba(255,255,255,0.6); text-decoration: none; display: block; margin-bottom: 10px; }
+  .pl-socials { display: flex; gap: 6px; justify-content: flex-end; }
+  .pl-soc { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 7px; text-decoration: none; }
   h2 { font-size: 13px; font-weight: 700; background: #f0f4f8; padding: 6px 10px; margin: 20px 0 4px; border-left: 3px solid #1D4ED8; }
   table { width: 100%; border-collapse: collapse; margin-bottom: 8px; table-layout: fixed; }
   th { background: #f9fafb; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; padding: 5px 8px; text-align: left; border-bottom: 1px solid #e5e7eb; }
@@ -555,6 +559,7 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
   .erow .btn { flex: 1; justify-content: center; }
   @media print {
     .action-bar, .overlay { display: none !important; }
+    .pl-banner { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .content { margin: 0; padding: 0; max-width: 100%; }
     @page {
       margin: 15mm;
@@ -571,13 +576,15 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
   <button class="btn btn-s" onclick="downloadXlsx()">Скачати XLSX</button>
   <button class="btn btn-s" onclick="document.getElementById('eo').classList.add('show')">Відправити на email</button>
 </div>
-<div class="content">
-  <div class="pl-header">
-    <div>
-      <div class="pl-label">Прайс-лист</div>
-      <img class="logo" src="${origin}/fixline-logo.svg" alt="Fixline">
-      <a class="site-url" href="https://fixline.com.ua" target="_blank">fixline.com.ua</a>
-      <div class="meta">${dateLabel}</div>
+<div class="pl-banner">
+  <div class="pl-banner-inner">
+    <div class="pl-brand">
+      <img class="logo" src="${origin}/fixline-logo-white.svg" alt="Fixline">
+      <div class="pl-brand-meta">
+        <div class="pl-label">Прайс-лист</div>
+        <a class="site-url" href="https://fixline.com.ua" target="_blank">fixline.com.ua</a>
+        <div class="meta">${dateLabel}</div>
+      </div>
     </div>
     <div class="pl-contacts">
       <div class="pl-phone">+380 99 199 77 88</div>
@@ -605,6 +612,8 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
       </div>
     </div>
   </div>
+</div>
+<div class="content">
 ${[...grouped2.entries()].map(([slug, catRows]) => {
   const catName = catRows[0]?.cat?.name ?? slug;
   const desc = plShowDescriptions ? (descriptions.get(slug) || '') : '';
