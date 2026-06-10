@@ -45,18 +45,26 @@ export async function PATCH(req: NextRequest) {
 
   // ── Batch repricing mode ────────────────────────────────────────────────────
   if (body.batch) {
-    const batch = body.batch as { sku: string; unit?: number | null; retail?: number | null; drop?: number | null }[];
+    const batch    = body.batch as { sku: string; unit?: number | null; retail?: number | null; drop?: number | null }[];
+    const is_promo = !!body.is_promo;
 
     const errors: string[] = [];
-    // Process in parallel chunks of 20
     const CHUNK = 20;
     for (let i = 0; i < batch.length; i += CHUNK) {
       const chunk = batch.slice(i, i + CHUNK);
       await Promise.all(chunk.map(async item => {
         const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
-        if (item.unit   != null) update.price_unit   = item.unit;
-        if (item.retail != null) update.price_retail = item.retail;
-        if (item.drop   != null) update.price_drop   = item.drop;
+        if (is_promo) {
+          // Promo mode: write new retail to price_promo, keep price_retail as "old" for site display
+          if (item.retail != null) update.price_promo = item.retail;
+          // unit/drop still update normally
+          if (item.unit != null) update.price_unit = item.unit;
+          if (item.drop != null) update.price_drop = item.drop;
+        } else {
+          if (item.unit   != null) update.price_unit   = item.unit;
+          if (item.retail != null) update.price_retail = item.retail;
+          if (item.drop   != null) update.price_drop   = item.drop;
+        }
         const { error } = await db.from('product_stock').update(update).eq('sku', item.sku);
         if (error) errors.push(`${item.sku}: ${error.message}`);
       }));

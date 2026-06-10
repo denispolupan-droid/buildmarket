@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Lock, Unlock, FileSpreadsheet, Printer, ChevronDown, ChevronUp } from 'lucide-react';
+import { Pencil, Check, X, Lock, Unlock, FileSpreadsheet, Printer, ChevronDown, ChevronUp, RotateCcw, Tag } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -76,14 +76,6 @@ function fmt(v: number | null) {
   return v.toLocaleString('uk-UA', { maximumFractionDigits: 0 }) + ' ₴';
 }
 
-function marginColor(pct: number) {
-  if (pct >= 30) return '#16A34A';
-  if (pct >= 20) return '#65A30D';
-  if (pct >= 10) return '#D97706';
-  if (pct >= 0)  return '#EA580C';
-  return '#DC2626';
-}
-
 function calcPromPrice(retail: number, markup: number, commission: number) {
   return Math.ceil(retail * (1 + markup / 100) / (1 - commission / 100));
 }
@@ -96,6 +88,10 @@ export default function PricesClient({ products, stock, categories }: Props) {
 
   const [search, setSearch]             = useState('');
   const [showInactive, setShowInactive] = useState(false);
+  const [filterStock, setFilterStock]   = useState<'all' | 'in_stock' | 'out'>('all');
+  const [filterBrand, setFilterBrand]   = useState('');
+  const [filterNoPrice, setFilterNoPrice]   = useState(false);
+  const [filterLocked, setFilterLocked]     = useState(false);
   const [collapsed, setCollapsed]       = useState<Set<string>>(new Set());
   const [selected, setSelected]         = useState<Set<string>>(new Set());
   const [editSku, setEditSku]           = useState<string | null>(null);
@@ -107,7 +103,11 @@ export default function PricesClient({ products, stock, categories }: Props) {
   const [repricingType, setRepricingType]     = useState<RepricingType>('multiply_cost');
   const [repricingValue, setRepricingValue]   = useState('');
   const [repricingTarget, setRepricingTarget] = useState<RepricingTarget>('retail');
+  const [repricingComment, setRepricingComment] = useState('');
+  const [repricingRevertAt, setRepricingRevertAt] = useState('');
+  const [repricingIsPromo, setRepricingIsPromo] = useState(false);
   const [showPreview, setShowPreview]         = useState(false);
+  const [previewKey, setPreviewKey]           = useState(0);
 
   // Pricelist modal
   const [showPricelist, setShowPricelist]           = useState(false);
@@ -121,6 +121,8 @@ export default function PricesClient({ products, stock, categories }: Props) {
   useEffect(() => setMounted(true), []);
 
   // ── Merged data ─────────────────────────────────────────────────────────────
+
+  const allBrands = useMemo(() => [...new Set(products.map(p => p.brand).filter(Boolean))].sort(), [products]);
 
   const rows = useMemo(() => {
     const q = search.toLowerCase();
@@ -142,13 +144,14 @@ export default function PricesClient({ products, stock, categories }: Props) {
         const promCommission = cat?.prom_commission_pct ?? 0;
         const baseForProm    = retail ?? unit ?? 0;
         const promPrice      = baseForProm > 0 ? calcPromPrice(baseForProm, promMarkup, promCommission) : null;
-        const netProm        = promPrice != null ? promPrice * (1 - promCommission / 100) : null;
-        const marginUah      = netProm != null && cost != null ? netProm - cost : null;
-        const marginPct      = marginUah != null && netProm != null && netProm > 0 ? (marginUah / netProm) * 100 : null;
 
-        return { p, cost, unit, retail, drop, locked, cat, promPrice, marginUah, marginPct, s };
-      });
-  }, [products, stock, categories, search, showInactive, overrides, stockMap, catMap]);
+        return { p, cost, unit, retail, drop, locked, cat, promPrice, s };
+      })
+      .filter(r => filterStock === 'all' ? true : filterStock === 'in_stock' ? r.s?.stock_status === 'in_stock' : r.s?.stock_status !== 'in_stock')
+      .filter(r => !filterBrand || r.p.brand === filterBrand)
+      .filter(r => !filterNoPrice || r.cost == null || r.retail == null)
+      .filter(r => !filterLocked || r.locked);
+  }, [products, stock, categories, search, showInactive, filterStock, filterBrand, filterNoPrice, filterLocked, overrides, stockMap, catMap]);
 
   // Group by category
   const grouped = useMemo(() => {
@@ -183,6 +186,11 @@ export default function PricesClient({ products, stock, categories }: Props) {
 
   function selectAll() { setSelected(new Set(rows.map(r => r.p.sku))); }
   function clearAll()  { setSelected(new Set()); }
+
+  const allCatSlugs = useMemo(() => [...grouped.keys()], [grouped]);
+  const allCollapsed = allCatSlugs.length > 0 && allCatSlugs.every(s => collapsed.has(s));
+  function collapseAll() { setCollapsed(new Set(allCatSlugs)); }
+  function expandAll()   { setCollapsed(new Set()); }
 
   // ── Inline edit ──────────────────────────────────────────────────────────────
 
@@ -235,7 +243,7 @@ export default function PricesClient({ products, stock, categories }: Props) {
 
   const selectedRows = useMemo(() => rows.filter(r => selected.has(r.p.sku)), [rows, selected]);
 
-  function applyFormula(cost: number | null, unit: number | null, retail: number | null, drop: number | null): { unit: number | null; retail: number | null; drop: number | null } {
+  const applyFormula = useCallback((cost: number | null, unit: number | null, retail: number | null, drop: number | null): { unit: number | null; retail: number | null; drop: number | null } => {
     const val = parseFloat(repricingValue);
     if (isNaN(val)) return { unit, retail, drop };
 
@@ -251,7 +259,7 @@ export default function PricesClient({ products, stock, categories }: Props) {
       retail: repricingTarget === 'retail' || repricingTarget === 'all' ? calc(retail) : retail,
       drop:   repricingTarget === 'drop'   || repricingTarget === 'all' ? calc(drop)   : drop,
     };
-  }
+  }, [repricingType, repricingValue, repricingTarget]);
 
   const repricingPreview = useMemo(() => {
     if (!showPreview) return [];
@@ -259,8 +267,16 @@ export default function PricesClient({ products, stock, categories }: Props) {
       const result = applyFormula(r.cost, r.unit, r.retail, r.drop);
       return { sku: r.p.sku, name: r.p.name, brand: r.p.brand, volume: r.p.volume, before: { unit: r.unit, retail: r.retail, drop: r.drop }, after: result };
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showPreview, selectedRows, repricingType, repricingValue, repricingTarget]);
+  }, [showPreview, previewKey, selectedRows, applyFormula]);
+
+  function cancelRepricing() {
+    setSelected(new Set());
+    setShowPreview(false);
+    setRepricingComment('');
+    setRepricingRevertAt('');
+    setRepricingIsPromo(false);
+    setRepricingValue('');
+  }
 
   async function applyRepricing() {
     setSaving(true);
@@ -272,7 +288,7 @@ export default function PricesClient({ products, stock, categories }: Props) {
       const res = await fetch('/api/admin/prices/bulk', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ batch: updates }),
+        body: JSON.stringify({ batch: updates, is_promo: repricingIsPromo }),
       });
       if (!res.ok) throw new Error(await res.text());
       setOverrides(prev => {
@@ -283,8 +299,24 @@ export default function PricesClient({ products, stock, categories }: Props) {
         }
         return next;
       });
-      setSelected(new Set());
-      setShowPreview(false);
+      // Log repricing action
+      const snapshot = selectedRows.map(r => {
+        const after = applyFormula(r.cost, r.unit, r.retail, r.drop);
+        return { sku: r.p.sku, name: r.p.name, before: { unit: r.unit, retail: r.retail, drop: r.drop }, after };
+      });
+      fetch('/api/admin/prices/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: repricingType, value: repricingValue, target: repricingTarget,
+          is_promo: repricingIsPromo,
+          comment: repricingComment || null,
+          revert_at: repricingRevertAt || null,
+          count: updates.length,
+          snapshot,
+        }),
+      }).catch(() => {});
+      cancelRepricing();
       showToast(`Переоцінено ${updates.length} товарів`, 'success');
     } catch {
       showToast('Помилка переоцінки', 'error');
@@ -409,24 +441,61 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
       </div>
 
       {/* Search + filters */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center' }}>
         <input
           type="text" placeholder="Пошук по назві, SKU, бренду..."
           value={search} onChange={e => setSearch(e.target.value)}
           style={{ flex: 1, height: 38, padding: '0 14px', borderRadius: 9, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none' }}
         />
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6B7280', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-          <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
-          Показати неактивні
-        </label>
         <button onClick={selectAll} style={btnSecondary}>Вибрати всі</button>
+        <button onClick={allCollapsed ? expandAll : collapseAll} style={btnSecondary}>
+          {allCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+          {allCollapsed ? 'Розгорнути всі' : 'Згорнути всі'}
+        </button>
+      </div>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* Наявність */}
+        <select value={filterStock} onChange={e => setFilterStock(e.target.value as typeof filterStock)} style={{ ...selectStyle, height: 34 }}>
+          <option value="all">Всі товари</option>
+          <option value="in_stock">В наявності</option>
+          <option value="out">Немає в наявності</option>
+        </select>
+        {/* Бренд */}
+        <select value={filterBrand} onChange={e => setFilterBrand(e.target.value)} style={{ ...selectStyle, height: 34, minWidth: 140 }}>
+          <option value="">Всі бренди</option>
+          {allBrands.map(b => <option key={b} value={b}>{b}</option>)}
+        </select>
+        {/* Без ціни */}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: filterNoPrice ? '#DC2626' : '#6B7280', cursor: 'pointer', whiteSpace: 'nowrap', padding: '6px 12px', border: `1.5px solid ${filterNoPrice ? '#FCA5A5' : '#E5E7EB'}`, borderRadius: 8, background: filterNoPrice ? '#FEF2F2' : '#fff' }}>
+          <input type="checkbox" checked={filterNoPrice} onChange={e => setFilterNoPrice(e.target.checked)} />
+          Без ціни
+        </label>
+        {/* Зафіксовані */}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: filterLocked ? '#D97706' : '#6B7280', cursor: 'pointer', whiteSpace: 'nowrap', padding: '6px 12px', border: `1.5px solid ${filterLocked ? '#FCD34D' : '#E5E7EB'}`, borderRadius: 8, background: filterLocked ? '#FFFBEB' : '#fff' }}>
+          <input type="checkbox" checked={filterLocked} onChange={e => setFilterLocked(e.target.checked)} />
+          <Lock size={12} /> Зафіксовані
+        </label>
+        {/* Неактивні */}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: showInactive ? '#6B21A8' : '#6B7280', cursor: 'pointer', whiteSpace: 'nowrap', padding: '6px 12px', border: `1.5px solid ${showInactive ? '#D8B4FE' : '#E5E7EB'}`, borderRadius: 8, background: showInactive ? '#FAF5FF' : '#fff' }}>
+          <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
+          Неактивні
+        </label>
+        {/* Reset */}
+        {(filterStock !== 'all' || filterBrand || filterNoPrice || filterLocked || showInactive) && (
+          <button onClick={() => { setFilterStock('all'); setFilterBrand(''); setFilterNoPrice(false); setFilterLocked(false); setShowInactive(false); }} style={{ ...btnSecondary, color: '#fff', background: '#EF4444', borderColor: '#EF4444', fontSize: 12, fontWeight: 700 }}>
+            <X size={13} /> Скинути
+          </button>
+        )}
       </div>
 
       {/* Repricing panel */}
       {totalSelected > 0 && (
         <div style={{ background: '#EFF6FF', border: '1.5px solid #BFDBFE', borderRadius: 12, padding: '16px 20px', marginBottom: 20 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, color: '#1D4ED8', marginBottom: 12 }}>
-            Переоцінка — {totalSelected} товарів
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: '#1D4ED8' }}>Переоцінка — {totalSelected} товарів</span>
+            <button onClick={cancelRepricing} style={{ ...btnSecondary, fontSize: 12, color: '#6B7280' }}>
+              <X size={13} /> Скасувати
+            </button>
           </div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
             {/* Formula type */}
@@ -438,7 +507,7 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
                 <option value="fixed">Фіксована ціна</option>
               </select>
             </div>
-            {/* Value */}
+            {/* Value + refresh */}
             <div>
               <label style={smallLabel}>
                 {repricingType === 'multiply_cost' ? 'Множник' : repricingType === 'increase_pct' ? 'Відсоток (%)' : 'Ціна (₴)'}
@@ -460,12 +529,55 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
                 <option value="all">Всі три</option>
               </select>
             </div>
+            {/* Comment */}
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <label style={smallLabel}>Причина переоцінки</label>
+              <input
+                type="text"
+                value={repricingComment}
+                onChange={e => setRepricingComment(e.target.value)}
+                placeholder="напр. сезонна акція, зміна курсу..."
+                style={{ ...inputSmall, width: '100%', height: 32 }}
+              />
+            </div>
+            {/* Акція */}
+            <div>
+              <label style={smallLabel}>Тип</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', padding: '5px 10px', border: `1.5px solid ${repricingIsPromo ? '#F97316' : '#E5E7EB'}`, borderRadius: 7, background: repricingIsPromo ? '#FFF7ED' : '#fff', color: repricingIsPromo ? '#C2410C' : '#6B7280', whiteSpace: 'nowrap', height: 32, boxSizing: 'border-box' }}>
+                <input type="checkbox" checked={repricingIsPromo} onChange={e => setRepricingIsPromo(e.target.checked)} />
+                <Tag size={12} /> Акція
+              </label>
+            </div>
+            {/* Revert date */}
+            <div>
+              <label style={smallLabel}>Повернути ціни після</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input
+                  type="date"
+                  value={repricingRevertAt}
+                  onChange={e => setRepricingRevertAt(e.target.value)}
+                  style={{ ...inputSmall, height: 32, paddingRight: 6 }}
+                />
+                {repricingRevertAt && (
+                  <button onClick={() => setRepricingRevertAt('')} style={{ width: 22, height: 22, borderRadius: 4, border: 'none', background: 'transparent', cursor: 'pointer', color: '#9CA3AF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center' }}>
             <button onClick={() => setShowPreview(!showPreview)} style={btnSecondary}>
               {showPreview ? 'Сховати прев\'ю' : 'Прев\'ю змін'}
             </button>
             <button onClick={applyRepricing} disabled={saving || !repricingValue} style={btnPrimary}>
               {saving ? 'Зберігаємо...' : 'Застосувати'}
             </button>
+            {repricingRevertAt && (
+              <span style={{ fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <RotateCcw size={12} /> Авто-відкат {new Date(repricingRevertAt).toLocaleDateString('uk-UA')}
+              </span>
+            )}
           </div>
 
           {/* Preview table */}
@@ -534,7 +646,6 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
                       <th style={{ ...th, width: 90 }}>Роздрібна</th>
                       <th style={{ ...th, width: 85 }}>Дроп</th>
                       <th style={{ ...th, width: 90 }}>Ціна Prom</th>
-                      <th style={{ ...th, width: 75 }}>Маржа %</th>
                       <th style={{ width: 60, padding: '8px 12px' }} />
                     </tr>
                   </thead>
@@ -568,7 +679,6 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
                                 <input type="number" step="0.01" value={editState!.price_drop} onChange={e => setEditState(s => s && ({ ...s, price_drop: e.target.value }))} style={{ ...inputSmall, width: 70 }} />
                               </td>
                               <td style={{ padding: '6px 8px', fontSize: 12, color: '#9CA3AF' }}>авто</td>
-                              <td style={{ padding: '6px 8px', fontSize: 12, color: '#9CA3AF' }}>—</td>
                               <td style={{ padding: '6px 8px' }}>
                                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                                   <button
@@ -594,11 +704,6 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
                               <td style={{ padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>{fmt(r.retail)}</td>
                               <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }}>{fmt(r.drop)}</td>
                               <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }}>{r.promPrice != null ? `${r.promPrice} ₴` : '—'}</td>
-                              <td style={{ padding: '8px 14px' }}>
-                                {r.marginPct != null
-                                  ? <span style={{ fontSize: 13, fontWeight: 700, color: marginColor(r.marginPct) }}>{r.marginPct.toFixed(1)}%</span>
-                                  : <span style={{ color: '#D1D5DB' }}>—</span>}
-                              </td>
                               <td style={{ padding: '8px 10px' }}>
                                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                                   {r.locked && (
