@@ -618,11 +618,32 @@ function downloadPdf(){
 async function sendEmail(){
   const email=document.getElementById('ei').value.trim();
   if(!email||!email.includes('@')){document.getElementById('em').textContent='Введіть коректний email';return;}
-  document.getElementById('em').textContent='Надсилається...';
+  const btn=document.querySelector('#eo .btn-p');
+  btn.disabled=true;
+  document.getElementById('em').textContent='Генерується PDF...';
   try{
-    const res=await fetch('/api/admin/prices/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,xlsxParams:${xlsxParams}})});
-    document.getElementById('em').textContent=res.ok?'Відправлено!':'Помилка — спробуйте ще раз';
-  }catch{document.getElementById('em').textContent='Помилка мережі';}
+    const pdfBlob=await html2pdf().set({
+      margin:[10,8,10,8],
+      image:{type:'jpeg',quality:0.95},
+      html2canvas:{scale:2,useCORS:true,logging:false},
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+      pagebreak:{mode:'avoid-all'}
+    }).from(document.querySelector('.content')).outputPdf('blob');
+    const pdfBase64=await new Promise(resolve=>{
+      const r=new FileReader();
+      r.onload=()=>resolve(r.result.split(',')[1]);
+      r.readAsDataURL(pdfBlob);
+    });
+    document.getElementById('em').textContent='Надсилається...';
+    const res=await fetch('/api/admin/prices/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,pdfBase64,date:'${dateStr}'})});
+    if(res.ok){
+      document.getElementById('em').textContent='Відправлено!';
+      setTimeout(()=>document.getElementById('eo').classList.remove('show'),1200);
+    }else{
+      document.getElementById('em').textContent='Помилка — спробуйте ще раз';
+      btn.disabled=false;
+    }
+  }catch{document.getElementById('em').textContent='Помилка мережі';btn.disabled=false;}
 }
 </script>
 </body></html>`;

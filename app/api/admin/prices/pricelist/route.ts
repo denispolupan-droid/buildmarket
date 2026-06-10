@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
 
   // Header
   allRows.push(['FIXLINE — Прайс-лист', null, null, null]);
-  allRows.push([`Дата: ${new Date().toLocaleDateString('uk-UA')}`, null, priceLabel, null]);
+  allRows.push([`Дата: ${new Date().toLocaleDateString('uk-UA')}`, null, null, null]);
   allRows.push([]);
 
   for (const [, { catName, rows }] of grouped) {
