@@ -512,6 +512,7 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
       includeOutOfStock:  String(plIncludeOutOfStock),
       showBrand:          String(plShowBrand),
       showDescriptions:   String(plShowDescriptions),
+      showImages:         String(plShowImages),
     });
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Прайс-лист</title>
