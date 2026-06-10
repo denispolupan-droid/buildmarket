@@ -48,9 +48,8 @@ export async function POST(req: NextRequest) {
   if (!email?.includes('@')) return NextResponse.json({ error: 'Невірний email' }, { status: 400 });
 
   const db = adminClient();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:3000';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
 
   const { data, error } = await db.auth.admin.inviteUserByEmail(email, {
     data: { role: 'manager', name: name?.trim() ?? '' },

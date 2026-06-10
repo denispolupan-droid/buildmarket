@@ -20,6 +20,8 @@ export const metadata: Metadata = {
     url: `${BASE}/ru/blog`,
     siteName: 'FIXLINE',
     locale: 'ru_RU',
+    type: 'website',
+    images: [{ url: `${BASE}/opengraph-image`, width: 1200, height: 630, alt: 'FIXLINE — строительная химия' }],
   },
 };
 

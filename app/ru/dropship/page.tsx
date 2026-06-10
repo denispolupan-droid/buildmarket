@@ -24,6 +24,7 @@ export const metadata: Metadata = {
     siteName: 'FIXLINE',
     locale: 'ru_RU',
     type: 'website',
+    images: [{ url: 'https://fixline.com.ua/opengraph-image', width: 1200, height: 630, alt: 'FIXLINE — дропшиппинг строительной химии' }],
   },
 };
 

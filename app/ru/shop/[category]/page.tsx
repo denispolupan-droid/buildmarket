@@ -44,6 +44,7 @@ export async function generateMetadata(
       siteName: 'FIXLINE',
       locale: 'ru_RU',
       type: 'website',
+      images: [{ url: `${BASE}/shop/${category}/opengraph-image`, width: 1200, height: 630, alt: `${nameRu} | FIXLINE` }],
     },
   };
 }
