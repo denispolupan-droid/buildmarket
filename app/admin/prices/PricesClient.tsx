@@ -442,8 +442,20 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
     }
   }
 
-  function generatePricelist() {
+  async function generatePricelist() {
     const origin = window.location.origin;
+
+    // fetch contacts with emails
+    let contacts: { name: string; company: string | null; email: string }[] = [];
+    try {
+      const cr = await fetch('/api/admin/customers/search?limit=80');
+      if (cr.ok) {
+        const all = await cr.json();
+        contacts = (all as { name: string; company: string | null; email: string | null }[])
+          .filter(c => c.email)
+          .map(c => ({ name: c.name, company: c.company ?? null, email: c.email! }));
+      }
+    } catch { /* ignore, contacts list is optional */ }
 
     // Use all active products — NOT filtered by admin UI search/filters
     const allRows = products
@@ -510,7 +522,9 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
   .pl-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
   .pl-contacts { text-align: right; padding-top: 18px; }
   .pl-phone { font-size: 15px; font-weight: 700; color: #111; margin-bottom: 4px; letter-spacing: .01em; }
-  .pl-email { font-size: 11px; color: #1D4ED8; text-decoration: none; display: block; }
+  .pl-email { font-size: 11px; color: #1D4ED8; text-decoration: none; display: block; margin-bottom: 8px; }
+  .pl-socials { display: flex; gap: 5px; justify-content: flex-end; }
+  .pl-soc { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; text-decoration: none; }
   h2 { font-size: 13px; font-weight: 700; background: #f0f4f8; padding: 6px 10px; margin: 20px 0 4px; border-left: 3px solid #1D4ED8; }
   table { width: 100%; border-collapse: collapse; margin-bottom: 8px; table-layout: fixed; }
   th { background: #f9fafb; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; padding: 5px 8px; text-align: left; border-bottom: 1px solid #e5e7eb; }
@@ -524,10 +538,21 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
   .cat-desc { font-size: 11px; color: #555; font-style: italic; margin: 0 0 6px; padding: 0 2px; line-height: 1.5; }
   .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; }
   .overlay.show { display: flex; }
-  .email-box { background: #fff; border-radius: 14px; padding: 28px; width: 340px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-  .email-box h3 { margin: 0 0 16px; font-size: 15px; font-weight: 700; }
-  .email-box input { width: 100%; padding: 8px 10px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 13px; margin-bottom: 14px; outline: none; }
-  .erow { display: flex; gap: 8px; }
+  .email-box { background: #fff; border-radius: 14px; padding: 24px; width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+  .email-box h3 { margin: 0 0 14px; font-size: 15px; font-weight: 700; }
+  .email-box input[type=email], .email-box input[type=text] { width: 100%; padding: 8px 10px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 13px; outline: none; box-sizing: border-box; }
+  .contact-list { max-height: 148px; overflow-y: auto; border: 1.5px solid #E5E7EB; border-radius: 8px; margin-bottom: 10px; }
+  .contact-item { padding: 7px 10px; cursor: pointer; border-bottom: 1px solid #f3f4f6; font-size: 12px; line-height: 1.35; }
+  .contact-item:last-child { border-bottom: none; }
+  .contact-item:hover { background: #F0F9FF; }
+  .contact-item.sel { background: #EFF6FF; }
+  .contact-name { font-weight: 600; color: #111; }
+  .contact-email { color: #6B7280; font-size: 11px; }
+  .contact-search { margin-bottom: 6px; }
+  .email-manual { margin-top: 8px; margin-bottom: 14px; }
+  .email-manual label { font-size: 11px; color: #9CA3AF; display: block; margin-bottom: 4px; }
+  .erow { display: flex; gap: 8px; margin-top: 14px; }
+  .erow .btn { flex: 1; justify-content: center; }
   @media print {
     .action-bar, .overlay { display: none !important; }
     .content { margin: 0; padding: 0; max-width: 100%; }
@@ -557,6 +582,27 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
     <div class="pl-contacts">
       <div class="pl-phone">+380 99 199 77 88</div>
       <a class="pl-email" href="mailto:info@fixline.com.ua">info@fixline.com.ua</a>
+      <div class="pl-socials">
+        <a class="pl-soc" href="viber://chat?number=%2B380991997788" title="Viber" style="background:#7360F2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3C7.03 3 3 6.58 3 11c0 2.5 1.22 4.73 3.13 6.26V20l2.87-1.43c.97.24 1.98.37 3 .37 4.97 0 9-3.58 9-8S16.97 3 12 3z"/>
+            <path d="M9.5 9.5c.3.8.8 1.6 1.5 2.3s1.5 1.2 2.3 1.5"/>
+          </svg>
+        </a>
+        <a class="pl-soc" href="https://t.me/+380991997788" title="Telegram" style="background:#2AABEE">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 2 11 13"/>
+            <path d="M22 2 15 22l-4-9-9-4 20-7z"/>
+          </svg>
+        </a>
+        <a class="pl-soc" href="https://www.instagram.com/fixline.com.ua/" title="Instagram" style="background:radial-gradient(circle at 30% 110%,#fdf497 0%,#fd5949 45%,#d6249f 60%,#285AEB 90%)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" stroke-width="3"/>
+          </svg>
+        </a>
+      </div>
     </div>
   </div>
 ${[...grouped2.entries()].map(([slug, catRows]) => {
@@ -598,15 +644,53 @@ ${desc ? `<p class="cat-desc">${desc}</p>` : ''}
 <div class="overlay" id="eo">
   <div class="email-box">
     <h3>Відправити прайс-лист</h3>
-    <input type="email" id="ei" placeholder="email@example.com">
-    <div class="erow">
-      <button class="btn btn-p" style="flex:1" onclick="sendEmail()">Відправити</button>
-      <button class="btn btn-s" onclick="document.getElementById('eo').classList.remove('show')">Скасувати</button>
+    ${contacts.length > 0 ? `
+    <div class="contact-search">
+      <input type="text" id="cs" placeholder="Пошук контакту..." oninput="filterContacts(this.value)" autocomplete="off">
     </div>
-    <p id="em" style="margin:10px 0 0;font-size:12px;color:#6B7280"></p>
+    <div class="contact-list" id="cl"></div>` : ''}
+    <div class="email-manual">
+      ${contacts.length > 0 ? '<label>або введіть email вручну</label>' : ''}
+      <input type="email" id="ei" placeholder="email@example.com">
+    </div>
+    <div class="erow">
+      <button class="btn btn-p" id="sendBtn" onclick="sendEmail()">Відправити</button>
+      <button class="btn btn-s" onclick="closeModal()">Скасувати</button>
+    </div>
+    <p id="em" style="margin:8px 0 0;font-size:12px;color:#6B7280"></p>
   </div>
 </div>
 <script>
+const CONTACTS=${JSON.stringify(contacts)};
+let filteredContacts=CONTACTS.slice();
+function renderContacts(list){
+  const cl=document.getElementById('cl');
+  if(!cl)return;
+  filteredContacts=list;
+  cl.innerHTML=list.map((c,i)=>'<div class="contact-item" data-i="'+i+'" onclick="selectContact('+i+')"><div class="contact-name">'+(c.company||c.name)+'</div><div class="contact-email">'+c.email+'</div></div>').join('');
+}
+function filterContacts(q){
+  const lq=(q||'').toLowerCase();
+  const filtered=lq.length<1?CONTACTS:CONTACTS.filter(c=>(c.name+' '+(c.company||'')+' '+c.email).toLowerCase().includes(lq));
+  renderContacts(filtered);
+}
+function selectContact(i){
+  const c=filteredContacts[i];
+  if(!c)return;
+  document.getElementById('ei').value=c.email;
+  document.getElementById('em').textContent='';
+  document.querySelectorAll('.contact-item').forEach((el,j)=>el.classList.toggle('sel',j===i));
+}
+function closeModal(){
+  document.getElementById('eo').classList.remove('show');
+  document.getElementById('ei').value='';
+  document.getElementById('em').textContent='';
+  const cs=document.getElementById('cs');
+  if(cs){cs.value='';renderContacts(CONTACTS);}
+  const sb=document.getElementById('sendBtn');
+  if(sb)sb.disabled=false;
+}
+if(CONTACTS.length>0)renderContacts(CONTACTS);
 function downloadXlsx(){
   const p=${xlsxParams};
   fetch('/api/admin/prices/pricelist?'+new URLSearchParams(p))
@@ -630,14 +714,14 @@ function downloadPdf(){
 async function sendEmail(){
   const email=document.getElementById('ei').value.trim();
   if(!email||!email.includes('@')){document.getElementById('em').textContent='Введіть коректний email';return;}
-  const btn=document.querySelector('#eo .btn-p');
+  const btn=document.getElementById('sendBtn');
   btn.disabled=true;
   document.getElementById('em').textContent='Надсилається...';
   try{
     const res=await fetch('${origin}/api/admin/prices/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,xlsxParams:${xlsxParams}})});
     if(res.ok){
       document.getElementById('em').textContent='Відправлено!';
-      setTimeout(()=>document.getElementById('eo').classList.remove('show'),1200);
+      setTimeout(()=>closeModal(),1500);
     }else{
       const err=await res.json().catch(()=>({}));
       document.getElementById('em').textContent='Помилка: '+(err.error||res.status);
