@@ -21,56 +21,43 @@ async function fetchFont(bold = false): Promise<Buffer> {
 }
 
 // ── Image helpers ─────────────────────────────────────────────────────────────
-function renderUrl(imagePath: string): string {
-  const p = imagePath.replace(/^\/img\//, '');
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/render/image/public/${p}?width=60&height=60&format=jpg&quality=75&resize=contain`;
-}
-
-function objectUrl(imagePath: string): string {
-  const p = imagePath.replace(/^\/img\//, '');
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${p}`;
-}
-
 function isEmbeddable(buf: Buffer): boolean {
   if (buf.length < 4) return false;
-  // JPEG: FF D8 FF
-  if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return true;
-  // PNG: 89 50 4E 47
-  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) return true;
+  if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return true; // JPEG
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) return true; // PNG
   return false;
 }
 
-async function fetchUrl(url: string, timeoutMs = 5000): Promise<Buffer | null> {
+async function fetchUrl(url: string, timeoutMs = 6000): Promise<Buffer | null> {
   try {
     const ac = new AbortController();
     const t  = setTimeout(() => ac.abort(), timeoutMs);
-    const r  = await fetch(url, { signal: ac.signal });
+    // Accept header prevents Next.js image optimizer from returning WebP (PDFKit can't embed it)
+    const r  = await fetch(url, { signal: ac.signal, headers: { Accept: 'image/jpeg,image/png,image/*;q=0.5' } });
     clearTimeout(t);
     if (!r.ok) return null;
     return Buffer.from(await r.arrayBuffer());
   } catch { return null; }
 }
 
-async function fetchImageBuffer(imagePath: string): Promise<Buffer | null> {
-  // 1. Try local public folder (e.g. images committed to repo)
+async function fetchImageBuffer(imagePath: string, origin: string): Promise<Buffer | null> {
+  // 1. Local public folder
   try {
-    const localPath = join(process.cwd(), 'public', imagePath.replace(/^\//, ''));
-    const buf = readFileSync(localPath);
+    const buf = readFileSync(join(process.cwd(), 'public', imagePath.replace(/^\//, '')));
     if (isEmbeddable(buf)) return buf;
   } catch { /* not local */ }
 
-  // 2. Try Supabase image transformation API (WebP → JPEG)
-  const rendered = await fetchUrl(renderUrl(imagePath));
-  if (rendered && isEmbeddable(rendered)) return rendered;
-
-  // 3. Fallback: raw object (might be JPEG/PNG already)
-  const raw = await fetchUrl(objectUrl(imagePath));
-  if (raw && isEmbeddable(raw)) return raw;
+  // 2. Via /_next/image — resizes to 64px so large originals don't bloat the PDF.
+  //    Raw Supabase JPEGs can be 200-500KB each; at 200 products that's 40-100MB.
+  //    The image optimizer returns ~3-8KB thumbnails regardless of source format.
+  const supabaseSrc = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${imagePath.replace(/^\/img\//, '')}`;
+  const thumb = await fetchUrl(`${origin}/_next/image?url=${encodeURIComponent(supabaseSrc)}&w=64&q=70`);
+  if (thumb && isEmbeddable(thumb)) return thumb;
 
   return null;
 }
 
-async function fetchImages(skuImageMap: Map<string, string>): Promise<Map<string, Buffer>> {
+async function fetchImages(skuImageMap: Map<string, string>, origin: string): Promise<Map<string, Buffer>> {
   const entries = [...skuImageMap.entries()];
   const CONCURRENCY = 12;
   const result = new Map<string, Buffer>();
@@ -79,7 +66,7 @@ async function fetchImages(skuImageMap: Map<string, string>): Promise<Map<string
   async function worker() {
     while (i < entries.length) {
       const [sku, path] = entries[i++];
-      const buf = await fetchImageBuffer(path);
+      const buf = await fetchImageBuffer(path, origin);
       if (buf) result.set(sku, buf);
     }
   }
@@ -373,7 +360,8 @@ export async function POST(req: NextRequest) {
       if (val.rows.length === 0) grouped.delete(key);
     }
 
-    const imageBuffers = showImages ? await fetchImages(skuImageMap) : new Map<string, Buffer>();
+    const origin = req.nextUrl.origin;
+    const imageBuffers = showImages ? await fetchImages(skuImageMap, origin) : new Map<string, Buffer>();
 
     const pdfBuffer = await buildPdf(
       grouped,
