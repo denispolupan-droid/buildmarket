@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/revert-promo",
+      "schedule": "0 0 * * *"
+    },
+    {
       "path": "/api/cron/sync-suppliers",
       "schedule": "0 8 * * *"
     },
