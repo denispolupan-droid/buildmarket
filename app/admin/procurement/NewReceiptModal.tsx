@@ -434,7 +434,7 @@ export default function NewReceiptModal({
       <div
         className="receipt-panel-enter"
         ref={bodyRef}
-        style={{ position: 'fixed', top: 0, left: '220px', right: 0, bottom: '42px', zIndex, overflowY: 'auto', background: 'var(--bg-card)', boxShadow: '8px 0 32px rgba(0,0,0,0.22)', borderBottom: '1px solid var(--border)' }}
+        style={{ position: 'fixed', top: 0, left: '240px', right: 0, bottom: '42px', zIndex, overflowY: 'auto', background: 'var(--bg-card)', boxShadow: '8px 0 32px rgba(0,0,0,0.22)', borderBottom: '1px solid var(--border)' }}
       >
         {/* ── Header sticky ── */}
         <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--bg-card)', padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

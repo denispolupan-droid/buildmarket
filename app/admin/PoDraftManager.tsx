@@ -39,9 +39,9 @@ export interface PoDraft {
 }
 
 const SESSION_KEY  = 'admin_po_drafts';
-const SIDEBAR_W    = 220;   // С€РёСЂРёРЅР° СЃР°Р№РґР±Р°СЂСѓ
+const SIDEBAR_W    = 240;
 const PANEL_W      = 'min(800px, 56vw)';
-const PEEK_PER_CARD = 24;   // С€РёСЂРёРЅР° РІРёРґРёРјРѕРіРѕ РєСЂР°СЋ РєРѕР¶РЅРѕС— С„РѕРЅРѕРІРѕС— РєР°СЂС‚Рё
+const PEEK_PER_CARD = 24;
 
 function loadDrafts(): PoDraft[] {
   try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? '[]'); }
@@ -59,6 +59,7 @@ export default function PoDraftManager() {
   const [drafts,         setDrafts]         = useState<PoDraft[]>([]);
   const [mounted,        setMounted]        = useState(false);
   const [confirmClose,   setConfirmClose]   = useState<string | null>(null);
+  const [totalTabCount,  setTotalTabCount]  = useState(0);
 
   const pathname     = usePathname();
   const searchParams = useSearchParams();
@@ -67,16 +68,42 @@ export default function PoDraftManager() {
 
   useEffect(() => { setDrafts(loadDrafts()); setMounted(true); }, []);
 
+  // Track total open tabs across all three managers for the shared backdrop bar
+  useEffect(() => {
+    function update() {
+      try {
+        const po       = JSON.parse(sessionStorage.getItem('admin_po_drafts')       ?? '[]').length;
+        const receipt  = JSON.parse(sessionStorage.getItem('admin_receipt_drafts')  ?? '[]').length;
+        const order    = JSON.parse(sessionStorage.getItem('admin_order_drafts')    ?? '[]').length;
+        const stockdoc = JSON.parse(sessionStorage.getItem('admin_stockdoc_drafts') ?? '[]').length;
+        setTotalTabCount(po + receipt + order + stockdoc);
+      } catch { setTotalTabCount(0); }
+    }
+    update();
+    window.addEventListener('po-drafts-changed',       update);
+    window.addEventListener('receipt-drafts-changed',  update);
+    window.addEventListener('order-drafts-changed',    update);
+    window.addEventListener('stockdoc-drafts-changed', update);
+    return () => {
+      window.removeEventListener('po-drafts-changed',       update);
+      window.removeEventListener('receipt-drafts-changed',  update);
+      window.removeEventListener('order-drafts-changed',    update);
+      window.removeEventListener('stockdoc-drafts-changed', update);
+    };
+  }, []);
+
   // РњС–РЅС–РјС–Р·СѓРІР°С‚Рё РІСЃС– Р—Рџ, РєРѕР»Рё Receipt Р°Р±Рѕ Order-РїР°РЅРµР»СЊ СЃС‚Р°С” Р°РєС‚РёРІРЅРѕСЋ
   useEffect(() => {
     function handler() {
       setDrafts(prev => prev.map(d => d.minimized ? d : { ...d, minimized: true }));
     }
-    window.addEventListener('receipt-draft-activated', handler);
-    window.addEventListener('order-draft-activated',   handler);
+    window.addEventListener('receipt-draft-activated',  handler);
+    window.addEventListener('order-draft-activated',    handler);
+    window.addEventListener('stockdoc-draft-activated', handler);
     return () => {
-      window.removeEventListener('receipt-draft-activated', handler);
-      window.removeEventListener('order-draft-activated',   handler);
+      window.removeEventListener('receipt-draft-activated',  handler);
+      window.removeEventListener('order-draft-activated',    handler);
+      window.removeEventListener('stockdoc-draft-activated', handler);
     };
   }, []);
 
@@ -180,6 +207,15 @@ export default function PoDraftManager() {
 
   return (
     <>
+      {/* ── Unified tab bar backdrop (spans all three managers' tabs) ─────────── */}
+      {totalTabCount > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: `${SIDEBAR_W}px`, right: 0,
+          height: '42px', background: '#0F172A', zIndex: 1007,
+          borderTop: '1px solid rgba(255,255,255,0.07)',
+        }} />
+      )}
+
       {/* в”Ђв”Ђ Р¤РѕРЅРѕРІС– РєР°СЂС‚Рё (РІРёРґРЅРѕ С‚С–Р»СЊРєРё РїСЂР°РІРёР№ peek-РєСЂР°Р№) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */}
       {bgCards.map((draft, idx) => {
         // depth: 1 = РѕРґСЂР°Р·Сѓ Р·Р° Р°РєС‚РёРІРЅРѕСЋ, 2 = РґР°Р»С– С– С‚.Рґ.
@@ -258,12 +294,11 @@ export default function PoDraftManager() {
       {/* в”Ђв”Ђ РўР°Р±-Р±Р°СЂ РІРЅРёР·Сѓ: РІСЃС– С‡РµСЂРЅРµС‚РєРё (РІС–РґРєСЂРёС‚С– + Р·РіРѕСЂРЅСѓС‚С–) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */}
       {drafts.length > 0 && (
         <div style={{
-          position: 'fixed', bottom: 0, left: '220px', zIndex: 1010,
+          position: 'fixed', bottom: 0, left: `${SIDEBAR_W}px`, zIndex: 1010,
           display: 'flex', flexDirection: 'row', alignItems: 'stretch', gap: '2px',
         }}>
           {tabOrder.map(draft => {
-            const isActive    = !draft.minimized;
-            const isOpenStack = false;
+            const isActive     = !draft.minimized;
             const supplierName = draft.suppliers.find(s => s.id === draft.supplierId)?.name ?? '';
             const filledLines  = draft.lines.filter(l => l.sku || l.name).length;
             const total        = draft.lines.reduce((s, l) => s + l.qty * l.cost_price, 0);

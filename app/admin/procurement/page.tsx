@@ -172,7 +172,7 @@ function StatLeft({ count, label, color, amount }: {
   count?: number; label: string; color: string; amount?: string;
 }) {
   return (
-    <div style={{ flexShrink: 0, minWidth: '50px' }}>
+    <div style={{ flexShrink: 0, width: '100px' }}>
       {amount
         ? <div style={{ fontSize: '20px', fontWeight: 800, color, lineHeight: 1.1 }}>{amount}</div>
         : <div style={{ fontSize: '26px', fontWeight: 800, color, lineHeight: 1 }}>{count}</div>

@@ -90,11 +90,13 @@ export default function ReceiptDraftManager() {
     function handler() {
       setDrafts(prev => prev.map(d => d.minimized ? d : { ...d, minimized: true }));
     }
-    window.addEventListener('po-draft-activated',    handler);
-    window.addEventListener('order-draft-activated', handler);
+    window.addEventListener('po-draft-activated',      handler);
+    window.addEventListener('order-draft-activated',   handler);
+    window.addEventListener('stockdoc-draft-activated', handler);
     return () => {
-      window.removeEventListener('po-draft-activated',    handler);
-      window.removeEventListener('order-draft-activated', handler);
+      window.removeEventListener('po-draft-activated',      handler);
+      window.removeEventListener('order-draft-activated',   handler);
+      window.removeEventListener('stockdoc-draft-activated', handler);
     };
   }, []);
 

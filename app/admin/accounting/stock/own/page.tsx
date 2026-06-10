@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import { ArrowLeft, Warehouse } from 'lucide-react';
 import OwnStockTable from './OwnStockTable';
+import StockDocButtons from './StockDocButtons';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -54,6 +55,9 @@ export default async function OwnStockPage() {
         <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
           {ownBalance?.length ?? 0} позицій
         </span>
+        <div style={{ marginLeft: 'auto' }}>
+          <StockDocButtons />
+        </div>
       </div>
 
       {!ownBalance?.length ? (

@@ -722,7 +722,7 @@ export default function NewOrderModal({
       <div
         className="order-panel-enter"
         style={{
-          position: 'fixed', top: 0, left: '220px', bottom: '42px', zIndex,
+          position: 'fixed', top: 0, left: '240px', bottom: '42px', zIndex,
           width: 'min(980px, 72vw)',
           display: 'flex', flexDirection: 'column',
           background: 'var(--bg-card)',

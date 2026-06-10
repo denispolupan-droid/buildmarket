@@ -11,6 +11,7 @@ import AdminSidebar from '../components/admin/AdminSidebar';
 import PoDraftManagerLoader from './PoDraftManagerLoader';
 import ReceiptDraftManagerLoader from './ReceiptDraftManagerLoader';
 import OrderDraftManagerLoader from './OrderDraftManagerLoader';
+import StockDocDraftManagerLoader from './StockDocDraftManagerLoader';
 import PageTransition from './PageTransition';
 import ToastProvider from '../components/ToastProvider';
 
@@ -44,6 +45,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <PoDraftManagerLoader />
       <ReceiptDraftManagerLoader />
       <OrderDraftManagerLoader />
+      <StockDocDraftManagerLoader />
       <ToastProvider />
     </div>
   );

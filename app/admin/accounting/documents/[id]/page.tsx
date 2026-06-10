@@ -21,6 +21,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   write_off:      'Списання',
   transfer:       'Переміщення',
   inventory:      'Інвентаризація',
+  price_change:   'Переоцінка',
 };
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   draft:     { label: 'Чернетка',  color: '#64748B', bg: '#F8FAFC' },
@@ -73,6 +74,18 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
         .in('doc_type', ['receipt', 'stock_in'])
         .neq('status', 'cancelled')
     : { data: [] };
+
+  // ── Price-change: load snapshot from price_change_log ────────────────────────
+  type SnapshotRow = { sku: string; name: string; before: Record<string, number | null>; after: Record<string, number | null> };
+  let priceChangeLog: { type: string; value: number; target: string; is_promo: boolean; comment: string | null; revert_at: string | null; reverted_at: string | null; count: number | null; snapshot: SnapshotRow[] | null } | null = null;
+  if (doc.doc_type === 'price_change') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const logId = (doc.meta as any)?.log_id;
+    if (logId) {
+      const { data: logRow } = await db.from('price_change_log').select('*').eq('id', logId).single();
+      priceChangeLog = logRow ?? null;
+    }
+  }
 
   // Фінальні ціни з FIFO партій
   const finalPriceMap = new Map((batches ?? []).map(b => [b.sku, Number(b.cost_price)]));
@@ -173,7 +186,68 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
         </div>
       )}
 
-      {/* Lines table */}
+      {/* ── Price-change snapshot ── */}
+      {doc.doc_type === 'price_change' && (() => {
+        const TYPE_LABEL: Record<string, string> = { multiply_cost: '× від собівартості', increase_pct: '% зміна', fixed: 'Фіксована ціна' };
+        const TARGET_LABEL: Record<string, string> = { retail: 'Роздріб', unit: 'Опт', drop: 'Дроп', all: 'Всі' };
+        const log = priceChangeLog;
+        const snapshot = log?.snapshot ?? [];
+        const target = log?.target ?? 'retail';
+        return (
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', marginBottom: '16px' }}>
+            {/* Summary */}
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                {log ? `${TYPE_LABEL[log.type] ?? log.type}: ${log.type === 'increase_pct' ? (log.value >= 0 ? `+${log.value}%` : `${log.value}%`) : log.type === 'multiply_cost' ? `×${log.value}` : `${log.value} ₴`}` : 'Переоцінка'}
+              </span>
+              {log && <span style={{ fontSize: 12, color: '#6B7280', background: '#F3F4F6', padding: '2px 8px', borderRadius: 5 }}>{TARGET_LABEL[target] ?? target}</span>}
+              {log?.is_promo && <span style={{ fontSize: 12, fontWeight: 700, color: '#C2410C', background: '#FFF7ED', border: '1px solid #FDBA74', padding: '2px 8px', borderRadius: 5 }}>🏷 Акція</span>}
+              {log?.revert_at && <span style={{ fontSize: 12, color: '#6B7280' }}>↩ Відкат: {new Date(log.revert_at).toLocaleDateString('uk-UA')}</span>}
+              {log?.reverted_at && <span style={{ fontSize: 12, color: '#9CA3AF' }}>✓ Скасовано {new Date(log.reverted_at).toLocaleDateString('uk-UA')}</span>}
+              <span style={{ marginLeft: 'auto', fontSize: 12, color: '#6B7280' }}>{log?.count ?? snapshot.length} позицій</span>
+            </div>
+            {/* Snapshot table */}
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg-soft)' }}>
+                    {['Артикул', 'Назва', 'До', 'Після', 'Різниця'].map((h, i) => (
+                      <th key={h} style={{ padding: '7px 14px', textAlign: i >= 2 ? 'right' : 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {snapshot.slice(0, 200).map((row: SnapshotRow) => {
+                    const bv = row.before?.[target] ?? row.before?.retail ?? null;
+                    const av = row.after?.[target]  ?? row.after?.retail  ?? null;
+                    const diff = bv != null && av != null ? (av as number) - (bv as number) : null;
+                    return (
+                      <tr key={row.sku} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                        <td style={{ padding: '8px 14px', fontFamily: 'monospace', fontSize: 11, color: 'var(--text-muted)' }}>{row.sku}</td>
+                        <td style={{ padding: '8px 14px', color: 'var(--text-primary)' }}>{row.name}</td>
+                        <td style={{ padding: '8px 14px', textAlign: 'right', color: 'var(--text-secondary)' }}>{bv != null ? `${fmt(bv as number)} ₴` : '—'}</td>
+                        <td style={{ padding: '8px 14px', textAlign: 'right', fontWeight: 600 }}>{av != null ? `${fmt(av as number)} ₴` : '—'}</td>
+                        <td style={{ padding: '8px 14px', textAlign: 'right', fontWeight: 700,
+                          color: diff == null ? 'var(--text-muted)' : diff > 0 ? '#15803D' : diff < 0 ? '#DC2626' : 'var(--text-secondary)' }}>
+                          {diff == null ? '—' : diff > 0 ? `+${fmt(diff)} ₴` : `${fmt(diff)} ₴`}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {snapshot.length > 200 && (
+                    <tr><td colSpan={5} style={{ padding: '8px 14px', color: 'var(--text-muted)', fontStyle: 'italic', fontSize: 12 }}>
+                      + ще {snapshot.length - 200} позицій
+                    </td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Lines table — standard docs only */}
+      {doc.doc_type !== 'price_change' && (
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', marginBottom: '16px' }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>Товари</span>
@@ -249,6 +323,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
           )}
         </div>
       </div>
+      )}
 
       {/* Landed costs */}
       {(landedCosts ?? []).length > 0 && (

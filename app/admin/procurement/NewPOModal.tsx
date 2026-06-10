@@ -485,7 +485,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
     )}
 
     {/* Side panel ЛІВОРУЧ — після sidebar (220px) */}
-    <div className="po-panel-enter" style={{ position: 'fixed', top: 0, left: '220px', bottom: '42px', zIndex, width: 'min(1040px, 74vw)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', boxShadow: '8px 0 32px rgba(0,0,0,0.22)', borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+    <div className="po-panel-enter" style={{ position: 'fixed', top: 0, left: '240px', bottom: '42px', zIndex, width: 'min(1040px, 74vw)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', boxShadow: '8px 0 32px rgba(0,0,0,0.22)', borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
         {/* Header */}

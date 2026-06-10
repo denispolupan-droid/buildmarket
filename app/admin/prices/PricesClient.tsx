@@ -16,6 +16,7 @@ interface Product {
   category_slug:   string | null;
   is_active:       boolean;
   prom_markup_pct: number | null;
+  image:           string | null;
 }
 
 interface Stock {
@@ -119,6 +120,7 @@ export default function PricesClient({ products, stock, categories }: Props) {
   const [plAllCats, setPlAllCats]                   = useState(true);
   const [plIncludeOutOfStock, setPlIncludeOutOfStock] = useState(false);
   const [plShowBrand, setPlShowBrand]               = useState(true);
+  const [plShowImages, setPlShowImages]             = useState(false);
   const [plGenerating, setPlGenerating]             = useState(false);
   const [mounted, setMounted]                       = useState(false);
   useEffect(() => setMounted(true), []);
@@ -169,6 +171,18 @@ export default function PricesClient({ products, stock, categories }: Props) {
     }
     return map;
   }, [rows]);
+
+  // parent slug → child categories
+  const catChildren = useMemo(() => {
+    const map = new Map<string, Category[]>();
+    for (const c of categories) {
+      if (c.parent_slug) {
+        if (!map.has(c.parent_slug)) map.set(c.parent_slug, []);
+        map.get(c.parent_slug)!.push(c);
+      }
+    }
+    return map;
+  }, [categories]);
 
   // ── Selection helpers ────────────────────────────────────────────────────────
 
@@ -360,6 +374,8 @@ export default function PricesClient({ products, stock, categories }: Props) {
 
   function printPricelist() {
     const priceLabel = { price_retail: 'Роздрібна ціна', price_unit: 'Оптова ціна', price_drop: 'Ціна дроп' }[plPriceType];
+    const origin = window.location.origin;
+
     const printRows = rows.filter(r => {
       if (!plIncludeOutOfStock && r.s?.stock_status !== 'in_stock') return false;
       if (!plAllCats && r.p.category_slug && !plCategories.has(r.p.category_slug)) return false;
@@ -373,17 +389,25 @@ export default function PricesClient({ products, stock, categories }: Props) {
       grouped2.get(key)!.push(r);
     }
 
+    const imgColW   = plShowImages ? '55px' : null;
+    const brandColW = plShowBrand  ? '110px' : null;
+    const volColW   = '110px';
+    const priceColW = '95px';
+
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Прайс-лист FIXLINE</title>
 <style>
   body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; color: #111; }
   h1 { font-size: 18px; margin-bottom: 4px; }
   .meta { color: #666; font-size: 11px; margin-bottom: 20px; }
   h2 { font-size: 13px; font-weight: 700; background: #f0f4f8; padding: 6px 10px; margin: 16px 0 4px; border-left: 3px solid #1D4ED8; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-  th { background: #f9fafb; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; padding: 5px 8px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-  td { padding: 5px 8px; border-bottom: 1px solid #f3f4f6; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; table-layout: fixed; }
+  th { background: #f9fafb; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; padding: 5px 8px; text-align: left; border-bottom: 1px solid #e5e7eb; overflow: hidden; }
+  td { padding: 5px 8px; border-bottom: 1px solid #f3f4f6; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  td.name { white-space: normal; word-break: break-word; }
   tr:last-child td { border-bottom: none; }
-  .price { font-weight: 700; text-align: right; }
+  .price { font-weight: 700; text-align: right; white-space: nowrap; }
+  .img-cell { padding: 2px 6px; text-align: center; }
+  .img-cell img { width: 44px; height: 44px; object-fit: contain; display: block; margin: auto; }
   @media print { @page { margin: 15mm; } }
 </style></head><body>
 <h1>FIXLINE — Прайс-лист</h1>
@@ -392,7 +416,15 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
   const catName = catRows[0]?.cat?.name ?? slug;
   return `<h2>${catName}</h2>
 <table>
+  <colgroup>
+    ${imgColW   ? `<col style="width:${imgColW}">` : ''}
+    <col>
+    ${brandColW ? `<col style="width:${brandColW}">` : ''}
+    <col style="width:${volColW}">
+    <col style="width:${priceColW}">
+  </colgroup>
   <thead><tr>
+    ${imgColW ? '<th class="img-cell"></th>' : ''}
     <th>Назва</th>
     ${plShowBrand ? '<th>Бренд</th>' : ''}
     <th>Об\'єм / Вага</th>
@@ -401,11 +433,13 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
   <tbody>
     ${catRows.map(r => {
       const price = r[plPriceType === 'price_retail' ? 'retail' : plPriceType === 'price_unit' ? 'unit' : 'drop'];
+      const imgSrc = plShowImages && r.p.image ? `${origin}${r.p.image.startsWith('/') ? '' : '/'}${r.p.image}` : null;
       return `<tr>
-        <td>${r.p.name}</td>
+        ${imgColW ? `<td class="img-cell">${imgSrc ? `<img src="${imgSrc}" alt="">` : ''}</td>` : ''}
+        <td class="name">${r.p.name}</td>
         ${plShowBrand ? `<td>${r.p.brand ?? ''}</td>` : ''}
         <td>${r.p.volume ?? ''}</td>
-        <td class="price">${price != null ? price.toLocaleString('uk-UA') + ' ₴' : '—'}</td>
+        <td class="price">${price != null ? price.toLocaleString('uk-UA') + ' ₴' : '—'}</td>
       </tr>`;
     }).join('')}
   </tbody>
@@ -676,9 +710,9 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
                       <th style={th}>Товар</th>
                       <th style={{ ...th, width: 90 }}>Собівартість</th>
                       <th style={{ ...th, width: 90 }}>Оптова</th>
-                      <th style={{ ...th, width: 90 }}>Роздрібна</th>
-                      <th style={{ ...th, width: 85 }}>Дроп</th>
-                      <th style={{ ...th, width: 90 }}>Ціна Prom</th>
+                      <th style={{ ...th, width: 110 }}>Роздрібна</th>
+                      <th style={{ ...th, width: 85, whiteSpace: 'nowrap' }}>Дроп</th>
+                      <th style={{ ...th, width: 90, whiteSpace: 'nowrap' }}>Ціна Prom</th>
                       <th style={{ width: 60, padding: '8px 12px' }} />
                     </tr>
                   </thead>
@@ -734,7 +768,14 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
                             <>
                               <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }}>{fmt(r.cost)}</td>
                               <td style={{ padding: '8px 14px', fontSize: 13 }}>{fmt(r.unit)}</td>
-                              <td style={{ padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>{fmt(r.retail)}</td>
+                              <td style={{ padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
+                                {r.s?.price_promo != null ? (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+                                    <span style={{ color: '#9CA3AF', textDecoration: 'line-through', fontWeight: 400 }}>{fmt(r.retail)}</span>
+                                    <span style={{ color: '#C2410C', fontWeight: 700 }}>{r.s.price_promo} ₴</span>
+                                  </span>
+                                ) : fmt(r.retail)}
+                              </td>
                               <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }}>{fmt(r.drop)}</td>
                               <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }}>{r.promPrice != null ? `${r.promPrice} ₴` : '—'}</td>
                               <td style={{ padding: '8px 10px' }}>
@@ -793,17 +834,48 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
                   Всі категорії
                 </label>
                 {!plAllCats && (
-                  <div style={{ maxHeight: 160, overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 12px' }}>
-                    {categories.filter(c => !c.parent_slug).map(cat => (
-                      <label key={cat.slug} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: 13, cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={plCategories.has(cat.slug)}
-                          onChange={e => setPlCategories(prev => { const s = new Set(prev); e.target.checked ? s.add(cat.slug) : s.delete(cat.slug); return s; })}
-                        />
-                        {cat.name}
-                      </label>
-                    ))}
+                  <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 12px' }}>
+                    {categories.filter(c => !c.parent_slug).map(parent => {
+                      const children = catChildren.get(parent.slug) ?? [];
+                      const allSlugs = children.length > 0
+                        ? [parent.slug, ...children.map(c => c.slug)]
+                        : [parent.slug];
+                      const checkedCount = allSlugs.filter(s => plCategories.has(s)).length;
+                      const allChecked  = checkedCount === allSlugs.length;
+                      const someChecked = checkedCount > 0 && !allChecked;
+                      return (
+                        <div key={parent.slug}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              ref={el => { if (el) el.indeterminate = someChecked; }}
+                              checked={allChecked}
+                              onChange={e => setPlCategories(prev => {
+                                const s = new Set(prev);
+                                if (e.target.checked) allSlugs.forEach(sl => s.add(sl));
+                                else allSlugs.forEach(sl => s.delete(sl));
+                                return s;
+                              })}
+                            />
+                            {parent.name}
+                          </label>
+                          {children.map(child => (
+                            <label key={child.slug} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0 2px 20px', fontSize: 12, color: '#4B5563', cursor: 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={plCategories.has(child.slug)}
+                                onChange={e => setPlCategories(prev => {
+                                  const s = new Set(prev);
+                                  e.target.checked ? s.add(child.slug) : s.delete(child.slug);
+                                  return s;
+                                })}
+                              />
+                              {child.name}
+                            </label>
+                          ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -817,6 +889,10 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
                   <input type="checkbox" checked={plShowBrand} onChange={e => setPlShowBrand(e.target.checked)} />
                   Показувати бренд
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={plShowImages} onChange={e => setPlShowImages(e.target.checked)} />
+                  Показувати зображення
                 </label>
               </div>
 

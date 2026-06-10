@@ -17,7 +17,7 @@ export default async function PricesPage() {
 
   const [{ data: products }, { data: stock }, { data: categories }] = await Promise.all([
     db.from('products')
-      .select('sku, name, brand, volume, category_slug, is_active, prom_markup_pct')
+      .select('sku, name, brand, volume, category_slug, is_active, prom_markup_pct, image')
       .order('category_slug', { nullsFirst: false })
       .order('brand')
       .order('name'),

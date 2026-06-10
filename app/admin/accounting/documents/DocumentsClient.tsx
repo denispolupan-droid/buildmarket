@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, CheckCircle, XCircle, Clock, FileText, TrendingUp, TrendingDown, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, Clock, FileText, TrendingUp, TrendingDown, MoreHorizontal, Trash2, ArrowLeftRight } from 'lucide-react';
 
 type DocRow = {
   id: string;
@@ -210,17 +210,31 @@ export default function DocumentsClient({
             Приходи, продажі, повернення, переміщення, списання
           </p>
         </div>
-        <Link
-          href="/admin/accounting/documents/new"
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '7px',
-            height: '38px', padding: '0 18px', borderRadius: '9px',
-            background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700,
-            textDecoration: 'none',
-          }}
-        >
-          <Plus size={15} /> Новий документ
-        </Link>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-stockdoc-draft', { detail: { docType: 'write_off' } }))}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px', borderRadius: 8, border: '1.5px solid #FECACA', background: 'var(--bg-card)', color: '#DC2626', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          >
+            <Trash2 size={14} /> Списання
+          </button>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-stockdoc-draft', { detail: { docType: 'transfer' } }))}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px', borderRadius: 8, border: '1.5px solid #BAE6FD', background: 'var(--bg-card)', color: '#0369A1', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          >
+            <ArrowLeftRight size={14} /> Переміщення
+          </button>
+          <Link
+            href="/admin/accounting/documents/new"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '7px',
+              height: '36px', padding: '0 16px', borderRadius: '8px',
+              background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700,
+              textDecoration: 'none',
+            }}
+          >
+            <Plus size={14} /> Інший документ
+          </Link>
+        </div>
       </div>
 
       {error && (
