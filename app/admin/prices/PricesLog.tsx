@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Tag, RotateCcw, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from 'lucide-react';
+import { Tag, RotateCcw, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, Clock, X } from 'lucide-react';
+import { showToast } from '../../../lib/toast';
 
 type LogEntry = {
   id: number;
@@ -13,6 +14,8 @@ type LogEntry = {
   comment: string | null;
   revert_at: string | null;
   reverted_at: string | null;
+  effective_from: string | null;
+  status: string;
   count: number | null;
   snapshot: { sku: string; name: string; before: Record<string, number | null>; after: Record<string, number | null> }[] | null;
 };
@@ -53,6 +56,7 @@ export default function PricesLog() {
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [cancelling, setCancelling] = useState<number | null>(null);
 
   useEffect(() => {
     fetch('/api/admin/prices/log')
@@ -67,6 +71,24 @@ export default function PricesLog() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  }
+
+  async function cancelPending(id: number) {
+    setCancelling(id);
+    try {
+      const res = await fetch('/api/admin/prices/log', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action: 'cancel' }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setEntries(prev => prev.map(e => e.id === id ? { ...e, status: 'cancelled' } : e));
+      showToast('Заплановану переоцінку скасовано', 'success');
+    } catch {
+      showToast('Помилка скасування', 'error');
+    } finally {
+      setCancelling(null);
+    }
   }
 
   if (loading) {
@@ -89,9 +111,16 @@ export default function PricesLog() {
         const isPositive = entry.value >= 0;
         const ps = promoStatus(entry);
         const hasSnapshot = (entry.snapshot?.length ?? 0) > 0;
+        const isPending   = entry.status === 'pending';
+        const isCancelled = entry.status === 'cancelled';
 
         return (
-          <div key={entry.id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+          <div key={entry.id} style={{
+            background: isPending ? '#F0F9FF' : isCancelled ? '#F9FAFB' : 'var(--bg-card)',
+            border: `1px solid ${isPending ? '#BAE6FD' : isCancelled ? '#E5E7EB' : 'var(--border)'}`,
+            borderRadius: 10, overflow: 'hidden',
+            opacity: isCancelled ? 0.7 : 1,
+          }}>
             <div
               style={{ display: 'grid', gridTemplateColumns: '155px 80px 80px 70px 1fr auto', alignItems: 'center', gap: 10, padding: '11px 16px', cursor: hasSnapshot ? 'pointer' : 'default' }}
               onClick={() => hasSnapshot && toggle(entry.id)}
@@ -115,6 +144,19 @@ export default function PricesLog() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, flexWrap: 'wrap' }}>
+                {isPending && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 700,
+                    color: '#0369A1', background: '#E0F2FE', border: '1px solid #BAE6FD',
+                    padding: '2px 6px', borderRadius: 4, flexShrink: 0 }}>
+                    <Clock size={10} /> Заплановано
+                  </span>
+                )}
+                {isCancelled && (
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#9CA3AF', background: '#F3F4F6',
+                    padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}>
+                    Скасовано
+                  </span>
+                )}
                 {entry.is_promo && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 700,
                     color: '#C2410C', background: '#FFF7ED', border: '1px solid #FDBA74',
@@ -126,6 +168,11 @@ export default function PricesLog() {
                   <span style={{ fontSize: 11, fontWeight: 600, color: ps.color, background: ps.bg,
                     padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}>
                     {ps.label}
+                  </span>
+                )}
+                {entry.effective_from && isPending && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: '#0369A1', flexShrink: 0 }}>
+                    з {formatDateOnly(entry.effective_from)}
                   </span>
                 )}
                 {entry.revert_at && !entry.reverted_at && (
@@ -143,10 +190,23 @@ export default function PricesLog() {
                 )}
               </div>
 
-              {hasSnapshot
-                ? <div style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>{isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</div>
-                : <div />
-              }
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                {isPending && (
+                  <button
+                    onClick={() => cancelPending(entry.id)}
+                    disabled={cancelling === entry.id}
+                    title="Скасувати заплановану переоцінку"
+                    style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#DC2626', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                    <X size={10} /> {cancelling === entry.id ? '...' : 'Скасувати'}
+                  </button>
+                )}
+                {hasSnapshot && (
+                  <div style={{ color: 'var(--text-secondary)' }}>
+                    {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </div>
+                )}
+                {!hasSnapshot && !isPending && <div />}
+              </div>
             </div>
 
             {isOpen && hasSnapshot && (

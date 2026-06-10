@@ -5,6 +5,10 @@
       "schedule": "0 0 * * *"
     },
     {
+      "path": "/api/cron/apply-scheduled-prices",
+      "schedule": "5 0 * * *"
+    },
+    {
       "path": "/api/cron/sync-suppliers",
       "schedule": "0 8 * * *"
     },

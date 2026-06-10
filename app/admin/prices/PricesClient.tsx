@@ -39,12 +39,14 @@ interface Category {
   parent_slug:         string | null;
   prom_commission_pct: number | null;
   prom_markup_pct:     number | null;
+  description:         string | null;
 }
 
 interface Props {
   products:   Product[];
   stock:      Stock[];
   categories: Category[];
+  promoMap:   Record<string, string | null>; // sku → revert_at (null = indefinite)
 }
 
 type PriceField = 'price_unit' | 'price_retail' | 'price_drop';
@@ -85,7 +87,7 @@ function calcPromPrice(retail: number, markup: number, commission: number) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function PricesClient({ products, stock, categories }: Props) {
+export default function PricesClient({ products, stock, categories, promoMap }: Props) {
   const stockMap = useMemo(() => new Map(stock.map(s => [s.sku, s])), [stock]);
   const catMap   = useMemo(() => new Map(categories.map(c => [c.slug, c])), [categories]);
 
@@ -112,6 +114,9 @@ export default function PricesClient({ products, stock, categories }: Props) {
   const [repricingIsPromo, setRepricingIsPromo] = useState(false);
   const [showPreview, setShowPreview]         = useState(false);
   const [previewKey, setPreviewKey]           = useState(0);
+  const [repricingEffectiveFrom, setRepricingEffectiveFrom] = useState('');
+  const [previewRevenue, setPreviewRevenue]   = useState<{ count: number; delta: number } | null>(null);
+  const [previewLoading, setPreviewLoading]   = useState(false);
 
   // Pricelist modal
   const [showPricelist, setShowPricelist]           = useState(false);
@@ -121,6 +126,12 @@ export default function PricesClient({ products, stock, categories }: Props) {
   const [plIncludeOutOfStock, setPlIncludeOutOfStock] = useState(false);
   const [plShowBrand, setPlShowBrand]               = useState(true);
   const [plShowImages, setPlShowImages]             = useState(false);
+  const [plShowDescriptions, setPlShowDescriptions] = useState(false);
+  const [descExpanded, setDescExpanded]             = useState(false);
+  // slug → current description text (for editing in modal)
+  const [catDescriptions, setCatDescriptions]       = useState<Map<string, string>>(new Map());
+  // slug → saving state
+  const [savingDesc, setSavingDesc]                 = useState<Set<string>>(new Set());
   const [plGenerating, setPlGenerating]             = useState(false);
   const [mounted, setMounted]                       = useState(false);
   useEffect(() => setMounted(true), []);
@@ -285,7 +296,7 @@ export default function PricesClient({ products, stock, categories }: Props) {
     if (!showPreview) return [];
     return selectedRows.map(r => {
       const result = applyFormula(r.cost, r.unit, r.retail, r.drop);
-      return { sku: r.p.sku, name: r.p.name, brand: r.p.brand, volume: r.p.volume, before: { unit: r.unit, retail: r.retail, drop: r.drop }, after: result };
+      return { sku: r.p.sku, name: r.p.name, brand: r.p.brand, volume: r.p.volume, before: { unit: r.unit, retail: r.retail, drop: r.drop }, after: result, hasPromo: r.s?.price_promo != null, promoRevertAt: promoMap[r.p.sku] ?? null };
     });
   }, [showPreview, previewKey, selectedRows, applyFormula]);
 
@@ -296,7 +307,29 @@ export default function PricesClient({ products, stock, categories }: Props) {
     setRepricingRevertAt('');
     setRepricingIsPromo(false);
     setRepricingValue('');
+    setRepricingEffectiveFrom('');
+    setPreviewRevenue(null);
   }
+
+  // Debounced revenue preview
+  useEffect(() => {
+    if (!repricingValue || isNaN(parseFloat(repricingValue)) || selected.size === 0) {
+      setPreviewRevenue(null);
+      return;
+    }
+    setPreviewLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const skus = [...selected].join(',');
+        const params = new URLSearchParams({ type: repricingType, value: repricingValue, target: repricingTarget, skus });
+        const res = await fetch(`/api/admin/prices/preview?${params}`);
+        if (res.ok) setPreviewRevenue(await res.json());
+      } catch { /* ignore */ } finally {
+        setPreviewLoading(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [repricingType, repricingValue, repricingTarget, selected]);
 
   async function applyRepricing() {
     setSaving(true);
@@ -305,21 +338,28 @@ export default function PricesClient({ products, stock, categories }: Props) {
         const result = applyFormula(r.cost, r.unit, r.retail, r.drop);
         return { sku: r.p.sku, ...result };
       });
-      const res = await fetch('/api/admin/prices/bulk', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ batch: updates, is_promo: repricingIsPromo }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      setOverrides(prev => {
-        const next = new Map(prev);
-        for (const u of updates) {
-          const existing = next.get(u.sku) ?? { price_cost: null, price_unit: null, price_retail: null, price_drop: null, price_locked: false };
-          next.set(u.sku, { ...existing, price_unit: u.unit ?? existing.price_unit, price_retail: u.retail ?? existing.price_retail, price_drop: u.drop ?? existing.price_drop });
-        }
-        return next;
-      });
-      // Log repricing action
+
+      const today = new Date().toISOString().split('T')[0];
+      const isFuture = repricingEffectiveFrom && repricingEffectiveFrom > today;
+
+      if (!isFuture) {
+        // Apply prices immediately
+        const res = await fetch('/api/admin/prices/bulk', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ batch: updates, is_promo: repricingIsPromo }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        setOverrides(prev => {
+          const next = new Map(prev);
+          for (const u of updates) {
+            const existing = next.get(u.sku) ?? { price_cost: null, price_unit: null, price_retail: null, price_drop: null, price_locked: false };
+            next.set(u.sku, { ...existing, price_unit: u.unit ?? existing.price_unit, price_retail: u.retail ?? existing.price_retail, price_drop: u.drop ?? existing.price_drop });
+          }
+          return next;
+        });
+      }
+
       const snapshot = selectedRows.map(r => {
         const after = applyFormula(r.cost, r.unit, r.retail, r.drop);
         return { sku: r.p.sku, name: r.p.name, before: { unit: r.unit, retail: r.retail, drop: r.drop }, after };
@@ -332,16 +372,46 @@ export default function PricesClient({ products, stock, categories }: Props) {
           is_promo: repricingIsPromo,
           comment: repricingComment || null,
           revert_at: repricingRevertAt || null,
+          effective_from: repricingEffectiveFrom ? new Date(repricingEffectiveFrom).toISOString() : null,
+          status: isFuture ? 'pending' : 'applied',
           count: updates.length,
           snapshot,
         }),
       }).catch(() => {});
+
       cancelRepricing();
-      showToast(`Переоцінено ${updates.length} товарів`, 'success');
+      showToast(isFuture
+        ? `Заплановано переоцінку ${updates.length} товарів з ${new Date(repricingEffectiveFrom).toLocaleDateString('uk-UA')}`
+        : `Переоцінено ${updates.length} товарів`, 'success');
     } catch {
       showToast('Помилка переоцінки', 'error');
     } finally {
       setSaving(false);
+    }
+  }
+
+  // ── Category descriptions ────────────────────────────────────────────────────
+
+  function openPricelist() {
+    // seed catDescriptions from current categories data
+    setCatDescriptions(new Map(categories.map(c => [c.slug, c.description ?? ''])));
+    setShowPricelist(true);
+  }
+
+  async function saveDescription(slug: string) {
+    setSavingDesc(prev => new Set(prev).add(slug));
+    try {
+      const res = await fetch(`/api/admin/categories/${slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: catDescriptions.get(slug) || null }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      showToast('Опис збережено', 'success');
+    } catch {
+      showToast('Помилка збереження', 'error');
+    } finally {
+      setSavingDesc(prev => { const s = new Set(prev); s.delete(slug); return s; });
     }
   }
 
@@ -372,13 +442,33 @@ export default function PricesClient({ products, stock, categories }: Props) {
     }
   }
 
-  function printPricelist() {
-    const priceLabel = { price_retail: 'Роздрібна ціна', price_unit: 'Оптова ціна', price_drop: 'Ціна дроп' }[plPriceType];
+  function generatePricelist() {
     const origin = window.location.origin;
 
-    const printRows = rows.filter(r => {
+    // Use all active products — NOT filtered by admin UI search/filters
+    const allRows = products
+      .filter(p => p.is_active)
+      .map(p => {
+        const s  = stockMap.get(p.sku);
+        const ov = overrides.get(p.sku);
+        const cat = p.category_slug ? catMap.get(p.category_slug) : null;
+        return {
+          p,
+          cat,
+          s,
+          retail: n(ov?.price_retail ?? s?.price_retail),
+          unit:   n(ov?.price_unit   ?? s?.price_unit),
+          drop:   n(ov?.price_drop   ?? s?.price_drop),
+        };
+      });
+
+    const printRows = allRows.filter(r => {
       if (!plIncludeOutOfStock && r.s?.stock_status !== 'in_stock') return false;
-      if (!plAllCats && r.p.category_slug && !plCategories.has(r.p.category_slug)) return false;
+      if (!plAllCats && r.p.category_slug) {
+        const directMatch = plCategories.has(r.p.category_slug);
+        const parentMatch = r.cat?.parent_slug ? plCategories.has(r.cat.parent_slug) : false;
+        if (!directMatch && !parentMatch) return false;
+      }
       return true;
     });
 
@@ -389,32 +479,79 @@ export default function PricesClient({ products, stock, categories }: Props) {
       grouped2.get(key)!.push(r);
     }
 
+    const descriptions = catDescriptions;
     const imgColW   = plShowImages ? '55px' : null;
     const brandColW = plShowBrand  ? '110px' : null;
     const volColW   = '110px';
     const priceColW = '95px';
+    const dateStr   = new Date().toISOString().slice(0, 10);
+    const dateLabel = new Date().toLocaleDateString('uk-UA');
+    const xlsxParams = JSON.stringify({
+      priceType:         plPriceType,
+      categories:        plAllCats ? 'all' : [...plCategories].join(','),
+      includeOutOfStock: String(plIncludeOutOfStock),
+      showBrand:         String(plShowBrand),
+    });
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Прайс-лист FIXLINE</title>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Прайс-лист</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
-  body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; color: #111; }
-  h1 { font-size: 18px; margin-bottom: 4px; }
-  .meta { color: #666; font-size: 11px; margin-bottom: 20px; }
-  h2 { font-size: 13px; font-weight: 700; background: #f0f4f8; padding: 6px 10px; margin: 16px 0 4px; border-left: 3px solid #1D4ED8; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #111; margin: 0; }
+  .action-bar { display: flex; gap: 8px; padding: 10px 24px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 100; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-p { background: #1D4ED8; color: #fff; border: none; }
+  .btn-s { background: #fff; color: #374151; border: 1.5px solid #E5E7EB; }
+  .content { max-width: 960px; margin: 24px auto; padding: 0 24px; }
+  .pl-label { font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px; }
+  .logo { height: 30px; display: block; margin-bottom: 3px; }
+  .site-url { font-size: 11px; color: #1D4ED8; text-decoration: none; display: block; margin-bottom: 3px; }
+  .meta { color: #9CA3AF; font-size: 11px; margin-bottom: 20px; }
+  h2 { font-size: 13px; font-weight: 700; background: #f0f4f8; padding: 6px 10px; margin: 20px 0 4px; border-left: 3px solid #1D4ED8; }
   table { width: 100%; border-collapse: collapse; margin-bottom: 8px; table-layout: fixed; }
-  th { background: #f9fafb; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; padding: 5px 8px; text-align: left; border-bottom: 1px solid #e5e7eb; overflow: hidden; }
+  th { background: #f9fafb; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; padding: 5px 8px; text-align: left; border-bottom: 1px solid #e5e7eb; }
   td { padding: 5px 8px; border-bottom: 1px solid #f3f4f6; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   td.name { white-space: normal; word-break: break-word; }
+  td.vol, th.vol { text-align: center; }
   tr:last-child td { border-bottom: none; }
   .price { font-weight: 700; text-align: right; white-space: nowrap; }
   .img-cell { padding: 2px 6px; text-align: center; }
   .img-cell img { width: 44px; height: 44px; object-fit: contain; display: block; margin: auto; }
-  @media print { @page { margin: 15mm; } }
+  .cat-desc { font-size: 11px; color: #555; font-style: italic; margin: 0 0 6px; padding: 0 2px; line-height: 1.5; }
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; }
+  .overlay.show { display: flex; }
+  .email-box { background: #fff; border-radius: 14px; padding: 28px; width: 340px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+  .email-box h3 { margin: 0 0 16px; font-size: 15px; font-weight: 700; }
+  .email-box input { width: 100%; padding: 8px 10px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 13px; margin-bottom: 14px; outline: none; }
+  .erow { display: flex; gap: 8px; }
+  @media print {
+    .action-bar, .overlay { display: none !important; }
+    .content { margin: 0; padding: 0; max-width: 100%; }
+    @page {
+      margin: 15mm;
+      @top-left { content: ""; } @top-center { content: ""; } @top-right { content: ""; }
+      @bottom-left { content: ""; }
+      @bottom-center { content: counter(page); font-size: 10px; color: #888; font-family: Arial, sans-serif; }
+      @bottom-right { content: ""; }
+    }
+  }
 </style></head><body>
-<h1>FIXLINE — Прайс-лист</h1>
-<div class="meta">Дата: ${new Date().toLocaleDateString('uk-UA')} &nbsp;·&nbsp; ${priceLabel}</div>
+<div class="action-bar">
+  <button class="btn btn-p" onclick="window.print()">Друкувати</button>
+  <button class="btn btn-s" id="pdfBtn" onclick="downloadPdf()">Скачати PDF</button>
+  <button class="btn btn-s" onclick="downloadXlsx()">Скачати XLSX</button>
+  <button class="btn btn-s" onclick="document.getElementById('eo').classList.add('show')">Відправити на email</button>
+</div>
+<div class="content">
+  <div class="pl-label">Прайс-лист</div>
+  <img class="logo" src="${origin}/fixline-logo.svg" alt="Fixline">
+  <a class="site-url" href="https://fixline.com.ua" target="_blank">fixline.com.ua</a>
+  <div class="meta">${dateLabel}</div>
 ${[...grouped2.entries()].map(([slug, catRows]) => {
   const catName = catRows[0]?.cat?.name ?? slug;
+  const desc = plShowDescriptions ? (descriptions.get(slug) || '') : '';
   return `<h2>${catName}</h2>
+${desc ? `<p class="cat-desc">${desc}</p>` : ''}
 <table>
   <colgroup>
     ${imgColW   ? `<col style="width:${imgColW}">` : ''}
@@ -427,8 +564,8 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
     ${imgColW ? '<th class="img-cell"></th>' : ''}
     <th>Назва</th>
     ${plShowBrand ? '<th>Бренд</th>' : ''}
-    <th>Об\'єм / Вага</th>
-    <th style="text-align:right">${priceLabel}</th>
+    <th class="vol">Об\'єм / Вага</th>
+    <th style="text-align:right">Ціна</th>
   </tr></thead>
   <tbody>
     ${catRows.map(r => {
@@ -438,13 +575,56 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
         ${imgColW ? `<td class="img-cell">${imgSrc ? `<img src="${imgSrc}" alt="">` : ''}</td>` : ''}
         <td class="name">${r.p.name}</td>
         ${plShowBrand ? `<td>${r.p.brand ?? ''}</td>` : ''}
-        <td>${r.p.volume ?? ''}</td>
+        <td class="vol">${r.p.volume ?? ''}</td>
         <td class="price">${price != null ? price.toLocaleString('uk-UA') + ' ₴' : '—'}</td>
       </tr>`;
     }).join('')}
   </tbody>
 </table>`;
 }).join('')}
+</div>
+<div class="overlay" id="eo">
+  <div class="email-box">
+    <h3>Відправити прайс-лист</h3>
+    <input type="email" id="ei" placeholder="email@example.com">
+    <div class="erow">
+      <button class="btn btn-p" style="flex:1" onclick="sendEmail()">Відправити</button>
+      <button class="btn btn-s" onclick="document.getElementById('eo').classList.remove('show')">Скасувати</button>
+    </div>
+    <p id="em" style="margin:10px 0 0;font-size:12px;color:#6B7280"></p>
+  </div>
+</div>
+<script>
+function downloadXlsx(){
+  const p=${xlsxParams};
+  fetch('/api/admin/prices/pricelist?'+new URLSearchParams(p))
+    .then(r=>{if(!r.ok)throw new Error();return r.blob();})
+    .then(blob=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pricelist_${dateStr}.xlsx';a.click();})
+    .catch(()=>alert('Помилка завантаження XLSX'));
+}
+function downloadPdf(){
+  const btn=document.getElementById('pdfBtn');
+  btn.textContent='Генерується...';btn.disabled=true;
+  html2pdf().set({
+    margin:[10,8,10,8],
+    filename:'pricelist_${dateStr}.pdf',
+    image:{type:'jpeg',quality:0.97},
+    html2canvas:{scale:2,useCORS:true,logging:false},
+    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+    pagebreak:{mode:'avoid-all'}
+  }).from(document.querySelector('.content')).save()
+    .finally(()=>{btn.textContent='Скачати PDF';btn.disabled=false;});
+}
+async function sendEmail(){
+  const email=document.getElementById('ei').value.trim();
+  if(!email||!email.includes('@')){document.getElementById('em').textContent='Введіть коректний email';return;}
+  document.getElementById('em').textContent='Надсилається...';
+  try{
+    const res=await fetch('/api/admin/prices/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,xlsxParams:${xlsxParams}})});
+    document.getElementById('em').textContent=res.ok?'Відправлено!':'Помилка — спробуйте ще раз';
+  }catch{document.getElementById('em').textContent='Помилка мережі';}
+}
+</script>
 </body></html>`;
 
     const win = window.open('', '_blank');
@@ -452,7 +632,6 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
     win.document.write(html);
     win.document.close();
     win.focus();
-    setTimeout(() => win.print(), 400);
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -474,7 +653,7 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
           {totalSelected > 0 && (
             <button onClick={clearAll} style={btnSecondary}>Зняти вибір</button>
           )}
-          <button onClick={() => setShowPricelist(true)} style={{ ...btnPrimary, background: '#fff', border: '1.5px solid #E5E7EB', color: '#374151' }}>
+          <button onClick={openPricelist} style={{ ...btnPrimary, background: '#fff', border: '1.5px solid #E5E7EB', color: '#374151' }}>
             <FileSpreadsheet size={15} /> Прайс-лист
           </button>
         </div>
@@ -564,6 +743,38 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
               <X size={13} /> Скасувати
             </button>
           </div>
+          {/* Conflict warning: selected SKUs already have active promo */}
+          {(() => {
+            const promoSkus = selectedRows.filter(r => r.s?.price_promo != null);
+            if (promoSkus.length === 0) return null;
+
+            // No conflict if our effective_from is after all promo end dates
+            const effectiveDate = repricingEffectiveFrom || null;
+            const conflicting = promoSkus.filter(r => {
+              const revertAt = promoMap[r.p.sku] ?? null;
+              if (!revertAt) return true; // indefinite promo — always conflicts
+              if (!effectiveDate) return true; // immediate repricing — conflicts with active promo
+              return effectiveDate <= revertAt; // overlap: our start is before (or same day as) promo end
+            });
+
+            if (conflicting.length === 0) return null; // all promos end before we start
+
+            if (repricingIsPromo) {
+              return (
+                <div style={{ marginBottom: 10, padding: '7px 12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 7, fontSize: 12, color: '#92400E', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Tag size={12} />
+                  <span><b>{conflicting.length} товар(ів)</b> вже мають акційну ціну — вона буде перезаписана (підсвічено жовтим у таблиці).</span>
+                </div>
+              );
+            }
+            return (
+              <div style={{ marginBottom: 10, padding: '7px 12px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 7, fontSize: 12, color: '#1E40AF', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Tag size={12} />
+                <span><b>{conflicting.length} товар(ів)</b> мають активну акцію — <code style={{ fontSize: 11 }}>price_promo</code> залишиться без змін. Якщо потрібно її зняти — спочатку скасуйте акцію, або поставте галочку «Акція».</span>
+              </div>
+            );
+          })()}
+
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
             {/* Formula type */}
             <div>
@@ -574,7 +785,7 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
                 <option value="fixed">Фіксована ціна</option>
               </select>
             </div>
-            {/* Value + refresh */}
+            {/* Value */}
             <div>
               <label style={smallLabel}>
                 {repricingType === 'multiply_cost' ? 'Множник' : repricingType === 'increase_pct' ? 'Відсоток (%)' : 'Ціна (₴)'}
@@ -615,13 +826,30 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
                 <Tag size={12} /> Акція
               </label>
             </div>
-            {/* Revert date */}
+            {/* Date range: effective_from → revert_at */}
+            <div>
+              <label style={smallLabel}>Дата початку</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input
+                  type="date"
+                  value={repricingEffectiveFrom}
+                  onChange={e => setRepricingEffectiveFrom(e.target.value)}
+                  style={{ ...inputSmall, height: 32, paddingRight: 6 }}
+                />
+                {repricingEffectiveFrom && (
+                  <button onClick={() => setRepricingEffectiveFrom('')} style={{ width: 22, height: 22, borderRadius: 4, border: 'none', background: 'transparent', cursor: 'pointer', color: '#9CA3AF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
+            </div>
             <div>
               <label style={smallLabel}>Повернути ціни після</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <input
                   type="date"
                   value={repricingRevertAt}
+                  min={repricingEffectiveFrom || undefined}
                   onChange={e => setRepricingRevertAt(e.target.value)}
                   style={{ ...inputSmall, height: 32, paddingRight: 6 }}
                 />
@@ -633,14 +861,37 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
               </div>
             </div>
           </div>
+
+          {/* Revenue preview widget */}
+          {repricingValue && (
+            <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
+              {previewLoading ? (
+                <span style={{ color: '#9CA3AF' }}>Розрахунок...</span>
+              ) : previewRevenue ? (
+                <>
+                  <span style={{ color: '#6B7280' }}>Вплив на виручку:</span>
+                  <span style={{ fontWeight: 700, color: previewRevenue.delta >= 0 ? '#15803D' : '#DC2626' }}>
+                    {previewRevenue.delta >= 0 ? '+' : ''}{previewRevenue.delta.toLocaleString('uk-UA')} ₴
+                  </span>
+                  <span style={{ color: '#9CA3AF' }}>({previewRevenue.count} поз. × залишок на складі)</span>
+                </>
+              ) : null}
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center' }}>
             <button onClick={() => setShowPreview(!showPreview)} style={btnSecondary}>
               {showPreview ? 'Сховати прев\'ю' : 'Прев\'ю змін'}
             </button>
             <button onClick={applyRepricing} disabled={saving || !repricingValue} style={btnPrimary}>
-              {saving ? 'Зберігаємо...' : 'Застосувати'}
+              {saving ? 'Зберігаємо...' : repricingEffectiveFrom && repricingEffectiveFrom > new Date().toISOString().split('T')[0] ? 'Запланувати' : 'Застосувати'}
             </button>
-            {repricingRevertAt && (
+            {repricingEffectiveFrom && repricingEffectiveFrom > new Date().toISOString().split('T')[0] && (
+              <span style={{ fontSize: 12, color: '#0369A1', display: 'flex', alignItems: 'center', gap: 4 }}>
+                Ціни будуть застосовані {new Date(repricingEffectiveFrom).toLocaleDateString('uk-UA')}
+              </span>
+            )}
+            {repricingRevertAt && !(repricingEffectiveFrom && repricingEffectiveFrom > new Date().toISOString().split('T')[0]) && (
               <span style={{ fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <RotateCcw size={12} /> Авто-відкат {new Date(repricingRevertAt).toLocaleDateString('uk-UA')}
               </span>
@@ -661,8 +912,20 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
                 </thead>
                 <tbody>
                   {repricingPreview.map(row => (
-                    <tr key={row.sku} style={{ borderBottom: '1px solid #F0F7FF' }}>
-                      <td style={{ padding: '5px 10px' }}>{row.brand} {row.name}{row.volume && !row.name.includes(row.volume) ? ` ${row.volume}` : ''}</td>
+                    <tr key={row.sku} style={{ borderBottom: '1px solid #F0F7FF', background: row.hasPromo ? '#FFFBEB' : undefined }}>
+                      <td style={{ padding: '5px 10px' }}>
+                        <span>{row.brand} {row.name}{row.volume && !row.name.includes(row.volume) ? ` ${row.volume}` : ''}</span>
+                        {row.hasPromo && (() => {
+                          const label = row.promoRevertAt
+                            ? `до ${new Date(row.promoRevertAt).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' })}`
+                            : 'акція';
+                          return (
+                            <span style={{ marginLeft: 5, display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 10, fontWeight: 600, color: '#C2410C', background: '#FFF7ED', border: '1px solid #FDBA74', padding: '1px 5px', borderRadius: 3, verticalAlign: 'middle' }}>
+                              <Tag size={9} /> {label}
+                            </span>
+                          );
+                        })()}
+                      </td>
                       <td style={{ padding: '5px 10px' }}><PreviewChange before={row.before.unit} after={row.after.unit} /></td>
                       <td style={{ padding: '5px 10px' }}><PreviewChange before={row.before.retail} after={row.after.retail} /></td>
                       <td style={{ padding: '5px 10px' }}><PreviewChange before={row.before.drop} after={row.after.drop} /></td>
@@ -720,13 +983,24 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
                     {catRows.map(r => {
                       const isEditing = editSku === r.p.sku;
                       return (
-                        <tr key={r.p.sku} style={{ borderBottom: '1px solid #F3F4F6', background: selected.has(r.p.sku) ? '#F0F7FF' : undefined }}>
+                        <tr key={r.p.sku} style={{ borderBottom: '1px solid #F3F4F6', background: selected.has(r.p.sku) && r.s?.price_promo != null ? '#FFFBEB' : selected.has(r.p.sku) ? '#F0F7FF' : undefined }}>
                           <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                             <input type="checkbox" checked={selected.has(r.p.sku)} onChange={() => toggleRow(r.p.sku)} />
                           </td>
                           <td style={{ padding: '8px 14px' }}>
-                            <div style={{ fontSize: 13, fontWeight: 500, color: '#111' }}>
-                              {r.p.brand} {r.p.name}{r.p.volume && !r.p.name.includes(r.p.volume) ? ` ${r.p.volume}` : ''}
+                            <div style={{ fontSize: 13, fontWeight: 500, color: '#111', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <span>{r.p.brand} {r.p.name}{r.p.volume && !r.p.name.includes(r.p.volume) ? ` ${r.p.volume}` : ''}</span>
+                              {r.s?.price_promo != null && (() => {
+                                const revertAt = promoMap[r.p.sku] ?? null;
+                                const label = revertAt
+                                  ? `до ${new Date(revertAt).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' })}`
+                                  : 'акція';
+                                return (
+                                  <span title={`Акційна ціна: ${r.s!.price_promo.toLocaleString('uk-UA')} ₴${revertAt ? ` · діє до ${new Date(revertAt).toLocaleDateString('uk-UA')}` : ''}`} style={{ fontSize: 10, fontWeight: 700, color: '#C2410C', background: '#FFF7ED', border: '1px solid #FDBA74', padding: '1px 5px', borderRadius: 3, display: 'inline-flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                                    <Tag size={9} /> {label}
+                                  </span>
+                                );
+                              })()}
                             </div>
                             <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace' }}>{r.p.sku}</div>
                           </td>
@@ -894,15 +1168,63 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
                   <input type="checkbox" checked={plShowImages} onChange={e => setPlShowImages(e.target.checked)} />
                   Показувати зображення
                 </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={plShowDescriptions} onChange={e => setPlShowDescriptions(e.target.checked)} />
+                  Показувати описи категорій
+                </label>
               </div>
+
+              {/* Category descriptions editor */}
+              {plShowDescriptions && (
+                <div>
+                  <button
+                    onClick={() => setDescExpanded(v => !v)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', marginBottom: descExpanded ? 10 : 0 }}
+                  >
+                    {descExpanded ? <ChevronUp size={14} color="#6B7280" /> : <ChevronDown size={14} color="#6B7280" />}
+                    <span style={{ ...modalLabel, margin: 0 }}>Описи категорій</span>
+                  </button>
+                  {descExpanded && <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {categories.filter(c => !c.parent_slug).map(parent => {
+                      const children = catChildren.get(parent.slug) ?? [];
+                      const catsToDescribe = children.length > 0 ? [parent, ...children] : [parent];
+                      return (
+                        <div key={parent.slug} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {catsToDescribe.map((cat, idx) => (
+                            <div key={cat.slug}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', marginBottom: 3, paddingLeft: idx > 0 ? 12 : 0 }}>
+                                {idx > 0 ? '↳ ' : ''}{cat.name}
+                              </div>
+                              <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', paddingLeft: idx > 0 ? 12 : 0 }}>
+                                <textarea
+                                  rows={2}
+                                  value={catDescriptions.get(cat.slug) ?? ''}
+                                  onChange={e => setCatDescriptions(prev => { const m = new Map(prev); m.set(cat.slug, e.target.value); return m; })}
+                                  placeholder="Короткий опис для прайс-листа..."
+                                  style={{ flex: 1, fontSize: 12, padding: '5px 8px', border: '1.5px solid #E5E7EB', borderRadius: 6, resize: 'vertical', outline: 'none', fontFamily: 'inherit', lineHeight: 1.4 }}
+                                />
+                                <button
+                                  onClick={() => saveDescription(cat.slug)}
+                                  disabled={savingDesc.has(cat.slug)}
+                                  title="Зберегти опис"
+                                  style={{ width: 28, height: 28, borderRadius: 6, border: '1.5px solid #D1FAE5', background: '#ECFDF5', color: '#059669', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}
+                                >
+                                  <Check size={13} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>}
+                </div>
+              )}
 
               {/* Actions */}
               <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                <button onClick={downloadPricelist} disabled={plGenerating} style={{ ...btnPrimary, flex: 1, justifyContent: 'center' }}>
-                  <FileSpreadsheet size={15} /> {plGenerating ? 'Генерація...' : 'Завантажити XLSX'}
-                </button>
-                <button onClick={printPricelist} style={{ ...btnSecondary, flex: 1, justifyContent: 'center' }}>
-                  <Printer size={15} /> Друкувати
+                <button onClick={generatePricelist} style={{ ...btnPrimary, flex: 1, justifyContent: 'center' }}>
+                  <FileSpreadsheet size={15} /> Сгенерувати
                 </button>
               </div>
             </div>
