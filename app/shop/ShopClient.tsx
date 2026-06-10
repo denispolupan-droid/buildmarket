@@ -756,8 +756,11 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             <div className="shop-empty">{t('Нічого не знайдено', 'Ничего не найдено')}</div>
           )}
           {sorted.slice(0, visibleCount).map(p => {
-            const price = p.stock?.price_retail ?? null;
-            const priceOld = p.stock?.price_retail_old ?? null;
+            const pricePromo = p.stock?.price_promo ?? null;
+            const price = pricePromo ?? (p.stock?.price_retail ?? null);
+            const priceOld = pricePromo
+              ? (p.stock?.price_retail ?? null)
+              : (p.stock?.price_retail_old ?? null);
             const inStock = p.stock?.stock_status === 'in_stock' || (p.stock?.stock_qty ?? 0) >= 1;
             const salePercent = price && priceOld
               ? Math.round((1 - price / priceOld) * 100)

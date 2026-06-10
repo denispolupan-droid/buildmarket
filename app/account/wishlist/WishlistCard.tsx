@@ -18,7 +18,8 @@ export default function WishlistCard({ product, retail = false }: { product: Pro
   const { toggle } = useWishlist();
   const nameRef = useRef<HTMLAnchorElement>(null);
 
-  const price   = retail ? (product.stock?.price_retail ?? 0) : (product.stock?.price_unit ?? 0);
+  const pricePromo = retail ? (product.stock?.price_promo ?? null) : null;
+  const price   = retail ? (pricePromo ?? product.stock?.price_retail ?? 0) : (product.stock?.price_unit ?? 0);
   const inStock = product.stock?.stock_status === 'in_stock' || (product.stock?.stock_qty ?? 0) >= minOrder;
   const total   = price > 0 ? price * qty : 0;
   const productHref = `/product/${product.sku}${retail ? '?from=shop' : ''}`;

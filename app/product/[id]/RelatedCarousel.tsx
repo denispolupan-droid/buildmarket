@@ -82,8 +82,9 @@ export default function RelatedCarousel({ products, retail = false }: { products
           transition: 'transform 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
         }}>
           {products.map(p => {
-            const relPrice    = retail ? (p.stock?.price_retail ?? 0)     : (p.stock?.price_unit ?? 0);
-            const relPriceOld = retail ? (p.stock?.price_retail_old ?? null) : (p.stock?.price_old  ?? null);
+            const relPromo    = retail ? (p.stock?.price_promo ?? null) : null;
+            const relPrice    = retail ? (relPromo ?? p.stock?.price_retail ?? 0) : (p.stock?.price_unit ?? 0);
+            const relPriceOld = retail ? (relPromo ? (p.stock?.price_retail ?? null) : (p.stock?.price_retail_old ?? null)) : (p.stock?.price_old ?? null);
             const relStock    = p.stock?.stock_qty  ?? 0;
             const stockStatus = p.stock?.stock_status;
             const relMinOrder = retail ? 1 : p.min_order;

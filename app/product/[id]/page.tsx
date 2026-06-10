@@ -105,11 +105,12 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     ? Math.round((approvedReviews.reduce((s: number, r: { rating: number }) => s + r.rating, 0) / reviewCount) * 10) / 10
     : 0;
 
+  const pricePromo = isRetail ? (product.stock?.price_promo ?? null) : null;
   const priceUnit = isRetail
-    ? (product.stock?.price_retail ?? 0)
+    ? (pricePromo ?? product.stock?.price_retail ?? 0)
     : (product.stock?.price_unit ?? 0);
   const priceOld  = isRetail
-    ? (product.stock?.price_retail_old ?? null)
+    ? (pricePromo ? (product.stock?.price_retail ?? null) : (product.stock?.price_retail_old ?? null))
     : (product.stock?.price_old ?? null);
   const stockQty    = product.stock?.stock_qty    ?? 0;
   const stockStatus = product.stock?.stock_status;

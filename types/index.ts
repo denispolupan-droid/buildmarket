@@ -54,6 +54,7 @@ export type ProductStock = {
   price_old: number | null;
   price_retail: number | null;
   price_retail_old: number | null;
+  price_promo: number | null;
   price_drop: number | null;
   stock_qty: number;
   stock_status: 'in_stock' | 'out_of_stock' | 'on_order';
