@@ -622,28 +622,37 @@ async function sendEmail(){
   btn.disabled=true;
   document.getElementById('em').textContent='Генерується PDF...';
   try{
-    const pdfBlob=await html2pdf().set({
-      margin:[10,8,10,8],
-      image:{type:'jpeg',quality:0.95},
-      html2canvas:{scale:2,useCORS:true,logging:false},
-      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-      pagebreak:{mode:'avoid-all'}
-    }).from(document.querySelector('.content')).outputPdf('blob');
+    // hide images to avoid canvas CORS/size issues
+    const imgs=document.querySelectorAll('.img-cell');
+    imgs.forEach(el=>el.style.display='none');
+    let pdfBlob;
+    try{
+      pdfBlob=await html2pdf().set({
+        margin:[10,8,10,8],
+        image:{type:'jpeg',quality:0.92},
+        html2canvas:{scale:1,useCORS:false,logging:false,allowTaint:true},
+        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+        pagebreak:{mode:'avoid-all'}
+      }).from(document.querySelector('.content')).outputPdf('blob');
+    }finally{
+      imgs.forEach(el=>el.style.display='');
+    }
     const pdfBase64=await new Promise(resolve=>{
       const r=new FileReader();
       r.onload=()=>resolve(r.result.split(',')[1]);
       r.readAsDataURL(pdfBlob);
     });
     document.getElementById('em').textContent='Надсилається...';
-    const res=await fetch('/api/admin/prices/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,pdfBase64,date:'${dateStr}'})});
+    const res=await fetch('${origin}/api/admin/prices/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,pdfBase64,date:'${dateStr}'})});
     if(res.ok){
       document.getElementById('em').textContent='Відправлено!';
       setTimeout(()=>document.getElementById('eo').classList.remove('show'),1200);
     }else{
-      document.getElementById('em').textContent='Помилка — спробуйте ще раз';
+      const err=await res.json().catch(()=>({}));
+      document.getElementById('em').textContent='Помилка: '+(err.error||res.status);
       btn.disabled=false;
     }
-  }catch{document.getElementById('em').textContent='Помилка мережі';btn.disabled=false;}
+  }catch(e){document.getElementById('em').textContent='Помилка: '+e.message;btn.disabled=false;}
 }
 </script>
 </body></html>`;
