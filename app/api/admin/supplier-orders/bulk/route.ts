@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   const { data: orders } = await db
     .from('orders')
-    .select('id, order_number, items, contact, phone, delivery_city_name')
+    .select('id, order_number, items, contact, phone, delivery_city_name, tracking_number')
     .in('id', orderIds);
 
   if (!orders?.length) return NextResponse.json({ error: 'Orders not found' }, { status: 404 });
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Group all items across all orders by supplier
-  type LineItem = { supplierSku: string; name: string; qty: number; orderNumber: number };
+  type LineItem = { supplierSku: string; name: string; qty: number; orderNumber: number; trackingNumber?: string | null };
   const bySupplier = new Map<number, LineItem[]>();
 
   for (const order of orders) {
@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
         name: `${item.brand ? item.brand + ' ' : ''}${item.name}`,
         qty: item.qty,
         orderNumber: order.order_number,
+        trackingNumber: order.tracking_number,
       });
     }
   }
@@ -93,9 +94,12 @@ export async function POST(req: NextRequest) {
         byOrder.get(line.orderNumber)!.push(line);
       }
 
-      const orderSections = [...byOrder.entries()].map(([num, items]) => `
+      const orderSections = [...byOrder.entries()].map(([num, items]) => {
+        const ttn = items[0]?.trackingNumber;
+        const ttnStr = ttn ? `<span style="font-family:monospace;font-size:13px;color:#1E3A5F;margin-left:8px">ТТН: <strong>${ttn}</strong></span>` : '';
+        return `
         <div style="margin-bottom:16px">
-          <div style="font-size:13px;font-weight:700;color:#1E3A5F;margin-bottom:6px">Замовлення #${num}</div>
+          <div style="font-size:13px;font-weight:700;color:#1E3A5F;margin-bottom:6px">Замовлення #${num}${ttnStr}</div>
           <table style="width:100%;border-collapse:collapse">
             <thead>
               <tr style="background:#F8FAFC">
@@ -113,7 +117,8 @@ export async function POST(req: NextRequest) {
                 </tr>`).join('')}
             </tbody>
           </table>
-        </div>`).join('');
+        </div>`;
+      }).join('');
 
       const commentBlock = comment?.trim()
         ? `<div style="margin-top:16px;padding:12px;background:#FEF3C7;border-radius:8px;font-size:13px;color:#92400E"><strong>Коментар:</strong> ${comment}</div>`

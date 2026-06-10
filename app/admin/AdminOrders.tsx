@@ -239,6 +239,11 @@ export default function AdminOrders({
   }
 
   async function startSupplierSend(orderIds: string[]) {
+    const missingTtn = orderIds.some(oid => !orders.find(o => o.id === oid)?.tracking_number);
+    if (missingTtn) {
+      const ok = window.confirm('ТТН не створена для цього замовлення. Все одно відправити постачальнику?');
+      if (!ok) return;
+    }
     setSupplierQueueLoading(true);
     setSupplierQueueDone(false);
     const items: SupplierQItem[] = await Promise.all(orderIds.map(async (oid) => {

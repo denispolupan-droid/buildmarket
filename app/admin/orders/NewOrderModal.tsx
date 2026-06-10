@@ -669,6 +669,10 @@ export default function NewOrderModal({
     try {
       const res = await fetch(`/api/admin/orders/${saved.id}/supplier-order`);
       const data = await res.json();
+      if (!data.tracking_number) {
+        const ok = window.confirm('ТТН не створена для цього замовлення. Все одно відправити постачальнику?');
+        if (!ok) { setActionBusy(false); return; }
+      }
       setSupplierModal({ orderId: saved.id, supplierName: data.supplier_name ?? '—', emailOverride: data.supplier_email ?? '', comment: '', sending: false });
     } catch (e) { setError(e instanceof Error ? e.message : 'Помилка'); }
     finally { setActionBusy(false); }

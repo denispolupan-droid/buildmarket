@@ -60,7 +60,7 @@ export async function GET(
   const { id } = await params;
   const db = createServiceClient();
 
-  const { data: order } = await db.from('orders').select('items').eq('id', id).single();
+  const { data: order } = await db.from('orders').select('items, tracking_number').eq('id', id).single();
   if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const skus = ((order.items ?? []) as { sku: string }[]).map((i) => i.sku);
@@ -73,9 +73,10 @@ export async function GET(
   const first = suppliers?.[0];
   const supplierEmail = first?.email ?? extractEmail(first?.notes ?? '') ?? '';
   return NextResponse.json({
-    supplier_id:    first?.id ?? null,
-    supplier_name:  suppliers?.map((s) => s.name).join(', ') ?? '—',
-    supplier_email: supplierEmail,
+    supplier_id:      first?.id ?? null,
+    supplier_name:    suppliers?.map((s) => s.name).join(', ') ?? '—',
+    supplier_email:   supplierEmail,
+    tracking_number:  order.tracking_number ?? null,
   });
 }
 
@@ -94,7 +95,7 @@ export async function POST(
 
   const { data: order } = await db
     .from('orders')
-    .select('id, order_number, items, contact, phone, delivery_city_name')
+    .select('id, order_number, items, contact, phone, delivery_city_name, tracking_number')
     .eq('id', id)
     .single();
 
@@ -153,11 +154,12 @@ export async function POST(
           to:   toEmail,
           subject: `Замовлення від FIXLINE — #${order.order_number}`,
           html: buildSupplierEmailHtml({
-            orderNumber:  order.order_number,
-            contact:      order.contact,
-            phone:        order.phone,
-            deliveryCity: order.delivery_city_name ?? '',
-            comment:      overrideComment,
+            orderNumber:    order.order_number,
+            contact:        order.contact,
+            phone:          order.phone,
+            deliveryCity:   order.delivery_city_name ?? '',
+            trackingNumber: order.tracking_number ?? undefined,
+            comment:        overrideComment,
             items: supplierItems.map(item => ({
               supplierSku: supplierSkus.get(item.sku) ?? item.sku,
               name:        `${item.brand ? item.brand + ' ' : ''}${item.name}`,
@@ -191,6 +193,7 @@ function buildSupplierEmailHtml(data: {
   contact: string;
   phone: string;
   deliveryCity: string;
+  trackingNumber?: string;
   comment?: string;
   items: { supplierSku: string; name: string; qty: number }[];
 }) {
@@ -201,6 +204,10 @@ function buildSupplierEmailHtml(data: {
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;font-weight:700">${i.qty} шт</td>
     </tr>`).join('');
 
+  const ttnBlock = data.trackingNumber
+    ? `<p style="margin-top:12px;color:#1E3A5F;font-size:14px">ТТН Нова Пошта: <strong style="font-family:monospace;font-size:15px;letter-spacing:0.5px">${data.trackingNumber}</strong></p>`
+    : '';
+
   const commentBlock = data.comment?.trim()
     ? `<div style="margin-top:16px;padding:12px;background:#FEF3C7;border-radius:8px;font-size:13px;color:#92400E"><strong>Коментар:</strong> ${data.comment}</div>`
     : '';
@@ -209,6 +216,7 @@ function buildSupplierEmailHtml(data: {
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
       <h2 style="color:#1E3A5F">Замовлення від FIXLINE #${data.orderNumber}</h2>
       <p style="color:#555">Отримувач: <strong>${data.contact}</strong> · ${data.phone}${data.deliveryCity ? ` · ${data.deliveryCity}` : ''}</p>
+      ${ttnBlock}
       <table style="width:100%;border-collapse:collapse;margin-top:16px">
         <thead>
           <tr style="background:#F8FAFC">
