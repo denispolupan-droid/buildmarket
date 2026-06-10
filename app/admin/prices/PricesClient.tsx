@@ -23,6 +23,7 @@ interface Stock {
   price_unit:      number | null;
   price_retail:    number | null;
   price_drop:      number | null;
+  price_promo:     number | null;
   price_wholesale: number | null;
   price_locked:    boolean;
   stock_status:    string;
@@ -92,6 +93,7 @@ export default function PricesClient({ products, stock, categories }: Props) {
   const [filterBrand, setFilterBrand]   = useState('');
   const [filterNoPrice, setFilterNoPrice]   = useState(false);
   const [filterLocked, setFilterLocked]     = useState(false);
+  const [filterPromo, setFilterPromo]       = useState(false);
   const [collapsed, setCollapsed]       = useState<Set<string>>(new Set());
   const [selected, setSelected]         = useState<Set<string>>(new Set());
   const [editSku, setEditSku]           = useState<string | null>(null);
@@ -150,8 +152,9 @@ export default function PricesClient({ products, stock, categories }: Props) {
       .filter(r => filterStock === 'all' ? true : filterStock === 'in_stock' ? r.s?.stock_status === 'in_stock' : r.s?.stock_status !== 'in_stock')
       .filter(r => !filterBrand || r.p.brand === filterBrand)
       .filter(r => !filterNoPrice || r.cost == null || r.retail == null)
-      .filter(r => !filterLocked || r.locked);
-  }, [products, stock, categories, search, showInactive, filterStock, filterBrand, filterNoPrice, filterLocked, overrides, stockMap, catMap]);
+      .filter(r => !filterLocked || r.locked)
+      .filter(r => !filterPromo || r.s?.price_promo != null);
+  }, [products, stock, categories, search, showInactive, filterStock, filterBrand, filterNoPrice, filterLocked, filterPromo, overrides, stockMap, catMap]);
 
   // Group by category
   const grouped = useMemo(() => {
@@ -480,9 +483,14 @@ ${[...grouped2.entries()].map(([slug, catRows]) => {
           <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
           Неактивні
         </label>
+        {/* Акція */}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: filterPromo ? '#C2410C' : '#6B7280', cursor: 'pointer', whiteSpace: 'nowrap', padding: '6px 12px', border: `1.5px solid ${filterPromo ? '#FDBA74' : '#E5E7EB'}`, borderRadius: 8, background: filterPromo ? '#FFF7ED' : '#fff' }}>
+          <input type="checkbox" checked={filterPromo} onChange={e => setFilterPromo(e.target.checked)} />
+          <Tag size={12} /> Акція
+        </label>
         {/* Reset */}
-        {(filterStock !== 'all' || filterBrand || filterNoPrice || filterLocked || showInactive) && (
-          <button onClick={() => { setFilterStock('all'); setFilterBrand(''); setFilterNoPrice(false); setFilterLocked(false); setShowInactive(false); }} style={{ ...btnSecondary, color: '#fff', background: '#EF4444', borderColor: '#EF4444', fontSize: 12, fontWeight: 700 }}>
+        {(filterStock !== 'all' || filterBrand || filterNoPrice || filterLocked || filterPromo || showInactive) && (
+          <button onClick={() => { setFilterStock('all'); setFilterBrand(''); setFilterNoPrice(false); setFilterLocked(false); setFilterPromo(false); setShowInactive(false); }} style={{ ...btnSecondary, color: '#fff', background: '#EF4444', borderColor: '#EF4444', fontSize: 12, fontWeight: 700 }}>
             <X size={13} /> Скинути
           </button>
         )}

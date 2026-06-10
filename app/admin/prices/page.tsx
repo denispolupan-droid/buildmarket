@@ -22,7 +22,7 @@ export default async function PricesPage() {
       .order('brand')
       .order('name'),
     db.from('product_stock')
-      .select('sku, price_cost, price_unit, price_retail, price_drop, price_wholesale, price_locked, stock_status, stock_qty, updated_at'),
+      .select('sku, price_cost, price_unit, price_retail, price_drop, price_promo, price_wholesale, price_locked, stock_status, stock_qty, updated_at'),
     db.from('categories')
       .select('slug, name, parent_slug, prom_commission_pct, prom_markup_pct')
       .order('sort_order'),
