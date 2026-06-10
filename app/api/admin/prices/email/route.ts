@@ -3,7 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { Resend } from 'resend';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const PDFDocument = require('pdfkit');
+const _pdf = require('pdfkit');
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const PDFDocument: any = _pdf.default ?? _pdf;
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
