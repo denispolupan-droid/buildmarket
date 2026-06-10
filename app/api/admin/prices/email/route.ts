@@ -21,16 +21,29 @@ async function fetchFont(bold = false): Promise<Buffer> {
 }
 
 // ── Image helpers ─────────────────────────────────────────────────────────────
-function imageUrl(imagePath: string): string {
-  // imagePath: "/img/products/cat/name.webp"  →  Supabase render → JPEG
+function renderUrl(imagePath: string): string {
   const p = imagePath.replace(/^\/img\//, '');
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/render/image/public/${p}?width=56&height=56&format=jpg&quality=70&resize=contain`;
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/render/image/public/${p}?width=60&height=60&format=jpg&quality=75&resize=contain`;
 }
 
-async function fetchImageBuffer(url: string): Promise<Buffer | null> {
+function objectUrl(imagePath: string): string {
+  const p = imagePath.replace(/^\/img\//, '');
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${p}`;
+}
+
+function isEmbeddable(buf: Buffer): boolean {
+  if (buf.length < 4) return false;
+  // JPEG: FF D8 FF
+  if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return true;
+  // PNG: 89 50 4E 47
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) return true;
+  return false;
+}
+
+async function fetchUrl(url: string, timeoutMs = 5000): Promise<Buffer | null> {
   try {
     const ac = new AbortController();
-    const t  = setTimeout(() => ac.abort(), 4000);
+    const t  = setTimeout(() => ac.abort(), timeoutMs);
     const r  = await fetch(url, { signal: ac.signal });
     clearTimeout(t);
     if (!r.ok) return null;
@@ -38,16 +51,35 @@ async function fetchImageBuffer(url: string): Promise<Buffer | null> {
   } catch { return null; }
 }
 
+async function fetchImageBuffer(imagePath: string): Promise<Buffer | null> {
+  // 1. Try local public folder (e.g. images committed to repo)
+  try {
+    const localPath = join(process.cwd(), 'public', imagePath.replace(/^\//, ''));
+    const buf = readFileSync(localPath);
+    if (isEmbeddable(buf)) return buf;
+  } catch { /* not local */ }
+
+  // 2. Try Supabase image transformation API (WebP → JPEG)
+  const rendered = await fetchUrl(renderUrl(imagePath));
+  if (rendered && isEmbeddable(rendered)) return rendered;
+
+  // 3. Fallback: raw object (might be JPEG/PNG already)
+  const raw = await fetchUrl(objectUrl(imagePath));
+  if (raw && isEmbeddable(raw)) return raw;
+
+  return null;
+}
+
 async function fetchImages(skuImageMap: Map<string, string>): Promise<Map<string, Buffer>> {
   const entries = [...skuImageMap.entries()];
-  const CONCURRENCY = 15;
+  const CONCURRENCY = 12;
   const result = new Map<string, Buffer>();
   let i = 0;
 
   async function worker() {
     while (i < entries.length) {
       const [sku, path] = entries[i++];
-      const buf = await fetchImageBuffer(imageUrl(path));
+      const buf = await fetchImageBuffer(path);
       if (buf) result.set(sku, buf);
     }
   }
@@ -104,12 +136,14 @@ async function buildPdf(
       const H  = 66;
       doc.rect(M, y0, PW, H).fill('#1E3A5F');
 
-      // Logo
+      // Logo: actual PNG is 1421×246 → at height 30 the width = round(30 * 1421/246) = 173px
+      const LOGO_H = 30;
+      const LOGO_W = Math.round(LOGO_H * 1421 / 246); // 173
       let logoRightEdge = M + 12;
       if (logoBuffer) {
         try {
-          doc.image(logoBuffer, M + 10, y0 + 13, { height: 28 });
-          logoRightEdge = M + 10 + 28 * 3.5 + 6; // approximate logo width
+          doc.image(logoBuffer, M + 10, y0 + (H - LOGO_H) / 2, { width: LOGO_W, height: LOGO_H });
+          logoRightEdge = M + 10 + LOGO_W + 10;
         } catch { /* skip if image fails */ }
       }
 
@@ -173,9 +207,11 @@ async function buildPdf(
     }
 
     // ── Data row ───────────────────────────────────────────────────────────────
-    function calcRowH(name: string): number {
+    function calcRowH(name: string, sku: string): number {
       doc.font('R').fontSize(8);
-      return Math.max(showImages ? 46 : 18, doc.heightOfString(name, { width: C_NAME - 8 }) + 7);
+      const textH = Math.max(18, doc.heightOfString(name, { width: C_NAME - 8 }) + 7);
+      // Enforce 46px min only when this row actually has an image to show
+      return (showImages && imageBuffers.has(sku)) ? Math.max(46, textH) : textH;
     }
 
     function drawRow(y: number, rh: number, row: PdfRow, shade: boolean) {
@@ -194,13 +230,17 @@ async function buildPdf(
         x += C_IMG;
       }
 
-      // Name (wrapping)
+      // Vertical centre for single-line cells
+      const lineH = 8; // font size
+      const cy    = y + (rh - lineH) / 2;
+
+      // Name (wrapping, top-aligned)
+      const nameTop = rh > 24 ? y + (rh - doc.heightOfString(row.name, { width: C_NAME - 6 })) / 2 : y + 4;
       doc.font('R').fontSize(8).fillColor('#111')
-         .text(row.name, x + 3, y + 4, { width: C_NAME - 6, lineBreak: true, height: rh - 4 });
+         .text(row.name, x + 3, Math.max(y + 3, nameTop), { width: C_NAME - 6, lineBreak: true, height: rh - 4 });
       x += C_NAME;
 
       // Other cells: vertically centred
-      const cy = y + rh / 2 - 4;
       if (showBrand) {
         doc.font('R').fontSize(7.5).fillColor('#374151')
            .text(row.brand ?? '', x + 2, cy, { width: C_BRAND - 4, lineBreak: false, ellipsis: true });
@@ -241,7 +281,7 @@ async function buildPdf(
       doc.y += COL_H;
 
       rows.forEach((r, i) => {
-        const rh = calcRowH(r.name);
+        const rh = calcRowH(r.name, r.sku);
         if (doc.y + rh > BOTTOM) {
           doc.addPage();
           drawPageHeader();

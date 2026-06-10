@@ -286,7 +286,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       return;
     }
     setSelCat(slug);
-    window.history.pushState(null, '', slug ? `${shopBase}/${slug}` : shopBase);
+    router.replace(slug ? `${shopBase}/${slug}` : shopBase, { scroll: false });
     sidebarRef.current?.scrollTo({ top: 0 });
     if (catsListRef.current) catsListRef.current.scrollTop = 0;
     setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup('');
@@ -489,7 +489,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                       if (expanding) {
                         // Оновлюємо фільтр БЕЗ скролу сторінки
                         setSelCat(cat.slug);
-                        window.history.pushState(null, '', `${shopBase}/${cat.slug}`);
+                        router.replace(`${shopBase}/${cat.slug}`, { scroll: false });
                         setVisibleCount(24);
                         // Тільки сайдбар — після анімації
                         setTimeout(() => scrollCatToTop(cat.slug), 450);

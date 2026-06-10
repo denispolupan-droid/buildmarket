@@ -184,7 +184,7 @@ export default function ProductImage({
     return (
       <Image
         src={imageUrl}
-        alt={rest.nl1}
+        alt={[rest.brand, rest.nl1, rest.nl2, rest.volume].filter(Boolean).join(' ')}
         width={400}
         height={400}
         quality={90}

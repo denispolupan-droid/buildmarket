@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['pdfkit'],
   images: {
     formats: ['image/avif', 'image/webp'],
-    minimumCacheTTL: 60,
+    minimumCacheTTL: 86400,
     remotePatterns: [
       {
         protocol: 'https',
