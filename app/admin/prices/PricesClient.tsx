@@ -506,7 +506,11 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
   .pl-label { font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px; }
   .logo { height: 30px; display: block; margin-bottom: 3px; }
   .site-url { font-size: 11px; color: #1D4ED8; text-decoration: none; display: block; margin-bottom: 3px; }
-  .meta { color: #9CA3AF; font-size: 11px; margin-bottom: 20px; }
+  .meta { color: #9CA3AF; font-size: 11px; }
+  .pl-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  .pl-contacts { text-align: right; padding-top: 18px; }
+  .pl-phone { font-size: 15px; font-weight: 700; color: #111; margin-bottom: 4px; letter-spacing: .01em; }
+  .pl-email { font-size: 11px; color: #1D4ED8; text-decoration: none; display: block; }
   h2 { font-size: 13px; font-weight: 700; background: #f0f4f8; padding: 6px 10px; margin: 20px 0 4px; border-left: 3px solid #1D4ED8; }
   table { width: 100%; border-collapse: collapse; margin-bottom: 8px; table-layout: fixed; }
   th { background: #f9fafb; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; padding: 5px 8px; text-align: left; border-bottom: 1px solid #e5e7eb; }
@@ -543,10 +547,18 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
   <button class="btn btn-s" onclick="document.getElementById('eo').classList.add('show')">Відправити на email</button>
 </div>
 <div class="content">
-  <div class="pl-label">Прайс-лист</div>
-  <img class="logo" src="${origin}/fixline-logo.svg" alt="Fixline">
-  <a class="site-url" href="https://fixline.com.ua" target="_blank">fixline.com.ua</a>
-  <div class="meta">${dateLabel}</div>
+  <div class="pl-header">
+    <div>
+      <div class="pl-label">Прайс-лист</div>
+      <img class="logo" src="${origin}/fixline-logo.svg" alt="Fixline">
+      <a class="site-url" href="https://fixline.com.ua" target="_blank">fixline.com.ua</a>
+      <div class="meta">${dateLabel}</div>
+    </div>
+    <div class="pl-contacts">
+      <div class="pl-phone">+380 99 199 77 88</div>
+      <a class="pl-email" href="mailto:info@fixline.com.ua">info@fixline.com.ua</a>
+    </div>
+  </div>
 ${[...grouped2.entries()].map(([slug, catRows]) => {
   const catName = catRows[0]?.cat?.name ?? slug;
   const desc = plShowDescriptions ? (descriptions.get(slug) || '') : '';
@@ -620,30 +632,9 @@ async function sendEmail(){
   if(!email||!email.includes('@')){document.getElementById('em').textContent='Введіть коректний email';return;}
   const btn=document.querySelector('#eo .btn-p');
   btn.disabled=true;
-  document.getElementById('em').textContent='Генерується PDF...';
+  document.getElementById('em').textContent='Надсилається...';
   try{
-    // hide images to avoid canvas CORS/size issues
-    const imgs=document.querySelectorAll('.img-cell');
-    imgs.forEach(el=>el.style.display='none');
-    let pdfBlob;
-    try{
-      pdfBlob=await html2pdf().set({
-        margin:[10,8,10,8],
-        image:{type:'jpeg',quality:0.92},
-        html2canvas:{scale:1,useCORS:false,logging:false,allowTaint:true},
-        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-        pagebreak:{mode:'avoid-all'}
-      }).from(document.querySelector('.content')).outputPdf('blob');
-    }finally{
-      imgs.forEach(el=>el.style.display='');
-    }
-    const pdfBase64=await new Promise(resolve=>{
-      const r=new FileReader();
-      r.onload=()=>resolve(r.result.split(',')[1]);
-      r.readAsDataURL(pdfBlob);
-    });
-    document.getElementById('em').textContent='Надсилається...';
-    const res=await fetch('${origin}/api/admin/prices/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,pdfBase64,date:'${dateStr}'})});
+    const res=await fetch('${origin}/api/admin/prices/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,xlsxParams:${xlsxParams}})});
     if(res.ok){
       document.getElementById('em').textContent='Відправлено!';
       setTimeout(()=>document.getElementById('eo').classList.remove('show'),1200);
