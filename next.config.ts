@@ -27,6 +27,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ['pdfkit'],
   images: {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 60,
