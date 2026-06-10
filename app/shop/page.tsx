@@ -21,7 +21,7 @@ export async function generateMetadata(
       title: 'Акційні товари — будівельна хімія зі знижкою',
       description: 'Акції на герметики, монтажні піни, клеї та ґрунтовки. Купити зі знижкою від 1 одиниці з доставкою по Україні.',
       alternates: { canonical: `${BASE}/shop/sale`, languages: { 'uk': `${BASE}/shop/sale`, 'ru': `${BASE}/ru/shop/sale`, 'x-default': `${BASE}/shop/sale` } },
-      openGraph: { title: 'Акційні товари | FIXLINE', url: `${BASE}/shop/sale`, locale: 'uk_UA', type: 'website' },
+      openGraph: { title: 'Акційні товари | FIXLINE', url: `${BASE}/shop/sale`, locale: 'uk_UA', type: 'website', images: [{ url: `${BASE}/shop/sale/opengraph-image`, width: 1200, height: 630, alt: 'Акційні товари FIXLINE' }] },
     };
   }
 
@@ -39,6 +39,7 @@ export async function generateMetadata(
       title: 'Магазин будівельної хімії | FIXLINE',
       description: 'Герметики, монтажні піни, клеї, ґрунтовки. Від 1 одиниці з доставкою по Україні.',
       url: `${BASE}/shop`, siteName: 'FIXLINE', locale: 'uk_UA', type: 'website',
+      images: [{ url: `${BASE}/opengraph-image`, width: 1200, height: 630, alt: 'FIXLINE — будівельна хімія' }],
     },
   };
 }

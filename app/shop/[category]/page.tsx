@@ -152,14 +152,14 @@ export default async function ShopCategoryPage({ params }: { params: Promise<{ c
               )}
               {meta.faq && meta.faq.length > 0 && (
                 <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
-                  <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <h2 style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Часті запитання
-                  </p>
+                  </h2>
                   {meta.faq.map((item, i) => (
                     <div key={i} style={{ marginBottom: i < meta.faq!.length - 1 ? '12px' : 0 }}>
-                      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px' }}>
+                      <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px' }}>
                         {item.q}
-                      </p>
+                      </h3>
                       <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>
                         {item.a}
                       </p>

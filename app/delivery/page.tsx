@@ -14,6 +14,8 @@ export const metadata: Metadata = {
     url: 'https://fixline.com.ua/delivery',
     siteName: 'FIXLINE',
     locale: 'uk_UA',
+    type: 'website',
+    images: [{ url: 'https://fixline.com.ua/opengraph-image', width: 1200, height: 630, alt: 'FIXLINE — будівельна хімія' }],
   },
 };
 

@@ -57,7 +57,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       url: `${BASE}/ru/product/${sku}`,
       siteName: 'FIXLINE',
       locale: 'ru_RU',
-      type: 'product' as any,
+      type: 'website',
       images: [{ url: `${BASE}/product/${sku}/opengraph-image`, width: 1200, height: 630, alt: title }],
     },
     alternates: {

@@ -880,7 +880,7 @@ export default async function RuBlogArticlePage({ params }: { params: Promise<{ 
     datePublished: article.date,
     dateModified: article.date,
     inLanguage: 'ru',
-    author: { '@type': 'Organization', name: 'FIXLINE' },
+    author: { '@type': 'Person', name: 'Редакция FIXLINE' },
     publisher: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
     url: `${BASE}/ru/blog/${slug}`,
   };

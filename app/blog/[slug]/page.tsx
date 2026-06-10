@@ -1499,7 +1499,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     image: `https://fixline.com.ua${article.image}`,
     datePublished: article.date,
     dateModified: article.date,
-    author: { '@type': 'Organization', name: 'FIXLINE' },
+    author: { '@type': 'Person', name: 'Редакція FIXLINE' },
     publisher: { '@type': 'Organization', name: 'FIXLINE', url: 'https://fixline.com.ua' },
     url: `https://fixline.com.ua/blog/${slug}`,
   };
