@@ -400,7 +400,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const filtered = useMemo(() => {
     let list = products;
     if (matchingSlugs)  list = list.filter(p => matchingSlugs.has(p.category_slug ?? ''));
-    if (saleOnly)       list = list.filter(p => p.stock?.price_retail_old != null && (p.stock?.price_retail ?? 0) > 0);
+    if (saleOnly)       list = list.filter(p => p.stock?.price_promo != null || (p.stock?.price_retail_old != null && (p.stock?.price_retail ?? 0) > 0));
     if (isPlasticCat && filterPlasticGroup) {
       if (filterPlasticGroup === 'frost')          list = list.filter(plasticIsFrost);
       else if (filterPlasticGroup === 'warm')      list = list.filter(plasticIsWarm);

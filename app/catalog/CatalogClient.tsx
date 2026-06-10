@@ -307,7 +307,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       if (saleOnly) {
         const pu = p.stock?.price_unit ?? 0;
         const po = p.stock?.price_old  ?? null;
-        if (!(po != null && pu > 0 && pu < po)) return false;
+        const hasPromo = p.stock?.price_promo != null;
+        if (!hasPromo && !(po != null && pu > 0 && pu < po)) return false;
       }
       for (const [label, val] of Object.entries(filterValues)) {
         if (!val) continue;
