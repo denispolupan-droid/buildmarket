@@ -30,8 +30,8 @@ export default function SalesBanner({ mode }: Props) {
   if (!visible) return null;
 
   const href = mode === 'catalog'
-    ? `/catalog?category=${banner.categorySlug}`
-    : `/shop?category=${banner.categorySlug}`;
+    ? `/catalog?category=${banner.categorySlug}&sale=1`
+    : `/shop?category=${banner.categorySlug}&sale=1`;
   const size    = banner.size ?? 'medium';
   const hasImg  = !!banner.bgImage;
   const txtColor = hasImg ? '#fff' : banner.textColor;

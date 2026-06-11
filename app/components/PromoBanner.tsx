@@ -8,7 +8,7 @@ import { PROMO, type PromoConfig } from '../promo.config';
 const WHOLESALE = ['dealer', 'contractor', 'shop_owner'];
 
 export default function PromoBanner() {
-  const [href, setHref] = useState(`/shop?category=${PROMO.banner.categorySlug}`);
+  const [href, setHref] = useState(`/shop?category=${PROMO.banner.categorySlug}&sale=1`);
   const [cfg, setCfg]   = useState<PromoConfig>(PROMO as unknown as PromoConfig);
 
   useEffect(() => {
@@ -21,8 +21,8 @@ export default function PromoBanner() {
       const slug = promoRes?.banner?.categorySlug ?? PROMO.banner.categorySlug;
       const type = (data.user?.user_metadata as Record<string, string> | undefined)?.account_type;
       setHref(WHOLESALE.includes(type ?? '')
-        ? `/catalog?category=${slug}`
-        : `/shop?category=${slug}`);
+        ? `/catalog?category=${slug}&sale=1`
+        : `/shop?category=${slug}&sale=1`);
     };
     init();
   }, []);
