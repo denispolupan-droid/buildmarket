@@ -22,7 +22,7 @@ export const PROMO = {
     title:        '−10% на герметики Ceresit',
     subtitle:     'Акція діє до 30 червня 2026 · Автоматично застосовується при замовленні',
     ctaText:      'Переглянути герметики',
-    categorySlug: 'hermetyky',
+    categorySlug: 'germetyky',
     dismissKey:   'promo_summer_ceresit_june_2026',
   },
 } as const;
