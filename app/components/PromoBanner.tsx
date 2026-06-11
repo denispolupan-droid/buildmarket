@@ -31,16 +31,16 @@ export default function PromoBanner() {
 
   const { topBar } = cfg;
   return (
-    <div style={{ background: topBar.bgColor, padding: '4px 24px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+    <Link href={href} style={{ display: 'block', background: topBar.bgColor, padding: '4px 24px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)', textDecoration: 'none', cursor: 'pointer' }}>
       <span style={{ fontSize: '12px', fontWeight: 700, color: '#E2E8F0' }}>
         {topBar.emoji}{' '}
-        <Link href={href} style={{ color: '#FCD34D', textDecoration: 'underline', textUnderlineOffset: '2px', fontWeight: 800 }}>
+        <span style={{ color: '#FCD34D', textDecoration: 'underline', textUnderlineOffset: '2px', fontWeight: 800 }}>
           {topBar.label}
-        </Link>
+        </span>
         {' '}
         <span style={{ color: '#FCD34D', fontWeight: 800 }}>{topBar.discount}</span>{' '}
         {topBar.text} {topBar.detail} {topBar.emoji}
       </span>
-    </div>
+    </Link>
   );
 }
