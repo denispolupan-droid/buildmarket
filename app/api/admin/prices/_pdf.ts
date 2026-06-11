@@ -15,15 +15,7 @@ async function fetchFont(bold = false): Promise<Buffer> {
   return Buffer.from(await res.arrayBuffer());
 }
 
-// ── Logo PNG (SVG → PNG via sharp, preserves Inter font + alpha) ──────────────
-async function fetchLogo(): Promise<Buffer | null> {
-  try {
-    const svgBuf = readFileSync(join(process.cwd(), 'public', 'fixline-logo-white.svg'));
-    return await sharp(svgBuf, { density: 216 }).png().toBuffer();
-  } catch { return null; }
-}
-
-// ── Generic icon SVG paths (Bootstrap Icons, 16×16 viewBox) ──────────────────
+// ── Bootstrap icon SVG paths ──────────────────────────────────────────────────
 async function fetchIconPaths(url: string): Promise<string[]> {
   try {
     const res = await fetch(url);
@@ -97,15 +89,19 @@ export async function buildPdf(
   imageBuffers: Map<string, Buffer>,
 ): Promise<Buffer> {
   const CDN = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/icons';
-  const [fontReg, fontBold, logoBuf, icPhone, icMail, icGlobe] = await Promise.all([
+  const [fontReg, fontBold, icPhone, icMail, icGlobe] = await Promise.all([
     fetchFont(false), fetchFont(true),
-    fetchLogo(),
     fetchIconPaths(`${CDN}/telephone-fill.svg`),
     fetchIconPaths(`${CDN}/envelope-fill.svg`),
     fetchIconPaths(`${CDN}/globe2.svg`),
   ]);
 
   const { showBrand, showDescriptions, showImages } = opts;
+
+  const logoBuf = (() => {
+    try { return readFileSync(join(process.cwd(), 'public', 'fixline-logo-white.png')); }
+    catch { return null; }
+  })();
 
   return new Promise((resolve, reject) => {
     const M      = 26;
@@ -129,7 +125,7 @@ export async function buildPdf(
 
     const date = new Date().toLocaleDateString('uk-UA');
 
-    // ── Page header — drawn ONLY on the first page ────────────────────────────
+    // ── Page header — first page only ─────────────────────────────────────────
     let headerDrawn = false;
     function drawPageHeader() {
       if (headerDrawn) return;
@@ -144,8 +140,8 @@ export async function buildPdf(
       const logoX  = M + 8;
       const logoY  = y0 + (H - LOGO_H) / 2;
 
-      // Dividers — same proportions as the SVG bar (y=5..33/42)
-      const barH   = Math.round((28 / 42) * LOGO_H); // ≈25
+      // Dividers
+      const barH   = Math.round((28 / 42) * LOGO_H);
       const barTop = y0 + Math.round((H - barH) / 2);
       const barBot = barTop + barH;
       const div1X  = logoX + LOGO_W + 12;
@@ -156,20 +152,20 @@ export async function buildPdf(
       }
       doc.strokeOpacity(1);
 
-      // Middle block: ПРАЙС-ЛИСТ + date
+      // Centre: ПРАЙС-ЛИСТ + date
       const midX = div1X + 10;
       const midW = div2X - div1X - 20;
-      doc.font('B').fontSize(15).fillColor('#fff').fillOpacity(0.95)
+      doc.font('B').fontSize(13).fillColor('#fff').fillOpacity(0.95)
          .text('ПРАЙС-ЛИСТ', midX, y0 + 22, { width: midW, align: 'center', lineBreak: false });
       doc.font('R').fontSize(9).fillColor('#fff').fillOpacity(0.55)
          .text(date, midX, y0 + 44, { width: midW, align: 'center', lineBreak: false });
       doc.fillOpacity(1);
 
-      // Right block: Bootstrap Icons + contact text
-      const rx      = div2X + 12;
-      const rw      = M + PW - rx - 4;
-      const iconSz  = 10;
-      const iconSc  = iconSz / 16;
+      // Right: Bootstrap icons + contacts
+      const rx     = div2X + 12;
+      const rw     = M + PW - rx - 4;
+      const iconSz = 10;
+      const iconSc = iconSz / 16;
 
       function drawContactIcon(paths: string[], ix: number, iy: number) {
         if (!paths.length) return;
@@ -179,19 +175,19 @@ export async function buildPdf(
         doc.restore();
       }
 
-      const contactRows: { paths: string[]; text: string; ry: number }[] = [
+      const contacts = [
         { paths: icPhone, text: '+380 99 199 77 88',   ry: y0 + 13 },
         { paths: icMail,  text: 'info@fixline.com.ua', ry: y0 + 30 },
         { paths: icGlobe, text: 'fixline.com.ua',      ry: y0 + 47 },
       ];
-      for (const c of contactRows) {
+      for (const c of contacts) {
         drawContactIcon(c.paths, rx, c.ry);
         doc.font('R').fontSize(9).fillColor('#fff').fillOpacity(0.9)
            .text(c.text, rx + iconSz + 5, c.ry, { width: rw - iconSz - 5, lineBreak: false });
       }
       doc.fillOpacity(1);
 
-      // Logo drawn LAST — doc.image() advances cursor
+      // Logo PNG (fixline-logo-white.png — pre-rendered with Inter font)
       if (logoBuf) {
         doc.image(logoBuf, logoX, logoY, { height: LOGO_H, width: LOGO_W });
       }
@@ -206,18 +202,10 @@ export async function buildPdf(
       doc.rect(M, y, PW, COL_H).fill('#DBEAFE');
       doc.font('B').fontSize(7).fillColor('#1E3A5F');
       let x = M;
-      if (showImages) {
-        doc.text('', x, y + 4, { width: C_IMG, lineBreak: false });
-        x += C_IMG;
-      }
-      doc.text('НАЗВА', x + 3, y + 4, { width: C_NAME - 6, lineBreak: false });
-      x += C_NAME;
-      if (showBrand) {
-        doc.text('БРЕНД', x + 2, y + 4, { width: C_BRAND - 4, lineBreak: false });
-        x += C_BRAND;
-      }
-      doc.text("ОБ'ЄМ", x, y + 4, { width: C_VOL, align: 'center', lineBreak: false });
-      x += C_VOL;
+      if (showImages) { doc.text('', x, y + 4, { width: C_IMG, lineBreak: false }); x += C_IMG; }
+      doc.text('НАЗВА', x + 3, y + 4, { width: C_NAME - 6, lineBreak: false }); x += C_NAME;
+      if (showBrand) { doc.text('БРЕНД', x + 2, y + 4, { width: C_BRAND - 4, lineBreak: false }); x += C_BRAND; }
+      doc.text("ОБ'ЄМ", x, y + 4, { width: C_VOL, align: 'center', lineBreak: false }); x += C_VOL;
       doc.text('ЦІНА (₴)', x, y + 4, { width: C_PRICE, align: 'right', lineBreak: false });
       doc.moveTo(M, y + COL_H).lineTo(M + PW, y + COL_H).strokeColor('#CBD5E1').lineWidth(0.5).stroke();
     }
@@ -233,7 +221,6 @@ export async function buildPdf(
 
     function drawRow(y: number, rh: number, row: PdfRow, shade: boolean) {
       if (shade) doc.rect(M, y, PW, rh).fill('#F9FAFB');
-
       let x = M;
 
       if (showImages) {
@@ -247,7 +234,7 @@ export async function buildPdf(
             doc.roundedRect(ix, iy, imgSize, imgSize, 4).clip();
             doc.image(buf, ix, iy, { width: imgSize, height: imgSize, fit: [imgSize, imgSize], align: 'center', valign: 'center' });
             doc.restore();
-          } catch { /* skip broken image */ }
+          } catch { /* skip */ }
         } else {
           doc.roundedRect(x + 6, y + (rh - 28) / 2, C_IMG - 12, 28, 4).fill('#F1F5F9');
         }
@@ -280,24 +267,24 @@ export async function buildPdf(
       x += C_VOL;
 
       if (row.price_promo != null && row.price != null) {
-        const regStr  = row.price.toLocaleString('uk-UA') + ' ₴';
+        const regStr = row.price.toLocaleString('uk-UA') + ' ₴';
         doc.font('R').fontSize(7).fillColor('#94A3B8')
            .text(regStr, x, cy - 9, { width: C_PRICE - 2, align: 'right', lineBreak: false, strike: true });
         const promoStr = row.price_promo.toLocaleString('uk-UA');
         doc.font('B').fontSize(8.5);
-        const pNumW    = doc.widthOfString(promoStr);
+        const pNumW  = doc.widthOfString(promoStr);
         doc.font('R').fontSize(7.5);
-        const pSymW    = doc.widthOfString(' ₴');
-        const pStartX  = x + C_PRICE - pNumW - pSymW - 2;
+        const pSymW  = doc.widthOfString(' ₴');
+        const pStartX = x + C_PRICE - pNumW - pSymW - 2;
         doc.font('B').fontSize(8.5).fillColor('#DC2626').text(promoStr, pStartX, cy + 2, { lineBreak: false });
         doc.font('R').fontSize(7.5).fillColor('#FCA5A5').text(' ₴', pStartX + pNumW, cy + 3, { lineBreak: false });
       } else if (row.price != null) {
         const priceStr = row.price.toLocaleString('uk-UA');
         doc.font('B').fontSize(8.5);
-        const numW     = doc.widthOfString(priceStr);
+        const numW  = doc.widthOfString(priceStr);
         doc.font('R').fontSize(7.5);
-        const symW     = doc.widthOfString(' ₴');
-        const startX   = x + C_PRICE - numW - symW - 2;
+        const symW  = doc.widthOfString(' ₴');
+        const startX = x + C_PRICE - numW - symW - 2;
         doc.font('B').fontSize(8.5).fillColor('#1E3A5F').text(priceStr, startX, cy - 0.5, { lineBreak: false });
         doc.font('R').fontSize(7.5).fillColor('#94A3B8').text(' ₴', startX + numW, cy + 0.5, { lineBreak: false });
       } else {
@@ -310,10 +297,7 @@ export async function buildPdf(
 
     // ── Categories ─────────────────────────────────────────────────────────────
     for (const [, { catName, description, rows }] of grouped) {
-      if (doc.y + 60 > BOTTOM) {
-        doc.addPage();
-        drawPageHeader();
-      }
+      if (doc.y + 60 > BOTTOM) { doc.addPage(); drawPageHeader(); }
 
       const catY  = doc.y;
       const CAT_H = 20;
@@ -335,10 +319,7 @@ export async function buildPdf(
       rows.forEach((r, i) => {
         const rh = calcRowH(r);
         if (doc.y + rh > BOTTOM) {
-          doc.addPage();
-          drawPageHeader();
-          drawColHeaders(doc.y);
-          doc.y += COL_H;
+          doc.addPage(); drawPageHeader(); drawColHeaders(doc.y); doc.y += COL_H;
         }
         drawRow(doc.y, rh, r, i % 2 === 1);
       });
@@ -347,21 +328,17 @@ export async function buildPdf(
     }
 
     // ── Footer on every page ───────────────────────────────────────────────────
-    function drawFooter(pageNum: number, total: number) {
+    const range = doc.bufferedPageRange();
+    for (let i = 0; i < range.count; i++) {
+      doc.switchToPage(i);
       const fy = 841.89 - 24;
       doc.moveTo(M, fy).lineTo(M + PW, fy).strokeColor('#E2E8F0').lineWidth(0.4).stroke();
       const savedBottom = doc.page.margins.bottom;
       doc.page.margins.bottom = 0;
       doc.font('R').fontSize(7).fillColor('#9CA3AF')
-         .text(`fixline.com.ua  ·  Прайс-лист ${date}  ·  Стор. ${pageNum} / ${total}`,
+         .text(`fixline.com.ua  ·  Прайс-лист ${date}  ·  Стор. ${i + 1} / ${range.count}`,
                M, fy + 5, { width: PW, align: 'center', lineBreak: false });
       doc.page.margins.bottom = savedBottom;
-    }
-
-    const range = doc.bufferedPageRange();
-    for (let i = 0; i < range.count; i++) {
-      doc.switchToPage(i);
-      drawFooter(i + 1, range.count);
     }
 
     doc.end();
