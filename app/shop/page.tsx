@@ -73,7 +73,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
             {brand && <><span>/</span><span style={{ color: '#475569' }}>{brand}</span></>}
             {sale === '1' && <><span>/</span><span style={{ color: '#475569' }}>Акції</span></>}
           </nav>
-          <ShopLoader initialSaleOnly={sale === '1'} initialBrand={brand} />
+          <ShopLoader initialSaleOnly={sale === '1'} initialCategory={category} initialBrand={brand} />
         </div>
       </div>
       <Footer />
