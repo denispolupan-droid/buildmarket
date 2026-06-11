@@ -7,7 +7,7 @@ const BASE = 'https://fixline.com.ua';
 
 export const metadata: Metadata = {
   title: 'Политика возврата',
-  description: 'Условия возврата и обмена товаров FIXLINE. Как вернуть товар, сроки и порядок действий.',
+  description: 'Условия возврата и обмена товаров FIXLINE. 14 дней на возврат товара надлежащего качества. Сроки, порядок действий и условия для B2B клиентов.',
   keywords: ['возврат товара', 'обмен товара', 'политика возврата строительная химия'],
   alternates: {
     canonical: `${BASE}/ru/returns`,

@@ -5,7 +5,7 @@ import { RefreshCw, CheckCircle, XCircle, Phone, Clock } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Політика повернення',
-  description: 'Умови повернення та обміну товарів FIXLINE. Як повернути товар, строки та порядок дій.',
+  description: 'Умови повернення та обміну товарів FIXLINE. 14 днів на повернення товару належної якості. Строки, порядок дій та умови для B2B клієнтів.',
   keywords: ['повернення товару', 'обмін товару', 'політика повернення будівельна хімія', 'возврат товара'],
   alternates: { canonical: 'https://fixline.com.ua/returns', languages: { 'uk': 'https://fixline.com.ua/returns', 'ru': 'https://fixline.com.ua/ru/returns', 'x-default': 'https://fixline.com.ua/returns' } },
   openGraph: {

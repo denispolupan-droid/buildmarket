@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 
 import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached } from '../../../../lib/supabase';
 import { getCategoryNameRu } from '../../../../lib/ru';
+import { getCategoryMeta } from '../../../../lib/category-descriptions';
 import ProductTabs from '../../../product/[id]/ProductTabs';
 import ProductOrderPanel from '../../../product/[id]/ProductOrderPanel';
 import ProductGallery from '../../../product/[id]/ProductGallery';
@@ -287,6 +288,16 @@ export default async function RuProductPage({ params, searchParams }: { params: 
           descriptionFull={descriptionFullRu}
           characteristics={product.characteristics}
         />
+
+        {/* Статья по теме */}
+        {(() => { const blogSlug = product.category_slug ? getCategoryMeta(product.category_slug)?.blogSlug : null; return blogSlug ? (
+          <div style={{ margin: '24px 0', padding: '16px 20px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Полезная статья по теме</span>
+            <Link href={`/ru/blog/${blogSlug}`} style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-main)', whiteSpace: 'nowrap', textDecoration: 'none' }}>
+              Читать статью →
+            </Link>
+          </div>
+        ) : null; })()}
 
         {related.length > 0 && <RelatedCarousel products={related} retail={isRetail} />}
 

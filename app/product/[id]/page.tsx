@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached } from '../../../lib/supabase';
+import { getCategoryMeta } from '../../../lib/category-descriptions';
 import ProductTabs from './ProductTabs';
 import ProductOrderPanel from './ProductOrderPanel';
 import ProductGallery from './ProductGallery';
@@ -283,6 +284,16 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
           descriptionFull={product.description_full ?? null}
           characteristics={product.characteristics}
         />
+
+        {/* Стаття по темі */}
+        {(() => { const blogSlug = product.category_slug ? getCategoryMeta(product.category_slug)?.blogSlug : null; return blogSlug ? (
+          <div style={{ margin: '24px 0', padding: '16px 20px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Корисна стаття по темі</span>
+            <Link href={`/blog/${blogSlug}`} style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-main)', whiteSpace: 'nowrap', textDecoration: 'none' }}>
+              Читати статтю →
+            </Link>
+          </div>
+        ) : null; })()}
 
         {/* Схожі товари */}
         {related.length > 0 && <RelatedCarousel products={related} retail={isRetail} />}

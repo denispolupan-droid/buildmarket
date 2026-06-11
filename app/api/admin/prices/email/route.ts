@@ -20,44 +20,56 @@ async function fetchFont(bold = false): Promise<Buffer> {
   return Buffer.from(await res.arrayBuffer());
 }
 
-// ── Image helpers ─────────────────────────────────────────────────────────────
-function isEmbeddable(buf: Buffer): boolean {
-  if (buf.length < 4) return false;
-  if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return true; // JPEG
-  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) return true; // PNG
-  return false;
+// ── Social icon SVG paths (Simple Icons, 24×24 viewBox) ───────────────────────
+async function fetchIconPath(name: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://cdn.jsdelivr.net/npm/simple-icons@14/icons/${name}.svg`);
+    if (!res.ok) return null;
+    const svg = await res.text();
+    const m   = svg.match(/\sd="([^"]+)"/);
+    return m ? m[1] : null;
+  } catch { return null; }
 }
 
-async function fetchUrl(url: string, timeoutMs = 6000): Promise<Buffer | null> {
+// ── Image helpers ─────────────────────────────────────────────────────────────
+async function fetchUrl(url: string, timeoutMs = 8000): Promise<Buffer | null> {
   try {
     const ac = new AbortController();
     const t  = setTimeout(() => ac.abort(), timeoutMs);
-    // Accept header prevents Next.js image optimizer from returning WebP (PDFKit can't embed it)
-    const r  = await fetch(url, { signal: ac.signal, headers: { Accept: 'image/jpeg,image/png,image/*;q=0.5' } });
+    const r  = await fetch(url, { signal: ac.signal });
     clearTimeout(t);
     if (!r.ok) return null;
     return Buffer.from(await r.arrayBuffer());
   } catch { return null; }
 }
 
-async function fetchImageBuffer(imagePath: string, origin: string): Promise<Buffer | null> {
-  // 1. Local public folder
-  try {
-    const buf = readFileSync(join(process.cwd(), 'public', imagePath.replace(/^\//, '')));
-    if (isEmbeddable(buf)) return buf;
-  } catch { /* not local */ }
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const sharp = require('sharp');
 
-  // 2. Via /_next/image — resizes to 64px so large originals don't bloat the PDF.
-  //    Raw Supabase JPEGs can be 200-500KB each; at 200 products that's 40-100MB.
-  //    The image optimizer returns ~3-8KB thumbnails regardless of source format.
-  const supabaseSrc = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${imagePath.replace(/^\/img\//, '')}`;
-  const thumb = await fetchUrl(`${origin}/_next/image?url=${encodeURIComponent(supabaseSrc)}&w=64&q=70`);
-  if (thumb && isEmbeddable(thumb)) return thumb;
-
-  return null;
+async function toJpeg(buf: Buffer): Promise<Buffer> {
+  return sharp(buf)
+    .flatten({ background: '#ffffff' })  // fill PNG transparency with white before JPEG conversion
+    .resize(256, 256, { fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: 88 })
+    .toBuffer();
 }
 
-async function fetchImages(skuImageMap: Map<string, string>, origin: string): Promise<Map<string, Buffer>> {
+async function fetchImageBuffer(imagePath: string): Promise<Buffer | null> {
+
+  // 1. Local public folder (JPEG / PNG / WebP — sharp handles all)
+  try {
+    const buf = readFileSync(join(process.cwd(), 'public', imagePath.replace(/^\//, '')));
+    return await toJpeg(buf);
+  } catch { /* not in public/ */ }
+
+  // 2. Fetch raw bytes from Supabase storage, convert with sharp
+  const supabaseSrc = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${imagePath.replace(/^\/img\//, '')}`;
+  const raw = await fetchUrl(supabaseSrc);
+  if (!raw) return null;
+  try { return await toJpeg(raw); } catch { return null; }
+}
+
+async function fetchImages(skuImageMap: Map<string, string>): Promise<Map<string, Buffer>> {
   const entries = [...skuImageMap.entries()];
   const CONCURRENCY = 12;
   const result = new Map<string, Buffer>();
@@ -66,7 +78,7 @@ async function fetchImages(skuImageMap: Map<string, string>, origin: string): Pr
   async function worker() {
     while (i < entries.length) {
       const [sku, path] = entries[i++];
-      const buf = await fetchImageBuffer(path, origin);
+      const buf = await fetchImageBuffer(path);
       if (buf) result.set(sku, buf);
     }
   }
@@ -84,7 +96,10 @@ async function buildPdf(
   opts: { showBrand: boolean; showDescriptions: boolean; showImages: boolean; priceLabel: string },
   imageBuffers: Map<string, Buffer>,
 ): Promise<Buffer> {
-  const [fontReg, fontBold] = await Promise.all([fetchFont(false), fetchFont(true)]);
+  const [fontReg, fontBold, iconViber, iconTelegram, iconInstagram] = await Promise.all([
+    fetchFont(false), fetchFont(true),
+    fetchIconPath('viber'), fetchIconPath('telegram'), fetchIconPath('instagram'),
+  ]);
 
   const { showBrand, showDescriptions, showImages, priceLabel } = opts;
 
@@ -103,9 +118,9 @@ async function buildPdf(
     const BOTTOM = 841.89 - M;
 
     const C_IMG   = showImages ? 46 : 0;
-    const C_PRICE = 76;
-    const C_VOL   = 82;
-    const C_BRAND = showBrand ? 88 : 0;
+    const C_PRICE = 60;
+    const C_VOL   = 64;
+    const C_BRAND = showBrand ? 70 : 0;
     const C_NAME  = PW - C_IMG - C_PRICE - C_VOL - C_BRAND;
 
     const date = new Date().toLocaleDateString('uk-UA');
@@ -159,23 +174,34 @@ async function buildPdf(
       doc.font('R').fontSize(8.5).fillColor('rgba(255,255,255,0.55)')
          .text(date, txtX, y0 + 42, { lineBreak: false });
 
-      // Right: phone
-      doc.font('B').fontSize(14).fillColor('#fff')
-         .text('+380 99 199 77 88', M, y0 + 11, { width: PW - 4, align: 'right', lineBreak: false });
-      // Right: email
-      doc.font('R').fontSize(8.5).fillColor('rgba(255,255,255,0.75)')
-         .text('info@fixline.com.ua', M, y0 + 32, { width: PW - 4, align: 'right', lineBreak: false });
-      // Social circles (Viber / Telegram / Instagram)
+      // Right: phone (slightly smaller so email is more balanced)
+      doc.font('B').fontSize(11).fillColor('#fff')
+         .text('+380 99 199 77 88', M, y0 + 13, { width: PW - 4, align: 'right', lineBreak: false });
+      // Right: email (larger for better hierarchy balance)
+      doc.font('R').fontSize(10).fillColor('rgba(255,255,255,0.85)')
+         .text('info@fixline.com.ua', M, y0 + 30, { width: PW - 4, align: 'right', lineBreak: false });
+      // Social circles (Viber / Telegram / Instagram) with brand SVG icons
       const socY = y0 + H - 22;
       const socX = M + PW - 4;
       const socR = 9;
-      const socColors = ['#7360F2', '#2AABEE', '#C13584'];
-      const socLabels = ['V', 'T', 'I'];
+      const socDefs: [string, string | null][] = [
+        ['#7360F2', iconViber],
+        ['#2AABEE', iconTelegram],
+        ['#C13584', iconInstagram],
+      ];
       for (let s = 2; s >= 0; s--) {
-        const cx = socX - s * (socR * 2 + 4);
-        doc.circle(cx - socR, socY + socR, socR).fill(socColors[2 - s]);
-        doc.font('B').fontSize(7).fillColor('#fff')
-           .text(socLabels[2 - s], cx - socR * 2 + 2, socY + socR - 4, { width: socR * 2 - 2, align: 'center', lineBreak: false });
+        const cx = socX - s * (socR * 2 + 4) - socR;
+        const cy = socY + socR;
+        const [color, iconPath] = socDefs[2 - s];
+        doc.circle(cx, cy, socR).fill(color);
+        if (iconPath) {
+          // Scale Simple Icons 24×24 path to fit inside circle
+          const sc = (socR * 1.5) / 24;
+          doc.save();
+          doc.transform(sc, 0, 0, sc, cx - 12 * sc, cy - 12 * sc);
+          doc.path(iconPath).fillColor('#fff').fill();
+          doc.restore();
+        }
       }
 
       doc.y = y0 + H + 8;
@@ -200,16 +226,15 @@ async function buildPdf(
       }
       doc.text("ОБ'ЄМ", x, y + 4, { width: C_VOL, align: 'center', lineBreak: false });
       x += C_VOL;
-      doc.text(priceLabel.toUpperCase(), x, y + 4, { width: C_PRICE, align: 'right', lineBreak: false });
+      doc.text('ЦІНА (₴)', x, y + 4, { width: C_PRICE, align: 'right', lineBreak: false });
       doc.moveTo(M, y + COL_H).lineTo(M + PW, y + COL_H).strokeColor('#CBD5E1').lineWidth(0.5).stroke();
     }
 
     // ── Data row ───────────────────────────────────────────────────────────────
-    function calcRowH(name: string, sku: string): number {
+    function calcRowH(name: string): number {
       doc.font('R').fontSize(8);
       const textH = Math.max(18, doc.heightOfString(name, { width: C_NAME - 8 }) + 7);
-      // Enforce 46px min only when this row actually has an image to show
-      return (showImages && imageBuffers.has(sku)) ? Math.max(46, textH) : textH;
+      return showImages ? Math.max(46, textH) : textH;
     }
 
     function drawRow(y: number, rh: number, row: PdfRow, shade: boolean) {
@@ -217,13 +242,19 @@ async function buildPdf(
 
       let x = M;
 
-      // Image
+      // Image cell
       if (showImages) {
         const buf = imageBuffers.get(row.sku);
         if (buf) {
           try {
-            doc.image(buf, x + 2, y + 2, { width: C_IMG - 4, height: rh - 4, fit: [C_IMG - 4, rh - 4], align: 'center', valign: 'center' });
+            const imgSize = Math.min(rh - 6, C_IMG - 4);
+            const ix = x + (C_IMG - imgSize) / 2;
+            const iy = y + (rh - imgSize) / 2;
+            doc.image(buf, ix, iy, { width: imgSize, height: imgSize, fit: [imgSize, imgSize], align: 'center', valign: 'center' });
           } catch { /* skip broken image */ }
+        } else {
+          // Subtle placeholder for products without an image
+          doc.roundedRect(x + 6, y + (rh - 28) / 2, C_IMG - 12, 28, 3).fill('#F1F5F9');
         }
         x += C_IMG;
       }
@@ -279,7 +310,7 @@ async function buildPdf(
       doc.y += COL_H;
 
       rows.forEach((r, i) => {
-        const rh = calcRowH(r.name, r.sku);
+        const rh = calcRowH(r.name);
         if (doc.y + rh > BOTTOM) {
           doc.addPage();
           drawPageHeader();
@@ -325,15 +356,13 @@ export async function POST(req: NextRequest) {
       db.from('products')
         .select('sku, name, brand, volume, category_slug, image')
         .eq('is_active', true)
-        .order('category_slug', { nullsFirst: false })
         .order('brand').order('name')
         .limit(2000),
       db.from('product_stock')
         .select('sku, price_unit, price_retail, price_drop, stock_status')
         .limit(2000),
       db.from('categories')
-        .select('slug, name, description')
-        .order('sort_order'),
+        .select('slug, name, description, parent_slug, sort_order'),
     ]);
 
     if (prodErr) return NextResponse.json({ error: prodErr.message }, { status: 500 });
@@ -341,8 +370,17 @@ export async function POST(req: NextRequest) {
     const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
     const catMap   = new Map((categories ?? []).map(c => [c.slug, c]));
 
+    // Sort categories to match website order: parent.sort_order first, then child.sort_order
+    const catSortOrder = new Map((categories ?? []).map(c => [c.slug, c.sort_order ?? 999]));
+    const sortedCats = [...(categories ?? [])].sort((a, b) => {
+      const aTop = a.parent_slug ? (catSortOrder.get(a.parent_slug) ?? 999) : (a.sort_order ?? 999);
+      const bTop = b.parent_slug ? (catSortOrder.get(b.parent_slug) ?? 999) : (b.sort_order ?? 999);
+      if (aTop !== bTop) return aTop - bTop;
+      return (a.sort_order ?? 999) - (b.sort_order ?? 999);
+    });
+
     const grouped = new Map<string, PdfGroup>();
-    for (const cat of (categories ?? [])) {
+    for (const cat of sortedCats) {
       if (selectedCats && !selectedCats.has(cat.slug)) continue;
       grouped.set(cat.slug, { catName: cat.name, description: cat.description ?? '', rows: [] });
     }
@@ -371,8 +409,7 @@ export async function POST(req: NextRequest) {
       if (val.rows.length === 0) grouped.delete(key);
     }
 
-    const origin = req.nextUrl.origin;
-    const imageBuffers = showImages ? await fetchImages(skuImageMap, origin) : new Map<string, Buffer>();
+    const imageBuffers = showImages ? await fetchImages(skuImageMap) : new Map<string, Buffer>();
 
     const pdfBuffer = await buildPdf(
       grouped,

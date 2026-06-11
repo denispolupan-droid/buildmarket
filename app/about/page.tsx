@@ -6,7 +6,7 @@ import { ShieldCheck, Users, Package, Award, Truck, MessageCircle } from 'lucide
 
 export const metadata: Metadata = {
   title: 'Про компанію FIXLINE — постачальник будівельної хімії',
-  description: 'FIXLINE — лінія фіксації. FIX (фіксувати, кріпити) + LINE (лінія матеріалів). Постачальник будівельної хімії в Україні: герметики, клеї, монтажні піни, ґрунтовки від перевірених виробників.',
+  description: 'Постачальник будівельної хімії в Україні: герметики, клеї, монтажні піни, ґрунтовки від перевірених виробників. 10+ років на ринку, 500+ клієнтів B2B.',
   keywords: ['про компанію FIXLINE', 'постачальник будівельної хімії', 'поставщик строительной химии Украина', 'оптова будівельна хімія', 'герметики оптом постачальник', 'Харків будівельна хімія'],
   alternates: { canonical: 'https://fixline.com.ua/about', languages: { 'uk': 'https://fixline.com.ua/about', 'ru': 'https://fixline.com.ua/ru/about', 'x-default': 'https://fixline.com.ua/about' } },
   openGraph: {
