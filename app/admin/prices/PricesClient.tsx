@@ -445,7 +445,6 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
   async function generatePricelist() {
     const origin = window.location.origin;
 
-    // fetch contacts with emails
     let contacts: { name: string; company: string | null; email: string }[] = [];
     try {
       const cr = await fetch('/api/admin/customers/search?limit=80');
@@ -455,9 +454,8 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
           .filter(c => c.email)
           .map(c => ({ name: c.name, company: c.company ?? null, email: c.email! }));
       }
-    } catch { /* ignore, contacts list is optional */ }
+    } catch { /* optional */ }
 
-    // Use all active products — NOT filtered by admin UI search/filters
     const allRows = products
       .filter(p => p.is_active)
       .map(p => {
@@ -465,12 +463,11 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
         const ov = overrides.get(p.sku);
         const cat = p.category_slug ? catMap.get(p.category_slug) : null;
         return {
-          p,
-          cat,
-          s,
+          p, cat, s,
           retail: n(ov?.price_retail ?? s?.price_retail),
           unit:   n(ov?.price_unit   ?? s?.price_unit),
           drop:   n(ov?.price_drop   ?? s?.price_drop),
+          promo:  n(s?.price_promo),
         };
       });
 
@@ -484,193 +481,152 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
       return true;
     });
 
-    // Pre-populate in sort_order (categories prop is already ordered by sort_order)
     const grouped2 = new Map<string, typeof printRows>();
-    for (const cat of categories) {
-      grouped2.set(cat.slug, []);
-    }
+    for (const cat of categories) { grouped2.set(cat.slug, []); }
     for (const r of printRows) {
       const key = r.p.category_slug ?? '__none__';
       if (!grouped2.has(key)) grouped2.set(key, []);
       grouped2.get(key)!.push(r);
     }
-    // Remove empty
-    for (const [key, rows] of grouped2) {
-      if (rows.length === 0) grouped2.delete(key);
-    }
+    for (const [key, rows2] of grouped2) { if (rows2.length === 0) grouped2.delete(key); }
 
     const descriptions = catDescriptions;
-    const imgColW   = plShowImages ? '55px' : null;
-    const brandColW = plShowBrand  ? '110px' : null;
-    const volColW   = '110px';
-    const priceColW = '95px';
     const dateStr   = new Date().toISOString().slice(0, 10);
     const dateLabel = new Date().toLocaleDateString('uk-UA');
-    const xlsxParams = JSON.stringify({
-      priceType:          plPriceType,
-      categories:         plAllCats ? 'all' : [...plCategories].join(','),
-      includeOutOfStock:  String(plIncludeOutOfStock),
-      showBrand:          String(plShowBrand),
-      showDescriptions:   String(plShowDescriptions),
-      showImages:         String(plShowImages),
-    });
+    const xlsxParamsObj = {
+      priceType:         plPriceType,
+      categories:        plAllCats ? 'all' : [...plCategories].join(','),
+      includeOutOfStock: String(plIncludeOutOfStock),
+      showBrand:         String(plShowBrand),
+      showDescriptions:  String(plShowDescriptions),
+      showImages:        String(plShowImages),
+    };
+    const xlsxParamsJSON = JSON.stringify(xlsxParamsObj);
+
+    // Build category rows HTML
+    const catBlocks = [...grouped2.entries()].map(([slug, catRows]) => {
+      const catName = catRows[0]?.cat?.name ?? slug;
+      const desc    = plShowDescriptions ? (descriptions.get(slug) || '') : '';
+      const priceKey = plPriceType === 'price_retail' ? 'retail' as const
+                     : plPriceType === 'price_unit'   ? 'unit'   as const
+                                                      : 'drop'   as const;
+      const tRows = catRows.map((r, i) => {
+        const price = r[priceKey] as number | null;
+        const promo = r.promo;
+        const imgSrc = plShowImages && r.p.image
+          ? `${origin}${r.p.image.startsWith('/') ? '' : '/'}${r.p.image}` : null;
+        return `<tr class="${i % 2 === 1 ? 'shade' : ''}">
+          ${plShowImages ? `<td class="td-img">${imgSrc ? `<img src="${imgSrc}" alt="">` : '<span class="ph"></span>'}</td>` : ''}
+          <td class="td-name"><div class="nm">${r.p.name}</div><div class="sku">${r.p.sku}</div></td>
+          ${plShowBrand ? `<td class="td-brand">${r.p.brand ?? ''}</td>` : ''}
+          <td class="td-vol">${r.p.volume ?? ''}</td>
+          <td class="td-price">${
+            promo != null && price != null
+              ? `<span class="price-old">${price.toLocaleString('uk-UA')} ₴</span><span class="price-new">${promo.toLocaleString('uk-UA')} ₴</span>`
+              : price != null ? `<span class="price-reg">${price.toLocaleString('uk-UA')} ₴</span>` : '—'
+          }</td>
+        </tr>`;
+      }).join('');
+      return `<div class="cat">${catName}</div>
+${desc ? `<div class="cat-desc">${desc}</div>` : ''}
+<table>
+  <thead><tr>
+    ${plShowImages ? '<th class="th" style="width:50px"></th>' : ''}
+    <th class="th" style="text-align:left">НАЗВА</th>
+    ${plShowBrand ? '<th class="th" style="width:90px">БРЕНД</th>' : ''}
+    <th class="th" style="width:90px;text-align:center">ОБ\'ЄМ</th>
+    <th class="th" style="width:80px;text-align:right">ЦІНА</th>
+  </tr></thead>
+  <tbody>${tRows}</tbody>
+</table>`;
+    }).join('');
+
+    const contactsJSON = JSON.stringify(contacts);
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Прайс-лист</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
-  * { box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; font-size: 12px; color: #111; margin: 0; }
-  .action-bar { display: flex; gap: 8px; padding: 10px 24px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 100; }
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .btn-p { background: #1D4ED8; color: #fff; border: none; }
-  .btn-s { background: #fff; color: #374151; border: 1.5px solid #E5E7EB; }
-  .content { max-width: 960px; margin: 24px auto; padding: 0 24px; }
-  .pl-banner { background: #1A2744; width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .pl-banner-inner { max-width: 960px; margin: 0 auto; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; }
-  .pl-brand { display: flex; align-items: center; gap: 18px; }
-  .logo { height: 42px; display: block; }
-  .pl-brand-meta { display: flex; flex-direction: column; gap: 3px; border-left: 1px solid rgba(255,255,255,0.15); padding-left: 18px; }
-  .site-url { font-size: 12px; color: rgba(255,255,255,0.5); text-decoration: none; }
-  .meta { color: rgba(255,255,255,0.35); font-size: 11px; }
-  .pl-label { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: .12em; margin-bottom: 2px; }
-  .pl-contacts { text-align: right; }
-  .pl-phone { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 3px; letter-spacing: .01em; }
-  .pl-email { font-size: 12px; color: rgba(255,255,255,0.6); text-decoration: none; display: block; margin-bottom: 10px; }
-  .pl-socials { display: flex; gap: 6px; justify-content: flex-end; }
-  .pl-soc { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 7px; text-decoration: none; }
-  h2 { font-size: 13px; font-weight: 700; background: #f0f4f8; padding: 6px 10px; margin: 20px 0 4px; border-left: 3px solid #1D4ED8; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; table-layout: fixed; }
-  th { background: #f9fafb; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; padding: 5px 8px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-  td { padding: 5px 8px; border-bottom: 1px solid #f3f4f6; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  td.name { white-space: normal; word-break: break-word; }
-  td.vol, th.vol { text-align: center; }
-  tr:last-child td { border-bottom: none; }
-  .price { font-weight: 700; text-align: right; white-space: nowrap; }
-  .img-cell { padding: 2px 6px; text-align: center; }
-  .img-cell img { width: 44px; height: 44px; object-fit: contain; display: block; margin: auto; }
-  .cat-desc { font-size: 11px; color: #555; font-style: italic; margin: 0 0 6px; padding: 0 2px; line-height: 1.5; }
-  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; }
-  .overlay.show { display: flex; }
-  .email-box { background: #fff; border-radius: 14px; padding: 24px; width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-  .email-box h3 { margin: 0 0 14px; font-size: 15px; font-weight: 700; }
-  .email-box input[type=email], .email-box input[type=text] { width: 100%; padding: 8px 10px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 13px; outline: none; box-sizing: border-box; }
-  .contact-list { max-height: 148px; overflow-y: auto; border: 1.5px solid #E5E7EB; border-radius: 8px; margin-bottom: 10px; }
-  .contact-item { padding: 7px 10px; cursor: pointer; border-bottom: 1px solid #f3f4f6; font-size: 12px; line-height: 1.35; }
-  .contact-item:last-child { border-bottom: none; }
-  .contact-item:hover { background: #F0F9FF; }
-  .contact-item.sel { background: #EFF6FF; }
-  .contact-name { font-weight: 600; color: #111; }
-  .contact-email { color: #6B7280; font-size: 11px; }
-  .contact-search { margin-bottom: 6px; }
-  .email-manual { margin-top: 8px; margin-bottom: 14px; }
-  .email-manual label { font-size: 11px; color: #9CA3AF; display: block; margin-bottom: 4px; }
-  .erow { display: flex; gap: 8px; margin-top: 14px; }
-  .erow .btn { flex: 1; justify-content: center; }
-  @media print {
-    .action-bar, .overlay { display: none !important; }
-    .pl-banner { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .content { margin: 0; padding: 0; max-width: 100%; }
-    @page {
-      margin: 15mm;
-      @top-left { content: ""; } @top-center { content: ""; } @top-right { content: ""; }
-      @bottom-left { content: ""; }
-      @bottom-center { content: counter(page); font-size: 10px; color: #888; font-family: Arial, sans-serif; }
-      @bottom-right { content: ""; }
-    }
-  }
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,sans-serif;font-size:12px;color:#111;background:#f1f5f9;}
+.bar{display:flex;gap:8px;padding:10px 20px;background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:100;align-items:center;}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
+.btn-p{background:#1D4ED8;color:#fff;border:none;}
+.btn-s{background:#fff;color:#374151;border:1.5px solid #E5E7EB;}
+.btn:disabled{opacity:.5;cursor:default;}
+.wrap{max-width:960px;margin:0 auto;padding:16px 20px 40px;}
+.hd{background:#1E3A5F;display:flex;align-items:center;height:74px;padding:0 12px;border-radius:6px 6px 0 0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.hd-logo{display:flex;align-items:center;padding-right:14px;}
+.hd-logo img{height:38px;}
+.hd-div{width:1.5px;background:#4880B8;opacity:.5;align-self:stretch;margin:18px 0;}
+.hd-mid{flex:1;text-align:center;padding:0 16px;}
+.hd-mid-title{font-size:15px;font-weight:700;color:#fff;letter-spacing:.05em;}
+.hd-mid-date{font-size:9px;color:rgba(255,255,255,.55);margin-top:4px;}
+.hd-contacts{padding-left:14px;display:flex;flex-direction:column;gap:5px;min-width:180px;}
+.hd-contact{display:flex;align-items:center;gap:6px;font-size:9px;color:rgba(255,255,255,.9);}
+.hd-contact svg{flex-shrink:0;}
+.cat{background:#1D4E8B;color:#fff;font-size:12px;font-weight:700;padding:6px 12px 6px 16px;border-left:4px solid #4880B8;margin-top:10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.cat-desc{font-size:10px;color:#6B7280;font-style:italic;padding:4px 4px 2px;line-height:1.5;}
+table{width:100%;border-collapse:collapse;background:#fff;}
+.th{background:#DBEAFE;font-size:9px;font-weight:700;color:#1E3A5F;text-transform:uppercase;letter-spacing:.04em;padding:5px 8px;border-bottom:1px solid #CBD5E1;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+td{padding:5px 8px;border-bottom:1px solid #F1F5F9;vertical-align:middle;}
+tr.shade{background:#F9FAFB;}
+.td-name{max-width:0;}
+.nm{font-size:11px;color:#111;white-space:normal;word-break:break-word;}
+.sku{font-size:9px;color:#9CA3AF;margin-top:2px;}
+.td-img{width:50px;text-align:center;padding:3px 5px;}
+.td-img img{width:42px;height:42px;object-fit:contain;border-radius:3px;}
+.td-img .ph{width:38px;height:38px;background:#F1F5F9;border-radius:3px;display:inline-block;}
+.td-brand{font-size:10px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.td-vol{font-size:11px;color:#374151;text-align:center;white-space:nowrap;}
+.td-price{text-align:right;white-space:nowrap;min-width:70px;}
+.price-reg{font-size:12px;font-weight:700;color:#1E3A5F;}
+.price-old{font-size:10px;color:#94A3B8;text-decoration:line-through;display:block;}
+.price-new{font-size:12px;font-weight:700;color:#DC2626;display:block;}
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;}
+.ov.show{display:flex;}
+.eb{background:#fff;border-radius:14px;padding:24px;width:380px;box-shadow:0 20px 60px rgba(0,0,0,.2);}
+.eb h3{margin:0 0 14px;font-size:15px;font-weight:700;}
+.eb input{width:100%;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;}
+.erow{display:flex;gap:8px;margin-top:14px;}
+.erow .btn{flex:1;justify-content:center;}
+@media print{
+  .bar,.ov{display:none!important;}
+  body{background:#fff;}
+  .wrap{padding:0;}
+  .hd{border-radius:0;}
+  @page{margin:12mm;}
+}
 </style></head><body>
-<div class="action-bar">
+<div class="bar">
   <button class="btn btn-p" onclick="window.print()">Друкувати</button>
   <button class="btn btn-s" id="pdfBtn" onclick="downloadPdf()">Скачати PDF</button>
   <button class="btn btn-s" onclick="downloadXlsx()">Скачати XLSX</button>
   <button class="btn btn-s" onclick="document.getElementById('eo').classList.add('show')">Відправити на email</button>
 </div>
-<div class="pl-banner">
-  <div class="pl-banner-inner">
-    <div class="pl-brand">
-      <img class="logo" src="${origin}/fixline-logo-white.svg" alt="Fixline">
-      <div class="pl-brand-meta">
-        <div class="pl-label">Прайс-лист</div>
-        <a class="site-url" href="https://fixline.com.ua" target="_blank">fixline.com.ua</a>
-        <div class="meta">${dateLabel}</div>
-      </div>
-    </div>
-    <div class="pl-contacts">
-      <div class="pl-phone">+380 99 199 77 88</div>
-      <a class="pl-email" href="mailto:info@fixline.com.ua">info@fixline.com.ua</a>
-      <div class="pl-socials">
-        <a class="pl-soc" href="viber://chat?number=%2B380991997788" title="Viber" style="background:#7360F2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3C7.03 3 3 6.58 3 11c0 2.5 1.22 4.73 3.13 6.26V20l2.87-1.43c.97.24 1.98.37 3 .37 4.97 0 9-3.58 9-8S16.97 3 12 3z"/>
-            <path d="M9.5 9.5c.3.8.8 1.6 1.5 2.3s1.5 1.2 2.3 1.5"/>
-          </svg>
-        </a>
-        <a class="pl-soc" href="https://t.me/+380991997788" title="Telegram" style="background:#2AABEE">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 2 11 13"/>
-            <path d="M22 2 15 22l-4-9-9-4 20-7z"/>
-          </svg>
-        </a>
-        <a class="pl-soc" href="https://www.instagram.com/fixline.com.ua/" title="Instagram" style="background:radial-gradient(circle at 30% 110%,#fdf497 0%,#fd5949 45%,#d6249f 60%,#285AEB 90%)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
-            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" stroke-width="3"/>
-          </svg>
-        </a>
-      </div>
-    </div>
+<div class="wrap">
+<div class="hd">
+  <div class="hd-logo"><img src="${origin}/fixline-logo-white.svg" alt="FixLine"></div>
+  <div class="hd-div"></div>
+  <div class="hd-mid">
+    <div class="hd-mid-title">ПРАЙС-ЛИСТ</div>
+    <div class="hd-mid-date">${dateLabel}</div>
+  </div>
+  <div class="hd-div"></div>
+  <div class="hd-contacts">
+    <div class="hd-contact"><svg width="10" height="10" viewBox="0 0 16 16" fill="rgba(255,255,255,.9)"><path d="M3.654 1.328a.678.678 0 0 0-1.015-.063L1.605 2.3c-.483.484-.661 1.169-.45 1.77a17.6 17.6 0 0 0 4.168 6.608 17.6 17.6 0 0 0 6.608 4.168c.601.211 1.286.033 1.77-.45l1.034-1.034a.678.678 0 0 0-.063-1.015l-2.307-1.794a.678.678 0 0 0-.58-.122l-2.19.547a1.745 1.745 0 0 1-1.657-.459L5.482 8.062a1.745 1.745 0 0 1-.46-1.657l.548-2.19a.678.678 0 0 0-.122-.58L3.654 1.328z"/></svg>+380 99 199 77 88</div>
+    <div class="hd-contact"><svg width="10" height="10" viewBox="0 0 16 16" fill="rgba(255,255,255,.9)"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1zm13 2.383-4.708 2.825L15 11.105zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741M1 11.105l4.708-2.897L1 5.383z"/></svg>info@fixline.com.ua</div>
+    <div class="hd-contact"><svg width="10" height="10" viewBox="0 0 16 16" fill="rgba(255,255,255,.9)"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m7.5-6.923c-.67.204-1.335.82-1.887 1.855A7.97 7.97 0 0 0 5.145 4H7.5zM4.09 4a9.267 9.267 0 0 1 .64-1.539 6.7 6.7 0 0 1 .597-.933A7.025 7.025 0 0 0 2.255 4zm-.582 3.5c.03-.877.138-1.718.312-2.5H1.674a6.958 6.958 0 0 0-.656 2.5zM4.847 5a12.5 12.5 0 0 0-.338 2.5H7.5V5zM8.5 5v2.5h2.99a12.495 12.495 0 0 0-.337-2.5zM4.51 8.5a12.5 12.5 0 0 0 .337 2.5H7.5V8.5zm3.99 0V11h2.653c.187-.765.306-1.608.338-2.5zM5.145 12c.138.386.295.744.468 1.068.552 1.035 1.218 1.65 1.887 1.855V12zm.182 2.472a6.696 6.696 0 0 1-.597-.933A9.268 9.268 0 0 1 4.09 12H2.255a7.024 7.024 0 0 0 3.072 2.472M3.82 11a13.652 13.652 0 0 1-.312-2.5h-2.49c.062.89.291 1.733.656 2.5zm6.853 3.472A7.024 7.024 0 0 0 13.745 12H11.91a9.27 9.27 0 0 1-.64 1.539 6.688 6.688 0 0 1-.597.933M8.5 12v2.923c.67-.204 1.335-.82 1.887-1.855.173-.324.33-.682.468-1.068zm3.68-1h2.146c.365-.767.594-1.61.656-2.5h-2.49a13.65 13.65 0 0 1-.312 2.5zm2.802-3.5a6.959 6.959 0 0 0-.656-2.5H12.18c.174.782.282 1.623.312 2.5zM11.27 2.461c.247.464.462.98.64 1.539h1.835a7.024 7.024 0 0 0-3.072-2.472c.218.284.418.598.597.933M10.855 4a7.966 7.966 0 0 0-.468-1.068C9.835 1.897 9.17 1.282 8.5 1.077V4z"/></svg>fixline.com.ua</div>
   </div>
 </div>
-<div class="content">
-${[...grouped2.entries()].map(([slug, catRows]) => {
-  const catName = catRows[0]?.cat?.name ?? slug;
-  const desc = plShowDescriptions ? (descriptions.get(slug) || '') : '';
-  return `<h2>${catName}</h2>
-${desc ? `<p class="cat-desc">${desc}</p>` : ''}
-<table>
-  <colgroup>
-    ${imgColW   ? `<col style="width:${imgColW}">` : ''}
-    <col>
-    ${brandColW ? `<col style="width:${brandColW}">` : ''}
-    <col style="width:${volColW}">
-    <col style="width:${priceColW}">
-  </colgroup>
-  <thead><tr>
-    ${imgColW ? '<th class="img-cell"></th>' : ''}
-    <th>Назва</th>
-    ${plShowBrand ? '<th>Бренд</th>' : ''}
-    <th class="vol">Об\'єм / Вага</th>
-    <th style="text-align:right">Ціна</th>
-  </tr></thead>
-  <tbody>
-    ${catRows.map(r => {
-      const price = r[plPriceType === 'price_retail' ? 'retail' : plPriceType === 'price_unit' ? 'unit' : 'drop'];
-      const imgSrc = plShowImages && r.p.image ? `${origin}${r.p.image.startsWith('/') ? '' : '/'}${r.p.image}` : null;
-      return `<tr>
-        ${imgColW ? `<td class="img-cell">${imgSrc ? `<img src="${imgSrc}" alt="">` : ''}</td>` : ''}
-        <td class="name">${r.p.name}</td>
-        ${plShowBrand ? `<td>${r.p.brand ?? ''}</td>` : ''}
-        <td class="vol">${r.p.volume ?? ''}</td>
-        <td class="price">${price != null ? price.toLocaleString('uk-UA') + ' ₴' : '—'}</td>
-      </tr>`;
-    }).join('')}
-  </tbody>
-</table>`;
-}).join('')}
+${catBlocks}
 </div>
-<div class="overlay" id="eo">
-  <div class="email-box">
+<div class="ov" id="eo">
+  <div class="eb">
     <h3>Відправити прайс-лист</h3>
-    ${contacts.length > 0 ? `
-    <div class="contact-search">
-      <input type="text" id="cs" placeholder="Пошук контакту..." oninput="filterContacts(this.value)" autocomplete="off">
+    <div id="cw" style="display:${contacts.length > 0 ? 'block' : 'none'}">
+      <input type="text" id="cs" placeholder="Пошук контакту..." oninput="filterC(this.value)" autocomplete="off" style="margin-bottom:8px">
+      <div id="cl" style="max-height:140px;overflow-y:auto;border:1.5px solid #E5E7EB;border-radius:8px;margin-bottom:10px;"></div>
     </div>
-    <div class="contact-list" id="cl"></div>` : ''}
-    <div class="email-manual">
-      ${contacts.length > 0 ? '<label>або введіть email вручну</label>' : ''}
-      <input type="email" id="ei" placeholder="email@example.com">
-    </div>
+    <input type="email" id="ei" placeholder="email@example.com">
     <div class="erow">
       <button class="btn btn-p" id="sendBtn" onclick="sendEmail()">Відправити</button>
       <button class="btn btn-s" onclick="closeModal()">Скасувати</button>
@@ -679,76 +635,40 @@ ${desc ? `<p class="cat-desc">${desc}</p>` : ''}
   </div>
 </div>
 <script>
-const CONTACTS=${JSON.stringify(contacts)};
-let filteredContacts=CONTACTS.slice();
-function renderContacts(list){
-  const cl=document.getElementById('cl');
-  if(!cl)return;
-  filteredContacts=list;
-  cl.innerHTML=list.map((c,i)=>'<div class="contact-item" data-i="'+i+'" onclick="selectContact('+i+')"><div class="contact-name">'+(c.company||c.name)+'</div><div class="contact-email">'+c.email+'</div></div>').join('');
-}
-function filterContacts(q){
-  const lq=(q||'').toLowerCase();
-  const filtered=lq.length<1?CONTACTS:CONTACTS.filter(c=>(c.name+' '+(c.company||'')+' '+c.email).toLowerCase().includes(lq));
-  renderContacts(filtered);
-}
-function selectContact(i){
-  const c=filteredContacts[i];
-  if(!c)return;
-  document.getElementById('ei').value=c.email;
-  document.getElementById('em').textContent='';
-  document.querySelectorAll('.contact-item').forEach((el,j)=>el.classList.toggle('sel',j===i));
-}
-function closeModal(){
-  document.getElementById('eo').classList.remove('show');
-  document.getElementById('ei').value='';
-  document.getElementById('em').textContent='';
-  const cs=document.getElementById('cs');
-  if(cs){cs.value='';renderContacts(CONTACTS);}
-  const sb=document.getElementById('sendBtn');
-  if(sb)sb.disabled=false;
-}
-if(CONTACTS.length>0)renderContacts(CONTACTS);
+const CONTACTS=${contactsJSON};
+let fc=CONTACTS.slice();
+function renderC(list){fc=list;const cl=document.getElementById('cl');if(!cl)return;cl.innerHTML=list.map((c,i)=>'<div style="padding:7px 10px;cursor:pointer;border-bottom:1px solid #f3f4f6;font-size:12px" onclick="selC('+i+')"><b>'+(c.company||c.name)+'</b><br><span style="color:#6B7280;font-size:11px">'+c.email+'</span></div>').join('');}
+function filterC(q){const lq=q.toLowerCase();renderC(lq?CONTACTS.filter(c=>(c.name+' '+(c.company||'')+' '+c.email).toLowerCase().includes(lq)):CONTACTS);}
+function selC(i){const c=fc[i];if(c)document.getElementById('ei').value=c.email;}
+function closeModal(){document.getElementById('eo').classList.remove('show');document.getElementById('ei').value='';document.getElementById('em').textContent='';const cs=document.getElementById('cs');if(cs){cs.value='';renderC(CONTACTS);}document.getElementById('sendBtn').disabled=false;}
+if(CONTACTS.length>0)renderC(CONTACTS);
 function downloadXlsx(){
-  const p=${xlsxParams};
-  fetch('/api/admin/prices/pricelist?'+new URLSearchParams(p))
+  fetch('/api/admin/prices/pricelist?'+new URLSearchParams(${xlsxParamsJSON}))
     .then(r=>{if(!r.ok)throw new Error();return r.blob();})
-    .then(blob=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pricelist_${dateStr}.xlsx';a.click();})
-    .catch(()=>alert('Помилка завантаження XLSX'));
+    .then(blob=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pricelist_${dateStr}.xlsx';a.click();URL.revokeObjectURL(a.href);})
+    .catch(()=>alert('Помилка'));
 }
 function downloadPdf(){
   const btn=document.getElementById('pdfBtn');
   btn.textContent='Генерується...';btn.disabled=true;
-  html2pdf().set({
-    margin:[10,8,10,8],
-    filename:'pricelist_${dateStr}.pdf',
-    image:{type:'jpeg',quality:0.97},
-    html2canvas:{scale:2,useCORS:true,logging:false},
-    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-    pagebreak:{mode:'avoid-all'}
-  }).from(document.querySelector('.content')).save()
+  fetch('/api/admin/prices/pricelist?'+new URLSearchParams({...${xlsxParamsJSON},format:'pdf'}))
+    .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.blob();})
+    .then(blob=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pricelist_${dateStr}.pdf';a.click();URL.revokeObjectURL(a.href);})
+    .catch(e=>alert('Помилка: '+e.message))
     .finally(()=>{btn.textContent='Скачати PDF';btn.disabled=false;});
 }
 async function sendEmail(){
   const email=document.getElementById('ei').value.trim();
   if(!email||!email.includes('@')){document.getElementById('em').textContent='Введіть коректний email';return;}
-  const btn=document.getElementById('sendBtn');
-  btn.disabled=true;
+  const btn=document.getElementById('sendBtn');btn.disabled=true;
   document.getElementById('em').textContent='Надсилається...';
   try{
-    const res=await fetch('${origin}/api/admin/prices/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,xlsxParams:${xlsxParams}})});
-    if(res.ok){
-      document.getElementById('em').textContent='Відправлено!';
-      setTimeout(()=>closeModal(),1500);
-    }else{
-      const err=await res.json().catch(()=>({}));
-      document.getElementById('em').textContent='Помилка: '+(err.error||res.status);
-      btn.disabled=false;
-    }
+    const res=await fetch('/api/admin/prices/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,xlsxParams:${xlsxParamsJSON}})});
+    if(res.ok){document.getElementById('em').textContent='Відправлено!';setTimeout(()=>closeModal(),1500);}
+    else{const err=await res.json().catch(()=>({}));document.getElementById('em').textContent='Помилка: '+(err.error||res.status);btn.disabled=false;}
   }catch(e){document.getElementById('em').textContent='Помилка: '+e.message;btn.disabled=false;}
 }
-</script>
-</body></html>`;
+</script></body></html>`;
 
     const win = window.open('', '_blank');
     if (!win) return;
