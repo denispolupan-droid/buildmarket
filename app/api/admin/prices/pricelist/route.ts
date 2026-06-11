@@ -20,22 +20,29 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = req.nextUrl;
   const format            = searchParams.get('format') ?? 'xlsx';
-  const priceType         = (searchParams.get('priceType') ?? 'price_retail') as 'price_retail' | 'price_unit' | 'price_drop';
+  const priceType         = (searchParams.get('priceType') ?? 'price_retail') as 'price_retail' | 'price_unit' | 'price_drop' | 'price_prom';
   const categoriesParam   = searchParams.get('categories') ?? 'all';
   const includeOutOfStock = searchParams.get('includeOutOfStock') === 'true';
   const showBrand         = searchParams.get('showBrand') !== 'false';
   const showDescriptions  = searchParams.get('showDescriptions') === 'true';
   const showImages        = searchParams.get('showImages') === 'true';
+  const filterBrand       = searchParams.get('brand') ?? '';
+  const filterSearch      = searchParams.get('search') ?? '';
 
   const selectedCats = categoriesParam === 'all' ? null : new Set(categoriesParam.split(',').filter(Boolean));
-  const priceLabel   = { price_retail: 'Роздрібна ціна (₴)', price_unit: 'Оптова ціна (₴)', price_drop: 'Ціна дроп (₴)' }[priceType];
+  const priceLabel   = ({
+    price_retail: 'Роздрібна ціна (₴)',
+    price_unit:   'Оптова ціна (₴)',
+    price_drop:   'Ціна дроп (₴)',
+    price_prom:   'Ціна Prom.ua (₴)',
+  } as Record<string, string>)[priceType] ?? 'Ціна (₴)';
   const dateStr      = new Date().toISOString().slice(0, 10);
 
   if (format === 'pdf') {
     // ── PDF ─────────────────────────────────────────────────────────────────────
     const [{ data: products, error: prodErr }, { data: stock }, { data: categories }] = await Promise.all([
       db.from('products')
-        .select('sku, name, brand, volume, category_slug, image')
+        .select('sku, name, brand, volume, category_slug, image, prom_markup_pct')
         .eq('is_active', true)
         .order('brand').order('name')
         .limit(2000),
@@ -43,7 +50,7 @@ export async function GET(req: NextRequest) {
         .select('sku, price_unit, price_retail, price_drop, price_promo, stock_status')
         .limit(2000),
       db.from('categories')
-        .select('slug, name, description, parent_slug, sort_order'),
+        .select('slug, name, description, parent_slug, sort_order, prom_commission_pct, prom_markup_pct'),
     ]);
 
     if (prodErr) return new NextResponse(prodErr.message, { status: 500 });
@@ -72,10 +79,23 @@ export async function GET(req: NextRequest) {
       if (!s) continue;
       if (!includeOutOfStock && s.stock_status !== 'in_stock') continue;
       if (selectedCats && prod.category_slug && !selectedCats.has(prod.category_slug)) continue;
+      if (filterBrand && prod.brand !== filterBrand) continue;
+      if (filterSearch) {
+        const q = filterSearch.toLowerCase();
+        if (!prod.name?.toLowerCase().includes(q) && !prod.sku?.toLowerCase().includes(q)) continue;
+      }
 
-      const price = Number(s[priceType]) || null;
-      const slug  = prod.category_slug ?? '__other__';
-      const cat   = catMap.get(slug);
+      const slug = prod.category_slug ?? '__other__';
+      const cat  = catMap.get(slug);
+      let price: number | null;
+      if (priceType === 'price_prom') {
+        const markup     = Number((prod as any).prom_markup_pct ?? (cat as any)?.prom_markup_pct ?? 0);
+        const commission = Number((cat as any)?.prom_commission_pct ?? 0);
+        const base = Number(s.price_retail) || Number(s.price_unit) || 0;
+        price = base > 0 ? Math.ceil(base * (1 + markup / 100) / (1 - commission / 100)) : null;
+      } else {
+        price = Number(s[priceType as 'price_retail' | 'price_unit' | 'price_drop']) || null;
+      }
 
       if (!grouped.has(slug)) {
         grouped.set(slug, { catName: cat?.name ?? slug, description: cat?.description ?? '', rows: [] });
@@ -109,13 +129,13 @@ export async function GET(req: NextRequest) {
   // ── XLSX ───────────────────────────────────────────────────────────────────────
   const [{ data: products }, { data: stock }, { data: categories }] = await Promise.all([
     db.from('products')
-      .select('sku, name, brand, volume, category_slug, is_active')
+      .select('sku, name, brand, volume, category_slug, is_active, prom_markup_pct')
       .eq('is_active', true)
       .order('category_slug', { nullsFirst: false })
       .order('brand').order('name'),
     db.from('product_stock')
       .select('sku, price_unit, price_retail, price_drop, stock_status'),
-    db.from('categories').select('slug, name, parent_slug').order('sort_order'),
+    db.from('categories').select('slug, name, parent_slug, prom_commission_pct, prom_markup_pct').order('sort_order'),
   ]);
 
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
@@ -128,10 +148,24 @@ export async function GET(req: NextRequest) {
     if (!s) continue;
     if (!includeOutOfStock && s.stock_status !== 'in_stock') continue;
     if (selectedCats && p.category_slug && !selectedCats.has(p.category_slug)) continue;
+    if (filterBrand && p.brand !== filterBrand) continue;
+    if (filterSearch) {
+      const q = filterSearch.toLowerCase();
+      if (!p.name?.toLowerCase().includes(q) && !p.sku?.toLowerCase().includes(q)) continue;
+    }
 
-    const price = Number(s[priceType]) || null;
     const catSlug = p.category_slug ?? '__other__';
-    const catName = catSlug !== '__other__' ? (catMap.get(catSlug)?.name ?? catSlug) : 'Інше';
+    const cat     = catMap.get(catSlug);
+    const catName = catSlug !== '__other__' ? (cat?.name ?? catSlug) : 'Інше';
+    let price: number | null;
+    if (priceType === 'price_prom') {
+      const markup     = Number((p as any).prom_markup_pct ?? (cat as any)?.prom_markup_pct ?? 0);
+      const commission = Number((cat as any)?.prom_commission_pct ?? 0);
+      const base = Number(s.price_retail) || Number(s.price_unit) || 0;
+      price = base > 0 ? Math.ceil(base * (1 + markup / 100) / (1 - commission / 100)) : null;
+    } else {
+      price = Number(s[priceType as 'price_retail' | 'price_unit' | 'price_drop']) || null;
+    }
 
     if (!grouped.has(catSlug)) grouped.set(catSlug, { catName, rows: [] });
     grouped.get(catSlug)!.rows.push({ name: p.name, brand: p.brand, volume: p.volume, price });

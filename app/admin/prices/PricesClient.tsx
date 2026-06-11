@@ -120,7 +120,7 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
 
   // Pricelist modal
   const [showPricelist, setShowPricelist]           = useState(false);
-  const [plPriceType, setPlPriceType]               = useState<PriceField>('price_retail');
+  const [plPriceType, setPlPriceType]               = useState<PriceField | 'price_prom'>('price_retail');
   const [plCategories, setPlCategories]             = useState<Set<string>>(new Set());
   const [plAllCats, setPlAllCats]                   = useState(true);
   const [plIncludeOutOfStock, setPlIncludeOutOfStock] = useState(false);
@@ -133,6 +133,8 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
   // slug → saving state
   const [savingDesc, setSavingDesc]                 = useState<Set<string>>(new Set());
   const [plGenerating, setPlGenerating]             = useState(false);
+  const [plFilterBrand, setPlFilterBrand]           = useState('');
+  const [plFilterSearch, setPlFilterSearch]         = useState('');
   const [mounted, setMounted]                       = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -421,10 +423,12 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
     setPlGenerating(true);
     try {
       const params = new URLSearchParams({
-        priceType:        plPriceType,
-        categories:       plAllCats ? 'all' : [...plCategories].join(','),
+        priceType:         plPriceType,
+        categories:        plAllCats ? 'all' : [...plCategories].join(','),
         includeOutOfStock: String(plIncludeOutOfStock),
-        showBrand:        String(plShowBrand),
+        showBrand:         String(plShowBrand),
+        ...(plFilterBrand  ? { brand: plFilterBrand }   : {}),
+        ...(plFilterSearch ? { search: plFilterSearch } : {}),
       });
       const res = await fetch(`/api/admin/prices/pricelist?${params}`);
       if (!res.ok) throw new Error('Помилка генерації');
@@ -462,12 +466,20 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
         const s  = stockMap.get(p.sku);
         const ov = overrides.get(p.sku);
         const cat = p.category_slug ? catMap.get(p.category_slug) : null;
+        const retail = n(ov?.price_retail ?? s?.price_retail);
+        const unit   = n(ov?.price_unit   ?? s?.price_unit);
+        const drop   = n(ov?.price_drop   ?? s?.price_drop);
+        const promMarkup     = p.prom_markup_pct ?? cat?.prom_markup_pct ?? 0;
+        const promCommission = cat?.prom_commission_pct ?? 0;
+        const baseForProm    = retail ?? unit ?? 0;
+        const prom_price     = baseForProm > 0 ? calcPromPrice(baseForProm, promMarkup, promCommission) : null;
         return {
           p, cat, s,
-          retail: n(ov?.price_retail ?? s?.price_retail),
-          unit:   n(ov?.price_unit   ?? s?.price_unit),
-          drop:   n(ov?.price_drop   ?? s?.price_drop),
+          retail,
+          unit,
+          drop,
           promo:  n(s?.price_promo),
+          prom_price,
         };
       });
 
@@ -477,6 +489,11 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
         const directMatch = plCategories.has(r.p.category_slug);
         const parentMatch = r.cat?.parent_slug ? plCategories.has(r.cat.parent_slug) : false;
         if (!directMatch && !parentMatch) return false;
+      }
+      if (plFilterBrand && r.p.brand !== plFilterBrand) return false;
+      if (plFilterSearch) {
+        const q = plFilterSearch.toLowerCase();
+        if (!r.p.name.toLowerCase().includes(q) && !r.p.sku.toLowerCase().includes(q)) return false;
       }
       return true;
     });
@@ -500,6 +517,8 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
       showBrand:         String(plShowBrand),
       showDescriptions:  String(plShowDescriptions),
       showImages:        String(plShowImages),
+      ...(plFilterBrand  ? { brand: plFilterBrand }   : {}),
+      ...(plFilterSearch ? { search: plFilterSearch } : {}),
     };
     const xlsxParamsJSON = JSON.stringify(xlsxParamsObj);
 
@@ -507,12 +526,12 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
     const catBlocks = [...grouped2.entries()].map(([slug, catRows]) => {
       const catName = catRows[0]?.cat?.name ?? slug;
       const desc    = plShowDescriptions ? (descriptions.get(slug) || '') : '';
-      const priceKey = plPriceType === 'price_retail' ? 'retail' as const
-                     : plPriceType === 'price_unit'   ? 'unit'   as const
-                                                      : 'drop'   as const;
       const tRows = catRows.map((r, i) => {
-        const price = r[priceKey] as number | null;
-        const promo = r.promo;
+        const price = plPriceType === 'price_prom'   ? r.prom_price
+                    : plPriceType === 'price_retail' ? r.retail
+                    : plPriceType === 'price_unit'   ? r.unit
+                    : r.drop;
+        const promo = plPriceType === 'price_prom' ? null : r.promo;
         const imgSrc = plShowImages && r.p.image
           ? `${origin}${r.p.image.startsWith('/') ? '' : '/'}${r.p.image}` : null;
         return `<tr class="${i % 2 === 1 ? 'shade' : ''}">
@@ -1133,13 +1152,20 @@ async function sendEmail(){
               {/* Price type */}
               <div>
                 <label style={modalLabel}>Тип цін</label>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
                   {([['price_retail', 'Роздрібна'], ['price_unit', 'Оптова'], ['price_drop', 'Дроп']] as [PriceField, string][]).map(([val, label]) => (
                     <button key={val} onClick={() => setPlPriceType(val)}
                       style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: `1.5px solid ${plPriceType === val ? '#1D4ED8' : '#E5E7EB'}`, background: plPriceType === val ? '#EFF6FF' : '#fff', color: plPriceType === val ? '#1D4ED8' : '#374151', fontWeight: plPriceType === val ? 700 : 400, fontSize: 13, cursor: 'pointer' }}>
                       {label}
                     </button>
                   ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span style={{ fontSize: 11, color: '#9CA3AF', whiteSpace: 'nowrap' }}>Маркетплейси:</span>
+                  <button onClick={() => setPlPriceType('price_prom')}
+                    style={{ padding: '6px 16px', borderRadius: 8, border: `1.5px solid ${plPriceType === 'price_prom' ? '#7C3AED' : '#E5E7EB'}`, background: plPriceType === 'price_prom' ? '#F5F3FF' : '#fff', color: plPriceType === 'price_prom' ? '#7C3AED' : '#374151', fontWeight: plPriceType === 'price_prom' ? 700 : 400, fontSize: 13, cursor: 'pointer' }}>
+                    Prom.ua
+                  </button>
                 </div>
               </div>
 
@@ -1195,6 +1221,30 @@ async function sendEmail(){
                     })}
                   </div>
                 )}
+              </div>
+
+              {/* Filters */}
+              <div>
+                <label style={modalLabel}>Фільтри товарів</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div>
+                    <label style={smallLabel}>Бренд</label>
+                    <select value={plFilterBrand} onChange={e => setPlFilterBrand(e.target.value)} style={{ ...selectStyle, width: '100%', height: 34 }}>
+                      <option value="">Всі бренди</option>
+                      {allBrands.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={smallLabel}>Пошук по назві / SKU</label>
+                    <input
+                      type="text"
+                      value={plFilterSearch}
+                      onChange={e => setPlFilterSearch(e.target.value)}
+                      placeholder="Частина назви або SKU..."
+                      style={{ ...inputSmall, width: '100%', height: 34, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Options */}
