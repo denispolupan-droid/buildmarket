@@ -802,12 +802,15 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 <>
                   <div className="catalog-grid">
                     {filtered.slice(0, visibleCount).map(p => {
-                      const priceUnit = p.stock?.price_unit ?? 0;
-                      const priceOld  = p.stock?.price_old  ?? null;
-                      const stockQty  = p.stock?.stock_qty  ?? 0;
-                      const inStock   = p.stock?.stock_status === 'in_stock' || stockQty >= 1;
-                      const isSale    = priceOld != null && priceUnit > 0 && priceUnit < priceOld;
-                      const qty       = getQty(p.sku, 1);
+                      const priceUnit    = p.stock?.price_unit  ?? 0;
+                      const pricePromo   = p.stock?.price_promo != null ? Number(p.stock.price_promo) : null;
+                      const hasPromoDisc = pricePromo != null && pricePromo < priceUnit;
+                      const displayPrice = hasPromoDisc ? pricePromo : priceUnit;
+                      const priceOld     = hasPromoDisc ? priceUnit : (p.stock?.price_old ?? null);
+                      const stockQty     = p.stock?.stock_qty  ?? 0;
+                      const inStock      = p.stock?.stock_status === 'in_stock' || stockQty >= 1;
+                      const isSale       = priceOld != null && displayPrice > 0 && displayPrice < priceOld;
+                      const qty          = getQty(p.sku, 1);
                       return (
                         <div key={p.sku} className="catalog-card">
                           <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}`} className="catalog-card__img-wrap">
@@ -838,7 +841,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                               {priceUnit > 0 ? (
                                 <div className="catalog-card__price">
                                   {isSale && <span className="catalog-card__price-old">{Number(priceOld).toFixed(2)} грн</span>}
-                                  <span>{Number(priceUnit).toFixed(2)} <em>грн</em></span>
+                                  <span>{displayPrice.toFixed(2)} <em>грн</em></span>
                                 </div>
                               ) : (
                                 <div className="catalog-card__price-na">{t('За запитом', 'По запросу')}</div>
@@ -925,13 +928,16 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   </thead>
                   <tbody>
                     {filtered.slice(0, visibleCount).map(p => {
-                      const priceUnit = p.stock?.price_unit ?? 0;
-                      const priceOld  = p.stock?.price_old  ?? null;
-                      const stockQty  = p.stock?.stock_qty    ?? 0;
-                      const stockSt   = p.stock?.stock_status;
-                      const inStock   = stockSt === 'in_stock' || stockQty >= 1;
-                      const isSale    = priceOld != null && priceUnit > 0 && priceUnit < priceOld;
-                      const qty       = getQty(p.sku, 1);
+                      const priceUnit    = p.stock?.price_unit  ?? 0;
+                      const pricePromo   = p.stock?.price_promo != null ? Number(p.stock.price_promo) : null;
+                      const hasPromoDisc = pricePromo != null && pricePromo < priceUnit;
+                      const displayPrice = hasPromoDisc ? pricePromo : priceUnit;
+                      const priceOld     = hasPromoDisc ? priceUnit : (p.stock?.price_old ?? null);
+                      const stockQty     = p.stock?.stock_qty    ?? 0;
+                      const stockSt      = p.stock?.stock_status;
+                      const inStock      = stockSt === 'in_stock' || stockQty >= 1;
+                      const isSale       = priceOld != null && displayPrice > 0 && displayPrice < priceOld;
+                      const qty          = getQty(p.sku, 1);
                       const packStr   = `${p.pack_qty} ${t('шт', 'шт')}`;
 
                       return (
@@ -973,7 +979,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                             {priceUnit > 0 ? (
                               <div>
                                 {isSale && <div className="price-old">{Number(priceOld).toFixed(2)} грн</div>}
-                                <div className={isSale ? 'price-new' : 'price-only'}>{Number(priceUnit).toFixed(2)} грн</div>
+                                <div className={isSale ? 'price-new' : 'price-only'}>{displayPrice.toFixed(2)} грн</div>
                               </div>
                             ) : (
                               <span style={{ fontSize: 13, color: '#94A3B8' }}>{t('За запитом', 'По запросу')}</span>
