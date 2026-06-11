@@ -25,7 +25,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ShopSalePage() {
+export default async function ShopSalePage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
+  const { category } = await searchParams;
   const breadcrumbLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -54,7 +55,7 @@ export default function ShopSalePage() {
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '0 0 24px' }}>
             Будівельна хімія зі знижкою — від 1 одиниці, доставка по всій Україні.
           </p>
-          <ShopLoader initialSaleOnly={true} />
+          <ShopLoader initialSaleOnly={true} initialCategory={category} />
         </div>
       </div>
       <Footer />

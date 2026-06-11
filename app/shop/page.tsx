@@ -44,11 +44,11 @@ export async function generateMetadata(
   };
 }
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<{ sale?: string; brand?: string }> }) {
-  const { sale, brand } = await searchParams;
+export default async function ShopPage({ searchParams }: { searchParams: Promise<{ sale?: string; brand?: string; category?: string }> }) {
+  const { sale, brand, category } = await searchParams;
 
   if (brand) redirect(`/shop/brand/${brandToSlug(brand)}`);
-  if (sale === '1') redirect('/shop/sale');
+  if (sale === '1') redirect(`/shop/sale${category ? `?category=${encodeURIComponent(category)}` : ''}`);
 
   const breadcrumbLd = {
     '@context': 'https://schema.org',
