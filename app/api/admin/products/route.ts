@@ -84,6 +84,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { product, stock, characteristics } = body;
 
+  product.color = characteristics?.find(
+    (c: { label: string; value: string }) => /^колір$/i.test(c.label.trim())
+  )?.value?.trim() || null;
+
   if (!product.sku || product.sku === 'auto') {
     product.sku = await generateSku(product.category_slug);
     if (stock) stock.sku = product.sku;
@@ -144,6 +148,10 @@ export async function PUT(req: NextRequest) {
 
   const body = await req.json();
   const { sku, product, stock, characteristics } = body;
+
+  product.color = characteristics?.find(
+    (c: { label: string; value: string }) => /^колір$/i.test(c.label.trim())
+  )?.value?.trim() || null;
 
   const { error: productError } = await serviceClient
     .from('products')

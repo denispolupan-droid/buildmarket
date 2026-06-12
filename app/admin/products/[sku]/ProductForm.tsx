@@ -40,7 +40,6 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
   const [brand, setBrand] = useState(product?.brand ?? '');
   const [categorySlug, setCategorySlug] = useState(product?.category_slug ?? '');
   const [productType, setProductType] = useState(product?.product_type ?? '');
-  const [color, setColor] = useState(product?.color ?? '');
   const [volume, setVolume] = useState(product?.volume ?? '');
   const [packQty, setPackQty] = useState(product?.pack_qty ?? 1);
   const [minOrder, setMinOrder] = useState(product?.min_order ?? 1);
@@ -171,7 +170,6 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             sku, name, brand,
             category_slug: categorySlug || null,
             product_type: productType || null,
-            color: color || null,
             volume: volume || null,
             pack_qty: packQty,
             min_order: minOrder,
@@ -315,11 +313,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-          <div>
-            <label style={labelStyle}>Колір</label>
-            <input type="text" value={color} onChange={e => setColor(e.target.value)} style={inputStyle} placeholder="напр. Білий" />
-          </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
           <div>
             <label style={labelStyle}>Об&apos;єм / Вага</label>
             <input type="text" value={volume} onChange={e => setVolume(e.target.value)} style={inputStyle} placeholder="напр. 280 мл" />
