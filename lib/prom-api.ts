@@ -14,9 +14,11 @@ async function promFetch<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: { ...headers(), ...(init?.headers ?? {}) },
   });
-  const json = await res.json();
-  if (!res.ok) throw new Error(`Prom API ${path}: ${res.status} — ${JSON.stringify(json)}`);
-  return json as T;
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Prom API ${path}: ${res.status} — ${text.slice(0, 300)}`);
+  }
+  return res.json() as Promise<T>;
 }
 
 /* ── Types (Prom.ua API shapes) ─────────────────────────────────────────── */
