@@ -30,8 +30,7 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   serverExternalPackages: ['pdfkit', 'sharp'],
   images: {
-    formats: ['image/avif', 'image/webp'],
-    minimumCacheTTL: 86400,
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',

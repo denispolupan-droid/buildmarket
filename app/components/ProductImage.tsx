@@ -187,8 +187,6 @@ export default function ProductImage({
         alt={[rest.brand, rest.nl1, rest.nl2, rest.volume].filter(Boolean).join(' ')}
         width={400}
         height={400}
-        quality={90}
-        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 40vw, 500px"
         style={{ height: '100%', width: '100%', objectFit: 'contain', display: 'block' }}
         loading="lazy"
       />
