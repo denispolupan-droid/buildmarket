@@ -331,6 +331,40 @@ export default function UnmappedClient({ initial }: { initial: UnmappedRow[] }) 
 
   return (
     <>
+      {/* Sticky bulk action bar */}
+      {selected.size > 0 && (
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 50,
+          background: '#1E3A5F', color: '#fff', borderRadius: '10px',
+          padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '10px',
+          marginBottom: '16px', boxShadow: '0 4px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap',
+          flexWrap: 'wrap',
+        }}>
+          <span style={{ fontSize: '14px', fontWeight: 600, marginRight: '4px' }}>
+            Вибрано: {selected.size}
+          </span>
+          <button
+            style={{ ...btn('#fff', true), color: '#fff', borderColor: 'rgba(255,255,255,0.4)' }}
+            onClick={() => exportXlsx(selectedRows, 'unmapped-selected.xlsx')}
+          >
+            ↓ Скачати XLSX
+          </button>
+          <button style={btn('#16A34A')} onClick={() => setBulkAddOpen(true)}>
+            + Додати вибрані
+          </button>
+          <button style={btn('#DC2626')} onClick={ignoreSelected}>
+            Ігнорувати вибрані
+          </button>
+          <button
+            style={{ ...btn('transparent', true), color: 'rgba(255,255,255,0.6)', borderColor: 'transparent', fontSize: '20px', padding: '0 4px', marginLeft: 'auto' }}
+            onClick={() => setSelected(new Set())}
+            title="Зняти виділення"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Top toolbar */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
         <button style={btn('#1E3A5F')} onClick={() => exportXlsx(rows, 'unmapped-all.xlsx')}>
@@ -421,44 +455,6 @@ export default function UnmappedClient({ initial }: { initial: UnmappedRow[] }) 
         />
       )}
 
-      {/* Floating bulk action bar */}
-      {selected.size > 0 && (
-        <div style={{
-          position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
-          background: '#1E3A5F', color: '#fff', borderRadius: '12px',
-          padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '12px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.25)', zIndex: 100, whiteSpace: 'nowrap',
-        }}>
-          <span style={{ fontSize: '14px', fontWeight: 600 }}>
-            Вибрано: {selected.size}
-          </span>
-          <button
-            style={{ ...btn('#fff', true), color: '#fff', borderColor: 'rgba(255,255,255,0.4)' }}
-            onClick={() => exportXlsx(selectedRows, 'unmapped-selected.xlsx')}
-          >
-            ↓ Скачати XLSX
-          </button>
-          <button
-            style={{ ...btn('#16A34A') }}
-            onClick={() => setBulkAddOpen(true)}
-          >
-            + Додати вибрані
-          </button>
-          <button
-            style={{ ...btn('#DC2626') }}
-            onClick={ignoreSelected}
-          >
-            Ігнорувати вибрані
-          </button>
-          <button
-            style={{ ...btn('transparent', true), color: 'rgba(255,255,255,0.5)', borderColor: 'transparent', fontSize: '18px', padding: '0 4px' }}
-            onClick={() => setSelected(new Set())}
-            title="Зняти виділення"
-          >
-            ×
-          </button>
-        </div>
-      )}
     </>
   );
 }
