@@ -103,10 +103,152 @@ function exportXlsx(rows: UnmappedRow[], filename: string) {
   XLSX.writeFile(wb, filename);
 }
 
+type BulkItem = { supplier_id: number; supplier_sku: string; name: string; price_cost: number };
+
+function BulkAddModal({ items, onClose, onDone }: {
+  items: BulkItem[];
+  onClose: () => void;
+  onDone: (skus: string[]) => void;
+}) {
+  const [brand, setBrand] = useState('');
+  const [names, setNames] = useState<string[]>(items.map(i => i.name));
+  const [progress, setProgress] = useState<null | { done: number; total: number; errors: string[] }>(null);
+
+  async function handleCreate() {
+    if (!brand.trim()) { alert('Вкажіть бренд'); return; }
+    const total = items.length;
+    const errors: string[] = [];
+    const created: string[] = [];
+    setProgress({ done: 0, total, errors: [] });
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const name = names[i]?.trim() || item.name;
+      const res = await fetch('/api/admin/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sku: item.supplier_sku,
+          product: {
+            sku: item.supplier_sku, name, brand: brand.trim(),
+            is_active: false, pack_qty: 1, min_order: 1,
+          },
+          stock: {
+            sku: item.supplier_sku,
+            price_unit: 0, price_retail: 0,
+            price_cost: item.price_cost || null,
+            stock_status: 'in_stock', stock_qty: 0,
+          },
+          characteristics: [],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        errors.push(`${item.supplier_sku}: ${data.error ?? 'помилка'}`);
+      } else {
+        created.push(item.supplier_sku);
+        // auto-map supplier SKU
+        await fetch('/api/admin/suppliers/map-sku', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ supplier_id: item.supplier_id, supplier_sku: item.supplier_sku, our_sku: item.supplier_sku }),
+        });
+      }
+      setProgress({ done: i + 1, total, errors: [...errors] });
+    }
+
+    onDone(created);
+  }
+
+  const isDone = progress && progress.done === progress.total;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '560px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+        {/* Header */}
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: '16px', fontWeight: 700 }}>Додати {items.length} товарів</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>Будуть створені як неактивні — активуй після заповнення</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)' }}>×</button>
+        </div>
+
+        {/* Brand input */}
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)' }}>
+          <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+            Бренд для всіх *
+          </label>
+          <input
+            value={brand}
+            onChange={e => setBrand(e.target.value)}
+            placeholder="напр. Ceresit"
+            style={{ width: '100%', height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '14px', boxSizing: 'border-box' }}
+            autoFocus
+          />
+        </div>
+
+        {/* Product list */}
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          {items.map((item, i) => (
+            <div key={item.supplier_sku} style={{ padding: '10px 24px', borderBottom: '1px solid var(--border-light)', display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <code style={{ fontSize: '11px', background: 'var(--border-light)', padding: '2px 6px', borderRadius: '4px', flexShrink: 0 }}>
+                {item.supplier_sku}
+              </code>
+              <input
+                value={names[i]}
+                onChange={e => setNames(n => n.map((v, j) => j === i ? e.target.value : v))}
+                style={{ flex: 1, height: '32px', padding: '0 8px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px' }}
+              />
+              {item.price_cost > 0 && (
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', flexShrink: 0 }}>{item.price_cost} грн</span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)' }}>
+          {progress && (
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', background: '#16A34A', borderRadius: '3px', width: `${(progress.done / progress.total) * 100}%`, transition: 'width 0.2s' }} />
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                {progress.done} / {progress.total}
+                {progress.errors.length > 0 && <span style={{ color: '#DC2626', marginLeft: '8px' }}>{progress.errors.length} помилок</span>}
+              </div>
+              {progress.errors.length > 0 && (
+                <div style={{ fontSize: '11px', color: '#DC2626', marginTop: '4px', maxHeight: '60px', overflowY: 'auto' }}>
+                  {progress.errors.map((e, i) => <div key={i}>{e}</div>)}
+                </div>
+              )}
+            </div>
+          )}
+          {isDone ? (
+            <button onClick={onClose} style={{ ...btn('#1E3A5F'), width: '100%', justifyContent: 'center', display: 'flex', height: '40px', alignItems: 'center', fontSize: '14px' }}>
+              Готово — закрити
+            </button>
+          ) : (
+            <button
+              onClick={handleCreate}
+              disabled={!!progress}
+              style={{ ...btn('#16A34A'), width: '100%', justifyContent: 'center', display: 'flex', height: '40px', alignItems: 'center', fontSize: '14px', opacity: progress ? 0.6 : 1 }}
+            >
+              {progress ? `Створюю... ${progress.done}/${progress.total}` : `Створити ${items.length} товарів`}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function UnmappedClient({ initial }: { initial: UnmappedRow[] }) {
   const [rows, setRows]       = useState<UnmappedRow[]>(initial);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [ignoring, setIgnoring] = useState<Set<string>>(new Set());
+  const [bulkAddOpen, setBulkAddOpen] = useState(false);
 
   const rowKey = (r: UnmappedRow) => `${r.supplier_id}:${r.supplier_sku}`;
 
@@ -165,6 +307,12 @@ export default function UnmappedClient({ initial }: { initial: UnmappedRow[] }) 
   }
 
   const selectedRows = rows.filter(r => selected.has(rowKey(r)));
+  const bulkItems: BulkItem[] = selectedRows.map(r => ({
+    supplier_id: r.supplier_id,
+    supplier_sku: r.supplier_sku,
+    name: r.sample_name ?? r.supplier_sku,
+    price_cost: r.price_in ?? 0,
+  }));
 
   if (rows.length === 0) {
     return (
@@ -261,6 +409,18 @@ export default function UnmappedClient({ initial }: { initial: UnmappedRow[] }) 
         );
       })}
 
+      {/* Bulk add modal */}
+      {bulkAddOpen && (
+        <BulkAddModal
+          items={bulkItems}
+          onClose={() => setBulkAddOpen(false)}
+          onDone={(createdSkus) => {
+            setBulkAddOpen(false);
+            removeRows(selectedRows.filter(r => createdSkus.includes(r.supplier_sku)).map(rowKey));
+          }}
+        />
+      )}
+
       {/* Floating bulk action bar */}
       {selected.size > 0 && (
         <div style={{
@@ -277,6 +437,12 @@ export default function UnmappedClient({ initial }: { initial: UnmappedRow[] }) 
             onClick={() => exportXlsx(selectedRows, 'unmapped-selected.xlsx')}
           >
             ↓ Скачати XLSX
+          </button>
+          <button
+            style={{ ...btn('#16A34A') }}
+            onClick={() => setBulkAddOpen(true)}
+          >
+            + Додати вибрані
           </button>
           <button
             style={{ ...btn('#DC2626') }}
