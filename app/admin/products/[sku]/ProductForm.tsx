@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Save, Trash2, Plus, X, Loader2, Wand2, Upload } from 'lucide-react';
 import { showToast } from '../../../../lib/toast';
 import type { ProductFull, Category, ProductCharacteristic } from '../../../../types';
@@ -32,10 +32,11 @@ const sectionStyle: React.CSSProperties = {
 
 export default function ProductForm({ product, categories, isNew, promUrls = [] }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [saving, setSaving] = useState(false);
 
-  const [sku, setSku] = useState(product?.sku ?? '');
-  const [name, setName] = useState(product?.name ?? '');
+  const [sku, setSku] = useState(product?.sku ?? (isNew ? (searchParams.get('sku') ?? '') : ''));
+  const [name, setName] = useState(product?.name ?? (isNew ? (searchParams.get('name') ?? '') : ''));
   const [nameRu, setNameRu] = useState(product?.name_ru ?? '');
   const [brand, setBrand] = useState(product?.brand ?? '');
   const [categorySlug, setCategorySlug] = useState(product?.category_slug ?? '');
@@ -69,7 +70,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
   const [priceRetail, setPriceRetail] = useState(product?.stock?.price_retail ?? 0);
   const [priceRetailOld, setPriceRetailOld] = useState(product?.stock?.price_retail_old ?? 0);
   const [priceDrop, setPriceDrop] = useState(product?.stock?.price_drop ?? 0);
-  const [priceCost, setPriceCost] = useState(product?.stock?.price_cost ?? 0);
+  const [priceCost, setPriceCost] = useState(product?.stock?.price_cost ?? (isNew ? Number(searchParams.get('price_cost') ?? 0) : 0));
   const [stockQty, setStockQty] = useState(product?.stock?.stock_qty ?? 0);
   const [stockStatus, setStockStatus] = useState(product?.stock?.stock_status ?? 'in_stock');
   const [supplierSku, setSupplierSku] = useState(product?.stock?.supplier_sku ?? '');
