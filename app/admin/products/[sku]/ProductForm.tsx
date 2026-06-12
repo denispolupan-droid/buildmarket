@@ -1,8 +1,8 @@
 ﻿'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, Trash2, Plus, X, Loader2, Wand2 } from 'lucide-react';
+import { Save, Trash2, Plus, X, Loader2, Wand2, Upload } from 'lucide-react';
 import { showToast } from '../../../../lib/toast';
 import type { ProductFull, Category, ProductCharacteristic } from '../../../../types';
 import CharValueInput from './CharValueInput';
@@ -58,6 +58,8 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
   const [nl1, setNl1] = useState(product?.nl1 ?? '');
   const [nl2, setNl2] = useState(product?.nl2 ?? '');
   const [imageUrl, setImageUrl] = useState(product?.image ?? '');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [promKeywords, setPromKeywords] = useState((product as any)?.keywords ?? '');
   const [promKeywordsRu, setPromKeywordsRu] = useState((product as any)?.keywords_ru ?? '');
   const [promPortalUrl, setPromPortalUrl] = useState((product as any)?.prom_portal_url ?? '');
@@ -151,6 +153,27 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
 
   function updateChar(index: number, field: 'label' | 'value', val: string) {
     setChars(chars.map((c, i) => i === index ? { ...c, [field]: val } : c));
+  }
+
+  async function handleImageUpload(file: File) {
+    if (!brand.trim()) { showToast('Спочатку вкажіть бренд', 'error'); return; }
+    const skuVal = sku.trim() || 'new';
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('brand', brand.trim());
+      fd.append('sku', skuVal);
+      const res = await fetch('/api/admin/products/upload-image', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error ?? 'Помилка завантаження', 'error'); return; }
+      setImageUrl(data.imageUrl);
+      showToast('Фото завантажено', 'success');
+    } catch {
+      showToast('Помилка з\'єднання', 'error');
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function handleSave() {
@@ -512,9 +535,57 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
       <div style={sectionStyle}>
         <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '20px' }}>Зображення</h2>
 
-        <div style={{ marginBottom: '16px' }}>
-          <label style={labelStyle}>URL зображення (якщо є)</label>
-          <input type="text" value={imageUrl} onChange={e => setImageUrl(e.target.value)} style={inputStyle} placeholder="https://..." />
+        <div style={{ marginBottom: '20px' }}>
+          <label style={labelStyle}>Фото товару</label>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+            {/* Preview */}
+            {imageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={imageUrl.startsWith('/') ? imageUrl : imageUrl}
+                alt="preview"
+                style={{ width: 80, height: 80, objectFit: 'contain', borderRadius: 8,
+                  border: '1px solid var(--border)', background: '#f8fafc', flexShrink: 0 }}
+                onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            )}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {/* Upload button */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ''; }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '8px',
+                  height: '44px', padding: '0 18px', borderRadius: '8px',
+                  border: '1px solid var(--border)', background: 'var(--bg-soft)',
+                  fontSize: '14px', fontWeight: 600, cursor: uploading ? 'wait' : 'pointer',
+                  color: 'var(--text-primary)', opacity: uploading ? 0.6 : 1,
+                }}
+              >
+                {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                {uploading ? 'Завантаження...' : 'Завантажити фото'}
+              </button>
+              {/* Manual URL */}
+              <input
+                type="text"
+                value={imageUrl}
+                onChange={e => setImageUrl(e.target.value)}
+                style={{ ...inputStyle, fontSize: '12px', color: 'var(--text-secondary)' }}
+                placeholder="/img/products/brand/sku.webp"
+              />
+            </div>
+          </div>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
+            JPG / PNG / WebP — автоматично конвертується у WebP 800×800
+          </p>
         </div>
 
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
