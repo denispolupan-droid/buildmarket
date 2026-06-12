@@ -2,7 +2,6 @@
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import UnmappedClient from './UnmappedClient';
-import Footer from '../../../components/Footer';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -42,7 +41,6 @@ export default async function UnmappedPage() {
         </div>
         <UnmappedClient initial={rows} />
       </div>
-      <Footer />
     </div>
   );
 }

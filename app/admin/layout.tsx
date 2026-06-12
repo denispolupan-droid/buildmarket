@@ -39,7 +39,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     : firstName ? `Менеджер ${firstName}` : 'Менеджер';
 
   return (
-    <div className="admin-layout" style={{ display: 'flex', minHeight: '100vh', background: '#EEF2F7' }}>
+    <div className="admin-layout" style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#EEF2F7' }}>
       <AdminSidebar newOrdersCount={newOrdersCount ?? 0} chatUnreadCount={chatUnread ?? 0} userLabel={userLabel} />
       <PageTransition>{children}</PageTransition>
       <PoDraftManagerLoader />
