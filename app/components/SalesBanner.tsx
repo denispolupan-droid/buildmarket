@@ -5,12 +5,12 @@ import { X } from 'lucide-react';
 import Link from 'next/link';
 import { PROMO, type PromoConfig } from '../promo.config';
 
-type Props = { mode: 'shop' | 'catalog' };
+type Props = { mode: 'shop' | 'catalog'; activeSlugs?: Set<string> | null };
 
 const PADDING = { compact: '6px 10px', medium: '8px 12px', large: '12px 16px' };
 const FONT    = { compact: '12px',      medium: '13px',      large: '14px'      };
 
-export default function SalesBanner({ mode }: Props) {
+export default function SalesBanner({ mode, activeSlugs }: Props) {
   const [visible, setVisible] = useState(false);
   const [cfg, setCfg]         = useState<PromoConfig>(PROMO as unknown as PromoConfig);
 
@@ -28,6 +28,7 @@ export default function SalesBanner({ mode }: Props) {
   }, [banner.active, banner.dismissKey]);
 
   if (!visible) return null;
+  if (activeSlugs && !activeSlugs.has(cfg.banner.categorySlug)) return null;
 
   const href = mode === 'catalog'
     ? `/catalog?category=${banner.categorySlug}&sale=1`

@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getCategoryNameRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 import Link from 'next/link';
-import { Plus, Minus, Heart, ChevronDown, ChevronUp, ChevronRight, Check, SlidersHorizontal, LayoutList } from 'lucide-react';
+import { Plus, Minus, Heart, ChevronDown, ChevronRight, Check, SlidersHorizontal, LayoutList } from 'lucide-react';
 import { CATEGORY_ICONS } from '../../lib/category-icons';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import ProductImage from '../components/ProductImage';
@@ -179,19 +179,19 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const [search,       setSearch]       = useState('');
   const [selCat,       setSelCat]       = useState<string | null>(initialCategory ?? null);
   const [saleOnly,     setSaleOnly]     = useState(initialSaleOnly);
-  const [filterValues,       setFilterValues]       = useState<Record<string, string>>(initialBrand ? { 'Бренд': initialBrand } : {});
-  const [filterVolume,       setFilterVolume]       = useState('');
-  const [filterVolumeKg,     setFilterVolumeKg]     = useState('');
+  const [filterValues,       setFilterValues]       = useState<Record<string, string[]>>(initialBrand ? { 'Бренд': [initialBrand] } : {});
+  const [filterVolumes,      setFilterVolumes]      = useState<string[]>([]);
+  const [filterVolumesKg,    setFilterVolumesKg]    = useState<string[]>([]);
   const [filterPlasticGroup, setFilterPlasticGroup] = useState('');
-  const [inStockOnly,  setInStockOnly]  = useState(false);
+  const [inStockOnly,        setInStockOnly]        = useState(false);
+  const [expandedFilters,    setExpandedFilters]    = useState<Set<string>>(new Set());
+  const [expandedValues,     setExpandedValues]     = useState<Set<string>>(new Set());
   const activeFilterCount =
-    Object.values(filterValues).filter(Boolean).length +
-    (filterVolume ? 1 : 0) + (filterVolumeKg ? 1 : 0) +
+    Object.values(filterValues).filter(a => a.length > 0).length +
+    (filterVolumes.length > 0 ? 1 : 0) + (filterVolumesKg.length > 0 ? 1 : 0) +
     (filterPlasticGroup ? 1 : 0) + (inStockOnly ? 1 : 0) + (saleOnly ? 1 : 0);
   const [visibleCount,  setVisibleCount]  = useState(24);
   const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'sale'>('default');
-  const [catsOpen,      setCatsOpen]      = useState(false);
-  const catsOpenRef = useRef(false);
   const [mobilePanel,   setMobilePanel]   = useState<'cats' | 'filters' | null>(null);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(() => {
     if (!initialCategory) return new Set<string>();
@@ -216,20 +216,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     const sidebar = sidebarRef.current;
     if (!sidebar) return;
     const handleWheel = (e: WheelEvent) => {
-      const catsList = catsListRef.current;
       e.preventDefault();
-      if (catsList) {
-        const catsRect = catsList.getBoundingClientRect();
-        if (e.clientX >= catsRect.left && e.clientX <= catsRect.right &&
-            e.clientY >= catsRect.top  && e.clientY <= catsRect.bottom) {
-          if (catsList.scrollHeight > catsList.clientHeight) {
-            const atTop = catsList.scrollTop <= 0;
-            if (e.deltaY < 0 && atTop) { sidebar.scrollTop += e.deltaY; return; }
-            catsList.scrollTop += e.deltaY;
-            return;
-          }
-        }
-      }
       sidebar.scrollTop += e.deltaY;
     };
     sidebar.addEventListener('wheel', handleWheel, { passive: false });
@@ -267,16 +254,15 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
       sidebarRef.current?.scrollTo({ top: 0 });
-      if (catsListRef.current) catsListRef.current.scrollTop = 0;
     }
   }, [selCat]);
 
   const scrollCatToTop = useCallback((slug: string) => {
     const catEl = catRefs.current[slug];
-    const container = catsListRef.current;
-    if (!catEl || !container) return;
-    const offset = catEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-    container.scrollTo({ top: Math.max(0, container.scrollTop + offset - 8), behavior: 'smooth' });
+    const sidebar = sidebarRef.current;
+    if (!catEl || !sidebar) return;
+    const offset = catEl.getBoundingClientRect().top - sidebar.getBoundingClientRect().top;
+    sidebar.scrollTo({ top: Math.max(0, sidebar.scrollTop + offset - 16), behavior: 'smooth' });
   }, []);
 
   const selectCat = (slug: string | null, scrollSlug?: string) => {
@@ -288,8 +274,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     setSelCat(slug);
     window.history.pushState(null, '', slug ? `${shopBase}/${slug}` : shopBase);
     sidebarRef.current?.scrollTo({ top: 0 });
-    if (catsListRef.current) catsListRef.current.scrollTop = 0;
-    setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup('');
+    setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]); setFilterPlasticGroup(''); setExpandedValues(new Set());
     setVisibleCount(24);
     setMobilePanel(null);
     const target = scrollSlug ?? slug;
@@ -338,24 +323,39 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       'мінімальна температура застосування', 'максимальна температура застосування',
       'мінімальна температура експлуатації', 'максимальна температура експлуатації',
       'мінімальна температура зберігання',   'максимальна температура зберігання',
-      'час висихання поверхні', 'час висихання', 'час повного затвердіння',
+      'час висихання поверхні', 'час висихання', 'час повного затвердіння', 'час затвердіння', 'час повного висихання',
       'час початкового схоплення', 'час поверхневого висихання',
+      'вага упаковки', 'вага нетто',
       'термін зберігання', 'витрата матеріалу', 'витрата', 'витрата фарби', 'витрата ґрунтовки',
       'первинне розширення', 'вторинне розширення', 'вихід піни',
       'міцність клейового з\'єднання',
+      'універсальність', 'прозорість',
+      'матеріал', 'основа', 'тип матеріалу', 'тип основи',
+      'тип приміщення',
+      'еластичність покриття', 'еластичність',
+      'сумісність з основами', 'сумісність',
+      'температурний діапазон', 'температурний діапазон експлуатації',
+      'стан', 'вміст розчинників', 'сумісні поверхні', 'тип продукту',
+      'серія',
     ]);
     const SKIP_VALUES: Record<string, Set<string>> = {
       'Стан': new Set(['двокомпонентний', 'двокомпонентний шприц']),
     };
     const map = new Map<string, Map<string, string>>();
+    const countsMap = new Map<string, Map<string, number>>();
 
-    const add = (label: string, val: string | null | undefined) => {
+    const add = (label: string, val: string | null | undefined, split = false) => {
       const v = val?.trim();
       if (!v || v === 'Не вказано') return;
       if (!map.has(label)) map.set(label, new Map());
-      const key = v.toLowerCase();
-      const ex = map.get(label)!.get(key);
-      if (!ex || (v[0] === v[0].toUpperCase() && ex[0] !== ex[0].toUpperCase())) map.get(label)!.set(key, v);
+      if (!countsMap.has(label)) countsMap.set(label, new Map());
+      const tokens = split ? v.split(',').map(t => t.trim()).filter(Boolean) : [v];
+      for (const tok of tokens) {
+        const key = tok.toLowerCase();
+        const ex = map.get(label)!.get(key);
+        if (!ex || (tok[0] === tok[0].toUpperCase() && ex[0] !== ex[0].toUpperCase())) map.get(label)!.set(key, tok);
+        countsMap.get(label)!.set(key, (countsMap.get(label)!.get(key) ?? 0) + 1);
+      }
     };
 
     for (const p of catProducts) {
@@ -367,7 +367,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         if (!label || SKIP_LOWER.has(label.toLowerCase())) continue;
         if (label.toLowerCase().includes('колір')) continue;
         if (SKIP_VALUES[label]?.has(c.value?.trim().toLowerCase())) continue;
-        add(label, c.value);
+        add(label, c.value, true);
       }
     }
 
@@ -388,12 +388,13 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           if (!isNaN(na) && !isNaN(nb)) return na - nb;
           return a.localeCompare(b, 'uk');
         }),
+        counts: countsMap.get(label) ?? new Map<string, number>(),
       }));
   }, [catProducts]);
 
-  const isPlasticCat = (filterValues['Тип'] ?? '').toLowerCase().includes('пластифікатор') ||
-    allFilters.find(f => f.label === 'Тип')?.values.some(v => /пластифікатор/i.test(v)) === true &&
-    allFilters.find(f => f.label === 'Тип')?.values.every(v => /пластифікатор/i.test(v)) === true;
+  const isPlasticCat = (filterValues['Тип'] ?? []).some(v => /пластифікатор/i.test(v)) ||
+    (allFilters.find(f => f.label === 'Тип')?.values.some(v => /пластифікатор/i.test(v)) === true &&
+     allFilters.find(f => f.label === 'Тип')?.values.every(v => /пластифікатор/i.test(v)) === true);
   const plasticIsFrost = (p: ProductFull) => /протиморозн/i.test(p.product_type ?? '');
   const plasticIsWarm  = (p: ProductFull) => /теплих підлог/i.test(p.product_type ?? '');
 
@@ -406,16 +407,16 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       else if (filterPlasticGroup === 'warm')      list = list.filter(plasticIsWarm);
       else if (filterPlasticGroup === 'universal') list = list.filter(p => !plasticIsFrost(p) && !plasticIsWarm(p));
     }
-    if (filterVolume)   list = list.filter(p => p.volume === filterVolume);
-    if (filterVolumeKg) list = list.filter(p => p.volume === filterVolumeKg);
+    if (filterVolumes.length > 0)   list = list.filter(p => filterVolumes.includes(p.volume ?? ''));
+    if (filterVolumesKg.length > 0) list = list.filter(p => filterVolumesKg.includes(p.volume ?? ''));
     if (inStockOnly)    list = list.filter(p => p.stock?.stock_status === 'in_stock' || (p.stock?.stock_qty ?? 0) >= 1);
-    for (const [label, val] of Object.entries(filterValues)) {
-      if (!val) continue;
-      const fv = val.toLowerCase();
-      if (label === 'Бренд')       list = list.filter(p => p.brand.trim().toLowerCase() === fv);
-      else if (label === 'Тип')    list = list.filter(p => (p.product_type ?? '').trim().toLowerCase() === fv);
-      else if (label === 'Колір')  list = list.filter(p => (p.color ?? p.characteristics.find(c => /^колір/i.test(c.label))?.value ?? '').toLowerCase() === fv);
-      else list = list.filter(p => p.characteristics.some(c => c.label === label && c.value.trim().toLowerCase() === fv));
+    for (const [label, selectedVals] of Object.entries(filterValues)) {
+      if (!selectedVals || selectedVals.length === 0) continue;
+      const fvs = new Set(selectedVals.map(v => v.toLowerCase()));
+      if (label === 'Бренд')       list = list.filter(p => fvs.has(p.brand.trim().toLowerCase()));
+      else if (label === 'Тип')    list = list.filter(p => fvs.has((p.product_type ?? '').trim().toLowerCase()));
+      else if (label === 'Колір')  list = list.filter(p => fvs.has((p.color ?? p.characteristics.find(c => /^колір/i.test(c.label))?.value ?? '').toLowerCase()));
+      else list = list.filter(p => p.characteristics.some(c => c.label === label && c.value.split(',').map(t => t.trim().toLowerCase()).some(tok => fvs.has(tok))));
     }
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -426,7 +427,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       );
     }
     return list;
-  }, [products, matchingSlugs, saleOnly, filterValues, filterVolume, filterVolumeKg, inStockOnly, search, filterPlasticGroup, isPlasticCat]);
+  }, [products, matchingSlugs, saleOnly, filterValues, filterVolumes, filterVolumesKg, inStockOnly, search, filterPlasticGroup, isPlasticCat]);
 
   const sorted = useMemo(() => {
     if (sortBy === 'default') return filtered;
@@ -442,6 +443,16 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     });
   }, [filtered, sortBy]);
 
+  // Якщо після фільтрації сторінка стала коротшою ніж поточний scroll → скидаємо вгору
+  useLayoutEffect(() => {
+    requestAnimationFrame(() => {
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      if (window.scrollY > maxScroll) {
+        window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+      }
+    });
+  }, [sorted.length]);
+
   const countFor = (slug: string) => {
     const children = (childrenOf[slug] ?? []).map(c => c.slug);
     const slugs = new Set([slug, ...children]);
@@ -456,16 +467,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         <div className="sidebar-cats-section">
         <h3>{t('Категорії', 'Категории')}</h3>
 
-        <div
-          ref={catsListRef}
-          style={{
-            maxHeight: catsOpen ? 'calc(100vh - 220px)' : '370px',
-            overflowY: 'auto',
-            transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-            scrollbarWidth: 'none',
-          }}
-          className="shop-cats-list"
-        >
+        <div ref={catsListRef} className="shop-cats-list">
           <button
             className={'shop-cat-item' + (!selCat ? ' active' : '')}
             onClick={() => { selectCat(null); setExpandedCats(new Set()); }}
@@ -547,21 +549,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           })}
         </div>
 
-        {parentCats.length > 10 && (
-          <button
-            onClick={() => { setCatsOpen(o => { catsOpenRef.current = !o; return !o; }); }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '4px',
-              width: '100%', background: 'none', border: 'none', cursor: 'pointer',
-              padding: '6px 10px', marginTop: '0', borderRadius: '8px',
-              fontSize: '13px', fontWeight: 600, color: '#4880B8',
-            }}
-          >
-            {catsOpen
-              ? <><ChevronUp size={13} strokeWidth={2} />{t('Згорнути', 'Свернуть')}</>
-              : <><ChevronDown size={13} strokeWidth={2} />{t('Показати всі', 'Показать все')}</>}
-          </button>
-        )}
 
         </div>{/* end sidebar-cats-section */}
         <div ref={filtersRef} className="sidebar-filters-section">
@@ -577,80 +564,147 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           {activeFilterCount > 0 && <span className="sidebar-filter-badge">{activeFilterCount}</span>}
         </button>
 
-        {volumesL.length > 0 && (
-          <div className="shop-filter-group">
-            <label className="shop-filter-label" htmlFor="filter-volume">{t("Об'єм", 'Объём')}</label>
-            <select id="filter-volume" className={'shop-filter-select' + (filterVolume ? ' active' : '')} value={filterVolume} onChange={e => setFilterVolume(e.target.value)}>
-              <option value="">Всі</option>
-              {volumesL.map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
-          </div>
-        )}
-        {volumesKg.length > 0 && (
-          <div className="shop-filter-group">
-            <label className="shop-filter-label" htmlFor="filter-volume-kg">{t('Вага', 'Вес')}</label>
-            <select id="filter-volume-kg" className={'shop-filter-select' + (filterVolumeKg ? ' active' : '')} value={filterVolumeKg} onChange={e => setFilterVolumeKg(e.target.value)}>
-              <option value="">Всі</option>
-              {volumesKg.map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
-          </div>
-        )}
-        {isPlasticCat && (
-          <div className="shop-filter-group">
-            <label className="shop-filter-label" htmlFor="filter-plastic">Тип</label>
-            <select id="filter-plastic" className={'shop-filter-select' + (filterPlasticGroup ? ' active' : '')} value={filterPlasticGroup} onChange={e => setFilterPlasticGroup(e.target.value)}>
-              <option value="">{t('Всі', 'Все')}</option>
-              <option value="universal">{t('Універсальний', 'Универсальный')}</option>
-              <option value="frost">{t('Протиморозний', 'Противоморозный')}</option>
-              <option value="warm">{t('Для теплих підлог', 'Для тёплых полов')}</option>
-            </select>
-          </div>
-        )}
-        {allFilters.filter(f => !(isPlasticCat && f.label === 'Тип')).map(({ label, values }) => {
-          const active = filterValues[label] ?? '';
-          const missingActive = active && !values.includes(active);
+        {(() => {
+          const SHOW_LIMIT = 5;
+          const toggleCollapse = (key: string) => setExpandedFilters(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+          const toggleExpand   = (key: string) => setExpandedValues  (prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+
+          const renderGroup = (
+            key: string,
+            label: React.ReactNode,
+            items: string[],
+            counts: Map<string, number> | null,
+            selectedVals: string[],
+            onToggle: (v: string) => void,
+            formatVal?: (v: string) => string,
+          ) => {
+            const isCollapsed = !expandedFilters.has(key);
+            const isExpanded  = expandedValues.has(key);
+            const selectedSet = new Set(selectedVals.map(v => v.toLowerCase()));
+            const visible = isExpanded ? items : items.slice(0, SHOW_LIMIT);
+            return (
+              <div key={key} className="shop-filter-group">
+                <button
+                  className={'shop-filter-label-btn' + (selectedVals.length > 0 ? ' has-active' : '')}
+                  onClick={() => toggleCollapse(key)}
+                >
+                  <span>{label}</span>
+                  {selectedVals.length > 0 && <span className="shop-filter-active-badge">{selectedVals.length}</span>}
+                  <ChevronDown size={11} style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }} />
+                </button>
+                {!isCollapsed && (
+                  <div className="shop-filter-checkboxes">
+                    {visible.map(v => {
+                      const vkey = v.toLowerCase();
+                      const checked = selectedSet.has(vkey);
+                      return (
+                        <label key={v} className={'shop-filter-check-item' + (checked ? ' checked' : '')} onMouseDown={e => e.preventDefault()}>
+                          <input type="checkbox" checked={checked} onChange={() => onToggle(v)} />
+                          <span className="shop-filter-check-text">{formatVal ? formatVal(v) : v}</span>
+                          {counts && <span className="shop-filter-count">{counts.get(vkey) ?? 0}</span>}
+                        </label>
+                      );
+                    })}
+                    {items.length > SHOW_LIMIT && (
+                      <button className="shop-filter-show-more" onClick={() => toggleExpand(key)}>
+                        {isExpanded ? t('Сховати', 'Скрыть') : `+ ${items.length - SHOW_LIMIT} ${t('ще', 'ещё')}`}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          };
+
+          const toggler = (arr: string[], setArr: React.Dispatch<React.SetStateAction<string[]>>) =>
+            (v: string) => setArr(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
+
+          const charToggler = (label: string) =>
+            (v: string) => setFilterValues(prev => {
+              const cur = prev[label] ?? [];
+              const key = v.toLowerCase();
+              const next = cur.map(s => s.toLowerCase()).includes(key)
+                ? cur.filter(s => s.toLowerCase() !== key)
+                : [...cur, v];
+              return { ...prev, [label]: next };
+            });
+
+          const charFilterKeys = allFilters.filter(f => !(isPlasticCat && f.label === 'Тип')).map(f => f.label);
+          const allKeys = [
+            ...(volumesL.length > 0 ? ['__vol'] : []),
+            ...(volumesKg.length > 0 ? ['__wt'] : []),
+            ...(isPlasticCat ? ['__plastic'] : []),
+            ...charFilterKeys,
+          ];
+          const allCollapsed = allKeys.length > 0 && allKeys.every(k => !expandedFilters.has(k));
+          const resetAll = () => {
+            setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]);
+            setFilterPlasticGroup(''); setInStockOnly(false); setSaleOnly(false); setExpandedValues(new Set());
+          };
+
           return (
-            <div key={label} className="shop-filter-group">
-              <label className="shop-filter-label" htmlFor={`filter-${label}`}>{tFilterLabel(label, lang)}</label>
-              <select
-                id={`filter-${label}`}
-                className={'shop-filter-select' + (active ? ' active' : '')}
-                value={active}
-                onChange={e => setFilterValues(prev => ({ ...prev, [label]: e.target.value }))}
-              >
-                <option value="">{
-                  label === 'Колір' ? t('Всі кольори', 'Все цвета') :
-                  label === 'Бренд' ? t('Всі бренди', 'Все бренды') :
-                  t('Всі', 'Все')
-                }</option>
-                {missingActive && <option value={active}>{tFilterValue(active, lang)} {t('⚠ немає в категорії', '⚠ нет в категории')}</option>}
-                {values.map(v => <option key={v} value={v}>{tFilterValue(v, lang)}</option>)}
-              </select>
-            </div>
+            <>
+              <div className="shop-filter-controls">
+                <button
+                  className="shop-filter-ctrl-btn"
+                  onClick={() => setExpandedFilters(allCollapsed ? new Set(allKeys) : new Set())}
+                >
+                  {allCollapsed ? t('Розгорнути все', 'Развернуть все') : t('Згорнути все', 'Свернуть все')}
+                </button>
+                {activeFilterCount > 0 && (
+                  <button className="shop-filter-ctrl-btn reset" onClick={resetAll}>
+                    {t('Скинути все', 'Сбросить все')}
+                  </button>
+                )}
+              </div>
+              {volumesL.length > 0 && renderGroup('__vol', t("Об'єм", 'Объём'), volumesL, null, filterVolumes, toggler(filterVolumes, setFilterVolumes))}
+              {volumesKg.length > 0 && renderGroup('__wt', t('Вага', 'Вес'), volumesKg, null, filterVolumesKg, toggler(filterVolumesKg, setFilterVolumesKg))}
+              {isPlasticCat && (() => {
+                const plasticItems = [
+                  { v: 'universal', label: t('Універсальний', 'Универсальный') },
+                  { v: 'frost',     label: t('Протиморозний', 'Противоморозный') },
+                  { v: 'warm',      label: t('Для теплих підлог', 'Для тёплых полов') },
+                ];
+                const isCollapsed = !expandedFilters.has('__plastic');
+                return (
+                  <div className="shop-filter-group">
+                    <button
+                      className={'shop-filter-label-btn' + (filterPlasticGroup ? ' has-active' : '')}
+                      onClick={() => toggleCollapse('__plastic')}
+                    >
+                      <span>Тип</span>
+                      {filterPlasticGroup && <span className="shop-filter-active-badge">1</span>}
+                      <ChevronDown size={11} style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }} />
+                    </button>
+                    {!isCollapsed && (
+                      <div className="shop-filter-checkboxes">
+                        {plasticItems.map(({ v, label }) => (
+                          <label key={v} className={'shop-filter-check-item' + (filterPlasticGroup === v ? ' checked' : '')} onMouseDown={e => e.preventDefault()}>
+                            <input type="checkbox" checked={filterPlasticGroup === v} onChange={() => setFilterPlasticGroup(prev => prev === v ? '' : v)} />
+                            <span className="shop-filter-check-text">{label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+              {charFilterKeys.length > 0 && allFilters
+                .filter(f => !(isPlasticCat && f.label === 'Тип'))
+                .map(({ label, values, counts }) =>
+                  renderGroup(label, tFilterLabel(label, lang), values, counts, filterValues[label] ?? [], charToggler(label), v => tFilterValue(v, lang))
+                )}
+            </>
           );
-        })}
-        <label className="shop-filter-check">
+        })()}
+        <label className="shop-filter-check" onMouseDown={e => e.preventDefault()}>
           <input type="checkbox" checked={inStockOnly} onChange={e => setInStockOnly(e.target.checked)} />
           {t('Тільки в наявності', 'Только в наличии')}
         </label>
-        <label className="shop-filter-check">
+        <label className="shop-filter-check" onMouseDown={e => e.preventDefault()}>
           <input type="checkbox" checked={saleOnly} onChange={e => setSaleOnly(e.target.checked)} />
           {t('Тільки акційні', 'Только акционные')}
         </label>
-        {activeFilterCount > 0 && (
-          <button
-            onClick={() => { setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setFilterPlasticGroup(''); setInStockOnly(false); setSaleOnly(false); }}
-            style={{
-              marginTop: '12px', width: '100%', padding: '7px 0',
-              border: '1px solid var(--border)', borderRadius: '6px',
-              background: 'none', cursor: 'pointer',
-              fontSize: '12px', fontWeight: 600, color: '#EF4444',
-              transition: 'background 0.15s',
-            }}
-          >
-            {t('Скинути фільтри', 'Сбросить фильтры')} ({activeFilterCount})
-          </button>
-        )}
         </div>{/* end sidebar-filters-section */}
 
 
@@ -672,8 +726,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
               {t('Категорії', 'Категории')}
             </button>
             {(() => {
-              const count = Object.values(filterValues).filter(Boolean).length +
-                (filterVolume ? 1 : 0) + (filterVolumeKg ? 1 : 0) +
+              const count = Object.values(filterValues).filter(a => a.length > 0).length +
+                (filterVolumes.length > 0 ? 1 : 0) + (filterVolumesKg.length > 0 ? 1 : 0) +
                 (inStockOnly ? 1 : 0) + (filterPlasticGroup ? 1 : 0);
               return (
                 <button
@@ -750,7 +804,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           </div>
         </div>
 
-        <SalesBanner mode="shop" />
+        <SalesBanner mode="shop" activeSlugs={matchingSlugs} />
         <div className="shop-grid">
           {sorted.length === 0 && (
             <div className="shop-empty">{t('Нічого не знайдено', 'Ничего не найдено')}</div>

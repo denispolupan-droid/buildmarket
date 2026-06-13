@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2 } from 'lucide-react';
 import { CATEGORY_ICONS } from '../../lib/category-icons';
@@ -134,10 +134,12 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     const target = scrollSlug ?? slug;
     if (target) setTimeout(() => scrollCatToTop(target), 120);
   };
-  const [filterValues,   setFilterValues]   = useState<Record<string, string>>({});
-  const [filterVolume,   setFilterVolume]   = useState('');
-  const [filterVolumeKg, setFilterVolumeKg] = useState('');
-  const [inStockOnly,   setInStockOnly]   = useState(false);
+  const [filterValues,     setFilterValues]     = useState<Record<string, string[]>>({});
+  const [filterVolumes,    setFilterVolumes]    = useState<string[]>([]);
+  const [filterVolumesKg,  setFilterVolumesKg]  = useState<string[]>([]);
+  const [expandedFilters,  setExpandedFilters]  = useState<Set<string>>(new Set());
+  const [expandedValues,   setExpandedValues]   = useState<Set<string>>(new Set());
+  const [inStockOnly,      setInStockOnly]      = useState(false);
   const [saleOnly,      setSaleOnly]      = useState(initialSaleOnly);
   const [visibleCount,  setVisibleCount]  = useState(50);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>(() => {
@@ -176,8 +178,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const cartMet       = cartTotal >= WHOLESALE_MIN;
   const cartRemaining = WHOLESALE_MIN - cartTotal;
   const activeFilterCount =
-    Object.values(filterValues).filter(Boolean).length +
-    (filterVolume ? 1 : 0) + (filterVolumeKg ? 1 : 0) +
+    Object.values(filterValues).filter(a => a.length > 0).length +
+    (filterVolumes.length > 0 ? 1 : 0) + (filterVolumesKg.length > 0 ? 1 : 0) +
     (inStockOnly ? 1 : 0) + (saleOnly ? 1 : 0);
 
   const badgeRef = useRef<HTMLAnchorElement>(null);
@@ -252,15 +254,27 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       'термін зберігання', 'витрата матеріалу', 'витрата', 'витрата фарби', 'витрата ґрунтовки',
       'первинне розширення', 'вторинне розширення', 'вихід піни',
       'міцність клейового з\'єднання',
+      'тип приміщення',
+      'еластичність покриття', 'еластичність',
+      'сумісність з основами', 'сумісність',
+      'температурний діапазон', 'температурний діапазон експлуатації',
+      'стан', 'вміст розчинників', 'сумісні поверхні', 'тип продукту',
+      'серія',
     ]);
     const map = new Map<string, Map<string, string>>();
-    const add = (label: string, val: string | null | undefined) => {
+    const countsMap = new Map<string, Map<string, number>>();
+    const add = (label: string, val: string | null | undefined, split = false) => {
       const v = val?.trim();
       if (!v || v === 'Не вказано') return;
       if (!map.has(label)) map.set(label, new Map());
-      const key = v.toLowerCase();
-      const ex = map.get(label)!.get(key);
-      if (!ex || (v[0] === v[0].toUpperCase() && ex[0] !== ex[0].toUpperCase())) map.get(label)!.set(key, v);
+      if (!countsMap.has(label)) countsMap.set(label, new Map());
+      const tokens = split ? v.split(',').map(t => t.trim()).filter(Boolean) : [v];
+      for (const tok of tokens) {
+        const key = tok.toLowerCase();
+        const ex = map.get(label)!.get(key);
+        if (!ex || (tok[0] === tok[0].toUpperCase() && ex[0] !== ex[0].toUpperCase())) map.get(label)!.set(key, tok);
+        countsMap.get(label)!.set(key, (countsMap.get(label)!.get(key) ?? 0) + 1);
+      }
     };
     for (const p of catProducts) {
       add('Бренд', p.brand);
@@ -269,7 +283,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       for (const c of p.characteristics ?? []) {
         const label = c.label?.trim();
         if (!label || SKIP_LOWER.has(label.toLowerCase()) || label.toLowerCase().includes('колір')) continue;
-        add(label, c.value);
+        add(label, c.value, true);
       }
     }
     const PRIMARY = new Set(['Бренд', 'Тип', 'Колір']);
@@ -289,6 +303,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
           if (!isNaN(na) && !isNaN(nb)) return na - nb;
           return a.localeCompare(b, 'uk');
         }),
+        counts: countsMap.get(label) ?? new Map<string, number>(),
       }));
   }, [catProducts]);
 
@@ -297,8 +312,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     return products.filter(p => {
       if (q && !p.name.toLowerCase().includes(q) && !p.sku.toLowerCase().includes(q) && !p.brand.toLowerCase().includes(q) && !(lang === 'ru' && ((p as { name_ru?: string | null }).name_ru ?? '').toLowerCase().includes(q))) return false;
       if (matchingSlugs && !matchingSlugs.has(p.category_slug ?? '')) return false;
-      if (filterVolume   && p.volume !== filterVolume)   return false;
-      if (filterVolumeKg && p.volume !== filterVolumeKg) return false;
+      if (filterVolumes.length > 0   && !filterVolumes.includes(p.volume ?? ''))   return false;
+      if (filterVolumesKg.length > 0 && !filterVolumesKg.includes(p.volume ?? '')) return false;
       if (inStockOnly) {
         const s = p.stock;
         const available = s?.stock_status === 'in_stock' || (s?.stock_qty ?? 0) >= 1;
@@ -310,17 +325,27 @@ export default function CatalogClient({ products, categories, initialSearch = ''
         const hasPromo = p.stock?.price_promo != null;
         if (!hasPromo && !(po != null && pu > 0 && pu < po)) return false;
       }
-      for (const [label, val] of Object.entries(filterValues)) {
-        if (!val) continue;
-        const fv = val.toLowerCase();
-        if (label === 'Бренд')      { if (p.brand.trim().toLowerCase() !== fv) return false; }
-        else if (label === 'Тип')   { if ((p.product_type ?? '').trim().toLowerCase() !== fv) return false; }
-        else if (label === 'Колір') { if ((p.color ?? p.characteristics.find(c => /^колір/i.test(c.label))?.value ?? '').toLowerCase() !== fv) return false; }
-        else { if (!p.characteristics.some(c => c.label === label && c.value.trim().toLowerCase() === fv)) return false; }
+      for (const [label, selectedVals] of Object.entries(filterValues)) {
+        if (!selectedVals || selectedVals.length === 0) continue;
+        const fvs = new Set(selectedVals.map(v => v.toLowerCase()));
+        if (label === 'Бренд')      { if (!fvs.has(p.brand.trim().toLowerCase())) return false; }
+        else if (label === 'Тип')   { if (!fvs.has((p.product_type ?? '').trim().toLowerCase())) return false; }
+        else if (label === 'Колір') { if (!fvs.has((p.color ?? p.characteristics.find(c => /^колір/i.test(c.label))?.value ?? '').toLowerCase())) return false; }
+        else { if (!p.characteristics.some(c => c.label === label && c.value.split(',').map(t => t.trim().toLowerCase()).some(tok => fvs.has(tok)))) return false; }
       }
       return true;
     });
-  }, [products, search, matchingSlugs, filterValues, filterVolume, filterVolumeKg, inStockOnly, saleOnly]);
+  }, [products, search, matchingSlugs, filterValues, filterVolumes, filterVolumesKg, inStockOnly, saleOnly]);
+
+  // Якщо після фільтрації сторінка стала коротшою ніж поточний scroll → скидаємо вгору
+  useLayoutEffect(() => {
+    requestAnimationFrame(() => {
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      if (window.scrollY > maxScroll) {
+        window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+      }
+    });
+  }, [filtered.length]);
 
   const exportToExcel = useCallback(async () => {
     const XLSX = await import('xlsx');
@@ -361,7 +386,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       if ((childrenOf[selCat] ?? []).length > 0) next.add(selCat);
       return next;
     });
-    setFilterValues({}); setFilterVolume(''); setFilterVolumeKg('');
+    setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]); setExpandedValues(new Set());
   }, [selCat, categories, childrenOf]);
 
   const loggedRef = useRef('');
@@ -592,71 +617,111 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                 {activeFilterCount > 0 && <span className="sidebar-filter-badge">{activeFilterCount}</span>}
               </button>
 
-              {volumesL.length > 1 && (
-                <div className="filter-group">
-                  <div className="filter-label">{t('Обʼєм', 'Объём')}</div>
-                  <select className={'filter-select' + (filterVolume ? ' active' : '')} value={filterVolume} onChange={e => setFilterVolume(e.target.value)}>
-                    <option value="">{t('Всі', 'Все')}</option>
-                    {volumesL.map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                </div>
-              )}
-              {volumesKg.length > 1 && (
-                <div className="filter-group">
-                  <div className="filter-label">{t('Вага', 'Вес')}</div>
-                  <select className={'filter-select' + (filterVolumeKg ? ' active' : '')} value={filterVolumeKg} onChange={e => setFilterVolumeKg(e.target.value)}>
-                    <option value="">{t('Всі', 'Все')}</option>
-                    {volumesKg.map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                </div>
-              )}
-              {allFilters.map(({ label, values }) => {
-                const active = filterValues[label] ?? '';
-                const missingActive = active && !values.includes(active);
-                const displayLabel = tFilterLabel(label, lang);
+              {(() => {
+                const SHOW_LIMIT = 5;
+                const toggleCollapse = (key: string) => setExpandedFilters(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+                const toggleExpand   = (key: string) => setExpandedValues  (prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+
+                const renderGroup = (
+                  key: string,
+                  labelNode: React.ReactNode,
+                  items: string[],
+                  counts: Map<string, number> | null,
+                  selectedVals: string[],
+                  onToggle: (v: string) => void,
+                  formatVal?: (v: string) => string,
+                ) => {
+                  const isCollapsed = !expandedFilters.has(key);
+                  const isExpanded  = expandedValues.has(key);
+                  const selectedSet = new Set(selectedVals.map(v => v.toLowerCase()));
+                  const visible = isExpanded ? items : items.slice(0, SHOW_LIMIT);
+                  return (
+                    <div key={key} className="filter-group">
+                      <button
+                        className={'filter-label-btn' + (selectedVals.length > 0 ? ' has-active' : '')}
+                        onClick={() => toggleCollapse(key)}
+                      >
+                        <span>{labelNode}</span>
+                        {selectedVals.length > 0 && <span className="filter-active-badge">{selectedVals.length}</span>}
+                        <ChevronDown size={11} style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }} />
+                      </button>
+                      {!isCollapsed && (
+                        <div className="filter-checkboxes">
+                          {visible.map(v => {
+                            const vkey = v.toLowerCase();
+                            const checked = selectedSet.has(vkey);
+                            return (
+                              <label key={v} className={'filter-check-item' + (checked ? ' checked' : '')} onMouseDown={e => e.preventDefault()}>
+                                <input type="checkbox" checked={checked} onChange={() => onToggle(v)} />
+                                <span className="filter-check-text">{formatVal ? formatVal(v) : v}</span>
+                                {counts && <span className="filter-count">{counts.get(vkey) ?? 0}</span>}
+                              </label>
+                            );
+                          })}
+                          {items.length > SHOW_LIMIT && (
+                            <button className="filter-show-more" onClick={() => toggleExpand(key)}>
+                              {isExpanded ? t('Сховати', 'Скрыть') : `+ ${items.length - SHOW_LIMIT} ${t('ще', 'ещё')}`}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                };
+
+                const toggler = (arr: string[], setArr: React.Dispatch<React.SetStateAction<string[]>>) =>
+                  (v: string) => setArr(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
+                const charToggler = (label: string) => (v: string) => setFilterValues(prev => {
+                  const cur = prev[label] ?? [];
+                  const key = v.toLowerCase();
+                  const next = cur.map(s => s.toLowerCase()).includes(key)
+                    ? cur.filter(s => s.toLowerCase() !== key)
+                    : [...cur, v];
+                  return { ...prev, [label]: next };
+                });
+
+                const allKeys = [
+                  ...(volumesL.length > 1 ? ['__vol'] : []),
+                  ...(volumesKg.length > 1 ? ['__wt'] : []),
+                  ...allFilters.map(f => f.label),
+                ];
+                const allCollapsed = allKeys.length > 0 && allKeys.every(k => !expandedFilters.has(k));
+                const resetAll = () => {
+                  setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]);
+                  setInStockOnly(false); setSaleOnly(false); setExpandedValues(new Set());
+                };
+
                 return (
-                  <div key={label} className="filter-group">
-                    <div className="filter-label">{displayLabel}</div>
-                    <select
-                      className={'filter-select' + (active ? ' active' : '')}
-                      value={active}
-                      onChange={e => setFilterValues(prev => ({ ...prev, [label]: e.target.value }))}
-                    >
-                      <option value="">
-                        {label === 'Колір'
-                          ? t('Всі кольори', 'Все цвета')
-                          : label === 'Бренд'
-                            ? t('Всі бренди', 'Все бренды')
-                            : t('Всі', 'Все')}
-                      </option>
-                      {missingActive && <option value={active}>{tFilterValue(active, lang)} ⚠ {t('немає в категорії', 'нет в категории')}</option>}
-                      {values.map(v => <option key={v} value={v}>{tFilterValue(v, lang)}</option>)}
-                    </select>
-                  </div>
+                  <>
+                    <div className="filter-controls">
+                      <button
+                        className="filter-ctrl-btn"
+                        onClick={() => setExpandedFilters(allCollapsed ? new Set(allKeys) : new Set())}
+                      >
+                        {allCollapsed ? t('Розгорнути все', 'Развернуть все') : t('Згорнути все', 'Свернуть все')}
+                      </button>
+                      {activeFilterCount > 0 && (
+                        <button className="filter-ctrl-btn reset" onClick={resetAll}>
+                          {t('Скинути все', 'Сбросить все')}
+                        </button>
+                      )}
+                    </div>
+                    {volumesL.length > 1 && renderGroup('__vol', t('Обʼєм', 'Объём'), volumesL, null, filterVolumes, toggler(filterVolumes, setFilterVolumes))}
+                    {volumesKg.length > 1 && renderGroup('__wt', t('Вага', 'Вес'), volumesKg, null, filterVolumesKg, toggler(filterVolumesKg, setFilterVolumesKg))}
+                    {allFilters.map(({ label, values, counts }) =>
+                      renderGroup(label, tFilterLabel(label, lang), values, counts, filterValues[label] ?? [], charToggler(label), v => tFilterValue(v, lang))
+                    )}
+                  </>
                 );
-              })}
-              <label className="filter-check">
+              })()}
+              <label className="filter-check" onMouseDown={e => e.preventDefault()}>
                 <input type="checkbox" checked={inStockOnly} onChange={e => setInStockOnly(e.target.checked)} />
                 {t('Тільки в наявності', 'Только в наличии')}
               </label>
-              <label className="filter-check">
+              <label className="filter-check" onMouseDown={e => e.preventDefault()}>
                 <input type="checkbox" checked={saleOnly} onChange={e => setSaleOnly(e.target.checked)} />
                 {t('Тільки акційні', 'Только акционные')}
               </label>
-              {activeFilterCount > 0 && (
-                <button
-                  onClick={() => { setFilterValues({}); setFilterVolume(''); setFilterVolumeKg(''); setInStockOnly(false); setSaleOnly(false); }}
-                  style={{
-                    marginTop: '12px', width: '100%', padding: '7px 0',
-                    border: '1px solid var(--border)', borderRadius: '6px',
-                    background: 'none', cursor: 'pointer',
-                    fontSize: '12px', fontWeight: 600, color: '#EF4444',
-                    transition: 'background 0.15s',
-                  }}
-                >
-                  {t('Скинути фільтри', 'Сбросить фильтры')} ({activeFilterCount})
-                </button>
-              )}
             </div>
             </div>{/* end sidebar-filters-section */}
 
@@ -703,8 +768,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   {t('Категорії', 'Категории')}
                 </button>
                 {(() => {
-                  const count = Object.values(filterValues).filter(Boolean).length +
-                    (filterVolume ? 1 : 0) + (filterVolumeKg ? 1 : 0) + (inStockOnly ? 1 : 0);
+                  const count = Object.values(filterValues).filter(a => a.length > 0).length +
+                    (filterVolumes.length > 0 ? 1 : 0) + (filterVolumesKg.length > 0 ? 1 : 0) + (inStockOnly ? 1 : 0);
                   return (
                     <button
                       className={'catalog-mobile-btn' + (mobilePanel === 'filters' ? ' active' : '')}
@@ -792,7 +857,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
             </div>
 
 
-            <SalesBanner mode="catalog" />
+            <SalesBanner mode="catalog" activeSlugs={matchingSlugs} />
 
             {/* Grid view */}
             {viewMode === 'grid' && (
