@@ -18,6 +18,18 @@ import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import type { ProductFull, Category } from '../../lib/supabase';
 import { getCategoryMeta } from '../../lib/category-descriptions';
 
+const SHOP_STATE_KEY = 'shop_filter_state';
+
+function readShopSession<T>(field: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = sessionStorage.getItem(SHOP_STATE_KEY);
+    if (!raw) return fallback;
+    const val = JSON.parse(raw)[field];
+    return val !== undefined ? val : fallback;
+  } catch { return fallback; }
+}
+
 type CardProps = {
   p: ProductFull;
   price: number | null;
@@ -29,9 +41,10 @@ type CardProps = {
   onWholesaleBlock: () => void;
   isWholesale: boolean;
   lang: 'uk' | 'ru';
+  onSaveState?: () => void;
 };
 
-function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggleWish, onWholesaleBlock, isWholesale, lang }: CardProps) {
+function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggleWish, onWholesaleBlock, isWholesale, lang, onSaveState }: CardProps) {
   const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
   const displayName = lang === 'ru' ? ((p as { name_ru?: string | null }).name_ru ?? p.name) : p.name;
   const [qty, setQty] = useState(1);
@@ -62,7 +75,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
 
   return (
     <div className="shop-card">
-      <Link href={lang === 'ru' ? `/ru/product/${p.sku}?from=shop` : `/product/${p.sku}?from=shop`} className="shop-card__clickable">
+      <Link href={lang === 'ru' ? `/ru/product/${p.sku}?from=shop` : `/product/${p.sku}?from=shop`} className="shop-card__clickable" onClick={() => onSaveState?.()}>
         <div className="shop-card__img">
           <div className="shop-card__badge-stack">
             {salePercent && salePercent > 0 && (
@@ -178,12 +191,12 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const [showWholesaleModal, setShowWholesaleModal] = useState(false);
   const [search,       setSearch]       = useState('');
   const [selCat,       setSelCat]       = useState<string | null>(initialCategory ?? null);
-  const [saleOnly,     setSaleOnly]     = useState(initialSaleOnly);
-  const [filterValues,       setFilterValues]       = useState<Record<string, string[]>>(initialBrand ? { 'Бренд': [initialBrand] } : {});
-  const [filterVolumes,      setFilterVolumes]      = useState<string[]>([]);
-  const [filterVolumesKg,    setFilterVolumesKg]    = useState<string[]>([]);
-  const [filterPlasticGroup, setFilterPlasticGroup] = useState('');
-  const [inStockOnly,        setInStockOnly]        = useState(false);
+  const [saleOnly,     setSaleOnly]     = useState(() => readShopSession('saleOnly', initialSaleOnly));
+  const [filterValues,       setFilterValues]       = useState<Record<string, string[]>>(() => readShopSession<Record<string, string[]>>('filterValues', initialBrand ? { 'Бренд': [initialBrand] } : {}));
+  const [filterVolumes,      setFilterVolumes]      = useState<string[]>(() => readShopSession('filterVolumes', []));
+  const [filterVolumesKg,    setFilterVolumesKg]    = useState<string[]>(() => readShopSession('filterVolumesKg', []));
+  const [filterPlasticGroup, setFilterPlasticGroup] = useState<string>(() => readShopSession('filterPlasticGroup', ''));
+  const [inStockOnly,        setInStockOnly]        = useState<boolean>(() => readShopSession('inStockOnly', false));
   const [expandedFilters,    setExpandedFilters]    = useState<Set<string>>(new Set());
   const [expandedValues,     setExpandedValues]     = useState<Set<string>>(new Set());
   const activeFilterCount =
@@ -211,6 +224,15 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const filtersRef  = useRef<HTMLDivElement>(null);
   const pillsRef = useRef<HTMLDivElement>(null);
   const prevSelCat = useRef<string | null>(initialCategory ?? null);
+
+  // Clear sessionStorage after restoring (so stale state isn't reused on next fresh visit)
+  useEffect(() => { sessionStorage.removeItem(SHOP_STATE_KEY); }, []);
+
+  const saveFilterState = useCallback(() => {
+    sessionStorage.setItem(SHOP_STATE_KEY, JSON.stringify({
+      filterValues, filterVolumes, filterVolumesKg, filterPlasticGroup, saleOnly, inStockOnly,
+    }));
+  }, [filterValues, filterVolumes, filterVolumesKg, filterPlasticGroup, saleOnly, inStockOnly]);
 
   useEffect(() => {
     const sidebar = sidebarRef.current;
@@ -271,6 +293,11 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       router.push(slug ? `${shopBase}/${slug}` : shopBase);
       return;
     }
+    // На /shop/[category] H1 і breadcrumb — серверні; при переході до іншої категорії потрібен повний reload
+    if (initialCategory && slug !== initialCategory) {
+      router.push(slug ? `${shopBase}/${slug}` : shopBase);
+      return;
+    }
     setSelCat(slug);
     window.history.pushState(null, '', slug ? `${shopBase}/${slug}` : shopBase);
     sidebarRef.current?.scrollTo({ top: 0 });
@@ -319,18 +346,22 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       'бренд', 'торгова марка',
       'тип', 'тип фарби', 'тип ґрунтовки', 'тип герметика', 'тип клею',
       'обсяг', 'об\'єм', 'об\'єм упаковки', 'обсяг упаковки', 'вага',
+      'об\'єм балону', 'об\'єм балона',
       'назва продукту', 'марка', 'розмір упаковки', 'розфасування',
       'мінімальна температура застосування', 'максимальна температура застосування',
       'мінімальна температура експлуатації', 'максимальна температура експлуатації',
       'мінімальна температура зберігання',   'максимальна температура зберігання',
       'час висихання поверхні', 'час висихання', 'час повного затвердіння', 'час затвердіння', 'час повного висихання',
       'час початкового схоплення', 'час поверхневого висихання',
+      'час висихання (від пилу)', 'час висихання від пилу', 'час висихання (наступний шар)',
+      'час висихання (дерево)', 'час висихання (папір)',
+      'час відкритого шару', 'час до наступного шару',
       'вага упаковки', 'вага нетто',
       'термін зберігання', 'витрата матеріалу', 'витрата', 'витрата фарби', 'витрата ґрунтовки',
       'первинне розширення', 'вторинне розширення', 'вихід піни',
       'міцність клейового з\'єднання',
       'універсальність', 'прозорість',
-      'матеріал', 'основа', 'тип матеріалу', 'тип основи',
+      'матеріал', 'тип матеріалу', 'тип основи',
       'тип приміщення',
       'еластичність покриття', 'еластичність',
       'сумісність з основами', 'сумісність',
@@ -342,6 +373,47 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       'ступінь блиску', 'фасування', 'тип проникнення',
       'термін придатності', 'температура нанесення',
       'підходящі основи', 'витрата концентрату',
+      'площа обробки',
+      'особливості',
+      'водостійкість', 'клас водостійкості',
+      'ширина шва', 'ширина шва (мм)',
+      'область застосування',
+      'захист від',
+      'кількість шарів', 'кількість шарів нанесення',
+      'тип різання', 'товщина',
+      'час дії',
+      'шліфування',
+      'артикул',
+      'конструкція',
+      'тип інструменту',
+      'матеріал корпусу', 'матеріал лезо', 'матеріал ствола', 'матеріал каркасу', 'матеріал корпус',
+      'посадочний отвір', 'посадковий отвір',
+      'механізм зворотного ходу',
+      'сумісний об\'єм картриджів', 'тип картриджа', 'тип балона', 'тип хвостовика',
+      'застосування', 'модель', 'розміри',
+      'регулювання подачі', 'робоча довжина', 'ширина профілю', 'форма профілю', 'ширина лезо',
+      'рід струму', 'вид зварювання', 'вид покриття',
+      'положення зварювання', 'позиція зварювання', 'просторове положення зварювання', 'просторове положення', 'просторові положення',
+      'метод зварювання', 'струм зварювання', 'тип електродів', 'тип зварювання', 'зварювальний струм (орієнтовно)',
+      'марка електрода', 'тип електрода', 'діаметр електрода',
+      'довжина картриджа', 'діапазон вимірювання',
+      'упаковка', 'кількість ручок', 'капсули', 'кількість у наборі',
+      'наявність індикатора', 'покриття', 'сфера застосування',
+      'серія / модель', 'міцність на зсув', 'тип голівки',
+      'об\'єм / вага',
+      'формат відпуску',
+      'ефект', 'форма випуску', 'стійкість',
+      'матеріал основи', 'стійкість до вологи', 'вантажопідйомність',
+      'площа рулону', 'поверхнева щільність', 'максимальне навантаження',
+      'основа кріплення', 'ширина рулону',
+      'основа',
+      'клас зносостійкості', 'склад', 'умови застосування',
+      'тип покриття', 'сумісність з поверхнями', 'стандарт',
+      'оброблювані поверхні', 'спосіб нанесення', 'інструмент нанесення',
+      'тип ефекту', 'спеціальні ефекти',
+      'сумісність з ґрунтовками', 'сумісність з грунтовками', 'максимальна температура', 'сумісні матеріали',
+      'відтінок', 'сумісність з розчинниками',
+      'об\'єм поглинання',
     ]);
     const SKIP_VALUES: Record<string, Set<string>> = {
       'Стан': new Set(['двокомпонентний', 'двокомпонентний шприц']),
@@ -354,29 +426,79 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       if (!v || v === 'Не вказано') return;
       if (!map.has(label)) map.set(label, new Map());
       if (!countsMap.has(label)) countsMap.set(label, new Map());
-      const tokens = split ? v.split(',').map(t => t.trim()).filter(Boolean) : [v];
+      const tokens = split ? v.split(/,\s+/).map(t => t.trim()).filter(Boolean) : [v];
       for (const tok of tokens) {
         const key = tok.toLowerCase();
+        const cap = tok.charAt(0).toUpperCase() + tok.slice(1);
         const ex = map.get(label)!.get(key);
-        if (!ex || (tok[0] === tok[0].toUpperCase() && ex[0] !== ex[0].toUpperCase())) map.get(label)!.set(key, tok);
+        if (!ex || (tok[0] === tok[0].toUpperCase() && ex[0] !== ex[0].toUpperCase())) map.get(label)!.set(key, cap);
         countsMap.get(label)!.set(key, (countsMap.get(label)!.get(key) ?? 0) + 1);
       }
     };
 
+    const inInstrumenty = (() => {
+      if (!selCat) return false;
+      const catMap = new Map(categories.map(c => [c.slug, c]));
+      let slug: string | null = selCat;
+      while (slug) { if (slug === 'instrumenty') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
+      return false;
+    })();
+
+    const inMontazhnaPina = (() => {
+      if (!selCat) return false;
+      const catMap = new Map(categories.map(c => [c.slug, c]));
+      let slug: string | null = selCat;
+      while (slug) { if (slug === 'montazhna-pina') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
+      return false;
+    })();
+
+    const inPlastyfikatory = (() => {
+      if (!selCat) return false;
+      const catMap = new Map(categories.map(c => [c.slug, c]));
+      let slug: string | null = selCat;
+      while (slug) { if (slug === 'plastyfikatory') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
+      return false;
+    })();
+
+    const inStrichky = (() => {
+      if (!selCat) return false;
+      const catMap = new Map(categories.map(c => [c.slug, c]));
+      let slug: string | null = selCat;
+      while (slug) { if (slug === 'strichky') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
+      return false;
+    })();
+
+    const inFarby = (() => {
+      if (!selCat) return false;
+      const catMap = new Map(categories.map(c => [c.slug, c]));
+      let slug: string | null = selCat;
+      while (slug) { if (slug === 'farby') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
+      return false;
+    })();
+
+    const inZakhystDerevyny = (() => {
+      if (!selCat) return false;
+      const catMap = new Map(categories.map(c => [c.slug, c]));
+      let slug: string | null = selCat;
+      while (slug) { if (slug === 'zakhyst-derevyny') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
+      return false;
+    })();
+
     for (const p of catProducts) {
       add('Бренд',  p.brand);
-      add('Тип',    p.product_type);
+      if (!inInstrumenty) add('Тип', p.product_type);
       add('Колір',  p.color ?? p.characteristics.find(c => /^колір/i.test(c.label))?.value);
       for (const c of p.characteristics ?? []) {
         const label = c.label?.trim();
         if (!label || SKIP_LOWER.has(label.toLowerCase())) continue;
         if (label.toLowerCase().includes('колір')) continue;
+        if ((inMontazhnaPina || inPlastyfikatory || inStrichky || inFarby || inZakhystDerevyny) && label.toLowerCase() === 'призначення') continue;
         if (SKIP_VALUES[label]?.has(c.value?.trim().toLowerCase())) continue;
         add(label, c.value, true);
       }
     }
 
-    const PRIMARY = new Set(['Бренд', 'Тип', 'Колір']);
+    const PRIMARY = new Set(['Бренд', 'Колір']);
     return [...map.entries()]
       .filter(([label, vals]) => vals.size > 1 || PRIMARY.has(label))
       .filter(([, vals]) => vals.size > 0)
@@ -395,11 +517,9 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         }),
         counts: countsMap.get(label) ?? new Map<string, number>(),
       }));
-  }, [catProducts]);
+  }, [catProducts, selCat, categories]);
 
-  const isPlasticCat = (filterValues['Тип'] ?? []).some(v => /пластифікатор/i.test(v)) ||
-    (allFilters.find(f => f.label === 'Тип')?.values.some(v => /пластифікатор/i.test(v)) === true &&
-     allFilters.find(f => f.label === 'Тип')?.values.every(v => /пластифікатор/i.test(v)) === true);
+  const isPlasticCat = catProducts.length > 0 && catProducts.every(p => /пластифікатор/i.test(p.product_type ?? ''));
   const plasticIsFrost = (p: ProductFull) => /протиморозн/i.test(p.product_type ?? '');
   const plasticIsWarm  = (p: ProductFull) => /теплих підлог/i.test(p.product_type ?? '');
 
@@ -421,7 +541,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
       if (label === 'Бренд')       list = list.filter(p => fvs.has(p.brand.trim().toLowerCase()));
       else if (label === 'Тип')    list = list.filter(p => fvs.has((p.product_type ?? '').trim().toLowerCase()));
       else if (label === 'Колір')  list = list.filter(p => fvs.has((p.color ?? p.characteristics.find(c => /^колір/i.test(c.label))?.value ?? '').toLowerCase()));
-      else list = list.filter(p => p.characteristics.some(c => c.label === label && c.value.split(',').map(t => t.trim().toLowerCase()).some(tok => fvs.has(tok))));
+      else list = list.filter(p => p.characteristics.some(c => c.label === label && c.value.split(/,\s+/).map(t => t.trim().toLowerCase()).some(tok => fvs.has(tok))));
     }
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -837,6 +957,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                 isWished={wishSkus.has(p.sku)}
                 onToggleWish={() => toggleWish(p.sku)}
                 lang={lang}
+                onSaveState={saveFilterState}
               />
             );
           })}

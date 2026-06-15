@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2 } from 'lucide-react';
+import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2 } from 'lucide-react';
 import { CATEGORY_ICONS } from '../../lib/category-icons';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import Link from 'next/link';
@@ -68,20 +68,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     const sidebar = sidebarRef.current;
     if (!sidebar) return;
     const handleWheel = (e: WheelEvent) => {
-      const catsList = catsListRef.current;
       e.preventDefault();
-      if (catsList) {
-        const catsRect = catsList.getBoundingClientRect();
-        if (e.clientX >= catsRect.left && e.clientX <= catsRect.right &&
-            e.clientY >= catsRect.top  && e.clientY <= catsRect.bottom) {
-          if (catsList.scrollHeight > catsList.clientHeight) {
-            const atTop = catsList.scrollTop <= 0;
-            if (e.deltaY < 0 && atTop) { sidebar.scrollTop += e.deltaY; return; }
-            catsList.scrollTop += e.deltaY;
-            return;
-          }
-        }
-      }
       sidebar.scrollTop += e.deltaY;
     };
     sidebar.addEventListener('wheel', handleWheel, { passive: false });
@@ -164,8 +151,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     if (childSlugs.size > 0) expanded.add(initialCategory);
     return expanded;
   });
-  const [catsOpen,      setCatsOpen]      = useState(false);
-  const catsOpenRef = useRef(false);
   const [mobilePanel,   setMobilePanel]   = useState<'cats' | 'filters' | null>(null);
   const [quantities,    setQuantities]    = useState<Record<string, number>>({});
   const [inputVals,     setInputVals]     = useState<Record<string, string>>({});
@@ -245,12 +230,16 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       'колір', 'бренд', 'торгова марка',
       'тип', 'тип фарби', 'тип ґрунтовки', 'тип герметика', 'тип клею',
       'обсяг', 'об\'єм', 'об\'єм упаковки', 'обсяг упаковки', 'вага',
+      'об\'єм балону', 'об\'єм балона',
       'назва продукту', 'марка', 'розмір упаковки', 'розфасування',
       'мінімальна температура застосування', 'максимальна температура застосування',
       'мінімальна температура експлуатації', 'максимальна температура експлуатації',
       'мінімальна температура зберігання',   'максимальна температура зберігання',
-      'час висихання поверхні', 'час висихання', 'час повного затвердіння',
+      'час висихання поверхні', 'час висихання', 'час повного затвердіння', 'час затвердіння', 'час повного висихання',
       'час початкового схоплення', 'час поверхневого висихання',
+      'час висихання (від пилу)', 'час висихання від пилу', 'час висихання (наступний шар)',
+      'час висихання (дерево)', 'час висихання (папір)',
+      'час відкритого шару', 'час до наступного шару',
       'термін зберігання', 'витрата матеріалу', 'витрата', 'витрата фарби', 'витрата ґрунтовки',
       'первинне розширення', 'вторинне розширення', 'вихід піни',
       'міцність клейового з\'єднання',
@@ -265,6 +254,48 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       'ступінь блиску', 'фасування', 'тип проникнення',
       'термін придатності', 'температура нанесення',
       'підходящі основи', 'витрата концентрату',
+      'площа обробки',
+      'особливості',
+      'водостійкість', 'клас водостійкості',
+      'ширина шва', 'ширина шва (мм)',
+      'область застосування',
+      'захист від',
+      'кількість шарів', 'кількість шарів нанесення',
+      'тип різання', 'товщина',
+      'час дії',
+      'шліфування',
+      'матеріал',
+      'артикул',
+      'конструкція',
+      'тип інструменту',
+      'матеріал корпусу', 'матеріал лезо', 'матеріал ствола', 'матеріал каркасу', 'матеріал корпус',
+      'посадочний отвір', 'посадковий отвір',
+      'механізм зворотного ходу',
+      'сумісний об\'єм картриджів', 'тип картриджа', 'тип балона', 'тип хвостовика',
+      'застосування', 'модель', 'розміри',
+      'регулювання подачі', 'робоча довжина', 'ширина профілю', 'форма профілю', 'ширина лезо',
+      'рід струму', 'вид зварювання', 'вид покриття',
+      'положення зварювання', 'позиція зварювання', 'просторове положення зварювання', 'просторове положення', 'просторові положення',
+      'метод зварювання', 'струм зварювання', 'тип електродів', 'тип зварювання', 'зварювальний струм (орієнтовно)',
+      'марка електрода', 'тип електрода', 'діаметр електрода',
+      'довжина картриджа', 'діапазон вимірювання',
+      'упаковка', 'кількість ручок', 'капсули', 'кількість у наборі',
+      'наявність індикатора', 'покриття', 'сфера застосування',
+      'серія / модель', 'міцність на зсув', 'тип голівки',
+      'об\'єм / вага',
+      'формат відпуску',
+      'ефект', 'форма випуску', 'стійкість',
+      'матеріал основи', 'стійкість до вологи', 'вантажопідйомність',
+      'площа рулону', 'поверхнева щільність', 'максимальне навантаження',
+      'основа кріплення', 'ширина рулону',
+      'основа',
+      'клас зносостійкості', 'склад', 'умови застосування',
+      'тип покриття', 'сумісність з поверхнями', 'стандарт',
+      'оброблювані поверхні', 'спосіб нанесення', 'інструмент нанесення',
+      'тип ефекту', 'спеціальні ефекти',
+      'сумісність з ґрунтовками', 'сумісність з грунтовками', 'максимальна температура', 'сумісні матеріали',
+      'відтінок', 'сумісність з розчинниками',
+      'об\'єм поглинання',
     ]);
     const map = new Map<string, Map<string, string>>();
     const countsMap = new Map<string, Map<string, number>>();
@@ -273,25 +304,75 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       if (!v || v === 'Не вказано') return;
       if (!map.has(label)) map.set(label, new Map());
       if (!countsMap.has(label)) countsMap.set(label, new Map());
-      const tokens = split ? v.split(',').map(t => t.trim()).filter(Boolean) : [v];
+      const tokens = split ? v.split(/,\s+/).map(t => t.trim()).filter(Boolean) : [v];
       for (const tok of tokens) {
         const key = tok.toLowerCase();
+        const cap = tok.charAt(0).toUpperCase() + tok.slice(1);
         const ex = map.get(label)!.get(key);
-        if (!ex || (tok[0] === tok[0].toUpperCase() && ex[0] !== ex[0].toUpperCase())) map.get(label)!.set(key, tok);
+        if (!ex || (tok[0] === tok[0].toUpperCase() && ex[0] !== ex[0].toUpperCase())) map.get(label)!.set(key, cap);
         countsMap.get(label)!.set(key, (countsMap.get(label)!.get(key) ?? 0) + 1);
       }
     };
+    const inInstrumenty = (() => {
+      if (!selCat) return false;
+      const catMap = new Map(categories.map(c => [c.slug, c]));
+      let slug: string | null = selCat;
+      while (slug) { if (slug === 'instrumenty') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
+      return false;
+    })();
+
+    const inMontazhnaPina = (() => {
+      if (!selCat) return false;
+      const catMap = new Map(categories.map(c => [c.slug, c]));
+      let slug: string | null = selCat;
+      while (slug) { if (slug === 'montazhna-pina') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
+      return false;
+    })();
+
+    const inPlastyfikatory = (() => {
+      if (!selCat) return false;
+      const catMap = new Map(categories.map(c => [c.slug, c]));
+      let slug: string | null = selCat;
+      while (slug) { if (slug === 'plastyfikatory') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
+      return false;
+    })();
+
+    const inStrichky = (() => {
+      if (!selCat) return false;
+      const catMap = new Map(categories.map(c => [c.slug, c]));
+      let slug: string | null = selCat;
+      while (slug) { if (slug === 'strichky') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
+      return false;
+    })();
+
+    const inFarby = (() => {
+      if (!selCat) return false;
+      const catMap = new Map(categories.map(c => [c.slug, c]));
+      let slug: string | null = selCat;
+      while (slug) { if (slug === 'farby') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
+      return false;
+    })();
+
+    const inZakhystDerevyny = (() => {
+      if (!selCat) return false;
+      const catMap = new Map(categories.map(c => [c.slug, c]));
+      let slug: string | null = selCat;
+      while (slug) { if (slug === 'zakhyst-derevyny') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
+      return false;
+    })();
+
     for (const p of catProducts) {
       add('Бренд', p.brand);
-      add('Тип',   p.product_type);
+      if (!inInstrumenty) add('Тип', p.product_type);
       add('Колір', p.color ?? p.characteristics.find(c => /^колір/i.test(c.label))?.value);
       for (const c of p.characteristics ?? []) {
         const label = c.label?.trim();
         if (!label || SKIP_LOWER.has(label.toLowerCase()) || label.toLowerCase().includes('колір')) continue;
+        if ((inMontazhnaPina || inPlastyfikatory || inStrichky || inFarby || inZakhystDerevyny) && label.toLowerCase() === 'призначення') continue;
         add(label, c.value, true);
       }
     }
-    const PRIMARY = new Set(['Бренд', 'Тип', 'Колір']);
+    const PRIMARY = new Set(['Бренд', 'Колір']);
     return [...map.entries()]
       .filter(([label, vals]) => vals.size > 1 || PRIMARY.has(label))
       .filter(([, vals]) => vals.size > 0)
@@ -310,7 +391,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
         }),
         counts: countsMap.get(label) ?? new Map<string, number>(),
       }));
-  }, [catProducts]);
+  }, [catProducts, selCat, categories]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -336,7 +417,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
         if (label === 'Бренд')      { if (!fvs.has(p.brand.trim().toLowerCase())) return false; }
         else if (label === 'Тип')   { if (!fvs.has((p.product_type ?? '').trim().toLowerCase())) return false; }
         else if (label === 'Колір') { if (!fvs.has((p.color ?? p.characteristics.find(c => /^колір/i.test(c.label))?.value ?? '').toLowerCase())) return false; }
-        else { if (!p.characteristics.some(c => c.label === label && c.value.split(',').map(t => t.trim().toLowerCase()).some(tok => fvs.has(tok)))) return false; }
+        else { if (!p.characteristics.some(c => c.label === label && c.value.split(/,\s+/).map(t => t.trim().toLowerCase()).some(tok => fvs.has(tok)))) return false; }
       }
       return true;
     });
@@ -483,11 +564,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
               <div
                 ref={catsListRef}
                 className="cat-list"
-                style={{
-                  maxHeight: catsOpen ? 'calc(100vh - 220px)' : '370px',
-                  overflowY: 'auto',
-                  scrollbarWidth: 'none',
-                }}
               >
                 <div
                   className={'cat-item' + (!selCat ? ' active' : '')}
@@ -527,8 +603,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                         <span style={{ flex: 1, textAlign: 'left' }}>{cName(cat.name, cat.slug)}</span>
                         {children.length > 0 && (
                           isExpanded
-                            ? <ChevronUp size={13} style={{ flexShrink: 0, opacity: 0.5 }} />
-                            : <ChevronDown size={13} style={{ flexShrink: 0, opacity: 0.5 }} />
+                            ? <ChevronDown size={13} style={{ flexShrink: 0, opacity: 0.45 }} />
+                            : <ChevronRight size={13} style={{ flexShrink: 0, opacity: 0.45 }} />
                         )}
                       </div>
                       <div style={{
@@ -559,8 +635,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                                 <span style={{ flex: 1 }}>{cName(child.name, child.slug)}</span>
                                 {grandchildren.length > 0 && (
                                   isChildExpanded
-                                    ? <ChevronUp size={12} style={{ flexShrink: 0, opacity: 0.5 }} />
-                                    : <ChevronDown size={12} style={{ flexShrink: 0, opacity: 0.5 }} />
+                                    ? <ChevronDown size={12} style={{ flexShrink: 0, opacity: 0.45 }} />
+                                    : <ChevronRight size={12} style={{ flexShrink: 0, opacity: 0.45 }} />
                                 )}
                               </div>
                               {grandchildren.length > 0 && (
@@ -590,21 +666,6 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   );
                 })}
               </div>
-              {parentCats.length > 10 && (
-                <button
-                  onClick={() => { setCatsOpen(o => { catsOpenRef.current = !o; return !o; }); }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '4px',
-                    width: '100%', background: 'none', border: 'none', cursor: 'pointer',
-                    padding: '6px 10px', marginTop: '2px', borderRadius: '8px',
-                    fontSize: '13px', fontWeight: 600, color: '#4880B8',
-                  }}
-                >
-                  {catsOpen
-                    ? <><ChevronUp size={13} strokeWidth={2} />{t('Згорнути', 'Свернуть')}</>
-                    : <><ChevronDown size={13} strokeWidth={2} />{t('Показати всі', 'Показать все')}</>}
-                </button>
-              )}
             </div>
 
             <div className="sidebar-filters-section">
