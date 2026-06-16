@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidateTag } from 'next/cache';
+import { revalidateTag, revalidatePath } from 'next/cache';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -196,6 +196,8 @@ export async function PUT(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   revalidateTag('products', 'max');
+  revalidatePath(`/product/${sku}`);
+  revalidatePath(`/ru/product/${sku}`);
   return NextResponse.json({ ok: true });
 }
 

@@ -1,8 +1,8 @@
 name: Sync Prom orders
 
 on:
-  schedule:
-    - cron: '*/15 * * * *'   # кожні 15 хвилин
+  # schedule:
+  #   - cron: '*/15 * * * *'   # кожні 15 хвилин — вимкнено (Prom пробний період закінчився)
   workflow_dispatch:           # можна запустити вручну з GitHub
 
 jobs:

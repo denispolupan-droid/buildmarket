@@ -105,17 +105,27 @@ function exportXlsx(rows: UnmappedRow[], filename: string) {
 
 type BulkItem = { supplier_id: number; supplier_sku: string; name: string; price_cost: number };
 
+function extractBrand(name: string): string {
+  for (const word of name.split(/[\s,]+/)) {
+    const clean = word.replace(/[,.]$/, '');
+    if (/[A-Za-z]{2,}/.test(clean)) return clean;
+  }
+  return '';
+}
+
 function BulkAddModal({ items, onClose, onDone }: {
   items: BulkItem[];
   onClose: () => void;
   onDone: (skus: string[]) => void;
 }) {
-  const [brand, setBrand] = useState('');
+  const [brands, setBrands] = useState<string[]>(items.map(i => extractBrand(i.name)));
   const [names, setNames] = useState<string[]>(items.map(i => i.name));
+  const [globalBrand, setGlobalBrand] = useState('');
   const [progress, setProgress] = useState<null | { done: number; total: number; errors: string[] }>(null);
 
   async function handleCreate() {
-    if (!brand.trim()) { alert('Вкажіть бренд'); return; }
+    const emptyIdx = brands.findIndex(b => !b.trim());
+    if (emptyIdx !== -1) { alert(`Вкажіть бренд для: ${items[emptyIdx].supplier_sku}`); return; }
     const total = items.length;
     const errors: string[] = [];
     const created: string[] = [];
@@ -130,7 +140,8 @@ function BulkAddModal({ items, onClose, onDone }: {
         body: JSON.stringify({
           sku: item.supplier_sku,
           product: {
-            sku: item.supplier_sku, name, brand: brand.trim(),
+            sku: item.supplier_sku, name, brand: brands[i].trim(),
+            supplier_sku: item.supplier_sku,
             is_active: false, pack_qty: 1, min_order: 1,
           },
           stock: {
@@ -164,7 +175,7 @@ function BulkAddModal({ items, onClose, onDone }: {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '560px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+      <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '700px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
         {/* Header */}
         <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
@@ -174,35 +185,42 @@ function BulkAddModal({ items, onClose, onDone }: {
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)' }}>×</button>
         </div>
 
-        {/* Brand input */}
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)' }}>
-          <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-            Бренд для всіх *
-          </label>
+        {/* Global brand fill */}
+        <div style={{ padding: '10px 24px', borderBottom: '1px solid var(--border)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)', flexShrink: 0 }}>Бренд для всіх:</span>
           <input
-            value={brand}
-            onChange={e => setBrand(e.target.value)}
+            value={globalBrand}
+            onChange={e => setGlobalBrand(e.target.value)}
             placeholder="напр. Ceresit"
-            style={{ width: '100%', height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '14px', boxSizing: 'border-box' }}
+            style={{ flex: 1, height: '32px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '13px' }}
             autoFocus
           />
+          <button
+            onClick={() => { if (globalBrand.trim()) setBrands(brands.map(() => globalBrand.trim())); }}
+            style={{ ...btn('#1E3A5F'), height: '32px', flexShrink: 0 }}
+          >
+            → Всім
+          </button>
         </div>
 
         {/* Product list */}
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {items.map((item, i) => (
-            <div key={item.supplier_sku} style={{ padding: '10px 24px', borderBottom: '1px solid var(--border-light)', display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <div key={item.supplier_sku} style={{ padding: '7px 24px', borderBottom: '1px solid var(--border-light)', display: 'flex', gap: '8px', alignItems: 'center' }}>
               <code style={{ fontSize: '11px', background: 'var(--border-light)', padding: '2px 6px', borderRadius: '4px', flexShrink: 0 }}>
                 {item.supplier_sku}
               </code>
               <input
                 value={names[i]}
                 onChange={e => setNames(n => n.map((v, j) => j === i ? e.target.value : v))}
-                style={{ flex: 1, height: '32px', padding: '0 8px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px' }}
+                style={{ flex: 1, height: '30px', padding: '0 8px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px' }}
               />
-              {item.price_cost > 0 && (
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', flexShrink: 0 }}>{item.price_cost} грн</span>
-              )}
+              <input
+                value={brands[i]}
+                onChange={e => setBrands(b => b.map((v, j) => j === i ? e.target.value : v))}
+                placeholder="Бренд *"
+                style={{ width: '110px', height: '30px', padding: '0 8px', borderRadius: '6px', border: `1px solid ${brands[i]?.trim() ? 'var(--border)' : '#FCA5A5'}`, fontSize: '12px', flexShrink: 0 }}
+              />
             </div>
           ))}
         </div>

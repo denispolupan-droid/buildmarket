@@ -21,7 +21,6 @@ const NAV = [
   { href: '/admin/procurement',          label: 'Закупівля',      icon: ShoppingCart,   exact: false },
   { href: '/admin/prom',                 label: 'Prom.ua',        icon: ShoppingBasket, exact: false },
   { href: '/admin/pricing',              label: 'Аналіз цін',     icon: TrendingUp,     exact: false },
-  { href: '/admin/catalog/enrich',       label: 'AI описи',       icon: Sparkles,       exact: false },
   { href: '/admin/finance',              label: 'Фінанси',        icon: BarChart3,      exact: false },
   { href: '/admin/accounting/documents', label: 'Облік',          icon: BookOpen,       exact: false },
   { href: '/admin/accounting/stock',     label: 'Залишки',        icon: Warehouse,      exact: false },

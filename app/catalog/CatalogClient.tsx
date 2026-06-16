@@ -361,6 +361,14 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       return false;
     })();
 
+    const inKlei = (() => {
+      if (!selCat) return false;
+      const catMap = new Map(categories.map(c => [c.slug, c]));
+      let slug: string | null = selCat;
+      while (slug) { if (slug === 'klei') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
+      return false;
+    })();
+
     for (const p of catProducts) {
       add('Бренд', p.brand);
       if (!inInstrumenty) add('Тип', p.product_type);
@@ -368,7 +376,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
       for (const c of p.characteristics ?? []) {
         const label = c.label?.trim();
         if (!label || SKIP_LOWER.has(label.toLowerCase()) || label.toLowerCase().includes('колір')) continue;
-        if ((inMontazhnaPina || inPlastyfikatory || inStrichky || inFarby || inZakhystDerevyny) && label.toLowerCase() === 'призначення') continue;
+        if ((inMontazhnaPina || inPlastyfikatory || inStrichky || inFarby || inZakhystDerevyny || inKlei) && label.toLowerCase() === 'призначення') continue;
         add(label, c.value, true);
       }
     }
@@ -423,15 +431,9 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     });
   }, [products, search, matchingSlugs, filterValues, filterVolumes, filterVolumesKg, inStockOnly, saleOnly]);
 
-  // Якщо після фільтрації сторінка стала коротшою ніж поточний scroll → скидаємо вгору
   useLayoutEffect(() => {
-    requestAnimationFrame(() => {
-      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-      if (window.scrollY > maxScroll) {
-        window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
-      }
-    });
-  }, [filtered.length]);
+    window.scrollTo({ top: 0 });
+  }, [filtered]);
 
   const exportToExcel = useCallback(async () => {
     const XLSX = await import('xlsx');
@@ -611,6 +613,8 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                         overflow: 'hidden',
                         maxHeight: isExpanded ? '2000px' : '0',
                         transition: 'max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
+                        marginLeft: '8px',
+                        borderLeft: '2px solid var(--border)',
                       }}>
                         {children.map(child => {
                           const grandchildren = childrenOf[child.slug] ?? [];
@@ -621,7 +625,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                             <div key={child.slug} ref={el => { catRefs.current[child.slug] = el; }}>
                               <div
                                 className={'cat-item' + (isChildActive ? ' active' : isChildParentActive ? ' parent-active' : '')}
-                                style={{ paddingLeft: '20px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                                style={{ paddingLeft: '10px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                                 onClick={() => {
                                   if (grandchildren.length > 0) {
                                     const expanding = !expandedCats.has(child.slug);
@@ -650,7 +654,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                                       key={gc.slug}
                                       ref={el => { catRefs.current[gc.slug] = el; }}
                                       className={'cat-item' + (selCat === gc.slug ? ' active' : '')}
-                                      style={{ paddingLeft: '36px', fontSize: '12px' }}
+                                      style={{ paddingLeft: '26px', fontSize: '12px' }}
                                       onClick={() => selectCat(selCat === gc.slug ? '' : gc.slug, child.slug)}
                                     >
                                       {cName(gc.name, gc.slug)}

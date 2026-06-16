@@ -4,6 +4,7 @@ export type Category = {
   name: string;
   sort_order: number;
   parent_slug: string | null;
+  prom_section_url: string | null;
   created_at: string;
 };
 
@@ -34,6 +35,8 @@ export type Product = {
   is_new: boolean;
   sort_order: number;
   prom_portal_url: string | null;
+  keywords: string | null;
+  keywords_ru: string | null;
   created_at: string;
   updated_at: string;
 };

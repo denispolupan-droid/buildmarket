@@ -65,6 +65,8 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
   const [promKeywordsRu, setPromKeywordsRu] = useState((product as any)?.keywords_ru ?? '');
   const [promPortalUrl, setPromPortalUrl] = useState((product as any)?.prom_portal_url ?? '');
 
+  const categoryPromUrl = categories.find(c => c.slug === categorySlug)?.prom_section_url ?? null;
+
   const [priceUnit, setPriceUnit] = useState(product?.stock?.price_unit ?? 0);
   const [priceOld, setPriceOld] = useState(product?.stock?.price_old ?? 0);
   const [priceRetail, setPriceRetail] = useState(product?.stock?.price_retail ?? 0);
@@ -158,12 +160,14 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
 
   async function handleImageUpload(file: File) {
     if (!brand.trim()) { showToast('Спочатку вкажіть бренд', 'error'); return; }
-    const skuVal = sku.trim() || 'new';
+    // Для існуючих товарів — завжди оригінальний SKU/бренд, не форм-стейт
+    const skuVal  = isNew ? (sku.trim() || 'new') : (product?.sku  ?? sku.trim());
+    const brandVal = isNew ? brand.trim() : (product?.brand ?? brand).trim();
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append('file', file);
-      fd.append('brand', brand.trim());
+      fd.append('brand', brandVal);
       fd.append('sku', skuVal);
       const res = await fetch('/api/admin/products/upload-image', { method: 'POST', body: fd });
       const data = await res.json();
@@ -461,7 +465,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             list="prom-urls-datalist"
             value={promPortalUrl}
             onChange={e => setPromPortalUrl(e.target.value)}
-            placeholder="https://prom.ua/Germetiki"
+            placeholder={categoryPromUrl ?? 'https://prom.ua/...'}
             style={inputStyle}
           />
           {promUrls.length > 0 && (

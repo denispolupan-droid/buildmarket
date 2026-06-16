@@ -2,8 +2,9 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { Search, Edit, Package, AlertCircle } from 'lucide-react';
+import { Search, Edit, Package, AlertCircle, Wand2 } from 'lucide-react';
 import type { ProductFull, Category } from '../../../types';
+import AiFillModal from './AiFillModal';
 
 type Props = {
   products: ProductFull[];
@@ -13,12 +14,15 @@ type Props = {
 const PAGE_SIZE = 100;
 
 export default function ProductsTable({ products, categories }: Props) {
-  const [search, setSearch] = useState('');
+  const [search, setSearch]               = useState('');
   const [filterCategory, setFilterCategory] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [filterBrand, setFilterBrand]     = useState('');
+  const [filterStatus, setFilterStatus]   = useState('');
+  const [visibleCount, setVisibleCount]   = useState(PAGE_SIZE);
   const [activeOverrides, setActiveOverrides] = useState<Record<string, boolean>>({});
-  const [toggling, setToggling] = useState<Set<string>>(new Set());
+  const [toggling, setToggling]           = useState<Set<string>>(new Set());
+  const [selected, setSelected]           = useState<Set<string>>(new Set());
+  const [showAiFill, setShowAiFill]       = useState(false);
 
   const toggleActive = useCallback(async (sku: string, current: boolean) => {
     if (toggling.has(sku)) return;
@@ -32,7 +36,6 @@ export default function ProductsTable({ products, categories }: Props) {
         body: JSON.stringify({ is_active: next }),
       });
     } catch {
-      // Відкочуємо при помилці
       setActiveOverrides(prev => ({ ...prev, [sku]: current }));
     } finally {
       setToggling(prev => { const s = new Set(prev); s.delete(sku); return s; });
@@ -46,6 +49,11 @@ export default function ProductsTable({ products, categories }: Props) {
   }, [categories]);
 
   const parentCats = useMemo(() => categories.filter(c => !c.parent_slug), [categories]);
+
+  const brands = useMemo(() => {
+    const set = new Set(products.map(p => p.brand).filter(Boolean));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'uk'));
+  }, [products]);
 
   const filtered = useMemo(() => {
     let list = products;
@@ -65,6 +73,10 @@ export default function ProductsTable({ products, categories }: Props) {
       list = list.filter(p => slugs.has(p.category_slug ?? ''));
     }
 
+    if (filterBrand) {
+      list = list.filter(p => p.brand === filterBrand);
+    }
+
     if (filterStatus === 'active') {
       list = list.filter(p => p.is_active);
     } else if (filterStatus === 'inactive') {
@@ -73,16 +85,54 @@ export default function ProductsTable({ products, categories }: Props) {
       list = list.filter(p => !p.stock?.price_retail || p.stock.price_retail === 0);
     } else if (filterStatus === 'out_of_stock') {
       list = list.filter(p => p.stock?.stock_status === 'out_of_stock' || (!p.stock?.stock_status && (p.stock?.stock_qty ?? 0) < 1));
+    } else if (filterStatus === 'unfilled') {
+      list = list.filter(p =>
+        !p.description_full ||
+        !p.keywords ||
+        !p.characteristics?.length
+      );
+    } else if (filterStatus === 'few_chars') {
+      list = list.filter(p => (p.characteristics?.length ?? 0) < 6);
     }
 
     return list;
-  }, [products, categories, search, filterCategory, filterStatus]);
+  }, [products, categories, search, filterCategory, filterBrand, filterStatus]);
 
-  // При зміні фільтрів — скидаємо кількість видимих
+  const visibleProducts = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+
   const resetVisible = () => setVisibleCount(PAGE_SIZE);
+
+  // Selection helpers
+  const allVisibleSelected = visibleProducts.length > 0 && visibleProducts.every(p => selected.has(p.sku));
+  const someSelected = selected.size > 0;
+
+  function toggleSelectAll() {
+    if (allVisibleSelected) {
+      setSelected(prev => {
+        const next = new Set(prev);
+        visibleProducts.forEach(p => next.delete(p.sku));
+        return next;
+      });
+    } else {
+      setSelected(prev => {
+        const next = new Set(prev);
+        visibleProducts.forEach(p => next.add(p.sku));
+        return next;
+      });
+    }
+  }
+
+  function toggleSelect(sku: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(sku)) next.delete(sku); else next.add(sku);
+      return next;
+    });
+  }
 
   return (
     <div>
+      {/* Filters */}
       <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: '1 1 300px' }}>
           <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -103,8 +153,8 @@ export default function ProductsTable({ products, categories }: Props) {
           value={filterCategory}
           onChange={e => { setFilterCategory(e.target.value); resetVisible(); }}
           style={{
-            height: '44px', padding: '0 16px', borderRadius: '10px',
-            border: '1px solid var(--border)', fontSize: '14px', minWidth: '180px',
+            flex: '1 1 0', minWidth: 0, height: '44px', padding: '0 16px', borderRadius: '10px',
+            border: '1px solid var(--border)', fontSize: '14px',
             background: filterCategory ? 'var(--brand-blue-light)' : 'var(--bg-card)',
           }}
         >
@@ -115,11 +165,26 @@ export default function ProductsTable({ products, categories }: Props) {
         </select>
 
         <select
+          value={filterBrand}
+          onChange={e => { setFilterBrand(e.target.value); resetVisible(); }}
+          style={{
+            flex: '1 1 0', minWidth: 0, height: '44px', padding: '0 16px', borderRadius: '10px',
+            border: '1px solid var(--border)', fontSize: '14px',
+            background: filterBrand ? 'var(--brand-blue-light)' : 'var(--bg-card)',
+          }}
+        >
+          <option value="">Всі бренди</option>
+          {brands.map(b => (
+            <option key={b} value={b}>{b}</option>
+          ))}
+        </select>
+
+        <select
           value={filterStatus}
           onChange={e => { setFilterStatus(e.target.value); resetVisible(); }}
           style={{
-            height: '44px', padding: '0 16px', borderRadius: '10px',
-            border: '1px solid var(--border)', fontSize: '14px', minWidth: '160px',
+            flex: '1 1 0', minWidth: 0, height: '44px', padding: '0 16px', borderRadius: '10px',
+            border: '1px solid var(--border)', fontSize: '14px',
             background: filterStatus ? 'var(--brand-blue-light)' : 'var(--bg-card)',
           }}
         >
@@ -128,17 +193,77 @@ export default function ProductsTable({ products, categories }: Props) {
           <option value="inactive">Неактивні</option>
           <option value="no_price">Без ціни</option>
           <option value="out_of_stock">Немає в наявності</option>
+          <option value="unfilled">Незаповнені (без опису/keywords/характеристик)</option>
+          <option value="few_chars">Мало характеристик (менше 6)</option>
         </select>
       </div>
 
-      <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-        Знайдено: {filtered.length} товарів
+      {/* Counter + bulk action bar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', minHeight: 32 }}>
+        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+          Знайдено: {filtered.length} товарів
+          {someSelected && (
+            <span style={{ marginLeft: 8, color: '#3DBFB8', fontWeight: 600 }}>
+              · вибрано {selected.size}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {filtered.length > visibleCount && !someSelected && (
+            <button
+              onClick={() => setSelected(new Set(filtered.map(p => p.sku)))}
+              style={{
+                height: 34, padding: '0 14px', borderRadius: 8,
+                border: '1px solid var(--border)', background: 'var(--bg-card)',
+                color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer',
+              }}
+            >
+              Вибрати всі {filtered.length}
+            </button>
+          )}
+          {someSelected && (
+            <button
+              onClick={() => setSelected(new Set())}
+              style={{
+                height: 34, padding: '0 14px', borderRadius: 8,
+                border: '1px solid var(--border)', background: 'var(--bg-card)',
+                color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer',
+              }}
+            >
+              Зняти вибір
+            </button>
+          )}
+          <button
+            onClick={() => someSelected && setShowAiFill(true)}
+            disabled={!someSelected}
+            style={{
+              height: 34, padding: '0 16px', borderRadius: 8, border: 'none',
+              background: someSelected ? '#3DBFB8' : '#E2E8F0',
+              color: someSelected ? '#fff' : '#94A3B8',
+              fontSize: 13, fontWeight: 600,
+              cursor: someSelected ? 'pointer' : 'not-allowed',
+              display: 'flex', alignItems: 'center', gap: 6,
+              transition: 'background 0.15s, color 0.15s',
+            }}
+          >
+            <Wand2 size={14} /> AI заповнення{someSelected ? ` (${selected.size})` : ''}
+          </button>
+        </div>
       </div>
 
+      {/* Table */}
       <div style={{ background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
           <thead>
             <tr style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)' }}>
+              <th style={{ padding: '12px 12px 12px 16px', width: 36 }}>
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  onChange={toggleSelectAll}
+                  style={{ cursor: 'pointer', width: 15, height: 15 }}
+                />
+              </th>
               <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>SKU</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Назва</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Бренд</th>
@@ -152,15 +277,36 @@ export default function ProductsTable({ products, categories }: Props) {
             </tr>
           </thead>
           <tbody>
-            {filtered.slice(0, visibleCount).map(p => {
+            {visibleProducts.map(p => {
               const hasIssue = !p.stock?.price_retail || p.stock?.stock_status === 'out_of_stock';
               const isActive = (s: string) => activeOverrides[s] !== undefined ? activeOverrides[s] : p.is_active;
               const active = isActive(p.sku);
               const isToggling = toggling.has(p.sku);
+              const isSelected = selected.has(p.sku);
+              const isFilled = p.description_full && p.keywords && p.characteristics?.length;
               return (
-                <tr key={p.sku} style={{ borderBottom: '1px solid var(--border-light)', opacity: active ? 1 : 0.55 }}>
+                <tr
+                  key={p.sku}
+                  style={{
+                    borderBottom: '1px solid var(--border-light)',
+                    opacity: active ? 1 : 0.55,
+                    background: isSelected ? 'rgba(61,191,184,0.05)' : undefined,
+                    cursor: 'default',
+                  }}
+                >
+                  <td style={{ padding: '12px 12px 12px 16px', width: 36 }}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelect(p.sku)}
+                      style={{ cursor: 'pointer', width: 15, height: 15 }}
+                    />
+                  </td>
                   <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-secondary)' }}>
                     {p.sku}
+                    {!isFilled && (
+                      <span title="Незаповнена картка" style={{ marginLeft: 4, color: '#F59E0B', fontSize: 11 }}>●</span>
+                    )}
                   </td>
                   <td style={{ padding: '12px 16px', maxWidth: '300px' }}>
                     <div style={{ fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -253,6 +399,16 @@ export default function ProductsTable({ products, categories }: Props) {
           </div>
         )}
       </div>
+
+      {/* AI Fill Modal */}
+      {showAiFill && (
+        <AiFillModal
+          skus={Array.from(selected)}
+          products={products}
+          onClose={() => setShowAiFill(false)}
+          onDone={() => setSelected(new Set())}
+        />
+      )}
     </div>
   );
 }
