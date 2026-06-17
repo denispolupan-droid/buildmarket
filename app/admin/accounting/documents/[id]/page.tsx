@@ -118,21 +118,9 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
           <ArrowLeft size={16} />
         </Link>
         <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{doc.doc_number}</h1>
             <span style={{ padding: '2px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, color: st.color, background: st.bg }}>{st.label}</span>
-            {doc.status === 'confirmed' && ['receipt','stock_in'].includes(doc.doc_type) && (
-              <ReturnButton
-                receiptId={id}
-                lines={(lines ?? []).map((l: { sku: string; qty: number; cost_price: number }) => ({
-                  sku: l.sku, qty: Number(l.qty), cost_price: Number(l.cost_price ?? 0),
-                  name: nameMap.get(l.sku),
-                }))}
-              />
-            )}
-            {doc.status === 'confirmed' && (
-              <CorrectButton documentId={id} docNumber={doc.doc_number} />
-            )}
           </div>
           <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '3px' }}>
             {DOC_TYPE_LABELS[doc.doc_type] ?? doc.doc_type}
@@ -141,6 +129,18 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
             {' · '}{new Date(doc.doc_date).toLocaleDateString('uk-UA')}
           </div>
         </div>
+        {doc.status === 'confirmed' && ['receipt','stock_in'].includes(doc.doc_type) && (
+          <ReturnButton
+            receiptId={id}
+            lines={(lines ?? []).map((l: { sku: string; qty: number; cost_price: number }) => ({
+              sku: l.sku, qty: Number(l.qty), cost_price: Number(l.cost_price ?? 0),
+              name: nameMap.get(l.sku),
+            }))}
+          />
+        )}
+        {doc.status === 'confirmed' && (
+          <CorrectButton documentId={id} docNumber={doc.doc_number} />
+        )}
         {doc.parent_doc_id && (
           <Link
             href={

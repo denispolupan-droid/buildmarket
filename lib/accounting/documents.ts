@@ -413,14 +413,7 @@ export async function cancelDocument(
   if (!doc)                       throw new Error('Document not found');
   if (doc.status === 'cancelled') throw new Error('Document already cancelled');
 
-  // ── Перевірка залежностей (тільки для підтверджених документів) ───────────
-  if (doc.status === 'confirmed') {
-    await assertNoDependencies(db, doc);
-  }
-
   // ── Планові документи (direction=none): скасовуємо напряму без реверсалу ──
-  // PO, коригування, рахунок-фактура не мають ефекту на склад і леджер,
-  // тому немає сенсу створювати зворотний документ.
   const PLAN_ONLY_TYPES = new Set(['purchase_order', 'purchase_order_adjustment', 'supplier_invoice']);
 
   if (doc.status === 'draft' || PLAN_ONLY_TYPES.has(doc.doc_type)) {
@@ -433,12 +426,13 @@ export async function cancelDocument(
         cancel_reason: reason ?? null,
       })
       .eq('id', documentId);
-    if (error) throw error;
+    if (error) throw new Error((error as { message?: string }).message ?? String(error));
     return;
   }
 
   // ── Операційні документи (direction=in/out/transfer): створюємо сторно ────
-  // Ці документи мають ефект на склад/леджер — потрібен реверсальний документ.
+  // Перевіряємо існуючі реверсали ДО assertNoDependencies — якщо підтверджене
+  // сторно вже є, склад вже відкоригований і можна просто скасувати оригінал.
 
   // Перевіряємо чи вже існує сторно для цього документа (наприклад, якщо попередня
   // спроба скасування була перервана посередині).
@@ -450,11 +444,18 @@ export async function cancelDocument(
     .maybeSingle();
 
   if (existingReversal?.status === 'confirmed') {
-    // Сторно вже проведено (склад повернуто) — просто скасовуємо оригінал
-  } else if (existingReversal?.status === 'draft') {
+    // Сторно вже проведено (склад повернуто) — просто скасовуємо оригінал без перевірок
+  } else {
+    // Сторно ще не проведено — перевіряємо залишки перед операцією
+    if (doc.status === 'confirmed') {
+      await assertNoDependencies(db, doc);
+    }
+  }
+
+  if (existingReversal?.status === 'draft') {
     // Чернетка сторно вже існує — підтверджуємо її
     await confirmDocument(existingReversal.id, cancelledBy);
-  } else {
+  } else if (!existingReversal) {
     // Створюємо нове сторно
     const { data: docNumber } = await db
       .rpc('next_doc_number', { p_type: doc.doc_type });
