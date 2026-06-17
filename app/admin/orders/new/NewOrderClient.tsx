@@ -3,12 +3,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '../../../../lib/supabase-browser';
-import { Plus, Trash2, Search, ChevronLeft } from 'lucide-react';
+import { Plus, Trash2, Search, ChevronLeft, Users, X } from 'lucide-react';
 import { showToast } from '../../../../lib/toast';
 import Link from 'next/link';
 import NovaPoshtaSelect from '../../../components/NovaPoshtaSelect';
 
 type Item = { sku: string; name: string; brand: string; qty: number; price: number };
+type Customer = { id: string; name: string; company: string | null; phone: string | null; email: string | null; type: string | null; price_tier: string | null };
 
 const CHANNEL_OPTIONS = [
   { value: 'retail',  label: 'Магазин / самовивіз' },
@@ -47,6 +48,12 @@ export default function NewOrderClient() {
   const [items,             setItems]             = useState<Item[]>([]);
   const [submitting,        setSubmitting]        = useState(false);
 
+  const [customerSearch,  setCustomerSearch]  = useState('');
+  const [customerResults, setCustomerResults] = useState<Customer[]>([]);
+  const [customerOpen,    setCustomerOpen]    = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const customerRef = useRef<HTMLDivElement>(null);
+
   const [prodSearch,   setProdSearch]   = useState('');
   const [prodResults,  setProdResults]  = useState<{ sku: string; name: string; brand: string; price: number }[]>([]);
   const [prodOpen,     setProdOpen]     = useState(false);
@@ -63,6 +70,37 @@ export default function NewOrderClient() {
     setNovaWarehouseRef('');
     setAddress('');
   }, [delivery]);
+
+  useEffect(() => {
+    if (customerSearch.length < 2) { setCustomerResults([]); setCustomerOpen(false); return; }
+    const t = setTimeout(async () => {
+      const res = await fetch(`/api/admin/customers/search?q=${encodeURIComponent(customerSearch)}`);
+      if (res.ok) {
+        const data: Customer[] = await res.json();
+        setCustomerResults(data);
+        setCustomerOpen(data.length > 0);
+      }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [customerSearch]);
+
+  useEffect(() => {
+    function h(e: MouseEvent) {
+      if (customerRef.current && !customerRef.current.contains(e.target as Node)) setCustomerOpen(false);
+    }
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  function selectCustomer(c: Customer) {
+    setSelectedCustomer(c);
+    setContact(c.name || '');
+    setPhone(c.phone || '');
+    setEmail(c.email || '');
+    setCompany(c.company || '');
+    setCustomerSearch('');
+    setCustomerOpen(false);
+  }
 
   useEffect(() => {
     if (prodSearch.length < 2) { setProdResults([]); return; }
@@ -112,6 +150,7 @@ export default function NewOrderClient() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          customer_id:  selectedCustomer?.id ?? null,
           company: company || null,
           contact, phone, email,
           deliveryType:         delivery,
@@ -173,7 +212,46 @@ export default function NewOrderClient() {
 
       {/* Customer */}
       <div style={sectionStyle}>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>Клієнт</div>
+        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Users size={14} /> Клієнт
+        </div>
+
+        {/* Customer search */}
+        <div ref={customerRef} style={{ position: 'relative', marginBottom: '12px' }}>
+          <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+          <input
+            placeholder="Пошук клієнта за ім'ям, компанією, телефоном..."
+            value={customerSearch}
+            onChange={e => setCustomerSearch(e.target.value)}
+            onFocus={() => customerResults.length > 0 && setCustomerOpen(true)}
+            style={{ ...inputStyle, paddingLeft: '32px', borderColor: selectedCustomer ? '#86EFAC' : undefined }}
+          />
+          {customerOpen && customerResults.length > 0 && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 50, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', maxHeight: '220px', overflowY: 'auto' }}>
+              {customerResults.map(c => (
+                <button key={c.id} onMouseDown={() => selectCustomer(c)}
+                  style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', borderBottom: '1px solid var(--border-light)', cursor: 'pointer', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    {[c.company, c.phone, c.email].filter(Boolean).join(' · ')}
+                    {c.type && <span style={{ marginLeft: '6px', background: '#EFF4FF', color: '#1E3A5F', borderRadius: '4px', padding: '1px 5px' }}>{c.type === 'wholesale' ? 'Опт' : 'Роздріб'}</span>}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {selectedCustomer && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', padding: '8px 12px', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: '8px', fontSize: '13px' }}>
+            <span style={{ flex: 1, color: '#166534', fontWeight: 600 }}>{selectedCustomer.name}{selectedCustomer.company ? ` · ${selectedCustomer.company}` : ''}</span>
+            <button onClick={() => { setSelectedCustomer(null); setContact(''); setPhone(''); setEmail(''); setCompany(''); }}
+              style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#6B7280', padding: '2px', display: 'flex' }}>
+              <X size={13} />
+            </button>
+          </div>
+        )}
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <div>
             <label style={labelStyle}>Контактна особа *</label>
