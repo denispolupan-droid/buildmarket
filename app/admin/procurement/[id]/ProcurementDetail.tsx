@@ -328,6 +328,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
   const currentStepIdx = Math.max(
     statusToStep(newStatus || po.procurement_status || ''),
     po.has_receipt ? 3 : -1,
+    po.email_sent_at ? 1 : -1,
   );
 
   function handleReceive() {
