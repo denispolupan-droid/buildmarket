@@ -109,7 +109,8 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
   const [savingInvoice, setSavingInvoice] = useState(false);
   // noInvoice=true якщо постачальник підтвердив без рахунку (статус confirmed/received/paid і номер рахунку відсутній)
   const _hasInvoice          = !!po.supplier_invoice_number;
-  const _isNoInvoiceConfirmed = !_hasInvoice && ['confirmed_by_supplier','invoiced','received','paid'].includes(po.procurement_status ?? '');
+  const _hasInvoiceFile      = !!(po.meta?.invoice_file_path);
+  const _isNoInvoiceConfirmed = !_hasInvoice && !_hasInvoiceFile && ['confirmed_by_supplier','invoiced','received','paid'].includes(po.procurement_status ?? '');
   const [noInvoice,     setNoInvoice]     = useState(_isNoInvoiceConfirmed);
   const [invoiceSaved,  setInvoiceSaved]  = useState(_hasInvoice || _isNoInvoiceConfirmed);
   const [editingInvoice,setEditingInvoice]= useState(!_hasInvoice && !_isNoInvoiceConfirmed);
