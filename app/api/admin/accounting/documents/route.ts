@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
-import { createDocument, confirmDocument, cancelDocument } from '../../../../../lib/accounting/documents';
+import { createDocument, confirmDocument, cancelDocument, correctDocument } from '../../../../../lib/accounting/documents';
 import type { CreateDocumentInput } from '../../../../../lib/accounting/types';
 
 export async function POST(req: NextRequest) {
@@ -21,6 +21,10 @@ export async function POST(req: NextRequest) {
     if (action === 'cancel') {
       await cancelDocument(document_id, user.email ?? 'admin', reason);
       return NextResponse.json({ ok: true });
+    }
+    if (action === 'correct') {
+      const result = await correctDocument(document_id, user.email ?? 'admin');
+      return NextResponse.json({ ok: true, ...result });
     }
 
     const doc = await createDocument({ ...input as CreateDocumentInput, created_by: user.email ?? 'admin' });

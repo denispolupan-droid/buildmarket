@@ -543,6 +543,76 @@ export async function cancelDocument(
   // або створіть документ «Повернення постачальнику».
 }
 
+// ── Виправлення документа (скасувати + створити нову чернетку) ───────────────
+// Для приходів від ЗП: тільки скасовує — новий прихід створюється через ЗП.
+// Для решти: скасовує + повертає нову чернетку з тими самими рядками.
+
+export async function correctDocument(
+  documentId: string,
+  correctedBy: string,
+): Promise<{ newDocumentId: string | null; parentDocId: string | null }> {
+  const db = createServiceClient();
+
+  const doc = await getDocument(documentId);
+  if (!doc) throw new Error('Document not found');
+
+  await cancelDocument(documentId, correctedBy, 'Виправлення документа');
+
+  // Для приходів від ЗП — новий прихід обробляється через сторінку ЗП
+  if ((doc.doc_type === 'receipt' || doc.doc_type === 'stock_in') && doc.parent_doc_id) {
+    return { newDocumentId: null, parentDocId: doc.parent_doc_id };
+  }
+
+  // Для решти — нова чернетка з тими самими даними
+  const { data: docNumber } = await db.rpc('next_doc_number', { p_type: doc.doc_type });
+
+  const { data: newDoc, error: insertError } = await db
+    .from('acc_documents')
+    .insert({
+      doc_type:        doc.doc_type,
+      doc_number:      docNumber as string,
+      status:          'draft',
+      warehouse_id:    doc.warehouse_id,
+      warehouse_to_id: doc.warehouse_to_id,
+      supplier_id:     doc.supplier_id,
+      order_id:        doc.order_id,
+      customer_id:     doc.customer_id,
+      counterparty:    doc.counterparty,
+      channel_code:    doc.channel_code,
+      currency:        doc.currency,
+      exchange_rate:   doc.exchange_rate,
+      doc_date:        new Date().toISOString(),
+      notes:           `Виправлення ${doc.doc_number}`,
+      created_by:      correctedBy,
+      meta:            doc.meta ?? {},
+    })
+    .select()
+    .single();
+  if (insertError) throw new Error((insertError as { message?: string }).message ?? String(insertError));
+
+  const newLines = (doc.lines ?? []).map((l: AccDocumentLine, i: number) => ({
+    document_id:      newDoc.id,
+    sku:              l.sku,
+    qty:              l.qty,
+    price:            l.price,
+    cost_price:       l.cost_price,
+    warehouse_id:     l.warehouse_id,
+    fulfillment_type: l.fulfillment_type,
+    supplier_id:      l.supplier_id,
+    uom_code:         l.uom_code,
+    uom_factor:       l.uom_factor,
+    exchange_rate:    l.exchange_rate,
+    sort_order:       i,
+    is_bonus:         l.is_bonus ?? false,
+    meta:             l.meta ?? {},
+  }));
+
+  const { error: linesError } = await db.from('acc_document_lines').insert(newLines);
+  if (linesError) throw new Error((linesError as { message?: string }).message ?? String(linesError));
+
+  return { newDocumentId: newDoc.id, parentDocId: null };
+}
+
 // ── Автозакриття замовлення постачальнику ────────────────────────────────────
 // Викликається після запису оплати або приходу.
 // Якщо обидві умови виконані (повний прихід + оплачено) → procurement_status = 'closed'.

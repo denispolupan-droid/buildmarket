@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, CheckCircle, XCircle, Clock, FileText, TrendingUp, TrendingDown, MoreHorizontal, Trash2, ArrowLeftRight } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, Clock, FileText, TrendingUp, TrendingDown, MoreHorizontal, Trash2, ArrowLeftRight, Pencil } from 'lucide-react';
 
 type DocRow = {
   id: string;
@@ -94,11 +94,13 @@ function ActionsMenu({
   direction,
   loading,
   onDelete,
+  onCorrect,
 }: {
   doc: DocRow;
   direction: string;
   loading: string | null;
   onDelete: () => void;
+  onCorrect?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -112,7 +114,7 @@ function ActionsMenu({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
 
-  const isLoading = loading === doc.id + 'cancel';
+  const isLoading = loading === doc.id + 'cancel' || loading === doc.id + 'correct';
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -134,8 +136,28 @@ function ActionsMenu({
           position: 'absolute', right: 0, top: '34px', zIndex: 100,
           background: 'var(--bg-card)', border: '1px solid var(--border)',
           borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-          minWidth: '180px', padding: '4px',
+          minWidth: '190px', padding: '4px',
         }}>
+          {onCorrect && (
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                setOpen(false);
+                if (!confirm(`Виправити ${doc.doc_number}?\n\nДокумент буде скасовано (сторно), і ви зможете створити новий виправлений.`)) return;
+                onCorrect();
+              }}
+              style={{
+                width: '100%', textAlign: 'left', padding: '8px 12px',
+                borderRadius: '7px', border: 'none', background: 'none',
+                fontSize: '13px', fontWeight: 500, color: '#1E3A5F',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#EFF4FF')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+            >
+              <Pencil size={14} /> Виправити
+            </button>
+          )}
           <button
             onClick={e => {
               e.stopPropagation();
@@ -180,7 +202,7 @@ export default function DocumentsClient({
     (!statFilter || d.status   === statFilter),
   );
 
-  async function doAction(docId: string, action: 'confirm' | 'cancel') {
+  async function doAction(docId: string, action: 'confirm' | 'cancel' | 'correct') {
     setLoading(docId + action);
     setError(null);
     const res = await fetch('/api/admin/accounting/documents', {
@@ -191,10 +213,19 @@ export default function DocumentsClient({
     const data = await res.json();
     if (!res.ok) {
       setError(data.error ?? 'Помилка');
-    } else {
-      const newStatus = action === 'confirm' ? 'confirmed' : 'cancelled';
-      setDocs(prev => prev.map(d => d.id === docId ? { ...d, status: newStatus as DocRow['status'] } : d));
+      setLoading(null);
+      return;
     }
+    if (action === 'correct') {
+      if (data.parentDocId) {
+        window.location.href = `/admin/procurement/${data.parentDocId}`;
+      } else {
+        window.location.reload();
+      }
+      return;
+    }
+    const newStatus = action === 'confirm' ? 'confirmed' : 'cancelled';
+    setDocs(prev => prev.map(d => d.id === docId ? { ...d, status: newStatus as DocRow['status'] } : d));
     setLoading(null);
   }
 
@@ -423,13 +454,14 @@ export default function DocumentsClient({
                     </>
                   )}
 
-                  {/* Проведено: тільки ⋯ */}
+                  {/* Проведено: Виправити + ⋯ */}
                   {doc.status === 'confirmed' && (
                     <ActionsMenu
                       doc={doc}
                       direction={direction}
                       loading={loading}
                       onDelete={() => doAction(doc.id, 'cancel')}
+                      onCorrect={() => doAction(doc.id, 'correct')}
                     />
                   )}
                 </div>

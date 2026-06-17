@@ -4,6 +4,7 @@ import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, X } from 'lucide-react';
 import ReturnButton from '../../../procurement/[id]/ReturnButton';
+import CorrectButton from '../CorrectButton';
 import DocChain from '../../../procurement/[id]/DocChain';
 import PrintButton from '../../../components/PrintButton';
 
@@ -128,6 +129,9 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
                   name: nameMap.get(l.sku),
                 }))}
               />
+            )}
+            {doc.status === 'confirmed' && (
+              <CorrectButton documentId={id} docNumber={doc.doc_number} />
             )}
           </div>
           <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '3px' }}>
