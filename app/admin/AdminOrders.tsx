@@ -48,6 +48,7 @@ type Order = {
   comment: string | null;
   tracking_number: string | null;
   payment_confirmed:  boolean;
+  amount_paid:        number;
   callback_done:      boolean;
   supplier_sent_at:   string | null;
   channel_code:       string | null;
@@ -163,6 +164,70 @@ export default function AdminOrders({
   const [prodResults, setProdResults] = useState<{sku:string;name:string;brand:string;price:number}[]>([]);
   const [prodOpen,    setProdOpen]    = useState(false);
   const prodRef = useRef<HTMLDivElement>(null);
+
+  // Часткові оплати
+  type OrderPayment = { id: string; amount: number; payment_mode: string; payment_date: string; note: string | null; reversed: boolean; created_at: string; created_by: string | null };
+  const [orderPayments,    setOrderPayments]    = useState<Record<string, OrderPayment[]>>({});
+  const [payFormOpen,      setPayFormOpen]      = useState<Record<string, boolean>>({});
+  const [payFormAmount,    setPayFormAmount]    = useState<Record<string, string>>({});
+  const [payFormMode,      setPayFormMode]      = useState<Record<string, string>>({});
+  const [payFormDate,      setPayFormDate]      = useState<Record<string, string>>({});
+  const [payFormNote,      setPayFormNote]      = useState<Record<string, string>>({});
+  const [payFormSaving,    setPayFormSaving]    = useState<Record<string, boolean>>({});
+  const [payRemoving,      setPayRemoving]      = useState<string | null>(null);
+
+  async function loadPayments(orderId: string) {
+    const res = await fetch(`/api/admin/orders/${orderId}/payments`);
+    if (!res.ok) return;
+    const data = await res.json();
+    setOrderPayments(prev => ({ ...prev, [orderId]: data }));
+  }
+
+  async function addPayment(order: Order) {
+    const amount = parseFloat(payFormAmount[order.id] ?? '');
+    if (!amount || amount <= 0) return;
+    setPayFormSaving(prev => ({ ...prev, [order.id]: true }));
+    const res = await fetch(`/api/admin/orders/${order.id}/payments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount,
+        payment_mode: payFormMode[order.id] ?? 'cash',
+        payment_date: payFormDate[order.id] ?? new Date().toISOString().slice(0, 10),
+        note: payFormNote[order.id] || null,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setOrders(prev => prev.map(o => o.id === order.id
+        ? { ...o, amount_paid: data.amount_paid, payment_confirmed: data.is_fully_paid }
+        : o,
+      ));
+      setOrderPayments(prev => ({ ...prev, [order.id]: [...(prev[order.id] ?? []), data.payment] }));
+      setPayFormOpen(prev => ({ ...prev, [order.id]: false }));
+      setPayFormAmount(prev => ({ ...prev, [order.id]: '' }));
+      setPayFormNote(prev => ({ ...prev, [order.id]: '' }));
+    }
+    setPayFormSaving(prev => ({ ...prev, [order.id]: false }));
+  }
+
+  async function reversePayment(order: Order, paymentId: string) {
+    if (!confirm('Скасувати цей платіж?')) return;
+    setPayRemoving(paymentId);
+    const res = await fetch(`/api/admin/orders/${order.id}/payments/${paymentId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (res.ok) {
+      setOrders(prev => prev.map(o => o.id === order.id
+        ? { ...o, amount_paid: data.amount_paid, payment_confirmed: data.is_fully_paid }
+        : o,
+      ));
+      setOrderPayments(prev => ({
+        ...prev,
+        [order.id]: (prev[order.id] ?? []).map(p => p.id === paymentId ? { ...p, reversed: true } : p),
+      }));
+    }
+    setPayRemoving(null);
+  }
 
   // Fulfillment / margin info
   const [fulfillmentData,    setFulfillmentData]    = useState<Record<string, FulfillmentData>>({});
@@ -1000,7 +1065,7 @@ export default function AdminOrders({
 
                 {/* ── Compact row ── */}
                 <div
-                  onClick={() => { const next = isExpanded ? null : order.id; setExpandedId(next); if (next) { loadFulfillment(next); loadLinkedPOs(next); } }}
+                  onClick={() => { const next = isExpanded ? null : order.id; setExpandedId(next); if (next) { loadFulfillment(next); loadLinkedPOs(next); loadPayments(next); } }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '10px',
                     padding: '9px 14px', cursor: 'pointer',
@@ -1446,31 +1511,135 @@ export default function AdminOrders({
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: order.status === 'confirmed' ? '#DCFCE7' : '#EFF6FF', color: order.status === 'confirmed' ? '#15803D' : 'var(--brand-blue)', border: `1px solid ${order.status === 'confirmed' ? '#86EFAC' : '#BFDBFE'}` }}>
                           <CreditCard size={12} />{order.status === 'confirmed' ? '💳 Оплата карткою — підтверджено' : '💳 Картка онлайн'}
                         </div>
-                      ) : order.payment_type === 'cash' ? (
-                        <div>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: paymentConfirmed ? '#DCFCE7' : '#F0FDF4', color: paymentConfirmed ? '#15803D' : '#166534', border: `1px solid ${paymentConfirmed ? '#86EFAC' : '#86EFAC'}` }}>
-                            <CreditCard size={12} />{paymentConfirmed ? '✓ Готівку отримано' : '💵 Оплата готівкою'}
-                          </div>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '6px', cursor: 'pointer' }} onClick={() => toggleFlag(order.id, 'payment_confirmed', !paymentConfirmed)}>
-                            <div style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, border: `2px solid ${paymentConfirmed ? '#15803D' : '#166534'}`, background: paymentConfirmed ? '#15803D' : 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              {paymentConfirmed && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      ) : (() => {
+                        const amountPaid  = Number(order.amount_paid ?? 0);
+                        const total       = Number(order.total_price);
+                        const remaining   = Math.max(0, total - amountPaid);
+                        const isPartial   = amountPaid > 0 && !paymentConfirmed;
+                        const payments    = orderPayments[order.id] ?? [];
+                        const isFormOpen  = payFormOpen[order.id] ?? false;
+                        const isSaving    = payFormSaving[order.id] ?? false;
+                        const modeLabel: Record<string, string> = { cash: 'Готівка', transfer: 'Безготівк.', card: 'Карта', acquiring: 'Еквайринг' };
+                        const defaultMode = order.payment_type === 'cash' ? 'cash' : 'transfer';
+                        const defaultRemaining = remaining > 0 ? remaining.toFixed(2) : total.toFixed(2);
+
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {/* Badge */}
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
+                              background: paymentConfirmed ? '#DCFCE7' : isPartial ? '#FFF7ED' : order.payment_type === 'cash' ? '#F0FDF4' : '#FEF3C7',
+                              color:      paymentConfirmed ? '#15803D'  : isPartial ? '#C2410C' : order.payment_type === 'cash' ? '#166534' : '#B45309',
+                              border: `1px solid ${paymentConfirmed ? '#86EFAC' : isPartial ? '#FDBA74' : order.payment_type === 'cash' ? '#86EFAC' : '#FCD34D'}`,
+                            }}>
+                              <CreditCard size={12} />
+                              {paymentConfirmed
+                                ? `✓ Оплачено ${amountPaid.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴`
+                                : isPartial
+                                  ? `${amountPaid.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} / ${total.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴`
+                                  : order.payment_type === 'cash' ? '💵 Оплата готівкою' : '⏳ Очікуємо оплату'}
                             </div>
-                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Готівку отримано</span>
-                          </label>
-                        </div>
-                      ) : (
-                        <div>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: paymentConfirmed ? '#DCFCE7' : '#FEF3C7', color: paymentConfirmed ? '#15803D' : '#B45309', border: `1px solid ${paymentConfirmed ? '#86EFAC' : '#FCD34D'}` }}>
-                            <CreditCard size={12} />{paymentConfirmed ? '✓ Оплата за рахунком підтверджена' : '⏳ Очікуємо оплату за рахунком'}
+
+                            {/* Залишок */}
+                            {isPartial && (
+                              <div style={{ fontSize: '11px', color: '#9A3412' }}>
+                                Залишок: {remaining.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴
+                              </div>
+                            )}
+
+                            {/* Кнопка + форма */}
+                            {!paymentConfirmed && !isFormOpen && (
+                              <button
+                                onClick={() => {
+                                  setPayFormOpen(prev  => ({ ...prev,  [order.id]: true }));
+                                  setPayFormMode(prev  => ({ ...prev,  [order.id]: defaultMode }));
+                                  setPayFormAmount(prev => ({ ...prev, [order.id]: defaultRemaining }));
+                                  setPayFormDate(prev  => ({ ...prev,  [order.id]: new Date().toISOString().slice(0, 10) }));
+                                }}
+                                style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '6px', border: '1.5px solid #BFDBFE', background: '#EFF6FF', color: '#1D4ED8', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                              >
+                                <Plus size={11} /> Додати оплату
+                              </button>
+                            )}
+
+                            {isFormOpen && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', borderRadius: '8px', border: '1.5px solid #BFDBFE', background: '#F0F9FF' }}>
+                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                  <input
+                                    type="number" min="0.01" step="0.01"
+                                    placeholder="Сума"
+                                    value={payFormAmount[order.id] ?? ''}
+                                    onChange={e => setPayFormAmount(prev => ({ ...prev, [order.id]: e.target.value }))}
+                                    style={{ width: '90px', padding: '5px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px' }}
+                                  />
+                                  <select
+                                    value={payFormMode[order.id] ?? defaultMode}
+                                    onChange={e => setPayFormMode(prev => ({ ...prev, [order.id]: e.target.value }))}
+                                    style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px', cursor: 'pointer' }}
+                                  >
+                                    <option value="cash">Готівка</option>
+                                    <option value="transfer">Безготівк.</option>
+                                    <option value="card">Карта</option>
+                                    <option value="acquiring">Еквайринг</option>
+                                  </select>
+                                  <input
+                                    type="date"
+                                    value={payFormDate[order.id] ?? new Date().toISOString().slice(0, 10)}
+                                    onChange={e => setPayFormDate(prev => ({ ...prev, [order.id]: e.target.value }))}
+                                    style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px' }}
+                                  />
+                                </div>
+                                <input
+                                  type="text" placeholder="Примітка (необов'язково)"
+                                  value={payFormNote[order.id] ?? ''}
+                                  onChange={e => setPayFormNote(prev => ({ ...prev, [order.id]: e.target.value }))}
+                                  style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px' }}
+                                />
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                  <button
+                                    onClick={() => addPayment(order)}
+                                    disabled={isSaving}
+                                    style={{ padding: '5px 14px', borderRadius: '6px', border: 'none', background: '#1D4ED8', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.6 : 1 }}
+                                  >
+                                    {isSaving ? 'Збереження...' : 'Зберегти'}
+                                  </button>
+                                  <button
+                                    onClick={() => setPayFormOpen(prev => ({ ...prev, [order.id]: false }))}
+                                    style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: 'transparent', fontSize: '12px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                                  >
+                                    Скасувати
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Історія платежів */}
+                            {payments.length > 0 && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '2px' }}>
+                                {payments.map(p => (
+                                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: p.reversed ? 'var(--text-muted)' : 'var(--text-secondary)', textDecoration: p.reversed ? 'line-through' : 'none' }}>
+                                    <span>{new Date(p.payment_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' })}</span>
+                                    <span style={{ fontWeight: 700, color: p.reversed ? 'var(--text-muted)' : '#15803D' }}>
+                                      {Number(p.amount).toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴
+                                    </span>
+                                    <span>{modeLabel[p.payment_mode] ?? p.payment_mode}</span>
+                                    {p.note && <span style={{ color: 'var(--text-muted)' }}>· {p.note}</span>}
+                                    {!p.reversed && isAdmin && (
+                                      <button
+                                        onClick={() => reversePayment(order, p.id)}
+                                        disabled={payRemoving === p.id}
+                                        title="Скасувати платіж"
+                                        style={{ marginLeft: 'auto', display: 'flex', padding: '1px 4px', borderRadius: '4px', border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#DC2626', cursor: 'pointer', fontSize: '10px' }}
+                                      >
+                                        <X size={9} />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '6px', cursor: 'pointer' }} onClick={() => toggleFlag(order.id, 'payment_confirmed', !paymentConfirmed)}>
-                            <div style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, border: `2px solid ${paymentConfirmed ? '#15803D' : '#D97706'}`, background: paymentConfirmed ? '#15803D' : 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              {paymentConfirmed && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                            </div>
-                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Оплату отримано</span>
-                          </label>
-                        </div>
-                      )}
+                        );
+                      })()}
 
                       {!isDropship && (noCallback ? (
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
