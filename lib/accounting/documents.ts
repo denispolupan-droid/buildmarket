@@ -439,58 +439,75 @@ export async function cancelDocument(
 
   // ── Операційні документи (direction=in/out/transfer): створюємо сторно ────
   // Ці документи мають ефект на склад/леджер — потрібен реверсальний документ.
-  const { data: docNumber } = await db
-    .rpc('next_doc_number', { p_type: doc.doc_type });
 
-  const { data: reversal, error: reversalError } = await db
+  // Перевіряємо чи вже існує сторно для цього документа (наприклад, якщо попередня
+  // спроба скасування була перервана посередині).
+  const { data: existingReversal } = await db
     .from('acc_documents')
-    .insert({
-      doc_type:        doc.doc_type,
-      doc_number:      docNumber as string,
-      status:          'draft',
-      warehouse_id:    doc.warehouse_id,
-      warehouse_to_id: doc.warehouse_to_id,
-      supplier_id:     doc.supplier_id,
-      order_id:        doc.order_id,
-      customer_id:     doc.customer_id,
-      counterparty:    doc.counterparty,
-      channel_code:    doc.channel_code,
-      currency:        doc.currency,
-      exchange_rate:   doc.exchange_rate,
-      reversal_of:     documentId,
-      doc_date:        new Date().toISOString(),
-      notes:           `Сторно ${doc.doc_number}${reason ? ': ' + reason : ''}`,
-      created_by:      cancelledBy,
-      meta:            doc.meta ?? {},
-    })
-    .select()
-    .single();
-  if (reversalError) throw reversalError;
+    .select('id, status')
+    .eq('reversal_of', documentId)
+    .neq('status', 'cancelled')
+    .maybeSingle();
 
-  // Строки сторно: qty = –original_qty
-  const reversalLines = doc.lines.map((l: AccDocumentLine, i: number) => ({
-    document_id:      reversal.id,
-    sku:              l.sku,
-    qty:              -l.qty,
-    price:            l.price,
-    cost_price:       l.cost_price,
-    warehouse_id:     l.warehouse_id,
-    fulfillment_type: l.fulfillment_type,
-    supplier_id:      l.supplier_id,
-    uom_code:         l.uom_code,
-    uom_factor:       l.uom_factor,
-    exchange_rate:    l.exchange_rate,
-    sort_order:       i,
-    is_bonus:         l.is_bonus ?? false,
-    meta:             l.meta ?? {},
-  }));
+  if (existingReversal?.status === 'confirmed') {
+    // Сторно вже проведено (склад повернуто) — просто скасовуємо оригінал
+  } else if (existingReversal?.status === 'draft') {
+    // Чернетка сторно вже існує — підтверджуємо її
+    await confirmDocument(existingReversal.id, cancelledBy);
+  } else {
+    // Створюємо нове сторно
+    const { data: docNumber } = await db
+      .rpc('next_doc_number', { p_type: doc.doc_type });
 
-  const { error: linesError } = await db
-    .from('acc_document_lines')
-    .insert(reversalLines);
-  if (linesError) throw linesError;
+    const { data: reversal, error: reversalError } = await db
+      .from('acc_documents')
+      .insert({
+        doc_type:        doc.doc_type,
+        doc_number:      docNumber as string,
+        status:          'draft',
+        warehouse_id:    doc.warehouse_id,
+        warehouse_to_id: doc.warehouse_to_id,
+        supplier_id:     doc.supplier_id,
+        order_id:        doc.order_id,
+        customer_id:     doc.customer_id,
+        counterparty:    doc.counterparty,
+        channel_code:    doc.channel_code,
+        currency:        doc.currency,
+        exchange_rate:   doc.exchange_rate,
+        reversal_of:     documentId,
+        doc_date:        new Date().toISOString(),
+        notes:           `Сторно ${doc.doc_number}${reason ? ': ' + reason : ''}`,
+        created_by:      cancelledBy,
+        meta:            doc.meta ?? {},
+      })
+      .select()
+      .single();
+    if (reversalError) throw new Error((reversalError as { message?: string }).message ?? String(reversalError));
 
-  await confirmDocument(reversal.id, cancelledBy);
+    const reversalLines = doc.lines.map((l: AccDocumentLine, i: number) => ({
+      document_id:      reversal.id,
+      sku:              l.sku,
+      qty:              -l.qty,
+      price:            l.price,
+      cost_price:       l.cost_price,
+      warehouse_id:     l.warehouse_id,
+      fulfillment_type: l.fulfillment_type,
+      supplier_id:      l.supplier_id,
+      uom_code:         l.uom_code,
+      uom_factor:       l.uom_factor,
+      exchange_rate:    l.exchange_rate,
+      sort_order:       i,
+      is_bonus:         l.is_bonus ?? false,
+      meta:             l.meta ?? {},
+    }));
+
+    const { error: linesError } = await db
+      .from('acc_document_lines')
+      .insert(reversalLines);
+    if (linesError) throw new Error((linesError as { message?: string }).message ?? String(linesError));
+
+    await confirmDocument(reversal.id, cancelledBy);
+  }
 
   const { error: cancelError } = await db
     .from('acc_documents')
@@ -501,7 +518,24 @@ export async function cancelDocument(
       cancel_reason: reason ?? null,
     })
     .eq('id', documentId);
-  if (cancelError) throw cancelError;
+  if (cancelError) throw new Error((cancelError as { message?: string }).message ?? String(cancelError));
+
+  // Якщо скасований прихід був прив'язаний до ЗП — скидаємо procurement_status
+  // назад на confirmed_by_supplier (якщо більше немає інших проведених приходів).
+  if ((doc.doc_type === 'receipt' || doc.doc_type === 'stock_in') && doc.parent_doc_id) {
+    const { count: otherReceipts } = await db
+      .from('acc_documents')
+      .select('id', { count: 'exact', head: true })
+      .eq('parent_doc_id', doc.parent_doc_id)
+      .eq('status', 'confirmed')
+      .in('doc_type', ['receipt', 'stock_in'])
+      .neq('id', documentId);
+    if ((otherReceipts ?? 0) === 0) {
+      await db.from('acc_documents')
+        .update({ procurement_status: 'confirmed_by_supplier' })
+        .eq('id', doc.parent_doc_id);
+    }
+  }
 
   // ПРИМІТКА: сторно purchase_order НЕ впливає на склад і НЕ скасовує
   // пов'язані приходи автоматично. ЗП — плановий документ (direction=none).
