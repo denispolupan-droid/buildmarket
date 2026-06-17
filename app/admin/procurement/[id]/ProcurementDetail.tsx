@@ -339,9 +339,8 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
       return {
         sku:         l.sku,
         name:        `${l.brand ?? ''} ${l.name ?? ''}`.trim(),
-        qty:         dl ? dl.qty          : (l.effective_qty ?? l.qty),
-        cost_price:  dl ? dl.cost_price   : l.cost_price,
-        sale_price:  dl ? (dl.price ?? 0) : 0,
+        qty:         dl ? dl.qty        : (l.effective_qty ?? l.qty),
+        cost_price:  dl ? dl.cost_price : l.cost_price,
         is_bonus:    false,
         matched:     true,
         ordered_qty: l.effective_qty ?? l.qty,

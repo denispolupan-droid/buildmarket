@@ -148,13 +148,21 @@ export default function ReceiptDraftManager() {
         lines: ReceiptLine[];
       }>).detail;
 
-      // If draft for same PO already open — bring to front
+      // If draft for same PO already open — bring to front and refresh invoice fields
       setDrafts(prev => {
         const existing = prev.find(d => d.poId === detail.poId);
         if (existing) {
           window.dispatchEvent(new CustomEvent('receipt-draft-activated'));
           return prev.map(d => d.id === existing.id
-            ? { ...d, minimized: false, lastActivated: Date.now() }
+            ? {
+                ...d,
+                minimized:         false,
+                lastActivated:     Date.now(),
+                // Оновлюємо рахункові дані якщо вони з'явились у ЗП після відкриття чернетки
+                supplierInvNum:    detail.supplierInvNum   || d.supplierInvNum,
+                supplierInvDate:   detail.supplierInvDate  || d.supplierInvDate,
+                supplierInvAmount: detail.supplierInvAmount !== '' ? detail.supplierInvAmount : d.supplierInvAmount,
+              }
             : { ...d, minimized: true });
         }
         const now = Date.now();
