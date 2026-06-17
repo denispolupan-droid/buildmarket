@@ -2,10 +2,23 @@
 
 import { Printer, FileSpreadsheet } from 'lucide-react';
 
-function formatIban(raw: string) {
-  const s = raw.replace(/\s/g, '');
-  return s.match(/.{1,4}/g)?.join(' ') ?? s;
-}
+type Item = { sku: string; name: string; brand: string; qty: number; price: number };
+
+type SaleDoc = {
+  doc_number: string;
+  doc_date: string;
+};
+
+type OrderData = {
+  order_number: number;
+  contact: string;
+  company: string | null;
+  phone: string;
+  email: string;
+  delivery_address: string | null;
+  items: Item[];
+  total_price: number;
+};
 
 function numToWords(n: number): string {
   const ones = ['', 'одна', 'дві', 'три', 'чотири', 'п\'ять', 'шість', 'сім', 'вісім', 'дев\'ять',
@@ -15,18 +28,18 @@ function numToWords(n: number): string {
   const hundreds = ['', 'сто', 'двісті', 'триста', 'чотириста', 'п\'ятсот', 'шістсот', 'сімсот', 'вісімсот', 'дев\'ятсот'];
   const thousands = ['тисяча', 'тисячі', 'тисяч'];
 
-  function declThousands(x: number) {
-    if (x % 100 >= 11 && x % 100 <= 19) return thousands[2];
-    if (x % 10 === 1) return thousands[0];
-    if (x % 10 >= 2 && x % 10 <= 4) return thousands[1];
+  function declThousands(n: number) {
+    if (n % 100 >= 11 && n % 100 <= 19) return thousands[2];
+    if (n % 10 === 1) return thousands[0];
+    if (n % 10 >= 2 && n % 10 <= 4) return thousands[1];
     return thousands[2];
   }
 
-  function chunk(x: number): string {
-    if (x === 0) return '';
+  function chunk(n: number): string {
+    if (n === 0) return '';
     const parts: string[] = [];
-    if (Math.floor(x / 100) > 0) parts.push(hundreds[Math.floor(x / 100)]);
-    const rem = x % 100;
+    if (Math.floor(n / 100) > 0) parts.push(hundreds[Math.floor(n / 100)]);
+    const rem = n % 100;
     if (rem >= 20) {
       parts.push(tens[Math.floor(rem / 10)]);
       if (rem % 10 > 0) parts.push(ones[rem % 10]);
@@ -39,77 +52,74 @@ function numToWords(n: number): string {
   const intPart = Math.floor(n);
   const kopPart = Math.round((n - intPart) * 100);
   const parts: string[] = [];
+
   const millions = Math.floor(intPart / 1_000_000);
   const thous    = Math.floor((intPart % 1_000_000) / 1_000);
   const rem      = intPart % 1_000;
 
-  if (millions > 0) parts.push(chunk(millions) + ' мільйонів');
-  if (thous > 0)    parts.push(chunk(thous) + ' ' + declThousands(thous));
-  if (rem > 0 || intPart === 0) parts.push(chunk(rem || 0));
+  if (millions > 0) {
+    parts.push(chunk(millions) + ' мільйонів');
+  }
+  if (thous > 0) {
+    parts.push(chunk(thous) + ' ' + declThousands(thous));
+  }
+  if (rem > 0 || intPart === 0) {
+    parts.push(chunk(rem || 0));
+  }
 
   const gryvn = parts.join(' ').trim();
-  const r = intPart % 100;
-  const gryvDecl = (r >= 11 && r <= 19) ? 'гривень'
-    : (intPart % 10 === 1) ? 'гривня'
-    : (intPart % 10 >= 2 && intPart % 10 <= 4) ? 'гривні'
-    : 'гривень';
+  const gryvDecl = (() => {
+    const r = intPart % 100;
+    if (r >= 11 && r <= 19) return 'гривень';
+    if (intPart % 10 === 1) return 'гривня';
+    if (intPart % 10 >= 2 && intPart % 10 <= 4) return 'гривні';
+    return 'гривень';
+  })();
 
   return `${gryvn} ${gryvDecl} ${String(kopPart).padStart(2, '0')} копійок`;
 }
 
-type Item = { sku: string; name: string; brand: string; qty: number; price: number };
-type Order = {
-  id: string;
-  order_number: number;
-  created_at: string;
-  company: string | null;
-  contact: string;
-  phone: string;
-  email: string;
-  delivery_address: string | null;
-  items: Item[];
-  total_price: number;
-};
-
-export default function InvoicePrint({ order, bankRecipient, bankIban, bankName, bankEdrpou }: {
-  order: Order;
-  bankRecipient: string;
-  bankIban: string;
-  bankName: string;
-  bankEdrpou: string;
+export default function VydatkovaPrint({
+  doc,
+  order,
+  sellerName,
+  sellerEdrpou,
+  sellerAddress,
+  sellerPhone,
+}: {
+  doc: SaleDoc;
+  order: OrderData;
+  sellerName: string;
+  sellerEdrpou: string;
+  sellerAddress?: string;
+  sellerPhone?: string;
 }) {
-  const date = new Date(order.created_at).toLocaleDateString('uk-UA', {
+  const docDate = new Date(doc.doc_date).toLocaleDateString('uk-UA', {
     day: '2-digit', month: 'long', year: 'numeric',
   });
-  const ibanDisplay = formatIban(bankIban);
+
+  const total = order.items.reduce((s, i) => s + i.qty * i.price, 0);
   const buyerName = order.company || order.contact;
-  const total = order.total_price;
 
   async function exportExcel() {
     const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
     const rows: (string | number)[][] = [
-      [`РАХУНОК-ФАКТУРА №${order.order_number} від ${date}`],
+      [`ВИДАТКОВА НАКЛАДНА ${doc.doc_number} від ${docDate}`],
       [],
-      ['Постачальник:', bankRecipient, '', 'ЄДРПОУ:', bankEdrpou],
-      ['Покупець:', buyerName],
-      order.delivery_address ? ['Доставка:', order.delivery_address] : [],
+      ['Постачальник:', sellerName, '', 'Покупець:', buyerName],
+      ['ЄДРПОУ:', sellerEdrpou, '', 'Контакт:', order.contact],
       [],
       ['№', 'Найменування', 'Артикул', 'Од.', 'К-сть', 'Ціна, грн', 'Сума, грн'],
-      ...order.items.map((i, idx) => [idx + 1, `${i.brand} ${i.name}`.trim(), i.sku, 'шт', i.qty, i.price, +(i.price * i.qty).toFixed(2)]),
+      ...order.items.map((i, idx) => [idx + 1, `${i.brand} ${i.name}`.trim(), i.sku, 'шт', i.qty, i.price, +(i.qty * i.price).toFixed(2)]),
       [],
-      ['', '', '', '', '', 'Разом:', +total.toFixed(2)],
-      [],
-      ['Призначення:', `Оплата за замовлення №${order.order_number}`, '', '', '', '', ''],
-      ['IBAN:', bankIban],
-      ['Банк:', bankName],
-    ].filter(r => r.length > 0);
-
+      ['', '', '', '', '', 'РАЗОМ:', +total.toFixed(2)],
+    ];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ws = XLSX.utils.aoa_to_sheet(rows as any);
     ws['!cols'] = [{ wch: 4 }, { wch: 44 }, { wch: 14 }, { wch: 5 }, { wch: 8 }, { wch: 13 }, { wch: 13 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Рахунок');
-    XLSX.writeFile(wb, `Рахунок_${order.order_number}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, 'Видаткова');
+    XLSX.writeFile(wb, `ВН_${doc.doc_number}.xlsx`);
   }
 
   return (
@@ -118,7 +128,7 @@ export default function InvoicePrint({ order, bankRecipient, bankIban, bankName,
         @media print {
           .no-print { display: none !important; }
           body { background: white !important; font-family: Arial, sans-serif; }
-          .doc-wrap { box-shadow: none !important; margin: 0 !important; padding: 0 !important; }
+          .doc-wrap { box-shadow: none !important; border: none !important; margin: 0 !important; }
         }
         @page { margin: 14mm 16mm; size: A4; }
         body { font-family: Arial, sans-serif; }
@@ -158,10 +168,10 @@ export default function InvoicePrint({ order, bankRecipient, bankIban, bankName,
           {/* Title */}
           <div style={{ textAlign: 'center', marginBottom: '16px' }}>
             <div style={{ fontSize: '16px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Рахунок-фактура
+              Видаткова накладна
             </div>
             <div style={{ fontSize: '13px', marginTop: '4px' }}>
-              № {order.order_number} від {date}
+              {doc.doc_number} від {docDate}
             </div>
           </div>
 
@@ -170,23 +180,19 @@ export default function InvoicePrint({ order, bankRecipient, bankIban, bankName,
             <tbody>
               <tr>
                 <td style={{ border: '1px solid #000', padding: '8px 12px', width: '50%', verticalAlign: 'top' }}>
-                  <div style={{ fontWeight: 700, marginBottom: '4px' }}>Постачальник:</div>
-                  <div>{bankRecipient}</div>
-                  {bankEdrpou && <div>ЄДРПОУ: {bankEdrpou}</div>}
-                  <div style={{ marginTop: '6px', fontSize: '11px', color: '#555' }}>
-                    IBAN: {ibanDisplay}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#555' }}>
-                    {bankName}
-                  </div>
+                  <div style={{ fontWeight: 700, marginBottom: '4px' }}>Постачальник (Продавець):</div>
+                  <div>{sellerName}</div>
+                  {sellerEdrpou && <div>ЄДРПОУ: {sellerEdrpou}</div>}
+                  {sellerAddress && <div>{sellerAddress}</div>}
+                  {sellerPhone && <div>Тел.: {sellerPhone}</div>}
                 </td>
                 <td style={{ border: '1px solid #000', padding: '8px 12px', width: '50%', verticalAlign: 'top' }}>
-                  <div style={{ fontWeight: 700, marginBottom: '4px' }}>Платник:</div>
+                  <div style={{ fontWeight: 700, marginBottom: '4px' }}>Покупець:</div>
                   <div>{buyerName}</div>
                   {order.company && <div>{order.contact}</div>}
                   {order.phone && <div>Тел.: {order.phone}</div>}
                   {order.email && <div>{order.email}</div>}
-                  {order.delivery_address && <div style={{ marginTop: '4px', fontSize: '11px', color: '#555' }}>{order.delivery_address}</div>}
+                  {order.delivery_address && <div>{order.delivery_address}</div>}
                 </td>
               </tr>
             </tbody>
@@ -206,7 +212,7 @@ export default function InvoicePrint({ order, bankRecipient, bankIban, bankName,
               </tr>
             </thead>
             <tbody>
-              {(order.items as Item[]).map((item, idx) => (
+              {order.items.map((item, idx) => (
                 <tr key={item.sku}>
                   <td style={{ textAlign: 'center' }}>{idx + 1}</td>
                   <td style={{ textAlign: 'left' }}>{item.brand} {item.name}</td>
@@ -214,11 +220,19 @@ export default function InvoicePrint({ order, bankRecipient, bankIban, bankName,
                   <td style={{ textAlign: 'center' }}>шт</td>
                   <td style={{ textAlign: 'right' }}>{item.qty}</td>
                   <td style={{ textAlign: 'right' }}>{item.price.toFixed(2)}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 700 }}>{(item.price * item.qty).toFixed(2)}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 700 }}>{(item.qty * item.price).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
+              <tr>
+                <td colSpan={6} style={{ textAlign: 'right', fontWeight: 700, border: '1px solid #000', padding: '5px 6px' }}>
+                  Разом без ПДВ:
+                </td>
+                <td style={{ textAlign: 'right', fontWeight: 800, border: '1px solid #000', padding: '5px 6px' }}>
+                  {total.toFixed(2)}
+                </td>
+              </tr>
               <tr>
                 <td colSpan={6} style={{ textAlign: 'right', border: '1px solid #000', padding: '5px 6px' }}>
                   ПДВ:
@@ -239,19 +253,18 @@ export default function InvoicePrint({ order, bankRecipient, bankIban, bankName,
           </table>
 
           {/* Sum in words */}
-          <div style={{ fontSize: '12px', marginBottom: '16px' }}>
-            <strong>До сплати:</strong> {numToWords(total)} (без ПДВ)
+          <div style={{ fontSize: '12px', marginBottom: '24px' }}>
+            <strong>Разом на суму:</strong> {numToWords(total)} (без ПДВ)
           </div>
 
-          {/* Payment purpose */}
-          <div style={{ fontSize: '12px', padding: '8px 12px', border: '1px solid #ccc', borderRadius: '4px', background: '#f9f9f9', marginBottom: '20px' }}>
-            <strong>Призначення платежу:</strong> Оплата за замовлення №{order.order_number} від {date}. Без ПДВ.
-          </div>
-
-          {/* Signature */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '12px' }}>
+          {/* Signatures */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginTop: '24px', fontSize: '12px' }}>
             <div>
-              <div>Виписав(ла): ____________________</div>
+              <div>Відпустив: ____________________</div>
+              <div style={{ marginTop: '4px', color: '#555' }}>(підпис, прізвище)</div>
+            </div>
+            <div>
+              <div>Отримав: ____________________</div>
               <div style={{ marginTop: '4px', color: '#555' }}>(підпис, прізвище)</div>
             </div>
           </div>

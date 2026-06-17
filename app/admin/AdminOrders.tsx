@@ -146,7 +146,8 @@ export default function AdminOrders({
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sourceOverrides, setSourceOverrides] = useState<Record<string, Record<string, 'own' | 'dropship'>>>({});
-  const [shipConfirmId, setShipConfirmId] = useState<string | null>(null);
+  const [shipping,     setShipping]     = useState<string | null>(null);
+  const [saleDocMap,   setSaleDocMap]   = useState<Record<string, { id: string; number: string }>>({});
   const [reserving, setReserving] = useState<string | null>(null);
   const [selectedMode, setSelectedMode] = useState<Record<string, 'supplier' | 'own' | 'mixed'>>({});
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -519,6 +520,29 @@ export default function AdminOrders({
       setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
     }
     setLoading(null);
+  }
+
+  async function shipOrder(orderId: string) {
+    const ok = await showConfirm('Відвантажити замовлення та створити видаткову накладну?', {
+      confirmLabel: 'Відвантажити',
+      cancelLabel: 'Скасувати',
+    });
+    if (!ok) return;
+    setShipping(orderId);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/ship`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped' } : o));
+        if (data.sale_doc_id) {
+          setSaleDocMap(prev => ({ ...prev, [orderId]: { id: data.sale_doc_id, number: data.sale_doc_number ?? '' } }));
+        }
+      } else {
+        alert(data.error ?? 'Помилка відвантаження');
+      }
+    } finally {
+      setShipping(null);
+    }
   }
 
   // Product search for add-item
@@ -1368,7 +1392,7 @@ export default function AdminOrders({
                               return (
                                 <div style={{ marginTop: '10px', padding: '10px 12px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px' }}>
                                   <div style={{ fontSize: '10px', fontWeight: 700, color: '#15803D', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-                                    📥 Відвантажено
+                                    📥 Отримано на склад
                                   </div>
                                   {order.items.map(item => {
                                     const rcv = received[item.sku] ?? 0;
@@ -1898,26 +1922,22 @@ export default function AdminOrders({
                                   </button>
                                 )}
                                 {(order.status === 'confirmed' || order.status === 'awaiting_stock' || order.status === 'picking') && (
-                                  shipConfirmId === order.id ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px 10px', background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: '8px', fontSize: '12px' }}>
-                                      <span style={{ fontWeight: 600, color: '#92400E' }}>Товар вже у дорозі до клієнта?</span>
-                                      <div style={{ display: 'flex', gap: '6px' }}>
-                                        <button onClick={() => { setShipConfirmId(null); changeStatus(order.id, 'shipped'); }} disabled={!!loading}
-                                          style={{ height: '26px', padding: '0 10px', borderRadius: '6px', border: 'none', background: '#15803D', color: '#fff', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
-                                          Так, відправлено
-                                        </button>
-                                        <button onClick={() => setShipConfirmId(null)}
-                                          style={{ height: '26px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', fontSize: '11px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                                          Скасувати
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <button onClick={() => setShipConfirmId(order.id)} disabled={!!loading}
-                                      style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
-                                      <Truck size={13} /> Позначити відправленим
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <button
+                                      onClick={() => shipOrder(order.id)}
+                                      disabled={shipping === order.id || !!loading}
+                                      style={{ ...btnPrimary, background: '#15803D', opacity: (shipping === order.id || !!loading) ? 0.6 : 1 }}>
+                                      <Truck size={13} /> {shipping === order.id ? 'Створення...' : 'Відвантажити'}
                                     </button>
-                                  )
+                                    {saleDocMap[order.id] && (
+                                      <a
+                                        href={`/vydatkova/${saleDocMap[order.id].id}`}
+                                        target="_blank"
+                                        style={{ fontSize: '11px', color: '#1E3A5F', fontWeight: 600, textDecoration: 'none', textAlign: 'center', padding: '3px 0' }}>
+                                        📄 {saleDocMap[order.id].number}
+                                      </a>
+                                    )}
+                                  </div>
                                 )}
                                 {order.status === 'awaiting_stock' && (() => {
                                   const pos = linkedPOs[order.id] ?? [];
@@ -1948,10 +1968,20 @@ export default function AdminOrders({
                                   );
                                 })()}
                                 {order.status === 'shipped' && (
-                                  <button onClick={() => changeStatus(order.id, 'delivered')} disabled={!!loading}
-                                    style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
-                                    <Check size={13} /> Доставлено
-                                  </button>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <button onClick={() => changeStatus(order.id, 'delivered')} disabled={!!loading}
+                                      style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
+                                      <Check size={13} /> Доставлено
+                                    </button>
+                                    {saleDocMap[order.id] && (
+                                      <a
+                                        href={`/vydatkova/${saleDocMap[order.id].id}`}
+                                        target="_blank"
+                                        style={{ fontSize: '11px', color: '#1E3A5F', fontWeight: 600, textDecoration: 'none', textAlign: 'center', padding: '3px 0' }}>
+                                        📄 {saleDocMap[order.id].number}
+                                      </a>
+                                    )}
+                                  </div>
                                 )}
                                 <a href={`/invoice/${order.id}`} target="_blank" rel="noopener noreferrer"
                                   style={btnMuted}>
