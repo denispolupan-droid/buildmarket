@@ -583,7 +583,7 @@ export default function NewReceiptModal({
               <span>Артикул</span>
               <span>Найменування</span>
               <span style={{ textAlign: 'right', color: '#7C3AED' }}>Зам.</span>
-              <span style={{ textAlign: 'right' }}>Факт</span>
+              <span style={{ textAlign: 'right' }} title={initialData.poId ? '0 = не отримано (виключити з приходу)' : undefined}>Факт</span>
               <span style={{ textAlign: 'right' }}>Закупка</span>
               <span style={{ textAlign: 'right', color: '#1E3A5F' }}>Роздріб</span>
               <span style={{ textAlign: 'right', color: '#7C3AED' }}>Опт</span>
@@ -652,13 +652,20 @@ export default function NewReceiptModal({
                     {/* Факт (editable) */}
                     <div>
                       <input style={{ ...inp, textAlign: 'right',
+                        opacity: initialData.poId && line.qty === 0 ? 0.45 : 1,
                         borderColor: line.ordered_qty != null
-                          ? (line.qty === line.ordered_qty ? '#86EFAC' : line.qty < line.ordered_qty ? '#FCD34D' : '#FCA5A5')
+                          ? (line.qty === 0 ? '#CBD5E1' : line.qty === line.ordered_qty ? '#86EFAC' : line.qty < line.ordered_qty ? '#FCD34D' : '#FCA5A5')
                           : undefined }}
-                        type="number" min="0.001" step="1"
-                        value={line.qty || ''}
-                        onChange={e => setLineField(idx, 'qty', parseFloat(e.target.value) || 1)}
-                        onBlur={() => { if (!line.qty || line.qty < 0.001) setLineField(idx, 'qty', 1); }} />
+                        type="number" min={initialData.poId ? '0' : '0.001'} step="1"
+                        value={line.qty === 0 ? '' : (line.qty || '')}
+                        placeholder={initialData.poId ? '0' : ''}
+                        onChange={e => {
+                          const v = parseFloat(e.target.value);
+                          setLineField(idx, 'qty', isNaN(v) ? (initialData.poId ? 0 : 1) : Math.max(0, v));
+                        }}
+                        onBlur={() => {
+                          if (!initialData.poId && (!line.qty || line.qty < 0.001)) setLineField(idx, 'qty', 1);
+                        }} />
                     </div>
 
                     {/* Cost price */}
