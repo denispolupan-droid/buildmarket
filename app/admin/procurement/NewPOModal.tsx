@@ -627,7 +627,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
                         onChange={e => setLineField(idx, 'cost_price', parseFloat(e.target.value) || 0)} />
                       <span style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
                       {line.catalog_price != null && line.catalog_price !== line.cost_price && lastPriceMap[line.sku] == null && (
-                        <div style={{ fontSize: '9px', color: line.cost_price === 0 ? '#F59E0B' : '#94A3B8', position: 'absolute', bottom: '-13px', right: 0, whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: '9px', color: line.cost_price === 0 ? '#F59E0B' : '#94A3B8', textAlign: 'right', marginTop: '3px', whiteSpace: 'nowrap' }}>
                           {line.cost_price === 0 ? '⚠ роздріб' : 'прайс'}: {fmt(line.catalog_price)} ₴
                         </div>
                       )}
@@ -636,7 +636,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
                         const diff = ((line.cost_price - last) / last) * 100;
                         if (Math.abs(diff) < 5) return null;
                         return (
-                          <div style={{ fontSize: '9px', fontWeight: 700, color: diff > 0 ? '#DC2626' : '#15803D', position: 'absolute', bottom: '-13px', right: 0, whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: '9px', fontWeight: 700, color: diff > 0 ? '#DC2626' : '#15803D', textAlign: 'right', marginTop: '3px', whiteSpace: 'nowrap' }}>
                             {diff > 0 ? '↑' : '↓'} {Math.abs(diff).toFixed(0)}% vs. попер.
                           </div>
                         );
