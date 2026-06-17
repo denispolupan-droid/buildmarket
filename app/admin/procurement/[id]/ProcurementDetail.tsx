@@ -63,6 +63,30 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
     router.push('/admin/procurement');
   }
 
+  // Extract invoice number and date from 1C-style filename, e.g.
+  // "Реализация товаров и услуг № ХТАП0617011 от 17 июня 2026.XLS"
+  function extractInvoiceMeta(file: File): { number: string; date: string } {
+    const baseName = file.name.replace(/\.\w+$/, '');
+    const numMatch = baseName.match(/№\s*(\S+)/);
+    const invoiceNumber = numMatch ? numMatch[1] : '';
+    const RU_MONTHS: Record<string, string> = {
+      'янв': '01', 'фев': '02', 'мар': '03', 'апр': '04', 'май': '05', 'мая': '05',
+      'июн': '06', 'июл': '07', 'авг': '08', 'сен': '09', 'окт': '10', 'ноя': '11', 'дек': '12',
+      'січ': '01', 'лют': '02', 'бер': '03', 'кві': '04', 'тра': '05',
+      'чер': '06', 'лип': '07', 'сер': '08', 'вер': '09', 'жов': '10', 'лис': '11', 'гру': '12',
+    };
+    const dateMatch = baseName.match(/(\d{1,2})\s+([а-яёА-ЯЁіїєІЇЄ]+)\s+(\d{4})/i);
+    let invoiceDate = '';
+    if (dateMatch) {
+      const day = dateMatch[1].padStart(2, '0');
+      const monthWord = dateMatch[2].toLowerCase().slice(0, 3);
+      const year = dateMatch[3];
+      const monthNum = RU_MONTHS[monthWord];
+      if (monthNum) invoiceDate = `${year}-${monthNum}-${day}`;
+    }
+    return { number: invoiceNumber, date: invoiceDate };
+  }
+
 
   const [updatingStatus, setUpdatingStatus] = useState(false);
   // Статус доставки — не включає стани оплати ('paid'/'invoiced')
@@ -284,7 +308,12 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
     fd.append('file', file);
     const res = await fetch(`/api/admin/procurement/${po.id}/upload-invoice`, { method: 'POST', body: fd });
     const data = await res.json();
-    if (res.ok) setInvoiceFile({ url: data.signed_url, name: data.name });
+    if (res.ok) {
+      setInvoiceFile({ url: data.signed_url, name: data.name });
+      const meta = extractInvoiceMeta(file);
+      if (meta.number && !invoiceNum) setInvoiceNum(meta.number);
+      if (meta.date && !invoiceDate) setInvoiceDate(meta.date);
+    }
     setUploadingInvoice(false);
   }
 
