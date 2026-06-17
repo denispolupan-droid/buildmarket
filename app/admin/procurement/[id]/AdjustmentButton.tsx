@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Edit3, X, Loader2, Check, Trash2, Plus } from 'lucide-react';
+import { showConfirm } from '../../../../lib/confirm';
 
 type POLine = { sku: string; qty: number; cost_price: number; name?: string; brand?: string };
 type AdjLine = POLine & { isNew?: boolean; deleted?: boolean };
@@ -91,9 +92,10 @@ export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: str
     return orig && l.qty !== orig.qty;
   });
 
-  function tryClose() {
+  async function tryClose() {
     if (changed.length > 0 || reason.trim()) {
-      if (!window.confirm('Є незбережені зміни. Закрити без збереження?')) return;
+      const ok = await showConfirm('Є незбережені зміни. Закрити без збереження?');
+      if (!ok) return;
     }
     setOpen(false);
   }

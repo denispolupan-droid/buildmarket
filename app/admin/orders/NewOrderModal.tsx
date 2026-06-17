@@ -11,6 +11,7 @@ import * as XLSX from 'xlsx';
 import dynamic from 'next/dynamic';
 import NovaPoshtaSelect from '../../components/NovaPoshtaSelect';
 import type { OrderDraft, OrderLine } from '../OrderDraftManager';
+import { showConfirm } from '../../../lib/confirm';
 
 const ProductPickerModal = dynamic(() => import('../procurement/ProductPickerModal'), { ssr: false });
 
@@ -692,7 +693,7 @@ export default function NewOrderModal({
       const res = await fetch(`/api/admin/orders/${saved.id}/supplier-order`);
       const data = await res.json();
       if (!data.tracking_number) {
-        const ok = window.confirm('ТТН не створена для цього замовлення. Все одно відправити постачальнику?');
+        const ok = await showConfirm('ТТН не створена для цього замовлення. Все одно відправити постачальнику?');
         if (!ok) { setActionBusy(false); return; }
       }
       setSupplierModal({ orderId: saved.id, supplierName: data.supplier_name ?? '—', emailOverride: data.supplier_email ?? '', comment: '', sending: false });

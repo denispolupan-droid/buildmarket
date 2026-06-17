@@ -17,6 +17,7 @@ type FulfillmentData = OrderFulfillmentInfo & {
 };
 import CreateTTNModal from '../components/admin/CreateTTNModal';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
+import { showConfirm } from '../../lib/confirm';
 import SmartDateInput from '../components/SmartDateInput';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number; is_bonus?: boolean; supplier_sku?: string };
@@ -306,7 +307,7 @@ export default function AdminOrders({
   async function startSupplierSend(orderIds: string[]) {
     const missingTtn = orderIds.some(oid => !orders.find(o => o.id === oid)?.tracking_number);
     if (missingTtn) {
-      const ok = window.confirm('ТТН не створена для цього замовлення. Все одно відправити постачальнику?');
+      const ok = await showConfirm('ТТН не створена для цього замовлення. Все одно відправити постачальнику?');
       if (!ok) return;
     }
     setSupplierQueueLoading(true);

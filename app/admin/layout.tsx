@@ -14,6 +14,7 @@ import OrderDraftManagerLoader from './OrderDraftManagerLoader';
 import StockDocDraftManagerLoader from './StockDocDraftManagerLoader';
 import PageTransition from './PageTransition';
 import ToastProvider from '../components/ToastProvider';
+import ConfirmProvider from '../components/ConfirmProvider';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -47,6 +48,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <OrderDraftManagerLoader />
       <StockDocDraftManagerLoader />
       <ToastProvider />
+      <ConfirmProvider />
     </div>
   );
 }
