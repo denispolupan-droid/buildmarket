@@ -463,8 +463,11 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
     const rowTime = new Date().toISOString();
 
     // ── product_stock (ціни + публічна наявність) ─────────────────────────────
-    // Якщо ціни заблоковані (встановлені при приході) і товар ще є на складі → не перезаписуємо ціни
-    const isPriceLocked = priceLockSet.has(ourSku) && physStockSet.has(ourSku);
+    // price_cost: не перезаписуємо якщо є фізичний залишок — реальна собівартість
+    //             з приходу (avg_cost) точніша за ціну з прайса постачальника
+    const isCostProtected = physStockSet.has(ourSku);
+    // Ціни продажу: не перезаписуємо якщо вручну заблоковані адміном і є залишок
+    const isPriceLocked   = priceLockSet.has(ourSku) && physStockSet.has(ourSku);
 
     const { error } = await supabase
       .from('product_stock')
@@ -473,9 +476,8 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
         stock_qty:    stockQty,
         stock_status: stockStatus,
         updated_at:   rowTime,
-        // Ціни і собівартість перезаписуємо тільки якщо не заблоковані
+        ...(!isCostProtected && { price_cost: parseFloat(priceCost.toFixed(2)) }),
         ...(!isPriceLocked && {
-          price_cost:       parseFloat(priceCost.toFixed(2)),
           price_unit:       priceUnit,
           price_old:        priceOld,
           price_retail:     priceRetail,

@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import type { ReceiptDraft, ReceiptLine } from '../ReceiptDraftManager';
 import ProductPickerModal from './ProductPickerModal';
-import PricingCalculator from './PricingCalculator';
 
 type Warehouse = { id: number; name: string };
 type Supplier  = { id: number; name: string };
@@ -105,8 +104,8 @@ function parseExcel(buffer: ArrayBuffer): { sku: string; name: string; qty: numb
   return result;
 }
 
-// Grid: Артикул | Найменування | Зам. | Факт | Закупка | Роздріб | Опт | Дроп | Сума | 🎁 | ⧉ | Del
-const COLS = '90px 1.5fr 66px 76px 100px 90px 90px 90px 88px 24px 24px 24px';
+// Grid: Артикул | Найменування | Зам. | Факт | Закупка | Сума | 🎁 | ⧉ | Del
+const COLS = '90px 1.5fr 66px 76px 100px 88px 24px 24px 24px';
 
 export default function NewReceiptModal({
   initialData, warehouses, suppliers,
@@ -124,7 +123,7 @@ export default function NewReceiptModal({
   const [supplierInvAmount, setSupplierInvAmount] = useState<number | ''>(initialData.supplierInvAmount ?? '');
   const [notes,             setNotes]             = useState(initialData.notes || '');
   const [lines,             setLines]             = useState<ReceiptLine[]>(
-    initialData.lines?.length ? initialData.lines : [{ sku: '', name: '', qty: 1, cost_price: 0, sale_price: 0, price_wholesale: 0, price_drop: 0, is_bonus: false, matched: false }]
+    initialData.lines?.length ? initialData.lines : [{ sku: '', name: '', qty: 1, cost_price: 0, is_bonus: false, matched: false }]
   );
 
   const [currentDraftReceiptId, setCurrentDraftReceiptId] = useState<string | null>(initialData.draftReceiptId ?? null);
@@ -153,11 +152,6 @@ export default function NewReceiptModal({
   const [parsing,     setParsing]     = useState(false);
   const [saving,      setSaving]      = useState(false);
   const [showPicker,  setShowPicker]  = useState(false);
-
-  // Pricing calculator — три окремі наценки
-  const [markupRetail,    setMarkupRetail]    = useState<number | ''>('');
-  const [markupWholesale, setMarkupWholesale] = useState<number | ''>('');
-  const [markupDrop,      setMarkupDrop]      = useState<number | ''>('');
 
   // Per-row name autocomplete (same pattern as NewPOModal)
   const nameTimers    = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
@@ -240,12 +234,9 @@ export default function NewReceiptModal({
       setLines(prev => prev.map((l, i) => i === idx ? {
         ...l,
         sku:             found.sku,
-        name:            `${found.brand ?? ''} ${found.name ?? ''}`.trim(),
-        cost_price:      found.price_cost      ?? l.cost_price,
-        sale_price:      found.price_unit      ?? l.sale_price,
-        price_wholesale: found.price_wholesale ?? l.price_wholesale,
-        price_drop:      found.price_drop      ?? l.price_drop,
-        matched:         true,
+        name:       `${found.brand ?? ''} ${found.name ?? ''}`.trim(),
+        cost_price: found.price_cost ?? l.cost_price,
+        matched:    true,
       } : l));
     } else {
       setLines(prev => prev.map((l, i) => i === idx ? { ...l, matched: false } : l));
@@ -256,28 +247,24 @@ export default function NewReceiptModal({
   async function resolveLines(raw: { sku: string; name: string; qty: number; price: number }[]): Promise<ReceiptLine[]> {
     if (!raw.length) return [];
     const skus = raw.map(r => r.sku).filter(Boolean);
-    const emptyPrices = { sale_price: 0, price_wholesale: 0, price_drop: 0 };
-    if (!skus.length) return raw.map(r => ({ sku: r.sku, name: r.name, qty: r.qty, cost_price: r.price, ...emptyPrices, is_bonus: false, matched: false }));
+    if (!skus.length) return raw.map(r => ({ sku: r.sku, name: r.name, qty: r.qty, cost_price: r.price, is_bonus: false, matched: false }));
     const res = await fetch('/api/admin/products/search-skus', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ skus }),
     });
-    if (!res.ok) return raw.map(r => ({ sku: r.sku, name: r.name, qty: r.qty, cost_price: r.price, ...emptyPrices, is_bonus: false, matched: false }));
+    if (!res.ok) return raw.map(r => ({ sku: r.sku, name: r.name, qty: r.qty, cost_price: r.price, is_bonus: false, matched: false }));
     const data = await res.json();
-    const byInput = new Map<string, { sku: string; name: string; brand: string; price_cost: number | null; price_unit: number | null; price_wholesale?: number | null; price_drop?: number | null; matched: boolean }>();
+    const byInput = new Map<string, { sku: string; name: string; brand: string; price_cost: number | null; matched: boolean }>();
     for (const p of (data.products ?? [])) byInput.set(p.input_sku, p);
     return raw.map(r => {
       const found = byInput.get(r.sku);
       return {
-        sku:             found?.sku ?? r.sku,
-        name:            found ? `${found.brand ?? ''} ${found.name ?? ''}`.trim() : r.name,
-        qty:             r.qty,
-        cost_price:      found?.price_cost      ?? r.price,
-        sale_price:      found?.price_unit      ?? 0,
-        price_wholesale: found?.price_wholesale ?? 0,
-        price_drop:      found?.price_drop      ?? 0,
-        is_bonus:        false,
-        matched:         found?.matched ?? false,
+        sku:        found?.sku ?? r.sku,
+        name:       found ? `${found.brand ?? ''} ${found.name ?? ''}`.trim() : r.name,
+        qty:        r.qty,
+        cost_price: found?.price_cost ?? r.price,
+        is_bonus:   false,
+        matched:    found?.matched ?? false,
       };
     });
   }
@@ -296,7 +283,7 @@ export default function NewReceiptModal({
   }
 
   function addLine() {
-    setLines(prev => [...prev, { sku: '', name: '', qty: 1, cost_price: 0, sale_price: 0, price_wholesale: 0, price_drop: 0, is_bonus: false, matched: false }]);
+    setLines(prev => [...prev, { sku: '', name: '', qty: 1, cost_price: 0, is_bonus: false, matched: false }]);
   }
 
   function copyLine(idx: number) {
@@ -308,31 +295,9 @@ export default function NewReceiptModal({
       const filtered = prev.filter(l => l.sku.trim() || l.name.trim());
       return [
         ...filtered,
-        ...items.map(item => ({ sku: item.sku, name: item.name, qty: item.qty, cost_price: item.cost_price, sale_price: 0, price_wholesale: 0, price_drop: 0, is_bonus: false, matched: true })),
+        ...items.map(item => ({ sku: item.sku, name: item.name, qty: item.qty, cost_price: item.cost_price, is_bonus: false, matched: true })),
       ];
     });
-  }
-
-  function roundPrice(raw: number) {
-    return raw >= 10 ? Math.ceil(raw) : Math.round(raw * 100) / 100;
-  }
-
-  function applyMarkup() {
-    setLines(prev => prev.map(l => {
-      if (l.is_bonus) return l;
-      return {
-        ...l,
-        ...(markupRetail    !== '' ? { sale_price:      roundPrice(l.cost_price * (1 + Number(markupRetail)    / 100)) } : {}),
-        ...(markupWholesale !== '' ? { price_wholesale: roundPrice(l.cost_price * (1 + Number(markupWholesale) / 100)) } : {}),
-        ...(markupDrop      !== '' ? { price_drop:      roundPrice(l.cost_price * (1 + Number(markupDrop)      / 100)) } : {}),
-      };
-    }));
-  }
-
-  function calcExample(): string {
-    const ex = lines.find(l => !l.is_bonus && l.cost_price > 0);
-    if (!ex || markupRetail === '') return '';
-    return `${fmt(ex.cost_price)} → ${fmt(roundPrice(ex.cost_price * (1 + Number(markupRetail) / 100)))} ₴`;
   }
 
   function toggleBonus(idx: number) {
@@ -383,11 +348,8 @@ export default function NewReceiptModal({
         const res = await fetch(`/api/admin/procurement/${initialData.poId}/receive`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            actualQties:      Object.fromEntries(agg.map(([s, v]) => [s, v.qty])),
-            actualPrices:     Object.fromEntries(agg.map(([s, v]) => [s, v.qty ? v.totalCost / v.qty : 0])),
-            sale_prices:      Object.fromEntries(agg.map(([s, v]) => [s, v.first.sale_price])),
-            wholesale_prices: Object.fromEntries(agg.map(([s, v]) => [s, v.first.price_wholesale])),
-            drop_prices:      Object.fromEntries(agg.map(([s, v]) => [s, v.first.price_drop])),
+            actualQties:  Object.fromEntries(agg.map(([s, v]) => [s, v.qty])),
+            actualPrices: Object.fromEntries(agg.map(([s, v]) => [s, v.qty ? v.totalCost / v.qty : 0])),
             notes:            notes || undefined,
             draft:            !autoConfirm,
             draftReceiptId:   currentDraftReceiptId ?? undefined,
@@ -428,7 +390,7 @@ export default function NewReceiptModal({
           lines: valid.map(l => ({
             sku:        l.sku.trim(),
             qty:        l.qty,
-            price:      l.sale_price,
+            price:      0,
             cost_price: l.is_bonus ? 0 : l.cost_price,
             is_bonus:   l.is_bonus,
             fulfillment_type: 'own',
@@ -554,20 +516,6 @@ export default function NewReceiptModal({
               onChange={e => { const f = e.target.files?.[0]; if (f) processFile(f); e.target.value = ''; }} />
           </div>
 
-          {/* ── Pricing calculator ── */}
-          <PricingCalculator
-            markupRetail={markupRetail}
-            markupWholesale={markupWholesale}
-            markupDrop={markupDrop}
-            onMarkupChange={(field, v) => {
-              if (field === 'retail')    setMarkupRetail(v);
-              if (field === 'wholesale') setMarkupWholesale(v);
-              if (field === 'drop')      setMarkupDrop(v);
-            }}
-            onApply={applyMarkup}
-            example={lines.some(l => !l.is_bonus && l.cost_price > 0) ? calcExample() : ''}
-          />
-
           {unmatchedCount > 0 && (
             <div style={{ padding: '8px 14px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: '#B45309', display: 'flex', gap: '6px', alignItems: 'center' }}>
               <AlertCircle size={13} />
@@ -585,9 +533,6 @@ export default function NewReceiptModal({
               <span style={{ textAlign: 'right', color: '#7C3AED' }}>Зам.</span>
               <span style={{ textAlign: 'right' }} title={initialData.poId ? '0 = не отримано (виключити з приходу)' : undefined}>Факт</span>
               <span style={{ textAlign: 'right' }}>Закупка</span>
-              <span style={{ textAlign: 'right', color: '#1E3A5F' }}>Роздріб</span>
-              <span style={{ textAlign: 'right', color: '#7C3AED' }}>Опт</span>
-              <span style={{ textAlign: 'right', color: '#15803D' }}>Дроп</span>
               <span style={{ textAlign: 'right' }}>Сума</span>
               <span style={{ textAlign: 'center' }} title="Бонусний товар">🎁</span>
               <span /><span />
@@ -676,28 +621,6 @@ export default function NewReceiptModal({
                         disabled={line.is_bonus}
                         onChange={e => setLineField(idx, 'cost_price', parseFloat(e.target.value) || 0)} />
                       <span style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
-                    </div>
-
-                    {/* Роздріб */}
-                    <div style={{ position: 'relative' }}>
-                      <input style={{ ...inp, textAlign: 'right', paddingRight: '16px' }} type="number" min="0" step="0.01"
-                        value={line.sale_price || ''} placeholder="0"
-                        onChange={e => setLineField(idx, 'sale_price', parseFloat(e.target.value) || 0)} />
-                      <span style={{ position: 'absolute', right: '5px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
-                    </div>
-                    {/* Опт */}
-                    <div style={{ position: 'relative' }}>
-                      <input style={{ ...inp, textAlign: 'right', paddingRight: '16px' }} type="number" min="0" step="0.01"
-                        value={line.price_wholesale || ''} placeholder="0"
-                        onChange={e => setLineField(idx, 'price_wholesale', parseFloat(e.target.value) || 0)} />
-                      <span style={{ position: 'absolute', right: '5px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
-                    </div>
-                    {/* Дроп */}
-                    <div style={{ position: 'relative' }}>
-                      <input style={{ ...inp, textAlign: 'right', paddingRight: '16px' }} type="number" min="0" step="0.01"
-                        value={line.price_drop || ''} placeholder="0"
-                        onChange={e => setLineField(idx, 'price_drop', parseFloat(e.target.value) || 0)} />
-                      <span style={{ position: 'absolute', right: '5px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
                     </div>
 
                     {/* Row sum */}

@@ -157,16 +157,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ ok: true, receiptId: receipt.id, draft: true });
   }
 
-  // Confirm receipt → creates FIFO batches, updates stock_balance
+  // Confirm receipt → creates FIFO batches, updates stock_balance avg_cost
   await confirmDocument(receipt.id, user.email ?? 'admin');
 
   // SKUs що надійшли — для перевірки замовлень
-  const receivedSkus = (po.lines ?? [])
-    .filter((l: { sku: string; qty: number }) => {
-      const qty = body.actualQties?.[l.sku];
-      return qty === undefined || (!isNaN(qty) && qty > 0);
-    })
+  const receivedSkus = lines
+    .filter((l: { sku: string; qty: number }) => l.qty > 0)
     .map((l: { sku: string }) => l.sku);
+
+  // Синхронізуємо price_cost ← avg_cost з stock_balance (реальна собівартість з усіма витратами)
+  // Це завжди точніше ніж ціна з прайса постачальника
+  if (receivedSkus.length > 0) {
+    const { data: balances } = await db
+      .from('stock_balance')
+      .select('sku, avg_cost')
+      .in('sku', receivedSkus)
+      .gt('qty_total', 0);
+    if (balances && balances.length > 0) {
+      await Promise.allSettled(balances.map(b =>
+        db.from('product_stock').update({
+          price_cost: parseFloat(Number(b.avg_cost).toFixed(2)),
+        }).eq('sku', b.sku)
+      ));
+    }
+  }
 
   // Update PO procurement_status: 'received' if all items fully received, else 'partially_received'
   const allReceived = (po.lines ?? []).every((l: { sku: string; qty: number }) => {
@@ -211,22 +225,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     );
     await db.rpc('apply_landed_costs', { p_document_id: receipt.id, p_method: lcMethod });
 
-    // After landed costs are distributed, sync product_stock.price_cost to the updated
-    // avg_cost from stock_balance, and lock prices so supplier sync won't overwrite them.
-    const affectedSkus = lines.map((l: { sku: string }) => l.sku);
-    const { data: updatedBalances } = await db
-      .from('stock_balance')
-      .select('sku, avg_cost')
-      .in('sku', affectedSkus);
-    if (updatedBalances && updatedBalances.length > 0) {
-      await Promise.allSettled(updatedBalances.map(b =>
-        db.from('product_stock').update({
-          price_cost:  parseFloat(Number(b.avg_cost).toFixed(2)),
-          price_locked: true,
-        }).eq('sku', b.sku)
-      ));
-    }
-
     for (const cost of activeCosts) {
       const accountType = expenseAccountMap[cost.cost_type] ?? 'opex';
       const payMethod   = cost.payment_method === 'cash' ? 'cash' : 'bank';
@@ -259,26 +257,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         created_by:     user.email,
       });
     }
-  }
-
-  // Якщо вказані ціни продажу — фіксуємо їх в product_stock і блокуємо від перезапису синком
-  const skusWithPrices = [...new Set([
-    ...Object.keys(body.sale_prices      ?? {}).filter(s => (body.sale_prices![s]      ?? 0) > 0),
-    ...Object.keys(body.wholesale_prices ?? {}).filter(s => (body.wholesale_prices![s] ?? 0) > 0),
-    ...Object.keys(body.drop_prices      ?? {}).filter(s => (body.drop_prices![s]      ?? 0) > 0),
-  ])];
-
-  if (skusWithPrices.length > 0) {
-    await Promise.allSettled(skusWithPrices.map(sku => {
-      const retail    = body.sale_prices?.[sku]      ?? 0;
-      const wholesale = body.wholesale_prices?.[sku] ?? 0;
-      const drop      = body.drop_prices?.[sku]      ?? 0;
-      const row: Record<string, unknown> = { sku, price_locked: true };
-      if (retail    > 0) row.price_retail = retail;
-      if (wholesale > 0) row.price_unit   = wholesale;
-      if (drop      > 0) row.price_drop   = drop;
-      return db.from('product_stock').upsert(row, { onConflict: 'sku' });
-    }));
   }
 
   return NextResponse.json({ ok: true, receiptId: receipt.id, draft: false });
