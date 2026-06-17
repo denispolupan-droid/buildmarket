@@ -26,7 +26,12 @@ export async function POST(req: NextRequest) {
     const doc = await createDocument({ ...input as CreateDocumentInput, created_by: user.email ?? 'admin' });
     return NextResponse.json(doc);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
+    const message = err instanceof Error
+      ? err.message
+      : (err && typeof err === 'object' && 'message' in err)
+        ? String((err as { message: unknown }).message)
+        : JSON.stringify(err);
+    console.error('[accounting/documents]', err);
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
