@@ -436,13 +436,13 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
       ? findPromo(ourSku, brand)
       : null; // якщо є фіксована ціна — акція не застосовується
 
-    let priceRetail = baseRetail, priceRetailOld: number | null = null;
-    let priceUnit   = baseUnit,   priceOld: number | null = null;
+    let priceRetail = Math.max(baseRetail, baseUnit), priceRetailOld: number | null = null;
+    let priceUnit   = baseUnit,                       priceOld: number | null = null;
     let priceDrop   = baseDrop;
 
     if (promo) {
       if (promo.apply_retail) {
-        [priceRetail, priceRetailOld] = applyPromo(baseRetail, promo, roundFloor);
+        [priceRetail, priceRetailOld] = applyPromo(priceRetail, promo, roundFloor);
       }
       if (promo.apply_wholesale) {
         [priceUnit, priceOld] = applyPromo(baseUnit, promo, roundHalf);

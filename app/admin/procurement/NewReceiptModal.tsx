@@ -45,11 +45,16 @@ function fmt(n: number) {
   return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// ── Excel parsing (same as NewPOModal) ────────────────────────────────────────
+// ── Excel parsing ─────────────────────────────────────────────────────────────
+// Normalize: lowercase, strip separators, Ukrainian і/І → ASCII i (1C uses ASCII i in Cyrillic words)
+function normalizeKw(s: string): string {
+  return s.toLowerCase().replace(/[\s_\-\.]/g, '').replace(/[іІ]/g, 'i');
+}
 function detectCol(headers: string[], keys: string[]): number {
-  const lowers = headers.map(h => h.toLowerCase().replace(/[\s_\-\.]/g, ''));
+  const lowers = headers.map(h => normalizeKw(h));
   for (const k of keys) {
-    const idx = lowers.findIndex(h => h.includes(k));
+    const nk = normalizeKw(k);
+    const idx = lowers.findIndex(h => h.includes(nk));
     if (idx >= 0) return idx;
   }
   return -1;
@@ -59,15 +64,32 @@ function parseExcel(buffer: ArrayBuffer): { sku: string; name: string; qty: numb
   const ws   = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, defval: '' }) as string[][];
   if (rows.length < 2) return [];
-  let headerIdx = 0;
-  for (let i = 0; i < Math.min(5, rows.length); i++) {
-    if (rows[i].filter(Boolean).length >= 2) { headerIdx = i; break; }
+
+  // Scan up to 30 rows for a keyword header (handles 1C invoices with many metadata rows)
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(30, rows.length); i++) {
+    if (rows[i].filter(Boolean).length < 2) continue;
+    const h = rows[i].map(String);
+    const hasSku   = detectCol(h, ['sku','код','арт','code','article']) >= 0;
+    const hasName  = detectCol(h, ['назв','name','товар','найменув','опис','description']) >= 0;
+    const hasQty   = detectCol(h, ['кіл','qty','кол','кількість','количество','amount','count']) >= 0;
+    const hasPrice = detectCol(h, ['цін','price','ціна','вартість','cost','прайс']) >= 0;
+    if ((hasSku || hasName) && (hasQty || hasPrice)) { headerIdx = i; break; }
   }
+  // Fallback: first row with enough cells
+  if (headerIdx < 0) {
+    for (let i = 0; i < Math.min(30, rows.length); i++) {
+      if (rows[i].filter(Boolean).length >= 2) { headerIdx = i; break; }
+    }
+  }
+  if (headerIdx < 0) return [];
+
   const headers = rows[headerIdx].map(String);
   const skuCol   = detectCol(headers, ['sku','код','арт','code','article']);
   const nameCol  = detectCol(headers, ['назв','name','товар','найменув','опис','description']);
-  const qtyCol   = detectCol(headers, ['кіл','qty','кол','количество','amount','count']);
+  const qtyCol   = detectCol(headers, ['кіл','qty','кол','кількість','количество','amount','count']);
   const priceCol = detectCol(headers, ['цін','price','ціна','вартість','cost','прайс']);
+
   const result: { sku: string; name: string; qty: number; price: number }[] = [];
   for (let i = headerIdx + 1; i < rows.length; i++) {
     const row = rows[i];

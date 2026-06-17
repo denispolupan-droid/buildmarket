@@ -516,11 +516,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
-          <div>
-            <label style={labelStyle}>Залишок на складі</label>
-            <input type="number" value={stockQty} onChange={e => setStockQty(Number(e.target.value))} style={inputStyle} min={0} />
-          </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div>
             <label style={labelStyle}>Статус наявності</label>
             <select value={stockStatus} onChange={e => setStockStatus(e.target.value as 'in_stock' | 'out_of_stock' | 'on_order')} style={inputStyle}>

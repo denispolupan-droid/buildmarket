@@ -29,11 +29,15 @@ const sinp: React.CSSProperties = {
   color: 'var(--text-primary)', background: 'var(--bg-soft)', width: '100%',
 };
 
-// Flexible header detection
+// Ukrainian і/І (U+0456/U+0406) → ASCII i — 1C outputs ASCII i in Cyrillic column names
+function normalizeKw(s: string): string {
+  return s.toLowerCase().replace(/[\s_\-\.]/g, '').replace(/[іІ]/g, 'i');
+}
 function detectCol(headers: string[], keys: string[]): number {
-  const lowers = headers.map(h => h.toLowerCase().replace(/[\s_\-\.]/g, ''));
+  const lowers = headers.map(h => normalizeKw(h));
   for (const k of keys) {
-    const idx = lowers.findIndex(h => h.includes(k));
+    const nk = normalizeKw(k);
+    const idx = lowers.findIndex(h => h.includes(nk));
     if (idx >= 0) return idx;
   }
   return -1;
@@ -49,14 +53,14 @@ function parseExcel(buffer: ArrayBuffer): { sku: string; name: string; qty: numb
 
   if (rows.length < 1) return [];
 
-  // 1. Try to find a keyword header row (e.g. files with metadata rows before actual headers)
+  // 1. Try to find a keyword header row (scan up to 30 rows — 1C invoices have many metadata rows)
   let headerIdx = -1;
-  for (let i = 0; i < Math.min(12, rows.length); i++) {
+  for (let i = 0; i < Math.min(30, rows.length); i++) {
     if (rows[i].filter(Boolean).length < 2) continue;
     const h = rows[i].map(String);
     const hasSku   = detectCol(h, ['sku','код','арт','code','article']) >= 0;
     const hasName  = detectCol(h, ['назв','name','товар','найменув','опис','description']) >= 0;
-    const hasQty   = detectCol(h, ['кіл','qty','кол','количество','amount','count']) >= 0;
+    const hasQty   = detectCol(h, ['кіл','qty','кол','кількість','количество','amount','count']) >= 0;
     const hasPrice = detectCol(h, ['цін','price','ціна','вартість','cost','прайс']) >= 0;
     if ((hasSku || hasName) && (hasQty || hasPrice)) { headerIdx = i; break; }
   }
@@ -64,7 +68,7 @@ function parseExcel(buffer: ArrayBuffer): { sku: string; name: string; qty: numb
   // 2. No keyword header → positional detection from first row with enough cells
   const positional = headerIdx < 0;
   if (positional) {
-    for (let i = 0; i < Math.min(12, rows.length); i++) {
+    for (let i = 0; i < Math.min(30, rows.length); i++) {
       if (rows[i].filter(Boolean).length >= 2) { headerIdx = i; break; }
     }
   }
