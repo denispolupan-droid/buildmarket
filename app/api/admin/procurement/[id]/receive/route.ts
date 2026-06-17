@@ -99,14 +99,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // Create receipt document
-  const lines = (po.lines ?? []).map((l: { sku: string; qty: number; cost_price: number; supplier_id: number; warehouse_id: number }) => {
+  // Step 1: lines from PO
+  type PoLine = { sku: string; qty: number; cost_price: number; supplier_id: number; warehouse_id: number };
+  const poSkus = new Set((po.lines ?? []).map((l: PoLine) => l.sku));
+  const lines = (po.lines ?? []).map((l: PoLine) => {
     const actualQty   = body.actualQties?.[l.sku];
     const actualPrice = body.actualPrices?.[l.sku];
-    // Guard against NaN (empty input fields send NaN via parseFloat(''))
+    // Guard against NaN only — allow 0 explicitly (gift/bonus items have price 0)
     const qty        = (actualQty  !== undefined && !isNaN(actualQty))  ? actualQty  : l.qty;
-    const cost_price = (actualPrice !== undefined && !isNaN(actualPrice) && actualPrice > 0)
-      ? actualPrice
-      : (l.cost_price ?? 0);
+    const cost_price = (actualPrice !== undefined && !isNaN(actualPrice))
+      ? actualPrice          // respect 0 for bonus items
+      : (l.cost_price ?? 0); // undefined/NaN → fall back to PO price
     return {
       sku:              l.sku,
       qty,
@@ -114,9 +117,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       cost_price,
       fulfillment_type: 'own' as const,
       warehouse_id:     l.warehouse_id ?? po.warehouse_id,
-      supplier_id:      l.supplier_id ?? po.supplier_id,
+      supplier_id:      l.supplier_id  ?? po.supplier_id,
     };
   });
+
+  // Step 2: extra bonus items NOT in PO (added manually in receipt form)
+  for (const sku of Object.keys(body.actualQties ?? {})) {
+    if (poSkus.has(sku)) continue; // already handled above
+    const qty   = body.actualQties![sku];
+    const price = body.actualPrices?.[sku] ?? 0;
+    if (!qty || isNaN(qty) || qty <= 0) continue;
+    lines.push({
+      sku,
+      qty,
+      price:            body.sale_prices?.[sku] ?? 0,
+      cost_price:       isNaN(price) ? 0 : price,
+      fulfillment_type: 'own' as const,
+      warehouse_id:     po.warehouse_id,
+      supplier_id:      po.supplier_id,
+    });
+  }
 
   const receipt = await createDocument({
     doc_type:     'receipt',
