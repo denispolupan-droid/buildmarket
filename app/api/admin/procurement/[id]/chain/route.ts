@@ -61,16 +61,25 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         .order('created_at')
     : { data: [] };
 
-  // 6. Продажі пов'язані через order_id (якщо PO пов'язаний із замовленням)
-  const { data: orderDocs } = po.order_id ? await db
-    .from('acc_documents')
-    .select('id, doc_number, doc_type, doc_date, total_amount, total_cost, order_id')
-    .eq('order_id', po.order_id)
-    .neq('id', id)
-    : { data: [] };
+  // 6. Продажі + замовлення покупця пов'язані через order_id
+  const [{ data: orderDocs }, { data: customerOrder }] = await Promise.all([
+    po.order_id ? db
+      .from('acc_documents')
+      .select('id, doc_number, doc_type, doc_date, total_amount, total_cost, order_id')
+      .eq('order_id', po.order_id)
+      .neq('id', id)
+      : { data: [] },
+    po.order_id ? db
+      .from('orders')
+      .select('id, order_number, status, total_price, created_at, contact, company')
+      .eq('id', po.order_id)
+      .single()
+      : { data: null },
+  ]);
 
   return NextResponse.json({
     po,
+    customerOrder: customerOrder ?? null,
     children:     children,
     adjustments:  adjustments,
     adjLines:     adjLines ?? [],

@@ -8,6 +8,7 @@ type LandedCostLine = { document_id: string; cost_type: string; description: str
 
 type ChainData = {
   po: { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; total_cost: number | null; procurement_status: string | null; notes: string | null };
+  customerOrder: { id: string; order_number: number; status: string; total_price: number | null; created_at: string; contact: string | null; company: string | null } | null;
   children:     { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; total_cost: number | null; notes: string | null }[];
   adjustments:  { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; notes: string | null }[];
   adjLines:     { document_id: string; sku: string; qty: number; cost_price: number | null }[];
@@ -120,14 +121,22 @@ export default function DocChain({ poId }: { poId: string }) {
 
               {data && (
                 <>
+                  {/* Замовлення покупця — якщо PO пов'язаний із customer order */}
+                  {data.customerOrder && (
+                    <TimelineNode
+                      icon="🛒"
+                      title={`Замовлення покупця #${data.customerOrder.order_number}`}
+                      sub={`${fmtDate(data.customerOrder.created_at)}${data.customerOrder.company ? ` · ${data.customerOrder.company}` : data.customerOrder.contact ? ` · ${data.customerOrder.contact}` : ''}`}
+                      amount={data.customerOrder.total_price ? `${fmt(Number(data.customerOrder.total_price))} ₴` : undefined}
+                      amountColor="#1E3A5F"
+                      href={`/admin?expand=${data.customerOrder.id}`}
+                    />
+                  )}
+
                   {/* PO */}
                   <TimelineNode
                     icon={data.po.status === 'cancelled' ? '🚫' : '📋'}
-                    title={
-                      data.po.status === 'cancelled'
-                        ? `${data.po.doc_number} — Замовлення постачальнику`
-                        : `${data.po.doc_number} — Замовлення постачальнику`
-                    }
+                    title={`${data.po.doc_number} — Замовлення постачальнику`}
                     sub={`${fmtDate(data.po.doc_date)}${data.po.notes ? ` · ${data.po.notes}` : ''}${data.po.status === 'cancelled' ? ' · Скасовано' : ''}`}
                     amount={data.po.total_cost ? `${fmt(Number(data.po.total_cost))} ₴` : undefined}
                     amountColor={data.po.status === 'cancelled' ? '#9CA3AF' : '#374151'}
