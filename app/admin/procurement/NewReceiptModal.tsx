@@ -369,14 +369,25 @@ export default function NewReceiptModal({
     try {
       // ── PO-linked receipt ──────────────────────────────────────────────────
       if (initialData.poId) {
+        // Aggregate duplicate SKUs: sum qty, weighted avg cost (bonus lines at 0 reduce avg)
+        type Agg = { qty: number; totalCost: number; first: typeof valid[0] };
+        const skuAgg = new Map<string, Agg>();
+        for (const l of valid) {
+          const sku  = l.sku.trim();
+          const cost = l.is_bonus ? 0 : l.cost_price;
+          const ex   = skuAgg.get(sku);
+          if (ex) { ex.qty += l.qty; ex.totalCost += l.qty * cost; }
+          else     skuAgg.set(sku, { qty: l.qty, totalCost: l.qty * cost, first: l });
+        }
+        const agg = [...skuAgg.entries()];
         const res = await fetch(`/api/admin/procurement/${initialData.poId}/receive`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            actualQties:      Object.fromEntries(valid.map(l => [l.sku.trim(), l.qty])),
-            actualPrices:     Object.fromEntries(valid.map(l => [l.sku.trim(), l.is_bonus ? 0 : l.cost_price])),
-            sale_prices:      Object.fromEntries(valid.map(l => [l.sku.trim(), l.sale_price])),
-            wholesale_prices: Object.fromEntries(valid.map(l => [l.sku.trim(), l.price_wholesale])),
-            drop_prices:      Object.fromEntries(valid.map(l => [l.sku.trim(), l.price_drop])),
+            actualQties:      Object.fromEntries(agg.map(([s, v]) => [s, v.qty])),
+            actualPrices:     Object.fromEntries(agg.map(([s, v]) => [s, v.qty ? v.totalCost / v.qty : 0])),
+            sale_prices:      Object.fromEntries(agg.map(([s, v]) => [s, v.first.sale_price])),
+            wholesale_prices: Object.fromEntries(agg.map(([s, v]) => [s, v.first.price_wholesale])),
+            drop_prices:      Object.fromEntries(agg.map(([s, v]) => [s, v.first.price_drop])),
             notes:            notes || undefined,
             draft:            !autoConfirm,
             draftReceiptId:   currentDraftReceiptId ?? undefined,
