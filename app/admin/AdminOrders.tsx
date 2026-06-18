@@ -148,6 +148,9 @@ export default function AdminOrders({
   const [sourceOverrides, setSourceOverrides] = useState<Record<string, Record<string, 'own' | 'dropship'>>>({});
   const [shipping,     setShipping]     = useState<string | null>(null);
   const [saleDocMap,   setSaleDocMap]   = useState<Record<string, { id: string; number: string }>>({});
+  const [editDeliveryId,   setEditDeliveryId]   = useState<string | null>(null);
+  const [editDeliveryForm, setEditDeliveryForm] = useState<{ type: string; subtype: string; cityName: string; address: string }>({ type: '', subtype: '', cityName: '', address: '' });
+  const [savingDelivery,   setSavingDelivery]   = useState(false);
   const [reserving, setReserving] = useState<string | null>(null);
   const [selectedMode, setSelectedMode] = useState<Record<string, 'supplier' | 'own' | 'mixed'>>({});
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -520,6 +523,43 @@ export default function AdminOrders({
       setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
     }
     setLoading(null);
+  }
+
+  function openEditDelivery(order: Order) {
+    setEditDeliveryForm({
+      type:     order.delivery_type ?? 'nova',
+      subtype:  order.delivery_subtype ?? 'warehouse',
+      cityName: order.delivery_city_name ?? '',
+      address:  order.delivery_address ?? '',
+    });
+    setEditDeliveryId(order.id);
+  }
+
+  async function saveDelivery(orderId: string) {
+    setSavingDelivery(true);
+    const f = editDeliveryForm;
+    const body: Record<string, unknown> = {
+      delivery_type:    f.type,
+      delivery_subtype: f.type === 'nova' ? f.subtype : null,
+      delivery_city_name: f.type === 'nova' ? f.cityName || null : null,
+      delivery_address:   f.type === 'nova' ? f.address || null : (f.type === 'kharkiv' ? f.address || null : null),
+    };
+    const res = await fetch(`/api/admin/orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      setOrders(prev => prev.map(o => o.id === orderId ? {
+        ...o,
+        delivery_type:    f.type,
+        delivery_subtype: f.type === 'nova' ? f.subtype : null,
+        delivery_city_name: f.type === 'nova' ? f.cityName || null : null,
+        delivery_address:   f.address || null,
+      } : o));
+      setEditDeliveryId(null);
+    }
+    setSavingDelivery(false);
   }
 
   async function autoShipDropship(orderId: string) {
@@ -1538,10 +1578,70 @@ export default function AdminOrders({
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px', fontSize: '13px', color: 'var(--text-primary)' }}>
-                        <MapPin size={13} color="#64748B" style={{ flexShrink: 0, marginTop: '2px' }} />
-                        <span>{delivery}{subtype}{order.delivery_city_name && <strong> · {order.delivery_city_name}</strong>}{order.delivery_address && ` · ${order.delivery_address}`}</span>
-                      </div>
+                      {editDeliveryId === order.id ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                          <select
+                            value={editDeliveryForm.type}
+                            onChange={e => setEditDeliveryForm(p => ({ ...p, type: e.target.value, cityName: '', address: '' }))}
+                            style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 6px' }}>
+                            <option value="nova">Нова Пошта</option>
+                            <option value="pickup">Самовивіз</option>
+                            <option value="kharkiv">Харків і область</option>
+                          </select>
+                          {editDeliveryForm.type === 'nova' && (
+                            <>
+                              <select
+                                value={editDeliveryForm.subtype}
+                                onChange={e => setEditDeliveryForm(p => ({ ...p, subtype: e.target.value }))}
+                                style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 6px' }}>
+                                <option value="warehouse">Відділення</option>
+                                <option value="courier">Кур'єр</option>
+                              </select>
+                              <input
+                                value={editDeliveryForm.cityName}
+                                onChange={e => setEditDeliveryForm(p => ({ ...p, cityName: e.target.value }))}
+                                placeholder="Місто"
+                                style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 8px' }} />
+                              <input
+                                value={editDeliveryForm.address}
+                                onChange={e => setEditDeliveryForm(p => ({ ...p, address: e.target.value }))}
+                                placeholder="Відділення або адреса"
+                                style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 8px' }} />
+                            </>
+                          )}
+                          {editDeliveryForm.type === 'kharkiv' && (
+                            <input
+                              value={editDeliveryForm.address}
+                              onChange={e => setEditDeliveryForm(p => ({ ...p, address: e.target.value }))}
+                              placeholder="Адреса доставки"
+                              style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 8px' }} />
+                          )}
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button
+                              onClick={() => saveDelivery(order.id)}
+                              disabled={savingDelivery}
+                              style={{ height: '28px', padding: '0 12px', borderRadius: '6px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                              {savingDelivery ? '...' : 'Зберегти'}
+                            </button>
+                            <button
+                              onClick={() => setEditDeliveryId(null)}
+                              style={{ height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', fontSize: '12px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                              Скасувати
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px', fontSize: '13px', color: 'var(--text-primary)' }}>
+                          <MapPin size={13} color="#64748B" style={{ flexShrink: 0, marginTop: '2px' }} />
+                          <span>{delivery}{subtype}{order.delivery_city_name && <strong> · {order.delivery_city_name}</strong>}{order.delivery_address && ` · ${order.delivery_address}`}</span>
+                          <button
+                            onClick={() => openEditDelivery(order)}
+                            title="Змінити доставку"
+                            style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1 }}>
+                            <Pencil size={11} />
+                          </button>
+                        </div>
+                      )}
 
                       {isCod ? (
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
@@ -1941,7 +2041,7 @@ export default function AdminOrders({
                                     <button
                                       onClick={() => shipOrder(order.id)}
                                       disabled={shipping === order.id || !!loading}
-                                      style={{ ...btnPrimary, background: '#15803D', opacity: (shipping === order.id || !!loading) ? 0.6 : 1 }}>
+                                      style={{ ...btn, background: '#DCFCE7', color: '#166534', border: '1.5px solid #86EFAC', opacity: (shipping === order.id || !!loading) ? 0.6 : 1 }}>
                                       <Truck size={13} /> {shipping === order.id ? 'Створення...' : 'Відвантажити'}
                                     </button>
                                     {order.fulfillment_mode === 'supplier' && !order.tracking_number && (

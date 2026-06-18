@@ -19,7 +19,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { status, tracking_number, tracking_ref, payment_confirmed, callback_done, supplier_confirmed, items: bodyItems, total_price: bodyTotalPrice } = body;
+  const {
+    status, tracking_number, tracking_ref,
+    payment_confirmed, callback_done, supplier_confirmed,
+    items: bodyItems, total_price: bodyTotalPrice,
+    delivery_type, delivery_subtype, delivery_city_name, delivery_address,
+  } = body;
 
   const db = createServiceClient();
   const update: Record<string, unknown> = {};
@@ -69,8 +74,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (payment_confirmed  !== undefined) update.payment_confirmed  = payment_confirmed;
   if (callback_done      !== undefined) update.callback_done      = callback_done;
   if (supplier_confirmed !== undefined) update.supplier_confirmed = supplier_confirmed;
-  if (bodyItems !== undefined) update.items = bodyItems;
-  if (bodyTotalPrice !== undefined) update.total_price = bodyTotalPrice;
+  if (bodyItems !== undefined)          update.items              = bodyItems;
+  if (bodyTotalPrice !== undefined)     update.total_price         = bodyTotalPrice;
+  if (delivery_type !== undefined)      update.delivery_type       = delivery_type;
+  if (delivery_subtype !== undefined)   update.delivery_subtype    = delivery_subtype;
+  if (delivery_city_name !== undefined) update.delivery_city_name  = delivery_city_name;
+  if (delivery_address !== undefined)   update.delivery_address    = delivery_address;
 
   const { error } = await db.from('orders').update(update).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
