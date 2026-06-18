@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { recordDropshipSale } from '../../../../../../lib/accounting/dropship';
+import { confirmDocument } from '../../../../../../lib/accounting/documents';
 
 export async function POST(
   _req: NextRequest,
@@ -33,24 +34,39 @@ export async function POST(
     );
   }
 
-  // Idempotency: if sale doc already exists, just update status
+  // Idempotency: if sale doc already exists — confirm draft if needed, then ship
   const { data: existingSale } = await db
     .from('acc_documents')
-    .select('id, doc_number')
+    .select('id, doc_number, status')
     .eq('order_id', id)
     .eq('doc_type', 'sale')
     .neq('status', 'cancelled')
     .maybeSingle();
 
   if (existingSale) {
+    if (existingSale.status === 'draft') {
+      // Previous attempt created the doc but failed to confirm (e.g. reservation not yet released).
+      // confirmDocument now releases reservation before FIFO, so retry is safe.
+      try {
+        await confirmDocument(existingSale.id, user.email ?? 'admin');
+      } catch (err) {
+        console.error('[ship] re-confirm draft failed:', err);
+        return NextResponse.json(
+          { error: `Не вдалося провести ВН (чернетка): ${err instanceof Error ? err.message : String(err)}` },
+          { status: 500 },
+        );
+      }
+    }
     await db.from('orders').update({
       status: 'shipped',
       shipped_at: new Date().toISOString(),
     }).eq('id', id);
+    const { data: updatedDoc } = await db
+      .from('acc_documents').select('doc_number').eq('id', existingSale.id).single();
     return NextResponse.json({
       ok: true,
       sale_doc_id: existingSale.id,
-      sale_doc_number: existingSale.doc_number,
+      sale_doc_number: updatedDoc?.doc_number ?? existingSale.doc_number,
       status: 'shipped',
     });
   }

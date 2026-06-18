@@ -148,6 +148,17 @@ export async function confirmDocument(
     }
   }
 
+  // Для продажів: знімаємо резерв ДО consume_stock_fifo.
+  // qty_available = qty_total - qty_reserved; якщо резерв не знятий — FIFO-функція
+  // не знайде доступного залишку і кине помилку.
+  if (doc.doc_type === 'sale' && !doc.reversal_of && doc.order_id) {
+    try {
+      await releaseReservation(doc.order_id, 'shipped');
+    } catch {
+      // Резерву може не бути (дропшип, повторний виклик) — не критично
+    }
+  }
+
   // Idempotency: якщо рухи вже є — пропускаємо їх побудову
   const { count: existingMoves } = await db
     .from('stock_movements')
@@ -267,9 +278,6 @@ export async function confirmDocument(
           createdBy:      confirmedBy,
           idempotencyKey: `cogs:${documentId}`,
         });
-      }
-      if (doc.order_id) {
-        await releaseReservation(doc.order_id, 'shipped');
       }
     }
 
