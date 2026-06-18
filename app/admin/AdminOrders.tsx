@@ -522,6 +522,17 @@ export default function AdminOrders({
     setLoading(null);
   }
 
+  async function autoShipDropship(orderId: string) {
+    const res = await fetch(`/api/admin/orders/${orderId}/ship`, { method: 'POST' });
+    if (res.ok) {
+      const data = await res.json();
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped' } : o));
+      if (data.sale_doc_id) {
+        setSaleDocMap(prev => ({ ...prev, [orderId]: { id: data.sale_doc_id, number: data.sale_doc_number ?? '' } }));
+      }
+    }
+  }
+
   async function shipOrder(orderId: string) {
     const ok = await showConfirm('Відвантажити замовлення та створити видаткову накладну?', {
       confirmLabel: 'Відвантажити',
@@ -647,6 +658,10 @@ export default function AdminOrders({
     });
     if (res.ok) {
       setOrders(prev => prev.map(o => o.id === id ? { ...o, tracking_number: ttnValues[id] || null } : o));
+      const order = orders.find(o => o.id === id);
+      if (order?.fulfillment_mode === 'supplier' && ttnValues[id]) {
+        await autoShipDropship(id);
+      }
     }
     setTtnSaving(null);
   }
@@ -1922,22 +1937,28 @@ export default function AdminOrders({
                                   </button>
                                 )}
                                 {(order.status === 'confirmed' || order.status === 'awaiting_stock' || order.status === 'picking') && (
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    <button
-                                      onClick={() => shipOrder(order.id)}
-                                      disabled={shipping === order.id || !!loading}
-                                      style={{ ...btnPrimary, background: '#15803D', opacity: (shipping === order.id || !!loading) ? 0.6 : 1 }}>
-                                      <Truck size={13} /> {shipping === order.id ? 'Створення...' : 'Відвантажити'}
-                                    </button>
-                                    {saleDocMap[order.id] && (
-                                      <a
-                                        href={`/vydatkova/${saleDocMap[order.id].id}`}
-                                        target="_blank"
-                                        style={{ fontSize: '11px', color: '#1E3A5F', fontWeight: 600, textDecoration: 'none', textAlign: 'center', padding: '3px 0' }}>
-                                        📄 {saleDocMap[order.id].number}
-                                      </a>
-                                    )}
-                                  </div>
+                                  order.fulfillment_mode === 'supplier' ? (
+                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', padding: '5px 8px', background: 'var(--bg-soft)', borderRadius: '6px', textAlign: 'center' }}>
+                                      🚚 Відвантаження — авто при створенні ТТН
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                      <button
+                                        onClick={() => shipOrder(order.id)}
+                                        disabled={shipping === order.id || !!loading}
+                                        style={{ ...btnPrimary, background: '#15803D', opacity: (shipping === order.id || !!loading) ? 0.6 : 1 }}>
+                                        <Truck size={13} /> {shipping === order.id ? 'Створення...' : 'Відвантажити'}
+                                      </button>
+                                      {saleDocMap[order.id] && (
+                                        <a
+                                          href={`/vydatkova/${saleDocMap[order.id].id}`}
+                                          target="_blank"
+                                          style={{ fontSize: '11px', color: '#1E3A5F', fontWeight: 600, textDecoration: 'none', textAlign: 'center', padding: '3px 0' }}>
+                                          📄 {saleDocMap[order.id].number}
+                                        </a>
+                                      )}
+                                    </div>
+                                  )
                                 )}
                                 {order.status === 'awaiting_stock' && (() => {
                                   const pos = linkedPOs[order.id] ?? [];
@@ -2308,12 +2329,13 @@ export default function AdminOrders({
             delivery_subtype: ttnModalOrder.delivery_subtype,
           }}
           onClose={() => setTtnModalOrder(null)}
-          onCreated={ttn => {
-            setTtnValues(prev => ({ ...prev, [ttnModalOrder.id]: ttn }));
-            setOrders(prev => prev.map(o =>
-              o.id === ttnModalOrder.id ? { ...o, tracking_number: ttn } : o
-            ));
+          onCreated={async (ttn) => {
+            const orderId    = ttnModalOrder.id;
+            const isSupplier = ttnModalOrder.fulfillment_mode === 'supplier';
+            setTtnValues(prev => ({ ...prev, [orderId]: ttn }));
+            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, tracking_number: ttn } : o));
             setTtnModalOrder(null);
+            if (isSupplier) await autoShipDropship(orderId);
           }}
         />
       )}

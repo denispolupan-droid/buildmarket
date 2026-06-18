@@ -16,7 +16,7 @@
  */
 
 import { createServiceClient } from '../supabase';
-import { recordShipment, recordCOGS } from './money';
+import { recordShipment, recordCOGS, recordTxn } from './money';
 import { createDocument, confirmDocument } from './documents';
 import { resolveOrderFulfillment } from './fulfillment';
 import type { OrderItem } from '../../types';
@@ -285,6 +285,38 @@ export async function recordDropshipSale(
       idempotencyKey: `cogs:${input.order_id}:${doc.id}`,
     });
   }
+
+  // Борг перед постачальниками за дропшип-рядки
+  // Дебет inventory_asset / Кредит supplier — товар перейшов від постач. до клієнта транзитом
+  const dropshipGroups = new Map<string, number>(); // supplierId → total cost
+  for (const src of plan.items) {
+    if (src.fulfillment_type !== 'dropship') continue;
+    const supplierId = String(src.supplier_id ?? supplierMap.get(src.sku) ?? '');
+    if (!supplierId || supplierId === 'null' || supplierId === 'undefined') continue;
+    const orderItem = input.order_items.find(i => i.sku === src.sku);
+    if (!orderItem) continue;
+    const cost = (costMap.get(src.sku) ?? 0) * orderItem.qty;
+    if (cost <= 0) continue;
+    dropshipGroups.set(supplierId, (dropshipGroups.get(supplierId) ?? 0) + cost);
+  }
+
+  await Promise.allSettled(
+    [...dropshipGroups.entries()].map(([supplierId, amount]) =>
+      recordTxn({
+        debitAccount:   'inventory_asset',
+        creditAccount:  'supplier',
+        creditParty:    supplierId,
+        amount,
+        businessDate:   input.business_date,
+        docId:          doc.id,
+        docType:        'sale',
+        orderId:        input.order_id,
+        description:    `Дропшип: борг перед постачальником (замовлення #${input.order_number})`,
+        idempotencyKey: `dropship-payable:${input.order_id}:${supplierId}`,
+        createdBy:      input.confirmed_by,
+      }),
+    ),
+  );
 
   return doc.id;
 }
