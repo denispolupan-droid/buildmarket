@@ -18,6 +18,7 @@ type FulfillmentData = OrderFulfillmentInfo & {
 import CreateTTNModal from '../components/admin/CreateTTNModal';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { showConfirm } from '../../lib/confirm';
+import { showToast } from '../../lib/toast';
 import SmartDateInput from '../components/SmartDateInput';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number; is_bonus?: boolean; supplier_sku?: string };
@@ -564,12 +565,17 @@ export default function AdminOrders({
 
   async function autoShipDropship(orderId: string) {
     const res = await fetch(`/api/admin/orders/${orderId}/ship`, { method: 'POST' });
+    const data = await res.json();
     if (res.ok) {
-      const data = await res.json();
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped' } : o));
       if (data.sale_doc_id) {
         setSaleDocMap(prev => ({ ...prev, [orderId]: { id: data.sale_doc_id, number: data.sale_doc_number ?? '' } }));
+        showToast(`Відвантажено · ${data.sale_doc_number ?? 'ВН створено'}`, 'success', 5000);
+      } else {
+        showToast('Відвантажено', 'success');
       }
+    } else {
+      showToast(data.error ?? 'Помилка відвантаження', 'error');
     }
   }
 
@@ -587,9 +593,12 @@ export default function AdminOrders({
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped' } : o));
         if (data.sale_doc_id) {
           setSaleDocMap(prev => ({ ...prev, [orderId]: { id: data.sale_doc_id, number: data.sale_doc_number ?? '' } }));
+          showToast(`✅ Відвантажено · ${data.sale_doc_number} · Відкрити`, 'success', 6000);
+        } else {
+          showToast('✅ Відвантажено', 'success');
         }
       } else {
-        alert(data.error ?? 'Помилка відвантаження');
+        showToast(data.error ?? 'Помилка відвантаження', 'error');
       }
     } finally {
       setShipping(null);
