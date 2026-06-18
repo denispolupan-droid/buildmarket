@@ -1937,28 +1937,27 @@ export default function AdminOrders({
                                   </button>
                                 )}
                                 {(order.status === 'confirmed' || order.status === 'awaiting_stock' || order.status === 'picking') && (
-                                  order.fulfillment_mode === 'supplier' ? (
-                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', padding: '5px 8px', background: 'var(--bg-soft)', borderRadius: '6px', textAlign: 'center' }}>
-                                      🚚 Відвантаження — авто при створенні ТТН
-                                    </div>
-                                  ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                      <button
-                                        onClick={() => shipOrder(order.id)}
-                                        disabled={shipping === order.id || !!loading}
-                                        style={{ ...btnPrimary, background: '#15803D', opacity: (shipping === order.id || !!loading) ? 0.6 : 1 }}>
-                                        <Truck size={13} /> {shipping === order.id ? 'Створення...' : 'Відвантажити'}
-                                      </button>
-                                      {saleDocMap[order.id] && (
-                                        <a
-                                          href={`/vydatkova/${saleDocMap[order.id].id}`}
-                                          target="_blank"
-                                          style={{ fontSize: '11px', color: '#1E3A5F', fontWeight: 600, textDecoration: 'none', textAlign: 'center', padding: '3px 0' }}>
-                                          📄 {saleDocMap[order.id].number}
-                                        </a>
-                                      )}
-                                    </div>
-                                  )
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <button
+                                      onClick={() => shipOrder(order.id)}
+                                      disabled={shipping === order.id || !!loading}
+                                      style={{ ...btnPrimary, background: '#15803D', opacity: (shipping === order.id || !!loading) ? 0.6 : 1 }}>
+                                      <Truck size={13} /> {shipping === order.id ? 'Створення...' : 'Відвантажити'}
+                                    </button>
+                                    {order.fulfillment_mode === 'supplier' && !order.tracking_number && (
+                                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                                        або авто при створенні ТТН
+                                      </div>
+                                    )}
+                                    {saleDocMap[order.id] && (
+                                      <a
+                                        href={`/vydatkova/${saleDocMap[order.id].id}`}
+                                        target="_blank"
+                                        style={{ fontSize: '11px', color: '#1E3A5F', fontWeight: 600, textDecoration: 'none', textAlign: 'center', padding: '3px 0' }}>
+                                        📄 {saleDocMap[order.id].number}
+                                      </a>
+                                    )}
+                                  </div>
                                 )}
                                 {order.status === 'awaiting_stock' && (() => {
                                   const pos = linkedPOs[order.id] ?? [];
