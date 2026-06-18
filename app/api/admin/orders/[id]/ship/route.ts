@@ -5,7 +5,7 @@ import { recordDropshipSale } from '../../../../../../lib/accounting/dropship';
 import { releaseReservation } from '../../../../../../lib/accounting/reservations';
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const supabase = await createSupabaseServer();
@@ -16,6 +16,9 @@ export async function POST(
 
   const { id } = await params;
   const db = createServiceClient();
+
+  const body = await req.json().catch(() => ({})) as { items?: { sku: string; qty: number }[] };
+  const partialItems = body.items; // undefined = ship everything
 
   const { data: order, error } = await db
     .from('orders')
@@ -34,16 +37,26 @@ export async function POST(
     );
   }
 
-  // Release reservation BEFORE resolveOrderFulfillment so qty_available reflects
-  // actual stock (qty_total, not qty_total − qty_reserved).
-  // Non-fatal: dropship orders typically have no reservation.
+  // Determine which items to ship (full or partial)
+  const allOrderItems = order.items as { sku: string; qty: number; price: number; name: string; brand: string }[];
+  const itemsToShip = partialItems
+    ? allOrderItems
+        .filter(i => partialItems.some(p => p.sku === i.sku && p.qty > 0))
+        .map(i => ({ ...i, qty: partialItems.find(p => p.sku === i.sku)!.qty }))
+    : allOrderItems;
+
+  if (itemsToShip.length === 0) {
+    return NextResponse.json({ error: 'Немає позицій для відвантаження' }, { status: 400 });
+  }
+
+  // Release reservation BEFORE resolveOrderFulfillment so qty_available reflects actual stock.
   try {
     await releaseReservation(id, 'shipped');
   } catch (err) {
     console.warn('[ship] releaseReservation:', err);
   }
 
-  // Idempotency: existing sale doc
+  // Idempotency: cancel any stale draft for this order, then create fresh.
   const { data: existingSale } = await db
     .from('acc_documents')
     .select('id, doc_number, status')
@@ -54,8 +67,6 @@ export async function POST(
 
   if (existingSale) {
     if (existingSale.status === 'draft') {
-      // Previous attempt created a draft but couldn't confirm it.
-      // Cancel it and fall through to create a fresh confirmed document.
       await db
         .from('acc_documents')
         .update({
@@ -65,16 +76,19 @@ export async function POST(
           cancel_reason: 'Повторне відвантаження: чернетка скасована автоматично',
         })
         .eq('id', existingSale.id);
+      // Fall through to create fresh document
     } else {
-      // Already confirmed — idempotent: just update order status and return.
+      // Already confirmed — idempotent return.
       await db.from('orders').update({
         status:     'shipped',
         shipped_at: new Date().toISOString(),
       }).eq('id', id);
       return NextResponse.json({
-        ok: true,
+        ok:             true,
         sale_doc_id:    existingSale.id,
         sale_doc_number: existingSale.doc_number,
+        fully_shipped:  true,
+        shipped_items:  itemsToShip.map(i => ({ sku: i.sku, qty: i.qty })),
         status: 'shipped',
       });
     }
@@ -83,17 +97,39 @@ export async function POST(
   const saleDocId = await recordDropshipSale({
     order_id:      order.id,
     order_number:  order.order_number,
-    order_items:   order.items as { sku: string; qty: number; price: number; name: string; brand: string }[],
+    order_items:   itemsToShip,
     channel_code:  order.channel_code ?? 'website',
     confirmed_by:  user.email ?? 'admin',
     customer_id:   order.customer_id ?? undefined,
     business_date: new Date().toISOString().split('T')[0],
   });
 
-  await db.from('orders').update({
-    status:     'shipped',
-    shipped_at: new Date().toISOString(),
-  }).eq('id', id);
+  // Check if all order items are now fully shipped
+  const { data: confirmedLines } = await db
+    .from('acc_document_lines')
+    .select('sku, qty, document_id')
+    .in('document_id',
+      (await db
+        .from('acc_documents')
+        .select('id')
+        .eq('order_id', id)
+        .eq('doc_type', 'sale')
+        .eq('status', 'confirmed')
+      ).data?.map(d => d.id) ?? []
+    );
+
+  const shippedBySkuSum: Record<string, number> = {};
+  for (const l of confirmedLines ?? []) {
+    shippedBySkuSum[l.sku] = (shippedBySkuSum[l.sku] ?? 0) + Number(l.qty);
+  }
+  const fullyShipped = allOrderItems.every(i => (shippedBySkuSum[i.sku] ?? 0) >= i.qty);
+
+  if (fullyShipped) {
+    await db.from('orders').update({
+      status:     'shipped',
+      shipped_at: new Date().toISOString(),
+    }).eq('id', id);
+  }
 
   const { data: saleDoc } = await db
     .from('acc_documents')
@@ -102,9 +138,11 @@ export async function POST(
     .single();
 
   return NextResponse.json({
-    ok: true,
+    ok:              true,
     sale_doc_id:     saleDocId,
     sale_doc_number: saleDoc?.doc_number ?? null,
-    status: 'shipped',
+    fully_shipped:   fullyShipped,
+    shipped_items:   itemsToShip.map(i => ({ sku: i.sku, qty: i.qty })),
+    status:          fullyShipped ? 'shipped' : order.status,
   });
 }

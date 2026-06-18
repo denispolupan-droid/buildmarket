@@ -76,6 +76,40 @@ export default async function AdminPage({
   ]);
   const promCommissionPct = parseFloat(promSetting?.value ?? '3');
 
+  // Load confirmed sale docs + shipped quantities for orders on this page
+  const orderIds = (orders ?? []).map(o => o.id);
+  const { data: saleDocsRaw } = orderIds.length
+    ? await serviceClient
+        .from('acc_documents')
+        .select('id, order_id, doc_number')
+        .in('order_id', orderIds)
+        .eq('doc_type', 'sale')
+        .eq('status', 'confirmed')
+    : { data: [] as { id: string; order_id: string; doc_number: string }[] };
+
+  const saleDocIds = (saleDocsRaw ?? []).map(d => d.id);
+  const { data: saleLines } = saleDocIds.length
+    ? await serviceClient
+        .from('acc_document_lines')
+        .select('document_id, sku, qty')
+        .in('document_id', saleDocIds)
+    : { data: [] as { document_id: string; sku: string; qty: number }[] };
+
+  const initialSaleDocs: Record<string, { id: string; number: string }[]> = {};
+  for (const doc of saleDocsRaw ?? []) {
+    if (!initialSaleDocs[doc.order_id]) initialSaleDocs[doc.order_id] = [];
+    initialSaleDocs[doc.order_id].push({ id: doc.id, number: doc.doc_number });
+  }
+
+  const docToOrder = new Map((saleDocsRaw ?? []).map(d => [d.id, d.order_id]));
+  const initialShippedQty: Record<string, Record<string, number>> = {};
+  for (const line of saleLines ?? []) {
+    const orderId = docToOrder.get(line.document_id);
+    if (!orderId) continue;
+    if (!initialShippedQty[orderId]) initialShippedQty[orderId] = {};
+    initialShippedQty[orderId][line.sku] = (initialShippedQty[orderId][line.sku] ?? 0) + Number(line.qty);
+  }
+
   // Sum per status
   const statusAmounts = (allAmountRows ?? []).reduce<Record<string, number>>((acc, row) => {
     if (row.status) acc[row.status] = (acc[row.status] ?? 0) + Number(row.total_price ?? 0);
@@ -186,7 +220,7 @@ export default async function AdminPage({
         {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
       </p>
 
-      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} />
+      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} initialSaleDocs={initialSaleDocs} initialShippedQty={initialShippedQty} />
     </div>
   );
 }

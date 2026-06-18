@@ -109,6 +109,8 @@ interface AdminOrdersProps {
   sortBy?: string;
   sortDir?: string;
   promCommissionPct?: number;
+  initialSaleDocs?: Record<string, { id: string; number: string }[]>;
+  initialShippedQty?: Record<string, Record<string, number>>;
 }
 
 export default function AdminOrders({
@@ -117,6 +119,7 @@ export default function AdminOrders({
   statusCounts = {}, currentStatus = '',
   sortBy = 'created_at', sortDir = 'desc',
   promCommissionPct = 3,
+  initialSaleDocs = {}, initialShippedQty = {},
 }: AdminOrdersProps) {
   const isAdmin = userRole === 'admin';
   const router = useRouter();
@@ -147,8 +150,11 @@ export default function AdminOrders({
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sourceOverrides, setSourceOverrides] = useState<Record<string, Record<string, 'own' | 'dropship'>>>({});
-  const [shipping,     setShipping]     = useState<string | null>(null);
-  const [saleDocMap,   setSaleDocMap]   = useState<Record<string, { id: string; number: string }>>({});
+  const [shipping,      setShipping]      = useState<string | null>(null);
+  const [saleDocMap,    setSaleDocMap]    = useState<Record<string, { id: string; number: string }[]>>(initialSaleDocs);
+  const [shippedQtyMap, setShippedQtyMap] = useState<Record<string, Record<string, number>>>(initialShippedQty);
+  type ShipModalItem = { sku: string; name: string; brand: string; orderQty: number; shippedQty: number; shipQty: number };
+  const [shipModal, setShipModal] = useState<{ orderId: string; items: ShipModalItem[] } | null>(null);
   const [editDeliveryId,   setEditDeliveryId]   = useState<string | null>(null);
   const [editDeliveryForm, setEditDeliveryForm] = useState<{ type: string; subtype: string; cityName: string; address: string }>({ type: '', subtype: '', cityName: '', address: '' });
   const [savingDelivery,   setSavingDelivery]   = useState(false);
@@ -567,9 +573,21 @@ export default function AdminOrders({
     const res = await fetch(`/api/admin/orders/${orderId}/ship`, { method: 'POST' });
     const data = await res.json();
     if (res.ok) {
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped' } : o));
+      if (data.fully_shipped) {
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped' } : o));
+      }
       if (data.sale_doc_id) {
-        setSaleDocMap(prev => ({ ...prev, [orderId]: { id: data.sale_doc_id, number: data.sale_doc_number ?? '' } }));
+        setSaleDocMap(prev => ({
+          ...prev,
+          [orderId]: [...(prev[orderId] ?? []), { id: data.sale_doc_id, number: data.sale_doc_number ?? '' }],
+        }));
+        if (data.shipped_items) {
+          setShippedQtyMap(prev => {
+            const cur = { ...(prev[orderId] ?? {}) };
+            for (const it of data.shipped_items as { sku: string; qty: number }[]) cur[it.sku] = (cur[it.sku] ?? 0) + it.qty;
+            return { ...prev, [orderId]: cur };
+          });
+        }
         showToast(`Відвантажено · ${data.sale_doc_number ?? 'ВН створено'}`, 'success', 5000);
       } else {
         showToast('Відвантажено', 'success');
@@ -579,24 +597,58 @@ export default function AdminOrders({
     }
   }
 
-  async function shipOrder(orderId: string) {
-    const ok = await showConfirm('Відвантажити замовлення та створити видаткову накладну?', {
-      confirmLabel: 'Відвантажити',
-      cancelLabel: 'Скасувати',
-    });
-    if (!ok) return;
+  function shipOrder(orderId: string) {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    const shippedQty = shippedQtyMap[orderId] ?? {};
+    const modalItems = (order.items as OrderItem[]).map(item => ({
+      sku:        item.sku,
+      name:       item.name,
+      brand:      (item as OrderItem & { brand?: string }).brand ?? '',
+      orderQty:   item.qty,
+      shippedQty: shippedQty[item.sku] ?? 0,
+      shipQty:    Math.max(0, item.qty - (shippedQty[item.sku] ?? 0)),
+    })).filter(i => i.shipQty > 0);
+    if (modalItems.length === 0) {
+      showToast('Всі позиції вже відвантажені', 'info');
+      return;
+    }
+    setShipModal({ orderId, items: modalItems });
+  }
+
+  async function executeShip(orderId: string, items: { sku: string; shipQty: number }[]) {
+    setShipModal(null);
     setShipping(orderId);
     try {
-      const res = await fetch(`/api/admin/orders/${orderId}/ship`, { method: 'POST' });
+      const res = await fetch(`/api/admin/orders/${orderId}/ship`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: items.map(i => ({ sku: i.sku, qty: i.shipQty })) }),
+      });
       const data = await res.json();
       if (res.ok) {
-        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped' } : o));
-        if (data.sale_doc_id) {
-          setSaleDocMap(prev => ({ ...prev, [orderId]: { id: data.sale_doc_id, number: data.sale_doc_number ?? '' } }));
-          showToast(`✅ Відвантажено · ${data.sale_doc_number} · Відкрити`, 'success', 6000);
-        } else {
-          showToast('✅ Відвантажено', 'success');
+        if (data.fully_shipped) {
+          setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped' } : o));
         }
+        if (data.sale_doc_id) {
+          setSaleDocMap(prev => ({
+            ...prev,
+            [orderId]: [...(prev[orderId] ?? []), { id: data.sale_doc_id, number: data.sale_doc_number ?? '' }],
+          }));
+        }
+        if (data.shipped_items) {
+          setShippedQtyMap(prev => {
+            const cur = { ...(prev[orderId] ?? {}) };
+            for (const it of data.shipped_items as { sku: string; qty: number }[]) cur[it.sku] = (cur[it.sku] ?? 0) + it.qty;
+            return { ...prev, [orderId]: cur };
+          });
+        }
+        showToast(
+          data.fully_shipped
+            ? `✅ Відвантажено · ${data.sale_doc_number}`
+            : `📦 Частково відвантажено · ${data.sale_doc_number}`,
+          'success', 6000,
+        );
       } else {
         showToast(data.error ?? 'Помилка відвантаження', 'error');
       }
@@ -2045,29 +2097,32 @@ export default function AdminOrders({
                                     </div>
                                   </button>
                                 )}
-                                {(order.status === 'confirmed' || order.status === 'awaiting_stock' || order.status === 'picking') && (
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    <button
-                                      onClick={() => shipOrder(order.id)}
-                                      disabled={shipping === order.id || !!loading}
-                                      style={{ ...btn, background: '#DCFCE7', color: '#166534', border: '1.5px solid #86EFAC', opacity: (shipping === order.id || !!loading) ? 0.6 : 1 }}>
-                                      <Truck size={13} /> {shipping === order.id ? 'Створення...' : 'Відвантажити'}
-                                    </button>
-                                    {order.fulfillment_mode === 'supplier' && !order.tracking_number && (
-                                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                                        або авто при створенні ТТН
-                                      </div>
-                                    )}
-                                    {saleDocMap[order.id] && (
-                                      <a
-                                        href={`/vydatkova/${saleDocMap[order.id].id}`}
-                                        target="_blank"
-                                        style={{ fontSize: '11px', color: '#1E3A5F', fontWeight: 600, textDecoration: 'none', textAlign: 'center', padding: '3px 0' }}>
-                                        📄 {saleDocMap[order.id].number}
-                                      </a>
-                                    )}
-                                  </div>
-                                )}
+                                {(order.status === 'confirmed' || order.status === 'awaiting_stock' || order.status === 'picking') && (() => {
+                                  const shippedQty = shippedQtyMap[order.id] ?? {};
+                                  const hasRemaining = (order.items as OrderItem[]).some(i => (shippedQty[i.sku] ?? 0) < i.qty);
+                                  const docs = saleDocMap[order.id] ?? [];
+                                  return (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                      <button
+                                        onClick={() => shipOrder(order.id)}
+                                        disabled={shipping === order.id || !!loading || !hasRemaining}
+                                        style={{ ...btn, background: hasRemaining ? '#DCFCE7' : '#F3F4F6', color: hasRemaining ? '#166534' : '#9CA3AF', border: `1.5px solid ${hasRemaining ? '#86EFAC' : '#E5E7EB'}`, opacity: (shipping === order.id || !!loading) ? 0.6 : 1 }}>
+                                        <Truck size={13} /> {shipping === order.id ? 'Створення...' : hasRemaining ? 'Відвантажити' : 'Відвантажено'}
+                                      </button>
+                                      {order.fulfillment_mode === 'supplier' && !order.tracking_number && hasRemaining && (
+                                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                                          або авто при створенні ТТН
+                                        </div>
+                                      )}
+                                      {docs.map(doc => (
+                                        <a key={doc.id} href={`/vydatkova/${doc.id}`} target="_blank"
+                                          style={{ fontSize: '11px', color: '#1E3A5F', fontWeight: 600, textDecoration: 'none', textAlign: 'center', padding: '2px 0' }}>
+                                          📄 {doc.number}
+                                        </a>
+                                      ))}
+                                    </div>
+                                  );
+                                })()}
                                 {order.status === 'awaiting_stock' && (() => {
                                   const pos = linkedPOs[order.id] ?? [];
                                   const hasReceipt = pos.some(p => ['received','closed','partially_received'].includes(p.procurement_status ?? ''));
@@ -2102,14 +2157,12 @@ export default function AdminOrders({
                                       style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
                                       <Check size={13} /> Доставлено
                                     </button>
-                                    {saleDocMap[order.id] && (
-                                      <a
-                                        href={`/vydatkova/${saleDocMap[order.id].id}`}
-                                        target="_blank"
-                                        style={{ fontSize: '11px', color: '#1E3A5F', fontWeight: 600, textDecoration: 'none', textAlign: 'center', padding: '3px 0' }}>
-                                        📄 {saleDocMap[order.id].number}
+                                    {(saleDocMap[order.id] ?? []).map(doc => (
+                                      <a key={doc.id} href={`/vydatkova/${doc.id}`} target="_blank"
+                                        style={{ fontSize: '11px', color: '#1E3A5F', fontWeight: 600, textDecoration: 'none', textAlign: 'center', padding: '2px 0' }}>
+                                        📄 {doc.number}
                                       </a>
-                                    )}
+                                    ))}
                                   </div>
                                 )}
                                 <a href={`/invoice/${order.id}`} target="_blank" rel="noopener noreferrer"
@@ -2463,6 +2516,77 @@ export default function AdminOrders({
           }}
         />
       )}
+
+      {/* ── Ship modal (partial / full shipment) ──────────────────────────── */}
+      {shipModal && (() => {
+        const updateQty = (sku: string, val: number) =>
+          setShipModal(prev => prev ? {
+            ...prev,
+            items: prev.items.map(i => i.sku === sku ? { ...i, shipQty: Math.max(0, Math.min(val, i.orderQty - i.shippedQty)) } : i),
+          } : null);
+        const hasAny = shipModal.items.some(i => i.shipQty > 0);
+        const isPartial = shipModal.items.some(i => i.shipQty < (i.orderQty - i.shippedQty));
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={e => { if (e.target === e.currentTarget) setShipModal(null); }}>
+            <div style={{ background: '#fff', borderRadius: '16px', padding: '28px 28px 24px', width: '480px', maxWidth: '96vw', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+              <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px', color: '#1E3A5F' }}>Відвантаження</div>
+              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '20px' }}>
+                Вкажіть кількість для відвантаження (можна змінити для часткового відвантаження)
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', marginBottom: '20px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
+                    <th style={{ textAlign: 'left', padding: '4px 0', fontWeight: 600, color: '#6B7280', fontSize: '11px' }}>Товар</th>
+                    <th style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 600, color: '#6B7280', fontSize: '11px', whiteSpace: 'nowrap' }}>Замовл.</th>
+                    <th style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 600, color: '#6B7280', fontSize: '11px', whiteSpace: 'nowrap' }}>Відвант.</th>
+                    <th style={{ textAlign: 'center', padding: '4px 0', fontWeight: 600, color: '#166534', fontSize: '11px', whiteSpace: 'nowrap' }}>Зараз</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shipModal.items.map(item => (
+                    <tr key={item.sku} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                      <td style={{ padding: '8px 0' }}>
+                        <div style={{ fontWeight: 600, lineHeight: 1.3 }}>{item.brand} {item.name}</div>
+                        <div style={{ fontSize: '10px', color: '#9CA3AF', fontFamily: 'monospace' }}>{item.sku}</div>
+                      </td>
+                      <td style={{ textAlign: 'center', padding: '8px', color: '#374151' }}>{item.orderQty}</td>
+                      <td style={{ textAlign: 'center', padding: '8px', color: item.shippedQty > 0 ? '#059669' : '#9CA3AF' }}>
+                        {item.shippedQty > 0 ? item.shippedQty : '—'}
+                      </td>
+                      <td style={{ textAlign: 'center', padding: '8px 0' }}>
+                        <input
+                          type="number" min={0} max={item.orderQty - item.shippedQty}
+                          value={item.shipQty}
+                          onChange={e => updateQty(item.sku, parseInt(e.target.value) || 0)}
+                          style={{ width: '60px', textAlign: 'center', border: '1.5px solid #86EFAC', borderRadius: '6px', padding: '4px 6px', fontSize: '13px', fontWeight: 700, color: '#166534' }}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {isPartial && (
+                <div style={{ fontSize: '11px', color: '#92400E', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '8px', padding: '8px 12px', marginBottom: '16px' }}>
+                  ⚠ Часткове відвантаження — буде створена окрема ВН. Залишок можна відвантажити пізніше.
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button onClick={() => setShipModal(null)}
+                  style={{ height: '38px', padding: '0 20px', borderRadius: '9px', border: '1.5px solid #E5E7EB', background: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: '#374151' }}>
+                  Скасувати
+                </button>
+                <button onClick={() => executeShip(shipModal.orderId, shipModal.items.filter(i => i.shipQty > 0).map(i => ({ sku: i.sku, shipQty: i.shipQty })))}
+                  disabled={!hasAny || shipping === shipModal.orderId}
+                  style={{ height: '38px', padding: '0 24px', borderRadius: '9px', border: 'none', background: hasAny ? '#166534' : '#9CA3AF', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: hasAny ? 'pointer' : 'not-allowed' }}>
+                  <Truck size={14} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
+                  {isPartial ? 'Відвантажити частково' : 'Відвантажити'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <style>{`
         @keyframes awaiting-pulse {
