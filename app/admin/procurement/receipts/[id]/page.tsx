@@ -319,6 +319,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
           totalCost={totalAfterLC}
           paymentHistory={paymentHistory}
           totalPaid={totalPaid}
+          deferredUntil={(doc.meta as Record<string, unknown> | null)?.payment_defer_date as string | null | undefined}
         />
       )}
       </div>{/* end grid */}

@@ -12,14 +12,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!user || user.user_metadata?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { id } = await params;
-  const { amount, payment_mode, payment_date, note } = await req.json() as {
-    amount: number;
-    payment_mode: 'transfer' | 'cash';
-    payment_date: string;
+  const { amount, payment_mode, payment_date, payment_defer_date, note } = await req.json() as {
+    amount?: number;
+    payment_mode: 'transfer' | 'cash' | 'deferred';
+    payment_date?: string;
+    payment_defer_date?: string;
     note?: string;
   };
-
-  if (!amount || amount <= 0) return NextResponse.json({ error: 'Невірна сума' }, { status: 400 });
 
   const { data: doc } = await db
     .from('acc_documents')
@@ -27,6 +26,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .eq('id', id).single();
 
   if (!doc) return NextResponse.json({ error: 'Не знайдено' }, { status: 404 });
+
+  // ── Відстрочка: тільки зберігаємо в meta, без проводки ──────────────────
+  if (payment_mode === 'deferred') {
+    const { payment_reversed, ...cleanMeta } = (doc.meta as Record<string, unknown>) ?? {};
+    void payment_reversed;
+    await db.from('acc_documents').update({
+      meta: {
+        ...cleanMeta,
+        payment_mode:        'deferred',
+        payment_status:      'deferred',
+        payment_defer_date:  payment_defer_date ?? null,
+      },
+    }).eq('id', id);
+    return NextResponse.json({ ok: true, is_deferred: true });
+  }
+
+  if (!amount || amount <= 0) return NextResponse.json({ error: 'Невірна сума' }, { status: 400 });
 
   const creditAccount = payment_mode === 'cash' ? 'cash' : 'bank';
   const bizDate = payment_date ?? new Date().toISOString().slice(0, 10);

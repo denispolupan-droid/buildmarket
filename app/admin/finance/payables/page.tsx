@@ -77,8 +77,8 @@ export default async function PayablesPage() {
   }
 
   // Сортуємо: спочатку найбільший борг (balance найменший = ми найбільше винні)
+  // Не фільтруємо по балансу тут — клієнт сам вирішує що показати (при фільтрі по даті може бути 0)
   const balances: SupplierBalance[] = [...aggMap.values()]
-    .filter(b => Math.abs(b.balance) > 0.01)
     .sort((a, b) => a.balance - b.balance);
 
   return (

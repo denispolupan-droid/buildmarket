@@ -4,6 +4,13 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowRight, X } from 'lucide-react';
 
+type ReceiptMeta = {
+  is_paid?: boolean;
+  payment_status?: 'paid' | 'partial' | 'deferred';
+  payment_mode?: 'cash' | 'transfer' | 'deferred';
+  payment_defer_date?: string | null;
+};
+
 type Receipt = {
   id: string;
   doc_number: string | null;
@@ -13,6 +20,8 @@ type Receipt = {
   landed_cost_total: number | null;
   notes: string | null;
   parent_doc_id: string | null;
+  meta: ReceiptMeta | null;
+  parent_doc: { meta: ReceiptMeta | null } | null;
   warehouse: { name: string } | null;
   supplier: { name: string; id: number } | null;
 };
@@ -108,23 +117,63 @@ export default function ReceiptsWrapper({ rows }: { rows: Receipt[] }) {
         </div>
       ) : (
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '130px 110px 150px 1fr 120px 120px 40px', padding: '8px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', columnGap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '130px 110px 150px 1fr 110px 120px 100px 40px', padding: '8px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', columnGap: '16px' }}>
             <span>Документ</span>
             <span>Дата</span>
             <span>Постачальник</span>
             <span>Примітка</span>
+            <span>Оплата</span>
             <span style={{ textAlign: 'right' }}>Собівартість</span>
             <span style={{ textAlign: 'right' }}>Landed Cost</span>
             <span />
           </div>
           {filtered.map((r, idx) => {
-            const lc = Number(r.landed_cost_total ?? 0);
+            const lc   = Number(r.landed_cost_total ?? 0);
+            // Для standalone — meta самого ПН, для linked — meta батьківського ЗП
+            const meta = (r.parent_doc_id ? r.parent_doc?.meta : r.meta) as ReceiptMeta | null;
+            const isStandalone = !r.parent_doc_id;
+
+            let payBadge: React.ReactNode = null;
+            {
+              const status = meta?.payment_status;
+              const mode   = meta?.payment_mode;
+              if (status === 'paid' || meta?.is_paid) {
+                payBadge = (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: '5px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
+                    ✅ Оплачено
+                  </span>
+                );
+              } else if (mode === 'deferred' || status === 'deferred') {
+                const d = meta?.payment_defer_date;
+                const dLabel = d ? new Date(d).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }) : '—';
+                payBadge = (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: '#92400E', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '5px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
+                    📅 до {dLabel}
+                  </span>
+                );
+              } else if (status === 'partial') {
+                payBadge = (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: '#C2410C', background: '#FFF7ED', border: '1px solid #FDBA74', borderRadius: '5px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
+                    ⚠ Частково
+                  </span>
+                );
+              } else if (isStandalone && r.total_cost && Number(r.total_cost) > 0) {
+                payBadge = (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '5px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
+                    ● Не оплачено
+                  </span>
+                );
+              }
+            }
+
             return (
               <Link key={r.id} href={`/admin/procurement/receipts/${r.id}`} style={{
-                display: 'grid', gridTemplateColumns: '130px 110px 150px 1fr 120px 120px 40px',
+                display: 'grid', gridTemplateColumns: '130px 110px 150px 1fr 110px 120px 100px 40px',
                 padding: '11px 16px', alignItems: 'center', textDecoration: 'none',
                 borderBottom: idx < filtered.length - 1 ? '1px solid var(--border-light)' : 'none',
                 columnGap: '16px', cursor: 'pointer',
+                background: isStandalone && !meta?.is_paid && meta?.payment_status !== 'paid' && meta?.payment_status !== 'partial' && meta?.payment_mode !== 'deferred' && Number(r.total_cost ?? 0) > 0
+                  ? 'rgba(220,38,38,0.025)' : undefined,
               }}>
                 <div>
                   <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{r.doc_number}</div>
@@ -141,6 +190,7 @@ export default function ReceiptsWrapper({ rows }: { rows: Receipt[] }) {
                 <span style={{ fontSize: '12px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {r.notes || '—'}
                 </span>
+                <div>{payBadge ?? <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>—</span>}</div>
                 <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: '#15803D' }}>
                   {r.total_cost ? `${fmt(Number(r.total_cost))} ₴` : '—'}
                 </span>

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { ChevronDown, ChevronRight, TrendingDown, TrendingUp, CheckCircle } from 'lucide-react';
+import { ChevronDown, ChevronRight, TrendingDown, TrendingUp, CheckCircle, Search, X } from 'lucide-react';
 
 export type SupplierTransaction = {
   doc_type:      string;
@@ -19,7 +19,7 @@ export type SupplierBalance = {
   supplier_name:  string;
   total_receipts: number;
   total_payments: number;
-  balance:        number; // < 0 = ми винні, > 0 = постачальник винний нам
+  balance:        number;
   transactions:   SupplierTransaction[];
 };
 
@@ -38,10 +38,28 @@ function docLink(txn: SupplierTransaction): { href: string; label: string } | nu
   return txn.doc_number ? { href: '#', label: txn.doc_number } : null;
 }
 
+const inp: React.CSSProperties = {
+  height: '36px', padding: '0 10px',
+  border: '1.5px solid var(--border)', borderRadius: '8px',
+  fontSize: '13px', outline: 'none',
+  color: 'var(--text-primary)', background: 'var(--bg-soft)',
+};
+const thStyle: React.CSSProperties = {
+  fontSize: '11px', fontWeight: 700,
+  color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em',
+};
+
 type Props = { balances: SupplierBalance[] };
 
-export default function PayablesClient({ balances }: Props) {
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+export default function PayablesClient({ balances: allBalances }: Props) {
+  const today      = new Date().toISOString().slice(0, 10);
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+
+  const [filterSupplierId, setFilterSupplierId] = useState<number | ''>('');
+  const [dateFrom,         setDateFrom]         = useState(monthStart);
+  const [dateTo,           setDateTo]           = useState(today);
+  const [dateApplied,      setDateApplied]      = useState(false);
+  const [expanded,         setExpanded]         = useState<Set<number>>(new Set());
 
   function toggle(id: number) {
     setExpanded(prev => {
@@ -51,41 +69,164 @@ export default function PayablesClient({ balances }: Props) {
     });
   }
 
+  function handleSearch() {
+    setDateApplied(true);
+    // Авто-розкриваємо якщо вибраний один постачальник
+    if (filterSupplierId !== '') {
+      setExpanded(new Set([filterSupplierId as number]));
+    }
+  }
+
+  function handleReset() {
+    setFilterSupplierId('');
+    setDateFrom(monthStart);
+    setDateTo(today);
+    setDateApplied(false);
+    setExpanded(new Set());
+  }
+
+  // Фільтрована + перерахована вибірка
+  const balances = useMemo(() => {
+    let result = allBalances;
+
+    if (filterSupplierId !== '') {
+      result = result.filter(b => b.supplier_id === filterSupplierId);
+    }
+
+    if (dateApplied) {
+      result = result.map(b => {
+        const txns = b.transactions.filter(t =>
+          (!dateFrom || t.business_date >= dateFrom) &&
+          (!dateTo   || t.business_date <= dateTo)
+        );
+        let receipts = 0, payments = 0, bal = 0;
+        for (const t of txns) {
+          bal += t.amount;
+          if (t.amount < 0) receipts += Math.abs(t.amount);
+          else payments += t.amount;
+        }
+        return { ...b, transactions: txns, total_receipts: receipts, total_payments: payments, balance: bal };
+      }).filter(b => b.transactions.length > 0);
+    } else {
+      result = result.filter(b => Math.abs(b.balance) > 0.01);
+    }
+
+    return result.sort((a, b) => a.balance - b.balance);
+  }, [allBalances, filterSupplierId, dateFrom, dateTo, dateApplied]);
+
   const totalDebt      = balances.filter(b => b.balance < 0).reduce((s, b) => s + Math.abs(b.balance), 0);
   const totalOverpaid  = balances.filter(b => b.balance > 0).reduce((s, b) => s + b.balance, 0);
   const debtCount      = balances.filter(b => b.balance < 0).length;
   const overpaidCount  = balances.filter(b => b.balance > 0).length;
 
+  const periodLabel = dateApplied
+    ? `${dateFrom} — ${dateTo}`
+    : 'за весь час';
+
   return (
     <>
+      {/* ── Filter bar ───────────────────────────────────────────────────── */}
+      <div style={{
+        background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px',
+        padding: '16px 20px', marginBottom: '20px',
+        display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap',
+      }}>
+        {/* Постачальник */}
+        <div style={{ flex: '1 1 220px', minWidth: '180px', position: 'relative' }}>
+          <label style={{ ...thStyle, display: 'block', marginBottom: '4px' }}>Постачальник</label>
+          <div style={{ position: 'relative' }}>
+            <select
+              value={filterSupplierId}
+              onChange={e => {
+                setFilterSupplierId(e.target.value === '' ? '' : Number(e.target.value));
+                setDateApplied(false);
+              }}
+              style={{ ...inp, width: '100%', paddingRight: '28px', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none' }}
+            >
+              <option value="">Всі постачальники ({allBalances.length})</option>
+              {allBalances.map(b => (
+                <option key={b.supplier_id} value={b.supplier_id}>{b.supplier_name}</option>
+              ))}
+            </select>
+            {filterSupplierId !== '' && (
+              <button
+                onClick={() => { setFilterSupplierId(''); setDateApplied(false); }}
+                style={{ position: 'absolute', right: '24px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}
+              >
+                <X size={13} />
+              </button>
+            )}
+            <ChevronDown size={13} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+          </div>
+        </div>
+
+        {/* Від */}
+        <div>
+          <label style={{ ...thStyle, display: 'block', marginBottom: '4px' }}>З</label>
+          <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setDateApplied(false); }} style={inp} />
+        </div>
+
+        {/* До */}
+        <div>
+          <label style={{ ...thStyle, display: 'block', marginBottom: '4px' }}>По</label>
+          <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setDateApplied(false); }} style={inp} />
+        </div>
+
+        {/* Buttons */}
+        <button
+          onClick={handleSearch}
+          style={{
+            height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none',
+            background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px',
+          }}
+        >
+          <Search size={14} />
+          Показати
+        </button>
+
+        {(filterSupplierId !== '' || dateApplied) && (
+          <button
+            onClick={handleReset}
+            style={{
+              height: '36px', padding: '0 14px', borderRadius: '8px',
+              border: '1px solid var(--border)', background: 'var(--bg-soft)',
+              color: 'var(--text-secondary)', fontSize: '13px', cursor: 'pointer',
+            }}
+          >
+            Скинути
+          </button>
+        )}
+      </div>
+
       {/* Summary cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
         {[
           {
             label: 'Борг постачальникам',
             value: totalDebt > 0 ? `${fmt(totalDebt)} ₴` : '—',
-            sub: `${debtCount} постачальник${debtCount === 1 ? '' : 'и'}`,
+            sub: `${debtCount} пост. · ${periodLabel}`,
             color: totalDebt > 0 ? '#DC2626' : '#15803D',
             icon: TrendingDown,
           },
           {
             label: 'Переплата',
             value: totalOverpaid > 0 ? `${fmt(totalOverpaid)} ₴` : '—',
-            sub: `${overpaidCount} постачальник${overpaidCount === 1 ? '' : 'и'}`,
+            sub: `${overpaidCount} пост. · ${periodLabel}`,
             color: totalOverpaid > 0 ? '#15803D' : '#64748B',
             icon: TrendingUp,
           },
           {
             label: 'Всього куплено',
             value: `${fmt(balances.reduce((s, b) => s + b.total_receipts, 0))} ₴`,
-            sub: 'за весь час',
+            sub: periodLabel,
             color: '#1E3A5F',
             icon: TrendingDown,
           },
           {
             label: 'Всього оплачено',
             value: `${fmt(balances.reduce((s, b) => s + b.total_payments, 0))} ₴`,
-            sub: 'за весь час',
+            sub: periodLabel,
             color: '#15803D',
             icon: TrendingUp,
           },
@@ -107,14 +248,18 @@ export default function PayablesClient({ balances }: Props) {
       {balances.length === 0 ? (
         <div style={{ padding: '64px', textAlign: 'center', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
           <CheckCircle size={32} color="#15803D" style={{ marginBottom: '12px' }} />
-          <div style={{ fontSize: '15px', fontWeight: 700, color: '#15803D' }}>Взаєморозрахунків немає</div>
-          <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>Немає операцій з постачальниками</div>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: '#15803D' }}>
+            {dateApplied ? 'Немає операцій за обраний період' : 'Взаєморозрахунків немає'}
+          </div>
+          <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
+            {dateApplied ? `${dateFrom} — ${dateTo}` : 'Немає операцій з постачальниками'}
+          </div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {balances.map(b => {
-            const isOpen  = expanded.has(b.supplier_id);
-            const isDebt  = b.balance < 0;
+            const isOpen      = expanded.has(b.supplier_id);
+            const isDebt      = b.balance < 0;
             const accentColor = isDebt ? '#EF4444' : '#22C55E';
 
             return (
@@ -140,7 +285,7 @@ export default function PayablesClient({ balances }: Props) {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '2px' }}>
                       <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                        {b.transactions.length} транзакцій
+                        {b.transactions.length} транзакцій · {periodLabel}
                       </span>
                       <Link
                         href={`/admin/finance/payables/${b.supplier_id}`}
@@ -178,7 +323,6 @@ export default function PayablesClient({ balances }: Props) {
                 {/* Transactions */}
                 {isOpen && (
                   <div style={{ borderTop: '1px solid var(--border)' }}>
-                    {/* Column headers */}
                     <div style={{
                       display: 'grid', gridTemplateColumns: '100px 140px 1fr 140px',
                       padding: '6px 20px', gap: '8px',
@@ -192,8 +336,11 @@ export default function PayablesClient({ balances }: Props) {
                       <span style={{ textAlign: 'right' }}>Сума</span>
                     </div>
 
-                    {/* Running balance */}
-                    {(() => {
+                    {b.transactions.length === 0 ? (
+                      <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                        Немає операцій за обраний період
+                      </div>
+                    ) : (() => {
                       let running = 0;
                       return b.transactions.map((txn, idx) => {
                         running += txn.amount;
@@ -248,7 +395,7 @@ export default function PayablesClient({ balances }: Props) {
                       background: 'var(--bg-soft)',
                     }}>
                       <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', gridColumn: '1 / 4' }}>
-                        Підсумок
+                        Підсумок · {periodLabel}
                       </span>
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: '14px', fontWeight: 800, color: accentColor }}>

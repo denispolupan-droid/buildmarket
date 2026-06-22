@@ -16,7 +16,7 @@ export default async function ReceiptsPage() {
 
   const { data: receipts } = await db
     .from('acc_documents')
-    .select('id, doc_number, doc_date, status, total_cost, notes, parent_doc_id, landed_cost_total, warehouse:warehouse_id(name), supplier:supplier_id(id, name)')
+    .select('id, doc_number, doc_date, status, total_cost, notes, parent_doc_id, landed_cost_total, meta, warehouse:warehouse_id(name), supplier:supplier_id(id, name), parent_doc:parent_doc_id(meta)')
     .in('doc_type', ['receipt', 'stock_in'])
     .eq('status', 'confirmed')
     .order('doc_date', { ascending: false })
