@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createDocument, confirmDocument } from '../../../../../../lib/accounting/documents';
 import { createServiceClient } from '../../../../../../lib/supabase';
-import { recordTxn } from '../../../../../../lib/accounting/money';
 
 const db = createServiceClient();
 
@@ -52,24 +51,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Link to original receipt
   await db.from('acc_documents').update({ parent_doc_id: receiptId }).eq('id', doc.id);
 
-  // Confirm → creates stock_movements OUT (reduces stock)
+  // confirmDocument для supplier_return: зменшує склад (stock OUT) +
+  // записує DR supplier / CR inventory_asset через recordSupplierReturn.
   await confirmDocument(doc.id, user.email ?? 'admin');
-
-  // Money: reduce supplier liability (we owe them less now)
-  const totalCost = body.lines.reduce((s, l) => s + l.qty * l.cost_price, 0);
-  if (totalCost > 0 && receipt.supplier_id) {
-    await recordTxn({
-      debitAccount:  'supplier',
-      debitParty:    String(receipt.supplier_id),
-      creditAccount: 'variance',
-      creditParty:   null,
-      amount:        totalCost,
-      docId:         doc.id,
-      docType:       'supplier_return',
-      description:   `Повернення постачальнику: ${body.reason}`,
-      createdBy:     user.email,
-    });
-  }
 
   return NextResponse.json({ id: doc.id, doc_number: doc.doc_number });
 }

@@ -139,7 +139,7 @@ export default function ChatWidget() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   };
 
-  if (pathname.startsWith('/admin')) return null;
+  if (pathname.startsWith('/admin') || pathname.startsWith('/invoice') || pathname.startsWith('/vidatkova')) return null;
 
   return (
     <>

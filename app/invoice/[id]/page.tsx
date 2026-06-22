@@ -31,6 +31,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       bankIban={process.env.BANK_IBAN ?? 'UA00 0000 0000 0000 0000 0000 000'}
       bankName={process.env.BANK_NAME ?? 'АТ «ПриватБанк»'}
       bankEdrpou={process.env.BANK_EDRPOU ?? '00000000'}
+      bankAddress={process.env.BANK_ADDRESS ?? ''}
+      signatoryName={process.env.SIGNATORY_NAME ?? ''}
     />
   );
 }

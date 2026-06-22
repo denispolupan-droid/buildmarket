@@ -398,6 +398,21 @@ export default function SettlementsClient({
           {/* Results */}
           {searched && (
             <>
+              {/* Act link */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
+                <Link
+                  href={`/admin/finance/settlements/${customerId}?from=${dateFrom}&to=${dateTo}`}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                    height: '32px', padding: '0 14px', borderRadius: '8px',
+                    border: '1px solid #BFDBFE', background: '#EFF6FF',
+                    color: '#1E3A5F', fontSize: '12px', fontWeight: 700,
+                    textDecoration: 'none',
+                  }}>
+                  Акт звірки ↗
+                </Link>
+              </div>
+
               {/* Summary */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
                 {[
@@ -532,7 +547,7 @@ export default function SettlementsClient({
             ) : (
               <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
                 {/* Header */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 130px 110px 110px 80px', gap: '0', padding: '8px 16px', background: '#1E3A5F', color: '#CBD5E1', fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 130px 110px 110px 148px', gap: '0', padding: '8px 16px', background: '#1E3A5F', color: '#CBD5E1', fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
                   <span>Контрагент / Договір</span>
                   <span style={{ textAlign: 'right' }}>Заборгованість</span>
                   <span style={{ textAlign: 'right' }}>Ліміт</span>
@@ -547,7 +562,7 @@ export default function SettlementsClient({
 
                   return (
                     <div key={`${d.customer_id}:${d.contract_id}`} style={{
-                      display: 'grid', gridTemplateColumns: '1fr 160px 130px 110px 110px 80px', gap: '0',
+                      display: 'grid', gridTemplateColumns: '1fr 160px 130px 110px 110px 148px', gap: '0',
                       padding: '10px 16px', alignItems: 'center',
                       borderBottom: idx < debtors.length - 1 ? '1px solid var(--border-light)' : 'none',
                       background: isOverdue ? '#FFF7ED' : '#fff',
@@ -604,18 +619,23 @@ export default function SettlementsClient({
                       </div>
 
                       {/* Дія */}
-                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
                         <button onClick={() => openDebtor(d)}
                           style={{ height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#1E3A5F', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
                           Картка
                         </button>
+                        <Link
+                          href={`/admin/finance/settlements/${d.customer_id}`}
+                          style={{ display: 'flex', alignItems: 'center', height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid #C7D2FE', background: '#EEF2FF', color: '#4338CA', fontSize: '11px', fontWeight: 600, textDecoration: 'none' }}>
+                          Акт ↗
+                        </Link>
                       </div>
                     </div>
                   );
                 })}
 
                 {/* Total */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 130px 110px 110px 80px', gap: '0', padding: '10px 16px', background: '#F1F5F9', borderTop: '2px solid #CBD5E1', fontWeight: 700 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 130px 110px 110px 148px', gap: '0', padding: '10px 16px', background: '#F1F5F9', borderTop: '2px solid #CBD5E1', fontWeight: 700 }}>
                   <span style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
                     Разом: {debtors.length} {debtors.length === 1 ? 'контрагент' : debtors.length < 5 ? 'контрагенти' : 'контрагентів'}
                     {debtors.filter(d => d.days_overdue > 0).length > 0 && (

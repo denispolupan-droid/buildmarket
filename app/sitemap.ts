@@ -9,7 +9,7 @@ function brandToSlug(brand: string): string {
 const BASE = 'https://fixline.com.ua';
 
 // Дата запуску/останнього суттєвого оновлення сайту — оновлюй вручну при великих змінах
-const SITE_UPDATED = new Date('2026-05-30');
+const SITE_UPDATED = new Date('2026-06-22');
 
 export const revalidate = 3600;
 
@@ -94,37 +94,39 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // ── Russian mirror routes (/ru/*) ──────────────────────────────────────────
+  // Продуктові /ru/ сторінки прибрані з sitemap — вони з'їдали ~50% crawl budget
+  // при мізерних шансах на індексацію для UA-сайту. Залишаємо тільки структурні /ru/ URL.
   const ruStaticRoutes: MetadataRoute.Sitemap = [
-    { url: `${BASE}/ru`,            lastModified: SITE_UPDATED, changeFrequency: 'weekly',  priority: 0.9 },
-    { url: `${BASE}/ru/shop`,       lastModified: SITE_UPDATED, changeFrequency: 'daily',   priority: 0.8 },
-    { url: `${BASE}/ru/shop/sale`,  lastModified: SITE_UPDATED, changeFrequency: 'daily',   priority: 0.75 },
-    { url: `${BASE}/ru/blog`,       lastModified: SITE_UPDATED, changeFrequency: 'weekly',  priority: 0.65 },
-    { url: `${BASE}/ru/about`,      lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.55 },
-    { url: `${BASE}/ru/contacts`,   lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.5 },
-    { url: `${BASE}/ru/dropship`,   lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.55 },
-    { url: `${BASE}/ru/delivery`,   lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.4 },
-    { url: `${BASE}/ru/returns`,    lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.4 },
+    { url: `${BASE}/ru`,            lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.4 },
+    { url: `${BASE}/ru/shop`,       lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.35 },
+    { url: `${BASE}/ru/shop/sale`,  lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${BASE}/ru/blog`,       lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${BASE}/ru/about`,      lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },
+    { url: `${BASE}/ru/contacts`,   lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },
+    { url: `${BASE}/ru/dropship`,   lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },
+    { url: `${BASE}/ru/delivery`,   lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },
+    { url: `${BASE}/ru/returns`,    lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },
   ];
 
   const ruBlogRoutes: MetadataRoute.Sitemap = ARTICLES.map(a => ({
     url: `${BASE}/ru/blog/${a.slug}`,
     lastModified: new Date(a.date),
     changeFrequency: 'monthly' as const,
-    priority: 0.6,
+    priority: 0.25,
   }));
 
   const ruShopCategoryRoutes: MetadataRoute.Sitemap = categories.map(cat => ({
     url: `${BASE}/ru/shop/${cat.slug}`,
     lastModified: new Date(cat.created_at),
-    changeFrequency: 'daily',
-    priority: 0.75,
+    changeFrequency: 'monthly',
+    priority: 0.3,
   }));
 
   const ruBrandRoutes: MetadataRoute.Sitemap = significantBrands.map(brand => ({
     url: `${BASE}/ru/shop/brand/${brandToSlug(brand)}`,
     lastModified: SITE_UPDATED,
-    changeFrequency: 'weekly',
-    priority: 0.7,
+    changeFrequency: 'monthly',
+    priority: 0.25,
   }));
 
   const ruCategoryBrandRoutes: MetadataRoute.Sitemap = [];
@@ -136,16 +138,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ruCategoryBrandRoutes.push({
       url: `${BASE}/ru/shop/${categorySlug}/${brandToSlug(brandName)}`,
       lastModified: SITE_UPDATED,
-      changeFrequency: 'weekly',
-      priority: 0.68,
+      changeFrequency: 'monthly',
+      priority: 0.2,
     });
   }
 
   const ruProductRoutes: MetadataRoute.Sitemap = products.map(p => ({
     url: `${BASE}/ru/product/${p.sku}`,
     lastModified: p.updated_at ? new Date(p.updated_at) : SITE_UPDATED,
-    changeFrequency: 'weekly',
-    priority: 0.65,
+    changeFrequency: 'monthly' as const,
+    priority: 0.3,
   }));
 
   return [

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { MoreHorizontal, RotateCcw } from 'lucide-react';
+import { MoreHorizontal, RotateCcw, Pencil } from 'lucide-react';
 import ReturnButton from './ReturnButton';
 
 type ReceiptLine = { sku: string; qty: number; cost_price: number; name?: string };
@@ -15,15 +15,41 @@ const menuBtnStyle: React.CSSProperties = {
 
 export default function ReceiptActionsMenu({
   receiptId,
+  docNumber,
   lines,
 }: {
   receiptId: string;
+  docNumber: string;
   lines: ReceiptLine[];
   hasExistingLC?: boolean;
 }) {
-  const [open,       setOpen]       = useState(false);
-  const [showReturn, setShowReturn] = useState(false);
+  const [open,          setOpen]          = useState(false);
+  const [showReturn,    setShowReturn]    = useState(false);
+  const [correcting,    setCorrecting]    = useState(false);
+  const [correctError,  setCorrectError]  = useState('');
   const ref = useRef<HTMLDivElement>(null);
+
+  async function handleCorrect() {
+    if (!confirm(`Виправити ${docNumber}?\n\nДокумент буде скасовано (сторно), і ви зможете створити новий виправлений прихід.`)) return;
+    setOpen(false);
+    setCorrecting(true);
+    setCorrectError('');
+    try {
+      const res = await fetch('/api/admin/accounting/documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'correct', document_id: receiptId }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setCorrectError(data.error ?? 'Помилка'); return; }
+      if (data.parentDocId) {
+        window.location.href = `/admin/procurement/${data.parentDocId}`;
+      } else {
+        window.location.href = '/admin/procurement/receipts';
+      }
+    } catch { setCorrectError('Мережева помилка'); }
+    finally { setCorrecting(false); }
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -42,6 +68,11 @@ export default function ReceiptActionsMenu({
         open={showReturn}
         onClose={() => setShowReturn(false)}
       />
+      {correctError && (
+        <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', zIndex: 9999, background: '#FEF2F2', border: '1.5px solid #FCA5A5', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', color: '#DC2626', fontWeight: 600, boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
+          {correctError}
+        </div>
+      )}
 
       <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
         <button
@@ -65,6 +96,16 @@ export default function ReceiptActionsMenu({
             borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.13)',
             minWidth: '220px', padding: '4px',
           }}>
+            <button
+              onClick={handleCorrect}
+              disabled={correcting}
+              style={{ ...menuBtnStyle, opacity: correcting ? 0.6 : 1 }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-soft)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+            >
+              <Pencil size={14} style={{ color: 'var(--text-muted)' }} />
+              {correcting ? 'Виправлення...' : 'Виправити прихід'}
+            </button>
             <button
               onClick={() => { setOpen(false); setShowReturn(true); }}
               style={menuBtnStyle}

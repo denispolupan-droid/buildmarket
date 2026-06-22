@@ -122,7 +122,7 @@ export default async function ReportsPage({
   // Всі рухи за період
   const { data: cfEntries } = await db
     .from('money_entries')
-    .select('account_type, amount, doc_type, counterparty_id')
+    .select('account_type, amount, doc_type, counterparty_id, txn_id')
     .in('account_type', ['cash', 'bank', 'acquiring'])
     .gte('business_date', dateFrom)
     .lte('business_date', dateTo);

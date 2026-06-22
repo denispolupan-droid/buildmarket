@@ -157,14 +157,12 @@ export default function ProcurementWrapper({
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px', padding: '10px 14px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px' }}>
 
         {/* Постачальник */}
-        {uniqueSuppliers.length > 1 && (
-          <select value={supplier} onChange={e => setSupplier(e.target.value)} style={{ ...selectStyle, minWidth: '130px' }}>
-            <option value="all">Всі постачальники</option>
-            {uniqueSuppliers.map(([id, name]) => (
-              <option key={id} value={String(id)}>{name}</option>
-            ))}
-          </select>
-        )}
+        <select value={supplier} onChange={e => setSupplier(e.target.value)} style={{ ...selectStyle, minWidth: '130px' }}>
+          <option value="all">Всі постачальники</option>
+          {uniqueSuppliers.map(([id, name]) => (
+            <option key={id} value={String(id)}>{name}</option>
+          ))}
+        </select>
 
         {/* Статус */}
         <div style={{ display: 'flex', gap: '4px' }}>

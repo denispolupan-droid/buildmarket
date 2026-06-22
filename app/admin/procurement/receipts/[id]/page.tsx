@@ -7,6 +7,8 @@ import DocChain from '../../[id]/DocChain';
 import PrintButton from '../../../components/PrintButton';
 import ReceiptActionsMenu from '../../[id]/ReceiptActionsMenu';
 import LandedCostHeaderButton from './LandedCostHeaderButton';
+import EditPricesButton from './EditPricesButton';
+import ReceiptPaymentPanel from './ReceiptPaymentPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,11 +44,29 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
     : { data: [] };
   const nameMap = new Map((products ?? []).map(p => [p.sku, `${p.brand} ${p.name}`.trim()]));
 
-  const { data: landedCosts } = await db.from('landed_cost_lines').select('*').eq('document_id', id);
-  const { data: batches }     = await db.from('stock_batches').select('sku, initial_qty, cost_price').eq('document_id', id);
-  const { data: poLines }     = doc.parent_doc_id
-    ? await db.from('acc_document_lines').select('sku, cost_price').eq('document_id', doc.parent_doc_id)
-    : { data: [] };
+  const isStandalone = !doc.parent_doc_id;
+
+  const [
+    { data: landedCosts },
+    { data: batches },
+    { data: poLines },
+    { data: paymentEntries },
+  ] = await Promise.all([
+    db.from('landed_cost_lines').select('*').eq('document_id', id),
+    db.from('stock_batches').select('sku, initial_qty, cost_price').eq('document_id', id),
+    doc.parent_doc_id
+      ? db.from('acc_document_lines').select('sku, cost_price').eq('document_id', doc.parent_doc_id)
+      : Promise.resolve({ data: [] as { sku: string; cost_price: number }[] }),
+    // Оплати по цьому ПН (тільки для standalone)
+    isStandalone
+      ? db.from('money_entries')
+          .select('created_at, amount, doc_type, account_type, meta, txn_id')
+          .eq('doc_id', id)
+          .in('account_type', ['supplier', 'bank', 'cash', 'acquiring'])
+          .in('doc_type', ['supplier_payment', 'supplier_payment_reversal'])
+          .order('created_at')
+      : Promise.resolve({ data: [] as { created_at: string; amount: number; doc_type: string; account_type: string; meta: Record<string, unknown> | null; txn_id?: string }[] }),
+  ]);
 
   const originalPriceMap = new Map((poLines ?? []).map(l => [l.sku, Number(l.cost_price ?? 0)]));
   const finalPriceMap    = new Map((batches ?? []).map(b => [b.sku, Number(b.cost_price)]));
@@ -65,6 +85,27 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
   const totalAfterLC = hasLC
     ? (batches ?? []).reduce((s: number, b: { initial_qty: number; cost_price: number }) => s + b.initial_qty * b.cost_price, 0)
     : totalCost;
+
+  // Платіжна історія (standalone ПН)
+  const allPayEntries = (paymentEntries ?? []) as { created_at: string; amount: number; doc_type: string; account_type: string; meta?: Record<string, unknown> | null; txn_id?: string }[];
+  const txnCreditAccount = new Map<string, string>();
+  for (const e of allPayEntries) {
+    if (e.txn_id && Number(e.amount) < 0 && ['cash','bank','acquiring'].includes(e.account_type)) {
+      txnCreditAccount.set(e.txn_id, e.account_type);
+    }
+  }
+  const paymentHistory = allPayEntries
+    .filter(e => e.doc_type === 'supplier_payment' && e.account_type === 'supplier' && Number(e.amount) > 0)
+    .map(e => {
+      const mode = (e.meta?.payment_mode as string | null) ?? (() => {
+        const acct = e.txn_id ? txnCreditAccount.get(e.txn_id) : null;
+        if (acct === 'cash') return 'cash';
+        if (acct === 'bank') return 'transfer';
+        return null;
+      })();
+      return { created_at: e.created_at, amount: Number(e.amount), payment_mode: mode };
+    });
+  const totalPaid = paymentHistory.reduce((s, e) => s + e.amount, 0);
 
   const supplierName = (doc.supplier as { name?: string } | null)?.name ?? null;
   const warehouseName= (doc.warehouse as { name?: string } | null)?.name ?? null;
@@ -110,10 +151,26 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
         )}
         {doc.parent_doc_id && <DocChain poId={doc.parent_doc_id} />}
         <PrintButton />
+        <EditPricesButton
+          documentId={id}
+          hasLC={hasLC}
+          lines={(lines ?? [])
+            .filter((l: { is_bonus?: boolean }) => !l.is_bonus)
+            .map((l: { sku: string; qty: number; cost_price: number }) => ({
+              sku: l.sku,
+              name: nameMap.get(l.sku) ?? l.sku,
+              qty: Number(l.qty),
+              base_price: hasLC
+                ? (originalPriceMap.get(l.sku) ?? Number(l.cost_price ?? 0))
+                : Number(l.cost_price ?? 0),
+              final_price: finalPriceMap.get(l.sku) ?? Number(l.cost_price ?? 0),
+            }))}
+        />
         {/* ── Додаткові витрати — завжди видима кнопка ── */}
         <LandedCostHeaderButton receiptId={id} hasLC={hasLC} />
         <ReceiptActionsMenu
           receiptId={id}
+          docNumber={doc.doc_number}
           hasExistingLC={hasLC}
           lines={(lines ?? []).map((l: { sku: string; qty: number; cost_price: number }) => ({
             sku: l.sku, qty: Number(l.qty), cost_price: Number(l.cost_price ?? 0),
@@ -178,6 +235,8 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
         </div>
       )}
 
+      <div style={{ display: 'grid', gridTemplateColumns: isStandalone ? '1fr 360px' : '1fr', gap: '20px', alignItems: 'start' }}>
+      <div>
       {/* Товари */}
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', marginBottom: '16px' }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -251,6 +310,18 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
       )}
+      </div>{/* end left column */}
+
+      {/* Right column: оплата (тільки для standalone ПН) */}
+      {isStandalone && (
+        <ReceiptPaymentPanel
+          receiptId={id}
+          totalCost={totalAfterLC}
+          paymentHistory={paymentHistory}
+          totalPaid={totalPaid}
+        />
+      )}
+      </div>{/* end grid */}
     </div>
   );
 }

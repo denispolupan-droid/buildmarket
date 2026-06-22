@@ -4,7 +4,7 @@ import { createServiceClient } from '../../../../../lib/supabase';
 import { recordDropshipSale } from '../../../../../lib/accounting/dropship';
 import { releaseReservation } from '../../../../../lib/accounting/reservations';
 import { notifyAdminStatusChange, notifyCustomerStatus } from '../../../../../lib/telegram';
-import { recordCustomerPayment, recordMarketplaceCommission } from '../../../../../lib/accounting/money';
+import { recordCustomerPayment, recordMarketplaceCommission, recordShipment } from '../../../../../lib/accounting/money';
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/prom-api';
 import { computePromCommission } from '../../../../../lib/prom-commission';
 
@@ -24,6 +24,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     payment_confirmed, callback_done, supplier_confirmed,
     items: bodyItems, total_price: bodyTotalPrice,
     delivery_type, delivery_subtype, delivery_city_name, delivery_address,
+    payment_type, payment_due_date,
   } = body;
 
   const db = createServiceClient();
@@ -80,9 +81,73 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (delivery_subtype !== undefined)   update.delivery_subtype    = delivery_subtype;
   if (delivery_city_name !== undefined) update.delivery_city_name  = delivery_city_name;
   if (delivery_address !== undefined)   update.delivery_address    = delivery_address;
+  if (payment_due_date !== undefined)    update.payment_due_date    = payment_due_date;
+  if (payment_type !== undefined)       update.payment_type        = payment_type;
 
   const { error } = await db.from('orders').update(update).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // ── Зміна payment_type → облікова фіксація ───────────────────────────────
+  let computedDueDate: string | null = null;
+  if (payment_type !== undefined && ['invoice', 'deferred'].includes(payment_type)) {
+    try {
+      const { data: ord } = await db
+        .from('orders')
+        .select('status, shipped_at, customer_id, total_price, order_number')
+        .eq('id', id)
+        .single();
+
+      if (ord?.customer_id && ['shipped', 'delivered'].includes(ord.status ?? '')) {
+        // Перевіряємо чи вже є запис дебіторки для цього замовлення
+        const { data: existing } = await db
+          .from('money_entries')
+          .select('id')
+          .eq('order_id', id)
+          .eq('account_type', 'customer')
+          .gt('amount', 0)
+          .limit(1)
+          .maybeSingle();
+
+        if (!existing) {
+          // Замовлення відвантажили анонімно, тепер прив'язано до клієнта → фіксуємо дебіторку
+          await recordShipment({
+            customerId:     ord.customer_id,
+            orderId:        id,
+            amount:         Number(ord.total_price),
+            businessDate:   ord.shipped_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+            createdBy:      user.email ?? 'admin',
+            idempotencyKey: `shipment:payment-type:${id}`,
+          });
+        }
+      }
+
+      // Для відстрочки: розраховуємо дату погашення з договору
+      if (payment_type === 'deferred' && ord?.customer_id) {
+        let creditDays = 7;
+        const { data: contract } = await db
+          .from('customer_contracts')
+          .select('credit_days')
+          .eq('customer_id', ord.customer_id)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (contract?.credit_days) creditDays = contract.credit_days;
+
+        const base = ord?.shipped_at ? new Date(ord.shipped_at) : new Date();
+        const due  = new Date(base.getTime() + creditDays * 86_400_000);
+        computedDueDate = due.toISOString().slice(0, 10);
+        await db.from('orders').update({ payment_due_date: computedDueDate }).eq('id', id);
+      }
+
+      // Безготівковий — очищуємо дату погашення якщо раніше стояла відстрочка
+      if (payment_type === 'invoice') {
+        await db.from('orders').update({ payment_due_date: null }).eq('id', id);
+      }
+    } catch (err) {
+      console.error('[payment_type change] accounting:', err);
+    }
+  }
 
   // ── Оплата підтверджена → записуємо в леджер ─────────────────────────────
   if (payment_confirmed === true) {
@@ -99,6 +164,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         invoice:  'bank',
         bank:     'bank',
         card:     'acquiring',
+        deferred: 'bank',
         online:   'acquiring',
         liqpay:   'acquiring',
         mono:     'acquiring',
@@ -335,5 +401,5 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, ...(computedDueDate ? { payment_due_date: computedDueDate } : {}) });
 }

@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft, X, Printer } from 'lucide-react';
 import ReturnButton from '../../../procurement/[id]/ReturnButton';
 import CorrectButton from '../CorrectButton';
 import DocChain from '../../../procurement/[id]/DocChain';
@@ -100,11 +100,16 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const warehouseName = (doc.warehouse as any)?.name ?? null;
 
+  const isSale = doc.doc_type === 'sale';
+
   // totalCost — сума рядків БЕЗ landed cost (оригінальні ціни з PO або з рядків якщо немає LC)
   const totalCost = (lines ?? []).reduce((s: number, l: { sku: string; qty: number; cost_price: number }) => {
     const origPrice = hasLandedCost ? (originalPriceMap.get(l.sku) ?? Number(l.cost_price ?? 0)) : Number(l.cost_price ?? 0);
     return s + (l.qty * origPrice);
   }, 0);
+  const totalSale = isSale
+    ? (lines ?? []).reduce((s: number, l: { qty: number; price: number }) => s + l.qty * Number(l.price ?? 0), 0)
+    : 0;
   // totalAfterLC — фінальна собівартість з FIFO-партій (включає розподілений LC)
   const totalAfterLC = hasLandedCost
     ? (batches ?? []).reduce((s: number, b: { initial_qty: number; cost_price: number }) => s + b.initial_qty * b.cost_price, 0)
@@ -162,7 +167,18 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
         {(doc.doc_type === 'purchase_order' || (doc.parent_doc_id && ['receipt','stock_in'].includes(doc.doc_type))) && (
           <DocChain poId={doc.doc_type === 'purchase_order' ? id : doc.parent_doc_id!} />
         )}
-        <PrintButton />
+        {isSale ? (
+          <a
+            href={`/vidatkova/${id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, textDecoration: 'none' }}
+          >
+            <Printer size={14} /> Друк
+          </a>
+        ) : (
+          <PrintButton />
+        )}
         <Link href="/admin/accounting/documents" title="Закрити"
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', textDecoration: 'none', flexShrink: 0 }}>
           <X size={15} />
@@ -275,9 +291,11 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
         </div>
         {(lines ?? []).map((line: { sku: string; qty: number; price: number; cost_price: number; sort_order: number; is_bonus?: boolean }, idx: number) => {
           const costPrice     = line.is_bonus ? 0 : Number(line.cost_price ?? 0);
+          const salePrice     = line.is_bonus ? 0 : Number(line.price ?? 0);
           const originalPrice = line.is_bonus ? 0 : (originalPriceMap.get(line.sku) ?? costPrice);
           const finalPrice    = line.is_bonus ? 0 : (finalPriceMap.get(line.sku) ?? costPrice);
           const lcAdded       = finalPrice - originalPrice;
+          const displayPrice  = isSale ? salePrice : costPrice;
           return (
             <div key={idx} style={{ display: 'grid', gridTemplateColumns: hasLandedCost ? '110px minmax(0,1fr) 60px 100px 80px 100px 100px' : '120px minmax(0,1fr) 70px 110px 110px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', columnGap: '16px', background: line.is_bonus ? '#FFFBEB' : undefined }}>
               <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-muted)' }}>{line.sku}</span>
@@ -303,8 +321,8 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
                 </>
               ) : (
                 <>
-                  <span style={{ textAlign: 'right', fontSize: '13px', color: 'var(--text-secondary)' }}>{fmt(costPrice)} ₴</span>
-                  <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600 }}>{fmt(line.qty * costPrice)} ₴</span>
+                  <span style={{ textAlign: 'right', fontSize: '13px', color: 'var(--text-secondary)' }}>{fmt(displayPrice)} ₴</span>
+                  <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600 }}>{fmt(line.qty * displayPrice)} ₴</span>
                 </>
               )}
             </div>
@@ -322,7 +340,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
           ) : (
             <>
               <span>Всього</span>
-              <span style={{ textAlign: 'right' }}>{fmt(totalCost)} ₴</span>
+              <span style={{ textAlign: 'right' }}>{fmt(isSale ? totalSale : totalCost)} ₴</span>
             </>
           )}
         </div>

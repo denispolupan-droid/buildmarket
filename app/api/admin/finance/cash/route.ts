@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { recordTxn } from '../../../../../lib/accounting/money';
+import { createPaymentVoucher } from '../../../../../lib/accounting/documents';
 
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer();
@@ -22,21 +23,28 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const voucherType = direction === 'in' ? 'cash_in' as const : 'cash_out' as const;
+    const voucher = await createPaymentVoucher({
+      doc_type:      voucherType,
+      amount,
+      business_date,
+      created_by:    user.email ?? 'admin',
+      meta:          { category: category ?? 'other', direction, manual: true },
+    });
+
     const txnId = await recordTxn({
-      // in  = ПКО: cash надходить, кредит — correction (інше джерело)
-      // out = РКО: cash видається, дебет — correction (інші видатки)
       debitAccount:  direction === 'in'  ? 'cash'       : 'correction',
       creditAccount: direction === 'in'  ? 'correction' : 'cash',
       amount,
-      businessDate: business_date,
+      businessDate:  business_date,
+      docId:         voucher.id,
+      docType:       voucherType,
       description,
-      docType:      direction === 'in' ? 'cash_in' : 'cash_out',
-      createdBy:    user.email,
-      idempotencyKey: null,
-      meta: { category: category ?? 'other', manual: true },
+      createdBy:     user.email,
+      meta:          { category: category ?? 'other', manual: true },
     });
 
-    return NextResponse.json({ ok: true, txnId });
+    return NextResponse.json({ ok: true, txnId, voucher_id: voucher.id, doc_number: voucher.doc_number });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Помилка запису';
     return NextResponse.json({ error: message }, { status: 500 });

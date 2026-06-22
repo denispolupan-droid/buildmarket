@@ -10,6 +10,7 @@ type DocRow = {
   doc_number: string;
   status: 'draft' | 'confirmed' | 'cancelled';
   doc_date: string;
+  created_at: string;
   total_amount: number;
   total_cost: number;
   notes: string | null;
@@ -346,6 +347,10 @@ export default function DocumentsClient({
             const date     = new Date(doc.doc_date).toLocaleDateString('uk-UA', {
               day: '2-digit', month: '2-digit', year: 'numeric',
             });
+            const timeTs   = doc.confirmed_at ?? doc.cancelled_at ?? doc.created_at;
+            const timeStr  = timeTs
+              ? new Date(timeTs).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })
+              : null;
             const counterparty = doc.supplier?.name ?? doc.counterparty ?? (doc.order_id ? 'Замовлення' : '—');
             const margin       = doc.total_amount - doc.total_cost;
 
@@ -378,6 +383,11 @@ export default function DocumentsClient({
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                     {TYPE_LABELS[doc.doc_type] ?? doc.doc_type} · {date}
+                    {timeStr && (
+                      <span style={{ marginLeft: '4px', color: 'var(--text-muted)', opacity: 0.7 }}>
+                        {timeStr}
+                      </span>
+                    )}
                   </div>
                 </div>
 

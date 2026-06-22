@@ -16,7 +16,7 @@
  */
 
 import { createServiceClient } from '../supabase';
-import { recordShipment, recordCOGS, recordTxn } from './money';
+import { recordCOGS, recordTxn } from './money';
 import { createDocument, confirmDocument } from './documents';
 import { resolveOrderFulfillment } from './fulfillment';
 import type { OrderItem } from '../../types';
@@ -225,6 +225,20 @@ export async function recordDropshipSale(
     (skuMapRows ?? []).map(r => [r.our_sku, r.supplier_id]),
   );
 
+  // Активний договір клієнта
+  let contractId: string | undefined;
+  if (input.customer_id) {
+    const { data: ctr } = await db
+      .from('customer_contracts')
+      .select('id')
+      .eq('customer_id', input.customer_id)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    contractId = ctr?.id ?? undefined;
+  }
+
   // Роутер: определяем источник отгрузки per-item (свой склад или поставщик)
   const plan = await resolveOrderFulfillment(
     input.order_items.map(i => ({ sku: i.sku, qty: i.qty })),
@@ -237,6 +251,7 @@ export async function recordDropshipSale(
     warehouse_id: warehouse.id,
     order_id:     input.order_id,
     customer_id:  input.customer_id ?? undefined,
+    contract_id:  contractId,
     channel_code: input.channel_code ?? 'website',
     notes:        `Заказ #${input.order_number}`,
     created_by:   input.confirmed_by ?? 'system',
@@ -258,26 +273,18 @@ export async function recordDropshipSale(
   // Проводим документ
   await confirmDocument(doc.id, input.confirmed_by ?? 'system');
 
-  // Записуємо в грошовий леджер (I5: виручка і COGS разом)
-  const totalRevenue = input.order_items.reduce((s, i) => s + i.qty * i.price, 0);
-  const totalCOGS    = input.order_items.reduce((s, i) => s + i.qty * (costMap.get(i.sku) ?? 0), 0);
+  // Записуємо COGS для дропшип-рядків: confirmDocument не записує їх,
+  // бо buildMovements пропускає fulfillment_type='dropship' (fifoCost=0).
+  // recordShipment (виручка) НЕ викликаємо — confirmDocument вже зробив це.
+  const dropshipCOGS = input.order_items.reduce((s, i) => {
+    const src = plan.items.find(p => p.sku === i.sku);
+    if (src?.fulfillment_type !== 'dropship') return s;
+    return s + i.qty * (costMap.get(i.sku) ?? 0);
+  }, 0);
 
-  if (totalRevenue > 0 && input.customer_id) {
-    await recordShipment({
-      customerId:     input.customer_id,
-      contractId:     input.contract_id,
-      orderId:        input.order_id,
-      docId:          doc.id,
-      amount:         totalRevenue,
-      businessDate:   input.business_date,
-      createdBy:      input.confirmed_by,
-      idempotencyKey: `shipment:${input.order_id}:${doc.id}`,
-    });
-  }
-
-  if (totalCOGS > 0) {
+  if (dropshipCOGS > 0) {
     await recordCOGS({
-      amount:         totalCOGS,
+      amount:         dropshipCOGS,
       docId:          doc.id,
       orderId:        input.order_id,
       businessDate:   input.business_date,

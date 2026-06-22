@@ -60,6 +60,7 @@ type Order = {
   delivered_at:       string | null;
   cancelled_at:       string | null;
   status_history:     { status: string; at: string; by: string }[] | null;
+  payment_due_date:   string | null;
   items: OrderItem[];
   prom_data:          ({ _commission?: PromCommissionData } & Record<string, unknown>) | null;
 };
@@ -149,6 +150,7 @@ export default function AdminOrders({
   const [creatingPo,     setCreatingPo]     = useState<string | null>(null);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [flashId,    setFlashId]    = useState<string | null>(null);
   const [sourceOverrides, setSourceOverrides] = useState<Record<string, Record<string, 'own' | 'dropship'>>>({});
   const [shipping,      setShipping]      = useState<string | null>(null);
   const [saleDocMap,    setSaleDocMap]    = useState<Record<string, { id: string; number: string }[]>>(initialSaleDocs);
@@ -158,6 +160,9 @@ export default function AdminOrders({
   const [editDeliveryId,   setEditDeliveryId]   = useState<string | null>(null);
   const [editDeliveryForm, setEditDeliveryForm] = useState<{ type: string; subtype: string; cityName: string; address: string }>({ type: '', subtype: '', cityName: '', address: '' });
   const [savingDelivery,   setSavingDelivery]   = useState(false);
+  const [editPaymentTypeId,    setEditPaymentTypeId]    = useState<string | null>(null);
+  const [editPaymentTypeValue, setEditPaymentTypeValue] = useState('');
+  const [savingPaymentType,    setSavingPaymentType]    = useState(false);
   const [reserving, setReserving] = useState<string | null>(null);
   const [selectedMode, setSelectedMode] = useState<Record<string, 'supplier' | 'own' | 'mixed'>>({});
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -569,6 +574,25 @@ export default function AdminOrders({
     setSavingDelivery(false);
   }
 
+  async function savePaymentType(orderId: string, newType: string) {
+    setSavingPaymentType(true);
+    const res = await fetch(`/api/admin/orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payment_type: newType }),
+    });
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setOrders(prev => prev.map(o => o.id === orderId ? {
+        ...o,
+        payment_type: newType,
+        payment_due_date: newType === 'deferred' ? (data.payment_due_date ?? o.payment_due_date) : null,
+      } : o));
+      setEditPaymentTypeId(null);
+    }
+    setSavingPaymentType(false);
+  }
+
   async function autoShipDropship(orderId: string) {
     const res = await fetch(`/api/admin/orders/${orderId}/ship`, { method: 'POST' });
     const data = await res.json();
@@ -628,7 +652,10 @@ export default function AdminOrders({
       const data = await res.json();
       if (res.ok) {
         if (data.fully_shipped) {
-          setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped' } : o));
+          setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: data.status } : o));
+          setExpandedId(null);
+          setFlashId(orderId);
+          setTimeout(() => setFlashId(null), 1800);
         }
         if (data.sale_doc_id) {
           setSaleDocMap(prev => ({
@@ -1193,15 +1220,25 @@ export default function AdminOrders({
             const channel = CHANNEL_LABEL[order.channel_code ?? 'website'] ?? CHANNEL_LABEL.website;
             const isUnpaidInvoice = !paymentConfirmed && order.payment_type !== 'cod'
               && !['delivered', 'cancelled'].includes(order.status);
+            const isFlashing = flashId === order.id;
+
+            const STATUS_STEPS = [
+              { value: 'new',           label: 'Новий' },
+              { value: 'confirmed',     label: 'Підтверджено' },
+              { value: 'shipped',       label: 'Відправлено' },
+              { value: 'delivered',     label: 'Доставлено' },
+            ];
+            const stepIdx = STATUS_STEPS.findIndex(s => s.value === order.status);
+            const isCancelled = order.status === 'cancelled';
 
             return (
               <div key={order.id} id={`order-${order.id}`} style={{
-                background: isUnpaidInvoice ? '#FFFBF0' : 'var(--bg-card)',
-                border: `1px solid ${isExpanded ? 'var(--brand-blue)' : isUnpaidInvoice ? '#FCD34D' : 'var(--border)'}`,
+                background: isFlashing ? '#F0FDF4' : isUnpaidInvoice ? '#FFFBF0' : 'var(--bg-card)',
+                border: `1px solid ${isFlashing ? '#86EFAC' : isExpanded ? 'var(--brand-blue)' : isUnpaidInvoice ? '#FCD34D' : 'var(--border)'}`,
                 borderRadius: '10px', overflow: 'hidden',
-                boxShadow: isExpanded ? '0 4px 16px rgba(0,0,0,0.10)' : 'none',
+                boxShadow: isExpanded ? '0 4px 16px rgba(0,0,0,0.10)' : isFlashing ? '0 0 0 3px #BBF7D0' : 'none',
                 opacity: expandedId && !isExpanded ? 0.35 : 1,
-                transition: 'box-shadow 0.15s, border-color 0.15s, opacity 0.15s',
+                transition: 'box-shadow 0.3s, border-color 0.3s, opacity 0.15s, background 0.3s',
               }}>
 
                 {/* ── Compact row ── */}
@@ -1296,7 +1333,7 @@ export default function AdminOrders({
                   {/* Оплата */}
                   <div style={{ width: '46px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
                     <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '20px', background: 'var(--border-light)', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center' }}>
-                      {order.payment_type === 'cod' ? 'НП' : order.payment_type === 'card' ? '💳' : order.payment_type === 'cash' ? 'Гот.' : 'Рах.'}
+                      {order.payment_type === 'cod' ? 'НП' : order.payment_type === 'card' ? '💳' : order.payment_type === 'cash' ? 'Гот.' : order.payment_type === 'deferred' ? 'Відст.' : 'Рах.'}
                     </span>
                   </div>
 
@@ -1320,6 +1357,36 @@ export default function AdminOrders({
                     : <ChevronDown size={14} color="#94A3B8" style={{ flexShrink: 0 }} />
                   }
                 </div>
+
+                {/* ── Status progress bar ── */}
+                {!isCancelled && (
+                  <div style={{ display: 'flex', alignItems: 'center', padding: '5px 14px 6px', gap: 0, borderTop: isExpanded ? '1px solid var(--border-light)' : 'none', background: isExpanded ? 'var(--bg-soft)' : 'transparent' }}>
+                    {STATUS_STEPS.map((step, i) => {
+                      const done    = i < stepIdx;
+                      const active  = i === stepIdx;
+                      const future  = i > stepIdx;
+                      return (
+                        <div key={step.value} style={{ display: 'flex', alignItems: 'center', flex: i < STATUS_STEPS.length - 1 ? 1 : 'none' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                            <div style={{
+                              width: active ? '10px' : '7px', height: active ? '10px' : '7px',
+                              borderRadius: '50%', flexShrink: 0,
+                              background: done ? '#22C55E' : active ? (isFlashing ? '#22C55E' : 'var(--brand-blue)') : '#CBD5E1',
+                              boxShadow: active ? `0 0 0 2px ${isFlashing ? '#BBF7D0' : '#BFDBFE'}` : 'none',
+                              transition: 'all 0.3s',
+                            }} />
+                            <span style={{ fontSize: '9px', fontWeight: active ? 700 : 500, color: done ? '#16A34A' : active ? (isFlashing ? '#16A34A' : 'var(--brand-blue)') : '#94A3B8', whiteSpace: 'nowrap' }}>
+                              {step.label}
+                            </span>
+                          </div>
+                          {i < STATUS_STEPS.length - 1 && (
+                            <div style={{ flex: 1, height: '2px', margin: '0 3px 10px', background: done ? '#22C55E' : '#E2E8F0', borderRadius: '1px', transition: 'background 0.3s' }} />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* ── Expanded panel ── */}
                 {isExpanded && (
@@ -1704,13 +1771,50 @@ export default function AdminOrders({
                         </div>
                       )}
 
-                      {isCod ? (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
-                          <CreditCard size={12} /> Накладений платіж
+                      {editPaymentTypeId === order.id ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                          <select
+                            value={editPaymentTypeValue}
+                            onChange={e => setEditPaymentTypeValue(e.target.value)}
+                            style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 6px' }}
+                          >
+                            <option value="cash">💵 Готівка</option>
+                            <option value="invoice">🏦 Безготівковий (рахунок)</option>
+                            <option value="deferred">⏳ Відстрочка</option>
+                          </select>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button
+                              onClick={() => savePaymentType(order.id, editPaymentTypeValue)}
+                              disabled={savingPaymentType}
+                              style={{ height: '28px', padding: '0 12px', borderRadius: '6px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                            >
+                              {savingPaymentType ? '...' : 'Зберегти'}
+                            </button>
+                            <button
+                              onClick={() => setEditPaymentTypeId(null)}
+                              style={{ height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', fontSize: '12px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                            >
+                              Скасувати
+                            </button>
+                          </div>
+                        </div>
+                      ) : isCod ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
+                            <CreditCard size={12} /> Накладений платіж
+                          </div>
+                          <button onClick={() => { setEditPaymentTypeId(order.id); setEditPaymentTypeValue(['cash','invoice','deferred'].includes(order.payment_type) ? order.payment_type : 'cash'); }} title="Змінити спосіб оплати" style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1 }}>
+                            <Pencil size={11} />
+                          </button>
                         </div>
                       ) : order.payment_type === 'card' ? (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: order.status === 'confirmed' ? '#DCFCE7' : '#EFF6FF', color: order.status === 'confirmed' ? '#15803D' : 'var(--brand-blue)', border: `1px solid ${order.status === 'confirmed' ? '#86EFAC' : '#BFDBFE'}` }}>
-                          <CreditCard size={12} />{order.status === 'confirmed' ? '💳 Оплата карткою — підтверджено' : '💳 Картка онлайн'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: order.status === 'confirmed' ? '#DCFCE7' : '#EFF6FF', color: order.status === 'confirmed' ? '#15803D' : 'var(--brand-blue)', border: `1px solid ${order.status === 'confirmed' ? '#86EFAC' : '#BFDBFE'}` }}>
+                            <CreditCard size={12} />{order.status === 'confirmed' ? '💳 Оплата карткою — підтверджено' : '💳 Картка онлайн'}
+                          </div>
+                          <button onClick={() => { setEditPaymentTypeId(order.id); setEditPaymentTypeValue(['cash','invoice','deferred'].includes(order.payment_type) ? order.payment_type : 'cash'); }} title="Змінити спосіб оплати" style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1 }}>
+                            <Pencil size={11} />
+                          </button>
                         </div>
                       ) : (() => {
                         const amountPaid  = Number(order.amount_paid ?? 0);
@@ -1727,17 +1831,26 @@ export default function AdminOrders({
                         return (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             {/* Badge */}
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
-                              background: paymentConfirmed ? '#DCFCE7' : isPartial ? '#FFF7ED' : order.payment_type === 'cash' ? '#F0FDF4' : '#FEF3C7',
-                              color:      paymentConfirmed ? '#15803D'  : isPartial ? '#C2410C' : order.payment_type === 'cash' ? '#166534' : '#B45309',
-                              border: `1px solid ${paymentConfirmed ? '#86EFAC' : isPartial ? '#FDBA74' : order.payment_type === 'cash' ? '#86EFAC' : '#FCD34D'}`,
-                            }}>
-                              <CreditCard size={12} />
-                              {paymentConfirmed
-                                ? `✓ Оплачено ${amountPaid.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴`
-                                : isPartial
-                                  ? `${amountPaid.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} / ${total.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴`
-                                  : order.payment_type === 'cash' ? '💵 Оплата готівкою' : '⏳ Очікуємо оплату'}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
+                                background: paymentConfirmed ? '#DCFCE7' : isPartial ? '#FFF7ED' : order.payment_type === 'cash' ? '#F0FDF4' : '#FEF3C7',
+                                color:      paymentConfirmed ? '#15803D'  : isPartial ? '#C2410C' : order.payment_type === 'cash' ? '#166534' : '#B45309',
+                                border: `1px solid ${paymentConfirmed ? '#86EFAC' : isPartial ? '#FDBA74' : order.payment_type === 'cash' ? '#86EFAC' : '#FCD34D'}`,
+                              }}>
+                                <CreditCard size={12} />
+                                {paymentConfirmed
+                                  ? `✓ Оплачено ${amountPaid.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴`
+                                  : isPartial
+                                    ? `${amountPaid.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} / ${total.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴`
+                                    : order.payment_type === 'cash' ? '💵 Оплата готівкою'
+                                    : order.payment_type === 'invoice' ? '🏦 Безготівковий'
+                                    : order.payment_type === 'deferred'
+                                      ? `⏳ Відстрочка${order.payment_due_date ? ` · до ${new Date(order.payment_due_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' })}` : ''}`
+                                    : '⏳ Очікуємо оплату'}
+                              </div>
+                              <button onClick={() => { setEditPaymentTypeId(order.id); setEditPaymentTypeValue(['cash','invoice','deferred'].includes(order.payment_type) ? order.payment_type : 'cash'); }} title="Змінити спосіб оплати" style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1 }}>
+                                <Pencil size={11} />
+                              </button>
                             </div>
 
                             {/* Залишок */}

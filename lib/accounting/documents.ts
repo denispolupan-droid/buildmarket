@@ -27,6 +27,12 @@ const DIRECTION = {
   write_off:                 'out',
   transfer:                  'transfer',
   inventory:                 'inventory',
+  // Платіжні ваучери — без руху товару
+  customer_payment:          'none',
+  customer_payment_reversal: 'none',
+  supplier_payment:          'none',
+  cash_in:                   'none',
+  cash_out:                  'none',
 } as const satisfies Record<DocType, string>;
 
 type Direction = (typeof DIRECTION)[DocType];
@@ -53,6 +59,7 @@ export async function createDocument(
       supplier_id:      input.supplier_id        ?? null,
       order_id:         input.order_id           ?? null,
       customer_id:      input.customer_id        ?? null,
+      contract_id:      input.contract_id        ?? null,
       counterparty:     input.counterparty       ?? null,
       channel_code:     input.channel_code       ?? null,
       tracking_number:  input.tracking_number    ?? null,
@@ -128,10 +135,9 @@ export async function confirmDocument(
     throw new Error(`Cannot confirm document with status '${doc.status}'`);
   }
 
-  const lines = doc.lines ?? [];
-  if (lines.length === 0) throw new Error('Document has no lines');
-
   const direction: Direction = DIRECTION[doc.doc_type as DocType] ?? 'none';
+  const lines = doc.lines ?? [];
+  if (lines.length === 0 && direction !== 'none') throw new Error('Document has no lines');
   const isReversal = !!doc.reversal_of;
 
   // P1: перевірка overreceipt для receipts що мають parent PO
@@ -261,6 +267,7 @@ export async function confirmDocument(
       if (doc.customer_id && totalAmount > 0) {
         await recordShipment({
           customerId:     doc.customer_id,
+          contractId:     (doc as { contract_id?: string | null }).contract_id ?? undefined,
           orderId:        doc.order_id ?? undefined,
           docId:          documentId,
           amount:         totalAmount,
@@ -422,7 +429,11 @@ export async function cancelDocument(
   if (doc.status === 'cancelled') throw new Error('Document already cancelled');
 
   // ── Планові документи (direction=none): скасовуємо напряму без реверсалу ──
-  const PLAN_ONLY_TYPES = new Set(['purchase_order', 'purchase_order_adjustment', 'supplier_invoice']);
+  const PLAN_ONLY_TYPES = new Set([
+    'purchase_order', 'purchase_order_adjustment', 'supplier_invoice',
+    // Платіжні ваучери скасовуються напряму (без сторно-документів)
+    'customer_payment', 'customer_payment_reversal', 'supplier_payment', 'cash_in', 'cash_out',
+  ]);
 
   if (doc.status === 'draft' || PLAN_ONLY_TYPES.has(doc.doc_type)) {
     const { error } = await db
@@ -479,6 +490,7 @@ export async function cancelDocument(
         supplier_id:     doc.supplier_id,
         order_id:        doc.order_id,
         customer_id:     doc.customer_id,
+        contract_id:     (doc as { contract_id?: string | null }).contract_id ?? null,
         counterparty:    doc.counterparty,
         channel_code:    doc.channel_code,
         currency:        doc.currency,
@@ -625,6 +637,57 @@ export async function correctDocument(
 // ── Автозакриття замовлення постачальнику ────────────────────────────────────
 // Викликається після запису оплати або приходу.
 // Якщо обидві умови виконані (повний прихід + оплачено) → procurement_status = 'closed'.
+
+// ── Платіжний ваучер ─────────────────────────────────────────────────────────
+// Легкий документ без рядків і без руху товару — для оплат і касових операцій.
+// Відразу в статусі 'confirmed'; гроші записуються викликачем через recordTxn.
+
+export type PaymentVoucherInput = {
+  doc_type:    'customer_payment' | 'customer_payment_reversal' | 'supplier_payment' | 'cash_in' | 'cash_out';
+  customer_id?: string;
+  supplier_id?: number;
+  order_id?:   string;
+  contract_id?: string;
+  amount:      number;
+  business_date?: string;
+  created_by?: string;
+  meta?:       Record<string, unknown>;
+};
+
+export async function createPaymentVoucher(
+  input: PaymentVoucherInput,
+): Promise<{ id: string; doc_number: string }> {
+  const db = createServiceClient();
+  const { data: docNumber, error: numErr } = await db.rpc('next_doc_number', { p_type: input.doc_type });
+  if (numErr) throw numErr;
+
+  const now = new Date().toISOString();
+  const { data: doc, error } = await db
+    .from('acc_documents')
+    .insert({
+      doc_type:     input.doc_type,
+      doc_number:   docNumber as string,
+      status:       'confirmed',
+      customer_id:  input.customer_id ?? null,
+      supplier_id:  input.supplier_id ?? null,
+      order_id:     input.order_id    ?? null,
+      contract_id:  input.contract_id ?? null,
+      total_amount: input.amount,
+      total_cost:   0,
+      doc_date:     input.business_date
+        ? new Date(input.business_date + 'T00:00:00').toISOString()
+        : now,
+      confirmed_at: now,
+      confirmed_by: input.created_by ?? null,
+      created_by:   input.created_by ?? null,
+      meta:         input.meta ?? {},
+    })
+    .select('id, doc_number')
+    .single();
+
+  if (error) throw error;
+  return doc as { id: string; doc_number: string };
+}
 
 export async function maybeAutoClose(id: string): Promise<void> {
   const db = createServiceClient();

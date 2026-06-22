@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { recordTxn } from '../../../../../../lib/accounting/money';
+import { createPaymentVoucher } from '../../../../../../lib/accounting/documents';
 
 const PAYMENT_METHOD_MAP: Record<string, 'cash' | 'bank' | 'acquiring'> = {
   cash:       'cash',
@@ -95,8 +96,9 @@ export async function POST(
     const modeLabel: Record<string, string> = {
       cash: 'Готівка', transfer: 'Безготівковий', card: 'Карта', acquiring: 'Еквайринг',
     };
+    const bizDate = payment_date ?? new Date().toISOString().slice(0, 10);
 
-    // Знаходимо активний договір клієнта
+    // Активний договір клієнта
     let contractId: string | undefined;
     const { data: ctr } = await db
       .from('customer_contracts')
@@ -109,13 +111,26 @@ export async function POST(
     contractId = ctr?.id ?? undefined;
 
     try {
+      // Створюємо ваучер-документ → дає doc_id для money_entries
+      const voucher = await createPaymentVoucher({
+        doc_type:     'customer_payment',
+        customer_id:  order.customer_id,
+        order_id:     id,
+        contract_id:  contractId,
+        amount,
+        business_date: bizDate,
+        created_by:   user.email ?? 'admin',
+        meta:         { payment_mode, order_payment_id: payment.id },
+      });
+
       await recordTxn({
         debitAccount:   ledgerMethod,
         debitParty:     null,
         creditAccount:  'customer',
         creditParty:    order.customer_id,
         amount,
-        businessDate:   payment_date ?? new Date().toISOString().slice(0, 10),
+        businessDate:   bizDate,
+        docId:          voucher.id,
         docType:        'customer_payment',
         orderId:        id,
         contractId,
@@ -126,7 +141,6 @@ export async function POST(
       });
     } catch (err: unknown) {
       const msg = String(err instanceof Error ? err.message : err);
-      // idempotency duplicate — ігноруємо
       if (!msg.includes('unique') && !msg.includes('duplicate') && !msg.includes('23505')) {
         console.error('[order payment] ledger write failed:', err);
       }

@@ -10,13 +10,13 @@ export default async function DocumentsPage() {
   const { data: docs } = await db
     .from('acc_documents')
     .select(`
-      id, doc_type, doc_number, status, doc_date,
+      id, doc_type, doc_number, status, doc_date, created_at,
       total_amount, total_cost, notes, counterparty, order_id,
       confirmed_at, cancelled_at, reversal_of,
       warehouse:warehouse_id ( name ),
       supplier:supplier_id ( name )
     `)
-    .order('doc_date', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(200);
 
   const { data: warehouses } = await db

@@ -8,6 +8,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  try {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.user_metadata?.role !== 'admin') {
@@ -22,7 +23,7 @@ export async function POST(
 
   const { data: order, error } = await db
     .from('orders')
-    .select('id, order_number, status, items, channel_code, customer_id')
+    .select('id, order_number, status, items, channel_code, customer_id, delivery_type')
     .eq('id', id)
     .single();
 
@@ -105,18 +106,22 @@ export async function POST(
   });
 
   // Check if all order items are now fully shipped
-  const { data: confirmedLines } = await db
-    .from('acc_document_lines')
-    .select('sku, qty, document_id')
-    .in('document_id',
-      (await db
-        .from('acc_documents')
-        .select('id')
-        .eq('order_id', id)
-        .eq('doc_type', 'sale')
-        .eq('status', 'confirmed')
-      ).data?.map(d => d.id) ?? []
-    );
+  const { data: confirmedSaleDocs } = await db
+    .from('acc_documents')
+    .select('id')
+    .eq('order_id', id)
+    .eq('doc_type', 'sale')
+    .eq('status', 'confirmed');
+
+  const confirmedSaleDocIds = (confirmedSaleDocs ?? []).map(d => d.id);
+
+  const confirmedLines = confirmedSaleDocIds.length > 0
+    ? (await db
+        .from('acc_document_lines')
+        .select('sku, qty, document_id')
+        .in('document_id', confirmedSaleDocIds)
+      ).data ?? []
+    : [];
 
   const shippedBySkuSum: Record<string, number> = {};
   for (const l of confirmedLines ?? []) {
@@ -124,10 +129,15 @@ export async function POST(
   }
   const fullyShipped = allOrderItems.every(i => (shippedBySkuSum[i.sku] ?? 0) >= i.qty);
 
+  const isPickup = (order as { delivery_type?: string }).delivery_type === 'pickup';
+  const finalStatus = fullyShipped ? (isPickup ? 'delivered' : 'shipped') : order.status;
+
   if (fullyShipped) {
+    const now = new Date().toISOString();
     await db.from('orders').update({
-      status:     'shipped',
-      shipped_at: new Date().toISOString(),
+      status:       finalStatus,
+      shipped_at:   now,
+      ...(isPickup ? { delivered_at: now } : {}),
     }).eq('id', id);
   }
 
@@ -143,6 +153,13 @@ export async function POST(
     sale_doc_number: saleDoc?.doc_number ?? null,
     fully_shipped:   fullyShipped,
     shipped_items:   itemsToShip.map(i => ({ sku: i.sku, qty: i.qty })),
-    status:          fullyShipped ? 'shipped' : order.status,
+    status:          finalStatus,
   });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message
+      : (err && typeof err === 'object' && 'message' in err) ? String((err as { message: unknown }).message)
+      : String(err);
+    console.error('[ship] unhandled error:', err);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

@@ -25,10 +25,19 @@ export default async function SettlementsPage({
     .select('id, contract_number, customer_id, customer_name, status')
     .order('customer_name');
 
-  // Клієнти, у яких є хоча б один договір
-  const customerIds = [...new Set((contracts ?? []).map(c => c.customer_id).filter(Boolean))];
-  const customers = customerIds.length > 0
-    ? ((await db.from('customers').select('id, name, company, legal_name').in('id', customerIds)).data ?? [])
+  // Клієнти з money_entries (включно з тими, що без договору — напр. Водяний)
+  const { data: meEntries } = await db
+    .from('money_entries')
+    .select('counterparty_id')
+    .eq('account_type', 'customer')
+    .not('counterparty_id', 'is', null);
+
+  const contractCustomerIds = new Set((contracts ?? []).map(c => c.customer_id).filter(Boolean));
+  const meCustomerIds = [...new Set((meEntries ?? []).map(e => e.counterparty_id as string).filter(Boolean))];
+  const allCustomerIds = [...new Set([...contractCustomerIds, ...meCustomerIds])];
+
+  const customers = allCustomerIds.length > 0
+    ? ((await db.from('customers').select('id, name, company, legal_name').in('id', allCustomerIds)).data ?? [])
     : [];
 
   // Якщо прийшов тільки contractId (старі посилання) — знаходимо customerId

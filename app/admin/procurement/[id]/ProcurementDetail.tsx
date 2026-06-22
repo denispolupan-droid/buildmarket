@@ -433,13 +433,14 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
     finally { setReversing(false); }
   }
 
-  async function handleAddPayment() {
+  async function handleAddPayment(mode?: 'transfer' | 'cash') {
+    const payMode = mode ?? addPayMode;
     if (!addPayAmount || parseFloat(addPayAmount) <= 0) { showToast('Вкажіть суму', 'error'); return; }
     setAddingPayment(true);
     try {
       const res = await fetch(`/api/admin/procurement/${po.id}/add-payment`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: parseFloat(addPayAmount), payment_mode: addPayMode, payment_date: addPayDate }),
+        body: JSON.stringify({ amount: parseFloat(addPayAmount), payment_mode: payMode, payment_date: addPayDate }),
       });
       if (!res.ok) { const d = await res.json(); showToast(d.error ?? 'Помилка', 'error'); return; }
       const data = await res.json();
@@ -989,7 +990,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                         style={{ flex: 1, height: '32px', borderRadius: '7px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
                         Скасувати
                       </button>
-                      <button onClick={handleAddPayment} disabled={addingPayment || !addPayAmount || parseFloat(addPayAmount) <= 0}
+                      <button onClick={() => handleAddPayment()} disabled={addingPayment || !addPayAmount || parseFloat(addPayAmount) <= 0}
                         style={{ flex: 2, height: '32px', borderRadius: '7px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
                         {addingPayment ? '...' : '💳 Провести'}
                       </button>
@@ -1066,7 +1067,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                     </div>
                     <div style={{ display: 'flex', gap: '6px' }}>
                       <button onClick={() => setShowAddPayment(false)} style={{ flex: 1, height: '32px', borderRadius: '7px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Скасувати</button>
-                      <button onClick={handleAddPayment} disabled={addingPayment || !addPayAmount || parseFloat(addPayAmount) <= 0}
+                      <button onClick={() => handleAddPayment()} disabled={addingPayment || !addPayAmount || parseFloat(addPayAmount) <= 0}
                         style={{ flex: 2, height: '32px', borderRadius: '7px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
                         {addingPayment ? '...' : '💳 Провести'}
                       </button>
@@ -1158,7 +1159,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                       <div style={{ flex: 1 }}><label style={lbl}>Сума, ₴</label><input style={inp} type="number" value={addPayAmount} onChange={e => setAddPayAmount(e.target.value)} placeholder="0.00" /></div>
                       <div style={{ flex: 1 }}><label style={lbl}>Дата оплати</label><input style={inp} type="date" value={addPayDate} onChange={e => setAddPayDate(e.target.value)} /></div>
                     </div>
-                    <button onClick={() => { setAddPayMode('transfer'); handleAddPayment(); }}
+                    <button onClick={() => handleAddPayment('transfer')}
                       disabled={addingPayment || !addPayAmount || parseFloat(addPayAmount) <= 0}
                       style={{ width: '100%', height: '42px', borderRadius: '8px', border: 'none', background: !addPayAmount || parseFloat(addPayAmount) <= 0 ? '#E2E8F0' : '#15803D', color: !addPayAmount || parseFloat(addPayAmount) <= 0 ? '#94A3B8' : '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
                       {addingPayment ? '...' : '💳 Підтвердити переказ'}
@@ -1212,7 +1213,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                       <div style={{ flex: 1 }}><label style={lbl}>Сума, ₴</label><input style={inp} type="number" value={addPayAmount} onChange={e => setAddPayAmount(e.target.value)} placeholder="0.00" /></div>
                       <div style={{ flex: 1 }}><label style={lbl}>Дата оплати</label><input style={inp} type="date" value={addPayDate} onChange={e => setAddPayDate(e.target.value)} /></div>
                     </div>
-                    <button onClick={() => { setAddPayMode('cash'); handleAddPayment(); }}
+                    <button onClick={() => handleAddPayment('cash')}
                       disabled={addingPayment || !addPayAmount || parseFloat(addPayAmount) <= 0}
                       style={{ height: '36px', borderRadius: '8px', border: 'none', background: !addPayAmount || parseFloat(addPayAmount) <= 0 ? '#E2E8F0' : '#15803D', color: !addPayAmount || parseFloat(addPayAmount) <= 0 ? '#94A3B8' : '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
                       {addingPayment ? '...' : '💵 Підтвердити готівкову оплату'}

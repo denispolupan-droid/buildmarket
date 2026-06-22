@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { recordTxn } from '../../../../../../lib/accounting/money';
-import { maybeAutoClose } from '../../../../../../lib/accounting/documents';
+import { createPaymentVoucher, maybeAutoClose } from '../../../../../../lib/accounting/documents';
 
 const db = createServiceClient();
 
@@ -29,19 +29,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!doc) return NextResponse.json({ error: 'Не знайдено' }, { status: 404 });
 
   const creditAccount = payment_mode === 'cash' ? 'cash' : 'bank';
+  const bizDate = payment_date ?? new Date().toISOString().slice(0, 10);
+
+  const voucher = await createPaymentVoucher({
+    doc_type:      'supplier_payment',
+    supplier_id:   Number(doc.supplier_id),
+    amount,
+    business_date: bizDate,
+    created_by:    user.email ?? 'admin',
+    meta:          { payment_mode, po_id: id },
+  });
+
   await recordTxn({
     debitAccount:   'supplier',
     debitParty:     String(doc.supplier_id),
     creditAccount,
     creditParty:    null,
     amount,
-    businessDate:   payment_date ?? new Date().toISOString().slice(0, 10),
-    docId:          id,
+    businessDate:   bizDate,
+    docId:          voucher.id,
     docType:        'supplier_payment',
     description:    `${note ? note + ': ' : ''}Оплата постачальнику: ${doc.doc_number}`,
-    idempotencyKey: `supplier_payment:${id}:${Date.now()}`,
+    idempotencyKey: `supplier_payment:${voucher.id}`,
     createdBy:      user.email,
-    meta:           { payment_mode },
+    meta:           { payment_mode, po_id: id },
   });
 
   // Обчислюємо загальну суму оплат

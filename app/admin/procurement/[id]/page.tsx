@@ -248,10 +248,8 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
     adjustmentButton={
       !isDraft && !isCancelled ? (
         <div style={{ display: 'flex', gap: '8px' }}>
-          {/* Коригування: тільки до першого приходу */}
-          {!po.has_receipt && <AdjustmentButton poId={id} lines={poLines} />}
-          {/* Додатковий прихід: після першого приходу */}
-          {po.has_receipt && po.procurement_status !== 'received' && <AdditionalReceiptButton poId={id} supplierName={po.supplier_name} />}
+          {!po.has_receipt && <AdjustmentButton key="adj" poId={id} lines={poLines} />}
+          {po.has_receipt && po.procurement_status !== 'received' && <AdditionalReceiptButton key="add-rcpt" poId={id} supplierName={po.supplier_name} />}
         </div>
       ) : isDraft ? (
         <EditDraftButton

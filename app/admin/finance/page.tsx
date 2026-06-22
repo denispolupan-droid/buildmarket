@@ -8,6 +8,8 @@ const db = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
+export const dynamic = 'force-dynamic';
+
 const UA_MONTHS = ['Січ','Лют','Бер','Кві','Тра','Чер','Лип','Серп','Вер','Жов','Лис','Гру'];
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -53,32 +55,61 @@ export default async function FinancePage() {
     balance: Number(c.balance),
   }));
 
+  // Підтверджені РН з реальною FIFO-собівартістю, прив'язані до замовлень
   const { data: accDocs } = await db
     .from('acc_documents')
-    .select('doc_date, total_amount, total_cost, channel_code')
+    .select('id, order_id, doc_date, total_amount, total_cost, channel_code')
     .eq('doc_type', 'sale')
     .eq('status', 'confirmed')
+    .not('order_id', 'is', null)
     .gte('doc_date', sixAgo.toISOString());
 
   const hasAccData = (accDocs?.length ?? 0) > 0;
 
-  // Собівартість з product_stock
-  const allSkus = [...new Set(
+  // order_id → реальна собівартість з підтвердженої РН
+  const accCostByOrder = new Map(
+    (accDocs ?? []).map(d => [d.order_id as string, Number(d.total_cost ?? 0)])
+  );
+
+  // Рядки підтверджених РН — для собівартості по SKU в таблиці топ-товарів
+  const accDocIds = (accDocs ?? []).map(d => d.id as string);
+  const { data: accLines } = accDocIds.length > 0
+    ? await db.from('acc_document_lines').select('sku, qty, cost_price').in('document_id', accDocIds)
+    : { data: [] };
+
+  // Зважена середня собівартість за SKU з FIFO-даних РН
+  const skuCostAgg: Record<string, { totalCost: number; totalQty: number }> = {};
+  for (const line of accLines ?? []) {
+    if (!skuCostAgg[line.sku]) skuCostAgg[line.sku] = { totalCost: 0, totalQty: 0 };
+    skuCostAgg[line.sku].totalCost += Number(line.cost_price ?? 0) * Number(line.qty ?? 0);
+    skuCostAgg[line.sku].totalQty  += Number(line.qty ?? 0);
+  }
+  const skuAccCostMap = new Map(
+    Object.entries(skuCostAgg).map(([sku, a]) => [sku, a.totalQty > 0 ? a.totalCost / a.totalQty : 0])
+  );
+
+  // Всі SKU з усіх замовлень — для назв товарів і fallback-собівартості
+  const allOrderSkus = [...new Set(
     (orders ?? []).flatMap(o => (o.items ?? []).map((i: { sku: string }) => i.sku))
   )];
 
-  const { data: stockPrices } = allSkus.length > 0
-    ? await db.from('product_stock').select('sku, price_cost').in('sku', allSkus)
+  // Fallback: product_stock.price_cost для замовлень без підтвердженої РН
+  const ordersWithoutAcc = (orders ?? []).filter(o => !accCostByOrder.has(o.id));
+  const fallbackSkus = [...new Set(
+    ordersWithoutAcc.flatMap(o => (o.items ?? []).map((i: { sku: string }) => i.sku))
+  )];
+
+  const { data: stockPrices } = fallbackSkus.length > 0
+    ? await db.from('product_stock').select('sku, price_cost').in('sku', fallbackSkus)
     : { data: [] };
 
-  const { data: productNames } = allSkus.length > 0
-    ? await db.from('products').select('sku, name, brand').in('sku', allSkus)
+  const { data: productNames } = allOrderSkus.length > 0
+    ? await db.from('products').select('sku, name, brand').in('sku', allOrderSkus)
     : { data: [] };
 
   const costMap  = new Map((stockPrices ?? []).map(s => [s.sku, Number(s.price_cost ?? 0)]));
   const prodMap  = new Map((productNames ?? []).map(p => [p.sku, p]));
 
-  // Розраховуємо собівартість і маржу по кожному замовленню
   type OrderRow = {
     id: string; order_number: number; status: string;
     total_price: number; created_at: string; channel_code: string | null;
@@ -87,8 +118,10 @@ export default async function FinancePage() {
   };
 
   const rows: OrderRow[] = (orders ?? []).map(o => {
-    const cost = (o.items ?? []).reduce((s: number, item: { sku: string; qty: number }) =>
-      s + (costMap.get(item.sku) ?? 0) * item.qty, 0);
+    const cost = accCostByOrder.has(o.id)
+      ? accCostByOrder.get(o.id)!
+      : (o.items ?? []).reduce((s: number, item: { sku: string; qty: number }) =>
+          s + (costMap.get(item.sku) ?? 0) * item.qty, 0);
     return { ...o, cost, margin: o.total_price - cost };
   });
 
@@ -128,7 +161,7 @@ export default async function FinancePage() {
     for (const item of (row.items ?? [])) {
       if (!skuStats[item.sku]) skuStats[item.sku] = { revenue: 0, cost: 0, qty: 0 };
       skuStats[item.sku].revenue += item.price * item.qty;
-      skuStats[item.sku].cost   += (costMap.get(item.sku) ?? 0) * item.qty;
+      skuStats[item.sku].cost   += (skuAccCostMap.get(item.sku) ?? costMap.get(item.sku) ?? 0) * item.qty;
       skuStats[item.sku].qty    += item.qty;
     }
   }
@@ -171,8 +204,7 @@ export default async function FinancePage() {
           Фінанси
         </h1>
         <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-          {curMonthLabel} · Собівартість розрахована за поточними закупівельними цінами
-          {!hasAccData && ' · Дані на основі замовлень (підтверджені документи з\'являться після відвантаження)'}
+          {curMonthLabel} · {hasAccData ? 'Собівартість за підтвердженими РН (FIFO)' : 'Собівартість за поточними закупівельними цінами (РН не підтверджені)'}
         </p>
         </div>
         <FinanceActions contracts={contractsForDrawer} />
@@ -299,7 +331,7 @@ export default async function FinancePage() {
       </div>
 
       {/* Bottom grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: '20px' }}>
 
         {/* Top products */}
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
@@ -325,7 +357,7 @@ export default async function FinancePage() {
                 {topProducts.map((p, i) => (
                   <tr key={p.sku} style={{ borderTop: '1px solid var(--border-light)', background: i % 2 === 0 ? 'transparent' : 'var(--bg-soft)' }}>
                     <td style={{ padding: '10px 16px' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '480px' }}>
                         {p.brand} {p.name}
                       </div>
                       <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{p.sku}</div>

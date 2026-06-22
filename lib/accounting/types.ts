@@ -10,7 +10,13 @@ export type DocType =
   | 'return_out'
   | 'write_off'
   | 'transfer'
-  | 'inventory';
+  | 'inventory'
+  // ── Платіжні ваучери (direction=none, без рядків) ────────────────────────────
+  | 'customer_payment'           // ПКО: оплата від клієнта
+  | 'customer_payment_reversal'  // РКО: повернення оплати клієнту
+  | 'supplier_payment'           // ПС: оплата постачальнику
+  | 'cash_in'                    // КО: прихід готівки (не пов'язаний з клієнтом)
+  | 'cash_out';                  // РО: видача готівки
 
 export type POStatus =
   | 'draft' | 'sent' | 'confirmed_by_supplier'
@@ -30,6 +36,7 @@ export type AccDocument = {
   supplier_id: number | null;
   order_id: string | null;
   customer_id: string | null;
+  contract_id: string | null;
   counterparty: string | null;
   channel_code: string | null;
   total_amount: number;
@@ -118,6 +125,7 @@ export type CreateDocumentInput = {
   supplier_id?: number;
   order_id?: string;
   customer_id?: string;
+  contract_id?: string;
   counterparty?: string;
   channel_code?: string;
   tracking_number?: string;

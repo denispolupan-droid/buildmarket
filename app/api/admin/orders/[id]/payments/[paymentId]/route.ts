@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../../lib/supabase';
 import { recordTxn } from '../../../../../../../lib/accounting/money';
+import { createPaymentVoucher } from '../../../../../../../lib/accounting/documents';
 
 const PAYMENT_METHOD_MAP: Record<string, 'cash' | 'bank' | 'acquiring'> = {
   cash:      'cash',
@@ -62,14 +63,22 @@ export async function DELETE(
   if (order?.customer_id) {
     const ledgerMethod = PAYMENT_METHOD_MAP[payment.payment_mode] ?? 'bank';
     try {
+      const voucher = await createPaymentVoucher({
+        doc_type:    'customer_payment_reversal',
+        customer_id: order.customer_id,
+        order_id:    orderId,
+        amount:      Number(payment.amount),
+        created_by:  user.email ?? 'admin',
+        meta:        { payment_mode: payment.payment_mode, reversed_payment_id: paymentId },
+      });
       await recordTxn({
-        // Реверс: DR customer, CR cash/bank/acquiring
         debitAccount:   'customer',
         debitParty:     order.customer_id,
         creditAccount:  ledgerMethod,
         creditParty:    null,
         amount:         Number(payment.amount),
         businessDate:   new Date().toISOString().slice(0, 10),
+        docId:          voucher.id,
         docType:        'customer_payment_reversal',
         orderId,
         description:    `Скасування оплати — замовлення #${order.order_number}`,
