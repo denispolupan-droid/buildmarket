@@ -67,12 +67,13 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
 
   const categoryPromUrl = categories.find(c => c.slug === categorySlug)?.prom_section_url ?? null;
 
-  const [priceUnit, setPriceUnit] = useState(product?.stock?.price_unit ?? 0);
-  const [priceOld, setPriceOld] = useState(product?.stock?.price_old ?? 0);
-  const [priceRetail, setPriceRetail] = useState(product?.stock?.price_retail ?? 0);
-  const [priceRetailOld, setPriceRetailOld] = useState(product?.stock?.price_retail_old ?? 0);
-  const [priceDrop, setPriceDrop] = useState(product?.stock?.price_drop ?? 0);
-  const [priceCost, setPriceCost] = useState(product?.stock?.price_cost ?? (isNew ? Number(searchParams.get('price_cost') ?? 0) : 0));
+  // Ціни — тільки для відображення, редагування в розділі /admin/prices
+  const priceUnit     = product?.stock?.price_unit     ?? 0;
+  const priceOld      = product?.stock?.price_old      ?? 0;
+  const priceRetail   = product?.stock?.price_retail   ?? 0;
+  const priceRetailOld= product?.stock?.price_retail_old ?? 0;
+  const priceDrop     = product?.stock?.price_drop     ?? 0;
+
   const [stockQty, setStockQty] = useState(product?.stock?.stock_qty ?? 0);
   const [stockStatus, setStockStatus] = useState(product?.stock?.stock_status ?? 'in_stock');
   const [supplierSku, setSupplierSku] = useState(product?.stock?.supplier_sku ?? '');
@@ -221,12 +222,6 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
           },
           stock: {
             sku,
-            price_unit: priceUnit,
-            price_old: priceOld || null,
-            price_retail: priceRetail || null,
-            price_retail_old: priceRetailOld || null,
-            price_drop: priceDrop || null,
-            price_cost: priceCost || null,
             stock_qty: stockQty,
             stock_status: stockStatus,
             supplier_sku: supplierSku || null,
@@ -484,37 +479,49 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
 
       {/* Pricing & Stock */}
       <div style={sectionStyle}>
-        <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '20px' }}>Ціни та залишки</h2>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
-          <div>
-            <label style={labelStyle}>Оптова ціна (грн)</label>
-            <input type="number" value={priceUnit} onChange={e => setPriceUnit(Number(e.target.value))} style={inputStyle} min={0} step={0.01} />
-          </div>
-          <div>
-            <label style={labelStyle}>Стара оптова</label>
-            <input type="number" value={priceOld} onChange={e => setPriceOld(Number(e.target.value))} style={inputStyle} min={0} step={0.01} />
-          </div>
-          <div>
-            <label style={labelStyle}>Собівартість</label>
-            <input type="number" value={priceCost} onChange={e => setPriceCost(Number(e.target.value))} style={inputStyle} min={0} step={0.01} />
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Наявність</h2>
+          {!isNew && (
+            <a
+              href={`/admin/prices?sku=${encodeURIComponent(sku)}`}
+              style={{ fontSize: '13px', fontWeight: 600, color: '#1E3A5F', textDecoration: 'none', background: '#EFF4FF', border: '1px solid #BFDBFE', borderRadius: '7px', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+            >
+              ✏️ Редагувати ціни →
+            </a>
+          )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
-          <div>
-            <label style={labelStyle}>Роздрібна ціна (грн)</label>
-            <input type="number" value={priceRetail} onChange={e => setPriceRetail(Number(e.target.value))} style={inputStyle} min={0} step={0.01} />
+        {/* Ціни — тільки перегляд */}
+        {!isNew ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '20px' }}>
+            {[
+              { label: 'Оптова',      value: priceUnit,      old: priceOld       },
+              { label: 'Роздрібна',   value: priceRetail,    old: priceRetailOld },
+              { label: 'Дропшипінг', value: priceDrop,      old: null           },
+            ].map(p => (
+              <div key={p.label} style={{ padding: '10px 14px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{p.label}</div>
+                <div style={{ fontSize: '16px', fontWeight: 800, color: p.value > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                  {p.value > 0 ? `${p.value.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₴` : '—'}
+                </div>
+                {p.old != null && p.old > 0 && (
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', textDecoration: 'line-through', marginTop: '2px' }}>
+                    {p.old.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₴
+                  </div>
+                )}
+              </div>
+            ))}
+            <div style={{ padding: '10px 14px', background: '#EFF4FF', borderRadius: '8px', border: '1px solid #BFDBFE', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              onClick={() => window.location.href = `/admin/prices?sku=${encodeURIComponent(sku)}`}>
+              <div style={{ fontSize: '20px', marginBottom: '2px' }}>✏️</div>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', textAlign: 'center' }}>Редагувати<br />ціни</div>
+            </div>
           </div>
-          <div>
-            <label style={labelStyle}>Стара роздрібна</label>
-            <input type="number" value={priceRetailOld} onChange={e => setPriceRetailOld(Number(e.target.value))} style={inputStyle} min={0} step={0.01} />
+        ) : (
+          <div style={{ padding: '12px 16px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '20px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+            💡 Після збереження товару встановіть ціни в розділі <strong>Ціни</strong>.
           </div>
-          <div>
-            <label style={labelStyle}>Ціна дропшипінг</label>
-            <input type="number" value={priceDrop} onChange={e => setPriceDrop(Number(e.target.value))} style={inputStyle} min={0} step={0.01} />
-          </div>
-        </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div>
