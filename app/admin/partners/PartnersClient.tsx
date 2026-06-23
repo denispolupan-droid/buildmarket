@@ -90,7 +90,7 @@ export default function PartnersClient({
   const [viewingId,   setViewingId]   = useState<string | null>(null);
 
   // Contracts for the viewed customer
-  type ContractRow = { id: string; contract_number: string; status: string; credit_days: number; credit_limit: number; payment_terms: string | null; start_date: string | null; end_date: string | null };
+  type ContractRow = { id: string; contract_number: string; status: string; credit_days: number; credit_limit: number; payment_terms: string | null; start_date: string | null; end_date: string | null; is_auto: boolean };
   const [contracts,      setContracts]      = useState<ContractRow[]>([]);
   const [contractsLoading, setContractsLoading] = useState(false);
   const [showNewContract,  setShowNewContract]  = useState(false);
@@ -126,6 +126,7 @@ export default function PartnersClient({
     email: '', city: '', address: '', legal_address: '',
     bank_name: '', bank_iban: '', bank_mfo: '',
     type: 'retail', credit_limit: '', notes: '',
+    contract_payment_terms: 'prepay', contract_credit_days: 0, contract_credit_limit: 0,
   });
   const [newPhone, setNewPhone] = useState('');
   const [newSaving, setNewSaving] = useState(false);
@@ -165,16 +166,34 @@ export default function PartnersClient({
   async function handleCreate() {
     if (!newForm.name.trim()) { setNewError('Вкажіть ім\'я або назву'); return; }
     setNewSaving(true); setNewError('');
+
+    const { contract_payment_terms, contract_credit_days, contract_credit_limit, ...customerFields } = newForm;
+
     const res = await fetch('/api/admin/partners', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...newForm, phone: newPhone }),
+      body: JSON.stringify({ ...customerFields, phone: newPhone }),
     });
     const data = await res.json();
+    if (!res.ok) { setNewSaving(false); setNewError(data.error ?? 'Помилка'); return; }
+
+    // For wholesale/dropship — create contract with specified terms right away
+    if (newForm.type === 'wholesale' || newForm.type === 'dropship_partner') {
+      await fetch('/api/admin/contracts', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_id:   data.id,
+          payment_terms: contract_payment_terms,
+          credit_days:   contract_credit_days,
+          credit_limit:  contract_credit_limit,
+          is_auto:       false,
+        }),
+      });
+    }
+
     setNewSaving(false);
-    if (!res.ok) { setNewError(data.error ?? 'Помилка'); return; }
     setCustomers(prev => [data, ...prev]);
     setShowNew(false);
-    setNewForm({ name: '', company: '', legal_name: '', tax_number: '', email: '', city: '', address: '', legal_address: '', bank_name: '', bank_iban: '', bank_mfo: '', type: 'retail', credit_limit: '', notes: '' });
+    setNewForm({ name: '', company: '', legal_name: '', tax_number: '', email: '', city: '', address: '', legal_address: '', bank_name: '', bank_iban: '', bank_mfo: '', type: 'retail', credit_limit: '', notes: '', contract_payment_terms: 'prepay', contract_credit_days: 0, contract_credit_limit: 0 });
     setNewPhone('');
   }
 
@@ -714,11 +733,14 @@ export default function PartnersClient({
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {contracts.map(c => (
-                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                          <FileText size={13} style={{ color: '#4880B8', flexShrink: 0 }} />
+                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: c.is_auto ? '#FAFAFA' : 'var(--bg-soft)', borderRadius: '8px', border: `1px solid ${c.is_auto ? '#E2E8F0' : 'var(--border)'}` }}>
+                          <FileText size={13} style={{ color: c.is_auto ? '#94A3B8' : '#4880B8', flexShrink: 0 }} />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.contract_number}</span>
-                            {c.payment_terms && <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>{c.payment_terms === 'prepay' ? 'Передоплата' : c.payment_terms === 'deferred' ? `Відстрочка ${c.credit_days}д.` : c.payment_terms}</span>}
+                            {c.is_auto && (
+                              <span title="Створено автоматично при першому замовленні" style={{ fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', background: '#F1F5F9', color: '#94A3B8', marginLeft: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Авто</span>
+                            )}
+                            {c.payment_terms && <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>{c.payment_terms === 'prepay' || c.payment_terms === 'Передоплата' ? 'Передоплата' : c.payment_terms === 'deferred' ? `Відстрочка ${c.credit_days}д.` : c.payment_terms}</span>}
                             {(c.credit_limit > 0) && <span style={{ fontSize: '11px', color: '#15803D', marginLeft: '8px' }}>Ліміт: {Number(c.credit_limit).toLocaleString('uk-UA')} ₴</span>}
                           </div>
                           <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '20px', background: c.status === 'active' ? '#F0FDF4' : '#F1F5F9', color: c.status === 'active' ? '#15803D' : '#64748B' }}>
@@ -791,7 +813,7 @@ export default function PartnersClient({
                 ].map(f => (
                   <div key={f.key}>
                     <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>{f.label}</div>
-                    <input placeholder={f.placeholder} value={(newForm as Record<string, string>)[f.key] ?? ''}
+                    <input placeholder={f.placeholder} value={(newForm as Record<string, unknown>)[f.key] as string ?? ''}
                       onChange={e => setNewForm(prev => ({ ...prev, [f.key]: e.target.value }))} style={inp} />
                   </div>
                 ))}
@@ -857,6 +879,40 @@ export default function PartnersClient({
                     onChange={e => setNewForm(prev => ({ ...prev, bank_name: e.target.value }))} style={inp} />
                 </div>
               </div>
+
+              {/* — Умови договору (тільки для опту/дропу) — */}
+              {(newForm.type === 'wholesale' || newForm.type === 'dropship_partner') && (
+                <>
+                  <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Умови договору</div>
+                  <div style={{ background: '#F0F7FF', border: '1px solid #BFDBFE', borderRadius: '10px', padding: '12px 14px', marginBottom: '16px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                      <div>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', marginBottom: '3px', textTransform: 'uppercase' }}>Умови оплати</div>
+                        <select value={newForm.contract_payment_terms}
+                          onChange={e => setNewForm(p => ({ ...p, contract_payment_terms: e.target.value }))}
+                          style={{ ...inp, cursor: 'pointer' }}>
+                          <option value="prepay">Передоплата</option>
+                          <option value="deferred">Відстрочка</option>
+                          <option value="consignment">Консигнація</option>
+                        </select>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', marginBottom: '3px', textTransform: 'uppercase' }}>Днів відстрочки</div>
+                        <input type="number" min={0} value={newForm.contract_credit_days}
+                          onChange={e => setNewForm(p => ({ ...p, contract_credit_days: Number(e.target.value) }))}
+                          disabled={newForm.contract_payment_terms !== 'deferred'}
+                          style={{ ...inp, opacity: newForm.contract_payment_terms !== 'deferred' ? 0.4 : 1 }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', marginBottom: '3px', textTransform: 'uppercase' }}>Кредитний ліміт ₴</div>
+                        <input type="number" min={0} value={newForm.contract_credit_limit}
+                          onChange={e => setNewForm(p => ({ ...p, contract_credit_limit: Number(e.target.value) }))}
+                          style={inp} />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* — Нотатки — */}
               <div style={{ marginBottom: '8px' }}>

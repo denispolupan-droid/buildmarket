@@ -43,6 +43,7 @@ async function resolveCustomer(db: ReturnType<typeof createServiceClient>, opts:
       start_date:      new Date().toISOString().slice(0, 10),
       status:          'active',
       created_by:      'system',
+      is_auto:         true,
     }).select('id').single();
     return created?.id ?? null;
   }
