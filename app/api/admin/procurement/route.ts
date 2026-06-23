@@ -3,6 +3,31 @@ import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createDocument } from '../../../../lib/accounting/documents';
 import { createServiceClient } from '../../../../lib/supabase';
 
+async function getOrCreateSupplierContract(db: ReturnType<typeof createServiceClient>, supplierId: number): Promise<string | null> {
+  const { data: existing } = await db
+    .from('supplier_contracts')
+    .select('id')
+    .eq('supplier_id', supplierId)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (existing) return existing.id;
+
+  const { data: supplier } = await db.from('suppliers').select('name').eq('id', supplierId).single();
+  const year = new Date().getFullYear();
+  const { data: created } = await db.from('supplier_contracts').insert({
+    contract_number: `ДП-${year}-${String(supplierId).padStart(4, '0')}`,
+    supplier_id:     supplierId,
+    supplier_name:   supplier?.name ?? `Постачальник #${supplierId}`,
+    payment_terms:   'prepay',
+    status:          'active',
+    start_date:      new Date().toISOString().slice(0, 10),
+    created_by:      'system',
+  }).select('id').single();
+  return created?.id ?? null;
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -32,6 +57,8 @@ export async function POST(req: NextRequest) {
     .from('warehouses').select('id').eq('is_default', true).single();
   if (!warehouse) return NextResponse.json({ error: 'Склад не налаштовано' }, { status: 500 });
 
+  const supplierContractId = await getOrCreateSupplierContract(db, body.supplier_id);
+
   // Якщо is_receipt — створюємо прихід (receipt) і одразу проводимо
   if (body.is_receipt) {
     const { confirmDocument } = await import('../../../../lib/accounting/documents');
@@ -47,10 +74,11 @@ export async function POST(req: NextRequest) {
         supplier_id: body.supplier_id, warehouse_id: warehouse.id,
       })),
     });
-    // Link to parent PO
-    if (body.parent_doc_id) {
-      await db.from('acc_documents').update({ parent_doc_id: body.parent_doc_id }).eq('id', receipt.id);
-    }
+    // Link to parent PO and supplier contract
+    await db.from('acc_documents').update({
+      ...(body.parent_doc_id ? { parent_doc_id: body.parent_doc_id } : {}),
+      ...(supplierContractId ? { supplier_contract_id: supplierContractId } : {}),
+    }).eq('id', receipt.id);
 
     // Чернетка — не проводимо, повертаємо одразу
     if (body.draft) {
@@ -115,13 +143,14 @@ export async function POST(req: NextRequest) {
 
   const total = body.lines.reduce((s, l) => s + l.qty * l.cost_price, 0);
   const { error: updateErr } = await db.from('acc_documents').update({
-    status:             'confirmed',
-    confirmed_at:       new Date().toISOString(),
-    confirmed_by:       user.email,
-    procurement_status: body.conduct ? 'ordered' : 'draft',
-    total_amount:       total,
-    total_cost:         total,
-    ...(body.order_id ? { order_id: body.order_id } : {}),
+    status:               'confirmed',
+    confirmed_at:         new Date().toISOString(),
+    confirmed_by:         user.email,
+    procurement_status:   body.conduct ? 'ordered' : 'draft',
+    total_amount:         total,
+    total_cost:           total,
+    ...(body.order_id         ? { order_id:             body.order_id       } : {}),
+    ...(supplierContractId    ? { supplier_contract_id: supplierContractId  } : {}),
   }).eq('id', doc.id);
 
   if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });

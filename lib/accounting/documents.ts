@@ -214,9 +214,9 @@ export async function confirmDocument(
   if (doc.doc_type === 'receipt' || doc.doc_type === 'stock_in') {
     if (doc.supplier_id && totalCost > 0) {
       if (isReversal) {
-        // Сторно приходу: дебет supplier (зменшуємо борг), кредит inventory_asset
         await recordSupplierReturn({
           supplierId:     String(doc.supplier_id),
+          contractId:     (doc as Record<string, unknown>).supplier_contract_id as string | undefined,
           docId:          documentId,
           amount:         totalCost,
           businessDate:   bizDate,
@@ -226,6 +226,7 @@ export async function confirmDocument(
       } else {
         await recordPurchase({
           supplierId:     String(doc.supplier_id),
+          contractId:     (doc as Record<string, unknown>).supplier_contract_id as string | undefined,
           docId:          documentId,
           amount:         totalCost,
           businessDate:   bizDate,

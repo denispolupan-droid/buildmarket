@@ -66,7 +66,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     update.status = 'cancelled';
   }
 
-  const { data: po } = await db.from('acc_documents').select('supplier_id, doc_number, total_cost').eq('id', id).single();
+  const { data: po } = await db.from('acc_documents').select('supplier_id, doc_number, total_cost, supplier_contract_id').eq('id', id).single();
 
   // Record payment to supplier in money_entries
   if (body.procurement_status === 'paid' && body.payment_amount && po?.supplier_id) {
@@ -80,6 +80,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       businessDate:  body.payment_date ?? new Date().toISOString().slice(0, 10),
       docId:         id,
       docType:       'supplier_payment',
+      contractId:    po.supplier_contract_id ?? undefined,
       description:   `Оплата постачальнику: ${po.doc_number}`,
       idempotencyKey: `supplier_payment:${id}:${body.payment_date ?? ''}:${Math.round((body.payment_amount ?? 0) * 100)}`,
       createdBy:     user.email,

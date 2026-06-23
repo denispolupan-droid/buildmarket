@@ -22,7 +22,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { data: doc } = await db
     .from('acc_documents')
-    .select('supplier_id, doc_number, supplier_invoice_amount, total_cost, meta')
+    .select('supplier_id, doc_number, supplier_invoice_amount, total_cost, meta, supplier_contract_id')
     .eq('id', id).single();
 
   if (!doc) return NextResponse.json({ error: 'Не знайдено' }, { status: 404 });
@@ -65,6 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     businessDate:   bizDate,
     docId:          voucher.id,
     docType:        'supplier_payment',
+    contractId:     doc.supplier_contract_id ?? undefined,
     description:    `${note ? note + ': ' : ''}Оплата постачальнику: ${doc.doc_number}`,
     idempotencyKey: `supplier_payment:${voucher.id}`,
     createdBy:      user.email,
