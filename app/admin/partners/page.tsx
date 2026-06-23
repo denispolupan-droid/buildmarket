@@ -10,7 +10,7 @@ const db = createClient(
 export default async function PartnersPage() {
   const [{ data: customers }, { data: payouts }] = await Promise.all([
     db.from('customers')
-      .select('id, name, email, phone, company, city, type, price_tier, balance, balance_held, is_active, orders_count, total_revenue, last_order_at, created_at, partner_code, credit_limit, notes, customer_number')
+      .select('id, name, email, phone, company, city, type, price_tier, balance, balance_held, is_active, orders_count, total_revenue, last_order_at, created_at, partner_code, credit_limit, notes, customer_number, legal_name, tax_number, address, legal_address, bank_name, bank_iban, bank_mfo')
       .order('last_order_at', { ascending: false, nullsFirst: false }),
 
     db.from('partner_payout_requests')

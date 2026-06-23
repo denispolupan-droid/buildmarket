@@ -35,6 +35,9 @@ type Customer = {
   orders_count: number; total_revenue: number; last_order_at: string | null;
   created_at: string; partner_code: string | null; credit_limit: number | null;
   notes: string | null; customer_number: number | null;
+  legal_name: string | null; tax_number: string | null;
+  address: string | null; legal_address: string | null;
+  bank_name: string | null; bank_iban: string | null; bank_mfo: string | null;
 };
 
 type Payout = {
@@ -119,7 +122,9 @@ export default function PartnersClient({
   // New customer modal
   const [showNew,  setShowNew]  = useState(false);
   const [newForm,  setNewForm]  = useState({
-    name: '', company: '', phone: '', email: '', city: '',
+    name: '', company: '', legal_name: '', tax_number: '',
+    email: '', city: '', address: '', legal_address: '',
+    bank_name: '', bank_iban: '', bank_mfo: '',
     type: 'retail', credit_limit: '', notes: '',
   });
   const [newPhone, setNewPhone] = useState('');
@@ -169,7 +174,7 @@ export default function PartnersClient({
     if (!res.ok) { setNewError(data.error ?? 'Помилка'); return; }
     setCustomers(prev => [data, ...prev]);
     setShowNew(false);
-    setNewForm({ name: '', company: '', phone: '', email: '', city: '', type: 'retail', credit_limit: '', notes: '' });
+    setNewForm({ name: '', company: '', legal_name: '', tax_number: '', email: '', city: '', address: '', legal_address: '', bank_name: '', bank_iban: '', bank_mfo: '', type: 'retail', credit_limit: '', notes: '' });
     setNewPhone('');
   }
 
@@ -431,7 +436,7 @@ export default function PartnersClient({
                       <button onClick={() => {
                         setEditingId(c.id);
                         setEditPhone(c.phone ?? '');
-                        setEditForm({ name: c.name, company: c.company ?? '', email: c.email ?? '', city: c.city ?? '', type: c.type, credit_limit: c.credit_limit ?? undefined, notes: c.notes ?? '' });
+                        setEditForm({ name: c.name, company: c.company ?? '', email: c.email ?? '', city: c.city ?? '', type: c.type, credit_limit: c.credit_limit ?? undefined, notes: c.notes ?? '', legal_name: c.legal_name ?? '', tax_number: c.tax_number ?? '', legal_address: c.legal_address ?? '', address: c.address ?? '', bank_name: c.bank_name ?? '', bank_iban: c.bank_iban ?? '', bank_mfo: c.bank_mfo ?? '' });
                       }}
                         style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Edit2 size={11} /> Редагувати
@@ -447,6 +452,8 @@ export default function PartnersClient({
                     {/* Edit form */}
                     {isEditing && (
                       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {/* Основна */}
+                        <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Основна інформація</div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px' }}>
                           {[
                             { key: 'name',    label: "Ім'я / Назва *" },
@@ -456,23 +463,15 @@ export default function PartnersClient({
                           ].map(f => (
                             <div key={f.key}>
                               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>{f.label}</div>
-                              <input
-                                value={String((editForm as Record<string, unknown>)[f.key] ?? '')}
-                                onChange={e => setEditForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                                style={inp} />
+                              <input value={String((editForm as Record<string, unknown>)[f.key] ?? '')}
+                                onChange={e => setEditForm(prev => ({ ...prev, [f.key]: e.target.value }))} style={inp} />
                             </div>
                           ))}
                           <div>
                             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Телефон</div>
-                            <input
-                              value={editPhone}
-                              placeholder="+38 (0__) ___-__-__"
+                            <input value={editPhone} placeholder="+38 (0__) ___-__-__"
                               onChange={e => setEditPhone(formatPhone(getLocalDigits(e.target.value)))}
-                              onKeyDown={e => {
-                                if (e.key !== 'Backspace') return;
-                                e.preventDefault();
-                                setEditPhone(formatPhone(getLocalDigits(editPhone).slice(0, -1)));
-                              }}
+                              onKeyDown={e => { if (e.key !== 'Backspace') return; e.preventDefault(); setEditPhone(formatPhone(getLocalDigits(editPhone).slice(0, -1))); }}
                               style={inp} />
                           </div>
                           <div>
@@ -485,16 +484,51 @@ export default function PartnersClient({
                               <option value="dropship_partner">Дропшип</option>
                             </select>
                           </div>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '8px' }}>
-                          <div>
-                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Нотатки</div>
-                            <input value={String(editForm.notes ?? '')} onChange={e => setEditForm(prev => ({ ...prev, notes: e.target.value }))} style={inp} placeholder="Внутрішні примітки" />
-                          </div>
                           <div>
                             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Кредит ₴</div>
                             <input type="number" min={0} value={String(editForm.credit_limit ?? '')} onChange={e => setEditForm(prev => ({ ...prev, credit_limit: Number(e.target.value) || undefined }))} style={inp} placeholder="0" />
                           </div>
+                        </div>
+                        {/* Реквізити */}
+                        <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>Юридичні реквізити</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px' }}>
+                          <div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Юридична назва</div>
+                            <input value={String((editForm as Record<string, unknown>).legal_name ?? '')} onChange={e => setEditForm(prev => ({ ...prev, legal_name: e.target.value }))} style={inp} placeholder="ТОВ або ФОП" />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>ЄДРПОУ / ІПН</div>
+                            <input value={String((editForm as Record<string, unknown>).tax_number ?? '')} onChange={e => setEditForm(prev => ({ ...prev, tax_number: e.target.value }))} style={inp} placeholder="12345678" />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Юрадреса</div>
+                            <input value={String((editForm as Record<string, unknown>).legal_address ?? '')} onChange={e => setEditForm(prev => ({ ...prev, legal_address: e.target.value }))} style={inp} placeholder="вул., місто" />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Факт. адреса</div>
+                            <input value={String((editForm as Record<string, unknown>).address ?? '')} onChange={e => setEditForm(prev => ({ ...prev, address: e.target.value }))} style={inp} placeholder="вул., місто" />
+                          </div>
+                        </div>
+                        {/* Банк */}
+                        <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>Банківські реквізити</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '8px' }}>
+                          <div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>IBAN / Р/С</div>
+                            <input value={String((editForm as Record<string, unknown>).bank_iban ?? '')} onChange={e => setEditForm(prev => ({ ...prev, bank_iban: e.target.value }))} style={inp} placeholder="UA21..." />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>МФО</div>
+                            <input value={String((editForm as Record<string, unknown>).bank_mfo ?? '')} onChange={e => setEditForm(prev => ({ ...prev, bank_mfo: e.target.value }))} style={inp} placeholder="322313" />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Банк</div>
+                            <input value={String((editForm as Record<string, unknown>).bank_name ?? '')} onChange={e => setEditForm(prev => ({ ...prev, bank_name: e.target.value }))} style={inp} placeholder="АТ «ПриватБанк»" />
+                          </div>
+                        </div>
+                        {/* Нотатки */}
+                        <div>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Нотатки</div>
+                          <input value={String(editForm.notes ?? '')} onChange={e => setEditForm(prev => ({ ...prev, notes: e.target.value }))} style={inp} placeholder="Внутрішні примітки" />
                         </div>
                         {error && <div style={{ color: '#DC2626', fontSize: '12px' }}>{error}</div>}
                         <div style={{ display: 'flex', gap: '8px' }}>
@@ -698,7 +732,7 @@ export default function PartnersClient({
 
                 {/* Footer actions */}
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <button onClick={() => { setViewingId(null); setExpandedId(vc.id); setEditingId(vc.id); setEditPhone(vc.phone ?? ''); setEditForm({ name: vc.name, company: vc.company ?? '', email: vc.email ?? '', city: vc.city ?? '', type: vc.type, credit_limit: vc.credit_limit ?? undefined, notes: vc.notes ?? '' }); }}
+                  <button onClick={() => { setViewingId(null); setExpandedId(vc.id); setEditingId(vc.id); setEditPhone(vc.phone ?? ''); setEditForm({ name: vc.name, company: vc.company ?? '', email: vc.email ?? '', city: vc.city ?? '', type: vc.type, credit_limit: vc.credit_limit ?? undefined, notes: vc.notes ?? '', legal_name: vc.legal_name ?? '', tax_number: vc.tax_number ?? '', legal_address: vc.legal_address ?? '', address: vc.address ?? '', bank_name: vc.bank_name ?? '', bank_iban: vc.bank_iban ?? '', bank_mfo: vc.bank_mfo ?? '' }); }}
                     style={{ flex: 1, height: '38px', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                     <Edit2 size={13} /> Редагувати
                   </button>
@@ -717,14 +751,15 @@ export default function PartnersClient({
       {showNew && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) setShowNew(false); }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px 32px', width: '520px', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', border: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px 32px', width: '620px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', border: '1px solid var(--border)' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexShrink: 0 }}>
               <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary)' }}>Новий контрагент</div>
               <button onClick={() => setShowNew(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={18} /></button>
             </div>
 
             {/* Type selector */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexShrink: 0 }}>
               {[
                 { value: 'retail',           label: 'Роздрібний' },
                 { value: 'wholesale',        label: 'Оптовий' },
@@ -742,55 +777,99 @@ export default function PartnersClient({
               ))}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-              {[
-                { key: 'name',    label: "Ім'я / Назва *", placeholder: 'Іваненко Петро' },
-                { key: 'company', label: 'Компанія',        placeholder: 'ТОВ «...»' },
-                { key: 'email',   label: 'Email',           placeholder: 'email@...' },
-                { key: 'city',    label: 'Місто',           placeholder: 'Харків' },
-              ].map(f => (
-                <div key={f.key}>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>{f.label}</div>
-                  <input
-                    placeholder={f.placeholder}
-                    value={(newForm as Record<string, string>)[f.key] ?? ''}
-                    onChange={e => setNewForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                    style={inp} />
-                </div>
-              ))}
-              <div>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Телефон</div>
-                <input
-                  placeholder="+38 (0__) ___-__-__"
-                  value={newPhone}
-                  onChange={e => setNewPhone(formatPhone(getLocalDigits(e.target.value)))}
-                  onKeyDown={e => {
-                    if (e.key !== 'Backspace') return;
-                    e.preventDefault();
-                    setNewPhone(formatPhone(getLocalDigits(newPhone).slice(0, -1)));
-                  }}
-                  style={inp} />
-              </div>
-              {(newForm.type === 'wholesale' || newForm.type === 'dropship_partner') && (
+            {/* Scrollable body */}
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
+
+              {/* — Основна інформація — */}
+              <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Основна інформація</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+                {[
+                  { key: 'name',    label: "Ім'я / Назва *", placeholder: 'Іваненко Петро' },
+                  { key: 'company', label: 'Компанія / ТОВ',  placeholder: 'ТОВ «Будівельник»' },
+                  { key: 'email',   label: 'Email',           placeholder: 'email@...' },
+                  { key: 'city',    label: 'Місто',           placeholder: 'Харків' },
+                ].map(f => (
+                  <div key={f.key}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>{f.label}</div>
+                    <input placeholder={f.placeholder} value={(newForm as Record<string, string>)[f.key] ?? ''}
+                      onChange={e => setNewForm(prev => ({ ...prev, [f.key]: e.target.value }))} style={inp} />
+                  </div>
+                ))}
                 <div>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Кредитний ліміт ₴</div>
-                  <input type="number" min={0} placeholder="0"
-                    value={newForm.credit_limit}
-                    onChange={e => setNewForm(prev => ({ ...prev, credit_limit: e.target.value }))}
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Телефон</div>
+                  <input placeholder="+38 (0__) ___-__-__" value={newPhone}
+                    onChange={e => setNewPhone(formatPhone(getLocalDigits(e.target.value)))}
+                    onKeyDown={e => { if (e.key !== 'Backspace') return; e.preventDefault(); setNewPhone(formatPhone(getLocalDigits(newPhone).slice(0, -1))); }}
                     style={inp} />
                 </div>
-              )}
-            </div>
+                {(newForm.type === 'wholesale' || newForm.type === 'dropship_partner') && (
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Кредитний ліміт ₴</div>
+                    <input type="number" min={0} placeholder="0" value={newForm.credit_limit}
+                      onChange={e => setNewForm(prev => ({ ...prev, credit_limit: e.target.value }))} style={inp} />
+                  </div>
+                )}
+              </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Нотатки</div>
-              <input placeholder="Внутрішні примітки..." value={newForm.notes}
-                onChange={e => setNewForm(prev => ({ ...prev, notes: e.target.value }))} style={inp} />
-            </div>
+              {/* — Юридичні реквізити — */}
+              <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Юридичні реквізити</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Юридична назва</div>
+                  <input placeholder="ТОВ «Назва» або ФОП Іваненко" value={newForm.legal_name}
+                    onChange={e => setNewForm(prev => ({ ...prev, legal_name: e.target.value }))} style={inp} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>ЄДРПОУ / ІПН</div>
+                  <input placeholder="12345678" value={newForm.tax_number}
+                    onChange={e => setNewForm(prev => ({ ...prev, tax_number: e.target.value }))} style={inp} />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Юридична адреса</div>
+                  <input placeholder="вул. Незалежності, 1, м. Харків" value={newForm.legal_address}
+                    onChange={e => setNewForm(prev => ({ ...prev, legal_address: e.target.value }))} style={inp} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Фактична адреса</div>
+                  <input placeholder="вул. Пушкіна, 5, офіс 3" value={newForm.address}
+                    onChange={e => setNewForm(prev => ({ ...prev, address: e.target.value }))} style={inp} />
+                </div>
+              </div>
 
-            {newError && <div style={{ color: '#DC2626', fontSize: '13px', marginBottom: '10px' }}>{newError}</div>}
+              {/* — Банківські реквізити — */}
+              <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Банківські реквізити</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+                <div style={{ gridColumn: '1 / 3' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>IBAN / Р/С</div>
+                  <input placeholder="UA213223130000026007233566001" value={newForm.bank_iban}
+                    onChange={e => setNewForm(prev => ({ ...prev, bank_iban: e.target.value }))} style={inp} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>МФО</div>
+                  <input placeholder="322313" value={newForm.bank_mfo}
+                    onChange={e => setNewForm(prev => ({ ...prev, bank_mfo: e.target.value }))} style={inp} />
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Банк</div>
+                  <input placeholder="АТ «ПриватБанк»" value={newForm.bank_name}
+                    onChange={e => setNewForm(prev => ({ ...prev, bank_name: e.target.value }))} style={inp} />
+                </div>
+              </div>
 
-            <div style={{ display: 'flex', gap: '10px' }}>
+              {/* — Нотатки — */}
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Нотатки</div>
+                <input placeholder="Внутрішні примітки..." value={newForm.notes}
+                  onChange={e => setNewForm(prev => ({ ...prev, notes: e.target.value }))} style={inp} />
+              </div>
+
+            </div>{/* end scroll */}
+
+            {newError && <div style={{ color: '#DC2626', fontSize: '13px', margin: '10px 0 4px' }}>{newError}</div>}
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexShrink: 0 }}>
               <button onClick={() => setShowNew(false)}
                 style={{ flex: 1, height: '40px', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
                 Скасувати

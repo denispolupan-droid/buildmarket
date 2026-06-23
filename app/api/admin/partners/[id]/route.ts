@@ -20,7 +20,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const allowed = [
     'is_active', 'notes', 'credit_limit', 'payment_terms_days',
     'name', 'company', 'legal_name', 'tax_number',
-    'phone', 'email', 'city', 'address',
+    'phone', 'email', 'city', 'address', 'legal_address',
+    'bank_name', 'bank_iban', 'bank_mfo',
     'type', 'price_tier',
   ];
   const update: Record<string, unknown> = {};
