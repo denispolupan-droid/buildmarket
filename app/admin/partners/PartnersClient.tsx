@@ -740,7 +740,7 @@ export default function PartnersClient({
                             {c.is_auto && (
                               <span title="Створено автоматично при першому замовленні" style={{ fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', background: '#F1F5F9', color: '#94A3B8', marginLeft: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Авто</span>
                             )}
-                            {c.payment_terms && <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>{c.payment_terms === 'prepay' || c.payment_terms === 'Передоплата' ? 'Передоплата' : c.payment_terms === 'deferred' ? `Відстрочка ${c.credit_days}д.` : c.payment_terms}</span>}
+                            {c.payment_terms && <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>{c.payment_terms === 'prepay' ? 'Передоплата' : c.payment_terms === 'deferred' ? `Відстрочка ${c.credit_days}д.` : c.payment_terms === 'consignment' ? 'Консигнація' : c.payment_terms}</span>}
                             {(c.credit_limit > 0) && <span style={{ fontSize: '11px', color: '#15803D', marginLeft: '8px' }}>Ліміт: {Number(c.credit_limit).toLocaleString('uk-UA')} ₴</span>}
                           </div>
                           <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '20px', background: c.status === 'active' ? '#F0FDF4' : '#F1F5F9', color: c.status === 'active' ? '#15803D' : '#64748B' }}>
@@ -824,13 +824,7 @@ export default function PartnersClient({
                     onKeyDown={e => { if (e.key !== 'Backspace') return; e.preventDefault(); setNewPhone(formatPhone(getLocalDigits(newPhone).slice(0, -1))); }}
                     style={inp} />
                 </div>
-                {(newForm.type === 'wholesale' || newForm.type === 'dropship_partner') && (
-                  <div>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Кредитний ліміт ₴</div>
-                    <input type="number" min={0} placeholder="0" value={newForm.credit_limit}
-                      onChange={e => setNewForm(prev => ({ ...prev, credit_limit: e.target.value }))} style={inp} />
-                  </div>
-                )}
+                {/* credit_limit for wholesale/dropship is set in the contract section below */}
               </div>
 
               {/* — Юридичні реквізити — */}

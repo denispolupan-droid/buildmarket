@@ -39,7 +39,7 @@ async function resolveCustomer(db: ReturnType<typeof createServiceClient>, opts:
       discount_pct:    0,
       allow_promo:     false,
       price_type:      type === 'retail' ? 'retail' : type,
-      payment_terms:   'Передоплата',
+      payment_terms:   'prepay',
       start_date:      new Date().toISOString().slice(0, 10),
       status:          'active',
       created_by:      'system',
