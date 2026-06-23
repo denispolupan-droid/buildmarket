@@ -28,7 +28,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Знаходимо оригінальну суму оплати в леджері
   const { data: entries } = await db
     .from('money_entries')
-    .select('amount, account_type, doc_type')
+    .select('amount, account_type, doc_type, txn_id')
     .eq('doc_id', id)
     .in('doc_type', ['supplier_payment'])
     .order('created_at', { ascending: true });
@@ -41,6 +41,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   );
 
   // Проводимо компенсуючу проводку (reverse)
+  // Ключ ідемпотентності прив'язаний до txn_id оригінальної оплати:
+  // повторний виклик при мережевій помилці не задвоїть проводку.
   if (supplierEntry && cashOrBankEntry && doc.supplier_id) {
     const paymentAccount = cashOrBankEntry.account_type as 'cash' | 'bank';
     await recordTxn({
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       docId:          id,
       docType:        'supplier_payment_reversal',
       description:    `Скасування оплати: ${doc.doc_number}${reason ? ` (${reason})` : ''}`,
-      idempotencyKey: `supplier_payment_reversal:${id}:${Date.now()}`,
+      idempotencyKey: `supplier_payment_reversal:${supplierEntry.txn_id ?? id}`,
       createdBy:      user.email,
     });
   }

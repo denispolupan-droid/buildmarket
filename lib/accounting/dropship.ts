@@ -307,7 +307,9 @@ export async function recordDropshipSale(
     dropshipGroups.set(supplierId, (dropshipGroups.get(supplierId) ?? 0) + cost);
   }
 
-  await Promise.allSettled(
+  // Promise.all: якщо запис боргу перед постачальником впаде — транзакція
+  // переривається повністю; allSettled мовчки ковтав помилку і лишав дисбаланс.
+  await Promise.all(
     [...dropshipGroups.entries()].map(([supplierId, amount]) =>
       recordTxn({
         debitAccount:   'inventory_asset',

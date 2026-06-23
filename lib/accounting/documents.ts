@@ -436,6 +436,21 @@ export async function cancelDocument(
   ]);
 
   if (doc.status === 'draft' || PLAN_ONLY_TYPES.has(doc.doc_type)) {
+    // Підтверджені платіжні ваучери мають проводки в леджері.
+    // Скасування через cancelDocument НЕ записує компенсуючу проводку —
+    // використовуй reverse-payment endpoint.
+    const LEDGER_VOUCHER_TYPES = new Set([
+      'customer_payment', 'customer_payment_reversal',
+      'supplier_payment', 'cash_in', 'cash_out',
+    ]);
+    if (doc.status === 'confirmed' && LEDGER_VOUCHER_TYPES.has(doc.doc_type)) {
+      throw new Error(
+        `Неможливо скасувати підтверджений платіжний ваучер (${doc.doc_number}) напряму: ` +
+        `в леджері залишаться незакриті проводки. ` +
+        `Використовуй reverse-payment для скасування оплати.`,
+      );
+    }
+
     const { error } = await db
       .from('acc_documents')
       .update({

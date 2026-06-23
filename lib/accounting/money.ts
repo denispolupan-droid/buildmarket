@@ -161,6 +161,7 @@ export async function recordCustomerPayment(params: {
 /** Комісія маркетплейсу (Prom, Rozetka тощо): дебет correction, кредит revenue */
 export async function recordMarketplaceCommission(params: {
   orderId:       string;
+  docId?:        string;
   amount:        number;
   marketplace:   string;
   commissionPct: number;
@@ -172,6 +173,7 @@ export async function recordMarketplaceCommission(params: {
     creditAccount:  'revenue',
     amount:         params.amount,
     businessDate:   params.businessDate,
+    docId:          params.docId,
     docType:        'commission',
     orderId:        params.orderId,
     description:    `Комісія ${params.marketplace} ${params.commissionPct}%`,
@@ -185,6 +187,7 @@ export async function recordMarketplaceCommission(params: {
 export async function recordAdvanceReceived(params: {
   customerId:    string;
   contractId?:   string;
+  docId?:        string;
   amount:        number;
   paymentMethod: 'bank' | 'cash' | 'acquiring';
   businessDate?: string;
@@ -198,6 +201,8 @@ export async function recordAdvanceReceived(params: {
     creditParty:   params.customerId,
     amount:        params.amount,
     businessDate:  params.businessDate,
+    docId:         params.docId,
+    docType:       'customer_payment',
     contractId:    params.contractId,
     description:   'Аванс від клієнта',
     idempotencyKey: params.idempotencyKey,
@@ -209,9 +214,12 @@ export async function recordAdvanceReceived(params: {
 export async function offsetAdvance(params: {
   customerId:    string;
   contractId?:   string;
+  docId?:        string;
+  orderId?:      string;
   amount:        number;
   businessDate?: string;
   createdBy?:    string;
+  idempotencyKey?: string;
 }): Promise<string> {
   return recordTxn({
     debitAccount:  'advance',
@@ -220,8 +228,12 @@ export async function offsetAdvance(params: {
     creditParty:   params.customerId,
     amount:        params.amount,
     businessDate:  params.businessDate,
+    docId:         params.docId,
+    docType:       'advance_offset',
+    orderId:       params.orderId,
     contractId:    params.contractId,
     description:   'Залік авансу',
+    idempotencyKey: params.idempotencyKey,
     createdBy:     params.createdBy,
   });
 }

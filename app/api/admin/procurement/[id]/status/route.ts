@@ -81,7 +81,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       docId:         id,
       docType:       'supplier_payment',
       description:   `Оплата постачальнику: ${po.doc_number}`,
-      idempotencyKey: `supplier_payment:${id}:${Date.now()}`,
+      idempotencyKey: `supplier_payment:${id}:${body.payment_date ?? ''}:${Math.round((body.payment_amount ?? 0) * 100)}`,
       createdBy:     user.email,
       meta:          { payment_mode: body.payment_mode ?? 'transfer' },
     });
