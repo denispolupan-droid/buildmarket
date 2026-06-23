@@ -132,13 +132,30 @@ export async function POST(
   const isPickup = (order as { delivery_type?: string }).delivery_type === 'pickup';
   const finalStatus = fullyShipped ? (isPickup ? 'delivered' : 'shipped') : order.status;
 
+  // Підставляємо contract_id в orders якщо ще не проставлено
+  let orderContractId: string | null = null;
+  if (order.customer_id) {
+    const { data: ctr } = await db
+      .from('customer_contracts')
+      .select('id')
+      .eq('customer_id', order.customer_id)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    orderContractId = ctr?.id ?? null;
+  }
+
   if (fullyShipped) {
     const now = new Date().toISOString();
     await db.from('orders').update({
       status:       finalStatus,
       shipped_at:   now,
       ...(isPickup ? { delivered_at: now } : {}),
+      ...(orderContractId ? { contract_id: orderContractId } : {}),
     }).eq('id', id);
+  } else if (orderContractId) {
+    await db.from('orders').update({ contract_id: orderContractId }).eq('id', id);
   }
 
   const { data: saleDoc } = await db

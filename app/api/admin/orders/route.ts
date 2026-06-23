@@ -7,7 +7,7 @@ import { notifyAdminNewOrder } from '../../../../lib/telegram';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-/** Find or create a customer record; returns customer UUID or null */
+/** Find or create a customer record; returns { customerId, contractId } */
 async function resolveCustomer(db: ReturnType<typeof createServiceClient>, opts: {
   customerId?: string | null;
   contact: string;
@@ -15,10 +15,40 @@ async function resolveCustomer(db: ReturnType<typeof createServiceClient>, opts:
   email?: string;
   company?: string;
   totalPrice: number;
-}): Promise<string | null> {
+}): Promise<{ customerId: string | null; contractId: string | null }> {
+
+  async function getOrCreateContract(customerId: string, name: string, type = 'retail'): Promise<string | null> {
+    const { data: existing } = await db
+      .from('customer_contracts')
+      .select('id')
+      .eq('customer_id', customerId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existing) return existing.id;
+
+    const year = new Date().getFullYear();
+    const contractNumber = `ДГ-${year}-${customerId.slice(0, 8).toUpperCase()}`;
+    const { data: created } = await db.from('customer_contracts').insert({
+      contract_number: contractNumber,
+      customer_id:     customerId,
+      customer_name:   name,
+      credit_days:     0,
+      credit_limit:    0,
+      discount_pct:    0,
+      allow_promo:     false,
+      price_type:      type === 'retail' ? 'retail' : type,
+      payment_terms:   'Передоплата',
+      start_date:      new Date().toISOString().slice(0, 10),
+      status:          'active',
+      created_by:      'system',
+    }).select('id').single();
+    return created?.id ?? null;
+  }
+
   // 1. Explicit customer_id passed from UI (selected from directory)
   if (opts.customerId) {
-    // Increment counters asynchronously (don't await)
     db.from('customers').select('orders_count, total_revenue').eq('id', opts.customerId).single()
       .then(({ data }) => {
         if (data) {
@@ -29,7 +59,8 @@ async function resolveCustomer(db: ReturnType<typeof createServiceClient>, opts:
           }).eq('id', opts.customerId!).then(() => {});
         }
       });
-    return opts.customerId;
+    const contractId = await getOrCreateContract(opts.customerId, opts.contact);
+    return { customerId: opts.customerId, contractId };
   }
 
   // 2. Try to find by phone (most reliable match for retail)
@@ -43,21 +74,20 @@ async function resolveCustomer(db: ReturnType<typeof createServiceClient>, opts:
       .single();
 
     if (found) {
-      // Update stats
       db.from('customers').update({
         orders_count:  found.orders_count  + 1,
         total_revenue: Number(found.total_revenue) + opts.totalPrice,
         last_order_at: new Date().toISOString(),
-        // Also update name/email if we have better data
         ...(opts.contact && { name: opts.contact }),
         ...(opts.email   && { email: opts.email }),
         ...(opts.company && { company: opts.company }),
       }).eq('id', found.id).then(() => {});
-      return found.id;
+      const contractId = await getOrCreateContract(found.id, opts.contact);
+      return { customerId: found.id, contractId };
     }
   }
 
-  // 3. Create new retail customer
+  // 3. Create new retail customer + default contract
   const { data: created } = await db.from('customers').insert({
     name:          opts.contact.trim(),
     phone:         opts.phone?.trim()   || null,
@@ -74,7 +104,10 @@ async function resolveCustomer(db: ReturnType<typeof createServiceClient>, opts:
     meta:          {},
   }).select('id').single();
 
-  return created?.id ?? null;
+  if (!created?.id) return { customerId: null, contractId: null };
+
+  const contractId = await getOrCreateContract(created.id, opts.contact.trim(), 'retail');
+  return { customerId: created.id, contractId };
 }
 
 export async function POST(req: NextRequest) {
@@ -102,7 +135,7 @@ export async function POST(req: NextRequest) {
   const orderTotal = totalPrice ?? items.reduce((s: number, i: { qty: number; price: number }) => s + i.qty * i.price, 0);
 
   // Find or create customer — this ensures every manual order builds the CRM
-  const resolvedCustomerId = await resolveCustomer(db, {
+  const { customerId: resolvedCustomerId, contractId: resolvedContractId } = await resolveCustomer(db, {
     customerId: bodyCustomerId,
     contact, phone, email, company,
     totalPrice: orderTotal,
@@ -113,6 +146,7 @@ export async function POST(req: NextRequest) {
     .insert({
       user_id:               null,
       customer_id:           resolvedCustomerId,
+      contract_id:           resolvedContractId,
       company:               company ?? null,
       contact,
       phone:                 phone ?? '',
