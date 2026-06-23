@@ -10,13 +10,15 @@ async function checkAdmin() {
   return user?.user_metadata?.role === 'admin' ? user : null;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const { data: contracts, error } = await db
-    .from('customer_contracts')
-    .select('*')
-    .order('created_at', { ascending: false });
+  const customerId = new URL(req.url).searchParams.get('customer_id');
+
+  let query = db.from('customer_contracts').select('*').order('created_at', { ascending: false });
+  if (customerId) query = query.eq('customer_id', customerId);
+
+  const { data: contracts, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

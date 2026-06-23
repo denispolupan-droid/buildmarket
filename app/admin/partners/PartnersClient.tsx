@@ -86,6 +86,36 @@ export default function PartnersClient({
   const [error,       setError]       = useState('');
   const [viewingId,   setViewingId]   = useState<string | null>(null);
 
+  // Contracts for the viewed customer
+  type ContractRow = { id: string; contract_number: string; status: string; credit_days: number; credit_limit: number; payment_terms: string | null; start_date: string | null; end_date: string | null };
+  const [contracts,      setContracts]      = useState<ContractRow[]>([]);
+  const [contractsLoading, setContractsLoading] = useState(false);
+  const [showNewContract,  setShowNewContract]  = useState(false);
+  const [newContract,      setNewContract]      = useState({ payment_terms: 'prepay', credit_days: 0, credit_limit: 0 });
+
+  useEffect(() => {
+    if (!viewingId) { setContracts([]); return; }
+    setContractsLoading(true);
+    fetch(`/api/admin/contracts?customer_id=${viewingId}`)
+      .then(r => r.json()).then(d => setContracts(Array.isArray(d) ? d : []))
+      .finally(() => setContractsLoading(false));
+  }, [viewingId]);
+
+  async function addCustomerContract() {
+    if (!viewingId) return;
+    const res = await fetch('/api/admin/contracts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_id: viewingId, ...newContract }),
+    });
+    if (res.ok) {
+      const c = await res.json();
+      setContracts(prev => [c, ...prev]);
+      setShowNewContract(false);
+      setNewContract({ payment_terms: 'prepay', credit_days: 0, credit_limit: 0 });
+    }
+  }
+
   // New customer modal
   const [showNew,  setShowNew]  = useState(false);
   const [newForm,  setNewForm]  = useState({
@@ -604,6 +634,67 @@ export default function PartnersClient({
                     <div style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{vc.notes}</div>
                   </div>
                 )}
+
+                {/* Contracts */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Договори</div>
+                    <button onClick={() => setShowNewContract(v => !v)}
+                      style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', background: '#EFF4FF', border: '1px solid #BFDBFE', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}>
+                      + Новий
+                    </button>
+                  </div>
+                  {showNewContract && (
+                    <div style={{ background: '#F8FAFC', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px 14px', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                        <div>
+                          <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px' }}>Умови оплати</div>
+                          <select value={newContract.payment_terms} onChange={e => setNewContract(p => ({ ...p, payment_terms: e.target.value }))}
+                            style={{ width: '100%', padding: '5px 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', color: 'var(--text-primary)' }}>
+                            <option value="prepay">Передоплата</option>
+                            <option value="deferred">Відстрочка</option>
+                            <option value="consignment">Консигнація</option>
+                          </select>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px' }}>Днів відстрочки</div>
+                          <input type="number" min={0} value={newContract.credit_days} onChange={e => setNewContract(p => ({ ...p, credit_days: Number(e.target.value) }))}
+                            style={{ width: '100%', padding: '5px 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', color: 'var(--text-primary)', boxSizing: 'border-box' }} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px' }}>Кредитний ліміт</div>
+                          <input type="number" min={0} value={newContract.credit_limit} onChange={e => setNewContract(p => ({ ...p, credit_limit: Number(e.target.value) }))}
+                            style={{ width: '100%', padding: '5px 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', color: 'var(--text-primary)', boxSizing: 'border-box' }} />
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button onClick={() => setShowNewContract(false)} style={{ fontSize: '12px', padding: '5px 12px', border: '1px solid var(--border)', borderRadius: '6px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-secondary)' }}>Скасувати</button>
+                        <button onClick={addCustomerContract} style={{ fontSize: '12px', padding: '5px 14px', border: 'none', borderRadius: '6px', background: '#1E3A5F', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>Зберегти</button>
+                      </div>
+                    </div>
+                  )}
+                  {contractsLoading ? (
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', padding: '8px 0' }}>Завантаження…</div>
+                  ) : contracts.length === 0 ? (
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', padding: '8px 0' }}>Договорів немає</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {contracts.map(c => (
+                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                          <FileText size={13} style={{ color: '#4880B8', flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.contract_number}</span>
+                            {c.payment_terms && <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>{c.payment_terms === 'prepay' ? 'Передоплата' : c.payment_terms === 'deferred' ? `Відстрочка ${c.credit_days}д.` : c.payment_terms}</span>}
+                            {(c.credit_limit > 0) && <span style={{ fontSize: '11px', color: '#15803D', marginLeft: '8px' }}>Ліміт: {Number(c.credit_limit).toLocaleString('uk-UA')} ₴</span>}
+                          </div>
+                          <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '20px', background: c.status === 'active' ? '#F0FDF4' : '#F1F5F9', color: c.status === 'active' ? '#15803D' : '#64748B' }}>
+                            {c.status === 'active' ? 'Активний' : c.status === 'expired' ? 'Закінчився' : 'Неактивний'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {/* Footer actions */}
                 <div style={{ display: 'flex', gap: '10px' }}>
