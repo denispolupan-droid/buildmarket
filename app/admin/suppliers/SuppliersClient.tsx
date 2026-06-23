@@ -125,6 +125,8 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
   const [contractsLoading,     setContractsLoading]     = useState(false);
   const [showNewSCForm,        setShowNewSCForm]        = useState(false);
   const [newSC,                setNewSC]                = useState({ payment_terms: 'prepay', credit_days: 0, credit_limit: 0 });
+  const [editingSC,            setEditingSC]            = useState<string | null>(null); // id договору що редагується
+  const [editSCForm,           setEditSCForm]           = useState<Partial<SupplierContractRow>>({});
 
   useEffect(() => {
     const sid = editing?.id;
@@ -147,6 +149,19 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
       setSupplierContracts(prev => [c, ...prev]);
       setShowNewSCForm(false);
       setNewSC({ payment_terms: 'prepay', credit_days: 0, credit_limit: 0 });
+    }
+  }
+
+  async function saveSupplierContract(id: string) {
+    const res = await fetch(`/api/admin/supplier-contracts/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editSCForm),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setSupplierContracts(prev => prev.map(c => c.id === id ? updated : c));
+      setEditingSC(null);
     }
   }
 
@@ -914,15 +929,59 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {supplierContracts.map(c => (
-                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.contract_number}</span>
-                      {c.payment_terms && <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>{c.payment_terms === 'prepay' ? 'Передоплата' : c.payment_terms === 'deferred' ? `Відстрочка ${c.credit_days}д.` : c.payment_terms === 'consignment' ? 'Консигнація' : c.payment_terms}</span>}
-                      {(c.credit_limit > 0) && <span style={{ fontSize: '11px', color: '#15803D', marginLeft: '8px' }}>Ліміт: {Number(c.credit_limit).toLocaleString('uk-UA')} ₴</span>}
-                    </div>
-                    <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '20px', background: c.status === 'active' ? '#F0FDF4' : '#F1F5F9', color: c.status === 'active' ? '#15803D' : '#64748B' }}>
-                      {c.status === 'active' ? 'Активний' : 'Неактивний'}
-                    </span>
+                  <div key={c.id}>
+                    {editingSC === c.id ? (
+                      /* ── Inline edit form ── */
+                      <div style={{ background: '#F8FAFC', border: '1px solid #BFDBFE', borderRadius: '10px', padding: '12px 14px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                          <div>
+                            <span style={label}>Умови оплати</span>
+                            <select value={editSCForm.payment_terms ?? ''} onChange={e => setEditSCForm(p => ({ ...p, payment_terms: e.target.value }))} style={input}>
+                              <option value="prepay">Передоплата</option>
+                              <option value="deferred">Відстрочка</option>
+                              <option value="consignment">Консигнація</option>
+                            </select>
+                          </div>
+                          <div>
+                            <span style={label}>Днів відстрочки</span>
+                            <input type="number" min={0} value={editSCForm.credit_days ?? 0} onChange={e => setEditSCForm(p => ({ ...p, credit_days: Number(e.target.value) }))} style={input} />
+                          </div>
+                          <div>
+                            <span style={label}>Кредитний ліміт</span>
+                            <input type="number" min={0} value={editSCForm.credit_limit ?? 0} onChange={e => setEditSCForm(p => ({ ...p, credit_limit: Number(e.target.value) }))} style={input} />
+                          </div>
+                        </div>
+                        <div style={{ marginBottom: '10px' }}>
+                          <span style={label}>Статус</span>
+                          <select value={editSCForm.status ?? 'active'} onChange={e => setEditSCForm(p => ({ ...p, status: e.target.value }))} style={{ ...input, width: 'auto' }}>
+                            <option value="active">Активний</option>
+                            <option value="inactive">Неактивний</option>
+                            <option value="expired">Закінчився</option>
+                          </select>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button onClick={() => saveSupplierContract(c.id)} style={{ fontSize: '12px', padding: '5px 14px', border: 'none', borderRadius: '6px', background: '#0F172A', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>Зберегти</button>
+                          <button onClick={() => setEditingSC(null)} style={{ fontSize: '12px', padding: '5px 12px', border: '1px solid var(--border)', borderRadius: '6px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-secondary)' }}>Скасувати</button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* ── View row ── */
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.contract_number}</span>
+                          {c.payment_terms && <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>{c.payment_terms === 'prepay' ? 'Передоплата' : c.payment_terms === 'deferred' ? `Відстрочка ${c.credit_days}д.` : c.payment_terms === 'consignment' ? 'Консигнація' : c.payment_terms}</span>}
+                          {(c.credit_limit > 0) && <span style={{ fontSize: '11px', color: '#15803D', marginLeft: '8px' }}>Ліміт: {Number(c.credit_limit).toLocaleString('uk-UA')} ₴</span>}
+                        </div>
+                        <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '20px', background: c.status === 'active' ? '#F0FDF4' : '#F1F5F9', color: c.status === 'active' ? '#15803D' : '#64748B' }}>
+                          {c.status === 'active' ? 'Активний' : c.status === 'expired' ? 'Закінчився' : 'Неактивний'}
+                        </span>
+                        <button
+                          onClick={() => { setEditingSC(c.id); setEditSCForm({ payment_terms: c.payment_terms ?? 'prepay', credit_days: c.credit_days, credit_limit: c.credit_limit, status: c.status }); }}
+                          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', padding: '3px 8px', cursor: 'pointer', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, flexShrink: 0 }}>
+                          Змінити
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
