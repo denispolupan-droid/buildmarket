@@ -53,11 +53,12 @@ export async function POST() {
         discount_pct:    0,
         allow_promo:     false,
         price_type:      isDropship ? 'drop' : 'wholesale',
-        payment_terms:   isDropship ? 'Передоплата (дропшип)' : 'Передоплата (опт)',
+        payment_terms:   'prepay',
         start_date:      new Date().toISOString().slice(0, 10),
         status:          'active',
         notes:           `Автоматично створено при реєстрації (${role})`,
         created_by:      'system',
+        is_auto:         true,
       });
     }
   }
@@ -83,7 +84,8 @@ export async function POST() {
         discount_pct:    0,
         allow_promo:     false,
         price_type:      isDropship ? 'drop' : 'wholesale',
-        payment_terms:   isDropship ? 'Передоплата (дропшип)' : 'Передоплата (опт)',
+        payment_terms:   'prepay',
+        is_auto:         true,
         start_date:      new Date().toISOString().slice(0, 10),
         status:          'active',
         notes:           `Автоматично створено при вході (${existing.type})`,
