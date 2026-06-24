@@ -210,6 +210,10 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     if (!initialCategory) return new Set<string>();
     const expanded = new Set<string>();
     const catMap = new Map(categories.map(c => [c.slug, c]));
+    // Expand the category itself if it has children
+    const hasChildren = categories.some(c => c.parent_slug === initialCategory);
+    if (hasChildren) expanded.add(initialCategory);
+    // Expand all ancestors
     let slug: string | null = initialCategory;
     while (slug) {
       const cat = catMap.get(slug);
