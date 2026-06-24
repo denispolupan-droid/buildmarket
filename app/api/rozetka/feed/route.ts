@@ -1,0 +1,142 @@
+import { NextResponse } from 'next/server';
+import { createServiceClient } from '../../../../lib/supabase';
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://fixline.com.ua';
+const SHOP_NAME = 'Fixline';
+const COMPANY = 'Fixline';
+
+function x(str: string | null | undefined): string {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
+    // Strip ASCII control chars (0-31 except tab=9, LF=10, CR=13)
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+}
+
+export async function GET() {
+  const db = createServiceClient();
+
+  const [{ data: categories }, { data: products }] = await Promise.all([
+    db.from('categories').select('id, slug, name, rozetka_category_id').order('sort_order'),
+    db.from('products').select(`
+      sku, name, brand, category_slug, image, color, volume, description, description_full,
+      stock:product_stock(price_retail, price_old, stock_qty),
+      characteristics:product_characteristics(label, value, sort_order)
+    `).eq('is_active', true).order('sort_order'),
+  ]);
+
+  type Cat = { id: number; slug: string; name: string; rozetka_category_id: string | null };
+  type Stock = { price_retail: number | null; price_old: number | null; stock_qty: number | null };
+  type Char = { label: string; value: string; sort_order: number };
+  type Product = {
+    sku: string; name: string; brand: string; category_slug: string;
+    image: string | null; color: string | null; volume: string | null;
+    description: string | null; description_full: string | null;
+    stock: Stock | Stock[] | null;
+    characteristics: Char[] | null;
+  };
+
+  const catMap = new Map<string, Cat>((categories as Cat[])?.map(c => [c.slug, c]) || []);
+
+  // Filter to products with a retail price
+  const offers = ((products as Product[]) || []).filter(p => {
+    const s = Array.isArray(p.stock) ? p.stock[0] : p.stock;
+    return s && Number(s.price_retail) > 0;
+  });
+
+  // Collect used category slugs to only emit needed categories
+  const usedSlugs = new Set(offers.map(p => p.category_slug));
+  const usedCats = ((categories as Cat[]) || []).filter(c => usedSlugs.has(c.slug));
+
+  const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
+  const lines: string[] = [];
+
+  lines.push('<?xml version="1.0" encoding="UTF-8"?>');
+  lines.push(`<yml_catalog date="${now}">`);
+  lines.push('<shop>');
+  lines.push(`  <name>${x(SHOP_NAME)}</name>`);
+  lines.push(`  <company>${x(COMPANY)}</company>`);
+  lines.push(`  <url>${SITE_URL}/</url>`);
+  lines.push('  <currencies>');
+  lines.push('    <currency id="UAH" rate="1"/>');
+  lines.push('  </currencies>');
+  lines.push('  <categories>');
+  for (const cat of usedCats) {
+    const rzAttr = cat.rozetka_category_id ? ` rz_id="${cat.rozetka_category_id}"` : '';
+    lines.push(`    <category id="${cat.id}"${rzAttr}>${x(cat.name)}</category>`);
+  }
+  lines.push('  </categories>');
+  lines.push('  <offers>');
+
+  for (const p of offers) {
+    const stock = Array.isArray(p.stock) ? p.stock[0] : p.stock;
+    if (!stock) continue;
+    const cat = catMap.get(p.category_slug);
+    if (!cat) continue;
+
+    const price = Number(stock.price_retail);
+    const priceOld = stock.price_old ? Number(stock.price_old) : null;
+    const qty = Math.max(0, Math.floor(Number(stock.stock_qty) || 0));
+    const available = qty > 0 ? 'true' : 'false';
+
+    const imgUrl = p.image
+      ? (p.image.startsWith('http') ? p.image : `${SITE_URL}${p.image}`)
+      : null;
+
+    const productUrl = `${SITE_URL}/shop/${p.category_slug}`;
+    const desc = p.description_full || p.description || '';
+
+    const chars: Char[] = [...(p.characteristics || [])]
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+    const charLabels = new Set(chars.map(c => c.label));
+
+    lines.push(`    <offer id="${x(p.sku)}" available="${available}">`);
+    lines.push(`      <price>${price}</price>`);
+    if (priceOld && priceOld > price) {
+      lines.push(`      <price_old>${priceOld}</price_old>`);
+    }
+    lines.push(`      <currencyId>UAH</currencyId>`);
+    lines.push(`      <categoryId>${cat.id}</categoryId>`);
+    if (imgUrl) {
+      lines.push(`      <picture>${x(imgUrl)}</picture>`);
+    }
+    lines.push(`      <url>${x(productUrl)}</url>`);
+    lines.push(`      <vendor>${x(p.brand)}</vendor>`);
+    lines.push(`      <article>${x(p.sku)}</article>`);
+    lines.push(`      <name_ua>${x(p.name)}</name_ua>`);
+    lines.push(`      <name>${x(p.name)}</name>`);
+    lines.push(`      <stock_quantity>${qty}</stock_quantity>`);
+    if (desc) {
+      lines.push(`      <description_ua><![CDATA[${desc}]]></description_ua>`);
+      lines.push(`      <description><![CDATA[${desc}]]></description>`);
+    }
+    for (const c of chars) {
+      if (c.label && c.value) {
+        lines.push(`      <param name="${x(c.label)}">${x(c.value)}</param>`);
+      }
+    }
+    if (p.color && !charLabels.has('Колір')) {
+      lines.push(`      <param name="Колір">${x(p.color)}</param>`);
+    }
+    if (p.volume && !charLabels.has('Фасування') && !charLabels.has("Об'єм")) {
+      lines.push(`      <param name="Фасування">${x(p.volume)}</param>`);
+    }
+    lines.push(`    </offer>`);
+  }
+
+  lines.push('  </offers>');
+  lines.push('</shop>');
+  lines.push('</yml_catalog>');
+
+  return new NextResponse(lines.join('\n'), {
+    headers: {
+      'Content-Type': 'application/xml; charset=UTF-8',
+      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600',
+    },
+  });
+}
