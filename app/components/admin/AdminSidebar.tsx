@@ -9,7 +9,7 @@ import {
   Settings, BookOpen, Warehouse, BarChart3, Users, Star,
   MessageSquare, ShoppingCart, Mail, ExternalLink, TrendingUp,
   ChevronLeft, ChevronRight, ShoppingBasket, Sparkles, Megaphone,
-  Tags,
+  Tags, Layers,
 } from 'lucide-react';
 
 const NAV = [
@@ -20,6 +20,7 @@ const NAV = [
   { href: '/admin/partners',             label: 'Контрагенти',    icon: Users,          exact: false },
   { href: '/admin/procurement',          label: 'Закупівля',      icon: ShoppingCart,   exact: false },
   { href: '/admin/prom',                 label: 'Prom.ua',        icon: ShoppingBasket, exact: false },
+  { href: '/admin/rozetka',              label: 'Rozetka',        icon: Layers,         exact: false },
   { href: '/admin/pricing',              label: 'Аналіз цін',     icon: TrendingUp,     exact: false },
   { href: '/admin/finance',              label: 'Фінанси',        icon: BarChart3,      exact: false },
   { href: '/admin/accounting/documents', label: 'Облік',          icon: BookOpen,       exact: false },
