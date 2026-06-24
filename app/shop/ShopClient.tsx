@@ -920,11 +920,17 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                 key={cat.slug}
                 className={'shop-cat-pill' + (isActive ? ' active' : '')}
                 onClick={() => {
-                  if (isActive) { selectCat(null); setExpandedCats(new Set()); }
-                  else {
+                  const willNavigate = !!initialBrand || (!!initialCategory && cat.slug !== initialCategory);
+                  if (isActive) {
+                    selectCat(null);
+                    if (!willNavigate) setExpandedCats(new Set());
+                  } else {
                     selectCat(cat.slug);
-                    setExpandedCats(new Set([cat.slug]));
-                    setTimeout(() => scrollCatToTop(cat.slug), 500);
+                    // Only update sidebar state in-place; navigating pages handle it via useState init
+                    if (!willNavigate) {
+                      setExpandedCats(new Set([cat.slug]));
+                      setTimeout(() => scrollCatToTop(cat.slug), 500);
+                    }
                   }
                 }}
               >
