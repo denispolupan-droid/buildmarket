@@ -124,7 +124,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const [filterValues,     setFilterValues]     = useState<Record<string, string[]>>({});
   const [filterVolumes,    setFilterVolumes]    = useState<string[]>([]);
   const [filterVolumesKg,  setFilterVolumesKg]  = useState<string[]>([]);
-  const [expandedFilters,  setExpandedFilters]  = useState<Set<string>>(new Set());
+  const [collapsedFilters, setCollapsedFilters] = useState<Set<string>>(new Set());
   const [expandedValues,   setExpandedValues]   = useState<Set<string>>(new Set());
   const [inStockOnly,      setInStockOnly]      = useState(false);
   const [saleOnly,      setSaleOnly]      = useState(initialSaleOnly);
@@ -689,7 +689,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
 
               {(() => {
                 const SHOW_LIMIT = 5;
-                const toggleCollapse = (key: string) => setExpandedFilters(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+                const toggleCollapse = (key: string) => setCollapsedFilters(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
                 const toggleExpand   = (key: string) => setExpandedValues  (prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
 
                 const renderGroup = (
@@ -701,7 +701,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   onToggle: (v: string) => void,
                   formatVal?: (v: string) => string,
                 ) => {
-                  const isCollapsed = !expandedFilters.has(key);
+                  const isCollapsed = collapsedFilters.has(key);
                   const isExpanded  = expandedValues.has(key);
                   const selectedSet = new Set(selectedVals.map(v => v.toLowerCase()));
                   const visible = isExpanded ? items : items.slice(0, SHOW_LIMIT);
@@ -755,7 +755,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   ...(volumesKg.length > 1 ? ['__wt'] : []),
                   ...allFilters.map(f => f.label),
                 ];
-                const allCollapsed = allKeys.length > 0 && allKeys.every(k => !expandedFilters.has(k));
+                const allCollapsed = allKeys.length > 0 && allKeys.every(k => collapsedFilters.has(k));
                 const resetAll = () => {
                   setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]);
                   setInStockOnly(false); setSaleOnly(false); setExpandedValues(new Set());
@@ -766,7 +766,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                     <div className="filter-controls">
                       <button
                         className="filter-ctrl-btn"
-                        onClick={() => setExpandedFilters(allCollapsed ? new Set(allKeys) : new Set())}
+                        onClick={() => setCollapsedFilters(allCollapsed ? new Set() : new Set(allKeys))}
                       >
                         {allCollapsed ? t('Розгорнути все', 'Развернуть все') : t('Згорнути все', 'Свернуть все')}
                       </button>

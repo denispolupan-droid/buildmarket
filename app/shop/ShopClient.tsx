@@ -197,7 +197,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const [filterVolumesKg,    setFilterVolumesKg]    = useState<string[]>(() => readShopSession('filterVolumesKg', []));
   const [filterPlasticGroup, setFilterPlasticGroup] = useState<string>(() => readShopSession('filterPlasticGroup', ''));
   const [inStockOnly,        setInStockOnly]        = useState<boolean>(() => readShopSession('inStockOnly', false));
-  const [expandedFilters,    setExpandedFilters]    = useState<Set<string>>(new Set());
+  const [collapsedFilters,   setCollapsedFilters]   = useState<Set<string>>(new Set());
   const [expandedValues,     setExpandedValues]     = useState<Set<string>>(new Set());
   const activeFilterCount =
     Object.values(filterValues).filter(a => a.length > 0).length +
@@ -693,7 +693,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
 
         {(() => {
           const SHOW_LIMIT = 5;
-          const toggleCollapse = (key: string) => setExpandedFilters(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+          const toggleCollapse = (key: string) => setCollapsedFilters(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
           const toggleExpand   = (key: string) => setExpandedValues  (prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
 
           const renderGroup = (
@@ -705,7 +705,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             onToggle: (v: string) => void,
             formatVal?: (v: string) => string,
           ) => {
-            const isCollapsed = !expandedFilters.has(key);
+            const isCollapsed = collapsedFilters.has(key);
             const isExpanded  = expandedValues.has(key);
             const selectedSet = new Set(selectedVals.map(v => v.toLowerCase()));
             const visible = isExpanded ? items : items.slice(0, SHOW_LIMIT);
@@ -763,7 +763,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             ...(isPlasticCat ? ['__plastic'] : []),
             ...charFilterKeys,
           ];
-          const allCollapsed = allKeys.length > 0 && allKeys.every(k => !expandedFilters.has(k));
+          const allCollapsed = allKeys.length > 0 && allKeys.every(k => collapsedFilters.has(k));
           const resetAll = () => {
             setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]);
             setFilterPlasticGroup(''); setInStockOnly(false); setSaleOnly(false); setExpandedValues(new Set());
@@ -774,7 +774,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
               <div className="shop-filter-controls">
                 <button
                   className="shop-filter-ctrl-btn"
-                  onClick={() => setExpandedFilters(allCollapsed ? new Set(allKeys) : new Set())}
+                  onClick={() => setCollapsedFilters(allCollapsed ? new Set() : new Set(allKeys))}
                 >
                   {allCollapsed ? t('Розгорнути все', 'Развернуть все') : t('Згорнути все', 'Свернуть все')}
                 </button>
@@ -792,7 +792,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                   { v: 'frost',     label: t('Протиморозний', 'Противоморозный') },
                   { v: 'warm',      label: t('Для теплих підлог', 'Для тёплых полов') },
                 ];
-                const isCollapsed = !expandedFilters.has('__plastic');
+                const isCollapsed = collapsedFilters.has('__plastic');
                 return (
                   <div className="shop-filter-group">
                     <button
