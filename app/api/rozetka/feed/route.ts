@@ -23,7 +23,8 @@ export async function GET() {
   const [{ data: categories }, { data: products }] = await Promise.all([
     db.from('categories').select('id, slug, name, rozetka_category_id').order('sort_order'),
     db.from('products').select(`
-      sku, name, brand, category_slug, image, color, volume, description, description_full,
+      sku, name, brand, category_slug, image, color, volume,
+      description, description_full, description_ru, description_full_ru,
       stock:product_stock(price_retail, price_old, stock_qty),
       characteristics:product_characteristics(label, value, sort_order)
     `).eq('is_active', true).order('sort_order'),
@@ -36,6 +37,7 @@ export async function GET() {
     sku: string; name: string; brand: string; category_slug: string;
     image: string | null; color: string | null; volume: string | null;
     description: string | null; description_full: string | null;
+    description_ru: string | null; description_full_ru: string | null;
     stock: Stock | Stock[] | null;
     characteristics: Char[] | null;
   };
@@ -88,7 +90,8 @@ export async function GET() {
       : null;
 
     const productUrl = `${SITE_URL}/shop/${p.category_slug}`;
-    const desc = p.description_full || p.description || '';
+    const descUa = p.description_full || p.description || '';
+    const descRu = p.description_full_ru || p.description_ru || '';
 
     const chars: Char[] = [...(p.characteristics || [])]
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
@@ -111,9 +114,13 @@ export async function GET() {
     lines.push(`      <name_ua>${x(p.name)}</name_ua>`);
     lines.push(`      <name>${x(p.name)}</name>`);
     lines.push(`      <stock_quantity>${qty}</stock_quantity>`);
-    if (desc) {
-      lines.push(`      <description_ua><![CDATA[${desc}]]></description_ua>`);
-      lines.push(`      <description><![CDATA[${desc}]]></description>`);
+    // <description> = Russian if available, otherwise Ukrainian (required field)
+    // <description_ua> = Ukrainian (only if different from <description>)
+    if (descRu) {
+      lines.push(`      <description><![CDATA[${descRu}]]></description>`);
+      if (descUa) lines.push(`      <description_ua><![CDATA[${descUa}]]></description_ua>`);
+    } else if (descUa) {
+      lines.push(`      <description><![CDATA[${descUa}]]></description>`);
     }
     for (const c of chars) {
       if (c.label && c.value) {
