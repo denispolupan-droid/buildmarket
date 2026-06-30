@@ -267,6 +267,7 @@ export async function GET(request: NextRequest) {
       .from('products')
       .select('sku, name, name_ru, brand, category_slug, volume, description, description_full, description_ru, description_full_ru, image, keywords, keywords_ru, min_order, prom_portal_url, prom_markup_pct')
       .eq('is_active', true)
+      .eq('on_prom', true)
       .order('sort_order'),
     serviceClient
       .from('product_stock')
@@ -331,8 +332,12 @@ export async function GET(request: NextRequest) {
     .map(p => {
       const s = stockMap.get(p.sku);
       if (!s) return null;
-      const basePrice = s.price_retail ?? s.price_unit;
-      if (!basePrice || basePrice <= 0) return null;
+      const retailPrice = s.price_retail ?? s.price_unit;
+      if (!retailPrice || retailPrice <= 0) return null;
+
+      // Base for markup = cost (ціна входу) if available, otherwise retail
+      const costPrice = (s as { price_cost?: number | null }).price_cost;
+      const basePrice = costPrice && costPrice > 0 ? costPrice : retailPrice;
 
       // Prom price: manual override → auto-calculated from markup + commission
       const priceWholesale = (s as { price_wholesale?: number | null }).price_wholesale;
@@ -343,16 +348,14 @@ export async function GET(request: NextRequest) {
         const productMarkup = (p as { prom_markup_pct?: number | null }).prom_markup_pct;
         const markup     = productMarkup ?? (p.category_slug ? (catMarkupMap.get(p.category_slug) ?? 0) : 0);
         const commission = p.category_slug ? (catCommissionMap.get(p.category_slug) ?? 0) : 0;
-        const raw = basePrice * (1 + markup / 100) / (1 - commission / 100);
-        price = Math.ceil(raw);
+        price = Math.ceil(basePrice * (1 + markup / 100) / (1 - commission / 100));
       }
 
       const priceOldBase = s.price_retail != null
         ? ((s as { price_retail_old?: number | null }).price_retail_old ?? null)
         : ((s as { price_old?: number | null }).price_old ?? null);
-      // Calculate old Prom price the same way (only if not manual override)
       let promPriceOld: number | null = null;
-      if (!priceWholesale && priceOldBase && priceOldBase > basePrice) {
+      if (!priceWholesale && priceOldBase && priceOldBase > retailPrice) {
         const productMarkup = (p as { prom_markup_pct?: number | null }).prom_markup_pct;
         const markup     = productMarkup ?? (p.category_slug ? (catMarkupMap.get(p.category_slug) ?? 0) : 0);
         const commission = p.category_slug ? (catCommissionMap.get(p.category_slug) ?? 0) : 0;
