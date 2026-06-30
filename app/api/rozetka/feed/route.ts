@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../lib/supabase';
+import { formatForRozetka, toRozetkaVolume } from '../../../../lib/rozetka-name';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://fixline.com.ua';
 const SHOP_NAME = 'Fixline';
@@ -21,26 +22,34 @@ export async function GET() {
   const db = createServiceClient();
 
   const [{ data: categories }, { data: products }] = await Promise.all([
-    db.from('categories').select('id, slug, name, rozetka_category_id').order('sort_order'),
+    db.from('categories').select('id, slug, name, rozetka_category_id, rozetka_commission_pct, rozetka_markup_pct').order('sort_order'),
     db.from('products').select(`
-      sku, name, brand, category_slug, image, color, volume,
+      sku, name, rozetka_name, brand, category_slug, image, color, volume,
+      on_rozetka, rozetka_markup_pct,
       description, description_full, description_ru, description_full_ru,
-      stock:product_stock(price_retail, price_old, stock_qty),
+      stock:product_stock(price_retail, price_cost, price_old, stock_qty),
       characteristics:product_characteristics(label, value, sort_order)
-    `).eq('is_active', true).order('sort_order'),
+    `).eq('is_active', true).eq('on_rozetka', true).order('sort_order'),
   ]);
 
-  type Cat = { id: number; slug: string; name: string; rozetka_category_id: string | null };
-  type Stock = { price_retail: number | null; price_old: number | null; stock_qty: number | null };
+  type Cat = { id: number; slug: string; name: string; rozetka_category_id: string | null; rozetka_commission_pct: number | null; rozetka_markup_pct: number | null };
+  type Stock = { price_retail: number | null; price_cost: number | null; price_old: number | null; stock_qty: number | null };
   type Char = { label: string; value: string; sort_order: number };
   type Product = {
-    sku: string; name: string; brand: string; category_slug: string;
+    sku: string; name: string; rozetka_name: string | null; brand: string; category_slug: string;
+    on_rozetka: boolean | null; rozetka_markup_pct: number | null;
     image: string | null; color: string | null; volume: string | null;
     description: string | null; description_full: string | null;
     description_ru: string | null; description_full_ru: string | null;
     stock: Stock | Stock[] | null;
     characteristics: Char[] | null;
   };
+
+  function rzPrice(retail: number, commission: number, markup: number): number {
+    const withMarkup = retail * (1 + markup / 100);
+    const withComm   = commission > 0 ? withMarkup / (1 - commission / 100) : withMarkup;
+    return Math.ceil(withComm / 5) * 5;
+  }
 
   const catMap = new Map<string, Cat>((categories as Cat[])?.map(c => [c.slug, c]) || []);
 
@@ -80,8 +89,13 @@ export async function GET() {
     const cat = catMap.get(p.category_slug);
     if (!cat) continue;
 
-    const price = Number(stock.price_retail);
-    const priceOld = stock.price_old ? Number(stock.price_old) : null;
+    const retail     = Number(stock.price_retail);
+    const cost       = Number(stock.price_cost ?? 0);
+    const base       = cost > 0 ? cost : retail;
+    const commission = Number(cat.rozetka_commission_pct ?? 0);
+    const markup     = Number(p.rozetka_markup_pct ?? cat.rozetka_markup_pct ?? 0);
+    const price      = commission > 0 || markup > 0 ? rzPrice(base, commission, markup) : retail;
+    const priceOld   = stock.price_old ? Number(stock.price_old) : null;
     const qty = Math.max(0, Math.floor(Number(stock.stock_qty) || 0));
     const available = qty > 0 ? 'true' : 'false';
 
@@ -111,8 +125,9 @@ export async function GET() {
     lines.push(`      <url>${x(productUrl)}</url>`);
     lines.push(`      <vendor>${x(p.brand)}</vendor>`);
     lines.push(`      <article>${x(p.sku)}</article>`);
-    lines.push(`      <name_ua>${x(p.name)}</name_ua>`);
-    lines.push(`      <name>${x(p.name)}</name>`);
+    const rzName = p.rozetka_name || formatForRozetka(p.name, p.brand, p.volume, p.color);
+    lines.push(`      <name_ua>${x(rzName)}</name_ua>`);
+    lines.push(`      <name>${x(rzName)}</name>`);
     lines.push(`      <stock_quantity>${qty}</stock_quantity>`);
     // <description> = Russian if available, otherwise Ukrainian (required field)
     // <description_ua> = Ukrainian (only if different from <description>)
@@ -131,7 +146,7 @@ export async function GET() {
       lines.push(`      <param name="Колір">${x(p.color)}</param>`);
     }
     if (p.volume && !charLabels.has('Фасування') && !charLabels.has("Об'єм")) {
-      lines.push(`      <param name="Фасування">${x(p.volume)}</param>`);
+      lines.push(`      <param name="Фасування">${x(toRozetkaVolume(p.volume))}</param>`);
     }
     lines.push(`    </offer>`);
   }
@@ -143,7 +158,7 @@ export async function GET() {
   return new NextResponse(lines.join('\n'), {
     headers: {
       'Content-Type': 'application/xml; charset=UTF-8',
-      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600',
+      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
     },
   });
 }

@@ -5,51 +5,37 @@ import Link from 'next/link';
 import { ArrowLeft, Search, Check, X, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface Product {
-  sku:             string;
-  name:            string;
-  brand:           string;
-  category_slug:   string | null;
-  volume:          string | null;
-  prom_markup_pct: number | null;
-  on_prom:         boolean;
-  prom_portal_url: string | null;
+  sku:               string;
+  name:              string;
+  rozetka_name:      string | null;
+  brand:             string;
+  category_slug:     string | null;
+  color:             string | null;
+  volume:            string | null;
+  on_rozetka:        boolean | null;
+  rozetka_markup_pct: number | null;
 }
 interface Stock {
-  sku:             string;
-  price_cost:      number | null;
-  price_retail:    number | null;
-  price_unit:      number | null;
-  price_wholesale: number | null;
+  sku:          string;
+  price_retail: number | null;
+  price_unit:   number | null;
+  price_cost:   number | null;
 }
 interface Category {
-  slug:                string;
-  name:                string;
-  prom_commission_pct: number | null;
-  prom_markup_pct:     number | null;
-  prom_section_url:    string | null;
-}
-interface Props {
-  products:   Product[];
-  stock:      Stock[];
-  categories: Category[];
-  plan:       'single' | 'econom';
+  slug:                   string;
+  name:                   string;
+  rozetka_commission_pct: number | null;
+  rozetka_markup_pct:     number | null;
+  rozetka_category_id:    string | null;
+  rozetka_category_name:  string | null;
 }
 
-function promCatLabel(url: string | null): string | null {
-  if (!url) return null;
-  try {
-    const seg = new URL(url).pathname.replace(/\/$/, '').split('/').pop() ?? '';
-    // strip leading numeric id like "c123456-" or "123456-"
-    return seg.replace(/^c?\d+-/, '') || seg;
-  } catch {
-    return url.split('/').pop()?.replace(/^c?\d+-/, '') ?? null;
-  }
+function calcRzPrice(base: number, markup: number, commission: number): number {
+  const withMarkup = base * (1 + markup / 100);
+  const withComm   = commission > 0 ? withMarkup / (1 - commission / 100) : withMarkup;
+  return Math.ceil(withComm / 5) * 5;
 }
 
-function calcPromPrice(base: number, markup: number, commission: number) {
-  if (commission >= 100) return 0;
-  return Math.ceil(base * (1 + markup / 100) / (1 - commission / 100));
-}
 function marginColor(pct: number) {
   if (pct >= 30) return '#16A34A';
   if (pct >= 20) return '#65A30D';
@@ -65,7 +51,11 @@ const TH: React.CSSProperties = {
   textTransform: 'uppercase', letterSpacing: '.03em',
 };
 
-export default function PromPricesClient({ products, stock, categories }: Props) {
+export default function RozetkaProductsClient({ products, stock, categories }: {
+  products:   Product[];
+  stock:      Stock[];
+  categories: Category[];
+}) {
   const stockMap = useMemo(() => new Map(stock.map(s => [s.sku, s])), [stock]);
   const catMap   = useMemo(() => new Map(categories.map(c => [c.slug, c])), [categories]);
 
@@ -75,12 +65,12 @@ export default function PromPricesClient({ products, stock, categories }: Props)
   const [collapsed,    setCollapsed]    = useState<Record<string, boolean>>({});
 
   const [enabled,  setEnabled]  = useState<Record<string, boolean>>(
-    Object.fromEntries(products.map(p => [p.sku, p.on_prom !== false]))
+    Object.fromEntries(products.map(p => [p.sku, p.on_rozetka !== false]))
   );
   const [toggling, setToggling] = useState<Set<string>>(new Set());
 
-  const [markups, setMarkups] = useState<Record<string, string>>(
-    Object.fromEntries(products.map(p => [p.sku, p.prom_markup_pct != null ? String(p.prom_markup_pct) : '']))
+  const [markups,      setMarkups]      = useState<Record<string, string>>(
+    Object.fromEntries(products.map(p => [p.sku, p.rozetka_markup_pct != null ? String(p.rozetka_markup_pct) : '']))
   );
   const [savingMarkup, setSavingMarkup] = useState<string | null>(null);
 
@@ -90,10 +80,13 @@ export default function PromPricesClient({ products, stock, categories }: Props)
   const [globalMarkup, setGlobalMarkup] = useState('');
   const [globalSaving, setGlobalSaving] = useState(false);
 
-  const [editSku,       setEditSku]       = useState<string | null>(null);
-  const [editManual,    setEditManual]     = useState('');
-  const [savingEdit,    setSavingEdit]     = useState(false);
-  const [manualOverrides, setManualOverrides] = useState<Record<string, number | null>>({});
+  // rozetka_name editing
+  const [editSku,    setEditSku]    = useState<string | null>(null);
+  const [editName,   setEditName]   = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const [rzNames,    setRzNames]    = useState<Record<string, string>>(
+    Object.fromEntries(products.map(p => [p.sku, p.rozetka_name ?? '']))
+  );
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -102,44 +95,36 @@ export default function PromPricesClient({ products, stock, categories }: Props)
     return Array.from(s).sort((a, b) => a.localeCompare(b, 'uk'));
   }, [products]);
 
-  // All computed rows
   const allRows = useMemo(() => products.map(p => {
     const s          = stockMap.get(p.sku);
     const cat        = p.category_slug ? catMap.get(p.category_slug) : null;
     const retailPrice = Number(s?.price_retail ?? s?.price_unit ?? 0);
     const cost        = s?.price_cost != null ? Number(s.price_cost) : null;
-    const basePrice   = cost != null && cost > 0 ? cost : retailPrice; // наценка від ціни входу
-    const manualOv    = manualOverrides[p.sku];
-    const manual      = manualOv !== undefined ? manualOv : (s?.price_wholesale ?? null);
+    const basePrice   = cost != null && cost > 0 ? cost : retailPrice;
     const mkpStr      = markups[p.sku];
     const productMkp  = mkpStr !== '' ? parseFloat(mkpStr) : null;
-    const catMkp      = cat?.prom_markup_pct ?? null;
+    const catMkp      = cat?.rozetka_markup_pct ?? null;
     const markup      = productMkp ?? catMkp ?? 0;
-    const commission  = cat?.prom_commission_pct ?? 0;
-    const promPrice   = manual && manual > 0
-      ? manual
-      : (basePrice > 0 ? calcPromPrice(basePrice, markup, commission) : null);
-    const net       = promPrice != null && commission > 0 ? promPrice * (1 - commission / 100) : promPrice;
-    const marginUah = net != null && cost != null ? net - cost : null;
-    const marginPct  = marginUah != null && net != null && net > 0 ? (marginUah / net) * 100 : null;
-    const promCatUrl = p.prom_portal_url || cat?.prom_section_url || null;
-    return { p, cat, basePrice, cost, manual, productMkp, catMkp, markup, commission, promPrice, marginPct, promCatUrl };
-  }), [products, stockMap, catMap, markups, manualOverrides]);
+    const commission  = cat?.rozetka_commission_pct ?? 0;
+    const rzPrice     = basePrice > 0 ? calcRzPrice(basePrice, markup, commission) : null;
+    const net         = rzPrice != null && commission > 0 ? rzPrice * (1 - commission / 100) : rzPrice;
+    const marginUah   = net != null && cost != null ? net - cost : null;
+    const marginPct   = marginUah != null && net != null && net > 0 ? (marginUah / net) * 100 : null;
+    return { p, cat, retailPrice, cost, basePrice, productMkp, catMkp, markup, commission, rzPrice, marginPct };
+  }), [products, stockMap, catMap, markups]);
 
-  // Apply filters
   const filteredRows = useMemo(() => {
     let list = allRows;
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(r => r.p.name.toLowerCase().includes(q) || r.p.sku.toLowerCase().includes(q) || r.p.brand.toLowerCase().includes(q));
     }
-    if (filterBrand)               list = list.filter(r => r.p.brand === filterBrand);
-    if (filterStatus === 'on')     list = list.filter(r => enabled[r.p.sku] !== false);
-    if (filterStatus === 'off')    list = list.filter(r => enabled[r.p.sku] === false);
+    if (filterBrand)            list = list.filter(r => r.p.brand === filterBrand);
+    if (filterStatus === 'on')  list = list.filter(r => enabled[r.p.sku] !== false);
+    if (filterStatus === 'off') list = list.filter(r => enabled[r.p.sku] === false);
     return list;
   }, [allRows, search, filterBrand, filterStatus, enabled]);
 
-  // Group by category
   const grouped = useMemo(() => {
     const map = new Map<string, typeof filteredRows>();
     for (const r of filteredRows) {
@@ -152,6 +137,8 @@ export default function PromPricesClient({ products, stock, categories }: Props)
   }, [filteredRows]);
 
   const totalEnabled = products.filter(p => enabled[p.sku] !== false).length;
+  const allSlugs     = [...grouped.keys()];
+  const allCollapsed = allSlugs.every(s => collapsed[s]);
 
   // Actions
   async function toggleProduct(sku: string) {
@@ -159,25 +146,25 @@ export default function PromPricesClient({ products, stock, categories }: Props)
     const next = !(enabled[sku] !== false);
     setEnabled(prev => ({ ...prev, [sku]: next }));
     setToggling(prev => new Set(prev).add(sku));
-    await fetch('/api/admin/prom/product', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sku, on_prom: next }) });
+    await fetch('/api/admin/rozetka/product', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sku, on_rozetka: next }) });
     setToggling(prev => { const s = new Set(prev); s.delete(sku); return s; });
   }
 
   async function bulkToggle(catSlug: string, val: boolean) {
     const skus = products.filter(p => p.category_slug === catSlug).map(p => p.sku);
     setEnabled(prev => Object.fromEntries([...Object.entries(prev), ...skus.map(s => [s, val])]));
-    await fetch('/api/admin/prom/product', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category_slug: catSlug, on_prom: val }) });
+    await fetch('/api/admin/rozetka/product', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category_slug: catSlug, on_rozetka: val }) });
   }
 
   async function toggleAll(val: boolean) {
     setEnabled(Object.fromEntries(products.map(p => [p.sku, val])));
-    await fetch('/api/admin/prom/product', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on_prom: val }) });
+    await fetch('/api/admin/rozetka/product', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on_rozetka: val }) });
   }
 
   async function saveMarkup(sku: string, val: string) {
     setSavingMarkup(sku);
     const pct = val === '' ? null : parseFloat(val);
-    await fetch('/api/admin/prom/product', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sku, prom_markup_pct: isNaN(pct as number) ? null : pct }) });
+    await fetch('/api/admin/rozetka/product', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sku, rozetka_markup_pct: isNaN(pct as number) ? null : pct }) });
     setSavingMarkup(null);
   }
 
@@ -189,7 +176,7 @@ export default function PromPricesClient({ products, stock, categories }: Props)
     const catItems = products.filter(p => p.category_slug === catSlug);
     setCatSaving(catSlug);
     setMarkups(prev => { const n = { ...prev }; catItems.forEach(p => { n[p.sku] = String(pct); }); return n; });
-    await Promise.all(catItems.map(p => fetch('/api/admin/prom/product', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sku: p.sku, prom_markup_pct: pct }) })));
+    await Promise.all(catItems.map(p => fetch('/api/admin/rozetka/product', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sku: p.sku, rozetka_markup_pct: pct }) })));
     setCatSaving(null);
     setCatMarkupInputs(prev => ({ ...prev, [catSlug]: '' }));
   }
@@ -200,34 +187,31 @@ export default function PromPricesClient({ products, stock, categories }: Props)
     if (isNaN(pct)) return;
     setGlobalSaving(true);
     setMarkups(Object.fromEntries(products.map(p => [p.sku, String(pct)])));
-    await Promise.all(products.map(p => fetch('/api/admin/prom/product', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sku: p.sku, prom_markup_pct: pct }) })));
+    await Promise.all(products.map(p => fetch('/api/admin/rozetka/product', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sku: p.sku, rozetka_markup_pct: pct }) })));
     setGlobalSaving(false);
     setGlobalMarkup('');
   }
 
-  async function saveManual(sku: string) {
-    setSavingEdit(true);
-    const manual = editManual === '' ? null : parseFloat(editManual);
-    await fetch('/api/admin/products/prom-price', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sku, price_wholesale: manual }) });
-    setManualOverrides(prev => ({ ...prev, [sku]: manual }));
+  async function saveName(sku: string) {
+    setSavingName(true);
+    const name = editName.trim() || null;
+    await fetch('/api/admin/rozetka/product', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sku, rozetka_name: name ?? '' }) });
+    setRzNames(prev => ({ ...prev, [sku]: name ?? '' }));
     setEditSku(null);
-    setSavingEdit(false);
+    setSavingName(false);
   }
-
-  const allSlugs = [...grouped.keys()];
-  const allCollapsed = allSlugs.every(s => collapsed[s]);
 
   return (
     <div style={{ padding: '28px 32px 64px', maxWidth: 1400 }}>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <Link href="/admin/prom" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: '1px solid #E2E8F0', color: '#6B7280', textDecoration: 'none' }}>
+        <Link href="/admin/rozetka" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: '1px solid #E2E8F0', color: '#6B7280', textDecoration: 'none' }}>
           <ArrowLeft size={16} />
         </Link>
         <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#111' }}>Товари Prom.ua</h1>
-          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#6B7280' }}>{totalEnabled} / {products.length} увімкнено в Prom</p>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#111' }}>Товари Rozetka</h1>
+          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#6B7280' }}>{totalEnabled} / {products.length} увімкнено в Rozetka</p>
         </div>
       </div>
 
@@ -246,23 +230,20 @@ export default function PromPricesClient({ products, stock, categories }: Props)
         </label>
         <button
           onClick={() => setCollapsed(allCollapsed ? Object.fromEntries(allSlugs.map(s => [s, false])) : Object.fromEntries(allSlugs.map(s => [s, true])))}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, fontWeight: 500, background: '#fff', color: '#475569', cursor: 'pointer', whiteSpace: 'nowrap' }}
-        >
+          style={{ display: 'flex', alignItems: 'center', gap: 5, height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, fontWeight: 500, background: '#fff', color: '#475569', cursor: 'pointer', whiteSpace: 'nowrap' }}>
           {allCollapsed ? <><ChevronDown size={13} /> Розгорнути всі</> : <><ChevronRight size={13} /> Згорнути всі</>}
         </button>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px', height: 42, borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, fontWeight: 500, color: '#475569', whiteSpace: 'nowrap', background: '#fff' }}>
-          <span>Всі в Prom</span>
+          <span>Всі в Rozetka</span>
           <button
             onClick={() => {
               const next = !(totalEnabled === products.length);
-              const msg = next
-                ? `Увімкнути всі ${products.length} товарів для відображення в Prom?`
-                : `Вимкнути всі ${products.length} товарів з Prom?`;
+              const msg  = next
+                ? `Увімкнути всі ${products.length} товарів для відображення в Rozetka?`
+                : `Вимкнути всі ${products.length} товарів з Rozetka?`;
               if (window.confirm(msg)) toggleAll(next);
             }}
-            title={totalEnabled === products.length ? 'Вимкнути всі з Prom' : 'Увімкнути всі в Prom'}
-            style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, background: totalEnabled === products.length ? '#22C55E' : totalEnabled > 0 ? '#86EFAC' : '#CBD5E1', transition: 'background 0.2s' }}
-          >
+            style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, background: totalEnabled === products.length ? '#22C55E' : totalEnabled > 0 ? '#86EFAC' : '#CBD5E1', transition: 'background 0.2s' }}>
             <span style={{ position: 'absolute', top: 2, left: totalEnabled === products.length ? 18 : totalEnabled > 0 ? 10 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
           </button>
         </label>
@@ -278,10 +259,10 @@ export default function PromPricesClient({ products, stock, categories }: Props)
           {brands.map(b => <option key={b} value={b}>{b}</option>)}
         </select>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          style={{ height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, background: filterStatus ? '#EFF6FF' : '#fff', minWidth: 170 }}>
-          <option value="">Всі статуси Prom</option>
-          <option value="on">Увімкнено в Prom</option>
-          <option value="off">Виключено з Prom</option>
+          style={{ height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, background: filterStatus ? '#EFF6FF' : '#fff', minWidth: 180 }}>
+          <option value="">Всі статуси Rozetka</option>
+          <option value="on">Увімкнено в Rozetka</option>
+          <option value="off">Виключено з Rozetka</option>
         </select>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
           <span style={{ fontSize: 12, color: '#64748B', whiteSpace: 'nowrap' }}>Наценка на всі:</span>
@@ -308,11 +289,11 @@ export default function PromPricesClient({ products, stock, categories }: Props)
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {[...grouped.entries()].map(([catSlug, rows]) => {
           const cat        = catSlug !== '—' ? catMap.get(catSlug) : null;
-          const commission = cat?.prom_commission_pct ?? 0;
-          const catMkp     = cat?.prom_markup_pct ?? null;
+          const commission = cat?.rozetka_commission_pct ?? 0;
+          const catMkp     = cat?.rozetka_markup_pct ?? null;
           const isCollapsed = collapsed[catSlug];
-          const allOn  = rows.every(r => enabled[r.p.sku] !== false);
-          const someOn = rows.some(r => enabled[r.p.sku] !== false);
+          const allOn   = rows.every(r => enabled[r.p.sku] !== false);
+          const someOn  = rows.some(r => enabled[r.p.sku] !== false);
 
           const setMarkupVals = rows.map(r => {
             const v = markups[r.p.sku];
@@ -332,9 +313,8 @@ export default function PromPricesClient({ products, stock, categories }: Props)
                 </button>
                 <button
                   onClick={() => bulkToggle(catSlug, !allOn)}
-                  title={allOn ? 'Вимкнути всі в Prom' : 'Увімкнути всі в Prom'}
-                  style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, background: allOn ? '#22C55E' : someOn ? '#86EFAC' : '#CBD5E1', transition: 'background 0.2s' }}
-                >
+                  title={allOn ? 'Вимкнути всі в Rozetka' : 'Увімкнути всі в Rozetka'}
+                  style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, background: allOn ? '#22C55E' : someOn ? '#86EFAC' : '#CBD5E1', transition: 'background 0.2s' }}>
                   <span style={{ position: 'absolute', top: 2, left: allOn ? 18 : someOn ? 10 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                 </button>
                 <span onClick={() => setCollapsed(p => ({ ...p, [catSlug]: !isCollapsed }))} style={{ fontWeight: 600, fontSize: 13, color: '#1E293B', flex: 1, cursor: 'pointer' }}>
@@ -343,6 +323,7 @@ export default function PromPricesClient({ products, stock, categories }: Props)
                 <span style={{ fontSize: 11, color: '#94A3B8' }}>{rows.length} товарів</span>
                 {commission > 0 && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#FFF7ED', color: '#92400E' }}>комісія {commission}%</span>}
                 {avgMarkup !== null && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#EFF6FF', color: '#1D4ED8' }}>наценка ~{avgMarkup}%</span>}
+                {!cat?.rozetka_category_id && catSlug !== '—' && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#FEF2F2', color: '#DC2626' }}>без rz_id</span>}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ fontSize: 11, color: '#64748B', whiteSpace: 'nowrap' }}>Наценка:</span>
                   <div style={{ position: 'relative' }}>
@@ -376,23 +357,24 @@ export default function PromPricesClient({ products, stock, categories }: Props)
                       <th style={{ ...TH, width: 90 }}>SKU</th>
                       <th style={TH}>Назва</th>
                       <th style={TH}>Бренд</th>
-                      <th style={TH}>Категорія Prom</th>
+                      <th style={TH}>Категорія Rozetka</th>
                       <th style={{ ...TH, textAlign: 'right' }}>Ціна входу</th>
                       <th style={{ ...TH, textAlign: 'right' }}>Комісія</th>
                       <th style={{ ...TH, textAlign: 'right', width: 110 }}>Наценка</th>
-                      <th style={{ ...TH, textAlign: 'right' }}>Ціна Prom</th>
+                      <th style={{ ...TH, textAlign: 'right' }}>Ціна Rozetka</th>
                       <th style={{ ...TH, textAlign: 'right' }}>Маржа</th>
-                      <th style={{ ...TH, textAlign: 'center' }}>Prom</th>
+                      <th style={{ ...TH, textAlign: 'center' }}>Rozetka</th>
                       <th style={{ ...TH, width: 36 }} />
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map(r => {
-                      const { p, basePrice, cost, manual, productMkp, catMkp: rCatMkp, commission: rComm, promPrice, marginPct, promCatUrl } = r;
-                      const isOn      = enabled[p.sku] !== false;
+                      const { p, cost, retailPrice, productMkp, catMkp: rCatMkp, commission: rComm, rzPrice: rPrice, marginPct } = r;
+                      const isOn       = enabled[p.sku] !== false;
                       const isToggling = toggling.has(p.sku);
                       const isSelected = selected.has(p.sku);
                       const isEditing  = editSku === p.sku;
+                      const hasRzName  = rzNames[p.sku] !== '';
 
                       return (
                         <tr key={p.sku} style={{ borderBottom: '1px solid #F1F5F9', background: isSelected ? 'rgba(37,99,235,0.03)' : undefined, opacity: isOn ? 1 : 0.45 }}>
@@ -401,30 +383,29 @@ export default function PromPricesClient({ products, stock, categories }: Props)
                               style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#2563EB' }} />
                           </td>
                           <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 11, color: '#64748B', whiteSpace: 'nowrap' }}>{p.sku}</td>
-                          <td style={{ padding: '8px 12px', maxWidth: 300 }}>
+                          <td style={{ padding: '8px 12px', maxWidth: 280 }}>
                             <div style={{ fontWeight: 500, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
                             {p.volume && <div style={{ fontSize: 11, color: '#94A3B8' }}>{p.volume}</div>}
                           </td>
                           <td style={{ padding: '8px 12px', color: '#475569', whiteSpace: 'nowrap' }}>{p.brand}</td>
-                          <td style={{ padding: '8px 12px', maxWidth: 180 }}>
-                            {promCatUrl ? (
-                              <a href={promCatUrl} target="_blank" rel="noreferrer"
-                                title={promCatUrl}
-                                style={{ fontSize: 11, color: p.prom_portal_url ? '#C2410C' : '#2563EB', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
-                                {promCatLabel(promCatUrl) ?? promCatUrl}
-                                {p.prom_portal_url && <span style={{ marginLeft: 3, fontSize: 9, color: '#C2410C' }}>✎</span>}
-                              </a>
+                          <td style={{ padding: '8px 12px' }}>
+                            {cat?.rozetka_category_id ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#F0FDF4', color: '#15803D', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{cat.rozetka_category_id}</span>
+                                {cat.rozetka_category_name && (
+                                  <span style={{ fontSize: 12, color: '#475569' }}>{cat.rozetka_category_name}</span>
+                                )}
+                              </div>
                             ) : (
                               <span style={{ fontSize: 11, color: '#D1D5DB' }}>—</span>
                             )}
                           </td>
                           <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#111' }}>
-                            {cost != null ? `${cost.toFixed(0)} ₴` : basePrice > 0 ? <span style={{ color: '#94A3B8' }}>{basePrice.toFixed(0)} ₴</span> : <span style={{ color: '#D1D5DB' }}>—</span>}
+                            {cost != null ? `${cost.toFixed(0)} ₴` : retailPrice > 0 ? <span style={{ color: '#94A3B8' }}>{retailPrice.toFixed(0)} ₴</span> : <span style={{ color: '#D1D5DB' }}>—</span>}
                           </td>
                           <td style={{ padding: '8px 12px', textAlign: 'right', color: rComm > 0 ? '#92400E' : '#D1D5DB', fontWeight: 500 }}>
                             {rComm > 0 ? `${rComm}%` : '—'}
                           </td>
-                          {/* Наценка inline */}
                           <td style={{ padding: '4px 8px', textAlign: 'right' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                               {productMkp != null && rCatMkp != null && productMkp !== rCatMkp && (
@@ -441,29 +422,28 @@ export default function PromPricesClient({ products, stock, categories }: Props)
                               </div>
                             </div>
                           </td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: manual ? '#C2410C' : '#111' }}>
-                            {promPrice != null ? `${promPrice} ₴` : <span style={{ color: '#D1D5DB' }}>—</span>}
-                            {manual != null && manual > 0 && <span style={{ fontSize: 10, color: '#C2410C', marginLeft: 2 }}>✎</span>}
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#111' }}>
+                            {rPrice != null ? `${rPrice} ₴` : <span style={{ color: '#D1D5DB' }}>—</span>}
                           </td>
                           <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                             {marginPct != null
                               ? <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: marginPct >= 20 ? '#ECFDF5' : marginPct >= 10 ? '#FFFBEB' : '#FEF2F2', color: marginColor(marginPct) }}>{marginPct.toFixed(1)}%</span>
                               : <span style={{ color: '#D1D5DB' }}>—</span>}
                           </td>
-                          {/* Toggle */}
                           <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                             <button onClick={() => toggleProduct(p.sku)} disabled={isToggling}
                               style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: isToggling ? 'wait' : 'pointer', padding: 0, background: isOn ? '#22C55E' : '#CBD5E1', transition: 'background 0.2s', opacity: isToggling ? 0.6 : 1 }}>
                               <span style={{ position: 'absolute', top: 2, left: isOn ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                             </button>
                           </td>
-                          {/* Ручна ціна */}
+                          {/* Rozetka name edit */}
                           <td style={{ padding: '8px 8px' }}>
                             {isEditing ? (
                               <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                                <input type="number" value={editManual} onChange={e => setEditManual(e.target.value)} placeholder="авто" autoFocus
-                                  style={{ width: 68, height: 26, padding: '0 5px', border: '1.5px solid #C2410C', borderRadius: 5, fontSize: 12, outline: 'none' }} />
-                                <button onClick={() => saveManual(p.sku)} disabled={savingEdit}
+                                <input type="text" value={editName} onChange={e => setEditName(e.target.value)} autoFocus
+                                  placeholder="авто"
+                                  style={{ width: 180, height: 26, padding: '0 5px', border: '1.5px solid #7C3AED', borderRadius: 5, fontSize: 11, outline: 'none' }} />
+                                <button onClick={() => saveName(p.sku)} disabled={savingName}
                                   style={{ width: 24, height: 24, borderRadius: 5, border: '1.5px solid #16A34A', background: '#F0FDF4', color: '#16A34A', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   <Check size={11} />
                                 </button>
@@ -473,8 +453,9 @@ export default function PromPricesClient({ products, stock, categories }: Props)
                                 </button>
                               </div>
                             ) : (
-                              <button onClick={() => { setEditSku(p.sku); setEditManual(manual != null && manual > 0 ? String(manual) : ''); }} title="Встановити ручну ціну"
-                                style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #E2E8F0', background: manual ? '#FFF7ED' : 'transparent', color: manual ? '#C2410C' : '#94A3B8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <button onClick={() => { setEditSku(p.sku); setEditName(rzNames[p.sku]); }}
+                                title={hasRzName ? `Rozetka-назва: ${rzNames[p.sku]}` : 'Встановити Rozetka-назву'}
+                                style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #E2E8F0', background: hasRzName ? '#F5F3FF' : 'transparent', color: hasRzName ? '#7C3AED' : '#94A3B8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <Pencil size={11} />
                               </button>
                             )}
@@ -497,7 +478,7 @@ export default function PromPricesClient({ products, stock, categories }: Props)
             <div style={{ width: 10, height: 10, borderRadius: 2, background: color }} /> {label}
           </div>
         ))}
-        <span style={{ color: '#94A3B8' }}>— маржа після комісії Prom · ✎ ручна ціна</span>
+        <span style={{ color: '#94A3B8' }}>— маржа після комісії Rozetka · олівець = Rozetka-назва (фіолетовий = задана вручну)</span>
       </div>
     </div>
   );

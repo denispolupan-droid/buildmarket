@@ -1,16 +1,16 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
-import PromPricesClient from './PromPricesClient';
+import PromPricesClient from '../prices/PromPricesClient';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-export const metadata = { title: 'Ціни Prom.ua — Адмін' };
+export const metadata = { title: 'Товари Prom.ua — Адмін' };
 
-export default async function PromPricesPage() {
+export default async function PromProductsPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.user_metadata?.role !== 'admin') redirect('/');

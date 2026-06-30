@@ -15,22 +15,31 @@ export default async function RozetkaPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.user_metadata?.role !== 'admin') redirect('/');
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua';
+  const siteUrl   = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua';
   const hasApiKey = !!process.env.ROZETKA_API_KEY;
 
-  const [{ data: categories }, { count: totalProducts }, { count: productsWithPrice }] = await Promise.all([
-    db.from('categories').select('id, slug, name, parent_slug, rozetka_category_id').order('sort_order'),
+  const [
+    { count: totalProducts },
+    { count: enabledProducts },
+    { data: catStats },
+  ] = await Promise.all([
     db.from('products').select('*', { count: 'exact', head: true }).eq('is_active', true),
-    db.from('product_stock').select('*', { count: 'exact', head: true }).gt('price_retail', 0),
+    db.from('products').select('*', { count: 'exact', head: true }).eq('is_active', true).eq('on_rozetka', true),
+    db.from('categories').select('rozetka_category_id, rozetka_commission_pct'),
   ]);
+
+  const catsWithId         = (catStats ?? []).filter(c => c.rozetka_category_id).length;
+  const catsWithCommission = (catStats ?? []).filter(c => c.rozetka_commission_pct != null).length;
 
   return (
     <RozetkaClient
       feedUrl={`${siteUrl}/api/rozetka/feed`}
       hasApiKey={hasApiKey}
-      categories={categories ?? []}
       totalProducts={totalProducts ?? 0}
-      productsWithPrice={productsWithPrice ?? 0}
+      enabledProducts={enabledProducts ?? 0}
+      catsWithId={catsWithId}
+      catsWithCommission={catsWithCommission}
+      totalCats={(catStats ?? []).length}
     />
   );
 }

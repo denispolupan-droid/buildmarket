@@ -3,6 +3,7 @@ import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { recordDropshipSale } from '../../../../../../lib/accounting/dropship';
 import { releaseReservation } from '../../../../../../lib/accounting/reservations';
+import { setPromTTN } from '../../../../../../lib/prom-api';
 
 export async function POST(
   req: NextRequest,
@@ -18,12 +19,16 @@ export async function POST(
   const { id } = await params;
   const db = createServiceClient();
 
-  const body = await req.json().catch(() => ({})) as { items?: { sku: string; qty: number }[] };
+  const body = await req.json().catch(() => ({})) as {
+    items?: { sku: string; qty: number }[];
+    ttn?: string;
+  };
   const partialItems = body.items; // undefined = ship everything
+  const bodyTtn = body.ttn?.trim() || null;
 
   const { data: order, error } = await db
     .from('orders')
-    .select('id, order_number, status, items, channel_code, customer_id, delivery_type')
+    .select('id, order_number, status, items, channel_code, customer_id, delivery_type, prom_order_id, tracking_number')
     .eq('id', id)
     .single();
 
@@ -48,6 +53,11 @@ export async function POST(
 
   if (itemsToShip.length === 0) {
     return NextResponse.json({ error: 'Немає позицій для відвантаження' }, { status: 400 });
+  }
+
+  // Save TTN to DB if provided in body and not already set
+  if (bodyTtn && bodyTtn !== order.tracking_number) {
+    await db.from('orders').update({ tracking_number: bodyTtn }).eq('id', id);
   }
 
   // Release reservation BEFORE resolveOrderFulfillment so qty_available reflects actual stock.
@@ -164,6 +174,19 @@ export async function POST(
     .eq('id', saleDocId)
     .single();
 
+  // Push TTN to Prom.ua after successful shipment (fire-and-forget — don't fail the response)
+  let ttnPushed = false;
+  const effectiveTtn = bodyTtn ?? (order.tracking_number as string | null);
+  const promOrderId = order.prom_order_id as number | null;
+  if (promOrderId && effectiveTtn) {
+    const deliveryType = (order.delivery_type as string | null) ?? 'nova_poshta';
+    setPromTTN(promOrderId, effectiveTtn, deliveryType).then(() => {
+      ttnPushed = true;
+    }).catch(err => {
+      console.warn('[ship] setPromTTN failed:', err);
+    });
+  }
+
   return NextResponse.json({
     ok:              true,
     sale_doc_id:     saleDocId,
@@ -171,6 +194,7 @@ export async function POST(
     fully_shipped:   fullyShipped,
     shipped_items:   itemsToShip.map(i => ({ sku: i.sku, qty: i.qty })),
     status:          finalStatus,
+    ttn_pushed:      ttnPushed,
   });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message

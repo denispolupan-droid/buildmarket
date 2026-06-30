@@ -61,6 +61,7 @@ export const CATEGORY_NAMES_RU: Record<string, string> = {
   'zvukoizolyatsiyna-strichka': 'Звукоизоляционная лента',
   'izolyatsiyni-strichky':      'Изоляционные ленты',
   'strichka-dlya-shviv':        'Лента для швов',
+  'montazhna-strichka':         'Монтажная лента',
 
   // Крепёж
   'kriplennya':          'Крепёж',

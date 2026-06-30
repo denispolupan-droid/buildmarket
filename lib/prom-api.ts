@@ -127,6 +127,17 @@ export async function setPromOrderStatus(promOrderId: number, status: PromStatus
   });
 }
 
+export async function setPromTTN(promOrderId: number, ttn: string, deliveryType = 'nova_poshta'): Promise<void> {
+  await promFetch('/delivery/save_declaration_id', {
+    method: 'POST',
+    body: JSON.stringify({
+      order_id:       promOrderId,
+      declaration_id: ttn,
+      delivery_type:  deliveryType,
+    }),
+  });
+}
+
 /* ── Product stock/price update ─────────────────────────────────────────── */
 
 export async function updatePromProducts(products: {

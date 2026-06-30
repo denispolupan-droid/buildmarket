@@ -34,12 +34,14 @@ interface Stock {
 }
 
 interface Category {
-  slug:                string;
-  name:                string;
-  parent_slug:         string | null;
-  prom_commission_pct: number | null;
-  prom_markup_pct:     number | null;
-  description:         string | null;
+  slug:                   string;
+  name:                   string;
+  parent_slug:            string | null;
+  prom_commission_pct:    number | null;
+  prom_markup_pct:        number | null;
+  rozetka_commission_pct: number | null;
+  rozetka_markup_pct:     number | null;
+  description:            string | null;
 }
 
 interface Props {
@@ -83,6 +85,14 @@ function fmt(v: number | null) {
 
 function calcPromPrice(retail: number, markup: number, commission: number) {
   return Math.ceil(retail * (1 + markup / 100) / (1 - commission / 100));
+}
+
+function calcRzPrice(cost: number | null, retail: number | null, markup: number, commission: number): number | null {
+  const base = (cost ?? 0) > 0 ? cost! : (retail ?? 0) > 0 ? retail! : 0;
+  if (base === 0) return null;
+  const withMarkup = base * (1 + markup / 100);
+  const withComm = commission > 0 ? withMarkup / (1 - commission / 100) : withMarkup;
+  return Math.ceil(withComm / 5) * 5;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -165,7 +175,11 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
         const baseForProm    = retail ?? unit ?? 0;
         const promPrice      = baseForProm > 0 ? calcPromPrice(baseForProm, promMarkup, promCommission) : null;
 
-        return { p, cost, unit, retail, drop, locked, cat, promPrice, s };
+        const rzMarkup     = cat?.rozetka_markup_pct ?? 0;
+        const rzCommission = cat?.rozetka_commission_pct ?? 0;
+        const rzPrice      = calcRzPrice(cost, retail, rzMarkup, rzCommission);
+
+        return { p, cost, unit, retail, drop, locked, cat, promPrice, rzPrice, s };
       })
       .filter(r => filterStock === 'all' ? true : filterStock === 'in_stock' ? r.s?.stock_status === 'in_stock' : r.s?.stock_status !== 'in_stock')
       .filter(r => !filterBrand || r.p.brand === filterBrand)
@@ -1038,6 +1052,7 @@ async function sendEmail(){
                       <th style={{ ...th, width: 110 }}>Роздрібна</th>
                       <th style={{ ...th, width: 85, whiteSpace: 'nowrap' }}>Дроп</th>
                       <th style={{ ...th, width: 90, whiteSpace: 'nowrap' }}>Ціна Prom</th>
+                      <th style={{ ...th, width: 90, whiteSpace: 'nowrap' }}>Ціна Rozetka</th>
                       <th style={{ width: 60, padding: '8px 12px' }} />
                     </tr>
                   </thead>
@@ -1082,6 +1097,7 @@ async function sendEmail(){
                                 <input type="number" step="0.01" value={editState!.price_drop} onChange={e => setEditState(s => s && ({ ...s, price_drop: e.target.value }))} style={{ ...inputSmall, width: 70 }} />
                               </td>
                               <td style={{ padding: '6px 8px', fontSize: 12, color: '#9CA3AF' }}>авто</td>
+                              <td style={{ padding: '6px 8px', fontSize: 12, color: '#9CA3AF' }}>авто</td>
                               <td style={{ padding: '6px 8px' }}>
                                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                                   <button
@@ -1114,6 +1130,7 @@ async function sendEmail(){
                               </td>
                               <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }}>{fmt(r.drop)}</td>
                               <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }}>{r.promPrice != null ? `${r.promPrice} ₴` : '—'}</td>
+                              <td style={{ padding: '8px 14px', fontSize: 13, color: '#0EA5E9', fontWeight: r.rzPrice ? 500 : 400 }}>{r.rzPrice != null ? `${r.rzPrice} ₴` : '—'}</td>
                               <td style={{ padding: '8px 10px' }}>
                                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                                   {r.locked && (

@@ -12,6 +12,22 @@ import {
   Tags, Layers,
 } from 'lucide-react';
 
+function SocketIcon({ size = 24, color = 'currentColor', strokeWidth = 2, style }: {
+  size?: number | string; color?: string; strokeWidth?: number | string; style?: React.CSSProperties;
+}) {
+  const s = Number(size);
+  const sw = Number(strokeWidth);
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={style}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9v4.5" />
+      <path d="M14.5 9v4.5" />
+      <path d="M9.5 16.5h5" />
+    </svg>
+  );
+}
+
 const NAV = [
   { href: '/admin',                      label: 'Замовлення',     icon: ShoppingBag,    exact: true  },
   { href: '/admin/products',             label: 'Товари',         icon: Package,        exact: false },
@@ -20,7 +36,7 @@ const NAV = [
   { href: '/admin/partners',             label: 'Контрагенти',    icon: Users,          exact: false },
   { href: '/admin/procurement',          label: 'Закупівля',      icon: ShoppingCart,   exact: false },
   { href: '/admin/prom',                 label: 'Prom.ua',        icon: ShoppingBasket, exact: false },
-  { href: '/admin/rozetka',              label: 'Rozetka',        icon: Layers,         exact: false },
+  { href: '/admin/rozetka',              label: 'Rozetka',        icon: SocketIcon as typeof Store, exact: false },
   { href: '/admin/pricing',              label: 'Аналіз цін',     icon: TrendingUp,     exact: false },
   { href: '/admin/finance',              label: 'Фінанси',        icon: BarChart3,      exact: false },
   { href: '/admin/accounting/documents', label: 'Облік',          icon: BookOpen,       exact: false },

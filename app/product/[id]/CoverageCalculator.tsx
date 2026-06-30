@@ -67,6 +67,15 @@ function parseCoverageRate(charValue: string): { rate: number; label: string } |
     return { rate: unitBase / coverage, label: v };
   }
 
+  // "8–10 м² на шар / 1 л"  or  "4–7 м² на 1 л за 1 шар" (per-litre stated differently)
+  const invertedNaRange = v.match(/([\d.,]+)\s*[-–]\s*([\d.,]+)\s*м[²2][^\/\d]*\/?\s*(?:на\s+)?1\s*(мл|г|кг|л)/i);
+  if (invertedNaRange) {
+    const lo  = parseFloat(invertedNaRange[1].replace(',', '.'));
+    const hi  = parseFloat(invertedNaRange[2].replace(',', '.'));
+    const unitBase = toBaseUnit(1, invertedNaRange[3]);
+    return { rate: unitBase / ((lo + hi) / 2), label: v };
+  }
+
   return null;
 }
 

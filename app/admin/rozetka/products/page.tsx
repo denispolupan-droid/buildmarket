@@ -1,41 +1,37 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
-import PromPricesClient from './PromPricesClient';
+import RozetkaProductsClient from './RozetkaProductsClient';
+
+export const metadata = { title: 'Товари Rozetka — Адмін' };
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-export const metadata = { title: 'Ціни Prom.ua — Адмін' };
-
-export default async function PromPricesPage() {
+export default async function RozetkaProductsPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.user_metadata?.role !== 'admin') redirect('/');
 
-  const [{ data: products }, { data: stock }, { data: categories }, { data: planRow }] = await Promise.all([
+  const [{ data: products }, { data: stock }, { data: categories }] = await Promise.all([
     db.from('products')
-      .select('sku, name, brand, category_slug, volume, prom_markup_pct, on_prom, prom_portal_url')
+      .select('sku, name, rozetka_name, brand, category_slug, color, volume, on_rozetka, rozetka_markup_pct')
       .eq('is_active', true)
       .order('category_slug', { nullsFirst: false })
       .order('name'),
     db.from('product_stock')
-      .select('sku, price_cost, price_retail, price_unit, price_wholesale'),
+      .select('sku, price_retail, price_unit, price_cost'),
     db.from('categories')
-      .select('slug, name, prom_commission_pct, prom_markup_pct, prom_section_url'),
-    db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
+      .select('slug, name, rozetka_commission_pct, rozetka_markup_pct, rozetka_category_id, rozetka_category_name'),
   ]);
 
-  const plan = (planRow?.value ?? 'single') as 'single' | 'econom';
-
   return (
-    <PromPricesClient
+    <RozetkaProductsClient
       products={products ?? []}
       stock={stock ?? []}
       categories={categories ?? []}
-      plan={plan}
     />
   );
 }

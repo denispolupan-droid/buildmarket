@@ -156,7 +156,7 @@ export default function AdminOrders({
   const [saleDocMap,    setSaleDocMap]    = useState<Record<string, { id: string; number: string }[]>>(initialSaleDocs);
   const [shippedQtyMap, setShippedQtyMap] = useState<Record<string, Record<string, number>>>(initialShippedQty);
   type ShipModalItem = { sku: string; name: string; brand: string; orderQty: number; shippedQty: number; shipQty: number };
-  const [shipModal, setShipModal] = useState<{ orderId: string; items: ShipModalItem[] } | null>(null);
+  const [shipModal, setShipModal] = useState<{ orderId: string; items: ShipModalItem[]; ttn: string; isProm: boolean } | null>(null);
   const [editDeliveryId,   setEditDeliveryId]   = useState<string | null>(null);
   const [editDeliveryForm, setEditDeliveryForm] = useState<{ type: string; subtype: string; cityName: string; address: string }>({ type: '', subtype: '', cityName: '', address: '' });
   const [savingDelivery,   setSavingDelivery]   = useState(false);
@@ -637,17 +637,25 @@ export default function AdminOrders({
       showToast('Всі позиції вже відвантажені', 'info');
       return;
     }
-    setShipModal({ orderId, items: modalItems });
+    setShipModal({
+      orderId,
+      items:  modalItems,
+      ttn:    order.tracking_number ?? '',
+      isProm: order.channel_code === 'prom',
+    });
   }
 
-  async function executeShip(orderId: string, items: { sku: string; shipQty: number }[]) {
+  async function executeShip(orderId: string, items: { sku: string; shipQty: number }[], ttn?: string) {
     setShipModal(null);
     setShipping(orderId);
     try {
       const res = await fetch(`/api/admin/orders/${orderId}/ship`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: items.map(i => ({ sku: i.sku, qty: i.shipQty })) }),
+        body: JSON.stringify({
+          items: items.map(i => ({ sku: i.sku, qty: i.shipQty })),
+          ...(ttn ? { ttn } : {}),
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -789,6 +797,16 @@ export default function AdminOrders({
       const order = orders.find(o => o.id === id);
       if (order?.fulfillment_mode === 'supplier' && ttnValues[id]) {
         await autoShipDropship(id);
+      }
+      // If Prom order already shipped — push TTN to Prom automatically
+      if (order?.channel_code === 'prom' && order.status === 'shipped' && ttnValues[id]) {
+        fetch(`/api/admin/orders/${id}/push-prom-ttn`, { method: 'POST' })
+          .then(r => r.json())
+          .then(d => {
+            if (d.ok) showToast('ТТН надіслано на Prom', 'success');
+            else showToast(`Prom TTN: ${d.error ?? 'помилка'}`, 'error');
+          })
+          .catch(() => showToast('Не вдалося надіслати ТТН на Prom', 'error'));
       }
     }
     setTtnSaving(null);
@@ -2081,6 +2099,19 @@ export default function AdminOrders({
                                 {ttnDeleting === order.id ? '…' : '🗑'}
                               </button>
                             )}
+                            {order.channel_code === 'prom' && order.tracking_number && (
+                              <button
+                                onClick={() =>
+                                  fetch(`/api/admin/orders/${order.id}/push-prom-ttn`, { method: 'POST' })
+                                    .then(r => r.json())
+                                    .then(d => d.ok ? showToast('ТТН надіслано на Prom ✓', 'success') : showToast(`Prom: ${d.error ?? 'помилка'}`, 'error'))
+                                    .catch(() => showToast('Помилка мережі', 'error'))
+                                }
+                                title="Надіслати ТТН на Prom"
+                                style={{ height: '32px', padding: '0 10px', borderRadius: '7px', flexShrink: 0, background: '#FFF7ED', color: '#C2410C', border: '1.5px solid #FED7AA', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                → Prom
+                              </button>
+                            )}
                           </div>
                         </div>
                       )}
@@ -2647,6 +2678,21 @@ export default function AdminOrders({
               <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '20px' }}>
                 Вкажіть кількість для відвантаження (можна змінити для часткового відвантаження)
               </div>
+              {/* TTN field for Prom orders */}
+              {shipModal.isProm && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: '#C2410C', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>
+                    ТТН (буде надіслано на Prom)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Номер відправлення..."
+                    value={shipModal.ttn}
+                    onChange={e => setShipModal(prev => prev ? { ...prev, ttn: e.target.value } : null)}
+                    style={{ width: '100%', height: '36px', padding: '0 10px', border: '1.5px solid #FED7AA', borderRadius: '8px', fontSize: '14px', fontFamily: 'monospace', boxSizing: 'border-box', outline: 'none', color: '#92400E', background: '#FFFBEB' }}
+                  />
+                </div>
+              )}
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', marginBottom: '20px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
@@ -2689,7 +2735,12 @@ export default function AdminOrders({
                   style={{ height: '38px', padding: '0 20px', borderRadius: '9px', border: '1.5px solid #E5E7EB', background: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: '#374151' }}>
                   Скасувати
                 </button>
-                <button onClick={() => executeShip(shipModal.orderId, shipModal.items.filter(i => i.shipQty > 0).map(i => ({ sku: i.sku, shipQty: i.shipQty })))}
+                <button
+                  onClick={() => executeShip(
+                    shipModal.orderId,
+                    shipModal.items.filter(i => i.shipQty > 0).map(i => ({ sku: i.sku, shipQty: i.shipQty })),
+                    shipModal.isProm && shipModal.ttn ? shipModal.ttn : undefined,
+                  )}
                   disabled={!hasAny || shipping === shipModal.orderId}
                   style={{ height: '38px', padding: '0 24px', borderRadius: '9px', border: 'none', background: hasAny ? '#166534' : '#9CA3AF', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: hasAny ? 'pointer' : 'not-allowed' }}>
                   <Truck size={14} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
