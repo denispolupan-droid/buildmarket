@@ -16,8 +16,9 @@ interface Category {
 }
 
 interface Props {
-  categories: Category[];
-  plan:       'single' | 'econom';
+  categories:    Category[];
+  plan:          'single' | 'econom';
+  commissionPct: number;
 }
 
 function pctColor(pct: number | null): string {
@@ -44,7 +45,7 @@ function PctBar({ pct, max = 16 }: { pct: number | null; max?: number }) {
   );
 }
 
-export default function PromCommissionsClient({ categories, plan }: Props) {
+export default function PromCommissionsClient({ categories, plan: initialPlan, commissionPct: initialCommissionPct }: Props) {
   const [editSlug, setEditSlug]         = useState<string | null>(null);
   const [editVal, setEditVal]           = useState('');
   const [editEco, setEditEco]           = useState('');
@@ -55,6 +56,43 @@ export default function PromCommissionsClient({ categories, plan }: Props) {
   const [data, setData]               = useState<Category[]>(categories);
   const [collapsed, setCollapsed]     = useState<Set<string>>(new Set());
   const [search, setSearch]           = useState('');
+
+  // Plan + fallback % settings
+  const [plan, setPlan]                 = useState<'single' | 'econom'>(initialPlan);
+  const [savingPlan, setSavingPlan]     = useState(false);
+  const [commissionPct, setCommissionPct]   = useState(initialCommissionPct);
+  const [commissionInput, setCommissionInput] = useState(String(initialCommissionPct));
+  const [savingPct, setSavingPct]       = useState(false);
+
+  async function savePlan(newPlan: 'single' | 'econom') {
+    setSavingPlan(true);
+    try {
+      await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prom_plan: newPlan }),
+      });
+      setPlan(newPlan);
+    } finally {
+      setSavingPlan(false);
+    }
+  }
+
+  async function saveCommissionPct() {
+    const pct = parseFloat(commissionInput);
+    if (isNaN(pct) || pct < 0 || pct > 50) return;
+    setSavingPct(true);
+    try {
+      await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prom_commission_pct: String(pct) }),
+      });
+      setCommissionPct(pct);
+    } finally {
+      setSavingPct(false);
+    }
+  }
 
   // Group: parents first, then children under their parent
   const parents = useMemo(() =>
@@ -325,6 +363,55 @@ export default function PromCommissionsClient({ categories, plan }: Props) {
             Активний план: <strong>{plan === 'econom' ? 'Економ' : 'Єдина комісія'}</strong>
             {noCommission > 0 && <span style={{ marginLeft: 12, color: '#EF4444', fontWeight: 600 }}>⚠ {noCommission} без комісії</span>}
           </p>
+        </div>
+      </div>
+
+      {/* Plan + fallback % */}
+      <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '16px 20px', marginBottom: 20 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#111', marginBottom: 12 }}>Налаштування комісій</div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          {(['single', 'econom'] as const).map(p => (
+            <button
+              key={p}
+              onClick={() => !savingPlan && p !== plan && savePlan(p)}
+              style={{
+                flex: 1, padding: '8px 14px', borderRadius: 9,
+                border: `2px solid ${plan === p ? '#1D4ED8' : '#E5E7EB'}`,
+                background: plan === p ? '#EFF6FF' : '#F9FAFB',
+                color: plan === p ? '#1D4ED8' : '#374151',
+                fontWeight: plan === p ? 700 : 500,
+                cursor: savingPlan ? 'not-allowed' : 'pointer',
+                fontSize: 13, textAlign: 'left',
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>{p === 'single' ? 'Єдина комісія' : 'Економ'}</div>
+              <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>
+                {p === 'single' ? 'Стандарт (герметики ~15.29%, піна ~11.53%)' : 'Знижена вдвічі (герметики ~7.65%, піна ~5.77%)'}
+              </div>
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13, color: '#6B7280', flex: 1 }}>Запасний % (для категорій без прив&apos;язки):</span>
+          <input
+            type="number" min={0} max={50} step={0.5} value={commissionInput}
+            onChange={e => setCommissionInput(e.target.value)}
+            style={{ width: 60, height: 32, padding: '0 8px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 14, fontWeight: 700, textAlign: 'center', outline: 'none' }}
+          />
+          <span style={{ fontSize: 13, color: '#374151', fontWeight: 600 }}>%</span>
+          <button
+            onClick={saveCommissionPct}
+            disabled={savingPct || parseFloat(commissionInput) === commissionPct}
+            style={{
+              padding: '6px 14px', borderRadius: 8,
+              background: savingPct || parseFloat(commissionInput) === commissionPct ? '#F3F4F6' : '#1D4ED8',
+              color: savingPct || parseFloat(commissionInput) === commissionPct ? '#9CA3AF' : '#fff',
+              border: 'none', cursor: savingPct || parseFloat(commissionInput) === commissionPct ? 'default' : 'pointer',
+              fontSize: 13, fontWeight: 600,
+            }}
+          >
+            {savingPct ? 'Зберігаю…' : 'Зберегти'}
+          </button>
         </div>
       </div>
 
