@@ -1,8 +1,21 @@
+import { createClient } from '@supabase/supabase-js';
+
 const PROM_BASE = 'https://my.prom.ua/api/v1';
 
-function headers() {
+async function getToken(): Promise<string> {
+  const db = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+  const { data } = await db.from('app_settings').select('value').eq('key', 'prom_api_token').maybeSingle();
+  if (data?.value) return data.value as string;
   const token = process.env.PROM_API_TOKEN;
-  if (!token) throw new Error('PROM_API_TOKEN is not set');
+  if (!token) throw new Error('Токен Prom не налаштований. Встановіть його на сторінці /admin/prom');
+  return token;
+}
+
+async function headers() {
+  const token = await getToken();
   return {
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
@@ -12,7 +25,7 @@ function headers() {
 async function promFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${PROM_BASE}${path}`, {
     ...init,
-    headers: { ...headers(), ...(init?.headers ?? {}) },
+    headers: { ...(await headers()), ...(init?.headers ?? {}) },
   });
   if (!res.ok) {
     const text = await res.text();

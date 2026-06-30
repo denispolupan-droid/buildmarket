@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { RefreshCw, ExternalLink, Copy, CheckCircle, Package, ShoppingBag, TableProperties } from 'lucide-react';
+import { RefreshCw, ExternalLink, Copy, CheckCircle, Package, ShoppingBag, TableProperties, Key, Eye, EyeOff, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface Order {
@@ -22,14 +22,19 @@ interface StatRow {
 }
 
 interface Props {
-  hasToken:      boolean;
-  feedUrl:       string;
-  recentOrders:  Order[];
-  totalOrders:   number;
-  stats:         StatRow[];
-  totalRevenue:  number;
-  commissionPct: number;
-  plan:          'single' | 'econom';
+  hasToken:          boolean;
+  maskedToken:       string | null;
+  feedUrl:           string;
+  recentOrders:      Order[];
+  totalOrders:       number;
+  stats:             StatRow[];
+  totalRevenue:      number;
+  commissionPct:     number;
+  plan:              'single' | 'econom';
+  totalProducts:     number;
+  enabledProducts:   number;
+  catsWithCommission: number;
+  totalCats:         number;
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
@@ -52,7 +57,7 @@ function relTime(iso: string) {
   return `${Math.floor(h / 24)} дн тому`;
 }
 
-export default function PromDashboardClient({ hasToken, feedUrl, recentOrders, totalOrders, stats, totalRevenue, commissionPct: initialCommissionPct, plan: initialPlan }: Props) {
+export default function PromDashboardClient({ hasToken: initialHasToken, maskedToken: initialMaskedToken, feedUrl, recentOrders, totalOrders, stats, totalRevenue, commissionPct: initialCommissionPct, plan: initialPlan, totalProducts, enabledProducts, catsWithCommission, totalCats }: Props) {
   const [syncing, setSyncing]         = useState(false);
   const [syncMsg, setSyncMsg]         = useState<string | null>(null);
   const [copied,  setCopied]          = useState(false);
@@ -61,6 +66,45 @@ export default function PromDashboardClient({ hasToken, feedUrl, recentOrders, t
   const [savingPct, setSavingPct]     = useState(false);
   const [plan, setPlan]               = useState<'single' | 'econom'>(initialPlan);
   const [savingPlan, setSavingPlan]   = useState(false);
+
+  // Token management
+  const [hasToken,     setHasToken]     = useState(initialHasToken);
+  const [maskedToken,  setMaskedToken]  = useState(initialMaskedToken);
+  const [tokenInput,   setTokenInput]   = useState('');
+  const [showToken,    setShowToken]    = useState(false);
+  const [savingToken,  setSavingToken]  = useState(false);
+  const [tokenMsg,     setTokenMsg]     = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function saveToken() {
+    if (!tokenInput.trim()) return;
+    setSavingToken(true);
+    setTokenMsg(null);
+    try {
+      const res  = await fetch('/api/admin/prom/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: tokenInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setTokenMsg({ ok: false, text: data.error ?? 'Помилка' }); return; }
+      setHasToken(true);
+      setMaskedToken(data.maskedToken);
+      setTokenInput('');
+      setTokenMsg({ ok: true, text: 'Токен збережено і перевірено ✓' });
+    } catch {
+      setTokenMsg({ ok: false, text: 'Помилка з\'єднання' });
+    } finally {
+      setSavingToken(false);
+    }
+  }
+
+  async function deleteToken() {
+    if (!confirm('Видалити токен Prom?')) return;
+    await fetch('/api/admin/prom/token', { method: 'DELETE' });
+    setHasToken(false);
+    setMaskedToken(null);
+    setTokenMsg({ ok: true, text: 'Токен видалено' });
+  }
 
   async function doSync() {
     setSyncing(true);
@@ -142,18 +186,75 @@ export default function PromDashboardClient({ hasToken, feedUrl, recentOrders, t
         </button>
       </div>
 
-      {/* Token warning */}
-      {!hasToken && (
-        <div style={{
-          marginBottom: 20, padding: '14px 18px', borderRadius: 10,
-          background: '#FFF7ED', border: '1px solid #FED7AA',
-          color: '#92400E', fontSize: 14,
-        }}>
-          <strong>Токен не налаштовано.</strong> Додайте змінну оточення{' '}
-          <code style={{ background: '#FEF3C7', padding: '1px 5px', borderRadius: 4 }}>PROM_API_TOKEN</code>{' '}
-          у Vercel, щоб увімкнути синхронізацію замовлень та статусів.
+      {/* Nav cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
+        {[
+          { href: '/admin/prom/products', label: 'Товари', desc: `${enabledProducts} / ${totalProducts} увімкнено`, color: '#0EA5E9' },
+          { href: '/admin/prom/commissions', label: 'Комісії', desc: `${catsWithCommission} / ${totalCats} категорій`, color: '#F59E0B' },
+          { href: '/admin/prom/orders', label: 'Замовлення', desc: `${totalOrders} всього`, color: '#10B981', disabled: false },
+        ].map(({ href, label, desc, color }) => (
+          <Link key={label} href={href} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
+            <div style={{ background: '#fff', borderRadius: 10, padding: '14px 18px', border: '1px solid #E5E7EB', cursor: 'pointer', height: '100%', boxSizing: 'border-box' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: color }} />
+                <span style={{ fontWeight: 600, fontSize: 14, color: '#1E293B' }}>{label}</span>
+              </div>
+              <div style={{ fontSize: 12, color: '#6B7280' }}>{desc}</div>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Token settings */}
+      <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '18px 20px', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <Key size={15} color="#6B7280" />
+          <span style={{ fontSize: 14, fontWeight: 600, color: '#111' }}>API токен Prom.ua</span>
+          {hasToken
+            ? <span style={{ marginLeft: 'auto', fontSize: 12, padding: '2px 8px', borderRadius: 20, background: '#D1FAE5', color: '#065F46', fontWeight: 600 }}>Активний</span>
+            : <span style={{ marginLeft: 'auto', fontSize: 12, padding: '2px 8px', borderRadius: 20, background: '#FEE2E2', color: '#991B1B', fontWeight: 600 }}>Не встановлено</span>
+          }
         </div>
-      )}
+
+        {hasToken && maskedToken && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 13, color: '#6B7280' }}>Поточний:</span>
+            <code style={{ fontSize: 13, background: '#F3F4F6', padding: '3px 10px', borderRadius: 6, letterSpacing: 2 }}>{maskedToken}</code>
+            <button onClick={deleteToken} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', border: '1px solid #FECACA', borderRadius: 6, background: '#FFF5F5', color: '#DC2626', fontSize: 12, cursor: 'pointer' }}>
+              <Trash2 size={12} /> Видалити
+            </button>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <input
+              type={showToken ? 'text' : 'password'}
+              value={tokenInput}
+              onChange={e => setTokenInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && saveToken()}
+              placeholder={hasToken ? 'Новий токен (залиште порожнім щоб не змінювати)' : 'Вставте токен з кабінету Prom.ua'}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '8px 36px 8px 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, fontFamily: tokenInput ? 'monospace' : 'inherit', outline: 'none' }}
+            />
+            <button onClick={() => setShowToken(v => !v)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 2 }}>
+              {showToken ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          </div>
+          <button
+            onClick={saveToken}
+            disabled={savingToken || !tokenInput.trim()}
+            style={{ padding: '8px 18px', background: tokenInput.trim() ? '#1D4ED8' : '#E5E7EB', color: tokenInput.trim() ? '#fff' : '#9CA3AF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: tokenInput.trim() ? 'pointer' : 'not-allowed' }}
+          >
+            {savingToken ? 'Перевіряємо…' : 'Зберегти'}
+          </button>
+        </div>
+
+        {tokenMsg && (
+          <div style={{ marginTop: 8, fontSize: 13, color: tokenMsg.ok ? '#065F46' : '#DC2626' }}>
+            {tokenMsg.text}
+          </div>
+        )}
+      </div>
 
       {/* Sync result */}
       {syncMsg && (
