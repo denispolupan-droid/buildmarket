@@ -6,6 +6,7 @@ const TABS = [
   { href: '/admin/prom/prices',      label: 'Ціни'       },
   { href: '/admin/prom/commissions', label: 'Комісії'    },
   { href: '/admin/prom/orders',      label: 'Замовлення' },
+  { href: '/admin/prom/attributes',  label: 'Атрибути'   },
 ];
 
 export default function PromLayout({ children }: { children: React.ReactNode }) {

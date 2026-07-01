@@ -5,6 +5,7 @@ export type Category = {
   sort_order: number;
   parent_slug: string | null;
   prom_section_url: string | null;
+  prom_section_id: number | null;
   created_at: string;
 };
 

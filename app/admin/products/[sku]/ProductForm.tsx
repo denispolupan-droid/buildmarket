@@ -14,6 +14,18 @@ type Props = {
   promUrls?: { url: string; name: string }[];
 };
 
+type PromAttrValue = { id: number; value_id: number; name_uk: string | null; name_ru: string | null };
+type PromAttr = {
+  id: number;
+  attribute_id: number;
+  name_uk: string;
+  type: 'singleselect' | 'multiselect' | 'real' | 'bool';
+  measure_unit_uk: string | null;
+  val_min: number | null;
+  val_max: number | null;
+  prom_attribute_values: PromAttrValue[];
+};
+
 const inputStyle: React.CSSProperties = {
   width: '100%', height: '44px', padding: '0 14px',
   borderRadius: '8px', border: '1px solid var(--border)',
@@ -83,6 +95,16 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
   );
   const [loadingChars, setLoadingChars] = useState(false);
 
+  // Prom structured attributes
+  const promCategoryId = categories.find(c => c.slug === categorySlug)?.prom_section_id ?? null;
+  const [promAttrs, setPromAttrs] = useState<PromAttr[]>([]);
+  const [promChars, setPromChars] = useState<Record<string, string | string[]>>({});
+  const [loadingPromAttrs, setLoadingPromAttrs] = useState(false);
+  const charsRef = useRef<{ label: string; value: string }[]>(
+    product?.characteristics?.map(c => ({ label: c.label, value: c.value })) ?? []
+  );
+  charsRef.current = chars;
+
   const parentCats = categories.filter(c => !c.parent_slug);
   const childrenOf: Record<string, Category[]> = {};
   categories.forEach(c => {
@@ -146,6 +168,45 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
       return () => clearTimeout(timer);
     }
   }, [brand, isNew, fetchBrandColors]);
+
+  // Load Prom attributes when category changes
+  useEffect(() => {
+    if (!promCategoryId) {
+      setPromAttrs([]);
+      setPromChars({});
+      return;
+    }
+    setLoadingPromAttrs(true);
+    fetch(`/api/admin/prom/attributes?category=${promCategoryId}`)
+      .then(r => r.json())
+      .then(({ attributes }: { attributes: PromAttr[] }) => {
+        const attrs = attributes ?? [];
+        setPromAttrs(attrs);
+        if (attrs.length === 0) return;
+
+        const promLabelSet = new Set(attrs.map(a => a.name_uk));
+        const currentChars = charsRef.current;
+        const toAbsorb = currentChars.filter(c => promLabelSet.has(c.label));
+        const toKeep   = currentChars.filter(c => !promLabelSet.has(c.label));
+
+        const newPromChars: Record<string, string | string[]> = {};
+        for (const attr of attrs) {
+          const matching = toAbsorb.filter(c => c.label === attr.name_uk);
+          if (matching.length === 0) continue;
+          if (attr.type === 'multiselect') {
+            newPromChars[attr.name_uk] = matching.flatMap(c =>
+              c.value.split(',').map(v => v.trim()).filter(Boolean)
+            );
+          } else {
+            newPromChars[attr.name_uk] = matching[0].value;
+          }
+        }
+        setChars(toKeep);
+        setPromChars(newPromChars);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPromAttrs(false));
+  }, [promCategoryId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function addChar() {
     setChars([...chars, { label: '', value: '' }]);
@@ -226,7 +287,32 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             stock_status: stockStatus,
             supplier_sku: supplierSku || null,
           },
-          characteristics: chars.filter(c => c.label.trim() && c.value.trim()),
+          characteristics: (() => {
+            const promLabelSet = new Set(promAttrs.map(a => a.name_uk));
+            const freeChars = chars.filter(c =>
+              c.label.trim() && c.value.trim() && !promLabelSet.has(c.label)
+            );
+            const promRows: { label: string; value: string }[] = [];
+            for (const attr of promAttrs) {
+              const val = promChars[attr.name_uk];
+              if (val === undefined || val === null || val === '') continue;
+              if (attr.type === 'multiselect' && Array.isArray(val)) {
+                for (const v of val) {
+                  if (v.trim()) promRows.push({ label: attr.name_uk, value: v.trim() });
+                }
+              } else if (attr.type === 'bool') {
+                const boolStr = val as string;
+                if (boolStr) promRows.push({ label: attr.name_uk, value: boolStr === 'Так' ? 'Так' : 'Ні' });
+              } else if (typeof val === 'string' && val.trim()) {
+                let finalVal = val.trim();
+                if (attr.type === 'real' && attr.measure_unit_uk && !/\d/.test(finalVal.slice(-1))) {
+                  finalVal = `${finalVal} ${attr.measure_unit_uk}`;
+                }
+                promRows.push({ label: attr.name_uk, value: finalVal });
+              }
+            }
+            return [...freeChars, ...promRows];
+          })(),
         }),
       });
 
@@ -696,6 +782,116 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
           </div>
         )}
       </div>
+
+      {/* Prom Attributes */}
+      {promCategoryId && (
+        <div style={sectionStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+              Характеристики Прому
+              <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)', marginLeft: 8 }}>
+                кат. {promCategoryId}
+              </span>
+            </h2>
+          </div>
+          {loadingPromAttrs ? (
+            <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Завантаження атрибутів…</div>
+          ) : promAttrs.length === 0 ? (
+            <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+              Атрибути для цієї категорії не завантажені.{' '}
+              <a href="/admin/prom/attributes" target="_blank" style={{ color: '#7C3AED' }}>
+                Імпортувати XML
+              </a>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              {promAttrs.map(attr => (
+                <div key={attr.attribute_id}>
+                  <label style={labelStyle}>
+                    {attr.name_uk}
+                    {attr.measure_unit_uk && (
+                      <span style={{ fontWeight: 400, marginLeft: 4 }}>({attr.measure_unit_uk})</span>
+                    )}
+                  </label>
+
+                  {attr.type === 'singleselect' && (
+                    <select
+                      value={(promChars[attr.name_uk] as string) ?? ''}
+                      onChange={e => setPromChars(prev => ({ ...prev, [attr.name_uk]: e.target.value }))}
+                      style={{ ...inputStyle, background: 'var(--bg)', color: 'var(--text)' }}
+                    >
+                      <option value="">— не обрано —</option>
+                      {attr.prom_attribute_values.map(v => (
+                        <option key={v.value_id} value={v.name_uk ?? ''}>{v.name_uk}</option>
+                      ))}
+                    </select>
+                  )}
+
+                  {attr.type === 'multiselect' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 4 }}>
+                      {attr.prom_attribute_values.map(v => {
+                        const current = (promChars[attr.name_uk] as string[] | undefined) ?? [];
+                        const checked = current.includes(v.name_uk ?? '');
+                        return (
+                          <label key={v.value_id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={e => {
+                                const optVal = v.name_uk ?? '';
+                                setPromChars(prev => ({
+                                  ...prev,
+                                  [attr.name_uk]: e.target.checked
+                                    ? [...current, optVal]
+                                    : current.filter(x => x !== optVal),
+                                }));
+                              }}
+                              style={{ accentColor: '#7C3AED' }}
+                            />
+                            {v.name_uk}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {attr.type === 'real' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        type="text"
+                        value={(promChars[attr.name_uk] as string) ?? ''}
+                        onChange={e => setPromChars(prev => ({ ...prev, [attr.name_uk]: e.target.value }))}
+                        placeholder={attr.val_min != null ? `${attr.val_min}…${attr.val_max}` : ''}
+                        style={{ ...inputStyle, flex: 1 }}
+                      />
+                      {attr.measure_unit_uk && (
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                          {attr.measure_unit_uk}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {attr.type === 'bool' && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, height: 44, cursor: 'pointer', fontSize: 14 }}>
+                      <input
+                        type="checkbox"
+                        checked={(promChars[attr.name_uk] as string) === 'Так'}
+                        onChange={e => setPromChars(prev => ({
+                          ...prev,
+                          [attr.name_uk]: e.target.checked ? 'Так' : 'Ні',
+                        }))}
+                        style={{ width: 18, height: 18, accentColor: '#7C3AED' }}
+                      />
+                      {(promChars[attr.name_uk] as string) === 'Так' ? 'Так' : 'Ні'}
+                    </label>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Actions */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px' }}>
