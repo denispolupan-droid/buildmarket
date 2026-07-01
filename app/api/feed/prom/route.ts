@@ -22,13 +22,29 @@ function x(s: string | null | undefined): string {
     .replace(/'/g, '&apos;');
 }
 
+// Для числових характеристик (температури) — виділяємо тільки число
+function tempValue(raw: string): string {
+  const m = raw.match(/-?\d+/);
+  return m ? m[0] : raw;
+}
+
+const TEMP_LABELS = new Set([
+  'мінімальна температура застосування',
+  'максимальна температура застосування',
+  'мінімальна температура експлуатації',
+  'максимальна температура експлуатації',
+]);
+
+// Поля що вже є в стандартних тегах — не дублюємо як param
+const SKIP_LABELS = new Set(['бренд', 'країна виробника', 'виробник']);
+
 export async function GET(request: NextRequest) {
   const key = request.nextUrl.searchParams.get('key');
   if (!key || key !== process.env.FEED_SECRET_KEY) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  const [{ data: products }, { data: stock }, { data: categories }] = await Promise.all([
+  const [{ data: products }, { data: stock }, { data: categories }, { data: chars }] = await Promise.all([
     serviceClient
       .from('products')
       .select('sku, name, brand, category_slug, volume, description, image, product_type, color, min_order')
@@ -41,9 +57,20 @@ export async function GET(request: NextRequest) {
       .from('categories')
       .select('slug, name, parent_slug')
       .order('sort_order'),
+    serviceClient
+      .from('product_characteristics')
+      .select('product_sku, label, value')
+      .order('sort_order'),
   ]);
 
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
+
+  // Групуємо характеристики по SKU
+  const charsMap = new Map<string, { label: string; value: string }[]>();
+  for (const c of (chars ?? [])) {
+    if (!charsMap.has(c.product_sku)) charsMap.set(c.product_sku, []);
+    charsMap.get(c.product_sku)!.push({ label: c.label, value: c.value });
+  }
 
   const offers = (products ?? [])
     .filter(p => {
@@ -53,10 +80,32 @@ export async function GET(request: NextRequest) {
       return s.stock_status === 'in_stock' && price > 0;
     })
     .map(p => {
-      const s = stockMap.get(p.sku)!;
+      const s     = stockMap.get(p.sku)!;
       const price = s.price_retail ?? s.price_unit;
       const desc  = p.description ?? `${p.brand} ${p.name}`;
       const avail = s.stock_status === 'in_stock' ? 'true' : 'false';
+
+      // Будуємо params з product_characteristics
+      const productChars = charsMap.get(p.sku) ?? [];
+      const seenLabels   = new Set<string>();
+      const paramLines: string[] = [];
+
+      for (const { label, value } of productChars) {
+        const key = label.toLowerCase().trim();
+        if (SKIP_LABELS.has(key) || seenLabels.has(key)) continue;
+        seenLabels.add(key);
+
+        const val = TEMP_LABELS.has(key) ? tempValue(value) : value;
+        paramLines.push(`\n      <param name="${x(label)}">${x(val)}</param>`);
+      }
+
+      // Додаємо поля з products якщо ще не є серед characteristics
+      if (p.product_type && !seenLabels.has('тип'))
+        paramLines.push(`\n      <param name="Тип">${x(p.product_type)}</param>`);
+      if (p.color && !seenLabels.has('колір'))
+        paramLines.push(`\n      <param name="Колір">${x(p.color)}</param>`);
+      if (p.volume && !seenLabels.has("об’єм") && !seenLabels.has("об'єм"))
+        paramLines.push(`\n      <param name="Об&apos;єм">${x(p.volume)}</param>`);
 
       return `    <offer id="${x(p.sku)}" available="${avail}">
       <url>${BASE_URL}/product/${x(p.sku)}</url>
@@ -69,7 +118,7 @@ export async function GET(request: NextRequest) {
       <vendorCode>${x(p.sku)}</vendorCode>
       <description>${x(desc)}</description>
       <delivery>true</delivery>
-      <deliveryIncluded>false</deliveryIncluded>${p.min_order && p.min_order > 1 ? `\n      <minAmount>${p.min_order}</minAmount>` : ''}${p.product_type ? `\n      <param name="Тип">${x(p.product_type)}</param>` : ''}${p.color ? `\n      <param name="Колір">${x(p.color)}</param>` : ''}${p.volume ? `\n      <param name="Об'єм">${x(p.volume)}</param>` : ''}
+      <deliveryIncluded>false</deliveryIncluded>${p.min_order && p.min_order > 1 ? `\n      <minAmount>${p.min_order}</minAmount>` : ''}${paramLines.join('')}
     </offer>`;
     })
     .join('\n');
