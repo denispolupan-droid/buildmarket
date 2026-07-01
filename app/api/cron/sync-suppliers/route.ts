@@ -44,3 +44,5 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ ok: true, synced: results });
 }
+
+export const POST = GET;
