@@ -97,30 +97,32 @@ const CATEGORY_USAGE_TYPE: Record<string, string> = {
   'gruntivky-kontsentraty':     'Для внутрішніх і зовнішніх робіт',
   'betonokontakt':              'Для внутрішніх і зовнішніх робіт',
   'shpaklivky':                 'Для внутрішніх і зовнішніх робіт',
-  'germetyky':                  'Для внутрішніх і зовнішніх робіт',
-  'akrylovi-germetyky':         'Для внутрішніх і зовнішніх робіт',
-  'sylikonovi-germetyky':       'Для внутрішніх і зовнішніх робіт',
-  'neytralny-germetyky':        'Для внутрішніх і зовнішніх робіт',
-  'poliuretanovi-germetyky':    'Для внутрішніх і зовнішніх робіт',
-  'zharostiyki-germetyky':      'Для внутрішніх і зовнішніх робіт',
-  'ms-polymerni-hermetyky':     'Для внутрішніх і зовнішніх робіт',
-  'nytka-dlya-trub':            'Для внутрішніх і зовнішніх робіт',
   'izolyatsiyni-strichky':      'Для внутрішніх і зовнішніх робіт',
-  'montazhna-pina':             'Для внутрішніх і зовнішніх робіт',
-  'pistoletna-pina':            'Для внутрішніх і зовнішніх робіт',
-  'pobutova-pina':              'Для внутрішніх і зовнішніх робіт',
-  'vohnezakhysna-pina':         'Для внутрішніх і зовнішніх робіт',
-  'pina-klei':                  'Для внутрішніх і зовнішніх робіт',
+  'plastyfikatory':             'Для внутрішніх і зовнішніх робіт',
+  'plastyfikatory-dlya-betonu': 'Для внутрішніх і зовнішніх робіт',
+  'rozchynnyky':                'Для внутрішніх і зовнішніх робіт',
+  'ochysnyky':                  'Для внутрішніх і зовнішніх робіт',
   'klei':                       'Для внутрішніх і зовнішніх робіт',
   'kontaktnyi-klei':            'Для внутрішніх і зовнішніх робіт',
   'montazhnyi-klei':            'Для внутрішніх і зовнішніх робіт',
   'klei-dlya-plytky':           'Для внутрішніх і зовнішніх робіт',
   'super-klei':                 'Для внутрішніх і зовнішніх робіт',
   'epoksydni-klei':             'Для внутрішніх і зовнішніх робіт',
-  'plastyfikatory':             'Для внутрішніх і зовнішніх робіт',
-  'plastyfikatory-dlya-betonu': 'Для внутрішніх і зовнішніх робіт',
-  'rozchynnyky':                'Для внутрішніх і зовнішніх робіт',
-  'ochysnyky':                  'Для внутрішніх і зовнішніх робіт',
+  // Sealants (prom_section_id=82210) — Prom accepts only: Університальний / Для внутрішніх / Для зовнішніх
+  'germetyky':                  'Університальний',
+  'akrylovi-germetyky':         'Університальний',
+  'sylikonovi-germetyky':       'Університальний',
+  'neytralny-germetyky':        'Університальний',
+  'poliuretanovi-germetyky':    'Університальний',
+  'zharostiyki-germetyky':      'Університальний',
+  'ms-polymerni-hermetyky':     'Університальний',
+  'nytka-dlya-trub':            'Університальний',
+  // Mounting foam (prom_section_id=13070501) — will update once XML received
+  'montazhna-pina':             'Університальний',
+  'pistoletna-pina':            'Університальний',
+  'pobutova-pina':              'Університальний',
+  'vohnezakhysna-pina':         'Університальний',
+  'pina-klei':                  'Університальний',
 };
 
 // ── Prom.ua characteristic mapping ────────────────────────────────────────────
@@ -196,6 +198,17 @@ function parseKg(v: string | null): number | null {
   if (!v) return null;
   const m = v.match(/^(\d+(?:[.,]\d+)?)\s*кг$/);
   return m ? parseFloat(m[1].replace(',', '.')) : null;
+}
+
+// Parse volume as мл (for Prom's Об'єм attribute in category 82210 etc.)
+// "280 мл" → 280, "0,75 л" → 750, "1 л" → 1000
+function parseVolumeML(v: string | null): number | null {
+  if (!v) return null;
+  const ml = v.match(/(\d+(?:[.,]\d+)?)\s*мл/i);
+  if (ml) return Math.round(parseFloat(ml[1].replace(',', '.')));
+  const l = parseLiters(v);
+  if (l !== null) return Math.round(l * 1000);
+  return null;
 }
 
 // Parse shelf life in months: "3 роки" → 36, "24 місяці" → 24
@@ -538,9 +551,9 @@ export async function GET(request: NextRequest) {
       if (foamLiters !== null) {
         numericParts.push(`        <param name="Вихід піни (л)">${foamLiters}</param>`);
       }
-      const liters = parseLiters(p.volume);
-      if (liters !== null) {
-        numericParts.push(`        <param name="Об'єм (л)">${liters}</param>`);
+      const volumeML = parseVolumeML(p.volume);
+      if (volumeML !== null) {
+        numericParts.push(`        <param name="Об'єм">${volumeML}</param>`);
       } else {
         const kg = parseKg(p.volume);
         if (kg !== null) numericParts.push(`        <param name="Вага (кг)">${kg}</param>`);
