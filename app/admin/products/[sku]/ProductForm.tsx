@@ -26,6 +26,95 @@ type PromAttr = {
   prom_attribute_values: PromAttrValue[];
 };
 
+const CATEGORY_APPLICATION_AREA: Record<string, string[]> = {
+  'germetyky':                  ['Універсальний'],
+  'akrylovi-germetyky':         ['Універсальний'],
+  'sylikonovi-germetyky':       ['Санітарний', 'Універсальний'],
+  'neytralny-germetyky':        ['Універсальний'],
+  'poliuretanovi-germetyky':    ['Покрівельний', 'Універсальний'],
+  'zharostiyki-germetyky':      ['Термостійкий'],
+  'ms-polymerni-hermetyky':     ['Універсальний'],
+  'bitumni-germetyky':          ['Покрівельний'],
+  'nytka-dlya-trub':            ['Універсальний'],
+  'montazhna-pina':             ['Універсальний'],
+  'pistoletna-pina':            ['Універсальний'],
+  'pobutova-pina':              ['Універсальний'],
+  'vohnezakhysna-pina':         ['Універсальний'],
+  'pina-klei':                  ['Універсальний'],
+};
+
+const CATEGORY_USAGE_TYPE: Record<string, string> = {
+  'vodoemiulsiyni-interierni':  'Для внутрішніх робіт',
+  'farby-dlya-pidlohy':         'Для внутрішніх робіт',
+  'farby-dlya-radiatoriv':      'Для внутрішніх робіт',
+  'klei-dlya-shpaler':          'Для внутрішніх робіт',
+  'pva-ta-stolyarnyi':          'Для внутрішніх робіт',
+  'zamazky-dlya-shviv':         'Для внутрішніх робіт',
+  'zamazky-epoksydni':          'Для внутрішніх робіт',
+  'zamazky-tsementni':          'Для внутрішніх робіт',
+  'vologopoglinachi':           'Для внутрішніх робіт',
+  'vodoemiulsiyni-fasadni':     'Для зовнішніх робіт',
+  'alkidni-farby':              'Для зовнішніх робіт',
+  'farby-3v1-alkidni':          'Для зовнішніх робіт',
+  'moltkovi-farby':             'Для зовнішніх робіт',
+  'bitumni-mastyky':            'Для зовнішніх робіт',
+  'bitumni-germetyky':          'Для зовнішніх робіт',
+  'hidroizolyatsiya':           'Для зовнішніх робіт',
+  'hidroizolyatsiyni-mastyky':  'Для зовнішніх робіт',
+  'hermetyzuyucha-strichka':    'Для зовнішніх робіт',
+  'praimery':                   'Для зовнішніх робіт',
+  'farby':                      'Для внутрішніх і зовнішніх робіт',
+  'farby-3v1':                  'Для внутрішніх і зовнішніх робіт',
+  'farby-3v1-akrylovi':         'Для внутрішніх і зовнішніх робіт',
+  'koloranty':                  'Для внутрішніх і зовнішніх робіт',
+  'laky':                       'Для внутрішніх і зовнішніх робіт',
+  'morylky':                    'Для внутрішніх і зовнішніх робіт',
+  'zakhyst-derevyny':           'Для внутрішніх і зовнішніх робіт',
+  'antyseptiky':                'Для внутрішніх і зовнішніх робіт',
+  'zakhysni-pokryttya':         'Для внутрішніх і зовнішніх робіт',
+  'antygrybok':                 'Для внутрішніх і зовнішніх робіт',
+  'gruntivky':                  'Для внутрішніх і зовнішніх робіт',
+  'grunty':                     'Для внутрішніх і зовнішніх робіт',
+  'gruntivky-gotovi':           'Для внутрішніх і зовнішніх робіт',
+  'gruntivky-kontsentraty':     'Для внутрішніх і зовнішніх робіт',
+  'betonokontakt':              'Для внутрішніх і зовнішніх робіт',
+  'shpaklivky':                 'Для внутрішніх і зовнішніх робіт',
+  'izolyatsiyni-strichky':      'Для внутрішніх і зовнішніх робіт',
+  'plastyfikatory':             'Для внутрішніх і зовнішніх робіт',
+  'plastyfikatory-dlya-betonu': 'Для внутрішніх і зовнішніх робіт',
+  'rozchynnyky':                'Для внутрішніх і зовнішніх робіт',
+  'ochysnyky':                  'Для внутрішніх і зовнішніх робіт',
+  'klei':                       'Для внутрішніх і зовнішніх робіт',
+  'kontaktnyi-klei':            'Для внутрішніх і зовнішніх робіт',
+  'montazhnyi-klei':            'Для внутрішніх і зовнішніх робіт',
+  'klei-dlya-plytky':           'Для внутрішніх і зовнішніх робіт',
+  'super-klei':                 'Для внутрішніх і зовнішніх робіт',
+  'epoksydni-klei':             'Для внутрішніх і зовнішніх робіт',
+  'germetyky':                  'Універсальний',
+  'akrylovi-germetyky':         'Універсальний',
+  'sylikonovi-germetyky':       'Універсальний',
+  'neytralny-germetyky':        'Універсальний',
+  'poliuretanovi-germetyky':    'Універсальний',
+  'zharostiyki-germetyky':      'Універсальний',
+  'ms-polymerni-hermetyky':     'Універсальний',
+  'nytka-dlya-trub':            'Універсальний',
+  'montazhna-pina':             'Універсальний',
+  'pistoletna-pina':            'Універсальний',
+  'pobutova-pina':              'Універсальний',
+  'vohnezakhysna-pina':         'Універсальний',
+  'pina-klei':                  'Універсальний',
+};
+
+function parseVolumeForProm(v: string | null | undefined): number | null {
+  if (!v) return null;
+  const ml = v.match(/(\d+(?:[.,]\d+)?)\s*мл/i);
+  if (ml) return Math.round(parseFloat(ml[1].replace(',', '.')));
+  // \b doesn't work with Cyrillic in JS regex, so use lookahead instead
+  const l = v.match(/(\d+(?:[.,]\d+)?)\s*л(?=[^а-яіїєА-ЯІЇЄ]|$)/i);
+  if (l) return Math.round(parseFloat(l[1].replace(',', '.')) * 1000);
+  return null;
+}
+
 const inputStyle: React.CSSProperties = {
   width: '100%', height: '44px', padding: '0 14px',
   borderRadius: '8px', border: '1px solid var(--border)',
@@ -194,13 +283,51 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
           const matching = toAbsorb.filter(c => c.label === attr.name_uk);
           if (matching.length === 0) continue;
           if (attr.type === 'multiselect') {
-            newPromChars[attr.name_uk] = matching.flatMap(c =>
+            const rawVals = matching.flatMap(c =>
               c.value.split(',').map(v => v.trim()).filter(Boolean)
             );
+            // Only keep values that are valid Prom options; discard legacy free-text values
+            const validOpts = new Set(attr.prom_attribute_values.map(v => (v.name_uk ?? '').trim()));
+            const validVals = rawVals.filter(v => validOpts.has(v));
+            if (validVals.length > 0) newPromChars[attr.name_uk] = validVals;
           } else {
             newPromChars[attr.name_uk] = matching[0].value;
           }
         }
+        // Auto-fill Об`єм from products.volume if not already in characteristics
+        const volAttr = attrs.find(a => a.name_uk === 'Об`єм');
+        if (volAttr && !newPromChars['Об`єм']) {
+          const parsed = parseVolumeForProm(volume);
+          if (parsed !== null) newPromChars['Об`єм'] = String(parsed);
+        }
+
+        // Auto-fill Тип використання from category inference if not already in characteristics
+        const usageAttr = attrs.find(a => a.name_uk === 'Тип використання');
+        if (usageAttr && !newPromChars['Тип використання']) {
+          const inferred = CATEGORY_USAGE_TYPE[categorySlug] ?? null;
+          if (inferred) newPromChars['Тип використання'] = inferred;
+        }
+
+        // Auto-fill Область застосування from category inference if not already in characteristics
+        const areaAttr = attrs.find(attr => attr.name_uk === 'Область застосування');
+
+        const existingArea = newPromChars['Область застосування'];
+        const hasArea = Array.isArray(existingArea) ? existingArea.length > 0 : !!existingArea;
+        if (areaAttr && !hasArea) {
+          const inferredAreas = CATEGORY_APPLICATION_AREA[categorySlug] ?? null;
+          if (inferredAreas && inferredAreas.length > 0) {
+            const availableOptions = areaAttr.prom_attribute_values;
+            const matched: string[] = [];
+            for (const area of inferredAreas) {
+              const opt = availableOptions.find(o => (o.name_uk ?? '').trim() === area.trim());
+
+              if (opt?.name_uk) matched.push(opt.name_uk);
+            }
+
+            if (matched.length > 0) newPromChars['Область застосування'] = matched;
+          }
+        }
+
         setChars(toKeep);
         setPromChars(newPromChars);
       })

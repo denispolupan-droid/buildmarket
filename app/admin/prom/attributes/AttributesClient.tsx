@@ -70,7 +70,10 @@ export default function AttributesClient({ imported: initialImported }: Props) {
       if (!res.ok) {
         setMessage({ ok: false, text: data.error ?? 'Помилка імпорту' });
       } else {
-        setMessage({ ok: true, text: `Імпортовано: ${data.categories} кат., ${data.attributes} атрибутів, ${data.values} значень` });
+        const charsPart = data.charsAdded > 0
+          ? `, заповнено ${data.charsAdded} характеристик у ${data.productsUpdated} товарів`
+          : '';
+        setMessage({ ok: true, text: `Імпортовано: ${data.categories} кат., ${data.attributes} атрибутів, ${data.values} значень${charsPart}` });
         setXml('');
         // Refresh list
         const listRes = await fetch('/api/admin/prom/attributes');

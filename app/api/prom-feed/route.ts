@@ -108,21 +108,21 @@ const CATEGORY_USAGE_TYPE: Record<string, string> = {
   'klei-dlya-plytky':           'Для внутрішніх і зовнішніх робіт',
   'super-klei':                 'Для внутрішніх і зовнішніх робіт',
   'epoksydni-klei':             'Для внутрішніх і зовнішніх робіт',
-  // Sealants (prom_section_id=82210) — Prom accepts only: Університальний / Для внутрішніх / Для зовнішніх
-  'germetyky':                  'Університальний',
-  'akrylovi-germetyky':         'Університальний',
-  'sylikonovi-germetyky':       'Університальний',
-  'neytralny-germetyky':        'Університальний',
-  'poliuretanovi-germetyky':    'Університальний',
-  'zharostiyki-germetyky':      'Університальний',
-  'ms-polymerni-hermetyky':     'Університальний',
-  'nytka-dlya-trub':            'Університальний',
+  // Sealants (prom_section_id=82210) — Prom accepts only: Універсальний / Для внутрішніх / Для зовнішніх
+  'germetyky':                  'Універсальний',
+  'akrylovi-germetyky':         'Універсальний',
+  'sylikonovi-germetyky':       'Універсальний',
+  'neytralny-germetyky':        'Універсальний',
+  'poliuretanovi-germetyky':    'Універсальний',
+  'zharostiyki-germetyky':      'Універсальний',
+  'ms-polymerni-hermetyky':     'Універсальний',
+  'nytka-dlya-trub':            'Універсальний',
   // Mounting foam (prom_section_id=13070501) — will update once XML received
-  'montazhna-pina':             'Університальний',
-  'pistoletna-pina':            'Університальний',
-  'pobutova-pina':              'Університальний',
-  'vohnezakhysna-pina':         'Університальний',
-  'pina-klei':                  'Університальний',
+  'montazhna-pina':             'Універсальний',
+  'pistoletna-pina':            'Універсальний',
+  'pobutova-pina':              'Універсальний',
+  'vohnezakhysna-pina':         'Універсальний',
+  'pina-klei':                  'Універсальний',
 };
 
 // ── Prom.ua characteristic mapping ────────────────────────────────────────────
