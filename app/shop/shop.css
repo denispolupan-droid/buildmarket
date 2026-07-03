@@ -552,8 +552,9 @@
   .shop-sidebar.mobile-filters .sidebar-cats-section { display: none; }
   .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .shop-grid.list-view { grid-template-columns: 1fr; }
-  /* 2-per-row cards are too narrow for wish + qty stepper + add-to-cart — drop the stepper, add-to-cart adds qty 1 */
-  .shop-grid:not(.list-view) .shop-card__qty { display: none; }
+  /* 2-per-row cards are too narrow for wish + qty stepper + add-to-cart — drop the stepper, add-to-cart adds qty 1.
+     !important is required: the element also carries an inline display:flex style, which otherwise always wins. */
+  .shop-grid:not(.list-view) .shop-card__qty { display: none !important; }
   .shop-mobile-filter-btn { display: flex; }
   .shop-title { display: none; }
   .shop-topbar { justify-content: flex-start; flex-wrap: wrap; }

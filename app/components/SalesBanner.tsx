@@ -50,7 +50,7 @@ export default function SalesBanner({ mode, activeSlugs }: Props) {
         <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${(banner.bgOverlay ?? 40) / 100})`, borderRadius: '10px' }} />
       )}
 
-      <div style={{ position: 'relative', zIndex: 1, padding: PADDING[size], display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div style={{ position: 'relative', zIndex: 1, padding: PADDING[size], display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <span style={{ fontSize: size === 'large' ? '22px' : '18px', flexShrink: 0, lineHeight: 1 }}>
           {banner.emoji}
         </span>
