@@ -137,6 +137,15 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     setViewMode(mode);
     localStorage.setItem('catalog-view', mode);
   }
+  // The pricing table has 8 fixed-width columns and doesn't fit a phone screen — always show cards on mobile
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  const effectiveViewMode = isMobile ? 'grid' : viewMode;
   const [expandedCats, setExpandedCats]  = useState<Set<string>>(() => {
     if (!initialCategory) return new Set<string>();
     const expanded = new Set<string>();
@@ -930,7 +939,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
             <SalesBanner mode="catalog" activeSlugs={matchingSlugs} />
 
             {/* Grid view */}
-            {viewMode === 'grid' && (
+            {effectiveViewMode === 'grid' && (
               filtered.length === 0 ? (
                 <div className="product-table-wrap"><div className="empty-state"><h3>{t('Нічого не знайдено', 'Ничего не найдено')}</h3><p>{t('Спробуйте змінити фільтри або пошуковий запит', 'Попробуйте изменить фильтры или поисковый запрос')}</p></div></div>
               ) : (
@@ -1029,7 +1038,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
             )}
 
             {/* Table */}
-            {viewMode === 'table' && (filtered.length === 0 ? (
+            {effectiveViewMode === 'table' && (filtered.length === 0 ? (
               <div className="product-table-wrap">
                 <div className="empty-state">
                   <h3>{t('Нічого не знайдено', 'Ничего не найдено')}</h3>
@@ -1178,7 +1187,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
               </div>
             ))}
 
-            {viewMode === 'table' && filtered.length > visibleCount && (
+            {effectiveViewMode === 'table' && filtered.length > visibleCount && (
               <div style={{ textAlign: 'center', padding: '32px 0' }}>
                 <button
                   onClick={() => setVisibleCount(v => v + 50)}

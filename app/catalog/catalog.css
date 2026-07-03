@@ -461,6 +461,7 @@
   .sidebar.mobile-filters .sidebar-cats-section { display: none; }
   .catalog-mobile-btn { display: flex; }
   .catalog-desktop-btn { display: none !important; }
+  .catalog-view-toggle { display: none !important; }
   .catalog-count { display: none; }
   .catalog-title { font-size: 18px; }
   .catalog-title-row { margin-bottom: 12px; flex-wrap: wrap; }

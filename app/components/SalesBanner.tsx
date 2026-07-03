@@ -50,41 +50,50 @@ export default function SalesBanner({ mode, activeSlugs }: Props) {
         <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${(banner.bgOverlay ?? 40) / 100})`, borderRadius: '10px' }} />
       )}
 
-      <div style={{ position: 'relative', zIndex: 1, padding: PADDING[size], display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-        <span style={{ fontSize: size === 'large' ? '22px' : '18px', flexShrink: 0, lineHeight: 1 }}>
-          {banner.emoji}
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{
-              background: hasImg ? 'rgba(255,255,255,0.2)' : banner.borderColor,
-              color: txtColor,
-              fontSize: '10px', fontWeight: 700, padding: '1px 7px',
-              borderRadius: '20px', textTransform: 'uppercase',
-            }}>
-              {banner.tag}
-            </span>
-            <span style={{ fontSize: FONT[size], fontWeight: 700, color: txtColor }}>
-              {topBar.discount} {topBar.text}
-            </span>
-          </div>
-          <p style={{ margin: '1px 0 0', fontSize: '11px', color: txtColor, opacity: 0.85, lineHeight: 1.3 }}>
-            {banner.subtitle}
-          </p>
+      <button onClick={() => { localStorage.setItem(banner.dismissKey, '1'); setVisible(false); }}
+        aria-label="Закрити"
+        style={{
+          position: 'absolute', top: '10px', right: '10px', zIndex: 2,
+          width: '26px', height: '26px', borderRadius: '50%',
+          background: hasImg ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.06)',
+          border: 'none', cursor: 'pointer', color: txtColor,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.75,
+        }}>
+        <X size={13} strokeWidth={2.5} />
+      </button>
+
+      <div style={{ position: 'relative', zIndex: 1, padding: PADDING[size], paddingRight: '36px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+          <span style={{ fontSize: size === 'large' ? '22px' : '18px', lineHeight: 1, flexShrink: 0 }}>
+            {banner.emoji}
+          </span>
+          <span style={{
+            background: hasImg ? 'rgba(255,255,255,0.2)' : banner.borderColor,
+            color: txtColor,
+            fontSize: '10px', fontWeight: 700, padding: '2px 8px',
+            borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '0.02em', flexShrink: 0,
+          }}>
+            {banner.tag}
+          </span>
+          <span style={{ fontSize: FONT[size], fontWeight: 700, color: txtColor }}>
+            {topBar.discount} {topBar.text}
+          </span>
         </div>
-        <Link href={href} style={{
-          flexShrink: 0,
+
+        <p style={{ margin: '0 0 10px', fontSize: '12px', color: txtColor, opacity: 0.8, lineHeight: 1.4 }}>
+          {banner.subtitle}
+        </p>
+
+        <Link href={href} className="promo-banner-cta" style={{
+          display: 'inline-flex', alignItems: 'center', gap: '6px',
+          height: '36px', padding: '0 16px', borderRadius: '9px',
           background: hasImg ? 'rgba(255,255,255,0.2)' : banner.ctaBgColor,
           border: hasImg ? '1px solid rgba(255,255,255,0.4)' : 'none',
-          color: '#fff', fontSize: '11.5px', fontWeight: 700,
-          padding: '5px 11px', borderRadius: '7px', textDecoration: 'none', whiteSpace: 'nowrap',
+          color: '#fff', fontSize: '13px', fontWeight: 700,
+          textDecoration: 'none', whiteSpace: 'nowrap',
         }}>
           {banner.ctaText} →
         </Link>
-        <button onClick={() => { localStorage.setItem(banner.dismissKey, '1'); setVisible(false); }}
-          style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: txtColor, padding: '2px', display: 'flex', alignItems: 'center', opacity: 0.7 }}>
-          <X size={13} strokeWidth={2.5} />
-        </button>
       </div>
     </div>
   );
