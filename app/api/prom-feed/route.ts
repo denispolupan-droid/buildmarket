@@ -275,7 +275,10 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  const [{ data: products }, { data: stock }, { data: categories }, { data: characteristics }] = await Promise.all([
+  // Fetch product_characteristics in 20 parallel pages of 1000 rows each
+  // (Supabase PostgREST caps any single response at max_rows=1000 regardless of Range header)
+  const CHAR_PAGE = 1000;
+  const allResults = await Promise.all([
     serviceClient
       .from('products')
       .select('sku, name, name_ru, brand, category_slug, volume, description, description_full, description_ru, description_full_ru, image, keywords, keywords_ru, min_order, prom_portal_url, prom_markup_pct')
@@ -289,12 +292,20 @@ export async function GET(request: NextRequest) {
       .from('categories')
       .select('id, slug, name, parent_slug, prom_section_id, prom_section_url, prom_commission_pct, prom_markup_pct')
       .order('sort_order'),
-    serviceClient
-      .from('product_characteristics')
-      .select('product_sku, label, value')
-      .order('sort_order')
-      .range(0, 49999),
+    ...Array.from({ length: 20 }, (_, i) =>
+      serviceClient
+        .from('product_characteristics')
+        .select('product_sku, label, value')
+        .order('product_sku')
+        .order('sort_order')
+        .range(i * CHAR_PAGE, (i + 1) * CHAR_PAGE - 1)
+    ),
   ]);
+
+  const products    = allResults[0].data;
+  const stock       = allResults[1].data;
+  const categories  = allResults[2].data;
+  const characteristics = allResults.slice(3).flatMap(r => (r.data ?? []) as { product_sku: string; label: string; value: string }[]);
 
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
 
