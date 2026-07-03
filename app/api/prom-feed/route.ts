@@ -131,7 +131,6 @@ const CATEGORY_USAGE_TYPE: Record<string, string> = {
 const PROM_LABEL_NORM: Record<string, string> = {
   'Ступень блиску':                         'Ступінь блиску',       // опечатка в БД
   'Блиск':                                  'Ступінь блиску',
-  'Основа':                                 'Матеріал',
   'Витрата':                                'Витрата матеріалу',
   'Витрата концентрату':                    'Витрата матеріалу',
   'Мінімальна температура нанесення':       'Мінімальна температура застосування',
@@ -502,9 +501,14 @@ export async function GET(request: NextRequest) {
         ? [{ label: 'Тип використання', value: inferredUsage }]
         : [];
 
+      // Multiselect labels allowed to appear multiple times (one <param> per value)
+      const MULTISELECT_LABELS = new Set(['Область застосування']);
+
       // Deduplicate by normalized label — keep first occurrence (two DB labels may map to the same Prom label)
+      // Exception: multiselect labels are allowed multiple rows
       const seenLabels = new Set<string>();
       const dedupedChars = processedChars.filter(c => {
+        if (MULTISELECT_LABELS.has(c.label)) return true;
         if (seenLabels.has(c.label)) return false;
         seenLabels.add(c.label);
         return true;
@@ -528,32 +532,32 @@ export async function GET(request: NextRequest) {
       // fields that expect pure numbers (дrying time, temperature, volume)
       const numericParts: string[] = [];
       if (dryingHours !== null) {
-        numericParts.push(`        <param name="Час висихання (годин)">${dryingHours}</param>`);
+        numericParts.push(`        <param name="Час висихання">${dryingHours}</param>`);
       }
       if (minTempApply !== null) {
-        numericParts.push(`        <param name="Мінімальна температура застосування (град.)">${minTempApply}</param>`);
+        numericParts.push(`        <param name="Мінімальна температура застосування">${minTempApply}</param>`);
       }
       if (maxTempApply !== null) {
-        numericParts.push(`        <param name="Максимальна температура застосування (град.)">${maxTempApply}</param>`);
+        numericParts.push(`        <param name="Максимальна температура застосування">${maxTempApply}</param>`);
       }
       if (minTempOp !== null) {
-        numericParts.push(`        <param name="Мінімальна температура експлуатації (град.)">${minTempOp}</param>`);
+        numericParts.push(`        <param name="Мінімальна температура експлуатації">${minTempOp}</param>`);
       }
       if (maxTempOp !== null) {
-        numericParts.push(`        <param name="Максимальна температура експлуатації (град.)">${maxTempOp}</param>`);
+        numericParts.push(`        <param name="Максимальна температура експлуатації">${maxTempOp}</param>`);
       }
       if (shelfLifeMonths !== null) {
-        numericParts.push(`        <param name="Термін зберігання (міс.)">${shelfLifeMonths}</param>`);
+        numericParts.push(`        <param name="Термін зберігання">${shelfLifeMonths}</param>`);
       }
       if (grabMinutes !== null) {
-        numericParts.push(`        <param name="Час початкового схоплення (хв.)">${grabMinutes}</param>`);
+        numericParts.push(`        <param name="Час початкового схоплення">${grabMinutes}</param>`);
       }
       if (foamLiters !== null) {
-        numericParts.push(`        <param name="Вихід піни (л)">${foamLiters}</param>`);
+        numericParts.push(`        <param name="Вихід піни">${foamLiters}</param>`);
       }
       const volumeML = parseVolumeML(p.volume);
       if (volumeML !== null) {
-        numericParts.push(`        <param name="Об'єм">${volumeML}</param>`);
+        numericParts.push(`        <param name="Об\`єм">${volumeML}</param>`);
       } else {
         const kg = parseKg(p.volume);
         if (kg !== null) numericParts.push(`        <param name="Вага (кг)">${kg}</param>`);

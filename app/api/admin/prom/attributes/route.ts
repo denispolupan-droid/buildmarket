@@ -83,6 +83,27 @@ const CATEGORY_APPLICATION_AREA: Record<string, string[]> = {
   'pina-klei':                ['Універсальний'],
 };
 
+const CATEGORY_MATERIAL: Record<string, string> = {
+  'montazhna-pina':     'Поліуретан',
+  'pistoletna-pina':    'Поліуретан',
+  'pobutova-pina':      'Поліуретан',
+  'vohnezakhysna-pina': 'Поліуретан',
+  'pina-klei':          'Поліуретан',
+};
+
+const CATEGORY_SEASON: Record<string, string> = {
+  'montazhna-pina':     'Всесезонний',
+  'pistoletna-pina':    'Всесезонний',
+  'pobutova-pina':      'Всесезонний',
+  'vohnezakhysna-pina': 'Всесезонний',
+  'pina-klei':          'Всесезонний',
+};
+
+const CATEGORY_RELEASE_METHOD: Record<string, string> = {
+  'pistoletna-pina': 'Професійний пістолет',
+  'pobutova-pina':   'Трубка-адаптер',
+};
+
 function parseVolumeML(v: string | null | undefined): number | null {
   if (!v) return null;
   const ml = v.match(/(\d+(?:[.,]\d+)?)\s*мл/i);
@@ -110,29 +131,29 @@ async function fillProductCharsForCategory(
   // Active products in those categories
   const { data: products } = await db
     .from('products')
-    .select('sku, category_slug, volume, color')
+    .select('sku, name, category_slug, volume, color')
     .in('category_slug', slugs)
     .eq('is_active', true);
   if (!products || products.length === 0) return { productsChecked: 0, charsAdded: 0 };
 
   const skus = products.map((p) => p.sku);
 
-  // Existing characteristic labels per SKU
+  // Existing characteristics per SKU (label → value)
   const { data: existingChars } = await db
     .from('product_characteristics')
-    .select('product_sku, label')
+    .select('product_sku, label, value')
     .in('product_sku', skus);
 
-  const existingBysku: Record<string, Set<string>> = {};
+  const existingBysku: Record<string, Map<string, string>> = {};
   for (const c of existingChars ?? []) {
-    if (!existingBysku[c.product_sku]) existingBysku[c.product_sku] = new Set();
-    existingBysku[c.product_sku].add(c.label);
+    if (!existingBysku[c.product_sku]) existingBysku[c.product_sku] = new Map();
+    existingBysku[c.product_sku].set(c.label, c.value);
   }
 
   const toInsert: { product_sku: string; label: string; value: string; sort_order: number }[] = [];
 
   for (const product of products) {
-    const existing = existingBysku[product.sku] ?? new Set<string>();
+    const existing = existingBysku[product.sku] ?? new Map<string, string>();
     const slug = product.category_slug ?? '';
 
     const addIfMissing = (label: string, value: string | null) => {
@@ -186,6 +207,81 @@ async function fillProductCharsForCategory(
       );
       if (opt?.name_uk) addIfMissing('Колір', opt.name_uk);
     }
+
+    // Основа (for foam categories where Prom attr is "Основа")
+    const osnovaAttr = attrMap.get('Основа');
+    if (osnovaAttr) {
+      const inferred = CATEGORY_MATERIAL[slug];
+      if (inferred) {
+        const valid = osnovaAttr.prom_attribute_values.find(
+          (v) => (v.name_uk ?? '').trim() === inferred.trim(),
+        );
+        addIfMissing('Основа', valid?.name_uk ?? inferred);
+      }
+    }
+
+    // Матеріал (for sealant categories where Prom attr is "Матеріал", not "Основа")
+    // Copy from existing "Основа" char value (the material is stored as "Основа" in our DB)
+    const materialAttr = attrMap.get('Матеріал');
+    if (materialAttr && !existing.has('Матеріал')) {
+      const osnoValue = existing.get('Основа');
+      if (osnoValue) {
+        const valid = materialAttr.prom_attribute_values.find(
+          (v) => (v.name_uk ?? '').trim().toLowerCase() === osnoValue.trim().toLowerCase(),
+        );
+        addIfMissing('Матеріал', valid?.name_uk ?? osnoValue);
+      }
+    }
+
+    // Сезон (category default + name override)
+    const seasonAttr = attrMap.get('Сезон');
+    if (seasonAttr) {
+      let inferred = CATEGORY_SEASON[slug];
+      if (inferred) {
+        const nameLower = (product.name ?? '').toLowerCase();
+        if (nameLower.includes('зимн') || nameLower.includes('зима')) inferred = 'Зима';
+        else if (nameLower.includes('літн') || nameLower.includes('літо')) inferred = 'Літо';
+        const valid = seasonAttr.prom_attribute_values.find(
+          (v) => (v.name_uk ?? '').trim() === inferred!.trim(),
+        );
+        addIfMissing('Сезон', valid?.name_uk ?? inferred);
+      }
+    }
+
+    // Спосіб випуску з балона (category slug or product name)
+    const releaseAttr = attrMap.get('Спосіб випуску з балона');
+    if (releaseAttr) {
+      const nameLower = (product.name ?? '').toLowerCase();
+      let inferred = CATEGORY_RELEASE_METHOD[slug] ?? null;
+      if (!inferred) {
+        if (nameLower.includes('побутов')) inferred = 'Трубка-адаптер';
+        else if (nameLower.includes('профес')) inferred = 'Професійний пістолет';
+      }
+      if (inferred) {
+        const valid = releaseAttr.prom_attribute_values.find(
+          (v) => (v.name_uk ?? '').trim() === inferred!.trim(),
+        );
+        addIfMissing('Спосіб випуску з балона', valid?.name_uk ?? inferred);
+      }
+    }
+
+    // Температури: якщо немає "застосування" — беремо з "експлуатації" і парсимо число
+    const parseTemp = (raw: string) => {
+      const n = parseFloat(raw.replace(/[^\d.\-]/g, ''));
+      return isNaN(n) ? null : String(n);
+    };
+    const minTempAttr = attrMap.get('Мінімальна температура застосування');
+    if (minTempAttr && !existing.has('Мінімальна температура застосування')) {
+      const src = existing.get('Мінімальна температура застосування')
+               ?? existing.get('Мінімальна температура експлуатації');
+      if (src) addIfMissing('Мінімальна температура застосування', parseTemp(src));
+    }
+    const maxTempAttr = attrMap.get('Максимальна температура застосування');
+    if (maxTempAttr && !existing.has('Максимальна температура застосування')) {
+      const src = existing.get('Максимальна температура застосування')
+               ?? existing.get('Максимальна температура експлуатації');
+      if (src) addIfMissing('Максимальна температура застосування', parseTemp(src));
+    }
   }
 
   if (toInsert.length === 0) return { productsChecked: products.length, charsAdded: 0 };
@@ -226,9 +322,24 @@ export async function GET(req: NextRequest) {
       for (const row of data ?? []) {
         counts[row.prom_category_id] = (counts[row.prom_category_id] ?? 0) + 1;
       }
+
+      const catIds = Object.keys(counts).map(Number);
+      const { data: catRows } = await db
+        .from('categories')
+        .select('prom_section_id, name')
+        .in('prom_section_id', catIds);
+
+      const catNames: Record<number, string[]> = {};
+      for (const c of catRows ?? []) {
+        if (!c.prom_section_id) continue;
+        if (!catNames[c.prom_section_id]) catNames[c.prom_section_id] = [];
+        catNames[c.prom_section_id].push(c.name);
+      }
+
       const categories = Object.entries(counts).map(([id, count]) => ({
         prom_category_id: Number(id),
         attribute_count: count,
+        category_names: catNames[Number(id)] ?? [],
       }));
       return NextResponse.json({ categories });
     }
@@ -364,6 +475,48 @@ export async function POST(req: NextRequest) {
       attributes: totalAttrs,
       values: totalValues,
       productsUpdated: totalProductsChecked,
+      charsAdded: totalCharsAdded,
+    });
+  } catch (e) {
+    if ((e as Error).message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+  }
+}
+
+// PUT /api/admin/prom/attributes
+// Re-runs fill for ALL imported categories (no XML needed — reads from DB)
+export async function PUT(_req: NextRequest) {
+  try {
+    await assertAdmin();
+
+    const { data: allAttrs } = await db
+      .from('prom_attributes')
+      .select('prom_category_id')
+      .order('prom_category_id');
+
+    const catIds = [...new Set((allAttrs ?? []).map((r) => r.prom_category_id))];
+
+    let totalProductsChecked = 0;
+    let totalCharsAdded = 0;
+
+    for (const promCatId of catIds) {
+      const { data: freshAttrs } = await db
+        .from('prom_attributes')
+        .select('*, prom_attribute_values(*)')
+        .eq('prom_category_id', promCatId)
+        .order('sort_order');
+
+      if (!freshAttrs || freshAttrs.length === 0) continue;
+      const attrMap = new Map<string, PromAttr>(freshAttrs.map((a) => [a.name_uk, a as PromAttr]));
+      const result = await fillProductCharsForCategory(promCatId, attrMap);
+      totalProductsChecked += result.productsChecked;
+      totalCharsAdded += result.charsAdded;
+    }
+
+    return NextResponse.json({
+      ok: true,
+      categoriesProcessed: catIds.length,
+      productsChecked: totalProductsChecked,
       charsAdded: totalCharsAdded,
     });
   } catch (e) {

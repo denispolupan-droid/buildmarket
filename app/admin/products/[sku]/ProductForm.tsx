@@ -105,6 +105,27 @@ const CATEGORY_USAGE_TYPE: Record<string, string> = {
   'pina-klei':                  'Універсальний',
 };
 
+const CATEGORY_MATERIAL: Record<string, string> = {
+  'montazhna-pina':     'Поліуретан',
+  'pistoletna-pina':    'Поліуретан',
+  'pobutova-pina':      'Поліуретан',
+  'vohnezakhysna-pina': 'Поліуретан',
+  'pina-klei':          'Поліуретан',
+};
+
+const CATEGORY_SEASON: Record<string, string> = {
+  'montazhna-pina':     'Всесезонний',
+  'pistoletna-pina':    'Всесезонний',
+  'pobutova-pina':      'Всесезонний',
+  'vohnezakhysna-pina': 'Всесезонний',
+  'pina-klei':          'Всесезонний',
+};
+
+const CATEGORY_RELEASE_METHOD: Record<string, string> = {
+  'pistoletna-pina': 'Професійний пістолет',
+  'pobutova-pina':   'Трубка-адаптер',
+};
+
 function parseVolumeForProm(v: string | null | undefined): number | null {
   if (!v) return null;
   const ml = v.match(/(\d+(?:[.,]\d+)?)\s*мл/i);
@@ -290,6 +311,10 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             const validOpts = new Set(attr.prom_attribute_values.map(v => (v.name_uk ?? '').trim()));
             const validVals = rawVals.filter(v => validOpts.has(v));
             if (validVals.length > 0) newPromChars[attr.name_uk] = validVals;
+          } else if (attr.type === 'real') {
+            const raw = matching[0].value.trim();
+            const num = parseFloat(raw.replace(/[^\d.\-]/g, ''));
+            newPromChars[attr.name_uk] = isNaN(num) ? raw : String(num);
           } else {
             newPromChars[attr.name_uk] = matching[0].value;
           }
@@ -326,6 +351,72 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
 
             if (matched.length > 0) newPromChars['Область застосування'] = matched;
           }
+        }
+
+        // Auto-fill Основа from category
+        const materialAttr = attrs.find(a => a.name_uk === 'Основа');
+        if (materialAttr && !newPromChars['Основа']) {
+          const inferred = CATEGORY_MATERIAL[categorySlug];
+          if (inferred) {
+            const valid = materialAttr.prom_attribute_values.find(
+              o => (o.name_uk ?? '').trim() === inferred.trim()
+            );
+            if (valid?.name_uk) newPromChars['Основа'] = valid.name_uk;
+          }
+        }
+
+        // Auto-fill Сезон from category + product name
+        const seasonAttr = attrs.find(a => a.name_uk === 'Сезон');
+        if (seasonAttr && !newPromChars['Сезон']) {
+          const nameLower = (name ?? '').toLowerCase();
+          let inferred = CATEGORY_SEASON[categorySlug];
+          if (inferred) {
+            if (nameLower.includes('зимн') || nameLower.includes('зима')) inferred = 'Зима';
+            else if (nameLower.includes('літн') || nameLower.includes('літо')) inferred = 'Літо';
+            const valid = seasonAttr.prom_attribute_values.find(
+              o => (o.name_uk ?? '').trim() === inferred!.trim()
+            );
+            if (valid?.name_uk) newPromChars['Сезон'] = valid.name_uk;
+          }
+        }
+
+        // Auto-fill Спосіб випуску з балона from category slug or product name
+        const releaseAttr = attrs.find(a => a.name_uk === 'Спосіб випуску з балона');
+        if (releaseAttr && !newPromChars['Спосіб випуску з балона']) {
+          const nameLower = (name ?? '').toLowerCase();
+          let inferred = CATEGORY_RELEASE_METHOD[categorySlug] ?? null;
+          if (!inferred) {
+            if (nameLower.includes('побутов')) inferred = 'Трубка-адаптер';
+            else if (nameLower.includes('профес')) inferred = 'Професійний пістолет';
+          }
+          if (inferred) {
+            const valid = releaseAttr.prom_attribute_values.find(
+              o => (o.name_uk ?? '').trim() === inferred!.trim()
+            );
+            if (valid?.name_uk) newPromChars['Спосіб випуску з балона'] = valid.name_uk;
+          }
+        }
+
+        // Температури: якщо немає "застосування" — беремо з "експлуатації" і парсимо число
+        const parseTemp = (raw: string) => {
+          const n = parseFloat(raw.replace(/[^\d.\-]/g, ''));
+          return isNaN(n) ? '' : String(n);
+        };
+        const minTempAttr = attrs.find(a => a.name_uk === 'Мінімальна температура застосування');
+        if (minTempAttr && !newPromChars['Мінімальна температура застосування']) {
+          const src = currentChars.find(c =>
+            c.label === 'Мінімальна температура застосування' ||
+            c.label === 'Мінімальна температура експлуатації'
+          );
+          if (src) newPromChars['Мінімальна температура застосування'] = parseTemp(src.value);
+        }
+        const maxTempAttr = attrs.find(a => a.name_uk === 'Максимальна температура застосування');
+        if (maxTempAttr && !newPromChars['Максимальна температура застосування']) {
+          const src = currentChars.find(c =>
+            c.label === 'Максимальна температура застосування' ||
+            c.label === 'Максимальна температура експлуатації'
+          );
+          if (src) newPromChars['Максимальна температура застосування'] = parseTemp(src.value);
         }
 
         setChars(toKeep);

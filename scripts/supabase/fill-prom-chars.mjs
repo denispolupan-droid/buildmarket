@@ -109,6 +109,27 @@ const CATEGORY_APPLICATION_AREA = {
   'pina-klei':                  ['Універсальний'],
 };
 
+const CATEGORY_MATERIAL = {
+  'montazhna-pina':     'Поліуретан',
+  'pistoletna-pina':    'Поліуретан',
+  'pobutova-pina':      'Поліуретан',
+  'vohnezakhysna-pina': 'Поліуретан',
+  'pina-klei':          'Поліуретан',
+};
+
+const CATEGORY_SEASON = {
+  'montazhna-pina':     'Всесезонний',
+  'pistoletna-pina':    'Всесезонний',
+  'pobutova-pina':      'Всесезонний',
+  'vohnezakhysna-pina': 'Всесезонний',
+  'pina-klei':          'Всесезонний',
+};
+
+const CATEGORY_RELEASE_METHOD = {
+  'pistoletna-pina': 'Професійний пістолет',
+  'pobutova-pina':   'Трубка-адаптер',
+};
+
 function parseVolumeML(v) {
   if (!v) return null;
   const ml = v.match(/(\d+(?:[.,]\d+)?)\s*мл/i);
@@ -150,7 +171,7 @@ async function main() {
   const catSlugs = cats.map(c => c.slug);
   const { data: products } = await db
     .from('products')
-    .select('sku, category_slug, volume, color')
+    .select('sku, name, category_slug, volume, color')
     .in('category_slug', catSlugs)
     .eq('is_active', true);
 
@@ -163,11 +184,11 @@ async function main() {
     .select('product_sku, label, value')
     .in('product_sku', skus);
 
-  // Group: sku → Set<label>
+  // Group: sku → Map<label, value>
   const charsBysku = {};
   for (const c of existingChars ?? []) {
-    if (!charsBysku[c.product_sku]) charsBysku[c.product_sku] = new Set();
-    charsBysku[c.product_sku].add(c.label);
+    if (!charsBysku[c.product_sku]) charsBysku[c.product_sku] = new Map();
+    charsBysku[c.product_sku].set(c.label, c.value);
   }
 
   // 5. Build insert list
@@ -179,12 +200,12 @@ async function main() {
     const attrs = attrsByCat[promCatId];
     if (!attrs) continue;
 
-    const existingLabels = charsBysku[product.sku] ?? new Set();
+    const existing = charsBysku[product.sku] ?? new Map();
     const slug = product.category_slug;
 
     // Helper: add if missing
     const addIfMissing = (label, value) => {
-      if (!value || existingLabels.has(label)) return;
+      if (!value || existing.has(label)) return;
       toInsert.push({ product_sku: product.sku, label, value, sort_order: 900 });
     };
 
@@ -204,7 +225,7 @@ async function main() {
 
     // ── Область застосування (multiselect) ───────────────────────────────
     const areaAttr = attrs.get('Область застосування');
-    if (areaAttr && !existingLabels.has('Область застосування')) {
+    if (areaAttr && !existing.has('Область застосування')) {
       const inferredAreas = CATEGORY_APPLICATION_AREA[slug];
       if (inferredAreas) {
         for (const area of inferredAreas) {
@@ -219,18 +240,80 @@ async function main() {
 
     // ── Об`єм (real, мл) ─────────────────────────────────────────────────
     const volAttr = attrs.get('Об`єм');
-    if (volAttr && !existingLabels.has('Об`єм')) {
+    if (volAttr && !existing.has('Об`єм')) {
       const ml = parseVolumeML(product.volume);
       if (ml !== null) addIfMissing('Об`єм', String(ml));
     }
 
     // ── Колір (singleselect) ─────────────────────────────────────────────
     const colorAttr = attrs.get('Колір');
-    if (colorAttr && product.color && !existingLabels.has('Колір')) {
+    if (colorAttr && product.color && !existing.has('Колір')) {
       const opt = colorAttr.prom_attribute_values.find(
         v => (v.name_uk ?? '').trim().toLowerCase() === product.color.trim().toLowerCase()
       );
       if (opt?.name_uk) addIfMissing('Колір', opt.name_uk);
+    }
+
+    // ── Основа (singleselect) ────────────────────────────────────────────
+    const materialAttr = attrs.get('Основа');
+    if (materialAttr) {
+      const inferred = CATEGORY_MATERIAL[slug];
+      if (inferred) {
+        const valid = materialAttr.prom_attribute_values.find(
+          v => (v.name_uk ?? '').trim() === inferred.trim()
+        );
+        addIfMissing('Основа', valid?.name_uk ?? inferred);
+      }
+    }
+
+    // ── Сезон (category default + name override) ─────────────────────────
+    const seasonAttr = attrs.get('Сезон');
+    if (seasonAttr) {
+      let inferred = CATEGORY_SEASON[slug];
+      if (inferred) {
+        const nameLower = (product.name ?? '').toLowerCase();
+        if (nameLower.includes('зимн') || nameLower.includes('зима')) inferred = 'Зима';
+        else if (nameLower.includes('літн') || nameLower.includes('літо')) inferred = 'Літо';
+        const valid = seasonAttr.prom_attribute_values.find(
+          v => (v.name_uk ?? '').trim() === inferred.trim()
+        );
+        addIfMissing('Сезон', valid?.name_uk ?? inferred);
+      }
+    }
+
+    // ── Спосіб випуску з балона (slug або назва) ─────────────────────────
+    const releaseAttr = attrs.get('Спосіб випуску з балона');
+    if (releaseAttr) {
+      const nameLower = (product.name ?? '').toLowerCase();
+      let inferred = CATEGORY_RELEASE_METHOD[slug] ?? null;
+      if (!inferred) {
+        if (nameLower.includes('побутов')) inferred = 'Трубка-адаптер';
+        else if (nameLower.includes('профес')) inferred = 'Професійний пістолет';
+      }
+      if (inferred) {
+        const valid = releaseAttr.prom_attribute_values.find(
+          v => (v.name_uk ?? '').trim() === inferred.trim()
+        );
+        addIfMissing('Спосіб випуску з балона', valid?.name_uk ?? inferred);
+      }
+    }
+
+    // ── Температури: якщо немає "застосування" — беремо з "експлуатації" ─
+    const parseTemp = raw => {
+      const n = parseFloat(raw.replace(/[^\d.\-]/g, ''));
+      return isNaN(n) ? null : String(n);
+    };
+    const minTempAttr = attrs.get('Мінімальна температура застосування');
+    if (minTempAttr && !existing.has('Мінімальна температура застосування')) {
+      const src = existing.get('Мінімальна температура застосування')
+               ?? existing.get('Мінімальна температура експлуатації');
+      if (src) addIfMissing('Мінімальна температура застосування', parseTemp(src));
+    }
+    const maxTempAttr = attrs.get('Максимальна температура застосування');
+    if (maxTempAttr && !existing.has('Максимальна температура застосування')) {
+      const src = existing.get('Максимальна температура застосування')
+               ?? existing.get('Максимальна температура експлуатації');
+      if (src) addIfMissing('Максимальна температура застосування', parseTemp(src));
     }
   }
 
