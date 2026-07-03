@@ -434,6 +434,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               height: '36px', padding: '0 14px', borderRadius: '8px',
               border: '1px solid var(--border)', background: 'var(--bg-card)',
               color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600,
+              whiteSpace: 'nowrap', flexShrink: 0,
             }}>
               <ArrowLeft size={13} />{backLabel}
             </Link>
