@@ -239,7 +239,7 @@ export default function Header() {
 
             {/* Theme toggle — desktop only, separated at right edge */}
             <button
-              className="desktop-nav"
+              className="desktop-nav theme-toggle-desktop-btn"
               onClick={toggleTheme}
               aria-label={theme === 'dark' ? (lang === 'ru' ? 'Светлая тема' : 'Світла тема') : (lang === 'ru' ? 'Тёмная тема' : 'Темна тема')}
               data-tooltip={theme === 'dark' ? (lang === 'ru' ? 'Светлая тема' : 'Світла тема') : (lang === 'ru' ? 'Тёмная тема' : 'Темна тема')}

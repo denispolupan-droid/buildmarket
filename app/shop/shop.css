@@ -370,6 +370,7 @@
   font-weight: 800;
   color: var(--text-primary);
   line-height: 1;
+  white-space: nowrap;
 }
 .shop-card__price span {
   font-size: 13px;
@@ -557,6 +558,9 @@
   /* 2-per-row cards are too narrow for wish + qty stepper + add-to-cart — drop the stepper, add-to-cart adds qty 1.
      !important is required: the element also carries an inline display:flex style, which otherwise always wins. */
   .shop-grid:not(.list-view) .shop-card__qty { display: none !important; }
+  /* Narrower 2-col cards: shrink the stock label so "В наявності" + price never fight for space */
+  .shop-grid:not(.list-view) .shop-card__stock { font-size: 10px; gap: 3px; }
+  .shop-grid:not(.list-view) .shop-card__price { font-size: 17px; }
   .shop-mobile-filter-btn { display: flex; }
   .shop-title { display: none; }
   .shop-topbar { justify-content: flex-start; flex-wrap: wrap; }
