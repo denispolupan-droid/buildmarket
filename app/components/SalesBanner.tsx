@@ -85,11 +85,11 @@ export default function SalesBanner({ mode, activeSlugs }: Props) {
         </p>
 
         <Link href={href} className="promo-banner-cta" style={{
-          display: 'inline-flex', alignItems: 'center', gap: '6px',
-          height: '36px', padding: '0 16px', borderRadius: '9px',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+          height: '40px', padding: '0 18px', borderRadius: '9px',
           background: hasImg ? 'rgba(255,255,255,0.2)' : banner.ctaBgColor,
           border: hasImg ? '1px solid rgba(255,255,255,0.4)' : 'none',
-          color: '#fff', fontSize: '13px', fontWeight: 700,
+          color: '#fff', fontSize: '14px', fontWeight: 700,
           textDecoration: 'none', whiteSpace: 'nowrap',
         }}>
           {banner.ctaText} →

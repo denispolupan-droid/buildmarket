@@ -740,6 +740,9 @@ input, select { font-family: inherit; }
   /* Shop count */
   .shop-count { display: none; }
 
+  /* Promo banner — full-width CTA so the card reads as balanced, not half-empty */
+  .promo-banner-cta { width: 100%; justify-content: center; }
+
 }
 
 @media (max-width: 480px) {
