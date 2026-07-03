@@ -292,7 +292,8 @@ export async function GET(request: NextRequest) {
     serviceClient
       .from('product_characteristics')
       .select('product_sku, label, value')
-      .order('sort_order'),
+      .order('sort_order')
+      .range(0, 49999),
   ]);
 
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
