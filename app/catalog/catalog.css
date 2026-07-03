@@ -463,7 +463,12 @@
   .catalog-desktop-btn { display: none !important; }
   .catalog-count { display: none; }
   .catalog-title { font-size: 18px; }
-  .catalog-title-row { margin-bottom: 12px; }
+  .catalog-title-row { margin-bottom: 12px; flex-wrap: wrap; }
+  .wholesale-min-badge { width: 100%; min-width: 0; order: 3; }
+  .wholesale-min-row { white-space: normal; flex-wrap: wrap; row-gap: 2px; }
+
+  /* Table is wider than the screen on mobile — scroll it in place instead of clipping or leaking page-wide overflow */
+  .product-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 
 

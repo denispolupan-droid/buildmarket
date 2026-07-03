@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { getCategoryNameRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 import Link from 'next/link';
-import { Plus, Minus, Heart, ChevronDown, ChevronRight, Check, SlidersHorizontal, LayoutList } from 'lucide-react';
+import { Plus, Minus, Heart, ChevronDown, ChevronRight, Check, SlidersHorizontal, LayoutList, Grid2x2, Rows2 } from 'lucide-react';
 import { CATEGORY_ICONS } from '../../lib/category-icons';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import ProductImage from '../components/ProductImage';
@@ -206,6 +206,15 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const [visibleCount,  setVisibleCount]  = useState(24);
   const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'sale'>('default');
   const [mobilePanel,   setMobilePanel]   = useState<'cats' | 'filters' | null>(null);
+  const [gridCols, setGridCols] = useState<1 | 2>(2);
+  useEffect(() => {
+    const saved = localStorage.getItem('shop_grid_cols');
+    if (saved === '1' || saved === '2') setGridCols(Number(saved) as 1 | 2);
+  }, []);
+  function setGridColsPersist(n: 1 | 2) {
+    setGridCols(n);
+    localStorage.setItem('shop_grid_cols', String(n));
+  }
   const [expandedCats, setExpandedCats] = useState<Set<string>>(() => {
     if (!initialCategory) return new Set<string>();
     const expanded = new Set<string>();
@@ -847,8 +856,24 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
             <div className="shop-title">{saleOnly ? t('Акційні товари', 'Акционные товары') : t('Магазин', 'Магазин')}</div>
             <span className="shop-count">{filtered.length} {t('товарів', 'товаров')}</span>
+            <div className="shop-view-toggle">
+              <button
+                className={'shop-view-toggle-btn' + (gridCols === 2 ? ' active' : '')}
+                onClick={() => setGridColsPersist(2)}
+                aria-label={t('По 2 в ряд', 'По 2 в ряд')}
+              >
+                <Grid2x2 size={16} strokeWidth={2} />
+              </button>
+              <button
+                className={'shop-view-toggle-btn' + (gridCols === 1 ? ' active' : '')}
+                onClick={() => setGridColsPersist(1)}
+                aria-label={t('По 1 в ряд', 'По 1 в ряд')}
+              >
+                <Rows2 size={16} strokeWidth={2} />
+              </button>
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="shop-topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               className={'shop-mobile-filter-btn' + (mobilePanel === 'cats' ? ' active' : '')}
               onClick={() => setMobilePanel(v => v === 'cats' ? null : 'cats')}
@@ -942,7 +967,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
         </div>
 
         <SalesBanner mode="shop" activeSlugs={matchingSlugs} />
-        <div className="shop-grid">
+        <div className={'shop-grid' + (gridCols === 1 ? ' list-view' : '')}>
           {sorted.length === 0 && (
             <div className="shop-empty">{t('Нічого не знайдено', 'Ничего не найдено')}</div>
           )}

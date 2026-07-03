@@ -156,6 +156,7 @@ body {
   background: var(--bg-page);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 a { text-decoration: none; color: inherit; }
@@ -402,11 +403,11 @@ input, select { font-family: inherit; }
   .theme-toggle-btn { display: none; }
 }
 
-/* Mobile: same 40×40, right:16px, stacked */
+/* Mobile: same 40×40, right:16px, stacked above the chat button (bottom:24, 56px tall) */
 @media (max-width: 768px) {
-  .theme-toggle-btn { bottom: 78px; right: 16px; width: 40px; height: 40px; }
+  .theme-toggle-btn { bottom: 80px; right: 16px; width: 40px; height: 40px; }
   .scroll-to-top-btn {
-    bottom: 90px !important; right: 16px !important;
+    bottom: 132px !important; right: 16px !important;
     width: 40px !important; height: 40px !important;
     background: #4880B8 !important; border: none !important;
     box-shadow: 0 4px 16px rgba(0,0,0,0.25) !important;
@@ -642,10 +643,12 @@ input, select { font-family: inherit; }
   /* Global container */
   .page-container { padding: 0 16px; }
 
-  /* Cart page */
+  /* Cart page — show order summary + submit button before the checkout form */
   .cart-grid {
     grid-template-columns: 1fr !important;
   }
+  .cart-summary-col { order: -1; }
+  .cart-form-col { order: 1; }
 
   /* Account stats */
   .account-stats {

@@ -108,7 +108,7 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
                 height: '44px', padding: '0 28px', border: 'none', borderRadius: '10px',
                 background: added ? '#16A34A' : inCart ? '#0D9488' : '#4880B8', color: '#fff',
                 fontSize: '14px', fontWeight: 700, cursor: 'pointer',
-                whiteSpace: 'nowrap', flexShrink: 0, marginLeft: '32px',
+                whiteSpace: 'nowrap', flexShrink: 0,
                 display: 'flex', alignItems: 'center', gap: '6px',
                 transition: 'background 0.2s',
               }}

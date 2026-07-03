@@ -443,7 +443,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
           <div className="cart-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', alignItems: 'start' }}>
 
             {/* ── LEFT: Checkout form ── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="cart-form-col" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
               {/* Contact info */}
               <Section icon={User} title={tr.sectionContact}>
@@ -679,7 +679,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
             </div>
 
             {/* ── RIGHT: Order summary ── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="cart-summary-col" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
               {/* Items list */}
               <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
@@ -723,16 +723,16 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <button
                               onClick={() => updateQty(item.sku, item.qty - item.min_order)}
-                              style={{ width: '24px', height: '24px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                              style={{ width: '36px', height: '36px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
                             >
-                              <Minus size={10} />
+                              <Minus size={14} />
                             </button>
                             <span style={{ fontSize: '13px', fontWeight: 600, minWidth: '28px', textAlign: 'center' }}>{item.qty}</span>
                             <button
                               onClick={() => updateQty(item.sku, item.qty + item.min_order)}
-                              style={{ width: '24px', height: '24px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                              style={{ width: '36px', height: '36px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
                             >
-                              <Plus size={10} />
+                              <Plus size={14} />
                             </button>
                           </div>
                           <div style={{ textAlign: 'right' }}>
@@ -749,9 +749,9 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                       </div>
                       <button
                         onClick={() => removeItem(item.sku)}
-                        style={{ width: '24px', height: '24px', borderRadius: '6px', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-secondary)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        style={{ width: '36px', height: '36px', borderRadius: '8px', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-secondary)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
-                        <Trash2 size={13} />
+                        <Trash2 size={15} />
                       </button>
                     </div>
                   ))}
