@@ -129,7 +129,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
         >
           <Heart size={14} fill={isWished ? '#EF4444' : 'none'} strokeWidth={2} />
         </button>
-        <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: '7px', overflow: 'hidden', height: '34px', background: 'var(--bg-card)' }}>
+        <div className="shop-card__qty" style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: '7px', overflow: 'hidden', height: '34px', background: 'var(--bg-card)', flexShrink: 0 }}>
           <button aria-label={t('Зменшити кількість', 'Уменьшить количество')} onClick={() => { const v = Math.max(1, qty - 1); setQty(v); setInputVal(String(v)); }} style={{ width: '34px', height: '34px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
             <Minus size={11} strokeWidth={2.5} />
           </button>
@@ -856,6 +856,8 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
             <div className="shop-title">{saleOnly ? t('Акційні товари', 'Акционные товары') : t('Магазин', 'Магазин')}</div>
             <span className="shop-count">{filtered.length} {t('товарів', 'товаров')}</span>
+          </div>
+          <div className="shop-topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div className="shop-view-toggle">
               <button
                 className={'shop-view-toggle-btn' + (gridCols === 2 ? ' active' : '')}
@@ -872,8 +874,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                 <Rows2 size={16} strokeWidth={2} />
               </button>
             </div>
-          </div>
-          <div className="shop-topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               className={'shop-mobile-filter-btn' + (mobilePanel === 'cats' ? ' active' : '')}
               onClick={() => setMobilePanel(v => v === 'cats' ? null : 'cats')}
