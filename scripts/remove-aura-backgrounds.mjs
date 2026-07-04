@@ -128,8 +128,8 @@ async function main() {
   const revertList = [];
 
   for (const product of products) {
-    // "/img/products/aura/2108-012.png"  →  "aura/2108-012.png"
-    const storagePath = product.image.replace('/img/products/', '');
+    // "/img/products/aura/2108-012.png?v=abc123"  →  "aura/2108-012.png"
+    const storagePath = product.image.replace('/img/products/', '').split('?')[0];
     const n = done + reverted + failed + 1;
     const label = `[${n}/${products.length}]`;
 

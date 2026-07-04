@@ -27,6 +27,7 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
+import { createHash } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 // This project's lib/*.ts files compile to CJS; a native-ESM .mjs entry only sees
 // the interop default export, not the named export directly — so destructure it here.
@@ -56,12 +57,20 @@ const BACKUP_DIR = path.resolve(process.cwd(), 'scripts/supabase/.image-backup')
 async function main() {
   const { data: rows, error } = await supabase
     .from('products')
-    .select('image')
+    .select('sku, image')
     .like('image', '/img/products/%')
     .not('image', 'is', null);
   if (error) throw new Error(`Fetch failed: ${error.message}`);
 
-  const uniquePaths = [...new Set(rows.map(r => r.image.replace('/img/products/', '')))];
+  // Strip any existing "?v=..." cache-bust suffix before treating this as a Storage path,
+  // and group SKUs by path so every product sharing a photo gets its image field re-versioned.
+  const skusByPath = new Map();
+  for (const r of rows) {
+    const storagePath = r.image.replace('/img/products/', '').split('?')[0];
+    if (!skusByPath.has(storagePath)) skusByPath.set(storagePath, []);
+    skusByPath.get(storagePath).push(r.sku);
+  }
+  const uniquePaths = [...skusByPath.keys()];
   const targets = limit ? uniquePaths.slice(0, limit) : uniquePaths;
 
   console.log(`${uniquePaths.length} unique images total, processing ${targets.length}${dryRun ? ' (dry run)' : ''}\n`);
@@ -98,7 +107,19 @@ async function main() {
         const { error: upErr } = await supabase.storage.from(BUCKET)
           .upload(storagePath, normalized, { contentType: 'image/webp', upsert: true });
         if (upErr) throw new Error(upErr.message);
-        console.log(`OK (${Math.round(normalized.length / 1024)} KB)`);
+
+        // Cache-bust: re-uploading to the same path leaves old bytes cached under the same
+        // URL at every layer (browser, CDN) until their TTL expires. Change the URL itself
+        // so every SKU sharing this photo picks up the new version immediately.
+        const version = createHash('sha256').update(normalized).digest('hex').slice(0, 10);
+        const versionedImage = `/img/products/${storagePath}?v=${version}`;
+        const skus = skusByPath.get(storagePath) ?? [];
+        if (skus.length) {
+          const { error: dbErr } = await supabase.from('products').update({ image: versionedImage }).in('sku', skus);
+          if (dbErr) throw new Error(`upload OK but DB update failed: ${dbErr.message}`);
+        }
+
+        console.log(`OK (${Math.round(normalized.length / 1024)} KB, ${skus.length} SKU${skus.length === 1 ? '' : 's'} re-versioned)`);
       }
       ok++;
     } catch (e) {

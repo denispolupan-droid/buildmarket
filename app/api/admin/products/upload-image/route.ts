@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'crypto';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeProductImage } from '../../../../../lib/product-image';
@@ -42,5 +43,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: upErr.message }, { status: 500 });
   }
 
-  return NextResponse.json({ imageUrl: `/img/products/${storagePath}` });
+  // Cache-bust: the storage path is stable (upsert), so browsers/CDN will keep
+  // serving old bytes under the same URL unless the URL itself changes.
+  const version = createHash('sha256').update(webpBuf).digest('hex').slice(0, 10);
+
+  return NextResponse.json({ imageUrl: `/img/products/${storagePath}?v=${version}` });
 }
