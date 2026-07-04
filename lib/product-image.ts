@@ -1,8 +1,8 @@
 import sharp from 'sharp';
 
-const CANVAS = 800;       // final image is CANVAS x CANVAS
-const INNER = 720;        // the trimmed product is scaled to fit inside this box
-const MAX_UPSCALE = 1.15; // never enlarge a trimmed photo by more than this — avoids blur
+const CANVAS = 800;      // final image is CANVAS x CANVAS
+const INNER = 720;       // the trimmed product is scaled to fit inside this box
+const MAX_UPSCALE = 2.2; // never enlarge a trimmed photo by more than this — avoids extreme blur
 const WEBP_QUALITY = 90;
 
 /**
@@ -11,9 +11,10 @@ const WEBP_QUALITY = 90;
  * of the frame — regardless of how tightly (or loosely) the source photo was
  * cropped by the supplier.
  *
- * Enlargement is capped at MAX_UPSCALE: a photo that was already tiny inside its
- * original frame is not blown up to match the others, since that just blurs it.
- * It gets a modest size boost (up to the cap) and extra centered padding instead.
+ * Enlargement is capped at MAX_UPSCALE: most supplier photos need well under 2x
+ * to fill the frame, so the cap only kicks in for genuinely tiny source photos —
+ * those get a mild sharpen pass afterward to counteract the softening, rather
+ * than being left small (which reads as "broken" far worse than mild softness).
  */
 export async function normalizeProductImage(input: Buffer): Promise<Buffer> {
   const trimmed: Buffer = await sharp(input).trim({ threshold: 20 }).toBuffer();
@@ -27,7 +28,7 @@ export async function normalizeProductImage(input: Buffer): Promise<Buffer> {
 
   const resizedContent: Buffer = scale === 1
     ? trimmed
-    : await sharp(trimmed).resize(targetW, targetH).toBuffer();
+    : await sharp(trimmed).resize(targetW, targetH, { kernel: 'lanczos3' }).sharpen({ sigma: 0.6 }).toBuffer();
 
   const padX = CANVAS - targetW;
   const padY = CANVAS - targetH;
