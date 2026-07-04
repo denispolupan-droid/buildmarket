@@ -516,10 +516,20 @@ export async function GET(request: NextRequest) {
       // Multiselect labels allowed to appear multiple times (one <param> per value)
       const MULTISELECT_LABELS = new Set(['Область застосування']);
 
+      // These labels are output as Prom structured numeric <param> tags in numericParamsXml.
+      // Exclude them from the free-text paramsXml to avoid duplicate param names in the offer.
+      const NUMERIC_STRUCTURED_LABELS = new Set([
+        'Мінімальна температура застосування',
+        'Максимальна температура застосування',
+        'Мінімальна температура експлуатації',
+        'Максимальна температура експлуатації',
+      ]);
+
       // Deduplicate by normalized label — keep first occurrence (two DB labels may map to the same Prom label)
       // Exception: multiselect labels are allowed multiple rows
       const seenLabels = new Set<string>();
       const dedupedChars = processedChars.filter(c => {
+        if (NUMERIC_STRUCTURED_LABELS.has(c.label)) return false; // goes to numericParamsXml only
         if (MULTISELECT_LABELS.has(c.label)) return true;
         if (seenLabels.has(c.label)) return false;
         seenLabels.add(c.label);
