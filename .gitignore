@@ -46,3 +46,6 @@ catalog-export.xlsx
 .claude/scheduled_tasks.lock
 fixline-audit.zip
 lint-new.txt
+
+# local image backups from one-off scripts (not meant to be committed)
+scripts/supabase/.image-backup/
