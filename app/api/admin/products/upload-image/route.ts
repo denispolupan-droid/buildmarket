@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
+import { normalizeProductImage } from '../../../../../lib/product-image';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const sharp = require('sharp');
 
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer();
@@ -30,10 +28,7 @@ export async function POST(req: NextRequest) {
 
   let webpBuf: Buffer;
   try {
-    webpBuf = await sharp(srcBuf)
-      .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: 82 })
-      .toBuffer();
+    webpBuf = await normalizeProductImage(srcBuf);
   } catch {
     return NextResponse.json({ error: 'Не вдалося обробити зображення' }, { status: 422 });
   }

@@ -27,8 +27,11 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
-import sharp from 'sharp';
 import { createClient } from '@supabase/supabase-js';
+// This project's lib/*.ts files compile to CJS; a native-ESM .mjs entry only sees
+// the interop default export, not the named export directly — so destructure it here.
+import productImageLib from '../../lib/product-image';
+const { normalizeProductImage } = productImageLib;
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
@@ -42,10 +45,6 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
 const BUCKET = 'products';
-const CANVAS = 800;        // final image is CANVAS x CANVAS
-const INNER  = 720;        // the trimmed product is scaled to fit inside this box
-const MAX_UPSCALE = 1.15;  // never enlarge a trimmed photo by more than this — avoids blur
-const WEBP_QUALITY = 90;   // higher than the source's 82 so this pass adds minimal extra loss
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
@@ -88,31 +87,7 @@ async function main() {
         fs.writeFileSync(backupPath, inputBuffer);
       }
 
-      const trimmed = await sharp(inputBuffer)
-        .trim({ threshold: 20 })
-        .toBuffer();
-      const { width: tw, height: th } = await sharp(trimmed).metadata();
-
-      // Scale to fill INNER, but cap enlargement so small source photos don't get blurry
-      const fitScale = Math.min(INNER / tw, INNER / th);
-      const scale = Math.min(fitScale, MAX_UPSCALE);
-      const targetW = Math.max(1, Math.round(tw * scale));
-      const targetH = Math.max(1, Math.round(th * scale));
-
-      const resizedContent = scale === 1
-        ? trimmed
-        : await sharp(trimmed).resize(targetW, targetH).toBuffer();
-
-      const padX = CANVAS - targetW;
-      const padY = CANVAS - targetH;
-      const normalized = await sharp(resizedContent)
-        .extend({
-          top: Math.floor(padY / 2), bottom: Math.ceil(padY / 2),
-          left: Math.floor(padX / 2), right: Math.ceil(padX / 2),
-          background: { r: 255, g: 255, b: 255, alpha: 1 },
-        })
-        .webp({ quality: WEBP_QUALITY })
-        .toBuffer();
+      const normalized = await normalizeProductImage(inputBuffer);
 
       if (dryRun) {
         const outPath = path.join(BACKUP_DIR, '.preview', storagePath);
