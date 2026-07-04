@@ -2,7 +2,9 @@ import sharp from 'sharp';
 
 const CANVAS = 800;      // final image is CANVAS x CANVAS
 const INNER = 720;       // the trimmed product is scaled to fit inside this box
-const MAX_UPSCALE = 2.2; // never enlarge a trimmed photo by more than this — avoids extreme blur
+const MAX_UPSCALE = 6;   // sanity backstop only (e.g. an accidentally tiny/icon-sized upload) —
+                         // every real product photo in the catalog needs well under this, so in
+                         // practice every photo fills INNER fully and card borders line up exactly.
 const WEBP_QUALITY = 90;
 
 /**
@@ -11,10 +13,10 @@ const WEBP_QUALITY = 90;
  * of the frame — regardless of how tightly (or loosely) the source photo was
  * cropped by the supplier.
  *
- * Enlargement is capped at MAX_UPSCALE: most supplier photos need well under 2x
- * to fill the frame, so the cap only kicks in for genuinely tiny source photos —
- * those get a mild sharpen pass afterward to counteract the softening, rather
- * than being left small (which reads as "broken" far worse than mild softness).
+ * Photos are scaled to fully fill INNER so every card lines up edge-to-edge in a
+ * grid, even if that means enlarging a low-resolution source photo — a uniform,
+ * slightly-soft grid reads far better than one where low-res photos leave a
+ * visibly uneven gap. A sharpen pass afterward counteracts the softening.
  */
 export async function normalizeProductImage(input: Buffer): Promise<Buffer> {
   const trimmed: Buffer = await sharp(input).trim({ threshold: 20 }).toBuffer();
