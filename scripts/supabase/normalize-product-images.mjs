@@ -7,6 +7,14 @@
  * bounding box, then re-frames it onto a consistent canvas so every product
  * occupies roughly the same share of the frame.
  *
+ * Enlargement is capped (MAX_UPSCALE) — a product photo that was already tiny
+ * inside its frame is NOT blown up to match the others; that would just blur it.
+ * It gets *some* size boost (up to the cap) and extra centered padding instead.
+ *
+ * Sources from the local backup copy when one exists (scripts/supabase/.image-backup),
+ * so re-running with corrected settings never compounds lossy re-encodes on top of a
+ * previous run's output — it always starts from the original bytes.
+ *
  * Before overwriting anything in Storage, the original bytes are backed up
  * locally so a bad run can be undone by re-uploading from the backup folder.
  *
@@ -34,9 +42,10 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
 const BUCKET = 'products';
-const CANVAS = 800;     // final image is CANVAS x CANVAS
-const MARGIN = 40;      // uniform white margin on each side
-const INNER  = CANVAS - MARGIN * 2; // the trimmed product is scaled to fit inside this
+const CANVAS = 800;        // final image is CANVAS x CANVAS
+const INNER  = 720;        // the trimmed product is scaled to fit inside this box
+const MAX_UPSCALE = 1.15;  // never enlarge a trimmed photo by more than this — avoids blur
+const WEBP_QUALITY = 90;   // higher than the source's 82 so this pass adds minimal extra loss
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
@@ -66,24 +75,43 @@ async function main() {
   for (const [i, storagePath] of targets.entries()) {
     process.stdout.write(`[${i + 1}/${targets.length}] ${storagePath} ... `);
     try {
-      const { data: fileBlob, error: dlErr } = await supabase.storage.from(BUCKET).download(storagePath);
-      if (dlErr || !fileBlob) { console.log('SKIP (download failed: ' + (dlErr?.message ?? 'no data') + ')'); skipped++; continue; }
-
-      const inputBuffer = Buffer.from(await fileBlob.arrayBuffer());
-
-      // Backup original bytes before touching anything remote
       const backupPath = path.join(BACKUP_DIR, storagePath);
-      fs.mkdirSync(path.dirname(backupPath), { recursive: true });
-      fs.writeFileSync(backupPath, inputBuffer);
+      let inputBuffer;
+      if (fs.existsSync(backupPath)) {
+        // Re-running: always start from the original bytes, never from a previous run's output
+        inputBuffer = fs.readFileSync(backupPath);
+      } else {
+        const { data: fileBlob, error: dlErr } = await supabase.storage.from(BUCKET).download(storagePath);
+        if (dlErr || !fileBlob) { console.log('SKIP (download failed: ' + (dlErr?.message ?? 'no data') + ')'); skipped++; continue; }
+        inputBuffer = Buffer.from(await fileBlob.arrayBuffer());
+        fs.mkdirSync(path.dirname(backupPath), { recursive: true });
+        fs.writeFileSync(backupPath, inputBuffer);
+      }
 
       const trimmed = await sharp(inputBuffer)
         .trim({ threshold: 20 })
         .toBuffer();
+      const { width: tw, height: th } = await sharp(trimmed).metadata();
 
-      const normalized = await sharp(trimmed)
-        .resize(INNER, INNER, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
-        .extend({ top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN, background: { r: 255, g: 255, b: 255, alpha: 1 } })
-        .webp({ quality: 82 })
+      // Scale to fill INNER, but cap enlargement so small source photos don't get blurry
+      const fitScale = Math.min(INNER / tw, INNER / th);
+      const scale = Math.min(fitScale, MAX_UPSCALE);
+      const targetW = Math.max(1, Math.round(tw * scale));
+      const targetH = Math.max(1, Math.round(th * scale));
+
+      const resizedContent = scale === 1
+        ? trimmed
+        : await sharp(trimmed).resize(targetW, targetH).toBuffer();
+
+      const padX = CANVAS - targetW;
+      const padY = CANVAS - targetH;
+      const normalized = await sharp(resizedContent)
+        .extend({
+          top: Math.floor(padY / 2), bottom: Math.ceil(padY / 2),
+          left: Math.floor(padX / 2), right: Math.ceil(padX / 2),
+          background: { r: 255, g: 255, b: 255, alpha: 1 },
+        })
+        .webp({ quality: WEBP_QUALITY })
         .toBuffer();
 
       if (dryRun) {
