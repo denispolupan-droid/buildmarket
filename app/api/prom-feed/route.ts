@@ -142,6 +142,7 @@ const PROM_LABEL_NORM: Record<string, string> = {
   'Час до наступного шару':                 'Час висихання (наступний шар)',
   'Готовність до експлуатації':             'Час повного висихання',
   'Час затвердіння':                        'Час повного висихання',
+  'Країна виробника':                       'Країна виробник',
 };
 
 // Prom dropdowns expect feminine adjective forms for gloss level values
@@ -167,7 +168,7 @@ const GLOSS_FORM: Record<string, string> = {
 const DRYING_LABELS = new Set([
   'Час висихання (від пилу)', 'Час висихання',
   'Час висихання (наступний шар)', 'Час повного висихання',
-  'Час повного затвердіння',
+  'Час повного затвердіння', 'Час висихання (дерево)', 'Час висихання (папір)',
 ]);
 
 // Parse hours from Ukrainian time value: "30 хв" → 0.5, "2 год" → 2
@@ -474,6 +475,13 @@ export async function GET(request: NextRequest) {
           }
         }
         // Operating temperature range (sealants, adhesives, foams)
+        if (c.label === 'Температурний діапазон експлуатації') {
+          const nums = [...value.matchAll(/([+-]?\d+)/g)].map(m => parseInt(m[1]));
+          if (nums.length > 0) {
+            if (minTempOp === null) minTempOp = Math.min(...nums);
+            if (maxTempOp === null) maxTempOp = Math.max(...nums);
+          }
+        }
         if (c.label === 'Мінімальна температура експлуатації' && minTempOp === null) {
           minTempOp = parseSignedInt(value);
         }
@@ -498,7 +506,9 @@ export async function GET(request: NextRequest) {
       });
 
       // Inject "Країна виробник" from brand lookup if missing in characteristics
-      const hasCountry = rawChars.some(c => c.label === 'Країна виробник');
+      const hasCountry = rawChars.some(c =>
+        c.label === 'Країна виробник' || c.label === 'Країна виробника',
+      );
       const inferredCountry = !hasCountry && p.brand ? BRAND_COUNTRY[p.brand] ?? null : null;
       const countryParam = inferredCountry
         ? [{ label: 'Країна виробник', value: inferredCountry }]
@@ -523,8 +533,10 @@ export async function GET(request: NextRequest) {
         'Максимальна температура застосування',
         'Мінімальна температура експлуатації',
         'Максимальна температура експлуатації',
-        'Об`єм',  // backtick — goes to numericParamsXml with unit="мл"
-        'Вага',   // goes to numericParamsXml with unit="г"
+        'Температурний діапазон експлуатації',   // range form, parsed into min/max
+        'Об`єм',       // backtick — goes to numericParamsXml with unit="мл"
+        'Вага',        // goes to numericParamsXml with unit="г"
+        'Час висихання',  // numericParts already emits this as unit="год"; prevent text dupe
       ]);
 
       // Deduplicate by normalized label — keep first occurrence (two DB labels may map to the same Prom label)
