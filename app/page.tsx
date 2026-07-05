@@ -87,10 +87,40 @@ export default async function Home() {
     },
   };
 
+  const localBusinessLd = {
+    '@context': 'https://schema.org',
+    '@type': ['LocalBusiness', 'HardwareStore'],
+    name: 'FIXLINE',
+    description: 'B2B постачальник будівельної хімії: герметики, монтажні піни, клеї, ґрунтовки оптом і в роздріб.',
+    url: 'https://fixline.com.ua',
+    logo: 'https://fixline.com.ua/fixline-logo.png',
+    image: 'https://fixline.com.ua/fixline-logo.png',
+    telephone: '+380991997788',
+    email: 'info@fixline.com.ua',
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: 'Площа Свободи',
+      addressLocality: 'Харків',
+      addressRegion: 'Харківська область',
+      postalCode: '61000',
+      addressCountry: 'UA',
+    },
+    openingHoursSpecification: {
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+      opens: '09:00',
+      closes: '16:00',
+    },
+    priceRange: '$$',
+    areaServed: { '@type': 'Country', name: 'Ukraine' },
+    sameAs: ['https://share.google/k3RSZ5LP8hLXDuNwX'],
+  };
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessLd) }} />
       <PromoBanner />
 
       {/* Hero */}
@@ -127,7 +157,7 @@ export default async function Home() {
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
           }}>
-            Професійна будівельна хімія
+            Професійна будівельна хімія оптом
           </h1>
 
           <ul className="hero-checklist">

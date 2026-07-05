@@ -30,8 +30,11 @@ export default function ContactsPage() {
     email: 'info@fixline.com.ua',
     address: {
       '@type': 'PostalAddress',
-      addressCountry: 'UA',
+      streetAddress: 'Площа Свободи',
+      addressLocality: 'Харків',
       addressRegion: 'Харківська область',
+      postalCode: '61000',
+      addressCountry: 'UA',
     },
     openingHoursSpecification: {
       '@type': 'OpeningHoursSpecification',
@@ -41,7 +44,7 @@ export default function ContactsPage() {
     },
     priceRange: '$$',
     areaServed: { '@type': 'Country', name: 'Ukraine' },
-    sameAs: [],
+    sameAs: ['https://share.google/k3RSZ5LP8hLXDuNwX'],
   };
 
   return (

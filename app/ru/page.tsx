@@ -33,7 +33,7 @@ export default function RuHomePage() {
     <>
       <div style={{ background: 'var(--bg-page)', minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', gap: '24px' }}>
         <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', margin: 0 }}>
-          FIXLINE — строительная химия
+          FIXLINE — строительная химия оптом
         </h1>
         <p style={{ fontSize: '16px', color: 'var(--text-secondary)', textAlign: 'center', maxWidth: '480px', lineHeight: 1.6, margin: 0 }}>
           Герметики, монтажная пена, клеи, грунтовки от ведущих брендов. Оптовые цены для дилеров и подрядчиков. Доставка по всей Украине.
