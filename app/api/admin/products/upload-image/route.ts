@@ -34,18 +34,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Не вдалося обробити зображення' }, { status: 422 });
   }
 
-  const storagePath = `${brand}/${sku}.webp`;
+  // The version must live in the path, not a "?v=" query string: Vercel's edge cache for
+  // the /img/:path* rewrite is keyed on the path alone and ignores the query string, so a
+  // re-upload under the same path+"?v=" can keep serving stale bytes to every visitor
+  // indefinitely. A distinct path guarantees a genuinely new URL the cache has never seen.
+  const version = createHash('sha256').update(webpBuf).digest('hex').slice(0, 10);
+  const storagePath = `${brand}/${sku}-${version}.webp`;
   const { error: upErr } = await serviceClient.storage
     .from('products')
-    .upload(storagePath, webpBuf, { contentType: 'image/webp', upsert: true });
+    .upload(storagePath, webpBuf, { contentType: 'image/webp', upsert: true, cacheControl: '31536000' });
 
   if (upErr) {
     return NextResponse.json({ error: upErr.message }, { status: 500 });
   }
 
-  // Cache-bust: the storage path is stable (upsert), so browsers/CDN will keep
-  // serving old bytes under the same URL unless the URL itself changes.
-  const version = createHash('sha256').update(webpBuf).digest('hex').slice(0, 10);
-
-  return NextResponse.json({ imageUrl: `/img/products/${storagePath}?v=${version}` });
+  return NextResponse.json({ imageUrl: `/img/products/${storagePath}` });
 }

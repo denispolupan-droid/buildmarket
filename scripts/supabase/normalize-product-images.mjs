@@ -104,15 +104,20 @@ async function main() {
         fs.writeFileSync(outPath, normalized);
         console.log(`OK (preview saved, ${Math.round(normalized.length / 1024)} KB)`);
       } else {
+        // The version must live in the path, not a "?v=" query string: Vercel's edge cache
+        // for the /img/:path* rewrite is keyed on the path alone and ignores the query
+        // string, so re-uploading to the same path can keep serving stale bytes to every
+        // visitor indefinitely regardless of a changed "?v=". A distinct path per content
+        // hash guarantees a genuinely new URL the cache has never seen.
+        const version = createHash('sha256').update(normalized).digest('hex').slice(0, 10);
+        const ext = storagePath.slice(storagePath.lastIndexOf('.'));
+        const hashedPath = storagePath.slice(0, -ext.length) + `-${version}` + ext;
+
         const { error: upErr } = await supabase.storage.from(BUCKET)
-          .upload(storagePath, normalized, { contentType: 'image/webp', upsert: true });
+          .upload(hashedPath, normalized, { contentType: 'image/webp', upsert: true, cacheControl: '31536000' });
         if (upErr) throw new Error(upErr.message);
 
-        // Cache-bust: re-uploading to the same path leaves old bytes cached under the same
-        // URL at every layer (browser, CDN) until their TTL expires. Change the URL itself
-        // so every SKU sharing this photo picks up the new version immediately.
-        const version = createHash('sha256').update(normalized).digest('hex').slice(0, 10);
-        const versionedImage = `/img/products/${storagePath}?v=${version}`;
+        const versionedImage = `/img/products/${hashedPath}`;
         const skus = skusByPath.get(storagePath) ?? [];
         if (skus.length) {
           const { error: dbErr } = await supabase.from('products').update({ image: versionedImage }).in('sku', skus);
