@@ -200,6 +200,13 @@ function parseKg(v: string | null): number | null {
   return m ? parseFloat(m[1].replace(',', '.')) : null;
 }
 
+// Parse numeric grams from volume string: "400 г" → 400
+function parseGrams(v: string | null): number | null {
+  if (!v) return null;
+  const m = v.match(/^(\d+(?:[.,]\d+)?)\s*г$/);
+  return m ? Math.round(parseFloat(m[1].replace(',', '.'))) : null;
+}
+
 // Parse volume as мл (for Prom's Об'єм attribute in category 82210 etc.)
 // "280 мл" → 280, "0,75 л" → 750, "1 л" → 1000
 function parseVolumeML(v: string | null): number | null {
@@ -441,6 +448,7 @@ export async function GET(request: NextRequest) {
       let shelfLifeMonths: number | null = null;
       let grabMinutes: number | null = null;
       let foamLiters: number | null = null;
+      let waGrams: number | null = null;   // weight from "Вага" characteristic (when p.volume is in ml)
 
       // Process each characteristic:
       // • normalize label to Prom's expected name
@@ -500,6 +508,19 @@ export async function GET(request: NextRequest) {
         if (c.label === 'Вихід піни' && foamLiters === null) {
           const fm = value.match(/(\d+)\s*л/i);
           if (fm) foamLiters = parseInt(fm[1]);
+        }
+        // Weight in grams from "Вага" characteristic (e.g. "880", "880 г", "0,88 кг")
+        if ((c.label === 'Вага' || label === 'Вага') && waGrams === null) {
+          const gm = value.match(/^(\d+(?:[.,]\d+)?)\s*г$/);
+          if (gm) { waGrams = Math.round(parseFloat(gm[1].replace(',', '.'))); }
+          else {
+            const km = value.match(/^(\d+(?:[.,]\d+)?)\s*кг$/);
+            if (km) { waGrams = Math.round(parseFloat(km[1].replace(',', '.')) * 1000); }
+            else {
+              const plain = parseFloat(value.replace(',', '.'));
+              if (!isNaN(plain) && plain > 0) waGrams = Math.round(plain);
+            }
+          }
         }
 
         return { label, value };
@@ -594,9 +615,20 @@ export async function GET(request: NextRequest) {
       const volumeML = parseVolumeML(p.volume);
       if (volumeML !== null) {
         numericParts.push(`        <param name="Об\`єм" unit="мл">${volumeML}</param>`);
+        // Foam products can have both volume (мл) and weight (г) as separate Prom attributes
+        if (waGrams !== null) {
+          numericParts.push(`        <param name="Вага" unit="г">${waGrams}</param>`);
+        }
       } else {
+        // No liquid volume — derive weight from p.volume or from "Вага" characteristic
         const kg = parseKg(p.volume);
-        if (kg !== null) numericParts.push(`        <param name="Вага" unit="г">${Math.round(kg * 1000)}</param>`);
+        if (kg !== null) {
+          numericParts.push(`        <param name="Вага" unit="г">${Math.round(kg * 1000)}</param>`);
+        } else {
+          const g = parseGrams(p.volume);
+          const weight = g ?? waGrams;
+          if (weight !== null) numericParts.push(`        <param name="Вага" unit="г">${weight}</param>`);
+        }
       }
       const numericParamsXml = numericParts.join('\n');
 
