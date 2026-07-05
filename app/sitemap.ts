@@ -94,8 +94,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // ── Russian mirror routes (/ru/*) ──────────────────────────────────────────
-  // Продуктові /ru/ сторінки прибрані з sitemap — вони з'їдали ~50% crawl budget
-  // при мізерних шансах на індексацію для UA-сайту. Залишаємо тільки структурні /ru/ URL.
   const ruStaticRoutes: MetadataRoute.Sitemap = [
     { url: `${BASE}/ru`,            lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${BASE}/ru/shop`,       lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.35 },
