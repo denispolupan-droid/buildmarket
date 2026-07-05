@@ -550,39 +550,39 @@ export async function GET(request: NextRequest) {
         ? `        <param name="Об'єм / Вага">${x(p.volume)}</param>`
         : '';
 
-      // Prom structured numeric params — these populate Prom's category-specific
-      // fields that expect pure numbers (дrying time, temperature, volume)
+      // Prom structured numeric params — unit attribute is REQUIRED for real-type Prom attributes,
+      // otherwise Prom cannot match the param and stores it as a user/custom characteristic instead.
       const numericParts: string[] = [];
       if (dryingHours !== null) {
-        numericParts.push(`        <param name="Час висихання">${dryingHours}</param>`);
+        numericParts.push(`        <param name="Час висихання" unit="год">${dryingHours}</param>`);
       }
       if (minTempApply !== null) {
-        numericParts.push(`        <param name="Мінімальна температура застосування">${minTempApply}</param>`);
+        numericParts.push(`        <param name="Мінімальна температура застосування" unit="град.">${minTempApply}</param>`);
       }
       if (maxTempApply !== null) {
-        numericParts.push(`        <param name="Максимальна температура застосування">${maxTempApply}</param>`);
+        numericParts.push(`        <param name="Максимальна температура застосування" unit="град.">${maxTempApply}</param>`);
       }
       if (minTempOp !== null) {
-        numericParts.push(`        <param name="Мінімальна температура експлуатації">${minTempOp}</param>`);
+        numericParts.push(`        <param name="Мінімальна температура експлуатації" unit="град.">${minTempOp}</param>`);
       }
       if (maxTempOp !== null) {
-        numericParts.push(`        <param name="Максимальна температура експлуатації">${maxTempOp}</param>`);
+        numericParts.push(`        <param name="Максимальна температура експлуатації" unit="град.">${maxTempOp}</param>`);
       }
       if (shelfLifeMonths !== null) {
-        numericParts.push(`        <param name="Термін зберігання">${shelfLifeMonths}</param>`);
+        numericParts.push(`        <param name="Термін зберігання" unit="міс.">${shelfLifeMonths}</param>`);
       }
       if (grabMinutes !== null) {
-        numericParts.push(`        <param name="Час початкового схоплення">${grabMinutes}</param>`);
+        numericParts.push(`        <param name="Час початкового схоплення" unit="хв">${grabMinutes}</param>`);
       }
       if (foamLiters !== null) {
-        numericParts.push(`        <param name="Вихід піни">${foamLiters}</param>`);
+        numericParts.push(`        <param name="Вихід піни" unit="л">${foamLiters}</param>`);
       }
       const volumeML = parseVolumeML(p.volume);
       if (volumeML !== null) {
-        numericParts.push(`        <param name="Об\`єм">${volumeML}</param>`);
+        numericParts.push(`        <param name="Об\`єм" unit="мл">${volumeML}</param>`);
       } else {
         const kg = parseKg(p.volume);
-        if (kg !== null) numericParts.push(`        <param name="Вага (кг)">${kg}</param>`);
+        if (kg !== null) numericParts.push(`        <param name="Вага" unit="г">${Math.round(kg * 1000)}</param>`);
       }
       const numericParamsXml = numericParts.join('\n');
 
