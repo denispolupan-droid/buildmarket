@@ -51,7 +51,7 @@ interface Props {
   promoMap:   Record<string, string | null>; // sku → revert_at (null = indefinite)
 }
 
-type PriceField = 'price_unit' | 'price_retail' | 'price_drop';
+type PriceField = 'price_unit' | 'price_retail' | 'price_drop' | 'price_cost';
 
 interface EditState {
   price_cost:    string;
@@ -130,6 +130,7 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
 
   // Pricelist modal
   const [showPricelist, setShowPricelist]           = useState(false);
+  const [plHeaderVariant, setPlHeaderVariant]       = useState<'fixline' | 'fop'>('fixline');
   const [plPriceType, setPlPriceType]               = useState<PriceField | 'price_prom'>('price_retail');
   const [plCategories, setPlCategories]             = useState<Set<string>>(new Set());
   const [plAllCats, setPlAllCats]                   = useState(true);
@@ -143,7 +144,8 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
   // slug → saving state
   const [savingDesc, setSavingDesc]                 = useState<Set<string>>(new Set());
   const [plGenerating, setPlGenerating]             = useState(false);
-  const [plFilterBrand, setPlFilterBrand]           = useState('');
+  const [plAllBrands, setPlAllBrands]               = useState(true);
+  const [plFilterBrands, setPlFilterBrands]         = useState<Set<string>>(new Set());
   const [plFilterSearch, setPlFilterSearch]         = useState('');
   const [mounted, setMounted]                       = useState(false);
   useEffect(() => setMounted(true), []);
@@ -441,7 +443,8 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
         categories:        plAllCats ? 'all' : [...plCategories].join(','),
         includeOutOfStock: String(plIncludeOutOfStock),
         showBrand:         String(plShowBrand),
-        ...(plFilterBrand  ? { brand: plFilterBrand }   : {}),
+        headerVariant:     plHeaderVariant,
+        ...(!plAllBrands   ? { brand: [...plFilterBrands].join(',') } : {}),
         ...(plFilterSearch ? { search: plFilterSearch } : {}),
       });
       const res = await fetch(`/api/admin/prices/pricelist?${params}`);
@@ -483,6 +486,7 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
         const retail = n(ov?.price_retail ?? s?.price_retail);
         const unit   = n(ov?.price_unit   ?? s?.price_unit);
         const drop   = n(ov?.price_drop   ?? s?.price_drop);
+        const cost   = n(ov?.price_cost   ?? s?.price_cost);
         const promMarkup     = p.prom_markup_pct ?? cat?.prom_markup_pct ?? 0;
         const promCommission = cat?.prom_commission_pct ?? 0;
         const baseForProm    = retail ?? unit ?? 0;
@@ -492,6 +496,7 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
           retail,
           unit,
           drop,
+          cost,
           promo:  n(s?.price_promo),
           prom_price,
         };
@@ -504,7 +509,7 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
         const parentMatch = r.cat?.parent_slug ? plCategories.has(r.cat.parent_slug) : false;
         if (!directMatch && !parentMatch) return false;
       }
-      if (plFilterBrand && r.p.brand !== plFilterBrand) return false;
+      if (!plAllBrands && !plFilterBrands.has(r.p.brand ?? '')) return false;
       if (plFilterSearch) {
         const q = plFilterSearch.toLowerCase();
         if (!r.p.name.toLowerCase().includes(q) && !r.p.sku.toLowerCase().includes(q)) return false;
@@ -531,12 +536,20 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
       showBrand:         String(plShowBrand),
       showDescriptions:  String(plShowDescriptions),
       showImages:        String(plShowImages),
-      ...(plFilterBrand  ? { brand: plFilterBrand }   : {}),
+      headerVariant:     plHeaderVariant,
+      ...(!plAllBrands   ? { brand: [...plFilterBrands].join(',') } : {}),
       ...(plFilterSearch ? { search: plFilterSearch } : {}),
     };
     const xlsxParamsJSON = JSON.stringify(xlsxParamsObj);
 
     // Build category rows HTML
+    // Cost prices come straight from purchase invoices and land at all sorts of
+    // precisions (641.4, 1169.13, 705) — force a consistent 2-decimal look there.
+    // Other price types keep their existing (integer-typical) formatting untouched.
+    const fmtPrice = (v: number) => plPriceType === 'price_cost'
+      ? v.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : v.toLocaleString('uk-UA');
+
     const catBlocks = [...grouped2.entries()].map(([slug, catRows]) => {
       const catName = catRows[0]?.cat?.name ?? slug;
       const desc    = plShowDescriptions ? (descriptions.get(slug) || '') : '';
@@ -544,6 +557,7 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
         const price = plPriceType === 'price_prom'   ? r.prom_price
                     : plPriceType === 'price_retail' ? r.retail
                     : plPriceType === 'price_unit'   ? r.unit
+                    : plPriceType === 'price_cost'   ? r.cost
                     : r.drop;
         const promo = plPriceType === 'price_prom' ? null : r.promo;
         const imgSrc = plShowImages && r.p.image
@@ -555,8 +569,8 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
           <td class="td-vol">${r.p.volume ?? ''}</td>
           <td class="td-price">${
             promo != null && price != null
-              ? `<span class="price-old">${price.toLocaleString('uk-UA')} ₴</span><span class="price-new">${promo.toLocaleString('uk-UA')} ₴</span>`
-              : price != null ? `<span class="price-reg">${price.toLocaleString('uk-UA')} ₴</span>` : '—'
+              ? `<span class="price-old">${fmtPrice(price)} ₴</span><span class="price-new">${fmtPrice(promo)} ₴</span>`
+              : price != null ? `<span class="price-reg">${fmtPrice(price)} ₴</span>` : '—'
           }</td>
         </tr>`;
       }).join('');
@@ -575,6 +589,34 @@ ${desc ? `<div class="cat-desc">${desc}</div>` : ''}
     }).join('');
 
     const contactsJSON = JSON.stringify(contacts);
+
+    const FOP_NAME  = 'ФОП Полупан Д.О.';
+    const FOP_PHONE = '+380 66 82 82 290';
+    const phoneSvg  = '<svg width="11" height="11" viewBox="0 0 16 16" fill="#fff"><path d="M3.654 1.328a.678.678 0 0 0-1.015-.063L1.605 2.3c-.483.484-.661 1.169-.45 1.77a17.6 17.6 0 0 0 4.168 6.608 17.6 17.6 0 0 0 6.608 4.168c.601.211 1.286.033 1.77-.45l1.034-1.034a.678.678 0 0 0-.063-1.015l-2.307-1.794a.678.678 0 0 0-.58-.122l-2.19.547a1.745 1.745 0 0 1-1.657-.459L5.482 8.062a1.745 1.745 0 0 1-.46-1.657l.548-2.19a.678.678 0 0 0-.122-.58L3.654 1.328z"/></svg>';
+
+    const headerHtml = plHeaderVariant === 'fop'
+      ? `<div class="hd hd-fop">
+      <div class="hd-fop-name">${FOP_NAME}</div>
+      <div class="hd-mid" style="flex:1">
+        <div class="hd-mid-title">ПРАЙС-ЛИСТ</div>
+        <div class="hd-mid-date">${dateLabel}</div>
+      </div>
+      <div class="hd-fop-phone">${phoneSvg}${FOP_PHONE}</div>
+    </div>`
+      : `<div class="hd">
+  <div class="hd-logo"><img src="${origin}/fixline-logo-white.svg" alt="FixLine"></div>
+  <div class="hd-div"></div>
+  <div class="hd-mid">
+    <div class="hd-mid-title">ПРАЙС-ЛИСТ</div>
+    <div class="hd-mid-date">${dateLabel}</div>
+  </div>
+  <div class="hd-div"></div>
+  <div class="hd-contacts">
+    <div class="hd-contact"><svg width="10" height="10" viewBox="0 0 16 16" fill="rgba(255,255,255,.9)"><path d="M3.654 1.328a.678.678 0 0 0-1.015-.063L1.605 2.3c-.483.484-.661 1.169-.45 1.77a17.6 17.6 0 0 0 4.168 6.608 17.6 17.6 0 0 0 6.608 4.168c.601.211 1.286.033 1.77-.45l1.034-1.034a.678.678 0 0 0-.063-1.015l-2.307-1.794a.678.678 0 0 0-.58-.122l-2.19.547a1.745 1.745 0 0 1-1.657-.459L5.482 8.062a1.745 1.745 0 0 1-.46-1.657l.548-2.19a.678.678 0 0 0-.122-.58L3.654 1.328z"/></svg>+380 99 199 77 88</div>
+    <div class="hd-contact"><svg width="10" height="10" viewBox="0 0 16 16" fill="rgba(255,255,255,.9)"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1zm13 2.383-4.708 2.825L15 11.105zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741M1 11.105l4.708-2.897L1 5.383z"/></svg>info@fixline.com.ua</div>
+    <div class="hd-contact"><svg width="10" height="10" viewBox="0 0 16 16" fill="rgba(255,255,255,.9)"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m7.5-6.923c-.67.204-1.335.82-1.887 1.855A7.97 7.97 0 0 0 5.145 4H7.5zM4.09 4a9.267 9.267 0 0 1 .64-1.539 6.7 6.7 0 0 1 .597-.933A7.025 7.025 0 0 0 2.255 4zm-.582 3.5c.03-.877.138-1.718.312-2.5H1.674a6.958 6.958 0 0 0-.656 2.5zM4.847 5a12.5 12.5 0 0 0-.338 2.5H7.5V5zM8.5 5v2.5h2.99a12.495 12.495 0 0 0-.337-2.5zM4.51 8.5a12.5 12.5 0 0 0 .337 2.5H7.5V8.5zm3.99 0V11h2.653c.187-.765.306-1.608.338-2.5zM5.145 12c.138.386.295.744.468 1.068.552 1.035 1.218 1.65 1.887 1.855V12zm.182 2.472a6.696 6.696 0 0 1-.597-.933A9.268 9.268 0 0 1 4.09 12H2.255a7.024 7.024 0 0 0 3.072 2.472M3.82 11a13.652 13.652 0 0 1-.312-2.5h-2.49c.062.89.291 1.733.656 2.5zm6.853 3.472A7.024 7.024 0 0 0 13.745 12H11.91a9.27 9.27 0 0 1-.64 1.539 6.688 6.688 0 0 1-.597.933M8.5 12v2.923c.67-.204 1.335-.82 1.887-1.855.173-.324.33-.682.468-1.068zm3.68-1h2.146c.365-.767.594-1.61.656-2.5h-2.49a13.65 13.65 0 0 1-.312 2.5zm2.802-3.5a6.959 6.959 0 0 0-.656-2.5H12.18c.174.782.282 1.623.312 2.5zM11.27 2.461c.247.464.462.98.64 1.539h1.835a7.024 7.024 0 0 0-3.072-2.472c.218.284.418.598.597.933M10.855 4a7.966 7.966 0 0 0-.468-1.068C9.835 1.897 9.17 1.282 8.5 1.077V4z"/></svg>fixline.com.ua</div>
+  </div>
+</div>`;
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Прайс-лист</title>
 <style>
@@ -596,6 +638,10 @@ body{font-family:Arial,sans-serif;font-size:12px;color:#111;background:#f1f5f9;}
 .hd-contacts{padding-left:14px;display:flex;flex-direction:column;gap:5px;min-width:180px;}
 .hd-contact{display:flex;align-items:center;gap:6px;font-size:9px;color:rgba(255,255,255,.9);}
 .hd-contact svg{flex-shrink:0;}
+.hd-fop{padding:0 20px;}
+.hd-fop-name{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;}
+.hd-fop-phone{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap;}
+.hd-fop-phone svg{flex-shrink:0;}
 .cat{background:#1D4E8B;color:#fff;font-size:12px;font-weight:700;padding:6px 12px 6px 16px;border-left:4px solid #4880B8;margin-top:10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 .cat-desc{font-size:10px;color:#6B7280;font-style:italic;padding:4px 4px 2px;line-height:1.5;}
 table{width:100%;border-collapse:collapse;background:#fff;}
@@ -636,20 +682,7 @@ tr.shade{background:#F9FAFB;}
   <button class="btn btn-s" onclick="document.getElementById('eo').classList.add('show')">Відправити на email</button>
 </div>
 <div class="wrap">
-<div class="hd">
-  <div class="hd-logo"><img src="${origin}/fixline-logo-white.svg" alt="FixLine"></div>
-  <div class="hd-div"></div>
-  <div class="hd-mid">
-    <div class="hd-mid-title">ПРАЙС-ЛИСТ</div>
-    <div class="hd-mid-date">${dateLabel}</div>
-  </div>
-  <div class="hd-div"></div>
-  <div class="hd-contacts">
-    <div class="hd-contact"><svg width="10" height="10" viewBox="0 0 16 16" fill="rgba(255,255,255,.9)"><path d="M3.654 1.328a.678.678 0 0 0-1.015-.063L1.605 2.3c-.483.484-.661 1.169-.45 1.77a17.6 17.6 0 0 0 4.168 6.608 17.6 17.6 0 0 0 6.608 4.168c.601.211 1.286.033 1.77-.45l1.034-1.034a.678.678 0 0 0-.063-1.015l-2.307-1.794a.678.678 0 0 0-.58-.122l-2.19.547a1.745 1.745 0 0 1-1.657-.459L5.482 8.062a1.745 1.745 0 0 1-.46-1.657l.548-2.19a.678.678 0 0 0-.122-.58L3.654 1.328z"/></svg>+380 99 199 77 88</div>
-    <div class="hd-contact"><svg width="10" height="10" viewBox="0 0 16 16" fill="rgba(255,255,255,.9)"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1zm13 2.383-4.708 2.825L15 11.105zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741M1 11.105l4.708-2.897L1 5.383z"/></svg>info@fixline.com.ua</div>
-    <div class="hd-contact"><svg width="10" height="10" viewBox="0 0 16 16" fill="rgba(255,255,255,.9)"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m7.5-6.923c-.67.204-1.335.82-1.887 1.855A7.97 7.97 0 0 0 5.145 4H7.5zM4.09 4a9.267 9.267 0 0 1 .64-1.539 6.7 6.7 0 0 1 .597-.933A7.025 7.025 0 0 0 2.255 4zm-.582 3.5c.03-.877.138-1.718.312-2.5H1.674a6.958 6.958 0 0 0-.656 2.5zM4.847 5a12.5 12.5 0 0 0-.338 2.5H7.5V5zM8.5 5v2.5h2.99a12.495 12.495 0 0 0-.337-2.5zM4.51 8.5a12.5 12.5 0 0 0 .337 2.5H7.5V8.5zm3.99 0V11h2.653c.187-.765.306-1.608.338-2.5zM5.145 12c.138.386.295.744.468 1.068.552 1.035 1.218 1.65 1.887 1.855V12zm.182 2.472a6.696 6.696 0 0 1-.597-.933A9.268 9.268 0 0 1 4.09 12H2.255a7.024 7.024 0 0 0 3.072 2.472M3.82 11a13.652 13.652 0 0 1-.312-2.5h-2.49c.062.89.291 1.733.656 2.5zm6.853 3.472A7.024 7.024 0 0 0 13.745 12H11.91a9.27 9.27 0 0 1-.64 1.539 6.688 6.688 0 0 1-.597.933M8.5 12v2.923c.67-.204 1.335-.82 1.887-1.855.173-.324.33-.682.468-1.068zm3.68-1h2.146c.365-.767.594-1.61.656-2.5h-2.49a13.65 13.65 0 0 1-.312 2.5zm2.802-3.5a6.959 6.959 0 0 0-.656-2.5H12.18c.174.782.282 1.623.312 2.5zM11.27 2.461c.247.464.462.98.64 1.539h1.835a7.024 7.024 0 0 0-3.072-2.472c.218.284.418.598.597.933M10.855 4a7.966 7.966 0 0 0-.468-1.068C9.835 1.897 9.17 1.282 8.5 1.077V4z"/></svg>fixline.com.ua</div>
-  </div>
-</div>
+${headerHtml}
 ${catBlocks}
 </div>
 <div class="ov" id="eo">
@@ -729,7 +762,7 @@ async function sendEmail(){
           {totalSelected > 0 && (
             <button onClick={clearAll} style={btnSecondary}>Зняти вибір</button>
           )}
-          <button onClick={openPricelist} style={{ ...btnPrimary, background: '#fff', border: '1.5px solid #E5E7EB', color: '#374151' }}>
+          <button onClick={openPricelist} style={btnPrimary}>
             <FileSpreadsheet size={15} /> Прайс-лист
           </button>
         </div>
@@ -1166,11 +1199,24 @@ async function sendEmail(){
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* Header variant */}
+              <div>
+                <label style={modalLabel}>Шапка прайс-листа</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {([['fixline', 'FixLine'], ['fop', 'ФОП Полупан Д.О.']] as [typeof plHeaderVariant, string][]).map(([val, label]) => (
+                    <button key={val} onClick={() => setPlHeaderVariant(val)}
+                      style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: `1.5px solid ${plHeaderVariant === val ? '#1D4ED8' : '#E5E7EB'}`, background: plHeaderVariant === val ? '#EFF6FF' : '#fff', color: plHeaderVariant === val ? '#1D4ED8' : '#374151', fontWeight: plHeaderVariant === val ? 700 : 400, fontSize: 13, cursor: 'pointer' }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Price type */}
               <div>
                 <label style={modalLabel}>Тип цін</label>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
-                  {([['price_retail', 'Роздрібна'], ['price_unit', 'Оптова'], ['price_drop', 'Дроп']] as [PriceField, string][]).map(([val, label]) => (
+                  {([['price_retail', 'Роздрібна'], ['price_unit', 'Оптова'], ['price_drop', 'Дроп'], ['price_cost', 'Закупівельна']] as [PriceField, string][]).map(([val, label]) => (
                     <button key={val} onClick={() => setPlPriceType(val)}
                       style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: `1.5px solid ${plPriceType === val ? '#1D4ED8' : '#E5E7EB'}`, background: plPriceType === val ? '#EFF6FF' : '#fff', color: plPriceType === val ? '#1D4ED8' : '#374151', fontWeight: plPriceType === val ? 700 : 400, fontSize: 13, cursor: 'pointer' }}>
                       {label}
@@ -1246,10 +1292,28 @@ async function sendEmail(){
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <div>
                     <label style={smallLabel}>Бренд</label>
-                    <select value={plFilterBrand} onChange={e => setPlFilterBrand(e.target.value)} style={{ ...selectStyle, width: '100%', height: 34 }}>
-                      <option value="">Всі бренди</option>
-                      {allBrands.map(b => <option key={b} value={b}>{b}</option>)}
-                    </select>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: 13, cursor: 'pointer' }}>
+                      <input type="checkbox" checked={plAllBrands} onChange={e => setPlAllBrands(e.target.checked)} />
+                      Всі бренди
+                    </label>
+                    {!plAllBrands && (
+                      <div style={{ maxHeight: 160, overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 12px' }}>
+                        {allBrands.map(b => (
+                          <label key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: 12, cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={plFilterBrands.has(b)}
+                              onChange={e => setPlFilterBrands(prev => {
+                                const s = new Set(prev);
+                                e.target.checked ? s.add(b) : s.delete(b);
+                                return s;
+                              })}
+                            />
+                            {b}
+                          </label>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label style={smallLabel}>Пошук по назві / SKU</label>

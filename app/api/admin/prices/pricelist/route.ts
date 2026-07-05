@@ -5,6 +5,7 @@ import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 import { buildPdf, fetchImages, PdfGroup } from '../_pdf';
+import { fetchProductsInCatalogOrder } from '../_catalog-order';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,43 +21,31 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = req.nextUrl;
   const format            = searchParams.get('format') ?? 'xlsx';
-  const priceType         = (searchParams.get('priceType') ?? 'price_retail') as 'price_retail' | 'price_unit' | 'price_drop' | 'price_prom';
+  const priceType         = (searchParams.get('priceType') ?? 'price_retail') as 'price_retail' | 'price_unit' | 'price_drop' | 'price_cost' | 'price_prom';
   const categoriesParam   = searchParams.get('categories') ?? 'all';
   const includeOutOfStock = searchParams.get('includeOutOfStock') === 'true';
   const showBrand         = searchParams.get('showBrand') !== 'false';
   const showDescriptions  = searchParams.get('showDescriptions') === 'true';
   const showImages        = searchParams.get('showImages') === 'true';
-  const filterBrand       = searchParams.get('brand') ?? '';
+  const brandParam        = searchParams.get('brand');
+  const filterBrands      = brandParam !== null ? new Set(brandParam.split(',').filter(Boolean)) : null;
   const filterSearch      = searchParams.get('search') ?? '';
+  const headerVariant     = (searchParams.get('headerVariant') === 'fop' ? 'fop' : 'fixline') as 'fixline' | 'fop';
 
   const selectedCats = categoriesParam === 'all' ? null : new Set(categoriesParam.split(',').filter(Boolean));
   const priceLabel   = ({
     price_retail: 'Роздрібна ціна (₴)',
     price_unit:   'Оптова ціна (₴)',
     price_drop:   'Ціна дроп (₴)',
+    price_cost:   'Закупівельна ціна (₴)',
     price_prom:   'Ціна Prom.ua (₴)',
   } as Record<string, string>)[priceType] ?? 'Ціна (₴)';
   const dateStr      = new Date().toISOString().slice(0, 10);
 
   if (format === 'pdf') {
     // ── PDF ─────────────────────────────────────────────────────────────────────
-    const [{ data: products, error: prodErr }, { data: stock }, { data: categories }] = await Promise.all([
-      db.from('products')
-        .select('sku, name, brand, volume, category_slug, image, prom_markup_pct')
-        .eq('is_active', true)
-        .order('brand').order('name')
-        .limit(2000),
-      db.from('product_stock')
-        .select('sku, price_unit, price_retail, price_drop, price_promo, stock_status')
-        .limit(2000),
-      db.from('categories')
-        .select('slug, name, description, parent_slug, sort_order, prom_commission_pct, prom_markup_pct'),
-    ]);
-
-    if (prodErr) return new NextResponse(prodErr.message, { status: 500 });
-
-    const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
-    const catMap   = new Map((categories ?? []).map(c => [c.slug, c]));
+    const { data: categories } = await db.from('categories')
+      .select('slug, name, description, parent_slug, sort_order, prom_commission_pct, prom_markup_pct');
 
     const catSortOrder = new Map((categories ?? []).map(c => [c.slug, c.sort_order ?? 999]));
     const sortedCats = [...(categories ?? [])].sort((a, b) => {
@@ -66,6 +55,19 @@ export async function GET(req: NextRequest) {
       return (a.sort_order ?? 999) - (b.sort_order ?? 999);
     });
 
+    type PdfProdRow = { sku: string; name: string; brand: string; volume: string | null; category_slug: string | null; image: string | null; prom_markup_pct: number | null };
+    const [products, { data: stock }] = await Promise.all([
+      fetchProductsInCatalogOrder<PdfProdRow>(
+        db, 'sku, name, brand, volume, category_slug, image, prom_markup_pct', sortedCats.map(c => c.slug),
+      ),
+      db.from('product_stock')
+        .select('sku, price_unit, price_retail, price_drop, price_cost, price_promo, stock_status')
+        .limit(2000),
+    ]);
+
+    const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
+    const catMap   = new Map((categories ?? []).map(c => [c.slug, c]));
+
     const grouped = new Map<string, PdfGroup>();
     for (const cat of sortedCats) {
       if (selectedCats && !selectedCats.has(cat.slug)) continue;
@@ -74,12 +76,12 @@ export async function GET(req: NextRequest) {
 
     const skuImageMap = new Map<string, string>();
 
-    for (const prod of (products ?? [])) {
+    for (const prod of products) {
       const s = stockMap.get(prod.sku);
       if (!s) continue;
       if (!includeOutOfStock && s.stock_status !== 'in_stock') continue;
       if (selectedCats && prod.category_slug && !selectedCats.has(prod.category_slug)) continue;
-      if (filterBrand && prod.brand !== filterBrand) continue;
+      if (filterBrands && !filterBrands.has(prod.brand ?? '')) continue;
       if (filterSearch) {
         const q = filterSearch.toLowerCase();
         if (!prod.name?.toLowerCase().includes(q) && !prod.sku?.toLowerCase().includes(q)) continue;
@@ -94,7 +96,7 @@ export async function GET(req: NextRequest) {
         const base = Number(s.price_retail) || Number(s.price_unit) || 0;
         price = base > 0 ? Math.ceil(base * (1 + markup / 100) / (1 - commission / 100)) : null;
       } else {
-        price = Number(s[priceType as 'price_retail' | 'price_unit' | 'price_drop']) || null;
+        price = Number(s[priceType as 'price_retail' | 'price_unit' | 'price_drop' | 'price_cost']) || null;
       }
 
       if (!grouped.has(slug)) {
@@ -114,7 +116,7 @@ export async function GET(req: NextRequest) {
 
     const pdfBuffer = await buildPdf(
       grouped,
-      { showBrand, showDescriptions, showImages, priceLabel },
+      { showBrand, showDescriptions, showImages, priceLabel, headerVariant, isCostPrice: priceType === 'price_cost' },
       imageBuffers,
     );
 
@@ -127,28 +129,41 @@ export async function GET(req: NextRequest) {
   }
 
   // ── XLSX ───────────────────────────────────────────────────────────────────────
-  const [{ data: products }, { data: stock }, { data: categories }] = await Promise.all([
-    db.from('products')
-      .select('sku, name, brand, volume, category_slug, is_active, prom_markup_pct')
-      .eq('is_active', true)
-      .order('category_slug', { nullsFirst: false })
-      .order('brand').order('name'),
+  const { data: categories } = await db.from('categories')
+    .select('slug, name, parent_slug, sort_order, prom_commission_pct, prom_markup_pct');
+
+  const xlsxCatSortOrder = new Map((categories ?? []).map(c => [c.slug, c.sort_order ?? 999]));
+  const xlsxSortedCats = [...(categories ?? [])].sort((a, b) => {
+    const aTop = a.parent_slug ? (xlsxCatSortOrder.get(a.parent_slug) ?? 999) : (a.sort_order ?? 999);
+    const bTop = b.parent_slug ? (xlsxCatSortOrder.get(b.parent_slug) ?? 999) : (b.sort_order ?? 999);
+    if (aTop !== bTop) return aTop - bTop;
+    return (a.sort_order ?? 999) - (b.sort_order ?? 999);
+  });
+
+  type XlsxProdRow = { sku: string; name: string; brand: string; volume: string | null; category_slug: string | null; is_active: boolean; prom_markup_pct: number | null };
+  const [products, { data: stock }] = await Promise.all([
+    fetchProductsInCatalogOrder<XlsxProdRow>(
+      db, 'sku, name, brand, volume, category_slug, is_active, prom_markup_pct', xlsxSortedCats.map(c => c.slug),
+    ),
     db.from('product_stock')
-      .select('sku, price_unit, price_retail, price_drop, stock_status'),
-    db.from('categories').select('slug, name, parent_slug, prom_commission_pct, prom_markup_pct').order('sort_order'),
+      .select('sku, price_unit, price_retail, price_drop, price_cost, stock_status'),
   ]);
 
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
   const catMap   = new Map((categories ?? []).map(c => [c.slug, c]));
 
   const grouped = new Map<string, { catName: string; rows: { name: string; brand: string; volume: string | null; price: number | null }[] }>();
+  for (const cat of xlsxSortedCats) {
+    if (selectedCats && !selectedCats.has(cat.slug)) continue;
+    grouped.set(cat.slug, { catName: cat.name, rows: [] });
+  }
 
-  for (const p of (products ?? [])) {
+  for (const p of products) {
     const s = stockMap.get(p.sku);
     if (!s) continue;
     if (!includeOutOfStock && s.stock_status !== 'in_stock') continue;
     if (selectedCats && p.category_slug && !selectedCats.has(p.category_slug)) continue;
-    if (filterBrand && p.brand !== filterBrand) continue;
+    if (filterBrands && !filterBrands.has(p.brand ?? '')) continue;
     if (filterSearch) {
       const q = filterSearch.toLowerCase();
       if (!p.name?.toLowerCase().includes(q) && !p.sku?.toLowerCase().includes(q)) continue;
@@ -164,17 +179,21 @@ export async function GET(req: NextRequest) {
       const base = Number(s.price_retail) || Number(s.price_unit) || 0;
       price = base > 0 ? Math.ceil(base * (1 + markup / 100) / (1 - commission / 100)) : null;
     } else {
-      price = Number(s[priceType as 'price_retail' | 'price_unit' | 'price_drop']) || null;
+      price = Number(s[priceType as 'price_retail' | 'price_unit' | 'price_drop' | 'price_cost']) || null;
     }
 
     if (!grouped.has(catSlug)) grouped.set(catSlug, { catName, rows: [] });
     grouped.get(catSlug)!.rows.push({ name: p.name, brand: p.brand, volume: p.volume, price });
   }
 
+  for (const [key, val] of grouped) {
+    if (val.rows.length === 0) grouped.delete(key);
+  }
+
   const wb = XLSX.utils.book_new();
   const allRows: (string | number | null)[][] = [];
 
-  allRows.push(['FIXLINE — Прайс-лист', null, null, null]);
+  allRows.push([headerVariant === 'fop' ? 'ФОП Полупан Д.О. — Прайс-лист' : 'FIXLINE — Прайс-лист', null, null, null]);
   allRows.push([`Дата: ${new Date().toLocaleDateString('uk-UA')}`, null, null, null]);
   allRows.push([]);
 
@@ -200,6 +219,18 @@ export async function GET(req: NextRequest) {
 
   const titleCell = ws['A1'];
   if (titleCell) titleCell.s = { font: { bold: true, sz: 14 } };
+
+  // Cost prices come straight from purchase invoices at all sorts of precisions
+  // (641.4, 1169.13, 705) — force a consistent 2-decimal display for that price
+  // type only, via the cell's number format (keeps the underlying value numeric).
+  if (priceType === 'price_cost') {
+    const priceCol = showBrand ? 3 : 2;
+    const range = XLSX.utils.decode_range(ws['!ref']!);
+    for (let r = range.s.r; r <= range.e.r; r++) {
+      const cell = ws[XLSX.utils.encode_cell({ r, c: priceCol })];
+      if (cell && cell.t === 'n') cell.z = '0.00';
+    }
+  }
 
   let rowIdx = 3;
   for (const [, { rows }] of grouped) {
