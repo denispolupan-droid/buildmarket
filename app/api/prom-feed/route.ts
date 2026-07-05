@@ -523,6 +523,8 @@ export async function GET(request: NextRequest) {
         'Максимальна температура застосування',
         'Мінімальна температура експлуатації',
         'Максимальна температура експлуатації',
+        'Об`єм',  // backtick — goes to numericParamsXml with unit="мл"
+        'Вага',   // goes to numericParamsXml with unit="г"
       ]);
 
       // Deduplicate by normalized label — keep first occurrence (two DB labels may map to the same Prom label)
