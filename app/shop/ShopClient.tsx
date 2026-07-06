@@ -629,12 +629,16 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                     if (children.length > 0) {
                       setExpandedCats(prev => { const next = new Set(prev); next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug); return next; });
                       if (expanding) {
-                        // Оновлюємо фільтр БЕЗ скролу сторінки
-                        setSelCat(cat.slug);
-                        window.history.pushState(null, '', `${shopBase}/${cat.slug}`);
-                        setVisibleCount(24);
-                        // Тільки сайдбар — після анімації
-                        setTimeout(() => scrollCatToTop(cat.slug), 450);
+                        if (initialBrand || (initialCategory && cat.slug !== initialCategory)) {
+                          router.push(`${shopBase}/${cat.slug}`);
+                        } else {
+                          // Оновлюємо фільтр БЕЗ скролу сторінки
+                          setSelCat(cat.slug);
+                          window.history.pushState(null, '', `${shopBase}/${cat.slug}`);
+                          setVisibleCount(24);
+                          // Тільки сайдбар — після анімації
+                          setTimeout(() => scrollCatToTop(cat.slug), 450);
+                        }
                       }
                     } else {
                       selectCat(selCat === cat.slug ? null : cat.slug);
