@@ -42,8 +42,8 @@ export async function GET(req: NextRequest) {
     const items = (o.items ?? []) as { name?: string; qty?: number; price?: number }[];
     return {
       '№ замовлення':   o.order_number,
-      'Дата':           new Date(o.created_at).toLocaleDateString('uk-UA'),
-      'Час':            new Date(o.created_at).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }),
+      'Дата':           new Date(o.created_at).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv' }),
+      'Час':            new Date(o.created_at).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' }),
       'Статус':         STATUS_LABELS[o.status] ?? o.status,
       'Клієнт':         o.contact ?? '',
       'Компанія':       o.company ?? '',

@@ -156,7 +156,7 @@ export default async function CabinetOrderDetailPage({
 
       {/* Meta */}
       <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'right' }}>
-        Замовлення від {new Date(order.created_at).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+        Замовлення від {new Date(order.created_at).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}
       </div>
     </div>
   );

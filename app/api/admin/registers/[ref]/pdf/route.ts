@@ -69,7 +69,7 @@ export async function GET(
       cod:       String(d.BackwardDeliverySum ?? d.CostOnSite ?? '0'),
     }));
 
-  const today = new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const today = new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' });
   const totalCod = documents.reduce((s, d) => s + parseFloat(d.cod || '0'), 0);
 
   const rows = documents.length > 0
