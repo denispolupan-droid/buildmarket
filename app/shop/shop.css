@@ -52,6 +52,12 @@
   user-select: none;
 }
 .shop-cat-item:hover { background: var(--bg-soft); color: var(--text-primary); }
+.shop-cat-item-label {
+  display: inline-block;
+  transform-origin: left center;
+  transition: transform 0.15s ease;
+}
+.shop-cat-item:hover .shop-cat-item-label { transform: scale(1.07); }
 .shop-cat-item.active { background: #EEF4FF; color: #1E40AF; font-weight: 600; }
 [data-theme="dark"] .shop-cat-item.active { background: #1E3A5F; color: #93C5FD; }
 .shop-cat-item.parent-active { background: #F5F8FF; color: #3B6EC4; font-weight: 600; }
