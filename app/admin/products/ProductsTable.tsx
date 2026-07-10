@@ -2,45 +2,55 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { Search, Edit, Package, AlertCircle, Wand2 } from 'lucide-react';
+import { Search, Edit, Package, AlertCircle, Wand2, Image as ImageIcon } from 'lucide-react';
 import type { ProductFull, Category } from '../../../types';
 import AiFillModal from './AiFillModal';
+import BrandLogosModal from './BrandLogosModal';
 
 type Props = {
   products: ProductFull[];
   categories: Category[];
+  brandLogos?: Record<string, string>;
 };
 
 const PAGE_SIZE = 100;
 
-export default function ProductsTable({ products, categories }: Props) {
+export default function ProductsTable({ products, categories, brandLogos = {} }: Props) {
   const [search, setSearch]               = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterBrand, setFilterBrand]     = useState('');
   const [filterStatus, setFilterStatus]   = useState('');
   const [visibleCount, setVisibleCount]   = useState(PAGE_SIZE);
-  const [activeOverrides, setActiveOverrides] = useState<Record<string, boolean>>({});
+  type BoolField = 'is_active' | 'is_hit' | 'is_new';
+  const [fieldOverrides, setFieldOverrides] = useState<Record<string, Partial<Record<BoolField, boolean>>>>({});
   const [toggling, setToggling]           = useState<Set<string>>(new Set());
   const [selected, setSelected]           = useState<Set<string>>(new Set());
   const [showAiFill, setShowAiFill]       = useState(false);
+  const [showBrandLogos, setShowBrandLogos] = useState(false);
 
-  const toggleActive = useCallback(async (sku: string, current: boolean) => {
-    if (toggling.has(sku)) return;
+  const toggleField = useCallback(async (sku: string, field: BoolField, current: boolean) => {
+    const key = `${sku}:${field}`;
+    if (toggling.has(key)) return;
     const next = !current;
-    setActiveOverrides(prev => ({ ...prev, [sku]: next }));
-    setToggling(prev => new Set(prev).add(sku));
+    setFieldOverrides(prev => ({ ...prev, [sku]: { ...prev[sku], [field]: next } }));
+    setToggling(prev => new Set(prev).add(key));
     try {
       await fetch(`/api/admin/products?sku=${encodeURIComponent(sku)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: next }),
+        body: JSON.stringify({ [field]: next }),
       });
     } catch {
-      setActiveOverrides(prev => ({ ...prev, [sku]: current }));
+      setFieldOverrides(prev => ({ ...prev, [sku]: { ...prev[sku], [field]: current } }));
     } finally {
-      setToggling(prev => { const s = new Set(prev); s.delete(sku); return s; });
+      setToggling(prev => { const s = new Set(prev); s.delete(key); return s; });
     }
   }, [toggling]);
+
+  const getField = useCallback((p: ProductFull, field: BoolField) => {
+    const override = fieldOverrides[p.sku]?.[field];
+    return override !== undefined ? override : p[field];
+  }, [fieldOverrides]);
 
   const categoryMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -179,6 +189,18 @@ export default function ProductsTable({ products, categories }: Props) {
           ))}
         </select>
 
+        <button
+          onClick={() => setShowBrandLogos(true)}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '8px', flexShrink: 0,
+            height: '44px', padding: '0 16px', borderRadius: '10px',
+            border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)',
+            fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+          }}
+        >
+          <ImageIcon size={16} /> Логотипи брендів
+        </button>
+
         <select
           value={filterStatus}
           onChange={e => { setFilterStatus(e.target.value); resetVisible(); }}
@@ -272,6 +294,8 @@ export default function ProductsTable({ products, categories }: Props) {
               <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Роздріб</th>
               <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Дроп</th>
               <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Залишок</th>
+              <th title="Хіт" style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)', width: 44 }}>🔥</th>
+              <th title="Новинка" style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)', width: 44 }}>✨</th>
               <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}>Статус</th>
               <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}></th>
             </tr>
@@ -279,9 +303,10 @@ export default function ProductsTable({ products, categories }: Props) {
           <tbody>
             {visibleProducts.map(p => {
               const hasIssue = !p.stock?.price_retail || p.stock?.stock_status === 'out_of_stock';
-              const isActive = (s: string) => activeOverrides[s] !== undefined ? activeOverrides[s] : p.is_active;
-              const active = isActive(p.sku);
-              const isToggling = toggling.has(p.sku);
+              const active = getField(p, 'is_active');
+              const isHit = getField(p, 'is_hit');
+              const isNewBadge = getField(p, 'is_new');
+              const isToggling = toggling.has(`${p.sku}:is_active`);
               const isSelected = selected.has(p.sku);
               const isFilled = p.description_full && p.keywords && p.characteristics?.length;
               return (
@@ -330,11 +355,31 @@ export default function ProductsTable({ products, categories }: Props) {
                   <td style={{ padding: '12px 16px', textAlign: 'right', color: p.stock?.stock_status === 'out_of_stock' ? '#EF4444' : p.stock?.stock_status === 'in_stock' ? '#475569' : '#94A3B8' }}>
                     {(p.stock?.stock_qty ?? 0) > 0 ? p.stock!.stock_qty : p.stock?.stock_status === 'in_stock' ? 'є' : p.stock?.stock_status === 'out_of_stock' ? 'нема' : '—'}
                   </td>
+                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={isHit}
+                      onChange={() => toggleField(p.sku, 'is_hit', isHit)}
+                      disabled={toggling.has(`${p.sku}:is_hit`)}
+                      title="Хіт"
+                      style={{ cursor: 'pointer', width: 16, height: 16, accentColor: '#F97316' }}
+                    />
+                  </td>
+                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={isNewBadge}
+                      onChange={() => toggleField(p.sku, 'is_new', isNewBadge)}
+                      disabled={toggling.has(`${p.sku}:is_new`)}
+                      title="Новинка"
+                      style={{ cursor: 'pointer', width: 16, height: 16, accentColor: '#7C3AED' }}
+                    />
+                  </td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                       {hasIssue && <AlertCircle size={14} color="#F59E0B" />}
                       <button
-                        onClick={e => { e.stopPropagation(); toggleActive(p.sku, active); }}
+                        onClick={e => { e.stopPropagation(); toggleField(p.sku, 'is_active', active); }}
                         disabled={isToggling}
                         title={active ? 'Натисни щоб приховати' : 'Натисни щоб показати'}
                         style={{
@@ -407,6 +452,14 @@ export default function ProductsTable({ products, categories }: Props) {
           products={products}
           onClose={() => setShowAiFill(false)}
           onDone={() => setSelected(new Set())}
+        />
+      )}
+
+      {showBrandLogos && (
+        <BrandLogosModal
+          brands={brands}
+          initialLogos={brandLogos}
+          onClose={() => setShowBrandLogos(false)}
         />
       )}
     </div>

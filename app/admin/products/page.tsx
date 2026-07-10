@@ -31,6 +31,12 @@ export default async function AdminProductsPage() {
     .select('*')
     .order('sort_order');
 
+  const { data: brandLogoRows } = await serviceClient
+    .from('brand_logos')
+    .select('brand_name, logo_url');
+  const brandLogos: Record<string, string> = {};
+  (brandLogoRows ?? []).forEach(row => { brandLogos[row.brand_name.toUpperCase()] = row.logo_url; });
+
   return (
     <div style={{ padding: '32px 36px 64px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
@@ -76,7 +82,7 @@ export default async function AdminProductsPage() {
           </Link>
         </div>
       </div>
-      <ProductsTable products={products ?? []} categories={categories ?? []} />
+      <ProductsTable products={products ?? []} categories={categories ?? []} brandLogos={brandLogos} />
     </div>
   );
 }
