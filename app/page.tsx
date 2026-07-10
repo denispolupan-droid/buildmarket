@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   },
 };
 import { ShieldCheck, Truck, Store, LayoutGrid, CheckCircle, MessageCircle, Tag, PackageCheck, ShoppingCart, Phone, Package, ArrowRight } from 'lucide-react';
-import { getCategoriesCached, getPreviewProductsCached, getBrandLogosCached } from '../lib/supabase';
+import { getCategoriesCached, getPreviewProductsCached, getBrandLogosCached, getReviewStatsCached } from '../lib/supabase';
 import Footer from './components/Footer';
 import CategorySection from './components/CategorySection';
 import PromoBanner from './components/PromoBanner';
@@ -36,6 +36,7 @@ export default async function Home() {
   const allSlugs = categories.map(c => c.slug);
   const products = await getPreviewProductsCached(allSlugs, 2);
   const brandLogos = await getBrandLogosCached();
+  const reviewStats = await getReviewStatsCached();
 
   const orgLd = {
     '@context': 'https://schema.org',
@@ -378,7 +379,7 @@ export default async function Home() {
               </p>
             </Reveal>
             <Reveal delay={80}>
-              <CategorySection categories={categories} products={products} />
+              <CategorySection categories={categories} products={products} reviewStats={reviewStats} />
             </Reveal>
           </div>
         </section>

@@ -179,6 +179,32 @@ export async function getBrandLogos(): Promise<Record<string, string>> {
   return map;
 }
 
+// sku -> { avg, count } from all approved reviews. Fetches every approved
+// review row (not filtered by sku) rather than one query per product — cheap
+// while review volume is low, and avoids an IN(...) list of hundreds of skus
+// on every catalog/shop page render.
+export type ReviewStats = Record<string, { avg: number; count: number }>;
+
+export async function getReviewStats(): Promise<ReviewStats> {
+  // product_reviews has no public SELECT policy (RLS) — every other reader of
+  // this table (the /api/reviews route, the product page's own count query)
+  // goes through the service-role client for the same reason.
+  const { data, error } = await createServiceClient()
+    .from('product_reviews')
+    .select('product_sku, rating')
+    .eq('is_approved', true);
+  if (error) throw error;
+  const grouped: Record<string, number[]> = {};
+  for (const row of (data ?? []) as { product_sku: string; rating: number }[]) {
+    (grouped[row.product_sku] ??= []).push(row.rating);
+  }
+  const stats: ReviewStats = {};
+  for (const [sku, ratings] of Object.entries(grouped)) {
+    stats[sku] = { avg: Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10, count: ratings.length };
+  }
+  return stats;
+}
+
 // ── Кэшированные функции для ISR ──────────────────────────────────────────────
 
 export const getCategoriesCached = unstable_cache(
@@ -209,6 +235,12 @@ export const getBrandLogosCached = unstable_cache(
   async () => getBrandLogos(),
   ['brand-logos'],
   { revalidate: 60, tags: ['brand-logos'] }
+);
+
+export const getReviewStatsCached = unstable_cache(
+  async () => getReviewStats(),
+  ['review-stats'],
+  { revalidate: 60, tags: ['review-stats'] }
 );
 
 export const getProductBySkuCached = unstable_cache(

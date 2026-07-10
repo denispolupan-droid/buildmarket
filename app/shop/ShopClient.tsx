@@ -9,13 +9,14 @@ import { Plus, Minus, Heart, ChevronDown, Check, SlidersHorizontal, LayoutList, 
 import { CATEGORY_ICONS } from '../../lib/category-icons';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import ProductImage from '../components/ProductImage';
+import { RatingBadge } from '../components/StarRating';
 import ScrollToTop from '../components/ScrollToTop';
 import { PROMO } from '../promo.config';
 import SalesBanner from '../components/SalesBanner';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
-import type { ProductFull, Category } from '../../lib/supabase';
+import type { ProductFull, Category, ReviewStats } from '../../lib/supabase';
 import { getCategoryMeta } from '../../lib/category-descriptions';
 import { useStickyCompact } from '../../lib/useStickyCompact';
 
@@ -43,9 +44,10 @@ type CardProps = {
   isWholesale: boolean;
   lang: 'uk' | 'ru';
   onSaveState?: () => void;
+  rating?: { avg: number; count: number };
 };
 
-function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggleWish, onWholesaleBlock, isWholesale, lang, onSaveState }: CardProps) {
+function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggleWish, onWholesaleBlock, isWholesale, lang, onSaveState, rating }: CardProps) {
   const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
   const displayName = lang === 'ru' ? ((p as { name_ru?: string | null }).name_ru ?? p.name) : p.name;
   const [qty, setQty] = useState(1);
@@ -106,6 +108,12 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
                 {colorVal && <span className="shop-card__meta-badge shop-card__meta-color">{colorVal}</span>}
               </>);
             })()}
+          </div>
+          {/* Fixed-height slot, rendered whether or not this product has reviews yet —
+              otherwise the badge's presence shifts everything below it, throwing off
+              row alignment against sibling cards that have no rating. */}
+          <div style={{ height: '15px', marginTop: '2px', display: 'flex', alignItems: 'center' }}>
+            {rating && rating.count > 0 && <RatingBadge avg={rating.avg} count={rating.count} size={11} />}
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '8px', marginTop: '1px' }}>
             <div className={'shop-card__stock' + (inStock ? '' : ' out')}>
@@ -177,12 +185,13 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
 type Props = {
   products: ProductFull[];
   categories: Category[];
+  reviewStats?: ReviewStats;
   initialSaleOnly?: boolean;
   initialCategory?: string;
   initialBrand?: string;
 };
 
-export default function ShopClient({ products, categories, initialSaleOnly = false, initialCategory, initialBrand }: Props) {
+export default function ShopClient({ products, categories, reviewStats, initialSaleOnly = false, initialCategory, initialBrand }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const lang = pathname.startsWith('/ru') ? 'ru' as const : 'uk' as const;
@@ -647,7 +656,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
             className={'shop-cat-item' + (!selCat ? ' active' : '')}
             onClick={() => { selectCat(null); setExpandedCats(new Set()); }}
           >
-            {t('Всі категорії', 'Все категории')}
+            <span className="shop-cat-item-label">{t('Всі категорії', 'Все категории')}</span>
           </button>
           {parentCats.map(cat => {
             const children = childrenOf[cat.slug] ?? [];
@@ -681,7 +690,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                   }}
                 >
                   {(() => { const Icon = CATEGORY_ICONS[cat.slug]; return Icon ? <Icon size={14} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.65 }} /> : null; })()}
-                  <span style={{ flex: 1, textAlign: 'left' }}>{catDisplayName(cat.slug, cat.name)}</span>
+                  <span className="shop-cat-item-label" style={{ flex: 1, textAlign: 'left' }}>{catDisplayName(cat.slug, cat.name)}</span>
                   {children.length > 0 && (
                     <ChevronDown size={13} style={{ flexShrink: 0, opacity: 0.45, transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)' }} />
                   )}
@@ -702,7 +711,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                           if (grandchildren.length > 0) setExpandedCats(prev => { const n = new Set(prev); n.has(child.slug) ? n.delete(child.slug) : n.add(child.slug); return n; });
                         }}
                       >
-                        <span>{catDisplayName(child.slug, child.name)}</span>
+                        <span className="shop-cat-item-label">{catDisplayName(child.slug, child.name)}</span>
                       </button>
                       <div style={{ overflow: 'hidden', maxHeight: childExpanded ? '1000px' : '0', transition: 'max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1)' }}>
                         {grandchildren.map(gc => (
@@ -713,7 +722,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                             style={{ paddingLeft: '26px', fontSize: '12px', width: '100%', textAlign: 'left' }}
                             onClick={() => selectCat(selCat === gc.slug ? null : gc.slug, cat.slug)}
                           >
-                            {catDisplayName(gc.slug, gc.name)}
+                            <span className="shop-cat-item-label">{catDisplayName(gc.slug, gc.name)}</span>
                           </button>
                         ))}
                       </div>
@@ -1046,6 +1055,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                 onToggleWish={() => toggleWish(p.sku)}
                 lang={lang}
                 onSaveState={saveFilterState}
+                rating={reviewStats?.[p.sku]}
               />
             );
           })}

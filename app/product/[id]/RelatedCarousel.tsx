@@ -5,15 +5,16 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Plus, Heart } from 'lucide-react';
 import ProductImage from '../../components/ProductImage';
+import { RatingBadge } from '../../components/StarRating';
 import { useCart } from '../../../lib/cart';
 import { useWishlist } from '../../../lib/wishlist';
-import type { ProductFull } from '../../../lib/supabase';
+import type { ProductFull, ReviewStats } from '../../../lib/supabase';
 import { tFilterValue } from '../../../lib/translations-ru';
 
 const VISIBLE = 5;
 const GAP = 16;
 
-export default function RelatedCarousel({ products, retail = false }: { products: ProductFull[]; retail?: boolean }) {
+export default function RelatedCarousel({ products, retail = false, reviewStats }: { products: ProductFull[]; retail?: boolean; reviewStats?: ReviewStats }) {
   const pathname = usePathname();
   const lang = pathname.startsWith('/ru') ? 'ru' : 'uk';
   const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
@@ -119,6 +120,11 @@ export default function RelatedCarousel({ products, retail = false }: { products
                   </div>
                   <div className="pc-info">
                     <div className="pc-sku">{p.sku}</div>
+                    {/* Fixed-height slot regardless of whether this product has reviews —
+                        otherwise cards with/without a badge fall out of row alignment. */}
+                    <div style={{ height: '15px', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>
+                      {reviewStats?.[p.sku] && <RatingBadge avg={reviewStats[p.sku].avg} count={reviewStats[p.sku].count} size={11} />}
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
                       {isSale && relPriceOld && <span className="pc-price-old">{relPriceOld} грн</span>}
                       {relPrice > 0

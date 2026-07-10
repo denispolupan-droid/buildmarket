@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -45,6 +46,7 @@ export async function PATCH(req: NextRequest) {
     .eq('id', id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  revalidateTag('review-stats', 'max');
   return NextResponse.json({ ok: true });
 }
 
@@ -56,5 +58,6 @@ export async function DELETE(req: NextRequest) {
 
   const { error } = await service.from('product_reviews').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  revalidateTag('review-stats', 'max');
   return NextResponse.json({ ok: true });
 }

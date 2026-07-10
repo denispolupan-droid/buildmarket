@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
+import { Stars } from '../../components/StarRating';
 
 type Review = {
   id: string;
@@ -10,30 +11,6 @@ type Review = {
   review_text: string | null;
   created_at: string;
 };
-
-function Stars({ rating, size = 16, interactive = false, onRate }: {
-  rating: number; size?: number; interactive?: boolean; onRate?: (r: number) => void;
-}) {
-  const [hover, setHover] = useState(0);
-  return (
-    <span style={{ display: 'inline-flex', gap: '2px' }}>
-      {[1, 2, 3, 4, 5].map(i => (
-        <span
-          key={i}
-          onClick={() => interactive && onRate?.(i)}
-          onMouseEnter={() => interactive && setHover(i)}
-          onMouseLeave={() => interactive && setHover(0)}
-          style={{
-            fontSize: `${size}px`, lineHeight: 1,
-            cursor: interactive ? 'pointer' : 'default',
-            color: (hover || rating) >= i ? '#F59E0B' : '#D1D5DB',
-            transition: 'color 0.1s',
-          }}
-        >★</span>
-      ))}
-    </span>
-  );
-}
 
 export default function ProductReviews({ sku, productName }: { sku: string; productName: string }) {
   const pathname = usePathname();

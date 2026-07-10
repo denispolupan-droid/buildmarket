@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached } from '../../../../lib/supabase';
+import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached } from '../../../../lib/supabase';
 import { getCategoryNameRu } from '../../../../lib/ru';
 import { getCategoryMeta } from '../../../../lib/category-descriptions';
 import ProductTabs from '../../../product/[id]/ProductTabs';
@@ -14,6 +14,7 @@ import BackButton from '../../../product/[id]/BackButton';
 import CoverageCalculator from '../../../product/[id]/CoverageCalculator';
 import Footer from '../../../components/Footer';
 import ProductReviews from '../../../product/[id]/ProductReviews';
+import { RatingBadge } from '../../../components/StarRating';
 import { tFilterValue } from '../../../../lib/translations-ru';
 import { createClient } from '@supabase/supabase-js';
 import '../../../product/[id]/product.css';
@@ -97,13 +98,14 @@ export default async function RuProductPage({ params, searchParams }: { params: 
   const product = await getProductBySkuCached(sku);
   if (!product) notFound();
 
-  const [related, categories, reviewsData] = await Promise.all([
+  const [related, categories, reviewsData, reviewStats] = await Promise.all([
     product.category_slug ? getRelatedProductsCached(product.category_slug, product.sku, 5) : Promise.resolve([]),
     getCategoriesCached(),
     service.from('product_reviews')
       .select('rating')
       .eq('product_sku', sku)
       .eq('is_approved', true),
+    getReviewStatsCached(),
   ]);
 
   const approvedReviews = reviewsData.data ?? [];
@@ -206,6 +208,12 @@ export default async function RuProductPage({ params, searchParams }: { params: 
             <div className="product-info__brand">{product.brand}</div>
             <h1 className="product-info__title">{nameRu}</h1>
 
+            {reviewCount > 0 && (
+              <a href="#reviews" style={{ display: 'inline-block', textDecoration: 'none', marginBottom: '4px' }}>
+                <RatingBadge avg={reviewAvg} count={reviewCount} />
+              </a>
+            )}
+
             <div className="product-info__badges">
               {product.volume && <span className="badge">{volLabel(product.volume)}: {product.volume}</span>}
               {(() => { const c = product.color ?? product.characteristics.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="badge">Цвет: {tFilterValue(c, 'ru')}</span> : null; })()}
@@ -288,9 +296,9 @@ export default async function RuProductPage({ params, searchParams }: { params: 
           </div>
         ) : null; })()}
 
-        {related.length > 0 && <RelatedCarousel products={related} retail={isRetail} />}
+        {related.length > 0 && <RelatedCarousel products={related} retail={isRetail} reviewStats={reviewStats} />}
 
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '32px', marginTop: '32px' }}>
+        <div id="reviews" style={{ borderTop: '1px solid var(--border)', paddingTop: '32px', marginTop: '32px' }}>
           <ProductReviews sku={product.sku} productName={`${product.brand} ${nameRu}`} />
         </div>
 

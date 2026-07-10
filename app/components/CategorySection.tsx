@@ -7,7 +7,7 @@ import CategoryPreview from './CategoryPreview';
 import { getCatIcon, getCatColor } from './CategoryCarousel';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { getCategoryNameRu } from '../../lib/ru';
-import type { Category, ProductFull } from '../../lib/supabase';
+import type { Category, ProductFull, ReviewStats } from '../../lib/supabase';
 import type { UserRole } from '../../lib/user-role';
 
 const WHOLESALE_TYPES = ['dealer', 'contractor', 'shop_owner'];
@@ -16,9 +16,10 @@ const DROPSHIP_TYPES = ['dropship'];
 type Props = {
   categories: Category[];
   products: ProductFull[];
+  reviewStats?: ReviewStats;
 };
 
-export default function CategorySection({ categories, products }: Props) {
+export default function CategorySection({ categories, products, reviewStats }: Props) {
   const pathname = usePathname();
   const lang: 'uk' | 'ru' = pathname.startsWith('/ru') ? 'ru' : 'uk';
   const prefix = lang === 'ru' ? '/ru' : '';
@@ -100,6 +101,7 @@ export default function CategorySection({ categories, products }: Props) {
         products={products}
         selectedSlug={selectedSlug}
         role={role}
+        reviewStats={reviewStats}
       />
     </div>
   );

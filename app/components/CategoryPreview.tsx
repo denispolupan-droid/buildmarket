@@ -5,11 +5,12 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Heart, Eye, Plus, Check } from 'lucide-react';
 import ProductImage from './ProductImage';
+import { RatingBadge } from './StarRating';
 import { getCatIcon, getCatColor, catDescription } from './CategoryCarousel';
 import { getCategoryNameRu } from '../../lib/ru';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
-import type { ProductFull, Category } from '../../lib/supabase';
+import type { ProductFull, Category, ReviewStats } from '../../lib/supabase';
 import type { UserRole } from '../../lib/user-role';
 
 type Bullet = { text: string; textRu: string; slug?: string };
@@ -112,6 +113,7 @@ type Props = {
   products: ProductFull[];
   selectedSlug: string;
   role: UserRole;
+  reviewStats?: ReviewStats;
 };
 
 const navBtnStyle: React.CSSProperties = {
@@ -130,7 +132,7 @@ const actionBtnStyle: React.CSSProperties = {
 
 const PAGE_SIZE = 2;
 
-function ProductCard({ product, isRetail, bordered, lang, prefix }: { product: ProductFull; isRetail: boolean; bordered: boolean; lang: 'uk' | 'ru'; prefix: string }) {
+function ProductCard({ product, isRetail, bordered, lang, prefix, rating }: { product: ProductFull; isRetail: boolean; bordered: boolean; lang: 'uk' | 'ru'; prefix: string; rating?: { avg: number; count: number } }) {
   const curMinOrder = isRetail ? 1 : (product.min_order ?? 1);
   const [qty, setQty]           = useState(curMinOrder);
   const [inputVal, setInputVal] = useState(String(curMinOrder));
@@ -174,7 +176,10 @@ function ProductCard({ product, isRetail, bordered, lang, prefix }: { product: P
       <div style={{ padding: '0 16px 12px', flexShrink: 0, minHeight: '68px', display: 'flex', gap: '8px', alignItems: 'stretch' }}>
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <Link href={prodHref} style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, textDecoration: 'none' }}>{displayName}</Link>
-          <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>Арт. {product.sku}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+            <span style={{ fontSize: '11px', color: '#94A3B8' }}>Арт. {product.sku}</span>
+            {rating && rating.count > 0 && <RatingBadge avg={rating.avg} count={rating.count} size={10} />}
+          </div>
         </div>
         <div style={{ flexShrink: 0, textAlign: 'right', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
@@ -212,7 +217,7 @@ function ProductCard({ product, isRetail, bordered, lang, prefix }: { product: P
   );
 }
 
-export default function CategoryPreview({ categories, products, selectedSlug, role }: Props) {
+export default function CategoryPreview({ categories, products, selectedSlug, role, reviewStats }: Props) {
   const pathname = usePathname();
   const lang: 'uk' | 'ru' = pathname.startsWith('/ru') ? 'ru' : 'uk';
   const prefix = lang === 'ru' ? '/ru' : '';
@@ -340,7 +345,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
         {visibleProducts.length > 0 ? (
           <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: visibleProducts.length > 1 ? '1fr 1fr' : '1fr' }}>
             {visibleProducts.map((p, i) => (
-              <ProductCard key={p.sku} product={p} isRetail={isRetail} bordered={i === 0 && visibleProducts.length > 1} lang={lang} prefix={prefix} />
+              <ProductCard key={p.sku} product={p} isRetail={isRetail} bordered={i === 0 && visibleProducts.length > 1} lang={lang} prefix={prefix} rating={reviewStats?.[p.sku]} />
             ))}
           </div>
         ) : (
