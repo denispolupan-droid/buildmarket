@@ -86,7 +86,7 @@ export default async function Footer() {
             <div style={{ display: 'flex', gap: '8px' }}>
               <CopyEmailButton email="info@fixline.com.ua" />
               <a
-                href="https://t.me/380991997788"
+                href="https://t.me/+380991997788"
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Telegram"

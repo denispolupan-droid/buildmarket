@@ -82,7 +82,7 @@ export default function ContactsPage() {
                 icon: Send,
                 title: 'Telegram',
                 lines: [
-                  <a key="t1" href="https://t.me/380991997788" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand-blue)', fontWeight: 600, fontSize: '15px' }}>Написати в Telegram</a>,
+                  <a key="t1" href="https://t.me/+380991997788" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand-blue)', fontWeight: 600, fontSize: '15px' }}>Написати в Telegram</a>,
                   <span key="t2" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Швидкі відповіді</span>,
                 ],
               },
