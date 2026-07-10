@@ -45,6 +45,7 @@ const NAV = [
   { href: '/admin/reviews',              label: 'Відгуки',        icon: Star,           exact: false },
   { href: '/admin/chat',                 label: 'Чат',            icon: MessageSquare,  exact: false },
   { href: '/admin/promo',                label: 'Акції та банери', icon: Megaphone,      exact: false },
+  { href: '/admin/promo-codes',          label: 'Промокоди',      icon: Tags,            exact: false },
   { href: '/admin/settings',             label: 'Налаштування',   icon: Settings,       exact: false },
 ];
 

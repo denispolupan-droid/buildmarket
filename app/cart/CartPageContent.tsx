@@ -9,6 +9,7 @@ const WHOLESALE_MIN = 3000;
 import { useCart } from '../../lib/cart';
 import { trackBeginCheckout, trackPurchase } from '../../lib/analytics';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
+import { getStoredUtm, clearUtm } from '../../lib/utm';
 import ProductImage from '../components/ProductImage';
 import NovaPoshtaSelect from '../components/NovaPoshtaSelect';
 
@@ -75,6 +76,12 @@ const T = {
     submitCard: 'Перейти до оплати →',
     submitOrder: 'Підтвердити замовлення →',
     commentPh: 'Побажання, уточнення до замовлення...',
+    promoLabel: 'Промокод',
+    promoPlaceholder: 'PROMO20',
+    promoApply: 'Застосувати',
+    promoApplying: 'Перевірка...',
+    promoRemove: 'Видалити',
+    promoDiscount: 'Знижка за промокодом',
   },
   ru: {
     deliveryNova: 'Новая Почта',
@@ -136,6 +143,12 @@ const T = {
     submitCard: 'Перейти к оплате →',
     submitOrder: 'Подтвердить заказ →',
     commentPh: 'Пожелания, уточнения к заказу...',
+    promoLabel: 'Промокод',
+    promoPlaceholder: 'PROMO20',
+    promoApply: 'Применить',
+    promoApplying: 'Проверка...',
+    promoRemove: 'Удалить',
+    promoDiscount: 'Скидка по промокоду',
   },
 } as const;
 
@@ -334,6 +347,40 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
+  const [promoInput,   setPromoInput]   = useState('');
+  const [promoApplied, setPromoApplied] = useState<{
+    code: string; discountType: 'percent' | 'fixed';
+    discountValue: number; discountAmount: number; finalTotal: number;
+  } | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError,   setPromoError]   = useState('');
+
+  // Reset promo when cart contents change
+  useEffect(() => { setPromoApplied(null); setPromoError(''); }, [totalPrice]);
+
+  const promoEligibleTotal = items.reduce((s, i) => s + (i.is_promo ? 0 : i.price * i.qty), 0);
+
+  async function handleApplyPromo() {
+    if (!promoInput.trim()) return;
+    setPromoLoading(true); setPromoError('');
+    try {
+      const res = await fetch('/api/promo/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: promoInput.trim(), cartTotal: promoEligibleTotal }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setPromoApplied(data);
+      setPromoInput('');
+    } catch (e) {
+      setPromoError(e instanceof Error ? e.message : 'Помилка');
+      setPromoApplied(null);
+    } finally {
+      setPromoLoading(false);
+    }
+  }
+
   async function handleSubmit() {
     const errs = validate();
     if (errs.size > 0) {
@@ -342,7 +389,8 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     }
     setSubmitting(true);
     setSubmitError('');
-    trackBeginCheckout(items, totalPrice);
+    const finalTotal = promoApplied?.finalTotal ?? totalPrice;
+    trackBeginCheckout(items, finalTotal);
     try {
       const res = await fetch('/api/orders', {
         method: 'POST',
@@ -361,15 +409,20 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
           comment: [comment, noCallback ? '⛔ Не передзвонювати для підтвердження' : ''].filter(Boolean).join('\n') || null,
           items,
           totalPrice,
+          promoCode: promoApplied?.code ?? null,
+          promoEligibleTotal: promoApplied ? promoEligibleTotal : undefined,
+          ...getStoredUtm(),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Помилка сервера');
       if (payment === 'card' && data.pageUrl) {
+        clearUtm();
         window.location.href = data.pageUrl;
       } else {
-        trackPurchase(String(data.id), items, totalPrice);
+        trackPurchase(String(data.id), items, finalTotal);
         clearCart();
+        clearUtm();
         router.push(`/order-success?id=${data.id}&num=${data.orderNumber}${isRetail ? '&from=shop' : ''}`);
       }
     } catch (e) {
@@ -761,11 +814,56 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
 
               {/* Totals + submit */}
               <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px' }}>
+
+                {/* Promo code input */}
+                <div style={{ marginBottom: '16px' }}>
+                  {promoApplied ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '10px', padding: '10px 14px' }}>
+                      <span style={{ fontSize: '13px', color: '#15803D', fontWeight: 600 }}>
+                        Промокод <span style={{ fontFamily: 'monospace' }}>{promoApplied.code}</span> застосовано
+                      </span>
+                      <button
+                        onClick={() => { setPromoApplied(null); setPromoError(''); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#15803D', textDecoration: 'underline', padding: 0 }}
+                      >{tr.promoRemove}</button>
+                    </div>
+                  ) : (
+                    <div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                          value={promoInput}
+                          onChange={e => setPromoInput(e.target.value.toUpperCase())}
+                          onKeyDown={e => e.key === 'Enter' && handleApplyPromo()}
+                          placeholder={tr.promoPlaceholder}
+                          style={{ flex: 1, height: '38px', padding: '0 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none', fontFamily: 'monospace', letterSpacing: '0.05em' }}
+                        />
+                        <button
+                          onClick={handleApplyPromo}
+                          disabled={promoLoading || !promoInput.trim()}
+                          style={{ height: '38px', padding: '0 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, cursor: promoInput.trim() ? 'pointer' : 'default', whiteSpace: 'nowrap', opacity: promoInput.trim() ? 1 : 0.5 }}
+                        >{promoLoading ? tr.promoApplying : tr.promoApply}</button>
+                      </div>
+                      {promoError && <div style={{ fontSize: '12px', color: '#EF4444', marginTop: '6px' }}>{promoError}</div>}
+                      {!promoError && promoEligibleTotal < totalPrice && promoEligibleTotal > 0 && (
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '5px' }}>
+                          Знижка не розповсюджується на акційні товари
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>{tr.itemsTotal(totalItems)}</span>
                     <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{totalPrice.toFixed(2)} грн</span>
                   </div>
+                  {promoApplied && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                      <span style={{ color: '#15803D' }}>{tr.promoDiscount}</span>
+                      <span style={{ fontWeight: 600, color: '#15803D' }}>−{promoApplied.discountAmount.toFixed(2)} грн</span>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>{tr.deliveryLabel}</span>
                     <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{tr.deliveryByCarrier}</span>
@@ -773,7 +871,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                 </div>
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
                   <span style={{ color: 'var(--text-primary)' }}>{tr.total}</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{totalPrice.toFixed(2)} грн</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{(promoApplied?.finalTotal ?? totalPrice).toFixed(2)} грн</span>
                 </div>
                 {role === 'wholesale' && (() => {
                   const pct     = Math.min(100, Math.round((totalPrice / WHOLESALE_MIN) * 100));

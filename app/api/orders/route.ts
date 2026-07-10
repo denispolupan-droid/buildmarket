@@ -19,7 +19,9 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const { company, contact, phone, email, deliveryType, deliverySubtype, deliveryAddress,
-          deliveryCityRef, deliveryCityName, deliveryWarehouseRef, paymentType, comment, items, totalPrice } = body;
+          deliveryCityRef, deliveryCityName, deliveryWarehouseRef, paymentType, comment, items, totalPrice,
+          promoCode, promoEligibleTotal,
+          utm_source, utm_medium, utm_campaign, utm_content, utm_term, referrer_url } = body;
 
   const phoneClean = String(phone ?? '').replace(/[\s\-()]/g, '');
   if (!contact?.trim())   return NextResponse.json({ error: 'Вкажіть контактну особу' }, { status: 400 });
@@ -32,11 +34,43 @@ export async function POST(req: NextRequest) {
 
   const WHOLESALE_TYPES = ['dealer', 'wholesale', 'contractor', 'shop_owner'];
   const accountType = user?.user_metadata?.account_type as string | undefined;
-  if (WHOLESALE_TYPES.includes(accountType ?? '') && totalPrice < 3000) {
-    return NextResponse.json({ error: 'Мінімальна сума оптового замовлення — 3 000 ₴' }, { status: 400 });
-  }
 
   const admin  = createSupabaseAdmin();
+
+  // ── Promo code: validate server-side and compute final total ─────────────
+  let finalTotal      = totalPrice as number;
+  let promoDiscount:  number | null = null;
+  let resolvedPromoCode: string | null = null;
+
+  if (promoCode) {
+    const { data: promo } = await admin.from('promo_codes')
+      .select('*').eq('code', String(promoCode).toUpperCase().trim()).eq('is_active', true).maybeSingle();
+    if (!promo)
+      return NextResponse.json({ error: 'Промокод не знайдено або неактивний' }, { status: 400 });
+    const now = new Date();
+    if (promo.valid_from && new Date(promo.valid_from) > now)
+      return NextResponse.json({ error: 'Промокод ще не діє' }, { status: 400 });
+    if (promo.valid_until && new Date(promo.valid_until) < now)
+      return NextResponse.json({ error: 'Термін дії промокоду закінчився' }, { status: 400 });
+    if (promo.max_uses !== null && promo.uses_count >= promo.max_uses)
+      return NextResponse.json({ error: 'Промокод вичерпано' }, { status: 400 });
+    if (promo.min_order_amount && totalPrice < promo.min_order_amount)
+      return NextResponse.json({ error: `Мінімальна сума для цього промокоду — ${promo.min_order_amount} ₴` }, { status: 400 });
+    const discountBase = (typeof promoEligibleTotal === 'number' && promoEligibleTotal > 0)
+      ? promoEligibleTotal
+      : totalPrice;
+    promoDiscount = promo.discount_type === 'percent'
+      ? Math.round(discountBase * promo.discount_value / 100 * 100) / 100
+      : Math.min(Number(promo.discount_value), discountBase);
+    if (promo.max_discount_amount && promoDiscount > promo.max_discount_amount)
+      promoDiscount = promo.max_discount_amount;
+    finalTotal = Math.max(0, totalPrice - (promoDiscount ?? 0));
+    resolvedPromoCode = promo.code;
+  }
+
+  if (WHOLESALE_TYPES.includes(accountType ?? '') && finalTotal < 3000) {
+    return NextResponse.json({ error: 'Мінімальна сума оптового замовлення — 3 000 ₴' }, { status: 400 });
+  }
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;
   const FROM    = 'FIXLINE <noreply@fixline.com.ua>';
   const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'orders@fixline.com.ua';
@@ -53,7 +87,7 @@ export async function POST(req: NextRequest) {
         method: 'POST',
         headers: { 'X-Token': token, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount:   Math.round(totalPrice * 100),
+          amount:   Math.round(finalTotal * 100),
           ccy:      980,
           merchantPaymInfo: {
             reference,
@@ -94,10 +128,18 @@ export async function POST(req: NextRequest) {
       payment_type:          'card',
       comment:               comment ?? null,
       items,
-      total_price:           totalPrice,
+      total_price:           finalTotal,
+      promo_code:            resolvedPromoCode,
+      promo_discount:        promoDiscount,
+      utm_source:            utm_source ?? null,
+      utm_medium:            utm_medium ?? null,
+      utm_campaign:          utm_campaign ?? null,
+      utm_content:           utm_content ?? null,
+      utm_term:              utm_term ?? null,
+      referrer_url:          referrer_url ?? null,
     };
 
-    await admin.from('pending_card_orders').insert({
+    const { error: pendingErr } = await admin.from('pending_card_orders').insert({
       id:          pendingId,
       user_id:     user?.id ?? null,
       payload,
@@ -105,6 +147,10 @@ export async function POST(req: NextRequest) {
       total_price: totalPrice,
       email,
     });
+    if (pendingErr) {
+      console.error('[pending_card_orders] insert failed:', pendingErr);
+      return NextResponse.json({ error: 'Помилка збереження замовлення. Спробуйте ще раз.' }, { status: 500 });
+    }
 
     admin.from('abandoned_carts')
       .update({ recovered_at: new Date().toISOString() })
@@ -128,11 +174,19 @@ export async function POST(req: NextRequest) {
       delivery_city_ref:     deliveryCityRef ?? null,
       delivery_city_name:    deliveryCityName ?? null,
       delivery_warehouse_ref: deliveryWarehouseRef ?? null,
-      payment_type:  paymentType,
-      status:        'new',
-      comment:       comment ?? null,
+      payment_type:   paymentType,
+      status:         'new',
+      comment:        comment ?? null,
       items,
-      total_price:   totalPrice,
+      total_price:    finalTotal,
+      promo_code:     resolvedPromoCode,
+      promo_discount: promoDiscount,
+      utm_source:     utm_source ?? null,
+      utm_medium:     utm_medium ?? null,
+      utm_campaign:   utm_campaign ?? null,
+      utm_content:    utm_content ?? null,
+      utm_term:       utm_term ?? null,
+      referrer_url:   referrer_url ?? null,
     })
     .select('id, order_number')
     .single();
@@ -140,6 +194,10 @@ export async function POST(req: NextRequest) {
   if (error) {
     console.error('[orders]', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (resolvedPromoCode) {
+    admin.rpc('increment_promo_used', { p_code: resolvedPromoCode }).then(() => {});
   }
 
   admin.from('abandoned_carts')

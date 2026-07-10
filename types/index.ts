@@ -90,6 +90,7 @@ export type CartItem = {
   ac: string;
   img_type: 'tube' | 'canister';
   imageUrl?: string;
+  is_promo?: boolean;
 };
 
 export type OrderItem = {

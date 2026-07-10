@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, LayoutGrid, Phone, User, ShoppingCart, LogOut, ChevronDown, Menu, X, Heart, Sun, Moon, Store, PackageCheck, BookOpen } from 'lucide-react';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
+import { captureUtm } from '../../lib/utm';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
 import { useTheme } from '../../lib/theme';
@@ -42,6 +43,9 @@ export default function Header() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // Capture UTM params on every navigation
+  useEffect(() => { captureUtm(); }, [pathname]);
 
   // Close mobile menu on route change
   useEffect(() => { setMobileOpen(false); setMenuOpen(false); }, [pathname]);
