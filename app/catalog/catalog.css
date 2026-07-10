@@ -14,6 +14,12 @@
   display: flex; align-items: center; gap: 7px;
 }
 .cat-item:hover { background: var(--bg-soft); color: var(--text-primary); }
+.cat-item-label {
+  display: inline-block;
+  transform-origin: left center;
+  transition: transform 0.15s ease;
+}
+.cat-item:hover .cat-item-label { transform: scale(1.07); }
 .cat-item.active { background: #EEF4FF; color: #1E40AF; font-weight: 600; }
 [data-theme="dark"] .cat-item.active { background: #1E3A5F; color: #93C5FD; }
 .cat-item.parent-active { background: #F5F8FF; color: #3B6EC4; font-weight: 600; }

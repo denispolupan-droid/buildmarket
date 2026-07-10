@@ -7,10 +7,11 @@ import { CATEGORY_ICONS } from '../../lib/category-icons';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import Link from 'next/link';
 import ProductImage from '../components/ProductImage';
+import { RatingBadge } from '../components/StarRating';
 import ScrollToTop from '../components/ScrollToTop';
 import { PROMO } from '../promo.config';
 import SalesBanner from '../components/SalesBanner';
-import type { ProductFull, Category } from '../../lib/supabase';
+import type { ProductFull, Category, ReviewStats } from '../../lib/supabase';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
@@ -40,9 +41,9 @@ function CopySkuBtn({ sku, lang }: { sku: string; lang: 'uk' | 'ru' }) {
   );
 }
 
-type Props = { products: ProductFull[]; categories: Category[]; initialSearch?: string; initialCategory?: string; initialSaleOnly?: boolean };
+type Props = { products: ProductFull[]; categories: Category[]; reviewStats?: ReviewStats; initialSearch?: string; initialCategory?: string; initialSaleOnly?: boolean };
 
-export default function CatalogClient({ products, categories, initialSearch = '', initialCategory = '', initialSaleOnly = false }: Props) {
+export default function CatalogClient({ products, categories, reviewStats, initialSearch = '', initialCategory = '', initialSaleOnly = false }: Props) {
   const [isWholesale, setIsWholesale] = useState(false);
   const [search,        setSearch]        = useState(initialSearch);
   const [selCat,        setSelCat]        = useState(initialCategory);
@@ -611,7 +612,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                   className={'cat-item' + (!selCat ? ' active' : '')}
                   onClick={() => selectCat('')}
                 >
-                  {t('Всі категорії', 'Все категории')}
+                  <span className="cat-item-label">{t('Всі категорії', 'Все категории')}</span>
                 </div>
                 {parentCats.map(cat => {
                   const children = childrenOf[cat.slug] ?? [];
@@ -642,7 +643,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                         }}
                       >
                         {(() => { const Icon = CATEGORY_ICONS[cat.slug]; return Icon ? <Icon size={14} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.65 }} /> : null; })()}
-                        <span style={{ flex: 1, textAlign: 'left' }}>{cName(cat.name, cat.slug)}</span>
+                        <span className="cat-item-label" style={{ flex: 1, textAlign: 'left' }}>{cName(cat.name, cat.slug)}</span>
                         {children.length > 0 && (
                           isExpanded
                             ? <ChevronDown size={13} style={{ flexShrink: 0, opacity: 0.45 }} />
@@ -676,7 +677,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                                   }
                                 }}
                               >
-                                <span style={{ flex: 1 }}>{cName(child.name, child.slug)}</span>
+                                <span className="cat-item-label" style={{ flex: 1 }}>{cName(child.name, child.slug)}</span>
                                 {grandchildren.length > 0 && (
                                   isChildExpanded
                                     ? <ChevronDown size={12} style={{ flexShrink: 0, opacity: 0.45 }} />
@@ -697,7 +698,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                                       style={{ paddingLeft: '26px', fontSize: '12px' }}
                                       onClick={() => selectCat(selCat === gc.slug ? '' : gc.slug, child.slug)}
                                     >
-                                      {cName(gc.name, gc.slug)}
+                                      <span className="cat-item-label">{cName(gc.name, gc.slug)}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -1019,6 +1020,12 @@ export default function CatalogClient({ products, categories, initialSearch = ''
                               <span>{p.brand}</span>
                               {p.volume && <span className="catalog-card__vol">{p.volume}</span>}
                               {(() => { const c = p.color ?? p.characteristics?.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="catalog-card__vol catalog-card__vol--color">{tFilterValue(c, lang)}</span> : null; })()}
+                            </div>
+                            {/* Fixed-height slot rendered whether or not this product has reviews yet —
+                                otherwise the badge's presence shifts everything below it, throwing off
+                                row alignment against sibling cards that have no rating. */}
+                            <div style={{ height: '15px', marginTop: '2px', display: 'flex', alignItems: 'center' }}>
+                              {reviewStats?.[p.sku] && <RatingBadge avg={reviewStats[p.sku].avg} count={reviewStats[p.sku].count} size={11} />}
                             </div>
                             <div className="catalog-card__bottom">
                             <div className="catalog-card__bottom-left">

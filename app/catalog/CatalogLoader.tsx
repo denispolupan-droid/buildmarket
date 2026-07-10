@@ -1,5 +1,5 @@
 import CatalogClient from './CatalogClient';
-import { getProductsCached, getCategoriesCached } from '../../lib/supabase';
+import { getProductsCached, getCategoriesCached, getReviewStatsCached } from '../../lib/supabase';
 
 type Props = {
   initialSearch?: string;
@@ -9,15 +9,17 @@ type Props = {
 
 // Server Component — дані отримуються на сервері, без client-side waterfall
 export default async function CatalogLoader({ initialSearch, initialCategory, initialSaleOnly }: Props) {
-  const [products, categories] = await Promise.all([
+  const [products, categories, reviewStats] = await Promise.all([
     getProductsCached(),
     getCategoriesCached(),
+    getReviewStatsCached(),
   ]);
 
   return (
     <CatalogClient
       products={products}
       categories={categories}
+      reviewStats={reviewStats}
       initialSearch={initialSearch ?? ''}
       initialCategory={initialCategory ?? ''}
       initialSaleOnly={initialSaleOnly}
