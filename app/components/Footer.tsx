@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { Mail, Phone, MapPin, Clock4 } from 'lucide-react';
+import { Mail, Phone, MapPin, Clock4, Send } from 'lucide-react';
 import { headers } from 'next/headers';
 import { getCategoriesCached, getProductsCached } from '../../lib/supabase';
 import { getCategoryNameRu } from '../../lib/ru';
@@ -85,6 +85,20 @@ export default async function Footer() {
             </p>
             <div style={{ display: 'flex', gap: '8px' }}>
               <CopyEmailButton email="info@fixline.com.ua" />
+              <a
+                href="https://t.me/380991997788"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Telegram"
+                className="btn-social"
+                style={{
+                  width: '36px', height: '36px', borderRadius: '8px',
+                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8',
+                }}
+              >
+                <Send size={18} strokeWidth={2} />
+              </a>
             </div>
           </div>
 

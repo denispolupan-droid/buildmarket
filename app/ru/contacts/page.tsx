@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
-import { MapPin, Phone, Mail, Clock } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, Send } from 'lucide-react';
 
 const BASE = 'https://fixline.com.ua';
 
@@ -79,6 +79,14 @@ export default function ContactsRuPage() {
                 lines: [
                   <a key="e1" href="mailto:info@fixline.com.ua" style={{ color: 'var(--brand-blue)', fontWeight: 600, fontSize: '15px' }}>info@fixline.com.ua</a>,
                   <span key="e2" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Отвечаем в течение дня</span>,
+                ],
+              },
+              {
+                icon: Send,
+                title: 'Telegram',
+                lines: [
+                  <a key="t1" href="https://t.me/380991997788" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand-blue)', fontWeight: 600, fontSize: '15px' }}>Написать в Telegram</a>,
+                  <span key="t2" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Быстрые ответы</span>,
                 ],
               },
               {

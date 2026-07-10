@@ -186,7 +186,7 @@
   gap: 8px;
   overflow-x: auto;
   scrollbar-width: none;
-  padding-bottom: 16px;
+  padding-bottom: 4px;
   flex-wrap: nowrap;
 }
 .shop-cats-pills::-webkit-scrollbar { display: none; }
@@ -211,7 +211,7 @@
 /* Active filter chips — shows every currently-selected filter value, each removable on its own */
 .shop-active-filters {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-  padding: 12px 20px 0;
+  padding: 0 20px 8px;
 }
 .shop-filter-chip {
   display: inline-flex; align-items: center; gap: 6px;
@@ -225,9 +225,11 @@
 [data-theme="dark"] .shop-filter-chip { background: rgba(72,128,184,0.16); color: #93C5FD; border-color: rgba(72,128,184,0.4); }
 [data-theme="dark"] .shop-filter-chip:hover { background: rgba(72,128,184,0.26); }
 .shop-filter-chip--clear {
-  background: transparent; border-color: var(--border); color: var(--text-secondary); font-weight: 500;
+  background: rgba(239,68,68,0.07); border-color: rgba(239,68,68,0.25); color: #C0392B; font-weight: 500;
 }
-.shop-filter-chip--clear:hover { background: var(--bg-soft); color: var(--text-primary); }
+.shop-filter-chip--clear:hover { background: rgba(239,68,68,0.13); border-color: rgba(239,68,68,0.4); }
+[data-theme="dark"] .shop-filter-chip--clear { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #F87171; }
+[data-theme="dark"] .shop-filter-chip--clear:hover { background: rgba(239,68,68,0.18); }
 
 /* Sort select */
 .shop-sort-select {

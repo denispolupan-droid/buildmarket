@@ -80,20 +80,22 @@ export default function SalesBanner({ mode, activeSlugs }: Props) {
           </span>
         </div>
 
-        <p style={{ margin: '0 0 10px', fontSize: '12px', color: txtColor, opacity: 0.8, lineHeight: 1.4 }}>
-          {banner.subtitle}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+          <p style={{ margin: 0, fontSize: '12px', color: txtColor, opacity: 0.8, lineHeight: 1.4 }}>
+            {banner.subtitle}
+          </p>
 
-        <Link href={href} className="promo-banner-cta" style={{
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-          height: '40px', padding: '0 18px', borderRadius: '9px',
-          background: hasImg ? 'rgba(255,255,255,0.2)' : banner.ctaBgColor,
-          border: hasImg ? '1px solid rgba(255,255,255,0.4)' : 'none',
-          color: '#fff', fontSize: '14px', fontWeight: 700,
-          textDecoration: 'none', whiteSpace: 'nowrap',
-        }}>
-          {banner.ctaText} →
-        </Link>
+          <Link href={href} className="promo-banner-cta" style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+            height: '34px', padding: '0 16px', borderRadius: '9px', flexShrink: 0,
+            background: hasImg ? 'rgba(255,255,255,0.2)' : banner.ctaBgColor,
+            border: hasImg ? '1px solid rgba(255,255,255,0.4)' : 'none',
+            color: '#fff', fontSize: '13px', fontWeight: 700,
+            textDecoration: 'none', whiteSpace: 'nowrap',
+          }}>
+            {banner.ctaText} →
+          </Link>
+        </div>
       </div>
     </div>
   );
