@@ -170,6 +170,78 @@ export function buildCustomerOrderEmail(d: CustomerOrderEmailData): string {
 </html>`;
 }
 
+export type CustomerStatusEmailData = {
+  orderNumber: number;
+  contact: string;
+  company: string;
+  status: string;
+  trackingNumber?: string | null;
+  siteUrl: string;
+};
+
+const STATUS_EMAIL_CONTENT: Record<string, { emoji: string; title: string; body: (d: CustomerStatusEmailData) => string }> = {
+  confirmed: {
+    emoji: '✅',
+    title: 'Замовлення підтверджено',
+    body: d => `Ваше замовлення <strong>№${d.orderNumber}</strong> підтверджено. Ми готуємо його до відправки та повідомимо вас, щойно воно вирушить.`,
+  },
+  shipped: {
+    emoji: '📦',
+    title: 'Замовлення відправлено',
+    body: d => `Замовлення <strong>№${d.orderNumber}</strong> передано перевізнику (Нова Пошта).${d.trackingNumber ? `<br><br>ТТН: <strong>${d.trackingNumber}</strong> — відстежуйте на <a href="https://novaposhta.ua" style="color:#1E3A5F;font-weight:600;">novaposhta.ua</a>` : ''}`,
+  },
+  delivered: {
+    emoji: '🎉',
+    title: 'Замовлення доставлено',
+    body: d => `Замовлення <strong>№${d.orderNumber}</strong> доставлено. Дякуємо за покупку — будемо раді бачити вас знову на <a href="${d.siteUrl}" style="color:#1E3A5F;font-weight:600;">fixline.com.ua</a>!`,
+  },
+  cancelled: {
+    emoji: '❌',
+    title: 'Замовлення скасовано',
+    body: d => `Замовлення <strong>№${d.orderNumber}</strong> скасовано. Якщо це сталося не за вашим запитом або виникли питання — напишіть нам на <a href="mailto:info@fixline.com.ua" style="color:#1E3A5F;font-weight:600;">info@fixline.com.ua</a>.`,
+  },
+};
+
+// Compact status-update email — mirrors notifyCustomerStatus() in lib/telegram.ts so
+// customers get the same update on both channels regardless of which one is linked.
+export function buildCustomerStatusEmail(d: CustomerStatusEmailData): string | null {
+  const content = STATUS_EMAIL_CONTENT[d.status];
+  if (!content) return null;
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F8FAFC;font-family:Inter,system-ui,sans-serif;">
+  <div style="max-width:560px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #E2E8F0;">
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#1E3A5F;">
+      <tr>
+        <td style="padding:28px 32px;">
+          <div style="color:#fff;font-size:20px;font-weight:800;letter-spacing:-0.5px;">FIXLINE</div>
+          <div style="color:#94A3B8;font-size:12px;margin-top:2px;">B2B платформа будівельної хімії</div>
+        </td>
+        <td style="padding:28px 32px;text-align:right;color:#fff;font-size:28px;">${content.emoji}</td>
+      </tr>
+    </table>
+
+    <div style="padding:28px 32px;">
+      <div style="font-size:19px;font-weight:800;color:#0F172A;margin-bottom:10px;">${content.title}</div>
+      <div style="font-size:14px;color:#374151;line-height:1.7;">
+        Вітаємо, ${d.company || d.contact}! ${content.body(d)}
+      </div>
+    </div>
+
+    <div style="background:#F8FAFC;padding:20px 32px;text-align:center;border-top:1px solid #F1F5F9;">
+      <div style="font-size:13px;color:#64748B;margin-bottom:6px;">Питання щодо замовлення:</div>
+      <a href="mailto:info@fixline.com.ua" style="font-size:13px;color:#1E3A5F;font-weight:600;">info@fixline.com.ua</a>
+      <div style="font-size:11px;color:#CBD5E1;margin-top:10px;">FIXLINE · fixline.com.ua</div>
+    </div>
+
+  </div>
+</body>
+</html>`;
+}
+
 export type OrderEmailData = {
   orderNumber: number;
   company: string;

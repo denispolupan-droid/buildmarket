@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Resend } from 'resend';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
 import { recordDropshipSale } from '../../../../../lib/accounting/dropship';
 import { releaseReservation } from '../../../../../lib/accounting/reservations';
 import { notifyAdminStatusChange, notifyCustomerStatus } from '../../../../../lib/telegram';
+import { buildCustomerStatusEmail } from '../../../../../lib/invoice-email';
 import { recordCustomerPayment, recordMarketplaceCommission, recordShipment } from '../../../../../lib/accounting/money';
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/prom-api';
 import { computePromCommission } from '../../../../../lib/prom-commission';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createSupabaseServer();
@@ -361,7 +365,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     try {
       const { data: order } = await db
         .from('orders')
-        .select('order_number, contact, phone, telegram_chat_id, tracking_number')
+        .select('order_number, contact, company, phone, email, telegram_chat_id, tracking_number')
         .eq('id', id)
         .single();
 
@@ -370,8 +374,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           { order_number: order.order_number, contact: order.contact, phone: order.phone },
           status,
         );
+        // Both channels, same as on order creation — Telegram when linked, email always
+        // (email is the one channel every customer has, so it never gets skipped here).
         if (order.telegram_chat_id && ['confirmed', 'shipped', 'delivered', 'cancelled'].includes(status)) {
           notifyCustomerStatus(order.telegram_chat_id, order.order_number, status, order.tracking_number);
+        }
+        const statusEmailHtml = order.email
+          ? buildCustomerStatusEmail({
+              orderNumber: order.order_number, contact: order.contact, company: order.company ?? '',
+              status, trackingNumber: order.tracking_number,
+              siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua',
+            })
+          : null;
+        if (statusEmailHtml) {
+          resend.emails.send({
+            from: 'FIXLINE <noreply@fixline.com.ua>', to: order.email,
+            subject: `Замовлення №${order.order_number} — оновлення статусу`,
+            html: statusEmailHtml,
+          }).catch(e => console.error('[status email]', e));
         }
       }
     } catch (err) {

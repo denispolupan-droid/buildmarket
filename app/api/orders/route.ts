@@ -237,6 +237,10 @@ export async function POST(req: NextRequest) {
 
   const existingChatId = prevOrder?.telegram_chat_id ?? null;
 
+  // Customer gets both channels whenever both are available — Telegram alone isn't
+  // reliable enough to skip email (chat_id could be stale, bot could be blocked),
+  // and email alone means a returning customer with Telegram linked misses the
+  // faster/more-visible channel they already opted into.
   if (existingChatId) {
     await admin.from('orders').update({ telegram_chat_id: existingChatId }).eq('id', data.id);
     notifyCustomerNewOrder(existingChatId, {
@@ -244,20 +248,20 @@ export async function POST(req: NextRequest) {
       payment_type: paymentType, delivery_city_name: deliveryCityName ?? null,
       invoice_url: paymentType === 'invoice' ? invoiceUrl : undefined,
     });
-  } else {
-    const customerSubject = paymentType === 'cod'
-      ? `Замовлення №${data.order_number} оформлено — FIXLINE`
-      : `Рахунок №${data.order_number} — FIXLINE`;
-    resend.emails.send({
-      from: FROM, to: email, subject: customerSubject,
-      html: buildCustomerOrderEmail({
-        orderNumber: data.order_number, orderId: data.id,
-        company: company ?? '', contact, totalPrice, paymentType,
-        userId: user?.id ?? null, invoiceUrl, siteUrl,
-        telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME,
-      }),
-    }).catch(e => console.error('[customer email]', e));
   }
+
+  const customerSubject = paymentType === 'cod'
+    ? `Замовлення №${data.order_number} оформлено — FIXLINE`
+    : `Рахунок №${data.order_number} — FIXLINE`;
+  resend.emails.send({
+    from: FROM, to: email, subject: customerSubject,
+    html: buildCustomerOrderEmail({
+      orderNumber: data.order_number, orderId: data.id,
+      company: company ?? '', contact, totalPrice, paymentType,
+      userId: user?.id ?? null, invoiceUrl, siteUrl,
+      telegramBotUsername: existingChatId ? undefined : process.env.TELEGRAM_BOT_USERNAME,
+    }),
+  }).catch(e => console.error('[customer email]', e));
 
   return NextResponse.json({ id: data.id, orderNumber: data.order_number });
 }
