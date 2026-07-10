@@ -83,7 +83,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { zoom: 0.95; overflow-x: hidden; }
+html { zoom: 0.95; overflow-x: clip; }
 
 /* ── Admin: lifted contrast for dense data UI ───────────────────────────────
    Scoped to .admin-layout so public site is unaffected.
@@ -123,6 +123,47 @@ html { zoom: 0.95; overflow-x: hidden; }
 }
 
 /* ── Admin page enter animation ──────────────────────────────────────────── */
+/* ── Brands auto-scroll marquee ── */
+@keyframes brands-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.brands-marquee { animation: brands-marquee 60s linear infinite; }
+.brands-marquee:hover { animation-play-state: paused; }
+.brand-card {
+  flex: 0 0 156px;
+  height: 80px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  display: flex; align-items: center; justify-content: center;
+  margin-right: 14px;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.brand-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.09);
+  border-color: rgba(72,128,184,0.35);
+}
+.blog-card-link:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+.home-step-card, .home-path-card {
+  transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s cubic-bezier(0.22,1,0.36,1);
+}
+.home-step-card:hover, .home-path-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.1);
+}
+.cat-preview-header:hover h2 { color: #4880B8; }
+.cat-preview-header:hover > div:first-child { transform: scale(1.05); }
+.cat-preview-header > div:first-child { transition: transform 0.15s ease; }
+.cat-preview-header h2 { transition: color 0.15s ease; }
+.cat-bullet-link { transition: color 0.15s ease; }
+.cat-bullet-link:hover { color: #4880B8; }
+
 @keyframes adminPageEnter {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -156,7 +197,11 @@ body {
   background: var(--bg-page);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  /* clip, not hidden: setting overflow-x alone on html/body makes the UA compute
+     overflow-y as auto too (CSS Overflow spec), turning both into independent
+     scroll containers and breaking position:sticky for descendants (the shop/
+     catalog sticky search bar). "clip" is exempt from that auto-promotion. */
+  overflow-x: clip;
 }
 
 a { text-decoration: none; color: inherit; }
@@ -332,7 +377,7 @@ input, select { font-family: inherit; }
 /* ── Hero layout classes ── */
 .hero-content {
   padding: 52px 40px 48px;
-  text-align: center;
+  text-align: left;
 }
 .hero-checklist {
   list-style: none;
@@ -430,8 +475,6 @@ input, select { font-family: inherit; }
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 20px;
-  max-width: 1100px;
-  margin: 0 auto;
 }
 .home-trust-grid {
   display: grid;
@@ -731,6 +774,10 @@ input, select { font-family: inherit; }
   .home-category-section { display: none; }
   .home-trust-section { display: none; }
   .home-cta-section { display: none; }
+
+  /* How we work + warehouse grid */
+  .how-we-work-grid { grid-template-columns: 1fr 1fr !important; }
+  .home-warehouse-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
 
   /* Footer */
   .footer-inner { padding: 32px 16px 0 !important; }

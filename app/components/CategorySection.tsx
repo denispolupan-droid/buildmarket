@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import CategoryPreview from './CategoryPreview';
 import { getCatIcon, getCatColor } from './CategoryCarousel';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
+import { getCategoryNameRu } from '../../lib/ru';
 import type { Category, ProductFull } from '../../lib/supabase';
 import type { UserRole } from '../../lib/user-role';
 
@@ -17,6 +19,9 @@ type Props = {
 };
 
 export default function CategorySection({ categories, products }: Props) {
+  const pathname = usePathname();
+  const lang: 'uk' | 'ru' = pathname.startsWith('/ru') ? 'ru' : 'uk';
+  const prefix = lang === 'ru' ? '/ru' : '';
   const [role, setRole] = useState<UserRole>('guest');
 
   useEffect(() => {
@@ -33,14 +38,14 @@ export default function CategorySection({ categories, products }: Props) {
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: '220px 1fr',
+      gridTemplateColumns: '1fr 1fr 2.3fr',
       gap: '0',
-      maxWidth: '1100px',
-      margin: '0 auto',
+      background: 'var(--bg-card)',
       border: '1px solid var(--border)',
-      borderRadius: '18px',
+      borderTop: '3px solid #4880B8',
+      borderRadius: '2px 2px 14px 14px',
       overflow: 'hidden',
-      boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
+      boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
       height: '520px',
     }}>
       {/* Ліва панель — вертикальний список категорій */}
@@ -58,7 +63,7 @@ export default function CategorySection({ categories, products }: Props) {
           return (
             <Link
               key={cat.slug}
-              href={`/shop/${cat.slug}`}
+              href={`${prefix}/shop/${cat.slug}`}
               onClick={e => { e.preventDefault(); setSelectedSlug(cat.slug); }}
               style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
@@ -82,7 +87,7 @@ export default function CategorySection({ categories, products }: Props) {
                 color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
                 lineHeight: 1.3,
               }}>
-                {cat.name}
+                {lang === 'ru' ? getCategoryNameRu(cat.slug, cat.name) : cat.name}
               </span>
             </Link>
           );

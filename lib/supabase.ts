@@ -168,6 +168,17 @@ export async function getBrands(): Promise<string[]> {
   return [...seen.values()].sort();
 }
 
+// brand_name -> logo_url, keyed uppercase for case-insensitive lookup against products.brand
+export async function getBrandLogos(): Promise<Record<string, string>> {
+  const { data, error } = await supabase.from('brand_logos').select('brand_name, logo_url');
+  if (error) throw error;
+  const map: Record<string, string> = {};
+  for (const row of (data ?? []) as { brand_name: string; logo_url: string }[]) {
+    map[row.brand_name.trim().toUpperCase()] = row.logo_url;
+  }
+  return map;
+}
+
 // ── Кэшированные функции для ISR ──────────────────────────────────────────────
 
 export const getCategoriesCached = unstable_cache(
@@ -192,6 +203,12 @@ export const getBrandsCached = unstable_cache(
   async () => getBrands(),
   ['brands'],
   { revalidate: 60, tags: ['brands'] }
+);
+
+export const getBrandLogosCached = unstable_cache(
+  async () => getBrandLogos(),
+  ['brand-logos'],
+  { revalidate: 60, tags: ['brand-logos'] }
 );
 
 export const getProductBySkuCached = unstable_cache(
@@ -221,6 +238,10 @@ export const getRelatedProductsCached = unstable_cache(
 
 export async function getPreviewProducts(categorySlugs: string[], limitPerCategory = 2): Promise<ProductFull[]> {
   if (categorySlugs.length === 0) return [];
+  // No per-query limit here: sort_order is 0 for almost every row, so a global
+  // "order by sort_order limit N" truncates at an arbitrary row and can starve
+  // entire categories of any products. Fetch every candidate row and let the
+  // loop below cap each category individually.
   const { data, error } = await supabase
     .from('products')
     .select(`
@@ -231,7 +252,7 @@ export async function getPreviewProducts(categorySlugs: string[], limitPerCatego
     .eq('is_active', true)
     .in('category_slug', categorySlugs)
     .order('sort_order')
-    .limit(categorySlugs.length * limitPerCategory * 2);
+    .limit(5000);
   if (error) throw error;
   const result: ProductFull[] = [];
   const countBySlug: Record<string, number> = {};
