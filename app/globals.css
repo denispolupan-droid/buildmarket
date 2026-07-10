@@ -766,6 +766,12 @@ input, select { font-family: inherit; }
   .hero-brand-strip::-webkit-scrollbar { display: none; }
   .hero-brand-strip > * { flex-shrink: 0; }
 
+  /* Hero CTA buttons — tighter padding/font so both fit on one row instead
+     of wrapping (their combined width was just barely over the available
+     content width, tipping flex-wrap into a second line). */
+  .hero-cta-row { flex-wrap: nowrap !important; gap: 8px !important; }
+  .hero-cta-btn { padding: 0 16px !important; font-size: 13px !important; }
+
   /* Home page grids */
   .home-paths-grid { grid-template-columns: 1fr; }
   .home-trust-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -775,8 +781,11 @@ input, select { font-family: inherit; }
   .home-trust-section { display: none; }
   .home-cta-section { display: none; }
 
-  /* How we work + warehouse grid */
-  .how-we-work-grid { grid-template-columns: 1fr 1fr !important; }
+  /* How we work + warehouse grid — minmax(0, 1fr), not the bare 1fr default
+     (minmax(auto,1fr)): a bare 1fr won't shrink a track below its item's own
+     min-content width, so a card with a wide title pushes the whole grid
+     wider than its container instead of wrapping inside its column. */
+  .how-we-work-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
   .home-warehouse-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
 
   /* Footer */

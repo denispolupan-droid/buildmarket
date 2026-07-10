@@ -160,8 +160,8 @@ export default async function HomeRu() {
               ))}
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <Link href="/ru/shop" style={{
+            <div className="hero-cta-row" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <Link href="/ru/shop" className="hero-cta-btn" style={{
                 height: '50px', padding: '0 30px', borderRadius: '12px',
                 background: '#4880B8', color: '#fff', fontSize: '15px', fontWeight: 700,
                 display: 'inline-flex', alignItems: 'center', gap: '8px',
@@ -169,7 +169,7 @@ export default async function HomeRu() {
               }}>
                 В магазин <ArrowRight size={16} strokeWidth={2.5} />
               </Link>
-              <Link href="/register" style={{
+              <Link href="/register" className="hero-cta-btn" style={{
                 height: '50px', padding: '0 28px', borderRadius: '12px',
                 background: 'rgba(255,255,255,0.07)',
                 border: '1px solid rgba(255,255,255,0.2)',

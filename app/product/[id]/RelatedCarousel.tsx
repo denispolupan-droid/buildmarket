@@ -75,7 +75,7 @@ export default function RelatedCarousel({ products, retail = false }: { products
       </div>
 
       {/* Track */}
-      <div ref={wrapRef} style={{ overflowX: 'hidden', overflowY: 'visible', paddingBottom: '8px', marginBottom: '-8px' }}>
+      <div ref={wrapRef} className="related-carousel-wrap" style={{ overflowX: 'hidden', overflowY: 'visible', paddingBottom: '8px', marginBottom: '-8px' }}>
         <div className="related-carousel-track" style={{
           display: 'flex', gap: `${GAP}px`,
           transform: `translateX(-${offset}px)`,

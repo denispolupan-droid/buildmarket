@@ -144,6 +144,11 @@
 /* ── Related carousel mobile ── */
 @media (max-width: 640px) {
   .related-carousel-arrows { display: none !important; }
+  /* The outer wrap has overflow-x:hidden as an inline style (clips the
+     desktop transform-based slide) — override it here too, or the inner
+     track's own overflow-x:auto below is moot: content still can't scroll
+     past the outer's hidden boundary and just gets cut off. */
+  .related-carousel-wrap { overflow-x: auto !important; }
   .related-carousel-track {
     overflow-x: auto !important;
     transform: none !important;
