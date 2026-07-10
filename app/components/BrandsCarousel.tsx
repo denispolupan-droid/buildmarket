@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -19,6 +20,23 @@ const BRANDS = [
   { name: 'Ataman',   logo: '/brands/ataman.jpg',     href: '/shop/brand/ataman',   color: '#8B1A1A', style: {} },
   { name: 'Bitugum',  logo: '/brands/bitugum.webp',   href: '/shop/brand/bitugum',  color: '#1A1A1A', style: {} },
 ] as const;
+
+function FadeLogo({ src, alt }: { src: string; alt: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={120}
+      height={54}
+      style={{
+        objectFit: 'contain', maxWidth: '120px', maxHeight: '54px',
+        opacity: loaded ? 1 : 0, transition: 'opacity 300ms ease',
+      }}
+      onLoad={() => setLoaded(true)}
+    />
+  );
+}
 
 type Props = { logos?: Record<string, string> };
 
@@ -53,13 +71,7 @@ export default function BrandsCarousel({ logos = {} }: Props) {
               style={{ flexShrink: 0 }}
             >
               {logoSrc ? (
-                <Image
-                  src={logoSrc}
-                  alt={brand.name}
-                  width={120}
-                  height={54}
-                  style={{ objectFit: 'contain', maxWidth: '120px', maxHeight: '54px' }}
-                />
+                <FadeLogo src={logoSrc} alt={brand.name} />
               ) : (
                 <span style={{
                   color: brand.color,

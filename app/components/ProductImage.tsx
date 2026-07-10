@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 
 export type ProductImageProps = {
@@ -173,6 +176,29 @@ function CanisterAngle({ brand, nl1, nl2, volume, bc = '#1A3A6A', ac = '#3A80C0'
   )
 }
 
+/* ─── Real photo — fades in on load instead of popping in once the
+   network request resolves, so it doesn't visually clash with the
+   surrounding scroll-reveal animation ──────────────────────────── */
+function FadeProductImage({ imageUrl, alt }: { imageUrl: string; alt: string }) {
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => { setLoaded(false); }, [imageUrl]);
+  return (
+    <Image
+      key={imageUrl}
+      src={imageUrl}
+      alt={alt}
+      width={400}
+      height={400}
+      style={{
+        height: '100%', width: '100%', objectFit: 'contain', display: 'block',
+        opacity: loaded ? 1 : 0, transition: 'opacity 350ms ease',
+      }}
+      loading="lazy"
+      onLoad={() => setLoaded(true)}
+    />
+  );
+}
+
 /* ─── Public export ────────────────────────────────────────────── */
 export default function ProductImage({
   type = 'tube',
@@ -181,16 +207,7 @@ export default function ProductImage({
   ...rest
 }: ProductImageProps) {
   if (imageUrl) {
-    return (
-      <Image
-        src={imageUrl}
-        alt={[rest.brand, rest.nl1, rest.nl2, rest.volume].filter(Boolean).join(' ')}
-        width={400}
-        height={400}
-        style={{ height: '100%', width: '100%', objectFit: 'contain', display: 'block' }}
-        loading="lazy"
-      />
-    );
+    return <FadeProductImage imageUrl={imageUrl} alt={[rest.brand, rest.nl1, rest.nl2, rest.volume].filter(Boolean).join(' ')} />;
   }
   if (type === 'canister') {
     return variant === 'angle'

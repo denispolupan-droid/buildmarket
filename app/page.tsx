@@ -27,6 +27,7 @@ import BlogCarousel from './components/BlogCarousel';
 import DeliveryMapCard from './components/DeliveryMapCard';
 import Reveal from './components/Reveal';
 import AnimatedNumber from './components/AnimatedNumber';
+import BgFadeImage from './components/BgFadeImage';
 import { ARTICLES } from '../lib/blog';
 
 
@@ -100,9 +101,9 @@ export default async function Home() {
       <section style={{ position: 'relative', overflow: 'hidden', minHeight: '560px', display: 'flex', flexDirection: 'column' }}>
         {/* Warehouse / wholesale background — shifted to the left third of the frame so more of its
             own dark panel sits under the headline instead of the busy shelving */}
-        <div style={{
+        <BgFadeImage src="/images/warehouse-hero.webp" style={{
           position: 'absolute', inset: 0,
-          background: 'url(/images/warehouse-hero.webp) 25% center/cover no-repeat',
+          backgroundPosition: '25% center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat',
           filter: 'grayscale(1) contrast(1.3) brightness(1.1)',
         }} />
         {/* Duotone — shadows tinted brand navy (multiply), highlights tinted soft blue (screen),
@@ -413,9 +414,9 @@ export default async function Home() {
               isolation: 'isolate', willChange: 'opacity',
             }}>
               {/* Photo — same duotone treatment as the hero background, so both photo cards read as one family */}
-              <div style={{
+              <BgFadeImage src="/images/warehouse-quality.webp" style={{
                 position: 'absolute', inset: 0,
-                background: 'url(/images/warehouse-quality.webp) center/cover no-repeat',
+                backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat',
                 filter: 'grayscale(1) contrast(1.25) brightness(1.3)',
               }} />
               <div style={{ position: 'absolute', inset: 0, background: '#14243F', mixBlendMode: 'multiply', opacity: 0.35 }} />

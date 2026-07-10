@@ -1,5 +1,5 @@
 'use client';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -14,6 +14,24 @@ interface Article {
   category: string;
   categoryRu?: string;
   image: string;
+}
+
+function FadeCoverImage({ src, alt }: { src: string; alt: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={480}
+      height={270}
+      loading="lazy"
+      style={{
+        width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+        opacity: loaded ? 1 : 0, transition: 'opacity 350ms ease',
+      }}
+      onLoad={() => setLoaded(true)}
+    />
+  );
 }
 
 export default function BlogCarousel({ articles }: { articles: Article[] }) {
@@ -89,14 +107,7 @@ export default function BlogCarousel({ articles }: { articles: Article[] }) {
             className="blog-card-link"
           >
             <div style={{ aspectRatio: '16/9', overflow: 'hidden', flexShrink: 0 }}>
-              <Image
-                src={article.image}
-                alt={title}
-                width={480}
-                height={270}
-                loading="lazy"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-              />
+              <FadeCoverImage src={article.image} alt={title} />
             </div>
             <div style={{ padding: '14px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '7px' }}>
               <span style={{ fontSize: '10px', fontWeight: 700, color: '#4880B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
