@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { getCategoryNameRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 import Link from 'next/link';
-import { Plus, Minus, Heart, ChevronDown, ChevronRight, Check, SlidersHorizontal, LayoutList, Grid2x2, Rows2 } from 'lucide-react';
+import { Plus, Minus, Heart, ChevronDown, Check, SlidersHorizontal, LayoutList, Grid2x2, Rows2, X } from 'lucide-react';
 import { CATEGORY_ICONS } from '../../lib/category-icons';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import ProductImage from '../components/ProductImage';
@@ -17,6 +17,7 @@ import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import type { ProductFull, Category } from '../../lib/supabase';
 import { getCategoryMeta } from '../../lib/category-descriptions';
+import { useStickyCompact } from '../../lib/useStickyCompact';
 
 const SHOP_STATE_KEY = 'shop_filter_state';
 
@@ -70,6 +71,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
       price: price ?? 0, min_order: 1,
       nl1: p.nl1 ?? '', nl2: p.nl2 ?? undefined,
       bc: p.bc, ac: p.ac, img_type: p.img_type, imageUrl: p.image ?? undefined,
+      is_promo: !!(p as { stock?: { price_promo?: number | null } }).stock?.price_promo,
     }, qty);
   }
 
@@ -203,6 +205,43 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     Object.values(filterValues).filter(a => a.length > 0).length +
     (filterVolumes.length > 0 ? 1 : 0) + (filterVolumesKg.length > 0 ? 1 : 0) +
     (filterPlasticGroup ? 1 : 0) + (inStockOnly ? 1 : 0) + (saleOnly ? 1 : 0);
+  const activeChips = useMemo(() => {
+    const chips: { id: string; text: string; onRemove: () => void }[] = [];
+    Object.entries(filterValues).forEach(([label, values]) => {
+      values.forEach(v => {
+        chips.push({
+          id: `fv:${label}:${v}`,
+          text: `${tFilterLabel(label, lang)}: ${tFilterValue(v, lang)}`,
+          onRemove: () => setFilterValues(prev => ({
+            ...prev,
+            [label]: (prev[label] ?? []).filter(x => x.toLowerCase() !== v.toLowerCase()),
+          })),
+        });
+      });
+    });
+    filterVolumes.forEach(v => {
+      chips.push({ id: `vol:${v}`, text: `${t("Об'єм", 'Объём')}: ${v}`, onRemove: () => setFilterVolumes(prev => prev.filter(x => x !== v)) });
+    });
+    filterVolumesKg.forEach(v => {
+      chips.push({ id: `wt:${v}`, text: `${t('Вага', 'Вес')}: ${v}`, onRemove: () => setFilterVolumesKg(prev => prev.filter(x => x !== v)) });
+    });
+    if (filterPlasticGroup) {
+      const plasticLabels: Record<string, string> = {
+        universal: t('Універсальний', 'Универсальный'),
+        frost: t('Протиморозний', 'Противоморозный'),
+        warm: t('Для теплих підлог', 'Для тёплых полов'),
+      };
+      chips.push({ id: 'plastic', text: `${t('Тип', 'Тип')}: ${plasticLabels[filterPlasticGroup] ?? filterPlasticGroup}`, onRemove: () => setFilterPlasticGroup('') });
+    }
+    if (inStockOnly) chips.push({ id: 'instock', text: t('Тільки в наявності', 'Только в наличии'), onRemove: () => setInStockOnly(false) });
+    if (saleOnly) chips.push({ id: 'sale', text: t('Тільки акційні', 'Только акционные'), onRemove: () => setSaleOnly(false) });
+    return chips;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterValues, filterVolumes, filterVolumesKg, filterPlasticGroup, inStockOnly, saleOnly, lang]);
+  const clearAllFilters = () => {
+    setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]);
+    setFilterPlasticGroup(''); setInStockOnly(false); setSaleOnly(false);
+  };
   const [visibleCount,  setVisibleCount]  = useState(24);
   const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'sale'>('default');
   const [mobilePanel,   setMobilePanel]   = useState<'cats' | 'filters' | null>(null);
@@ -237,6 +276,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const filtersRef  = useRef<HTMLDivElement>(null);
   const pillsRef = useRef<HTMLDivElement>(null);
   const prevSelCat = useRef<string | null>(initialCategory ?? null);
+  const stickyCompact = useStickyCompact();
 
   // Clear sessionStorage after restoring (so stale state isn't reused on next fresh visit)
   useEffect(() => { sessionStorage.removeItem(SHOP_STATE_KEY); }, []);
@@ -303,11 +343,6 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
   const selectCat = (slug: string | null, scrollSlug?: string) => {
     // На brand-сторінці заголовок рендериться сервером — потрібна повна навігація
     if (initialBrand) {
-      router.push(slug ? `${shopBase}/${slug}` : shopBase);
-      return;
-    }
-    // На /shop/[category] H1 і breadcrumb — серверні; при переході до іншої категорії потрібен повний reload
-    if (initialCategory && slug !== initialCategory) {
       router.push(slug ? `${shopBase}/${slug}` : shopBase);
       return;
     }
@@ -623,13 +658,13 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
               <div key={cat.slug} ref={el => { catRefs.current[cat.slug] = el; }} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 <button
                   className={'shop-cat-item' + (isDirectActive ? ' active' : isParentActive ? ' parent-active' : '')}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', ...(isExpanded && !isDirectActive ? { background: 'rgba(30,58,95,0.06)', borderRadius: '7px', color: 'var(--text-primary)', fontWeight: 600 } : {}) }}
                   onClick={() => {
                     const expanding = !expandedCats.has(cat.slug);
                     if (children.length > 0) {
                       setExpandedCats(prev => { const next = new Set(prev); next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug); return next; });
                       if (expanding) {
-                        if (initialBrand || (initialCategory && cat.slug !== initialCategory)) {
+                        if (initialBrand) {
                           router.push(`${shopBase}/${cat.slug}`);
                         } else {
                           // Оновлюємо фільтр БЕЗ скролу сторінки
@@ -648,12 +683,10 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
                   {(() => { const Icon = CATEGORY_ICONS[cat.slug]; return Icon ? <Icon size={14} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.65 }} /> : null; })()}
                   <span style={{ flex: 1, textAlign: 'left' }}>{catDisplayName(cat.slug, cat.name)}</span>
                   {children.length > 0 && (
-                    isExpanded
-                      ? <ChevronDown size={13} style={{ flexShrink: 0, opacity: 0.45 }} />
-                      : <ChevronRight size={13} style={{ flexShrink: 0, opacity: 0.45 }} />
+                    <ChevronDown size={13} style={{ flexShrink: 0, opacity: 0.45, transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)' }} />
                   )}
                 </button>
-                <div style={{ overflow: 'hidden', maxHeight: isExpanded ? '2000px' : '0', transition: 'max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1)', marginLeft: '8px', borderLeft: '2px solid var(--border)' }}>
+                <div style={{ overflow: 'hidden', maxHeight: isExpanded ? '2000px' : '0', transition: 'max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1)', marginLeft: '8px', borderLeft: '1px solid rgba(30,58,95,0.2)' }}>
                 {children.map(child => {
                   const grandchildren = childrenOf[child.slug] ?? [];
                   const childExpanded = expandedCats.has(child.slug);
@@ -926,7 +959,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           </div>
         </div>
 
-        <div className="shop-sticky-bar">
+        <div className={'shop-sticky-bar' + (stickyCompact ? ' is-compact' : '')}>
           <SearchAutocomplete
             value={search}
             onChange={setSearch}
@@ -969,6 +1002,20 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
           })}
           </div>
         </div>
+
+        {activeChips.length > 0 && (
+          <div className="shop-active-filters">
+            {activeChips.map(chip => (
+              <button key={chip.id} className="shop-filter-chip" onClick={chip.onRemove}>
+                {chip.text}
+                <X size={12} strokeWidth={2.5} />
+              </button>
+            ))}
+            <button className="shop-filter-chip shop-filter-chip--clear" onClick={clearAllFilters}>
+              {t('Очистити всі', 'Очистить все')}
+            </button>
+          </div>
+        )}
 
         <SalesBanner mode="shop" activeSlugs={matchingSlugs} />
         <div className={'shop-grid' + (gridCols === 1 ? ' list-view' : '')}>
@@ -1026,8 +1073,7 @@ export default function ShopClient({ products, categories, initialSaleOnly = fal
     {(() => {
       const meta = selCat ? getCategoryMeta(selCat) : null;
       const catName = selCat ? categories.find(c => c.slug === selCat)?.name : null;
-      // initialCategory means we're on /shop/[category] — server page already shows this block
-      if (!meta || !catName || initialCategory) return null;
+      if (!meta || !catName) return null;
       return (
         <div style={{ padding: '0 0 32px' }}>
           <div style={{ padding: '16px 20px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>

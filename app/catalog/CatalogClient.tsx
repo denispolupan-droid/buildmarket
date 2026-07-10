@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2 } from 'lucide-react';
+import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2, X } from 'lucide-react';
 import { CATEGORY_ICONS } from '../../lib/category-icons';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import Link from 'next/link';
@@ -20,6 +20,7 @@ import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 const WHOLESALE_MIN = 3000;
 
 import { getCategoryMeta } from '../../lib/category-descriptions';
+import { useStickyCompact } from '../../lib/useStickyCompact';
 import './catalog.css';
 
 function CopySkuBtn({ sku, lang }: { sku: string; lang: 'uk' | 'ru' }) {
@@ -57,6 +58,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
   const prevSelCat = useRef(initialCategory);
   const pillsRef    = useRef<HTMLDivElement>(null);
   const filtersRef  = useRef<HTMLDivElement>(null);
+  const stickyCompact = useStickyCompact();
   useEffect(() => {
     getSupabaseBrowser().auth.getUser().then(({ data }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
       const type = data.user?.user_metadata?.account_type as string | undefined;
@@ -175,6 +177,35 @@ export default function CatalogClient({ products, categories, initialSearch = ''
     Object.values(filterValues).filter(a => a.length > 0).length +
     (filterVolumes.length > 0 ? 1 : 0) + (filterVolumesKg.length > 0 ? 1 : 0) +
     (inStockOnly ? 1 : 0) + (saleOnly ? 1 : 0);
+  const activeChips = useMemo(() => {
+    const chips: { id: string; text: string; onRemove: () => void }[] = [];
+    Object.entries(filterValues).forEach(([label, values]) => {
+      values.forEach(v => {
+        chips.push({
+          id: `fv:${label}:${v}`,
+          text: `${tFilterLabel(label, lang)}: ${tFilterValue(v, lang)}`,
+          onRemove: () => setFilterValues(prev => ({
+            ...prev,
+            [label]: (prev[label] ?? []).filter(x => x.toLowerCase() !== v.toLowerCase()),
+          })),
+        });
+      });
+    });
+    filterVolumes.forEach(v => {
+      chips.push({ id: `vol:${v}`, text: `${t("Об'єм", 'Объём')}: ${v}`, onRemove: () => setFilterVolumes(prev => prev.filter(x => x !== v)) });
+    });
+    filterVolumesKg.forEach(v => {
+      chips.push({ id: `wt:${v}`, text: `${t('Вага', 'Вес')}: ${v}`, onRemove: () => setFilterVolumesKg(prev => prev.filter(x => x !== v)) });
+    });
+    if (inStockOnly) chips.push({ id: 'instock', text: t('Тільки в наявності', 'Только в наличии'), onRemove: () => setInStockOnly(false) });
+    if (saleOnly) chips.push({ id: 'sale', text: t('Тільки акційні', 'Только акционные'), onRemove: () => setSaleOnly(false) });
+    return chips;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterValues, filterVolumes, filterVolumesKg, inStockOnly, saleOnly, lang]);
+  const clearAllFilters = () => {
+    setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]);
+    setInStockOnly(false); setSaleOnly(false);
+  };
 
   const badgeRef = useRef<HTMLAnchorElement>(null);
   const [badgeVisible, setBadgeVisible] = useState(true);
@@ -898,7 +929,7 @@ export default function CatalogClient({ products, categories, initialSearch = ''
             </div>
 
             {/* Sticky search + category pills */}
-            <div className="catalog-sticky-bar">
+            <div className={'catalog-sticky-bar' + (stickyCompact ? ' is-compact' : '')}>
               <SearchAutocomplete
                 value={search}
                 onChange={setSearch}
@@ -935,6 +966,19 @@ export default function CatalogClient({ products, categories, initialSearch = ''
               </div>
             </div>
 
+            {activeChips.length > 0 && (
+              <div className="catalog-active-filters">
+                {activeChips.map(chip => (
+                  <button key={chip.id} className="catalog-filter-chip" onClick={chip.onRemove}>
+                    {chip.text}
+                    <X size={12} strokeWidth={2.5} />
+                  </button>
+                ))}
+                <button className="catalog-filter-chip catalog-filter-chip--clear" onClick={clearAllFilters}>
+                  {t('Очистити всі', 'Очистить все')}
+                </button>
+              </div>
+            )}
 
             <SalesBanner mode="catalog" activeSlugs={matchingSlugs} />
 
