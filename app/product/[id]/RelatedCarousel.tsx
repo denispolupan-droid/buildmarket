@@ -161,7 +161,7 @@ export default function RelatedCarousel({ products, retail = false }: { products
                     className="pc-btn-cart"
                     disabled={!inStock}
                     style={!inStock ? { opacity: 0.4, cursor: 'default' } : undefined}
-                    onClick={() => inStock && addItem({ sku: p.sku, name: p.name, name_ru: p.name_ru ?? null, brand: p.brand, volume: p.volume, price: relPrice, min_order: relMinOrder, nl1: p.nl1 ?? '', nl2: p.nl2 ?? undefined, bc: p.bc, ac: p.ac, img_type: p.img_type, imageUrl: p.image ?? undefined }, getQty(p.sku, relMinOrder))}
+                    onClick={() => inStock && addItem({ sku: p.sku, name: p.name, name_ru: p.name_ru ?? null, brand: p.brand, volume: p.volume, price: relPrice, min_order: relMinOrder, nl1: p.nl1 ?? '', nl2: p.nl2 ?? undefined, bc: p.bc, ac: p.ac, img_type: p.img_type, imageUrl: p.image ?? undefined, is_promo: retail && !!(p.stock?.price_promo) }, getQty(p.sku, relMinOrder))}
                   >
                     <Plus size={13} strokeWidth={2.5} /> {t('В кошик', 'В корзину')}
                   </button>

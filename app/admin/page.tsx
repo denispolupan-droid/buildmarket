@@ -140,7 +140,7 @@ export default async function AdminPage({
 
       {/* Status tabs + Відправлення */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', flexWrap: 'wrap' }}>
           {STATUS_TABS.map(tab => {
             const isActive = curStatus === tab.value;
             const cnt = tab.value === '' ? totalCount : (statusCounts[tab.value] ?? 0);
@@ -172,12 +172,16 @@ export default async function AdminPage({
                 </div>
                 {(() => {
                   const amount = tab.value === '' ? totalAmount : (statusAmounts[tab.value] ?? 0);
+                  // Only reserve the second row for tabs that actually have an amount to
+                  // show — a status with zero orders can't have a nonzero total anyway.
+                  // Previously this rendered with visibility:hidden for every empty tab,
+                  // leaving a uniform blank strip under nearly the whole row.
+                  if (amount <= 0) return null;
                   return (
                     <span style={{
                       fontSize: '13px', fontWeight: 800,
                       color: isActive ? '#93C5FD' : '#15803D',
                       whiteSpace: 'nowrap', letterSpacing: '-0.3px',
-                      visibility: amount > 0 ? 'visible' : 'hidden',
                     }}>
                       {amount.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
                     </span>

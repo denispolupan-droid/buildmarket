@@ -258,29 +258,18 @@ export default async function RuProductPage({ params, searchParams }: { params: 
               volume={product.volume}
               priceUnit={priceUnit}
             />
-
-            <hr className="product-info__divider" />
-            <div className="product-info__meta">
-              <div className="product-info__meta-row">
-                <span className="product-info__meta-label">Категория:</span>
-                <span className="product-info__meta-value">
-                  <Link href={productCat ? `/ru/shop/${productCat.slug}` : '/ru/shop'} style={{color:'var(--brand-main)'}}>{categoryName}</Link>
-                </span>
-              </div>
-              <div className="product-info__meta-row">
-                <span className="product-info__meta-label">Бренд:</span>
-                <span className="product-info__meta-value">{product.brand}</span>
-              </div>
-              <div className="product-info__meta-row">
-                <span className="product-info__meta-label">Упаковка:</span>
-                <span className="product-info__meta-value">{product.pack_qty} шт</span>
-              </div>
-              <div className="product-info__meta-row">
-                <span className="product-info__meta-label">Доставка:</span>
-                <span className="product-info__meta-value">Новая Почта</span>
-              </div>
-            </div>
           </div>
+        </div>
+
+        {/* Compact meta strip — moved out of the above-the-fold hero card (it's
+            the least purchase-critical info) so the hero stays short enough
+            for the Описание/Характеристики tabs below to land in view without
+            scrolling on most products. */}
+        <div className="product-meta-strip">
+          <span><span className="product-meta-strip__label">Категория:</span> <Link href={productCat ? `/ru/shop/${productCat.slug}` : '/ru/shop'} style={{color:'var(--brand-main)'}}>{categoryName}</Link></span>
+          <span><span className="product-meta-strip__label">Бренд:</span> {product.brand}</span>
+          <span><span className="product-meta-strip__label">Упаковка:</span> {product.pack_qty} шт</span>
+          <span><span className="product-meta-strip__label">Доставка:</span> Новая Почта</span>
         </div>
 
         <ProductTabs

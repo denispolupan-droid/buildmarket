@@ -209,7 +209,7 @@ export async function PATCH(req: NextRequest) {
   if (!sku) return NextResponse.json({ error: 'SKU required' }, { status: 400 });
 
   const body = await req.json() as Record<string, unknown>;
-  const allowed = ['is_active', 'sort_order'];
+  const allowed = ['is_active', 'is_hit', 'is_new', 'sort_order'];
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) update[key] = body[key];

@@ -14,6 +14,7 @@ import CoverageCalculator from './CoverageCalculator';
 import Footer from '../../components/Footer';
 import ProductReviews from './ProductReviews';
 import { createClient } from '@supabase/supabase-js';
+import { createSupabaseServer } from '../../../lib/supabase-server';
 import './product.css';
 
 const service = createClient(
@@ -21,9 +22,11 @@ const service = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
+const WHOLESALE_TYPES = ['dealer', 'wholesale', 'contractor', 'shop_owner'];
+
 const BASE = 'https://fixline.com.ua';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id: sku } = await params;
@@ -86,7 +89,13 @@ function stockDot(stockStatus: string | undefined, stockQty: number, minOrder: n
 
 export default async function ProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ from?: string }> }) {
   const [{ id: sku }, sp] = await Promise.all([params, searchParams]);
-  const isRetail = sp.from === 'shop';
+
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  const accountType = user?.user_metadata?.account_type as string | undefined;
+  const isWholesaleUser = WHOLESALE_TYPES.includes(accountType ?? '');
+  // Wholesale prices only when wholesale account AND coming from /catalog (not /shop or direct)
+  const isRetail = !isWholesaleUser || sp.from !== 'catalog';
 
   const product = await getProductBySkuCached(sku);
   if (!product) notFound();
@@ -115,7 +124,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     : (product.stock?.price_old ?? null);
   const stockQty    = product.stock?.stock_qty    ?? 0;
   const stockStatus = product.stock?.stock_status;
-  const minOrder    = isRetail ? 1 : product.min_order;
+  const minOrder    = 1;
   const inStock     = isInStock(stockStatus, stockQty, minOrder);
   const pricePack = isRetail ? priceUnit : priceUnit * product.pack_qty;
 
@@ -247,6 +256,8 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
               bc={product.bc}
               ac={product.ac}
               imgType={product.img_type}
+              imageUrl={(product as { image?: string }).image ?? undefined}
+              isPromo={isRetail && !!pricePromo}
             />
 
             <CoverageCalculator
@@ -254,29 +265,18 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
               volume={product.volume}
               priceUnit={priceUnit}
             />
-
-            <hr className="product-info__divider" />
-            <div className="product-info__meta">
-              <div className="product-info__meta-row">
-                <span className="product-info__meta-label">Категорія:</span>
-                <span className="product-info__meta-value">
-                  <Link href={productCat ? `/shop/${productCat.slug}` : '/shop'} style={{color:'var(--brand-main)'}}>{categoryName}</Link>
-                </span>
-              </div>
-              <div className="product-info__meta-row">
-                <span className="product-info__meta-label">Бренд:</span>
-                <span className="product-info__meta-value">{product.brand}</span>
-              </div>
-              <div className="product-info__meta-row">
-                <span className="product-info__meta-label">Упаковка:</span>
-                <span className="product-info__meta-value">{product.pack_qty} шт</span>
-              </div>
-              <div className="product-info__meta-row">
-                <span className="product-info__meta-label">Доставка:</span>
-                <span className="product-info__meta-value">Нова Пошта</span>
-              </div>
-            </div>
           </div>
+        </div>
+
+        {/* Compact meta strip — moved out of the above-the-fold hero card (it's
+            the least purchase-critical info) so the hero stays short enough
+            for the Опис/Характеристики tabs below to land in view without
+            scrolling on most products. */}
+        <div className="product-meta-strip">
+          <span><span className="product-meta-strip__label">Категорія:</span> <Link href={productCat ? `/shop/${productCat.slug}` : '/shop'} style={{color:'var(--brand-main)'}}>{categoryName}</Link></span>
+          <span><span className="product-meta-strip__label">Бренд:</span> {product.brand}</span>
+          <span><span className="product-meta-strip__label">Упаковка:</span> {product.pack_qty} шт</span>
+          <span><span className="product-meta-strip__label">Доставка:</span> Нова Пошта</span>
         </div>
 
         <ProductTabs

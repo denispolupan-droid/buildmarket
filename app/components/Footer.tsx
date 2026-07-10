@@ -5,6 +5,7 @@ import { headers } from 'next/headers';
 import { getCategoriesCached, getProductsCached } from '../../lib/supabase';
 import { getCategoryNameRu } from '../../lib/ru';
 import LanguageSwitcher from './LanguageSwitcher';
+import CopyEmailButton from './CopyEmailButton';
 
 function brandToSlug(brand: string): string {
   return brand.trim().toLowerCase().replace(/\s+/g, '-');
@@ -83,15 +84,7 @@ export default async function Footer() {
               }
             </p>
             <div style={{ display: 'flex', gap: '8px' }}>
-              {socials.map(({ label, href, icon }) => (
-                <a key={label} href={href} title={label} className="btn-social" style={{
-                  width: '36px', height: '36px', borderRadius: '8px',
-                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8',
-                }}>
-                  {icon}
-                </a>
-              ))}
+              <CopyEmailButton email="info@fixline.com.ua" />
             </div>
           </div>
 

@@ -160,13 +160,13 @@ export default function CoverageCalculator({ characteristics, volume, priceUnit 
   const autoTag = (dilutionChar || embeddedOptions.length > 0) && !isConcentrateLabel;
 
   return (
-    <div style={{ marginTop: '12px', borderRadius: '10px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+    <div style={{ marginTop: '8px', borderRadius: '10px', border: '1px solid var(--border)', overflow: 'hidden' }}>
 
       {/* Header / toggle */}
       <button
         onClick={() => setOpen(o => !o)}
         style={{
-          width: '100%', padding: '10px 14px',
+          width: '100%', padding: '8px 14px',
           display: 'flex', alignItems: 'center', gap: '8px',
           background: open ? '#EEF4FF' : 'var(--bg-soft)',
           border: 'none', cursor: 'pointer',

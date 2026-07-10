@@ -22,9 +22,11 @@ type Props = {
   bc: string;
   ac: string;
   imgType: 'tube' | 'canister';
+  imageUrl?: string;
+  isPromo?: boolean;
 };
 
-export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, name, name_ru, brand, volume, nl1, nl2, bc, ac, imgType, isRetailPage }: Props) {
+export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, name, name_ru, brand, volume, nl1, nl2, bc, ac, imgType, imageUrl, isPromo, isRetailPage }: Props) {
   const pathname = usePathname();
   const lang = pathname.startsWith('/ru') ? 'ru' : 'uk';
   const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
@@ -57,7 +59,7 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
 
   function handleAddToCart() {
     if (isWholesale && isRetailPage) { setShowModal(true); return; }
-    addItem({ sku, name, name_ru, brand, volume, price: priceUnit, min_order: minOrder, nl1: nl1 ?? '', nl2: nl2 ?? undefined, bc, ac, img_type: imgType }, qty);
+    addItem({ sku, name, name_ru, brand, volume, price: priceUnit, min_order: minOrder, nl1: nl1 ?? '', nl2: nl2 ?? undefined, bc, ac, img_type: imgType, imageUrl, is_promo: isPromo }, qty);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   }
