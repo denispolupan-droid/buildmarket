@@ -13,14 +13,38 @@ const serviceClient = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-function verifySignature(body: string, signature: string | null): boolean {
-  if (!signature) return false;
-  const token = process.env.MONOBANK_API_TOKEN!;
-  const hmac  = crypto.createHmac('sha256', token).update(body).digest('base64');
+// Cache the public key for the process lifetime (changes rarely)
+let _monoPubKey: string | null = null;
+async function getMonoPubKey(): Promise<string | null> {
+  if (_monoPubKey) return _monoPubKey;
   try {
-    return crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(signature));
+    const res = await fetch('https://api.monobank.ua/api/merchant/pubkey', {
+      headers: { 'X-Token': process.env.MONOBANK_API_TOKEN! },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    _monoPubKey = data.key as string; // base64-encoded DER public key
+    return _monoPubKey;
   } catch {
-    return false; // lengths differ → not equal
+    return null;
+  }
+}
+
+async function verifySignature(body: string, signature: string | null): Promise<boolean> {
+  if (!signature) return false;
+  try {
+    const pubKeyB64 = await getMonoPubKey();
+    if (!pubKeyB64) return false;
+    const pubKeyDer = Buffer.from(pubKeyB64, 'base64');
+    const pubKey = crypto.createPublicKey({ key: pubKeyDer, format: 'der', type: 'spki' });
+    return crypto.verify(
+      'SHA256',
+      Buffer.from(body),
+      { key: pubKey, padding: crypto.constants.RSA_PKCS1_PSS_PADDING },
+      Buffer.from(signature, 'base64'),
+    );
+  } catch {
+    return false;
   }
 }
 
@@ -28,7 +52,8 @@ export async function POST(req: NextRequest) {
   const rawBody  = await req.text();
   const signature = req.headers.get('x-sign');
 
-  if (!verifySignature(rawBody, signature)) {
+  if (!await verifySignature(rawBody, signature)) {
+    console.error('[monobank webhook] invalid signature, x-sign:', signature?.slice(0, 20));
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
@@ -77,60 +102,76 @@ export async function POST(req: NextRequest) {
   if (pendingMatch) {
     const pendingId = pendingMatch[1];
 
+    // READ first — do NOT delete yet; deletion happens only after order is safely created
     const { data: draft } = await serviceClient
       .from('pending_card_orders')
-      .delete()
-      .eq('id', pendingId)
       .select('payload, user_id, email')
+      .eq('id', pendingId)
       .single();
 
-    if (draft) {
-      const { data: order } = await serviceClient
-        .from('orders')
-        .insert({ ...draft.payload, status: 'confirmed' })
-        .select('id, order_number, contact, company, phone, email, items, total_price, delivery_type, delivery_address, delivery_city_name, comment, channel_code')
-        .single();
-
-      if (order) {
-        const invoiceUrl = `${siteUrl}/invoice/${order.id}`;
-
-        // Записуємо оплату в AR-леджер
-        await recordOrderPaymentToLedger(order.id, draft.user_id, amountUah, businessDate(body));
-
-        notifyAdminNewOrder({
-          order_number:       order.order_number,
-          contact:            order.contact,
-          company:            order.company ?? null,
-          phone:              order.phone,
-          total_price:        order.total_price,
-          payment_type:       'card',
-          delivery_city_name: order.delivery_city_name ?? null,
-        });
-
-        resend.emails.send({
-          from: FROM, to: ADMIN_EMAIL,
-          subject: `✅ Оплачено! Замовлення №${order.order_number} — ${order.contact} (${order.phone})`,
-          html: buildAdminNotificationHtml({
-            orderNumber: order.order_number, company: order.company ?? '',
-            contact: order.contact, phone: order.phone, email: order.email,
-            items: order.items, totalPrice: order.total_price,
-            deliveryType: order.delivery_type, deliveryAddress: order.delivery_address ?? '',
-            paymentType: 'card', comment: order.comment,
-          }),
-        }).catch(() => {});
-
-        resend.emails.send({
-          from: FROM, to: order.email,
-          subject: `✅ Оплату підтверджено! Замовлення №${order.order_number} — FIXLINE`,
-          html: buildCustomerOrderEmail({
-            orderNumber: order.order_number, orderId: order.id,
-            company: order.company ?? '', contact: order.contact,
-            totalPrice: order.total_price, paymentType: 'card',
-            userId: null, invoiceUrl, siteUrl,
-          }),
-        }).catch(() => {});
-      }
+    if (!draft) {
+      // Already processed by a previous webhook retry — idempotent OK
+      return NextResponse.json({ ok: true });
     }
+
+    const { data: order, error: orderErr } = await serviceClient
+      .from('orders')
+      .insert({ ...draft.payload, status: 'confirmed' })
+      .select('id, order_number, contact, company, phone, email, items, total_price, delivery_type, delivery_address, delivery_city_name, comment, channel_code')
+      .single();
+
+    if (orderErr || !order) {
+      // Return 500 so Monobank retries; pending record is still intact
+      console.error('[monobank webhook] order insert failed:', orderErr);
+      notifyAdminOrderFailed(reference, draft.email, amountUah, orderErr?.message ?? 'unknown');
+      return NextResponse.json({ error: 'order insert failed' }, { status: 500 });
+    }
+
+    // Order saved — now safe to remove the pending draft
+    await serviceClient.from('pending_card_orders').delete().eq('id', pendingId);
+
+    if (draft.payload?.promo_code) {
+      serviceClient.rpc('increment_promo_used', { p_code: draft.payload.promo_code }).then(() => {});
+    }
+
+    const invoiceUrl = `${siteUrl}/invoice/${order.id}`;
+
+    // Записуємо оплату в AR-леджер
+    await recordOrderPaymentToLedger(order.id, draft.user_id, amountUah, businessDate(body));
+
+    notifyAdminNewOrder({
+      order_number:       order.order_number,
+      contact:            order.contact,
+      company:            order.company ?? null,
+      phone:              order.phone,
+      total_price:        order.total_price,
+      payment_type:       'card',
+      delivery_city_name: order.delivery_city_name ?? null,
+    });
+
+    resend.emails.send({
+      from: FROM, to: ADMIN_EMAIL,
+      subject: `✅ Оплачено! Замовлення №${order.order_number} — ${order.contact} (${order.phone})`,
+      html: buildAdminNotificationHtml({
+        orderNumber: order.order_number, company: order.company ?? '',
+        contact: order.contact, phone: order.phone, email: order.email,
+        items: order.items, totalPrice: order.total_price,
+        deliveryType: order.delivery_type, deliveryAddress: order.delivery_address ?? '',
+        paymentType: 'card', comment: order.comment,
+      }),
+    }).catch(() => {});
+
+    resend.emails.send({
+      from: FROM, to: order.email,
+      subject: `✅ Оплату підтверджено! Замовлення №${order.order_number} — FIXLINE`,
+      html: buildCustomerOrderEmail({
+        orderNumber: order.order_number, orderId: order.id,
+        company: order.company ?? '', contact: order.contact,
+        totalPrice: order.total_price, paymentType: 'card',
+        userId: null, invoiceUrl, siteUrl,
+      }),
+    }).catch(() => {});
+
     return NextResponse.json({ ok: true });
   }
 
@@ -192,6 +233,18 @@ export async function POST(req: NextRequest) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function notifyAdminOrderFailed(reference: string, email: string, amount: number, errMsg: string) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  if (!token || !chatId) return;
+  const text = `🚨 *Monobank webhook: не вдалось створити замовлення*\n\nReference: \`${reference}\`\nEmail: ${email}\nСума: ${amount} ₴\nПомилка: ${errMsg}\n\nПеревір pending\\_card\\_orders і створи замовлення вручну.`;
+  fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' }),
+  }).catch(() => {});
+}
 
 function businessDate(body: { createdAt?: number }): string {
   const ts = body.createdAt ? body.createdAt * 1000 : Date.now();
