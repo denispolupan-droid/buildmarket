@@ -73,6 +73,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
+function brandToSlug(brand: string): string {
+  return brand.trim().toLowerCase().replace(/\s+/g, '-');
+}
+
 function volLabel(v: string) {
   return /кг|г$/.test(v) ? 'Вес' : 'Объём';
 }
@@ -275,7 +279,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
             scrolling on most products. */}
         <div className="product-meta-strip">
           <span><span className="product-meta-strip__label">Категория:</span> <Link href={productCat ? `/ru/shop/${productCat.slug}` : '/ru/shop'} style={{color:'var(--brand-main)'}}>{categoryName}</Link></span>
-          <span><span className="product-meta-strip__label">Бренд:</span> {product.brand}</span>
+          <span><span className="product-meta-strip__label">Бренд:</span> <Link href={`/ru/shop/brand/${brandToSlug(product.brand)}`} style={{color:'var(--brand-main)'}}>{product.brand}</Link></span>
           <span><span className="product-meta-strip__label">Упаковка:</span> {product.pack_qty} шт</span>
           <span><span className="product-meta-strip__label">Доставка:</span> Новая Почта</span>
         </div>
