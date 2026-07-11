@@ -533,6 +533,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
     return () => clearTimeout(timer);
   }, [search, filtered.length]);
 
+  function fmtPrice(n: number) { return n % 1 === 0 ? String(n) : n.toFixed(2); }
   function getQty(sku: string, min: number) { return quantities[sku] ?? min; }
   function getInputVal(sku: string, min: number) { return inputVals[sku] ?? String(quantities[sku] ?? min); }
   function setQty(sku: string, min: number, val: number) {
@@ -1038,8 +1039,8 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                               </span>
                               {priceUnit > 0 ? (
                                 <div className="catalog-card__price">
-                                  {isSale && <span className="catalog-card__price-old">{Number(priceOld).toFixed(2)} грн</span>}
-                                  <span>{displayPrice.toFixed(2)} <em>грн</em></span>
+                                  {isSale && <span className="catalog-card__price-old">{fmtPrice(Number(priceOld))} грн</span>}
+                                  <span>{fmtPrice(displayPrice)} <em>грн</em></span>
                                 </div>
                               ) : (
                                 <div className="catalog-card__price-na">{t('За запитом', 'По запросу')}</div>
