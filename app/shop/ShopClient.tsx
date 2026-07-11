@@ -77,6 +77,20 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
     }, qty);
   }
 
+  const skuRow = (
+    <span
+      onClick={handleCopySku}
+      title={t('Копіювати артикул', 'Копировать артикул')}
+      style={{ cursor: 'pointer', color: copied ? '#16A34A' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}
+    >
+      Арт. {p.sku}
+      {copied
+        ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      }
+    </span>
+  );
+
   return (
     <div className="shop-card">
       <Link href={lang === 'ru' ? `/ru/product/${p.sku}?from=shop` : `/product/${p.sku}?from=shop`} className="shop-card__clickable" onClick={() => onSaveState?.()}>
@@ -119,18 +133,8 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
               </span>
             )}
           </div>
-          <div className="shop-card__pack-row" style={{ padding: '2px 0 4px' }}>
-            <span
-              onClick={handleCopySku}
-              title={t('Копіювати артикул', 'Копировать артикул')}
-              style={{ cursor: 'pointer', color: copied ? '#16A34A' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}
-            >
-              Арт. {p.sku}
-              {copied
-                ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-              }
-            </span>
+          <div className="shop-card__pack-row shop-card__pack-row--inline">
+            {skuRow}
           </div>
           <div className="shop-card__stock-row" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '8px', marginTop: '1px' }}>
             <div className={'shop-card__stock' + (inStock ? '' : ' out')}>
@@ -184,6 +188,9 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
             : <><Plus size={14} strokeWidth={2.5} /> <span className="shop-card__btn-label">{t('В кошик', 'В корзину')}</span></>
           }
         </button>
+      </div>
+      <div className="shop-card__pack-row shop-card__pack-row--bottom">
+        {skuRow}
       </div>
     </div>
   );
