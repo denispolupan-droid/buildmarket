@@ -1062,12 +1062,15 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                                 onClick={e => e.preventDefault()}
                               />
                               <button
-                                className={'action-icon-btn primary' + (added[p.sku] ? ' added' : '')}
+                                className={'catalog-card__cart-btn' + (added[p.sku] ? ' added' : '')}
                                 disabled={!inStock}
                                 onClick={e => { e.preventDefault(); handleAddToCart(p, qty); }}
                                 style={!inStock ? { opacity: 0.4 } : undefined}
                               >
-                                {added[p.sku] ? <Check size={14} strokeWidth={2.5} /> : <Plus size={14} strokeWidth={2.5} />}
+                                {added[p.sku]
+                                  ? <><Check size={14} strokeWidth={2.5} /> <span className="catalog-card__cart-btn-label">{t('Додано', 'Добавлено')}</span></>
+                                  : <><Plus size={14} strokeWidth={2.5} /> <span className="catalog-card__cart-btn-label">{t('В кошик', 'В корзину')}</span></>
+                                }
                               </button>
                             </div>
                           <div className="catalog-card__pack-row">

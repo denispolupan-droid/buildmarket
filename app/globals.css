@@ -698,12 +698,12 @@ input, select { font-family: inherit; }
   /* Global container */
   .page-container { padding: 0 16px; }
 
-  /* Cart page — show order summary + submit button before the checkout form */
+  /* Cart page — stack in natural order: form first, then order summary and the
+     "Підтвердити замовлення" button after it — submitting before the form is filled
+     in doesn't make sense. */
   .cart-grid {
     grid-template-columns: 1fr !important;
   }
-  .cart-summary-col { order: -1; }
-  .cart-form-col { order: 1; }
 
   /* Account stats */
   .account-stats {

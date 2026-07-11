@@ -274,6 +274,17 @@
 .action-icon-btn.primary { background: #4880B8; border-color: #4880B8; color: #fff; }
 .action-icon-btn.primary:hover { background: #3A6FA5; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(72, 128, 184, 0.35); }
 .action-icon-btn.primary.added { background: #16A34A; border-color: #16A34A; }
+/* Catalog grid card's cart button — its own row now has room for a labeled button
+   instead of a bare "+" icon (unlike the compact table-view rows, which keep the icon). */
+.catalog-card__cart-btn {
+  flex: 1; height: 32px; padding: 0 10px; border-radius: 7px; border: none;
+  background: #4880B8; color: #fff; font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  cursor: pointer; transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.catalog-card__cart-btn:hover { background: #3A6FA5; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(72, 128, 184, 0.35); }
+.catalog-card__cart-btn.added { background: #16A34A; }
+.catalog-card__cart-btn:disabled { opacity: 0.4; cursor: default; transform: none; box-shadow: none; }
 
 /* ── Empty ── */
 .empty-state { padding: 60px 20px; text-align: center; }
@@ -512,6 +523,19 @@
 
   /* Table is wider than the screen on mobile — scroll it in place instead of clipping or leaking page-wide overflow */
   .product-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Grid cards: 2 per row on mobile, same convention as the shop grid — shrink the image
+     and compact the price/actions row text so nothing wraps or fights for width at the
+     narrower card size. */
+  .catalog-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .catalog-card__img-wrap { height: 160px; }
+  .catalog-card__stock { font-size: 10px; }
+  .catalog-card__price { font-size: 16px; }
+  .catalog-card__actions { gap: 4px; }
+  .action-icon-btn { width: 28px !important; height: 28px !important; }
+  .catalog-card__actions .qty-input { width: 40px !important; }
+  .catalog-card__cart-btn { padding: 0 6px; }
+  .catalog-card__cart-btn-label { display: none; }
 }
 
 
