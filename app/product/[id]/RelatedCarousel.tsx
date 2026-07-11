@@ -136,6 +136,15 @@ export default function RelatedCarousel({ products, retail = false, reviewStats 
                       : <div style={{ fontSize: '11px', color: '#DC2626', fontWeight: 600, marginBottom: '3px' }}>● {t('немає', 'нет')}</div>}
                     <div style={{ fontSize: '11px', color: '#64748B' }}>{t('В упаковці:', 'В упаковке:')} {p.pack_qty} шт</div>
                   </div>
+                  {/* Mobile-only: the wide single-card layout leaves empty space to the
+                      right of pc-info at the image's height — fill it with the same specs
+                      shown below on desktop instead of leaving it blank. Hidden on desktop
+                      via CSS (.pc-specs-col), where .pc-tags below still does the job. */}
+                  {specs.length > 0 && (
+                    <div className="pc-specs-col">
+                      {specs.slice(0, 3).map(s => <span key={s.label} className="pc-tag" title={`${s.label}: ${s.value}`}>{s.label}: {s.value}</span>)}
+                    </div>
+                  )}
                 </Link>
 
                 {specs.length > 0 && (
