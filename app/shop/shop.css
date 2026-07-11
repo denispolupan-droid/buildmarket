@@ -597,15 +597,14 @@
   .shop-grid.list-view { grid-template-columns: 1fr; }
   /* 2-per-row cards (~158px footer width) can't fit wish + full qty stepper + a labeled
      add-to-cart button on one line — wrapping the button to its own row (an earlier fix)
-     kept the stepper but made every card noticeably taller. Shrinking wish + stepper and
+     kept the stepper but made every card noticeably taller. Shrinking the stepper and
      dropping the button to icon-only keeps everything on one row and the card compact.
-     Stepper and heart are trimmed further than the bare minimum specifically to give the
-     add-to-cart button (the one actually tapped) a bigger target. */
+     Wish stays the same height as the stepper/button so all three read as one control row. */
   .shop-grid:not(.list-view) .shop-card__footer { gap: 4px; }
-  .shop-grid:not(.list-view) .shop-card__wish { width: 26px !important; height: 26px !important; flex-shrink: 0; }
-  .shop-grid:not(.list-view) .shop-card__qty { flex-shrink: 0; }
-  .shop-grid:not(.list-view) .shop-card__qty button { width: 20px !important; }
-  .shop-grid:not(.list-view) .shop-card__qty input { width: 14px !important; }
+  .shop-grid:not(.list-view) .shop-card__wish { width: 36px !important; height: 36px !important; flex-shrink: 0; }
+  .shop-grid:not(.list-view) .shop-card__qty { flex-shrink: 0; height: 36px !important; }
+  .shop-grid:not(.list-view) .shop-card__qty button { width: 20px !important; height: 36px !important; }
+  .shop-grid:not(.list-view) .shop-card__qty input { width: 14px !important; height: 36px !important; }
   .shop-grid:not(.list-view) .shop-card__btn { flex: 1 1 auto !important; min-width: 0 !important; height: 36px !important; padding: 0 6px !important; }
   .shop-grid:not(.list-view) .shop-card__btn-label { display: none; }
   /* Image container was a flat 220px on every breakpoint — fine at desktop card width,

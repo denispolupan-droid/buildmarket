@@ -185,13 +185,12 @@
     padding-bottom: 4px;
   }
   .related-carousel-track::-webkit-scrollbar { display: none; }
-  /* One card per screen (with a peek of the next, same convention as the blog carousel)
-     instead of two — this card packs image + name + sku + price + stock + pack info +
-     qty stepper + cart button + wishlist into one box, and squeezing all of that into
-     half a phone screen wrapped and truncated everything (price splitting across lines,
-     button text cut off, wishlist heart pushed past the edge). */
+  /* Unlike the blog carousel's full-width text block, this card is a fixed-size image
+     next to a narrow info column — at full card width the info column stretches far
+     past its own content and leaves a dead gap on the right. Capping the width keeps
+     the card sized to its content instead, with a bigger peek of the next card. */
   .related-carousel-track .product-card {
-    flex: 0 0 calc(100% - 40px) !important;
+    flex: 0 0 min(78%, 300px) !important;
     scroll-snap-align: start;
   }
 }
