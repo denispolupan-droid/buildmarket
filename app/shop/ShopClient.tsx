@@ -119,7 +119,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
               </span>
             )}
           </div>
-          <div className="shop-card__pack-row" style={{ padding: '2px 0 4px' }}>
+          <div className="shop-card__pack-row" style={{ padding: '4px 0' }}>
             <span
               onClick={handleCopySku}
               title={t('Копіювати артикул', 'Копировать артикул')}
@@ -132,7 +132,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
               }
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '8px', marginTop: '1px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '8px' }}>
             <div className={'shop-card__stock' + (inStock ? '' : ' out')}>
               <span className="shop-card__stock-dot" />
               {inStock ? t('В наявності', 'В наличии') : t('Немає', 'Нет')}
