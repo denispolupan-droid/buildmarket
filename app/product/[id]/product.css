@@ -47,11 +47,20 @@
 .product-info__title { font-size: 22px; font-weight: 700; color: var(--text-primary); line-height: 1.25; margin-bottom: 10px; }
 .product-info__badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 .badge { height: 26px; padding: 0 12px; border-radius: 13px; background: var(--bg-soft); font-size: 12px; color: var(--text-secondary); display: inline-flex; align-items: center; }
+.product-info__stock-row { display: flex; flex-direction: column; }
 .product-info__stock { font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 7px; margin-bottom: 4px; }
 .stock-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--status-instock); flex-shrink: 0; }
 .stock-dot.out { background: #C0392B; }
 .stock-dot.order { background: #D8B14A; }
 .product-info__sku { font-size: 12px; color: var(--text-muted); margin-bottom: 2px; }
+
+/* Order panel row — explicit order on every child so DOM order (accessibility/reading
+   order: stepper, add-to-cart, wishlist, sum) can differ from visual order per breakpoint
+   without needing to reshuffle the JSX. */
+.op-qty-stepper  { order: 1; }
+.op-sum          { order: 2; }
+.op-cart-btn     { order: 3; }
+.op-wish-btn     { order: 4; }
 .product-info__divider { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
 
 /* price */
@@ -139,6 +148,18 @@
   .products-grid { grid-template-columns: 1fr; }
   .product-gallery__main { height: 240px; }
   .product-info__price-unit { font-size: 22px; }
+
+  /* Availability joins the SKU line instead of stacking above it */
+  .product-info__stock-row { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
+  .product-info__stock { margin-bottom: 0; order: 2; }
+  .product-info__sku   { margin-bottom: 0; order: 1; }
+
+  /* Order panel: stepper left, add-to-cart + wishlist right (same row); sum drops to its
+     own full-width row underneath instead of competing for space with the buttons. */
+  .op-qty-stepper { order: 1; }
+  .op-cart-btn    { order: 2; margin-left: auto; padding: 0 18px !important; }
+  .op-wish-btn    { order: 3; }
+  .op-sum         { order: 4; flex: 0 0 100% !important; min-width: 0 !important; }
 }
 
 /* ── Related carousel mobile ── */

@@ -86,26 +86,17 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
       {inStock ? (
         <>
           <div style={{ fontSize: '13px', color: '#64748B', marginBottom: '8px' }}>{t('Кількість:', 'Количество:')}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div className="op-actions-row" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
 
-            <div className="qty-stepper">
+            <div className="qty-stepper op-qty-stepper">
               <button className="qty-stepper__btn" onClick={dec}>−</button>
               <input className="qty-stepper__val" type="number" value={qty} min={minOrder} onChange={handleChange} />
               <button className="qty-stepper__btn" onClick={inc}>+</button>
             </div>
 
-            {priceUnit > 0 && (
-              <span style={{ whiteSpace: 'nowrap', minWidth: '160px', display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.6px' }}>{t('Сума', 'Сумма')}</span>
-                <span style={{ fontSize: '20px', fontWeight: 700, color: '#0F172A', lineHeight: 1 }}>
-                  {subtotal} <span style={{ fontSize: '13px', fontWeight: 500, color: '#64748B' }}>грн</span>
-                </span>
-              </span>
-            )}
-
             <button
               onClick={handleAddToCart}
-              className={!added && !inCart ? 'btn-primary' : undefined}
+              className={(!added && !inCart ? 'btn-primary ' : '') + 'op-cart-btn'}
               style={{
                 height: '44px', padding: '0 28px', border: 'none', borderRadius: '10px',
                 background: added ? '#16A34A' : inCart ? '#0D9488' : '#4880B8', color: '#fff',
@@ -126,6 +117,7 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
             <button
               onClick={() => toggleWish(sku)}
               aria-label={liked ? t('Прибрати з обраного', 'Убрать из избранного') : t('Додати в обране', 'Добавить в избранное')}
+              className="op-wish-btn"
               style={{
                 width: '44px', height: '44px', borderRadius: '50%', flexShrink: 0,
                 border: `1px solid ${liked ? '#FECACA' : 'var(--border)'}`,
@@ -136,6 +128,15 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
             >
               <Heart size={18} fill={liked ? '#EF4444' : 'none'} strokeWidth={2} />
             </button>
+
+            {priceUnit > 0 && (
+              <span className="op-sum" style={{ whiteSpace: 'nowrap', minWidth: '160px', display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.6px' }}>{t('Сума', 'Сумма')}</span>
+                <span style={{ fontSize: '20px', fontWeight: 700, color: '#0F172A', lineHeight: 1 }}>
+                  {subtotal} <span style={{ fontSize: '13px', fontWeight: 500, color: '#64748B' }}>грн</span>
+                </span>
+              </span>
+            )}
           </div>
           <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '6px' }}>
             {t('Мін. замовлення:', 'Мин. заказ:')} {minOrder} {t('шт', 'шт')}

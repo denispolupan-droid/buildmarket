@@ -223,11 +223,13 @@ export default async function RuProductPage({ params, searchParams }: { params: 
               {(() => { const c = product.color ?? product.characteristics.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="badge">Цвет: {tFilterValue(c, 'ru')}</span> : null; })()}
             </div>
 
-            <div className="product-info__stock">
-              <span className={stockDot(stockStatus, stockQty, product.min_order)}></span>
-              {stockLabel(stockStatus, stockQty, product.min_order)}
+            <div className="product-info__stock-row">
+              <div className="product-info__stock">
+                <span className={stockDot(stockStatus, stockQty, product.min_order)}></span>
+                {stockLabel(stockStatus, stockQty, product.min_order)}
+              </div>
+              <div className="product-info__sku">Артикул: {product.sku}</div>
             </div>
-            <div className="product-info__sku">Артикул: {product.sku}</div>
 
             <hr className="product-info__divider" />
 

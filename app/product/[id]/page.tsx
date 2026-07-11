@@ -227,11 +227,13 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
               {(() => { const c = product.color ?? product.characteristics.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="badge">Колір: {c}</span> : null; })()}
             </div>
 
-            <div className="product-info__stock">
-              <span className={stockDot(stockStatus, stockQty, product.min_order)}></span>
-              {stockLabel(stockStatus, stockQty, product.min_order)}
+            <div className="product-info__stock-row">
+              <div className="product-info__stock">
+                <span className={stockDot(stockStatus, stockQty, product.min_order)}></span>
+                {stockLabel(stockStatus, stockQty, product.min_order)}
+              </div>
+              <div className="product-info__sku">Артикул: {product.sku}</div>
             </div>
-            <div className="product-info__sku">Артикул: {product.sku}</div>
 
             <hr className="product-info__divider" />
 
