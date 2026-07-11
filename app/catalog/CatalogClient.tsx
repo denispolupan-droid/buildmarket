@@ -1017,15 +1017,19 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                           <div className="catalog-card__body">
                             <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}`} className="catalog-card__name">{displayName(p)}</Link>
                             <div className="catalog-card__meta">
-                              <span>{p.brand}</span>
-                              {p.volume && <span className="catalog-card__vol">{p.volume}</span>}
-                              {(() => { const c = p.color ?? p.characteristics?.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="catalog-card__vol catalog-card__vol--color">{tFilterValue(c, lang)}</span> : null; })()}
-                            </div>
-                            {/* Fixed-height slot rendered whether or not this product has reviews yet —
-                                otherwise the badge's presence shifts everything below it, throwing off
-                                row alignment against sibling cards that have no rating. */}
-                            <div style={{ height: '15px', marginTop: '2px', display: 'flex', alignItems: 'center' }}>
-                              {reviewStats?.[p.sku] && <RatingBadge avg={reviewStats[p.sku].avg} count={reviewStats[p.sku].count} size={11} />}
+                              {/* This group truncates as a unit (color badge is the flexible/ellipsis one) so
+                                  the rating badge stays fully visible at the right edge instead of wrapping
+                                  or getting squeezed by a long color name. */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                                <span>{p.brand}</span>
+                                {p.volume && <span className="catalog-card__vol">{p.volume}</span>}
+                                {(() => { const c = p.color ?? p.characteristics?.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="catalog-card__vol catalog-card__vol--color">{tFilterValue(c, lang)}</span> : null; })()}
+                              </div>
+                              {reviewStats?.[p.sku] && (
+                                <span style={{ flexShrink: 0 }}>
+                                  <RatingBadge avg={reviewStats[p.sku].avg} count={reviewStats[p.sku].count} size={11} />
+                                </span>
+                              )}
                             </div>
                             <div className="catalog-card__bottom">
                             <div className="catalog-card__bottom-left">

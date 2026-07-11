@@ -99,21 +99,25 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
             {displayName}{p.volume && !displayName.includes(p.volume) ? ` ${p.volume}` : ''}
           </div>
           <div className="shop-card__meta">
-            {(() => {
-              const volL = p.volume ? (/кг|г$/.test(p.volume) ? 'Вага' : "Об'єм") : null;
-              const colorVal = p.color ?? p.characteristics?.find(c => /^Колір/i.test(c.label))?.value ?? null;
-              return (<>
-                <span className="shop-card__meta-brand">{p.brand}</span>
-                {volL     && <span className="shop-card__meta-badge">{p.volume}</span>}
-                {colorVal && <span className="shop-card__meta-badge shop-card__meta-color">{colorVal}</span>}
-              </>);
-            })()}
-          </div>
-          {/* Fixed-height slot, rendered whether or not this product has reviews yet —
-              otherwise the badge's presence shifts everything below it, throwing off
-              row alignment against sibling cards that have no rating. */}
-          <div style={{ height: '15px', marginTop: '2px', display: 'flex', alignItems: 'center' }}>
-            {rating && rating.count > 0 && <RatingBadge avg={rating.avg} count={rating.count} size={11} />}
+            {/* This group truncates as a unit (color badge is the flexible/ellipsis one) so the
+                rating badge — the more valuable signal — always stays fully visible at the right
+                edge instead of wrapping or getting squeezed by a long color name. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, minWidth: 0, overflow: 'hidden' }}>
+              {(() => {
+                const volL = p.volume ? (/кг|г$/.test(p.volume) ? 'Вага' : "Об'єм") : null;
+                const colorVal = p.color ?? p.characteristics?.find(c => /^Колір/i.test(c.label))?.value ?? null;
+                return (<>
+                  <span className="shop-card__meta-brand">{p.brand}</span>
+                  {volL     && <span className="shop-card__meta-badge">{p.volume}</span>}
+                  {colorVal && <span className="shop-card__meta-badge shop-card__meta-color">{colorVal}</span>}
+                </>);
+              })()}
+            </div>
+            {rating && rating.count > 0 && (
+              <span style={{ flexShrink: 0 }}>
+                <RatingBadge avg={rating.avg} count={rating.count} size={11} />
+              </span>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '8px', marginTop: '1px' }}>
             <div className={'shop-card__stock' + (inStock ? '' : ' out')}>
