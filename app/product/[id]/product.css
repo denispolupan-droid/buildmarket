@@ -155,10 +155,15 @@
   .product-info__sku   { margin-bottom: 0; order: 1; }
 
   /* Order panel: stepper left, add-to-cart + wishlist right (same row); sum drops to its
-     own full-width row underneath instead of competing for space with the buttons. */
-  .op-qty-stepper { order: 1; }
-  .op-cart-btn    { order: 2; margin-left: auto; padding: 0 18px !important; }
-  .op-wish-btn    { order: 3; }
+     own full-width row underneath. Keeps flex-wrap:wrap (needed for .op-sum's
+     flex-basis:100% trick to force it onto line 2) — the button uses flex-basis:0
+     instead of auto so the wrap decision is based on its shrunk size, not its natural
+     content width; flex-basis:auto measured the button at full "+ В кошик" width for
+     the wrap test and wrapped the heart to its own line even though the button could
+     have shrunk to make room. */
+  .op-qty-stepper { order: 1; flex-shrink: 0; }
+  .op-cart-btn    { order: 2; flex: 1 1 0% !important; min-width: 0 !important; padding: 0 10px !important; justify-content: center !important; }
+  .op-wish-btn    { order: 3; flex-shrink: 0; }
   .op-sum         { order: 4; flex: 0 0 100% !important; min-width: 0 !important; }
 }
 
