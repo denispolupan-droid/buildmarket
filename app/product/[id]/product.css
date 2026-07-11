@@ -193,6 +193,13 @@
     flex: 0 0 min(78%, 300px) !important;
     scroll-snap-align: start;
   }
+  /* Info column (sku/rating/price/stock/pack) is naturally ~87px tall — bigger than the
+     80px thumbnail, so the photo reads as an afterthought next to it. Sizing the photo
+     to match makes the card feel like one solid unit instead of icon + text list. */
+  .related-carousel-track .pc-img {
+    width: 100px !important;
+    height: 100px !important;
+  }
 }
 
 /* ── Dark theme ── */
