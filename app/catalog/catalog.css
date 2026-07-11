@@ -466,7 +466,7 @@
 }
 .catalog-card__stock {
   display: flex; align-items: center; gap: 4px;
-  font-size: 11px; color: var(--status-instock); margin-bottom: 2px;
+  font-size: 11px; color: var(--status-instock); margin-bottom: 2px; white-space: nowrap;
 }
 .catalog-card__stock.out { color: var(--text-muted); }
 .catalog-card__dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
@@ -477,14 +477,20 @@
 .catalog-card__bottom {
   display: flex; justify-content: space-between; align-items: center;
   margin-top: auto; padding-top: 6px; gap: 6px;
+  flex-wrap: wrap;
 }
-.catalog-card__bottom-left { min-width: 0; }
+/* At narrow grid columns, a wider decimal price (e.g. "334.50 грн") could no longer fit
+   next to the qty/actions column — since the price is white-space:nowrap and the box has
+   no overflow clipping, it painted straight through the actions box instead of wrapping.
+   A min-width forces the actions column onto its own line below instead, so price text
+   never has less room than it needs. */
+.catalog-card__bottom-left { min-width: 140px; flex: 1 1 140px; }
 .catalog-card__pack-row {
   display: flex; justify-content: space-between; align-items: center;
   font-size: 10px; color: var(--text-muted); margin-top: 6px; white-space: nowrap;
 }
 .catalog-card__vol--color { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
-.catalog-card__actions { display: flex; flex-direction: row; gap: 4px; align-items: center; flex-shrink: 0; }
+.catalog-card__actions { display: flex; flex-direction: row; gap: 4px; align-items: center; flex-shrink: 0; margin-left: auto; }
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
