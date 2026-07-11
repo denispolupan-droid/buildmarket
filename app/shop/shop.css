@@ -595,6 +595,10 @@
   .shop-sidebar.mobile-filters .sidebar-cats-section { display: none; }
   .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .shop-grid.list-view { grid-template-columns: 1fr; }
+  /* Desktop's tighter top gap around Арт. reads fine there, but on narrow mobile cards it
+     looked "stuck" to the line above — even out the gap above/below on mobile only. */
+  .shop-card__pack-row { padding: 4px 0 !important; }
+  .shop-card__stock-row { margin-top: 0 !important; }
   /* 2-per-row cards (~158px footer width) can't fit wish + full qty stepper + a labeled
      add-to-cart button on one line — wrapping the button to its own row (an earlier fix)
      kept the stepper but made every card noticeably taller. Shrinking the stepper and
