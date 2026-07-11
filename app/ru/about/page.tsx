@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import Footer from '../../components/Footer';
+import Reveal from '../../components/Reveal';
 import { ShieldCheck, Users, Package, Award, Truck, MessageCircle } from 'lucide-react';
 
 const BASE = 'https://fixline.com.ua';
@@ -90,6 +91,7 @@ export default function AboutRuPage() {
               <span>/</span>
               <span style={{ color: '#94A3B8' }}>О компании</span>
             </nav>
+            <Reveal>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0', marginBottom: '28px', userSelect: 'none' }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <span style={{
@@ -113,6 +115,8 @@ export default function AboutRuPage() {
                 </span>
               </div>
             </div>
+            </Reveal>
+            <Reveal delay={100}>
             <h1 style={{ fontSize: 'clamp(20px, 2.5vw, 30px)', fontWeight: 700, color: '#fff', lineHeight: 1.3, marginBottom: '16px', letterSpacing: '-0.3px' }}>
               Линия фиксации — всё для надёжного монтажа
             </h1>
@@ -120,6 +124,7 @@ export default function AboutRuPage() {
               Герметики, клеи, монтажные пены, грунтовки — материалы, которые фиксируют,
               защищают и держат. От проверенных производителей по конкурентным ценам.
             </p>
+            </Reveal>
           </div>
         </section>
 
@@ -127,7 +132,7 @@ export default function AboutRuPage() {
         <section style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', padding: '48px 0' }}>
           <div className="page-container">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px', alignItems: 'center' }} className="about-content-grid">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <Reveal><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 {[
                   { word: 'FIX',  color: '#4880B8', bg: 'rgba(72,128,184,0.08)', border: 'rgba(72,128,184,0.2)',  meanings: ['Фиксировать', 'Крепить',      'Склеивать', 'Герметизировать'] },
                   { word: 'LINE', color: '#14B8A6', bg: 'rgba(20,184,166,0.08)',  border: 'rgba(20,184,166,0.2)', meanings: ['Линия',       'Ассортимент', 'Подбор',    'Система'] },
@@ -153,8 +158,8 @@ export default function AboutRuPage() {
                     Линия материалов для фиксации — полный ассортимент того, что крепит, клеит, герметизирует и защищает в строительстве и ремонте.
                   </p>
                 </div>
-              </div>
-              <div>
+              </div></Reveal>
+              <Reveal delay={120}><div>
                 <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px', lineHeight: 1.3 }}>
                   Название — это концепция
                 </h2>
@@ -169,7 +174,7 @@ export default function AboutRuPage() {
                     Вместе <strong style={{ color: 'var(--text-primary)' }}>FIXLINE</strong> — это линия фиксации: всё что нужно, чтобы всё держалось надёжно.
                   </p>
                 </div>
-              </div>
+              </div></Reveal>
             </div>
           </div>
         </section>
@@ -178,8 +183,9 @@ export default function AboutRuPage() {
         <section style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
           <div className="page-container" style={{ padding: '48px 32px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '32px' }} className="about-stats-grid">
-              {stats.map(({ icon: Icon, stat, label, text }) => (
-                <div key={label} style={{ textAlign: 'center' }}>
+              {stats.map(({ icon: Icon, stat, label, text }, i) => (
+                <Reveal key={label} delay={i * 90}>
+                <div style={{ textAlign: 'center' }}>
                   <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
                     <Icon size={22} color="#4880B8" strokeWidth={2} />
                   </div>
@@ -187,6 +193,7 @@ export default function AboutRuPage() {
                   <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', margin: '4px 0 8px' }}>{label}</div>
                   <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>{text}</p>
                 </div>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -196,7 +203,7 @@ export default function AboutRuPage() {
         <section style={{ padding: '64px 0' }}>
           <div className="page-container">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '64px', alignItems: 'start' }} className="about-content-grid">
-              <div>
+              <Reveal><div>
                 <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '20px' }}>
                   Кто мы
                 </h2>
@@ -215,8 +222,8 @@ export default function AboutRuPage() {
                     клиентами. Предлагаем гибкие условия и подбор аналогов под бюджет.
                   </p>
                 </div>
-              </div>
-              <div>
+              </div></Reveal>
+              <Reveal delay={120}><div>
                 <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '20px' }}>
                   Доставка и логистика
                 </h2>
@@ -235,7 +242,7 @@ export default function AboutRuPage() {
                     от имени вашего магазина.
                   </p>
                 </div>
-              </div>
+              </div></Reveal>
             </div>
           </div>
         </section>
@@ -243,18 +250,22 @@ export default function AboutRuPage() {
         {/* Values */}
         <section style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border)', padding: '64px 0' }}>
           <div className="page-container">
+            <Reveal>
             <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '40px', textAlign: 'center' }}>
               Наши принципы
             </h2>
+            </Reveal>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }} className="about-values-grid">
-              {values.map(({ icon: Icon, title, text }) => (
-                <div key={title} style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px 24px' }}>
+              {values.map(({ icon: Icon, title, text }, i) => (
+                <Reveal key={title} delay={i * 90}>
+                <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px 24px' }}>
                   <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
                     <Icon size={20} color="#4880B8" strokeWidth={2} />
                   </div>
                   <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '10px' }}>{title}</h3>
                   <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>{text}</p>
                 </div>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -263,12 +274,15 @@ export default function AboutRuPage() {
         {/* Brands */}
         <section style={{ padding: '64px 0', borderTop: '1px solid var(--border)' }}>
           <div className="page-container">
+            <Reveal>
             <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', textAlign: 'center' }}>
               Бренды, с которыми мы работаем
             </h2>
             <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '40px' }}>
               Продукция от проверенных производителей строительной химии
             </p>
+            </Reveal>
+            <Reveal delay={100}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px' }} className="brands-grid">
               {brands.map(({ name, src }) => (
                 <div key={name} style={{
@@ -281,12 +295,14 @@ export default function AboutRuPage() {
                 </div>
               ))}
             </div>
+            </Reveal>
           </div>
         </section>
 
         {/* CTA */}
         <section style={{ background: '#1E3059', padding: '56px 0', textAlign: 'center' }}>
           <div className="page-container">
+            <Reveal>
             <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', marginBottom: '12px' }}>
               Стать партнёром FIXLINE
             </h2>
@@ -302,6 +318,7 @@ export default function AboutRuPage() {
                 Связаться с нами
               </Link>
             </div>
+            </Reveal>
           </div>
         </section>
 

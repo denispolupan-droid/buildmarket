@@ -74,10 +74,10 @@ export default function DeliveryPage() {
                 <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Адресна доставка</h2>
               </div>
               <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 12px' }}>
-                Для великих оптових замовлень — доставка власним транспортом або перевізником по Харкову та найближчих регіонах.
+                Для оптових замовлень — доставка власним транспортом або перевізником по Харкову та області.
               </p>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {['Від 50 кг або від 5000 грн', 'Харків та область — безкоштовно', 'Умови обговорюються з менеджером'].map(i => (
+                {['Доступно для оптових замовлень', 'Вартість і терміни — за домовленістю', 'Усі деталі узгоджує менеджер індивідуально'].map(i => (
                   <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                     <span style={{ color: '#4880B8', flexShrink: 0, marginTop: '2px' }}>✓</span>{i}
                   </li>

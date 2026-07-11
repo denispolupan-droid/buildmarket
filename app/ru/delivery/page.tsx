@@ -79,10 +79,10 @@ export default function DeliveryRuPage() {
                 <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Адресная доставка</h2>
               </div>
               <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 12px' }}>
-                Для крупных оптовых заказов — доставка собственным транспортом или перевозчиком по Харькову и ближайшим регионам.
+                Для оптовых заказов — доставка собственным транспортом или перевозчиком по Харькову и области.
               </p>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {['От 50 кг или от 5000 грн', 'Харьков и область — бесплатно', 'Условия обсуждаются с менеджером'].map(i => (
+                {['Доступно для оптовых заказов', 'Стоимость и сроки — по договорённости', 'Все детали согласовывает менеджер индивидуально'].map(i => (
                   <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                     <span style={{ color: '#4880B8', flexShrink: 0, marginTop: '2px' }}>✓</span>{i}
                   </li>
