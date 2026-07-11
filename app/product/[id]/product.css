@@ -194,6 +194,10 @@
     flex: 0 0 calc(100% - 40px) !important;
     scroll-snap-align: start;
   }
+  /* The 80px thumbnail was sized for a narrow 1/5-width desktop column — at the much
+     wider single mobile card it leaves a lot of dead space next to it. Bigger photo
+     fills that space and reads as a proper product shot instead of a thumbnail. */
+  .related-carousel-track .pc-img { width: 128px !important; height: 128px !important; }
 }
 
 /* ── Dark theme ── */

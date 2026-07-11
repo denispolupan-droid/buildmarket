@@ -166,7 +166,10 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
           onClick={handleAdd}
           style={inCart ? { background: '#0D9488' } : undefined}
         >
-          {inCart ? <><Check size={14} strokeWidth={2.5} /> {t('В кошику', 'В корзине')}</> : <><Plus size={14} strokeWidth={2.5} /> {t('В кошик', 'В корзину')}</>}
+          {inCart
+            ? <><Check size={14} strokeWidth={2.5} /> <span className="shop-card__btn-label">{t('В кошику', 'В корзине')}</span></>
+            : <><Plus size={14} strokeWidth={2.5} /> <span className="shop-card__btn-label">{t('В кошик', 'В корзину')}</span></>
+          }
         </button>
       </div>
       <div className="shop-card__pack-row">

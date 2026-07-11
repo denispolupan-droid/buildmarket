@@ -595,13 +595,17 @@
   .shop-sidebar.mobile-filters .sidebar-cats-section { display: none; }
   .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .shop-grid.list-view { grid-template-columns: 1fr; }
-  /* 2-per-row cards are too narrow to fit wish + qty stepper + add-to-cart on one line —
-     wrap onto two rows instead of dropping the stepper, so mobile shoppers can still add
-     more than 1 unit at a time without opening the product page. Wish (34px, fixed) + the
-     stepper (~96px, fixed) comfortably share row 1; the button's flex-basis:100% forces
-     it onto its own full-width row 2. */
-  .shop-grid:not(.list-view) .shop-card__footer { flex-wrap: wrap; row-gap: 6px; }
-  .shop-grid:not(.list-view) .shop-card__btn { flex: 1 1 100% !important; }
+  /* 2-per-row cards (~158px footer width) can't fit wish + full qty stepper + a labeled
+     add-to-cart button on one line — wrapping the button to its own row (an earlier fix)
+     kept the stepper but made every card noticeably taller. Shrinking wish + stepper and
+     dropping the button to icon-only keeps everything on one row and the card compact. */
+  .shop-grid:not(.list-view) .shop-card__footer { gap: 5px; }
+  .shop-grid:not(.list-view) .shop-card__wish { width: 28px !important; height: 28px !important; flex-shrink: 0; }
+  .shop-grid:not(.list-view) .shop-card__qty { flex-shrink: 0; }
+  .shop-grid:not(.list-view) .shop-card__qty button { width: 24px !important; }
+  .shop-grid:not(.list-view) .shop-card__qty input { width: 18px !important; }
+  .shop-grid:not(.list-view) .shop-card__btn { flex: 1 1 auto !important; min-width: 0 !important; padding: 0 6px !important; }
+  .shop-grid:not(.list-view) .shop-card__btn-label { display: none; }
   /* Narrower 2-col cards: shrink the stock label so "В наявності" + price never fight for space */
   .shop-grid:not(.list-view) .shop-card__stock { font-size: 10px; gap: 3px; }
   .shop-grid:not(.list-view) .shop-card__price { font-size: 17px; }
