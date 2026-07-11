@@ -1031,8 +1031,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                                 </span>
                               )}
                             </div>
-                            <div className="catalog-card__bottom">
-                            <div className="catalog-card__bottom-left">
+                            <div className="catalog-card__price-row">
                               <span className={'catalog-card__stock' + (inStock ? '' : ' out')}>
                                 <span className="catalog-card__dot" />
                                 {inStock ? t('В наявності', 'В наличии') : t('Немає', 'Нет')}
@@ -1047,6 +1046,13 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                               )}
                             </div>
                             <div className="catalog-card__actions">
+                              <button
+                                className="action-icon-btn"
+                                onClick={() => toggle(p.sku)}
+                                style={{ color: isLiked(p.sku) ? '#EF4444' : undefined, background: isLiked(p.sku) ? '#FEF2F2' : undefined, borderColor: isLiked(p.sku) ? '#FECACA' : undefined }}
+                              >
+                                <Heart size={13} strokeWidth={2} fill={isLiked(p.sku) ? '#EF4444' : 'none'} />
+                              </button>
                               <input
                                 className="qty-input"
                                 type="number" min={1}
@@ -1063,15 +1069,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                               >
                                 {added[p.sku] ? <Check size={14} strokeWidth={2.5} /> : <Plus size={14} strokeWidth={2.5} />}
                               </button>
-                              <button
-                                className="action-icon-btn"
-                                onClick={() => toggle(p.sku)}
-                                style={{ color: isLiked(p.sku) ? '#EF4444' : undefined, background: isLiked(p.sku) ? '#FEF2F2' : undefined, borderColor: isLiked(p.sku) ? '#FECACA' : undefined }}
-                              >
-                                <Heart size={13} strokeWidth={2} fill={isLiked(p.sku) ? '#EF4444' : 'none'} />
-                              </button>
                             </div>
-                          </div>
                           <div className="catalog-card__pack-row">
                             <span>{t('уп.', 'уп.')} {p.pack_qty} {t('шт', 'шт')}</span>
                             <CopySkuBtn sku={p.sku} lang={lang} />
