@@ -595,9 +595,13 @@
   .shop-sidebar.mobile-filters .sidebar-cats-section { display: none; }
   .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .shop-grid.list-view { grid-template-columns: 1fr; }
-  /* 2-per-row cards are too narrow for wish + qty stepper + add-to-cart — drop the stepper, add-to-cart adds qty 1.
-     !important is required: the element also carries an inline display:flex style, which otherwise always wins. */
-  .shop-grid:not(.list-view) .shop-card__qty { display: none !important; }
+  /* 2-per-row cards are too narrow to fit wish + qty stepper + add-to-cart on one line —
+     wrap onto two rows instead of dropping the stepper, so mobile shoppers can still add
+     more than 1 unit at a time without opening the product page. Wish (34px, fixed) + the
+     stepper (~96px, fixed) comfortably share row 1; the button's flex-basis:100% forces
+     it onto its own full-width row 2. */
+  .shop-grid:not(.list-view) .shop-card__footer { flex-wrap: wrap; row-gap: 6px; }
+  .shop-grid:not(.list-view) .shop-card__btn { flex: 1 1 100% !important; }
   /* Narrower 2-col cards: shrink the stock label so "В наявності" + price never fight for space */
   .shop-grid:not(.list-view) .shop-card__stock { font-size: 10px; gap: 3px; }
   .shop-grid:not(.list-view) .shop-card__price { font-size: 17px; }

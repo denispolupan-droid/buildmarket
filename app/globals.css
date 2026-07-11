@@ -812,6 +812,11 @@ input, select { font-family: inherit; }
 
 @media (max-width: 480px) {
   .home-trust-grid { grid-template-columns: 1fr; }
+  /* One card per row on narrow phones — two columns left titles like "Доставка Новою
+     Поштою" with so little width that nearly every word had to hyphenate, which read
+     as broken rather than intentional. Full width gives every title room for a normal
+     one-line (or clean word-wrapped) fit. */
+  .how-we-work-grid { grid-template-columns: 1fr !important; }
 }
 
 /* ── Dropship page mobile ── */
