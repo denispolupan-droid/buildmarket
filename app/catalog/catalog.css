@@ -487,11 +487,16 @@
 .catalog-card__price-na { font-size: 12px; color: var(--text-muted); font-weight: 600; }
 /* Same two-row split as the shop card: stock opposite price on their own row, qty/wish/cart
    on a separate row below — instead of squeezing both onto one row and fighting for width
-   (which is what caused the price to overlap the qty stepper on wider decimal prices). */
+   (which is what caused the price to overlap the qty stepper on wider decimal prices).
+   flex-wrap is a second safety net: at narrow (2-col mobile) widths, a long decimal price
+   can still be too wide to sit next to the stock label on one line — instead of clipping
+   against the card's own overflow:hidden, it now drops to its own right-aligned line. */
 .catalog-card__price-row {
   display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 8px; margin-top: auto; padding-top: 6px;
+  gap: 4px 8px; margin-top: auto; padding-top: 6px;
+  flex-wrap: wrap;
 }
+.catalog-card__price, .catalog-card__price-na { flex: 1 1 auto; text-align: right; }
 .catalog-card__pack-row {
   display: flex; justify-content: space-between; align-items: center;
   font-size: 10px; color: var(--text-muted); margin-top: 6px; white-space: nowrap;
