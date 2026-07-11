@@ -50,6 +50,7 @@ export default function BlogCarousel({ articles }: { articles: Article[] }) {
       <button
         onClick={() => scroll(-1)}
         aria-label={lang === 'ru' ? 'Прокрутить влево' : 'Прокрутити вліво'}
+        className="blog-carousel-arrow"
         style={{
           position: 'absolute', left: '-20px', top: '50%', transform: 'translateY(-50%)',
           zIndex: 2, width: '40px', height: '40px', borderRadius: '50%',
@@ -63,6 +64,7 @@ export default function BlogCarousel({ articles }: { articles: Article[] }) {
       <button
         onClick={() => scroll(1)}
         aria-label={lang === 'ru' ? 'Прокрутить вправо' : 'Прокрутити вправо'}
+        className="blog-carousel-arrow"
         style={{
           position: 'absolute', right: '-20px', top: '50%', transform: 'translateY(-50%)',
           zIndex: 2, width: '40px', height: '40px', borderRadius: '50%',
@@ -74,9 +76,12 @@ export default function BlogCarousel({ articles }: { articles: Article[] }) {
         <ChevronRight size={18} color="var(--text-secondary)" />
       </button>
 
-      {/* Scrollable track — shows exactly 4 cards */}
+      {/* Scrollable track — shows exactly 4 cards on desktop; on mobile each card
+          (.blog-carousel-card) becomes ~1 per screen with a peek of the next one,
+          see the mobile override in globals.css */}
       <div
         ref={trackRef}
+        className="blog-carousel-track"
         style={{
           display: 'flex', gap: '20px',
           overflowX: 'auto', scrollbarWidth: 'none',
@@ -104,7 +109,7 @@ export default function BlogCarousel({ articles }: { articles: Article[] }) {
               scrollSnapAlign: 'start',
               transition: 'box-shadow 0.15s ease, transform 0.15s ease',
             }}
-            className="blog-card-link"
+            className="blog-card-link blog-carousel-card"
           >
             <div style={{ aspectRatio: '16/9', overflow: 'hidden', flexShrink: 0 }}>
               <FadeCoverImage src={article.image} alt={title} />

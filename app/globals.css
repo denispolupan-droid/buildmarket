@@ -788,6 +788,15 @@ input, select { font-family: inherit; }
   .how-we-work-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
   .home-warehouse-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
 
+  /* Blog carousel — one card per screen instead of an awkward 1.7-cards-wide peek
+     (220px min-width forcing a partial second card at random). Keep a ~28px sliver
+     of the next card visible so it reads as "swipe for more" rather than a bug, and
+     drop the arrow buttons (they sat off-screen at left:-20px/right:-20px anyway —
+     invisible on mobile — native swipe + scroll-snap replaces them, same pattern as
+     the related-products carousel). */
+  .blog-carousel-arrow { display: none !important; }
+  .blog-carousel-card { flex: 0 0 calc(100% - 40px) !important; min-width: 0 !important; }
+
   /* Footer */
   .footer-inner { padding: 32px 16px 0 !important; }
   .footer-grid { grid-template-columns: 1fr !important; gap: 28px !important; }

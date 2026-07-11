@@ -259,7 +259,7 @@ export default async function HomeRu() {
                     }}>
                       <Icon size={20} color={color} strokeWidth={1.75} />
                     </div>
-                    <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.25 }}>
+                    <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.25, flex: 1, minWidth: 0, overflowWrap: 'break-word', hyphens: 'auto', WebkitHyphens: 'auto' }}>
                       {title}
                     </div>
                   </div>
@@ -326,7 +326,7 @@ export default async function HomeRu() {
                     }}>
                       <Icon size={20} color={color} strokeWidth={1.75} />
                     </div>
-                    <h3 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{title}</h3>
+                    <h3 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, minWidth: 0, overflowWrap: 'break-word' }}>{title}</h3>
                   </div>
                   <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
                     {text}
