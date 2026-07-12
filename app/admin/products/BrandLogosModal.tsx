@@ -5,12 +5,12 @@ import { X, Image as ImageIcon, Trash2, Upload } from 'lucide-react';
 
 type Props = {
   brands: string[];
-  initialLogos: Record<string, string>; // brand name uppercase -> logo url
+  logos: Record<string, string>; // brand name uppercase -> logo url
+  onLogosChange: (updater: (prev: Record<string, string>) => Record<string, string>) => void;
   onClose: () => void;
 };
 
-export default function BrandLogosModal({ brands, initialLogos, onClose }: Props) {
-  const [logos, setLogos]     = useState(initialLogos);
+export default function BrandLogosModal({ brands, logos, onLogosChange, onClose }: Props) {
   const [busy, setBusy]       = useState<Record<string, boolean>>({});
   const [errors, setErrors]   = useState<Record<string, string>>({});
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -26,7 +26,7 @@ export default function BrandLogosModal({ brands, initialLogos, onClose }: Props
       const res = await fetch('/api/admin/brand-logos', { method: 'POST', body: formData });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Помилка завантаження');
-      setLogos(prev => ({ ...prev, [key]: json.logoUrl }));
+      onLogosChange(prev => ({ ...prev, [key]: json.logoUrl }));
     } catch (err) {
       setErrors(e => ({ ...e, [brand]: err instanceof Error ? err.message : 'Помилка завантаження' }));
     } finally {
@@ -44,7 +44,7 @@ export default function BrandLogosModal({ brands, initialLogos, onClose }: Props
         body: JSON.stringify({ brand }),
       });
       if (!res.ok) throw new Error();
-      setLogos(prev => { const n = { ...prev }; delete n[key]; return n; });
+      onLogosChange(prev => { const n = { ...prev }; delete n[key]; return n; });
     } catch {
       setErrors(e => ({ ...e, [brand]: 'Не вдалося видалити' }));
     } finally {

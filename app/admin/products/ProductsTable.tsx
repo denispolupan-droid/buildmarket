@@ -27,6 +27,7 @@ export default function ProductsTable({ products, categories, brandLogos = {} }:
   const [selected, setSelected]           = useState<Set<string>>(new Set());
   const [showAiFill, setShowAiFill]       = useState(false);
   const [showBrandLogos, setShowBrandLogos] = useState(false);
+  const [brandLogosState, setBrandLogosState] = useState(brandLogos);
 
   const toggleField = useCallback(async (sku: string, field: BoolField, current: boolean) => {
     const key = `${sku}:${field}`;
@@ -458,7 +459,8 @@ export default function ProductsTable({ products, categories, brandLogos = {} }:
       {showBrandLogos && (
         <BrandLogosModal
           brands={brands}
-          initialLogos={brandLogos}
+          logos={brandLogosState}
+          onLogosChange={setBrandLogosState}
           onClose={() => setShowBrandLogos(false)}
         />
       )}
