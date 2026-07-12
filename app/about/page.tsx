@@ -4,6 +4,8 @@ import Image from 'next/image';
 import Footer from '../components/Footer';
 import Reveal from '../components/Reveal';
 import { ShieldCheck, Users, Package, Award, Truck, MessageCircle } from 'lucide-react';
+import { BRANDS } from '../../lib/brands';
+import { getBrandLogosCached } from '../../lib/supabase';
 
 export const metadata: Metadata = {
   title: 'Про компанію FIXLINE — постачальник будівельної хімії',
@@ -28,15 +30,6 @@ const stats = [
   { icon: ShieldCheck,   stat: '100%',  label: 'сертифікована продукція', text: 'Тільки оригінальні товари з документами якості та технічними паспортами.' },
 ];
 
-const brands = [
-  { name: 'Lacrysil',      src: '/brands/Lacrysil.png' },
-  { name: 'Ceresit',       src: '/brands/ceresit.webp' },
-  { name: 'Pattex',        src: '/brands/pattex.webp' },
-  { name: 'Ataman',        src: '/brands/ataman.jpg' },
-  { name: 'Aqua Protect',  src: '/brands/Aqua Protect.png' },
-  { name: 'Bitugum',       src: '/brands/bitugum.webp' },
-];
-
 const values = [
   { icon: ShieldCheck,   title: 'Якість без компромісів',  text: 'Ми працюємо тільки з перевіреними виробниками та офіційними дистриб\'юторами. Кожна партія супроводжується документами якості.' },
   { icon: Truck,         title: 'Надійна логістика',       text: 'Власна логістика та Нова Пошта по всій Україні. Замовлення, прийняті до 14:00, відправляємо того ж дня.' },
@@ -44,7 +37,8 @@ const values = [
   { icon: Package,       title: 'Гнучкі умови',            text: 'Від 1 одиниці в роздріб до великого опту. Індивідуальні ціни та умови оплати для постійних партнерів.' },
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const brandLogos = await getBrandLogosCached();
   const breadcrumbLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -293,16 +287,24 @@ export default function AboutPage() {
             </Reveal>
             <Reveal delay={100}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px' }} className="brands-grid">
-              {brands.map(({ name, src }) => (
-                <div key={name} style={{
-                  background: 'var(--bg-card)', border: '1px solid var(--border)',
-                  borderRadius: '12px', padding: '12px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  aspectRatio: '3/2',
-                }}>
-                  <Image src={src} alt={name} width={160} height={80} style={{ objectFit: 'contain', width: '100%', height: '100%' }} />
-                </div>
-              ))}
+              {BRANDS.map(({ name, logo, href, color, style }) => {
+                const logoSrc = brandLogos[name.toUpperCase()] ?? logo;
+                return (
+                  <Link key={name} href={href} style={{
+                    background: 'var(--bg-card)', border: '1px solid var(--border)',
+                    borderRadius: '12px', padding: '12px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    aspectRatio: '3/2', textDecoration: 'none',
+                    transition: 'box-shadow 0.2s, transform 0.2s, border-color 0.2s',
+                  }} className="about-brand-tile">
+                    {logoSrc ? (
+                      <Image src={logoSrc} alt={name} width={160} height={80} style={{ objectFit: 'contain', width: '100%', height: '100%' }} />
+                    ) : (
+                      <span style={{ color, textAlign: 'center', ...style }}>{name}</span>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
             </Reveal>
           </div>
@@ -334,6 +336,7 @@ export default function AboutPage() {
       </div>
       <Footer />
       <style>{`
+        .about-brand-tile:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.10); border-color: #93C5FD; transform: translateY(-2px); }
         @media (max-width: 768px) {
           .about-stats-grid  { grid-template-columns: repeat(2, 1fr) !important; }
           .about-values-grid { grid-template-columns: repeat(2, 1fr) !important; }

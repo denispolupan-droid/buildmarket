@@ -37,11 +37,13 @@ export default function DeliveryMapCard() {
 
   return (
     <div ref={ref} className="delivery-map-card" style={{
-      position: 'relative', overflow: 'hidden',
-      borderTop: '3px solid #0891B2', borderRadius: '2px 2px 18px 18px',
-      height: '440px', background: '#0C1930',
-      isolation: 'isolate', willChange: 'opacity',
+      overflow: 'hidden', borderRadius: '2px 2px 18px 18px',
+      background: '#0C1930', isolation: 'isolate', willChange: 'opacity',
     }}>
+      <div className="delivery-map-card__visual" style={{
+        position: 'relative', overflow: 'hidden',
+        borderTop: '3px solid #0891B2', height: '440px',
+      }}>
       {/* Map — remounted (fresh key) every time it enters view, so the intro animation replays */}
       {visible && (
         // eslint-disable-next-line @next/next/no-img-element
@@ -64,14 +66,19 @@ export default function DeliveryMapCard() {
         background: 'linear-gradient(to bottom, rgba(8,15,30,0.92) 0%, rgba(8,15,30,0.15) 65%)',
       }} />
 
-      <div style={{ position: 'relative', padding: '24px 28px' }}>
-        <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
-          {lang === 'ru' ? 'Доставляем по всей Украине' : 'Доставляємо по всій Україні'}
-        </h2>
-        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
+        <div style={{ position: 'relative', padding: '24px 28px' }}>
+          <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
+            {lang === 'ru' ? 'Доставляем по всей Украине' : 'Доставляємо по всій Україні'}
+          </h2>
+          <p className="delivery-map-card__subtitle--desktop" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
           {lang === 'ru' ? 'Новая Почта · 28 000+ отделений по стране' : 'Нова Пошта · 28 000+ відділень по країні'}
-        </p>
+          </p>
+        </div>
       </div>
+
+      <p className="delivery-map-card__subtitle--mobile" style={{ margin: 0, padding: '14px 20px 18px', fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
+        {lang === 'ru' ? 'Новая Почта · 28 000+ отделений по стране' : 'Нова Пошта · 28 000+ відділень по країні'}
+      </p>
     </div>
   );
 }

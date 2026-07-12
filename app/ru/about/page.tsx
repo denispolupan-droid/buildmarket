@@ -4,6 +4,8 @@ import Image from 'next/image';
 import Footer from '../../components/Footer';
 import Reveal from '../../components/Reveal';
 import { ShieldCheck, Users, Package, Award, Truck, MessageCircle } from 'lucide-react';
+import { BRANDS } from '../../../lib/brands';
+import { getBrandLogosCached } from '../../../lib/supabase';
 
 const BASE = 'https://fixline.com.ua';
 
@@ -33,15 +35,6 @@ const stats = [
   { icon: ShieldCheck, stat: '100%',  label: 'сертифицированная продукция', text: 'Только оригинальные товары с документами качества и техническими паспортами.' },
 ];
 
-const brands = [
-  { name: 'Lacrysil',     src: '/brands/Lacrysil.png' },
-  { name: 'Ceresit',      src: '/brands/ceresit.webp' },
-  { name: 'Pattex',       src: '/brands/pattex.webp' },
-  { name: 'Ataman',       src: '/brands/ataman.jpg' },
-  { name: 'Aqua Protect', src: '/brands/Aqua Protect.png' },
-  { name: 'Bitugum',      src: '/brands/bitugum.webp' },
-];
-
 const values = [
   { icon: ShieldCheck,   title: 'Качество без компромиссов', text: 'Мы работаем только с проверенными производителями и официальными дистрибьюторами. Каждая партия сопровождается документами качества.' },
   { icon: Truck,         title: 'Надёжная логистика',        text: 'Собственная логистика и Новая Почта по всей Украине. Заказы, принятые до 14:00, отправляем в тот же день.' },
@@ -49,7 +42,8 @@ const values = [
   { icon: Package,       title: 'Гибкие условия',            text: 'От 1 единицы в розницу до крупного опта. Индивидуальные цены и условия оплаты для постоянных партнёров.' },
 ];
 
-export default function AboutRuPage() {
+export default async function AboutRuPage() {
+  const brandLogos = await getBrandLogosCached();
   const breadcrumbLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -284,16 +278,24 @@ export default function AboutRuPage() {
             </Reveal>
             <Reveal delay={100}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px' }} className="brands-grid">
-              {brands.map(({ name, src }) => (
-                <div key={name} style={{
-                  background: 'var(--bg-card)', border: '1px solid var(--border)',
-                  borderRadius: '12px', padding: '12px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  aspectRatio: '3/2',
-                }}>
-                  <Image src={src} alt={name} width={160} height={80} style={{ objectFit: 'contain', width: '100%', height: '100%' }} />
-                </div>
-              ))}
+              {BRANDS.map(({ name, logo, href, color, style }) => {
+                const logoSrc = brandLogos[name.toUpperCase()] ?? logo;
+                return (
+                  <Link key={name} href={`/ru${href}`} style={{
+                    background: 'var(--bg-card)', border: '1px solid var(--border)',
+                    borderRadius: '12px', padding: '12px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    aspectRatio: '3/2', textDecoration: 'none',
+                    transition: 'box-shadow 0.2s, transform 0.2s, border-color 0.2s',
+                  }} className="about-brand-tile">
+                    {logoSrc ? (
+                      <Image src={logoSrc} alt={name} width={160} height={80} style={{ objectFit: 'contain', width: '100%', height: '100%' }} />
+                    ) : (
+                      <span style={{ color, textAlign: 'center', ...style }}>{name}</span>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
             </Reveal>
           </div>
@@ -325,6 +327,7 @@ export default function AboutRuPage() {
       </div>
       <Footer />
       <style>{`
+        .about-brand-tile:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.10); border-color: #93C5FD; transform: translateY(-2px); }
         @media (max-width: 768px) {
           .about-stats-grid  { grid-template-columns: repeat(2, 1fr) !important; }
           .about-values-grid { grid-template-columns: repeat(2, 1fr) !important; }
