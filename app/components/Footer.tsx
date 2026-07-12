@@ -22,12 +22,19 @@ function InstagramIcon() {
 }
 
 function ViberIcon() {
+  // Real Viber logomark, tinted via CSS mask instead of a hand-drawn approximation —
+  // the previous version didn't read as the actual Viber icon.
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3C7.03 3 3 6.58 3 11c0 2.5 1.22 4.73 3.13 6.26V20l2.87-1.43c.97.24 1.98.37 3 .37 4.97 0 9-3.58 9-8S16.97 3 12 3z"/>
-      <path d="M9.5 9.5c.3.8.8 1.6 1.5 2.3s1.5 1.2 2.3 1.5"/>
-      <path d="M14.5 14.5c.4-.1.7-.4.7-.8a3.3 3.3 0 0 0-1-2 3.3 3.3 0 0 0-2-1c-.4 0-.7.3-.8.7"/>
-    </svg>
+    <span
+      style={{
+        width: '18px', height: '18px', display: 'inline-block',
+        backgroundColor: 'currentColor',
+        WebkitMaskImage: 'url(/viber-icon.png)', maskImage: 'url(/viber-icon.png)',
+        WebkitMaskSize: 'contain', maskSize: 'contain',
+        WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat',
+        WebkitMaskPosition: 'center', maskPosition: 'center',
+      }}
+    />
   );
 }
 
