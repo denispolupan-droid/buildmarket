@@ -119,7 +119,7 @@ export default function RelatedCarousel({ products, retail = false, reviewStats 
                                   imageUrl={p.image ?? undefined} />
                   </div>
                   <div className="pc-info">
-                    <div className="pc-sku">{p.sku}</div>
+                    <div className="pc-sku">{t('Арт.', 'Арт.')} {p.sku}</div>
                     {/* Fixed-height slot regardless of whether this product has reviews —
                         otherwise cards with/without a badge fall out of row alignment. */}
                     <div style={{ height: '15px', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>

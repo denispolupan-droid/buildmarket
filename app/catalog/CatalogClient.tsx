@@ -1039,8 +1039,14 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                               </span>
                               {priceUnit > 0 ? (
                                 <div className="catalog-card__price">
-                                  {isSale && <span className="catalog-card__price-old">{fmtPrice(Number(priceOld))} грн</span>}
-                                  <span>{fmtPrice(displayPrice)} <em>грн</em></span>
+                                  {isSale && (
+                                    <>
+                                      <span className="catalog-card__price-old catalog-card__price-old--desktop">{fmtPrice(Number(priceOld))} грн</span>
+                                      <span className="catalog-card__price-old catalog-card__price-old--mobile">{Math.round(Number(priceOld))} грн</span>
+                                    </>
+                                  )}
+                                  <span className="catalog-card__price-desktop">{fmtPrice(displayPrice)} <em>грн</em></span>
+                                  <span className="catalog-card__price-mobile">{Math.round(displayPrice)} <em>грн</em></span>
                                 </div>
                               ) : (
                                 <div className="catalog-card__price-na">{t('За запитом', 'По запросу')}</div>

@@ -485,6 +485,9 @@
 .catalog-card__price em { font-size: 11px; font-weight: 500; color: var(--text-muted); font-style: normal; }
 .catalog-card__price-old { font-size: 11px; color: #EF4444; text-decoration: line-through; display: block; }
 .catalog-card__price-na { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+/* Exact price (with kopecks) by default — mobile swaps to a rounded whole-number version
+   below, matching the shop card's plain-number style so the price never needs to wrap. */
+.catalog-card__price-mobile, .catalog-card__price-old--mobile { display: none; }
 /* Same two-row split as the shop card: stock opposite price on their own row, qty/wish/cart
    on a separate row below — instead of squeezing both onto one row and fighting for width
    (which is what caused the price to overlap the qty stepper on wider decimal prices).
@@ -535,13 +538,13 @@
   .catalog-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .catalog-card__img-wrap { height: 160px; }
   .catalog-card__stock { font-size: 10px; }
-  /* Unlike the shop card, this price always carries 2 decimal places (wholesale pricing) —
-     12px made it fit on one line in every case but read too small. 15px keeps it legible;
-     the price-row's flex-wrap (above) is the fallback for the rare 4-digit + cents price
-     that still doesn't fit next to the stock label — it drops to its own line instead of
-     clipping, rather than shrinking every price to cover that edge case. */
-  .catalog-card__price { font-size: 15px; }
-  .catalog-card__price em { font-size: 10px; }
+  /* Rounded whole-number price instead of the exact (kopeck) price — same convention as the
+     shop card, which never needs to wrap because its prices are always short like this. */
+  .catalog-card__price-desktop, .catalog-card__price-old--desktop { display: none; }
+  .catalog-card__price-mobile { display: inline; }
+  .catalog-card__price-old--mobile { display: block; }
+  .catalog-card__price { font-size: 17px; }
+  .catalog-card__price em { font-size: 11px; }
   .catalog-card__actions { gap: 4px; }
   .action-icon-btn { width: 28px !important; height: 28px !important; }
   .catalog-card__actions .qty-input { width: 40px !important; }
