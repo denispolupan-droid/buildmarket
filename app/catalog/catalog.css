@@ -546,7 +546,9 @@
   .catalog-card__price { font-size: 17px; }
   .catalog-card__price em { font-size: 11px; }
   .catalog-card__actions { gap: 4px; }
-  .action-icon-btn { width: 28px !important; height: 28px !important; }
+  /* Base action-icon-btn is already 32px, same height as qty-input/cart-btn below — no
+     override needed. It used to be forced to 28px here, making the heart visibly smaller
+     than the counter and cart button next to it. */
   .catalog-card__actions .qty-input { width: 40px !important; }
   .catalog-card__cart-btn { padding: 0 6px; }
   .catalog-card__cart-btn-label { display: none; }

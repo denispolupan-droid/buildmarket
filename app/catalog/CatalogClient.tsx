@@ -1054,7 +1054,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                             </div>
                             <div className="catalog-card__actions">
                               <button
-                                className="action-icon-btn"
+                                className="action-icon-btn catalog-card__wish"
                                 onClick={() => toggle(p.sku)}
                                 style={{ color: isLiked(p.sku) ? '#EF4444' : undefined, background: isLiked(p.sku) ? '#FEF2F2' : undefined, borderColor: isLiked(p.sku) ? '#FECACA' : undefined }}
                               >

@@ -133,9 +133,6 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
               </span>
             )}
           </div>
-          <div className="shop-card__pack-row shop-card__pack-row--inline">
-            {skuRow}
-          </div>
           <div className="shop-card__stock-row" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '8px', marginTop: '1px' }}>
             <div className={'shop-card__stock' + (inStock ? '' : ' out')}>
               <span className="shop-card__stock-dot" />
@@ -189,7 +186,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
           }
         </button>
       </div>
-      <div className="shop-card__pack-row shop-card__pack-row--bottom">
+      <div className="shop-card__pack-row">
         {skuRow}
       </div>
     </div>

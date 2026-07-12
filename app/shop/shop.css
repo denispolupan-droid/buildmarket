@@ -390,9 +390,6 @@
   font-size: 10px; color: var(--text-muted);
   padding: 4px 12px 8px; white-space: nowrap;
 }
-/* Two renders of the same Арт. row: inline (between meta and stock/price) for mobile,
-   bottom (own row after the footer) for desktop — toggled per breakpoint below. */
-.shop-card__pack-row--inline { display: none; }
 .shop-card__footer {
   padding: 0 8px 0;
   display: flex;
@@ -598,15 +595,6 @@
   .shop-sidebar.mobile-filters .sidebar-cats-section { display: none; }
   .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .shop-grid.list-view { grid-template-columns: 1fr; }
-  /* Mobile keeps Арт. between meta and stock/price (with an even top/bottom gap) — desktop
-     keeps its original own-row placement after the footer, untouched. */
-  .shop-card__pack-row--inline { display: flex; padding: 4px 0 !important; }
-  .shop-card__pack-row--bottom { display: none; }
-  .shop-card__stock-row { margin-top: 0 !important; }
-  /* On mobile the footer (wish/qty/cart) is now the card's last visible row — it had no
-     bottom padding (relying on the Арт. row after it for breathing room on desktop), so
-     the buttons sat flush against the card's bottom edge. */
-  .shop-card__footer { padding-bottom: 12px; }
   /* 2-per-row cards (~158px footer width) can't fit wish + full qty stepper + a labeled
      add-to-cart button on one line — wrapping the button to its own row (an earlier fix)
      kept the stepper but made every card noticeably taller. Shrinking the stepper and
