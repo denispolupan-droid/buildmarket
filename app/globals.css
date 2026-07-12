@@ -732,6 +732,7 @@ input, select { font-family: inherit; }
      more logical, at the bottom edge. */
   .home-warehouse-content { height: 100%; display: flex; flex-direction: column; box-sizing: border-box; }
   .home-warehouse-link { margin-top: auto !important; }
+  .home-warehouse-title { margin-bottom: 32px !important; }
 
   /* Cart page — items list first (see what you're ordering), then the checkout form,
      then totals + "Підтвердити замовлення" last once everything's filled in. */
