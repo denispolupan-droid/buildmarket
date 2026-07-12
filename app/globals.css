@@ -726,13 +726,12 @@ input, select { font-family: inherit; }
      card next to it, with the heading at the top of the image instead. */
   .home-warehouse-card { justify-content: flex-start !important; }
   .home-warehouse-scrim { background: linear-gradient(to bottom, rgba(8,15,30,0.92) 0%, rgba(8,15,30,0.15) 65%) !important; }
-  /* Title+list stay together near the top; the link is pushed to the actual bottom of the
-     card via margin-top:auto instead of just trailing right after the list — reveals more
-     of the photo in between and puts "До магазину" where a card's call-to-action reads as
-     more logical, at the bottom edge. */
-  .home-warehouse-content { height: 100%; display: flex; flex-direction: column; box-sizing: border-box; }
-  .home-warehouse-link { margin-top: auto !important; }
-  .home-warehouse-title { margin-bottom: 32px !important; }
+  /* Title, list and link are 3 direct flex children spread across the card's full height
+     with space-between — title stays at top, link at the bottom, and the list (the middle
+     item) lands roughly centered in the photo instead of bunched right under the title. */
+  .home-warehouse-content { height: 100%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; }
+  .home-warehouse-title { margin-bottom: 0 !important; }
+  .home-warehouse-list { margin-bottom: 0 !important; }
 
   /* Cart page — items list first (see what you're ordering), then the checkout form,
      then totals + "Підтвердити замовлення" last once everything's filled in. */

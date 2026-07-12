@@ -411,11 +411,10 @@ export default async function HomeRu() {
                 background: 'linear-gradient(to top, rgba(8,15,30,0.92) 0%, rgba(8,15,30,0.15) 65%)',
               }} />
               <div className="home-warehouse-content" style={{ position: 'relative', padding: '32px 28px' }}>
-                <div>
                 <h2 className="home-warehouse-title" style={{ fontSize: '22px', fontWeight: 800, color: '#fff', marginBottom: '16px', lineHeight: 1.2 }}>
                   Собственный склад и контроль качества
                 </h2>
-                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 22px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <ul className="home-warehouse-list" style={{ listStyle: 'none', padding: 0, margin: '0 0 22px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {[
                     'Более 700 товаров постоянно в наличии',
                     'Ответственное хранение и соблюдение условий производителя',
@@ -428,7 +427,6 @@ export default async function HomeRu() {
                     </li>
                   ))}
                 </ul>
-                </div>
                 <Link href="/ru/shop" className="home-warehouse-link" style={{
                   fontSize: '14px', fontWeight: 700, color: '#93C5FD', textDecoration: 'none',
                 }}>

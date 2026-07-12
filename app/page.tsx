@@ -429,11 +429,10 @@ export default async function Home() {
                 background: 'linear-gradient(to top, rgba(8,15,30,0.92) 0%, rgba(8,15,30,0.15) 65%)',
               }} />
               <div className="home-warehouse-content" style={{ position: 'relative', padding: '32px 28px' }}>
-                <div>
                 <h2 className="home-warehouse-title" style={{ fontSize: '22px', fontWeight: 800, color: '#fff', marginBottom: '16px', lineHeight: 1.2 }}>
                   Власний склад та контроль якості
                 </h2>
-                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 22px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <ul className="home-warehouse-list" style={{ listStyle: 'none', padding: 0, margin: '0 0 22px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {[
                     'Більше 700 товарів постійно в наявності',
                     'Відповідальне зберігання та дотримання умов виробника',
@@ -446,7 +445,6 @@ export default async function Home() {
                     </li>
                   ))}
                 </ul>
-                </div>
                 <Link href="/shop" className="home-warehouse-link" style={{
                   fontSize: '14px', fontWeight: 700, color: '#93C5FD', textDecoration: 'none',
                 }}>
