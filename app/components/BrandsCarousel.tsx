@@ -91,11 +91,11 @@ export default function BrandsCarousel({ logos = {}, brands = BRANDS }: Props) {
         </p>
       </div>
 
-      <div className="page-container" style={{ position: 'relative' }}>
+      <div className="page-container brands-carousel-wrap" style={{ position: 'relative' }}>
         <button
           onClick={() => scroll(-1)}
           aria-label={lang === 'ru' ? 'Прокрутить влево' : 'Прокрутити вліво'}
-          className="blog-carousel-arrow"
+          className="brands-carousel-arrow"
           style={{
             position: 'absolute', left: '4px', top: '50%', transform: 'translateY(-50%)',
             zIndex: 2, width: '36px', height: '36px', borderRadius: '50%',
@@ -109,7 +109,7 @@ export default function BrandsCarousel({ logos = {}, brands = BRANDS }: Props) {
         <button
           onClick={() => scroll(1)}
           aria-label={lang === 'ru' ? 'Прокрутить вправо' : 'Прокрутити вправо'}
-          className="blog-carousel-arrow"
+          className="brands-carousel-arrow"
           style={{
             position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)',
             zIndex: 2, width: '36px', height: '36px', borderRadius: '50%',

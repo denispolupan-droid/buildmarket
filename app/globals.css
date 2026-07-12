@@ -128,6 +128,9 @@ html { zoom: 0.95; overflow-x: clip; }
    manual drag/swipe can both move the same scroll position. ── */
 .brands-marquee { scrollbar-width: none; }
 .brands-marquee::-webkit-scrollbar { display: none; }
+/* Arrow buttons only hint "scrollable" while a brand is actually hovered */
+.brands-carousel-arrow { opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
+.brands-carousel-wrap:hover .brands-carousel-arrow { opacity: 1; pointer-events: auto; }
 .brand-card {
   flex: 0 0 156px;
   height: 80px;
@@ -832,6 +835,7 @@ input, select { font-family: inherit; }
      the related-products carousel). */
   .blog-carousel-arrow { display: none !important; }
   .blog-carousel-card { flex: 0 0 calc(100% - 40px) !important; min-width: 0 !important; }
+  .brands-carousel-arrow { display: none !important; }
 
   /* Footer */
   .footer-inner { padding: 32px 16px 0 !important; }
