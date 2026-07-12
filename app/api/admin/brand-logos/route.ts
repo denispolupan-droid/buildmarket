@@ -16,8 +16,24 @@ async function requireAdmin() {
   return user && user.user_metadata?.role === 'admin';
 }
 
+// Supabase Storage object keys reject non-ASCII characters, but brand names are often
+// Cyrillic (e.g. "Байрис") — transliterate before slugifying so the upload doesn't 400.
+const CYRILLIC_TO_LATIN: Record<string, string> = {
+  а: 'a', б: 'b', в: 'v', г: 'h', ґ: 'g', д: 'd', е: 'e', є: 'ie', ж: 'zh', з: 'z',
+  и: 'y', і: 'i', ї: 'i', й: 'i', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p',
+  р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'shch',
+  ь: '', ю: 'iu', я: 'ia', ё: 'e', ъ: '', ы: 'y', э: 'e',
+};
+
+function transliterate(text: string): string {
+  return text.toLowerCase().replace(/[а-яіїєґё]/g, ch => CYRILLIC_TO_LATIN[ch] ?? ch);
+}
+
 function brandSlug(brand: string): string {
-  return brand.trim().toLowerCase().replace(/\s+/g, '-');
+  const slug = transliterate(brand.trim())
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug || 'brand';
 }
 
 export async function POST(req: NextRequest) {
