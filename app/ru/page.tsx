@@ -410,7 +410,8 @@ export default async function HomeRu() {
                 position: 'absolute', inset: 0,
                 background: 'linear-gradient(to top, rgba(8,15,30,0.92) 0%, rgba(8,15,30,0.15) 65%)',
               }} />
-              <div style={{ position: 'relative', padding: '32px 28px' }}>
+              <div className="home-warehouse-content" style={{ position: 'relative', padding: '32px 28px' }}>
+                <div>
                 <h2 className="home-warehouse-title" style={{ fontSize: '22px', fontWeight: 800, color: '#fff', marginBottom: '16px', lineHeight: 1.2 }}>
                   Собственный склад и контроль качества
                 </h2>
@@ -427,7 +428,8 @@ export default async function HomeRu() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/ru/shop" style={{
+                </div>
+                <Link href="/ru/shop" className="home-warehouse-link" style={{
                   fontSize: '14px', fontWeight: 700, color: '#93C5FD', textDecoration: 'none',
                 }}>
                   В магазин →
