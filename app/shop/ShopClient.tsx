@@ -157,7 +157,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
         >
           <Heart size={14} fill={isWished ? '#EF4444' : 'none'} strokeWidth={2} />
         </button>
-        <div className="shop-card__qty" style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: '7px', overflow: 'hidden', height: '34px', background: 'var(--bg-card)', flexShrink: 0 }}>
+        <div className="shop-card__qty shop-card__qty--desktop" style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: '7px', overflow: 'hidden', height: '34px', background: 'var(--bg-card)', flexShrink: 0 }}>
           <button aria-label={t('Зменшити кількість', 'Уменьшить количество')} onClick={() => { const v = Math.max(1, qty - 1); setQty(v); setInputVal(String(v)); }} style={{ width: '34px', height: '34px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
             <Minus size={11} strokeWidth={2.5} />
           </button>
@@ -174,6 +174,18 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
             <Plus size={11} strokeWidth={2.5} />
           </button>
         </div>
+        {/* Mobile 2-col grid only — the 3-button stepper above doesn't fit that card width
+            (same squeeze that forced the cart button to icon-only there); a plain input,
+            same as the opt-catalog card uses at this width, replaces it via CSS below. */}
+        <input
+          type="number"
+          aria-label={t('Кількість', 'Количество')}
+          className="shop-card__qty shop-card__qty--mobile"
+          value={inputVal}
+          min={1}
+          onChange={e => setInputVal(e.target.value)}
+          onBlur={() => { const v = parseInt(inputVal, 10); const valid = !isNaN(v) && v >= 1 ? v : 1; setQty(valid); setInputVal(String(valid)); }}
+        />
         <button
           className="shop-card__btn"
           disabled={!inStock}
@@ -187,6 +199,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
         </button>
       </div>
       <div className="shop-card__pack-row">
+        <span className="shop-card__pack-qty">{t('уп.', 'уп.')} {p.pack_qty} {t('шт', 'шт')}</span>
         {skuRow}
       </div>
     </div>

@@ -390,6 +390,12 @@
   font-size: 10px; color: var(--text-muted);
   padding: 4px 12px 8px; white-space: nowrap;
 }
+/* Pack quantity ("уп. X шт") — mobile only, matching the opt-catalog card, which always
+   shows it. Desktop keeps just the Арт. row like before. */
+.shop-card__pack-qty { display: none; }
+/* Plain mobile qty input (matching the opt-catalog card at the same cramped 2-col width) —
+   hidden everywhere by default, swapped in for the stepper only in that one context below. */
+.shop-card__qty--mobile { display: none; }
 .shop-card__footer {
   padding: 0 8px 0;
   display: flex;
@@ -595,16 +601,21 @@
   .shop-sidebar.mobile-filters .sidebar-cats-section { display: none; }
   .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .shop-grid.list-view { grid-template-columns: 1fr; }
+  .shop-card__pack-qty { display: block; }
   /* 2-per-row cards (~158px footer width) can't fit wish + full qty stepper + a labeled
      add-to-cart button on one line — wrapping the button to its own row (an earlier fix)
-     kept the stepper but made every card noticeably taller. Shrinking the stepper and
-     dropping the button to icon-only keeps everything on one row and the card compact.
-     Wish stays the same height as the stepper/button so all three read as one control row. */
+     kept the stepper but made every card noticeably taller. Swapping the stepper for a
+     plain input (same convention as the opt-catalog card at this width) and dropping the
+     button to icon-only keeps everything on one row and the card compact. Wish stays the
+     same height as the input/button so all three read as one control row. */
   .shop-grid:not(.list-view) .shop-card__footer { gap: 4px; }
   .shop-grid:not(.list-view) .shop-card__wish { width: 36px !important; height: 36px !important; flex-shrink: 0; }
-  .shop-grid:not(.list-view) .shop-card__qty { flex-shrink: 0; height: 36px !important; }
-  .shop-grid:not(.list-view) .shop-card__qty button { width: 20px !important; height: 36px !important; }
-  .shop-grid:not(.list-view) .shop-card__qty input { width: 14px !important; height: 36px !important; }
+  .shop-grid:not(.list-view) .shop-card__qty--desktop { display: none !important; }
+  .shop-grid:not(.list-view) .shop-card__qty--mobile {
+    display: block; flex-shrink: 0; width: 40px; height: 36px; padding: 0 4px;
+    border: 1px solid var(--border); border-radius: 7px; background: var(--bg-card);
+    font-size: 13px; font-weight: 700; color: var(--text-primary); text-align: center; outline: none;
+  }
   .shop-grid:not(.list-view) .shop-card__btn { flex: 1 1 auto !important; min-width: 0 !important; height: 36px !important; padding: 0 6px !important; }
   .shop-grid:not(.list-view) .shop-card__btn-label { display: none; }
   /* Image container was a flat 220px on every breakpoint — fine at desktop card width,
