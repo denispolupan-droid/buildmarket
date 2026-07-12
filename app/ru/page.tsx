@@ -20,7 +20,8 @@ export const metadata: Metadata = {
   },
 };
 import { ShieldCheck, Truck, Store, LayoutGrid, CheckCircle, MessageCircle, Tag, PackageCheck, ShoppingCart, Phone, Package, ArrowRight } from 'lucide-react';
-import { getCategoriesCached, getPreviewProductsCached, getBrandLogosCached, getReviewStatsCached } from '../../lib/supabase';
+import { getCategoriesCached, getPreviewProductsCached, getBrandLogosCached, getVisibleBrandLogosCached, getReviewStatsCached } from '../../lib/supabase';
+import { mergeVisibleBrands } from '../../lib/brands';
 import Footer from '../components/Footer';
 import CategorySection from '../components/CategorySection';
 import PromoBanner from '../components/PromoBanner';
@@ -38,6 +39,8 @@ export default async function HomeRu() {
   const allSlugs = categories.map(c => c.slug);
   const products = await getPreviewProductsCached(allSlugs, 2);
   const brandLogos = await getBrandLogosCached();
+  const visibleBrandLogos = await getVisibleBrandLogosCached();
+  const brandTiles = mergeVisibleBrands(visibleBrandLogos);
   const reviewStats = await getReviewStatsCached();
 
   const orgLd = {
@@ -215,7 +218,7 @@ export default async function HomeRu() {
       </section>
 
       {/* Brands auto-scroll carousel — right after hero */}
-      <BrandsCarousel logos={brandLogos} />
+      <BrandsCarousel logos={brandLogos} brands={brandTiles} />
 
       {/* Как мы работаем */}
       <section style={{ background: 'var(--bg-soft)', padding: '56px 0', borderTop: '1px solid var(--border)' }}>

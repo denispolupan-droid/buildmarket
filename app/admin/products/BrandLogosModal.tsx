@@ -3,10 +3,12 @@
 import { useRef, useState } from 'react';
 import { X, Image as ImageIcon, Trash2, Upload } from 'lucide-react';
 
+type BrandLogoEntry = { logoUrl: string; showOnHome: boolean };
+
 type Props = {
   brands: string[];
-  logos: Record<string, string>; // brand name uppercase -> logo url
-  onLogosChange: (updater: (prev: Record<string, string>) => Record<string, string>) => void;
+  logos: Record<string, BrandLogoEntry>; // brand name uppercase -> entry
+  onLogosChange: (updater: (prev: Record<string, BrandLogoEntry>) => Record<string, BrandLogoEntry>) => void;
   onClose: () => void;
 };
 
@@ -26,7 +28,7 @@ export default function BrandLogosModal({ brands, logos, onLogosChange, onClose 
       const res = await fetch('/api/admin/brand-logos', { method: 'POST', body: formData });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Помилка завантаження');
-      onLogosChange(prev => ({ ...prev, [key]: json.logoUrl }));
+      onLogosChange(prev => ({ ...prev, [key]: { logoUrl: json.logoUrl, showOnHome: prev[key]?.showOnHome ?? false } }));
     } catch (err) {
       setErrors(e => ({ ...e, [brand]: err instanceof Error ? err.message : 'Помилка завантаження' }));
     } finally {
@@ -52,6 +54,24 @@ export default function BrandLogosModal({ brands, logos, onLogosChange, onClose 
     }
   }
 
+  async function toggleShowOnHome(brand: string, showOnHome: boolean) {
+    const key = brand.toUpperCase();
+    setBusy(b => ({ ...b, [brand]: true }));
+    try {
+      const res = await fetch('/api/admin/brand-logos', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brand, showOnHome }),
+      });
+      if (!res.ok) throw new Error();
+      onLogosChange(prev => ({ ...prev, [key]: { ...prev[key], showOnHome } }));
+    } catch {
+      setErrors(e => ({ ...e, [brand]: 'Не вдалося оновити' }));
+    } finally {
+      setBusy(b => ({ ...b, [brand]: false }));
+    }
+  }
+
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
@@ -59,7 +79,7 @@ export default function BrandLogosModal({ brands, logos, onLogosChange, onClose 
       zIndex: 1000, padding: 24,
     }}>
       <div style={{
-        background: '#fff', borderRadius: 16, width: '100%', maxWidth: 560,
+        background: '#fff', borderRadius: 16, width: '100%', maxWidth: 640,
         maxHeight: '85vh', display: 'flex', flexDirection: 'column',
         boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
       }}>
@@ -79,7 +99,8 @@ export default function BrandLogosModal({ brands, logos, onLogosChange, onClose 
         <div style={{ overflowY: 'auto', padding: '8px 24px 20px' }}>
           {brands.map(brand => {
             const key = brand.toUpperCase();
-            const logoUrl = logos[key];
+            const entry = logos[key];
+            const logoUrl = entry?.logoUrl;
             const isBusy = busy[brand];
             return (
               <div key={brand} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #F1F5F9' }}>
@@ -96,6 +117,21 @@ export default function BrandLogosModal({ brands, logos, onLogosChange, onClose 
                   <div style={{ fontSize: 14, fontWeight: 600, color: '#1E293B' }}>{brand}</div>
                   {errors[brand] && <div style={{ fontSize: 11, color: '#EF4444', marginTop: 2 }}>{errors[brand]}</div>}
                 </div>
+                <label
+                  title={logoUrl ? undefined : 'Спочатку завантажте лого'}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748B',
+                    cursor: logoUrl && !isBusy ? 'pointer' : 'default', opacity: logoUrl ? 1 : 0.4, flexShrink: 0,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!entry?.showOnHome}
+                    disabled={!logoUrl || isBusy}
+                    onChange={e => toggleShowOnHome(brand, e.target.checked)}
+                  />
+                  На головній
+                </label>
                 <input
                   ref={el => { fileInputs.current[brand] = el; }}
                   type="file"

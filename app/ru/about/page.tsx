@@ -4,8 +4,8 @@ import Image from 'next/image';
 import Footer from '../../components/Footer';
 import Reveal from '../../components/Reveal';
 import { ShieldCheck, Users, Package, Award, Truck, MessageCircle } from 'lucide-react';
-import { BRANDS } from '../../../lib/brands';
-import { getBrandLogosCached } from '../../../lib/supabase';
+import { mergeVisibleBrands } from '../../../lib/brands';
+import { getBrandLogosCached, getVisibleBrandLogosCached } from '../../../lib/supabase';
 
 const BASE = 'https://fixline.com.ua';
 
@@ -44,6 +44,8 @@ const values = [
 
 export default async function AboutRuPage() {
   const brandLogos = await getBrandLogosCached();
+  const visibleBrandLogos = await getVisibleBrandLogosCached();
+  const brandTiles = mergeVisibleBrands(visibleBrandLogos);
   const breadcrumbLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -278,7 +280,7 @@ export default async function AboutRuPage() {
             </Reveal>
             <Reveal delay={100}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px' }} className="brands-grid">
-              {BRANDS.map(({ name, logo, href, color, style }) => {
+              {brandTiles.map(({ name, logo, href, color, style }) => {
                 const logoSrc = brandLogos[name.toUpperCase()] ?? logo;
                 return (
                   <Link key={name} href={`/ru${href}`} style={{

@@ -59,6 +59,23 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ logoUrl });
 }
 
+export async function PATCH(req: NextRequest) {
+  if (!(await requireAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const { brand, showOnHome } = await req.json() as { brand?: string; showOnHome?: boolean };
+  if (!brand) return NextResponse.json({ error: 'Бренд не вказано' }, { status: 400 });
+  if (typeof showOnHome !== 'boolean') return NextResponse.json({ error: 'showOnHome не вказано' }, { status: 400 });
+
+  const { error } = await serviceClient
+    .from('brand_logos')
+    .update({ show_on_home: showOnHome, updated_at: new Date().toISOString() })
+    .eq('brand_name', brand);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  revalidateTag('brand-logos', 'max');
+  return NextResponse.json({ ok: true });
+}
+
 export async function DELETE(req: NextRequest) {
   if (!(await requireAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 

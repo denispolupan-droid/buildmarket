@@ -1,6 +1,36 @@
+function brandToSlug(brand: string): string {
+  return brand.trim().toLowerCase().replace(/\s+/g, '-');
+}
+
+export type BrandTile = {
+  name: string;
+  logo: string | null;
+  href: string;
+  color: string;
+  style: Record<string, string | number>;
+};
+
+// Merges the hand-curated BRANDS list below with brands an admin opted into the
+// homepage/About page via the "Логотипи брендів" modal's "показувати на головній"
+// checkbox (see BrandLogosModal + brand_logos.show_on_home). DB brands already present
+// in BRANDS are skipped — the static entry (with its own color/style) wins.
+export function mergeVisibleBrands(dbBrands: { name: string; logoUrl: string }[]): BrandTile[] {
+  const staticNames = new Set(BRANDS.map(b => b.name.toUpperCase()));
+  const extra: BrandTile[] = dbBrands
+    .filter(b => !staticNames.has(b.name.toUpperCase()))
+    .map(b => ({
+      name: b.name,
+      logo: b.logoUrl,
+      href: `/shop/brand/${brandToSlug(b.name)}`,
+      color: 'var(--text-primary)',
+      style: {},
+    }));
+  return [...BRANDS, ...extra];
+}
+
 // Single source of truth for the brand tiles shown on the homepage carousel and the
 // About page's brand grid — keeps both pages in sync instead of maintaining two lists.
-export const BRANDS = [
+export const BRANDS: BrandTile[] = [
   { name: 'Ceresit',  logo: '/brands/ceresit.webp',  href: '/shop/brand/ceresit',  color: '#E31E25', style: {} },
   { name: 'Knauf',    logo: null,                     href: '/shop/brand/knauf',    color: '#0066CC',
     style: { fontWeight: 900, fontSize: '22px', letterSpacing: '-0.5px', fontFamily: 'Arial Black, sans-serif' } },
@@ -14,4 +44,4 @@ export const BRANDS = [
     style: { fontWeight: 900, fontSize: '26px', letterSpacing: '-1px', fontStyle: 'italic' } },
   { name: 'Ataman',   logo: '/brands/ataman.jpg',     href: '/shop/brand/ataman',   color: '#8B1A1A', style: {} },
   { name: 'Bitugum',  logo: '/brands/bitugum.webp',   href: '/shop/brand/bitugum',  color: '#1A1A1A', style: {} },
-] as const;
+];

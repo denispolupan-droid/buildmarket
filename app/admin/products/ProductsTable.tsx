@@ -7,10 +7,12 @@ import type { ProductFull, Category } from '../../../types';
 import AiFillModal from './AiFillModal';
 import BrandLogosModal from './BrandLogosModal';
 
+type BrandLogoEntry = { logoUrl: string; showOnHome: boolean };
+
 type Props = {
   products: ProductFull[];
   categories: Category[];
-  brandLogos?: Record<string, string>;
+  brandLogos?: Record<string, BrandLogoEntry>;
 };
 
 const PAGE_SIZE = 100;

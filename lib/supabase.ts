@@ -179,6 +179,19 @@ export async function getBrandLogos(): Promise<Record<string, string>> {
   return map;
 }
 
+// Brands an admin opted into the homepage carousel / About page grid via the
+// "Логотипи брендів" modal, beyond the hand-curated list in lib/brands.ts.
+export async function getVisibleBrandLogos(): Promise<{ name: string; logoUrl: string }[]> {
+  const { data, error } = await supabase
+    .from('brand_logos')
+    .select('brand_name, logo_url')
+    .eq('show_on_home', true)
+    .order('brand_name');
+  if (error) throw error;
+  return ((data ?? []) as { brand_name: string; logo_url: string }[])
+    .map(row => ({ name: row.brand_name, logoUrl: row.logo_url }));
+}
+
 // sku -> { avg, count } from all approved reviews. Fetches every approved
 // review row (not filtered by sku) rather than one query per product — cheap
 // while review volume is low, and avoids an IN(...) list of hundreds of skus
@@ -234,6 +247,12 @@ export const getBrandsCached = unstable_cache(
 export const getBrandLogosCached = unstable_cache(
   async () => getBrandLogos(),
   ['brand-logos'],
+  { revalidate: 60, tags: ['brand-logos'] }
+);
+
+export const getVisibleBrandLogosCached = unstable_cache(
+  async () => getVisibleBrandLogos(),
+  ['visible-brand-logos'],
   { revalidate: 60, tags: ['brand-logos'] }
 );
 

@@ -33,9 +33,11 @@ export default async function AdminProductsPage() {
 
   const { data: brandLogoRows } = await serviceClient
     .from('brand_logos')
-    .select('brand_name, logo_url');
-  const brandLogos: Record<string, string> = {};
-  (brandLogoRows ?? []).forEach(row => { brandLogos[row.brand_name.toUpperCase()] = row.logo_url; });
+    .select('brand_name, logo_url, show_on_home');
+  const brandLogos: Record<string, { logoUrl: string; showOnHome: boolean }> = {};
+  (brandLogoRows ?? []).forEach(row => {
+    brandLogos[row.brand_name.toUpperCase()] = { logoUrl: row.logo_url, showOnHome: row.show_on_home };
+  });
 
   return (
     <div style={{ padding: '32px 36px 64px' }}>

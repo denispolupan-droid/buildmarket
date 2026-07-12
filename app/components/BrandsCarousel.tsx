@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BRANDS } from '../../lib/brands';
+import { BRANDS, type BrandTile } from '../../lib/brands';
 
 function FadeLogo({ src, alt }: { src: string; alt: string }) {
   const [loaded, setLoaded] = useState(false);
@@ -23,10 +23,10 @@ function FadeLogo({ src, alt }: { src: string; alt: string }) {
   );
 }
 
-type Props = { logos?: Record<string, string> };
+type Props = { logos?: Record<string, string>; brands?: BrandTile[] };
 
-export default function BrandsCarousel({ logos = {} }: Props) {
-  const doubled = [...BRANDS, ...BRANDS];
+export default function BrandsCarousel({ logos = {}, brands = BRANDS }: Props) {
+  const doubled = [...brands, ...brands];
   const pathname = usePathname();
   const lang: 'uk' | 'ru' = pathname.startsWith('/ru') ? 'ru' : 'uk';
   const prefix = lang === 'ru' ? '/ru' : '';
