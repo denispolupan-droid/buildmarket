@@ -26,8 +26,8 @@ function FadeLogo({ src, alt }: { src: string; alt: string }) {
 
 type Props = { logos?: Record<string, string>; brands?: BrandTile[] };
 
-const AUTO_SCROLL_SPEED = 0.4; // px/frame, ~24px/s at 60fps
-const RESUME_DELAY = 2500; // ms of inactivity before auto-scroll resumes after manual use
+const AUTO_SCROLL_SPEED = 0.6; // px/frame, ~36px/s at 60fps
+const BUTTON_RESUME_DELAY = 900; // ms — lets the button's smooth-scroll animation finish first
 
 export default function BrandsCarousel({ logos = {}, brands = BRANDS }: Props) {
   const doubled = [...brands, ...brands];
@@ -37,6 +37,10 @@ export default function BrandsCarousel({ logos = {}, brands = BRANDS }: Props) {
 
   const trackRef = useRef<HTMLDivElement>(null);
   const pausedRef = useRef(false);
+  // scrollLeft only ever reports whole pixels, so accumulating fractional
+  // per-frame speed directly on it rounds away to nothing — keep the real
+  // (fractional) position here instead and write the rounded value out.
+  const posRef = useRef(0);
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -46,8 +50,9 @@ export default function BrandsCarousel({ logos = {}, brands = BRANDS }: Props) {
     const step = () => {
       if (!pausedRef.current) {
         const half = track.scrollWidth / 2;
-        track.scrollLeft += AUTO_SCROLL_SPEED;
-        if (track.scrollLeft >= half) track.scrollLeft -= half;
+        posRef.current += AUTO_SCROLL_SPEED;
+        if (posRef.current >= half) posRef.current -= half;
+        track.scrollLeft = posRef.current;
       }
       raf = requestAnimationFrame(step);
     };
@@ -55,13 +60,19 @@ export default function BrandsCarousel({ logos = {}, brands = BRANDS }: Props) {
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  function resumeNow() {
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    const track = trackRef.current;
+    if (track) posRef.current = track.scrollLeft; // continue from wherever the user left it
+    pausedRef.current = false;
+  }
   function pause() {
     pausedRef.current = true;
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
   }
   function scheduleResume() {
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
-    resumeTimerRef.current = setTimeout(() => { pausedRef.current = false; }, RESUME_DELAY);
+    resumeTimerRef.current = setTimeout(resumeNow, BUTTON_RESUME_DELAY);
   }
 
   function scroll(dir: 1 | -1) {
@@ -114,7 +125,7 @@ export default function BrandsCarousel({ logos = {}, brands = BRANDS }: Props) {
           ref={trackRef}
           className="brands-marquee"
           onMouseEnter={pause}
-          onMouseLeave={scheduleResume}
+          onMouseLeave={resumeNow}
           onTouchStart={pause}
           onTouchEnd={scheduleResume}
           style={{ display: 'flex', overflowX: 'auto', alignItems: 'center', padding: '0 48px' }}
