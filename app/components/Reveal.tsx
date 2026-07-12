@@ -22,12 +22,7 @@ export default function Reveal({ children, delay = 0, y = 10, duration = 1300, c
   const [settled, setSettled] = useState(false);
 
   useEffect(() => {
-    // On mobile, the IntersectionObserver-triggered fade-in can end up never firing for a
-    // section (fast flicks, layout shifts while images load, etc.) — the section then stays
-    // at opacity:0 forever while still reserving its box height, reading as a blank gap in
-    // the page. Skipping the scroll animation there removes the whole failure mode.
-    const isMobile = window.matchMedia('(max-width: 768px)').matches;
-    if (isMobile || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setAnimate(false);
       setVisible(true);
       return;

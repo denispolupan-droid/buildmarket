@@ -36,13 +36,10 @@ export default function DeliveryMapCard() {
   }, []);
 
   return (
-    <div ref={ref} className="delivery-map-card" style={{
-      overflow: 'hidden', borderRadius: '2px 2px 18px 18px',
-      background: '#0C1930', isolation: 'isolate', willChange: 'opacity',
-    }}>
+    <div ref={ref} className="delivery-map-card" style={{ isolation: 'isolate', willChange: 'opacity' }}>
       <div className="delivery-map-card__visual" style={{
-        position: 'relative', overflow: 'hidden',
-        borderTop: '3px solid #0891B2', height: '440px',
+        position: 'relative', overflow: 'hidden', background: '#0C1930',
+        borderTop: '3px solid #0891B2', borderRadius: '2px 2px 18px 18px', height: '440px',
       }}>
       {/* Map — remounted (fresh key) every time it enters view, so the intro animation replays */}
       {visible && (
@@ -76,7 +73,7 @@ export default function DeliveryMapCard() {
         </div>
       </div>
 
-      <p className="delivery-map-card__subtitle--mobile" style={{ margin: 0, padding: '14px 20px 18px', fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
+      <p className="delivery-map-card__subtitle--mobile" style={{ margin: '10px 4px 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
         {lang === 'ru' ? 'Новая Почта · 28 000+ отделений по стране' : 'Нова Пошта · 28 000+ відділень по країні'}
       </p>
     </div>
