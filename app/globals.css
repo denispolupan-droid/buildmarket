@@ -726,6 +726,10 @@ input, select { font-family: inherit; }
      card next to it, with the heading at the top of the image instead. */
   .home-warehouse-card { justify-content: flex-start !important; }
   .home-warehouse-scrim { background: linear-gradient(to bottom, rgba(8,15,30,0.92) 0%, rgba(8,15,30,0.15) 65%) !important; }
+  /* With the content top-anchored, the card's lower half was left empty — a bigger gap
+     under the title spreads the block further down the card instead of leaving it all
+     bunched at the top. */
+  .home-warehouse-title { margin-bottom: 36px !important; }
 
   /* Cart page — items list first (see what you're ordering), then the checkout form,
      then totals + "Підтвердити замовлення" last once everything's filled in. */
