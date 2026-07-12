@@ -123,13 +123,11 @@ html { zoom: 0.95; overflow-x: clip; }
 }
 
 /* ── Admin page enter animation ──────────────────────────────────────────── */
-/* ── Brands auto-scroll marquee ── */
-@keyframes brands-marquee {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
-}
-.brands-marquee { animation: brands-marquee 60s linear infinite; }
-.brands-marquee:hover { animation-play-state: paused; }
+/* ── Brands carousel: auto-scrolls via JS (scrollLeft), pauses on hover/touch/drag —
+   native overflow-x scroll instead of a CSS transform loop so the arrow buttons and
+   manual drag/swipe can both move the same scroll position. ── */
+.brands-marquee { scrollbar-width: none; }
+.brands-marquee::-webkit-scrollbar { display: none; }
 .brand-card {
   flex: 0 0 156px;
   height: 80px;
@@ -139,13 +137,16 @@ html { zoom: 0.95; overflow-x: clip; }
   display: flex; align-items: center; justify-content: center;
   margin-right: 14px;
   text-decoration: none;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, filter 0.25s ease, opacity 0.25s ease;
 }
 .brand-card:hover {
   transform: translateY(-3px);
   box-shadow: 0 6px 20px rgba(0,0,0,0.09);
   border-color: rgba(72,128,184,0.35);
 }
+/* Hovering one brand tile dims + grayscales the rest of the row */
+.brands-marquee:hover .brand-card { filter: grayscale(1); opacity: 0.5; }
+.brands-marquee:hover .brand-card:hover { filter: grayscale(0); opacity: 1; }
 .blog-card-link:hover {
   transform: translateY(-3px);
   box-shadow: 0 8px 24px rgba(0,0,0,0.1);
