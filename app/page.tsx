@@ -404,7 +404,7 @@ export default async function Home() {
           }}>
             {/* Left: Warehouse photo card — brand top stripe (same recipe as the "Оберіть формат" / "Категорії" cards) so it reads as its own card instead of blurring into the map card next to it */}
             <Reveal y={26} duration={1600} style={{ height: '100%' }}>
-            <div style={{
+            <div className="home-warehouse-card" style={{
               position: 'relative', overflow: 'hidden',
               borderTop: '3px solid #4880B8', borderRadius: '2px 2px 18px 18px',
               height: '440px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
@@ -424,7 +424,7 @@ export default async function Home() {
               {/* Color tint — paints the same navy hue as the map's background across the whole photo without touching brightness/contrast */}
               <div style={{ position: 'absolute', inset: 0, background: '#1E4D8C', mixBlendMode: 'color', opacity: 0.7 }} />
               <div style={{ position: 'absolute', inset: 0, background: '#8FC3F0', mixBlendMode: 'screen', opacity: 0.22 }} />
-              <div style={{
+              <div className="home-warehouse-scrim" style={{
                 position: 'absolute', inset: 0,
                 background: 'linear-gradient(to top, rgba(8,15,30,0.92) 0%, rgba(8,15,30,0.15) 65%)',
               }} />

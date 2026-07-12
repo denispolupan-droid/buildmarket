@@ -721,6 +721,12 @@ input, select { font-family: inherit; }
   .delivery-map-card__subtitle--mobile { display: block; }
   .delivery-map-card__scrim-bottom-mobile { display: block; }
 
+  /* Warehouse card — title/list/link sat bottom-anchored (justify-content:flex-end) with a
+     dark-at-bottom scrim, matching the desktop layout. On mobile it should read like the map
+     card next to it, with the heading at the top of the image instead. */
+  .home-warehouse-card { justify-content: flex-start !important; }
+  .home-warehouse-scrim { background: linear-gradient(to bottom, rgba(8,15,30,0.92) 0%, rgba(8,15,30,0.15) 65%) !important; }
+
   /* Cart page — items list first (see what you're ordering), then the checkout form,
      then totals + "Підтвердити замовлення" last once everything's filled in. */
   .cart-grid {

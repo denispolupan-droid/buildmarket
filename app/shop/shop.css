@@ -602,12 +602,14 @@
   .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .shop-grid.list-view { grid-template-columns: 1fr; }
   .shop-card__pack-qty { display: block; }
-  /* price-wrap's min-height:36px (reserving room for a 2-line old+new price stack) left
-     visible empty space above a single-line price — since the row is align-items:flex-end,
-     the short "В наявності" text next to it got pushed down to match, reading as an
-     oversized gap under the meta row above. Reduced (not removed) to roughly match the
-     opt-catalog card's own meta-to-price gap instead of collapsing it to zero. */
-  .shop-card__price-wrap { min-height: 22px; }
+  /* Copies the opt-catalog card's exact mechanism instead of guessing a pixel value:
+     margin-top:auto pushes the price row to the bottom of the flex:1 card body (same as
+     .catalog-card__price-row), so the gap is whatever space is actually left over — plus
+     a fixed 6px floor via padding-top, same as catalog's price-row. price-wrap's old
+     min-height:36px (which caused the original oversized-gap bug) is no longer needed once
+     the row isn't relying on a fixed reservation. */
+  .shop-card__price-wrap { min-height: 0; }
+  .shop-card__stock-row { margin-top: auto !important; padding-top: 6px; }
   /* 2-per-row cards (~158px footer width) can't fit wish + full qty stepper + a labeled
      add-to-cart button on one line — wrapping the button to its own row (an earlier fix)
      kept the stepper but made every card noticeably taller. Swapping the stepper for a
