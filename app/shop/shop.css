@@ -605,8 +605,9 @@
   /* price-wrap's min-height:36px (reserving room for a 2-line old+new price stack) left
      visible empty space above a single-line price — since the row is align-items:flex-end,
      the short "В наявності" text next to it got pushed down to match, reading as an
-     oversized gap under the meta row above. Only matters on the compact mobile card. */
-  .shop-card__price-wrap { min-height: 0; }
+     oversized gap under the meta row above. Reduced (not removed) to roughly match the
+     opt-catalog card's own meta-to-price gap instead of collapsing it to zero. */
+  .shop-card__price-wrap { min-height: 22px; }
   /* 2-per-row cards (~158px footer width) can't fit wish + full qty stepper + a labeled
      add-to-cart button on one line — wrapping the button to its own row (an earlier fix)
      kept the stepper but made every card noticeably taller. Swapping the stepper for a

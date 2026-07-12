@@ -35,6 +35,8 @@ export default function DeliveryMapCard() {
     return () => observer.disconnect();
   }, []);
 
+  const subtitle = lang === 'ru' ? 'Новая Почта · 28 000+ отделений по стране' : 'Нова Пошта · 28 000+ відділень по країні';
+
   return (
     <div ref={ref} className="delivery-map-card" style={{ isolation: 'isolate', willChange: 'opacity' }}>
       <div className="delivery-map-card__visual" style={{
@@ -62,20 +64,28 @@ export default function DeliveryMapCard() {
         position: 'absolute', inset: 0, pointerEvents: 'none',
         background: 'linear-gradient(to bottom, rgba(8,15,30,0.92) 0%, rgba(8,15,30,0.15) 65%)',
       }} />
+      {/* Mobile only — the subtitle moves to the bottom of the image (still overlaid, not a
+          separate block below it), so it needs its own dark scrim there to stay readable;
+          the top scrim above is nearly transparent by the bottom of a short mobile card. */}
+      <div className="delivery-map-card__scrim-bottom-mobile" style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'linear-gradient(to top, rgba(8,15,30,0.85) 0%, rgba(8,15,30,0) 45%)',
+      }} />
 
-        <div style={{ position: 'relative', padding: '24px 28px' }}>
+        <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px 28px' }}>
+          <div>
           <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
             {lang === 'ru' ? 'Доставляем по всей Украине' : 'Доставляємо по всій Україні'}
           </h2>
           <p className="delivery-map-card__subtitle--desktop" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
-          {lang === 'ru' ? 'Новая Почта · 28 000+ отделений по стране' : 'Нова Пошта · 28 000+ відділень по країні'}
+            {subtitle}
+          </p>
+          </div>
+          <p className="delivery-map-card__subtitle--mobile" style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.75)' }}>
+            {subtitle}
           </p>
         </div>
       </div>
-
-      <p className="delivery-map-card__subtitle--mobile" style={{ margin: '10px 4px 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-        {lang === 'ru' ? 'Новая Почта · 28 000+ отделений по стране' : 'Нова Пошта · 28 000+ відділень по країні'}
-      </p>
     </div>
   );
 }
