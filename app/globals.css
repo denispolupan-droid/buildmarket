@@ -686,6 +686,15 @@ input, select { font-family: inherit; }
   gap: 16px;
 }
 
+/* Cart page grid — form on the left spanning both rows, items list and totals/submit
+   stacked on the right. Named areas (rather than relying on DOM order + `order`) let the
+   mobile override below rearrange all three blocks independently, since items list and
+   totals/submit are siblings of the form, not nested inside one shared summary column. */
+.cart-grid { grid-template-areas: "form items" "form totals"; }
+.cart-form-col { grid-area: form; }
+.cart-items-list { grid-area: items; }
+.cart-totals-block { grid-area: totals; }
+
 /* ── Mobile ── */
 @media (max-width: 768px) {
   .desktop-nav { display: none !important; }
@@ -704,11 +713,11 @@ input, select { font-family: inherit; }
      loses most of the country outline. Shorter card fits the section into view better. */
   .delivery-map-card { height: 280px !important; }
 
-  /* Cart page — stack in natural order: form first, then order summary and the
-     "Підтвердити замовлення" button after it — submitting before the form is filled
-     in doesn't make sense. */
+  /* Cart page — items list first (see what you're ordering), then the checkout form,
+     then totals + "Підтвердити замовлення" last once everything's filled in. */
   .cart-grid {
     grid-template-columns: 1fr !important;
+    grid-template-areas: "items" "form" "totals" !important;
   }
 
   /* Account stats */

@@ -733,10 +733,8 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
             </div>
 
             {/* ── RIGHT: Order summary ── */}
-            <div className="cart-summary-col" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
               {/* Items list */}
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
+              <div className="cart-items-list" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '14px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)',
@@ -813,7 +811,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               </div>
 
               {/* Totals + submit */}
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px' }}>
+              <div className="cart-totals-block" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px' }}>
 
                 {/* Promo code input */}
                 <div style={{ marginBottom: '16px' }}>
@@ -968,7 +966,6 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                 )}
               </div>
 
-            </div>
           </div>
         </div>
       </div>
