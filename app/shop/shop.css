@@ -603,6 +603,10 @@
   .shop-card__pack-row--inline { display: flex; padding: 4px 0 !important; }
   .shop-card__pack-row--bottom { display: none; }
   .shop-card__stock-row { margin-top: 0 !important; }
+  /* On mobile the footer (wish/qty/cart) is now the card's last visible row — it had no
+     bottom padding (relying on the Арт. row after it for breathing room on desktop), so
+     the buttons sat flush against the card's bottom edge. */
+  .shop-card__footer { padding-bottom: 12px; }
   /* 2-per-row cards (~158px footer width) can't fit wish + full qty stepper + a labeled
      add-to-cart button on one line — wrapping the button to its own row (an earlier fix)
      kept the stepper but made every card noticeably taller. Shrinking the stepper and

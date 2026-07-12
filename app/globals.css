@@ -677,6 +677,7 @@ input, select { font-family: inherit; }
   color: #CBD5E1 !important;
   transform: translateY(-1px);
 }
+.footer-social-row-mobile { display: none; }
 
 /* Contacts grid */
 .contacts-grid {
@@ -697,6 +698,11 @@ input, select { font-family: inherit; }
 
   /* Global container */
   .page-container { padding: 0 16px; }
+
+  /* Delivery map card — 440px was sized for the wide desktop card; on a phone screen it
+     dominates the viewport and the map graphic (cover-cropped to the same tall aspect)
+     loses most of the country outline. Shorter card fits the section into view better. */
+  .delivery-map-card { height: 280px !important; }
 
   /* Cart page — stack in natural order: form first, then order summary and the
      "Підтвердити замовлення" button after it — submitting before the form is filled
@@ -801,6 +807,7 @@ input, select { font-family: inherit; }
   .footer-inner { padding: 32px 16px 0 !important; }
   .footer-grid { grid-template-columns: 1fr !important; gap: 28px !important; }
   .footer-grid > div:first-child { display: none; } /* hide brand col on mobile */
+  .footer-social-row-mobile { display: flex; gap: 8px; margin-top: 14px; }
 
   /* Shop count */
   .shop-count { display: none; }

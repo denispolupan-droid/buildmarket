@@ -36,7 +36,7 @@ export default function DeliveryMapCard() {
   }, []);
 
   return (
-    <div ref={ref} style={{
+    <div ref={ref} className="delivery-map-card" style={{
       position: 'relative', overflow: 'hidden',
       borderTop: '3px solid #0891B2', borderRadius: '2px 2px 18px 18px',
       height: '440px', background: '#0C1930',

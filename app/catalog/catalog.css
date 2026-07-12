@@ -535,12 +535,13 @@
   .catalog-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .catalog-card__img-wrap { height: 160px; }
   .catalog-card__stock { font-size: 10px; }
-  /* Unlike the shop card, this price always carries 2 decimal places (wholesale pricing),
-     so it needs a smaller size than the shop's 17px to reliably stay on one line next to
-     the stock label at this card width — tested against a 4-digit + cents price, the
-     widest realistic case, so it never wraps like the shop's price never does. */
-  .catalog-card__price { font-size: 12px; }
-  .catalog-card__price em { font-size: 9px; }
+  /* Unlike the shop card, this price always carries 2 decimal places (wholesale pricing) —
+     12px made it fit on one line in every case but read too small. 15px keeps it legible;
+     the price-row's flex-wrap (above) is the fallback for the rare 4-digit + cents price
+     that still doesn't fit next to the stock label — it drops to its own line instead of
+     clipping, rather than shrinking every price to cover that edge case. */
+  .catalog-card__price { font-size: 15px; }
+  .catalog-card__price em { font-size: 10px; }
   .catalog-card__actions { gap: 4px; }
   .action-icon-btn { width: 28px !important; height: 28px !important; }
   .catalog-card__actions .qty-input { width: 40px !important; }

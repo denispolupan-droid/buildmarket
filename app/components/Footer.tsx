@@ -35,6 +35,26 @@ const socials: { label: string; href: string; icon: React.ReactNode }[] = [
   { label: 'Email', href: 'mailto:info@fixline.com.ua', icon: <Mail size={20} strokeWidth={2} /> },
 ];
 
+function SocialLink({ href, title, children }: { href: string; title: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={title}
+      className="btn-social"
+      style={{
+        width: '36px', height: '36px', borderRadius: '8px',
+        background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8',
+        flexShrink: 0,
+      }}
+    >
+      {children}
+    </a>
+  );
+}
+
 const serviceLinks = [
   { labelUk: "Про компанію",        labelRu: 'О компании',               hrefUk: '/about',    hrefRu: '/ru/about' },
   { labelUk: "Зв'яжіться з нами",   labelRu: 'Свяжитесь с нами',         hrefUk: '/contacts', hrefRu: '/ru/contacts' },
@@ -85,20 +105,12 @@ export default async function Footer() {
             </p>
             <div style={{ display: 'flex', gap: '8px' }}>
               <CopyEmailButton email="info@fixline.com.ua" />
-              <a
-                href="https://t.me/+380991997788"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Telegram"
-                className="btn-social"
-                style={{
-                  width: '36px', height: '36px', borderRadius: '8px',
-                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8',
-                }}
-              >
+              <SocialLink href="https://t.me/+380991997788" title="Telegram">
                 <Send size={18} strokeWidth={2} />
-              </a>
+              </SocialLink>
+              <SocialLink href="viber://chat?number=%2B380991997788" title="Viber">
+                <ViberIcon />
+              </SocialLink>
             </div>
           </div>
 
@@ -194,6 +206,18 @@ export default async function Footer() {
                 <MapPin size={15} strokeWidth={2} />
                 {isRu ? 'Украина' : 'Україна'}
               </span>
+            </div>
+
+            {/* Mobile-only — the brand column (which carries these on desktop) is hidden
+                on mobile, so give the messaging icons a spot that stays visible there. */}
+            <div className="footer-social-row-mobile">
+              <CopyEmailButton email="info@fixline.com.ua" />
+              <SocialLink href="https://t.me/+380991997788" title="Telegram">
+                <Send size={18} strokeWidth={2} />
+              </SocialLink>
+              <SocialLink href="viber://chat?number=%2B380991997788" title="Viber">
+                <ViberIcon />
+              </SocialLink>
             </div>
           </div>
 
