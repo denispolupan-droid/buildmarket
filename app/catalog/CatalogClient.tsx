@@ -533,7 +533,6 @@ export default function CatalogClient({ products, categories, reviewStats, initi
     return () => clearTimeout(timer);
   }, [search, filtered.length]);
 
-  function fmtPrice(n: number) { return n % 1 === 0 ? String(n) : n.toFixed(2); }
   function getQty(sku: string, min: number) { return quantities[sku] ?? min; }
   function getInputVal(sku: string, min: number) { return inputVals[sku] ?? String(quantities[sku] ?? min); }
   function setQty(sku: string, min: number, val: number) {
@@ -1041,11 +1040,11 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                                 <div className="catalog-card__price">
                                   {isSale && (
                                     <>
-                                      <span className="catalog-card__price-old catalog-card__price-old--desktop">{fmtPrice(Number(priceOld))} грн</span>
+                                      <span className="catalog-card__price-old catalog-card__price-old--desktop">{Number(priceOld).toFixed(2)} грн</span>
                                       <span className="catalog-card__price-old catalog-card__price-old--mobile">{Math.round(Number(priceOld))} грн</span>
                                     </>
                                   )}
-                                  <span className="catalog-card__price-desktop">{fmtPrice(displayPrice)} <em>грн</em></span>
+                                  <span className="catalog-card__price-desktop">{displayPrice.toFixed(2)} <em>грн</em></span>
                                   <span className="catalog-card__price-mobile">{Math.round(displayPrice)} <em>грн</em></span>
                                 </div>
                               ) : (
