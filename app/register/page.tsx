@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -56,25 +56,45 @@ function RegisterForm() {
   const [phone,         setPhone]         = useState('');
   const [city,          setCity]          = useState('');
   const [taxNumber,     setTaxNumber]     = useState('');
-  const [accountType,   setAccountType]   = useState('dealer');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [accountType,   setAccountType]   = useState('');
   const [error,       setError]       = useState('');
   const [loading,     setLoading]     = useState(false);
   const [done,        setDone]        = useState(false);
 
   const nextUrl = searchParams.get('next') ?? '';
   const { theme } = useTheme();
+  const hasType  = accountType !== '';
   const isRetail = ACCOUNT_TYPES.find(t => t.value === accountType)?.group === 'retail';
+  const card2Ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const type = searchParams.get('type');
     if (type === 'dropship') setAccountType('dropship');
   }, [searchParams]);
 
+  // Bring step 2 into view every time the account type is (re)picked — keyed on
+  // accountType rather than hasType, since switching between two already-selected
+  // types keeps hasType true the whole time and wouldn't otherwise re-trigger this.
+  // Waits for the reveal animation (350ms) to finish so the target is the card's
+  // final expanded spot, not a mid-animation guess (firing early undershoots).
+  useEffect(() => {
+    if (!accountType) return;
+    const t = setTimeout(() => {
+      card2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 380);
+    return () => clearTimeout(t);
+  }, [accountType]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     if (password.length < 6) {
       setError('Пароль має бути не менше 6 символів.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Паролі не збігаються.');
       return;
     }
     setLoading(true);
@@ -141,19 +161,29 @@ function RegisterForm() {
 
   return (
     <div className="auth-page">
-      <div className="auth-card" style={{ maxWidth: '520px' }}>
-        <Image src={theme === 'dark' ? '/fixline-logo-white.svg' : '/fixline-logo.svg'} alt="fixline" width={178} height={42} className="auth-logo" />
-        <h1 className="auth-title">Реєстрація</h1>
-        <p className="auth-sub">Оберіть тип акаунту та заповніть форму</p>
+      <div style={{ width: '100%', maxWidth: '520px' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-        {error && <div className="auth-error-box">{error}</div>}
+          {/* Card 1 — logo/title + step 1 (account type), a fully separate card from step 2 */}
+          <div className="auth-card" style={{ maxWidth: 'none' }}>
+          <Image src={theme === 'dark' ? '/fixline-logo-white.svg' : '/fixline-logo.svg'} alt="fixline" width={178} height={42} className="auth-logo" />
+          <h1 className="auth-title">Реєстрація</h1>
+          <p className="auth-sub">Оберіть тип акаунту та заповніть форму</p>
 
-        <form onSubmit={handleSubmit}>
+          {error && <div className="auth-error-box">{error}</div>}
 
-          {/* Account type cards */}
-          <div className="auth-field">
-            <label className="auth-label">Тип акаунту</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <span style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0,
+                background: '#4880B8', color: '#fff', fontSize: '12px', fontWeight: 700,
+              }}>1</span>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Тип акаунту
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {ACCOUNT_TYPES.map(t => (
                 <button
                   key={t.value}
@@ -165,7 +195,7 @@ function RegisterForm() {
                     border: accountType === t.value
                       ? '2px solid #4880B8'
                       : '1px solid var(--border)',
-                    background: accountType === t.value ? '#EFF6FF' : 'var(--bg-soft)',
+                    background: accountType === t.value ? '#EFF6FF' : 'var(--bg-card)',
                     transition: 'all 0.15s', textAlign: 'left',
                   }}
                 >
@@ -194,80 +224,125 @@ function RegisterForm() {
               ))}
             </div>
           </div>
+          </div>
 
-          <div className="auth-field">
-            <label className="auth-label" htmlFor="contactPerson">{isRetail ? 'ПІБ' : 'Контактна особа (ПІБ)'}</label>
-            <input
-              id="contactPerson" type="text" className="auth-input" required
-              placeholder="Іваненко Іван"
-              value={contactPerson} onChange={e => setContactPerson(e.target.value)}
-            />
+          {/* Card 2 — hidden until a type is picked, then slides/fades in below card 1 */}
+          <div style={{ display: 'grid', gridTemplateRows: hasType ? '1fr' : '0fr', transition: 'grid-template-rows 0.35s ease' }}>
+          <div style={{ minHeight: 0, overflow: 'hidden', opacity: hasType ? 1 : 0, transform: hasType ? 'translateY(0)' : 'translateY(-8px)', transition: 'opacity 0.3s ease 0.05s, transform 0.3s ease 0.05s' }}>
+          <div className="auth-card" ref={card2Ref} style={{ maxWidth: 'none', padding: '24px 28px', scrollMarginTop: '68px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+            <span style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0,
+              background: '#4880B8', color: '#fff', fontSize: '12px', fontWeight: 700,
+            }}>2</span>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Контактні дані
+            </span>
           </div>
-          {/* Collapses shut (grid-template-rows 0fr) + fades instead of unmounting, so
-              switching account type animates these in/out smoothly. */}
-          <div style={{ display: 'grid', gridTemplateRows: isRetail ? '0fr' : '1fr', transition: 'grid-template-rows 0.3s ease' }}>
-            <div style={{ minHeight: 0, overflow: 'hidden', opacity: isRetail ? 0 : 1, transition: 'opacity 0.2s ease' }}>
-              <div className="auth-field">
-                <label className="auth-label" htmlFor="companyName">Назва компанії</label>
+
+          {/* Paired up 2-per-row (auto-fit collapses to 1 column on narrow screens) instead
+              of one field per row — cuts the section's height roughly in half so it fits
+              on screen after the auto-scroll above, without extra scrolling. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="auth-field" style={{ marginBottom: 0 }}>
+              <label className="auth-label" htmlFor="contactPerson">{isRetail ? 'ПІБ' : 'Контактна особа (ПІБ)'}</label>
+              <input
+                id="contactPerson" type="text" className="auth-input" required
+                placeholder="Іваненко Іван"
+                value={contactPerson} onChange={e => setContactPerson(e.target.value)}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: isRetail ? '1fr' : 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+              {/* Collapses shut (grid-template-rows 0fr) + fades instead of unmounting, so
+                  switching account type animates these in/out smoothly. */}
+              <div style={{ display: 'grid', gridTemplateRows: isRetail ? '0fr' : '1fr', transition: 'grid-template-rows 0.3s ease' }}>
+                <div style={{ minHeight: 0, overflow: 'hidden', opacity: isRetail ? 0 : 1, transition: 'opacity 0.2s ease' }}>
+                  <div className="auth-field" style={{ marginBottom: 0 }}>
+                    <label className="auth-label" htmlFor="companyName">Назва компанії</label>
+                    <input
+                      id="companyName" type="text" className="auth-input" required={!isRetail}
+                      placeholder="ТОВ «Будмайстер»"
+                      value={companyName} onChange={e => setCompanyName(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="auth-field" style={{ marginBottom: 0 }}>
+                <label className="auth-label" htmlFor="phone">Телефон</label>
                 <input
-                  id="companyName" type="text" className="auth-input" required={!isRetail}
-                  placeholder="ТОВ «Будмайстер»"
-                  value={companyName} onChange={e => setCompanyName(e.target.value)}
+                  id="phone" type="tel" className="auth-input" required={!isRetail}
+                  placeholder="+380 XX XXX XX XX"
+                  value={phone} onChange={e => setPhone(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* City + tax number collapse as a single row (not per-field) so retail mode
+                doesn't leave a stray row-gap where two independently-collapsed fields met. */}
+            <div style={{ display: 'grid', gridTemplateRows: isRetail ? '0fr' : '1fr', transition: 'grid-template-rows 0.3s ease' }}>
+              <div style={{ minHeight: 0, overflow: 'hidden', opacity: isRetail ? 0 : 1, transition: 'opacity 0.2s ease' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+                  <div className="auth-field" style={{ marginBottom: 0 }}>
+                    <label className="auth-label" htmlFor="city">Місто</label>
+                    <input
+                      id="city" type="text" className="auth-input" required={!isRetail}
+                      placeholder="Харків"
+                      value={city} onChange={e => setCity(e.target.value)}
+                    />
+                  </div>
+                  <div className="auth-field" style={{ marginBottom: 0 }}>
+                    <label className="auth-label" htmlFor="taxNumber">ЄДРПОУ / ІПН</label>
+                    <input
+                      id="taxNumber" type="text" className="auth-input" required={!isRetail}
+                      placeholder="12345678"
+                      value={taxNumber} onChange={e => setTaxNumber(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="auth-field" style={{ marginBottom: 0 }}>
+              <label className="auth-label" htmlFor="email">Email</label>
+              <input
+                id="email" type="email" className="auth-input" required
+                placeholder="company@email.com"
+                value={email} onChange={e => setEmail(e.target.value)}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+              <div className="auth-field" style={{ marginBottom: 0 }}>
+                <label className="auth-label" htmlFor="password">Пароль</label>
+                <input
+                  id="password" type="password" className="auth-input" required
+                  placeholder="Мінімум 6 символів"
+                  value={password} onChange={e => setPassword(e.target.value)}
+                />
+              </div>
+              <div className="auth-field" style={{ marginBottom: 0 }}>
+                <label className="auth-label" htmlFor="confirmPassword">Підтвердіть пароль</label>
+                <input
+                  id="confirmPassword" type="password" className="auth-input" required
+                  placeholder="Повторіть пароль"
+                  value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
                 />
               </div>
             </div>
           </div>
-          <div className="auth-field">
-            <label className="auth-label" htmlFor="phone">Телефон</label>
-            <input
-              id="phone" type="tel" className="auth-input" required={!isRetail}
-              placeholder="+380 XX XXX XX XX"
-              value={phone} onChange={e => setPhone(e.target.value)}
-            />
-          </div>
-          <div className="auth-field">
-            <label className="auth-label" htmlFor="email">Email</label>
-            <input
-              id="email" type="email" className="auth-input" required
-              placeholder="company@email.com"
-              value={email} onChange={e => setEmail(e.target.value)}
-            />
-          </div>
-          <div style={{ display: 'grid', gridTemplateRows: isRetail ? '0fr' : '1fr', transition: 'grid-template-rows 0.3s ease' }}>
-            <div style={{ minHeight: 0, overflow: 'hidden', opacity: isRetail ? 0 : 1, transition: 'opacity 0.2s ease' }}>
-              <div className="auth-field">
-                <label className="auth-label" htmlFor="city">Місто</label>
-                <input
-                  id="city" type="text" className="auth-input" required={!isRetail}
-                  placeholder="Харків"
-                  value={city} onChange={e => setCity(e.target.value)}
-                />
-              </div>
-              <div className="auth-field">
-                <label className="auth-label" htmlFor="taxNumber">ЄДРПОУ / ІПН</label>
-                <input
-                  id="taxNumber" type="text" className="auth-input" required={!isRetail}
-                  placeholder="12345678"
-                  value={taxNumber} onChange={e => setTaxNumber(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-          <div className="auth-field">
-            <label className="auth-label" htmlFor="password">Пароль</label>
-            <input
-              id="password" type="password" className="auth-input" required
-              placeholder="Мінімум 6 символів"
-              value={password} onChange={e => setPassword(e.target.value)}
-            />
-          </div>
-          <button type="submit" className="auth-btn" disabled={loading}>
+
+          <button type="submit" className="auth-btn" disabled={loading} style={{ marginTop: '18px' }}>
             {loading ? 'Реєстрація...' : 'Зареєструватися →'}
           </button>
-        </form>
+          </div>
+          </div>
+          </div>
+      </form>
 
-        <hr className="auth-divider" />
-        <p className="auth-footer">
+      <div className="auth-card" style={{ maxWidth: 'none', marginTop: '20px', padding: '20px 32px', textAlign: 'center' }}>
+        <p className="auth-footer" style={{ margin: 0 }}>
           Вже є акаунт?{' '}
           <Link href={`/login${nextUrl ? `?next=${nextUrl}` : ''}`}>Увійти</Link>
         </p>
@@ -280,6 +355,7 @@ function RegisterForm() {
             Продовжити без реєстрації →
           </button>
         </form>
+      </div>
       </div>
     </div>
   );
