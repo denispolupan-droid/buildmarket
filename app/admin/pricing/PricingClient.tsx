@@ -4,8 +4,9 @@ import { useState, useCallback, useMemo } from 'react';
 import {
   RefreshCw, TrendingUp, TrendingDown, Minus,
   AlertTriangle, CheckCircle, XCircle, HelpCircle,
-  ExternalLink, ChevronDown, ChevronUp, Play,
+  ExternalLink, ChevronDown, ChevronUp, Play, Search,
 } from 'lucide-react';
+import type { Category } from '../../../types';
 
 /* ── Search query (mirrors lib/price-checker — can't import server lib) ─ */
 function buildSearchQuery(name: string, volume?: string | null): string {
@@ -44,6 +45,7 @@ interface Row {
   name:             string;
   brand:            string | null;
   volume:           string | null;
+  category_slug:    string | null;
   our_price:        number | null;   // price_unit (B2B/wholesale)
   our_price_retail: number | null;   // price_retail (shown to end customers)
   check:            CheckData | null;
@@ -51,6 +53,7 @@ interface Row {
 
 interface Props {
   rows: Row[];
+  categories: Category[];
 }
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
@@ -154,8 +157,11 @@ function ResultsDrawer({ results }: { results: MarketPrice[] }) {
 
 /* ── Main component ───────────────────────────────────────────────────── */
 
-export default function PricingClient({ rows }: Props) {
+export default function PricingClient({ rows, categories }: Props) {
   const [filter, setFilter]           = useState<Filter>('all');
+  const [search, setSearch]           = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [selected, setSelected]       = useState<Set<string>>(new Set());
   const [sortByDemand, setSortByDemand] = useState(false);
   const [checks, setChecks]           = useState<Record<string, CheckData>>(() => {
     const m: Record<string, CheckData> = {};
@@ -165,6 +171,8 @@ export default function PricingClient({ rows }: Props) {
   const [loading, setLoading]         = useState<Record<string, boolean>>({});
   const [expanded, setExpanded]       = useState<Record<string, boolean>>({});
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
+
+  const parentCats = useMemo(() => categories.filter(c => !c.parent_slug), [categories]);
 
   /* check single product */
   const checkOne = useCallback(async (sku: string) => {
@@ -184,9 +192,9 @@ export default function PricingClient({ rows }: Props) {
     }
   }, []);
 
-  /* check all with progress */
-  const checkAll = useCallback(async () => {
-    const pending = rows.map(r => r.sku);
+  /* check a given list of skus (defaults to everything) with progress */
+  const checkAll = useCallback(async (skus?: string[]) => {
+    const pending = skus ?? rows.map(r => r.sku);
     setBatchProgress({ done: 0, total: pending.length });
     for (let i = 0; i < pending.length; i++) {
       await checkOne(pending[i]);
@@ -196,21 +204,39 @@ export default function PricingClient({ rows }: Props) {
     setBatchProgress(null);
   }, [rows, checkOne]);
 
-  /* computed rows after filter + optional sort by demand */
+  /* computed rows after search + category + status filter + optional sort by demand */
   const visibleRows = useMemo(() => {
-    const filtered = rows.filter(r => {
+    let list = rows;
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(r =>
+        r.name.toLowerCase().includes(q) ||
+        r.sku.toLowerCase().includes(q) ||
+        (r.brand ?? '').toLowerCase().includes(q)
+      );
+    }
+
+    if (filterCategory) {
+      const children = categories.filter(c => c.parent_slug === filterCategory).map(c => c.slug);
+      const slugs = new Set([filterCategory, ...children]);
+      list = list.filter(r => slugs.has(r.category_slug ?? ''));
+    }
+
+    list = list.filter(r => {
       const status = checks[r.sku]?.status ?? r.check?.status ?? 'not_checked';
       return filter === 'all' || status === filter;
     });
-    if (!sortByDemand) return filtered;
-    return [...filtered].sort((a, b) => {
+
+    if (!sortByDemand) return list;
+    return [...list].sort((a, b) => {
       const ca = checks[a.sku]?.match_count ?? a.check?.match_count ?? 0;
       const cb = checks[b.sku]?.match_count ?? b.check?.match_count ?? 0;
       return cb - ca;
     });
-  }, [rows, checks, filter, sortByDemand]);
+  }, [rows, categories, checks, filter, search, filterCategory, sortByDemand]);
 
-  /* stats */
+  /* stats (always over the full set, unaffected by search/category/status filters) */
   const stats = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const r of rows) {
@@ -222,36 +248,151 @@ export default function PricingClient({ rows }: Props) {
 
   const isBatchRunning = batchProgress !== null;
 
+  /* selection helpers — operate on the currently visible (filtered) rows */
+  const allVisibleSelected = visibleRows.length > 0 && visibleRows.every(r => selected.has(r.sku));
+  const someSelected = selected.size > 0;
+
+  function toggleSelectAll() {
+    if (allVisibleSelected) {
+      setSelected(prev => {
+        const next = new Set(prev);
+        visibleRows.forEach(r => next.delete(r.sku));
+        return next;
+      });
+    } else {
+      setSelected(prev => {
+        const next = new Set(prev);
+        visibleRows.forEach(r => next.add(r.sku));
+        return next;
+      });
+    }
+  }
+
+  function toggleSelect(sku: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(sku)) next.delete(sku); else next.add(sku);
+      return next;
+    });
+  }
+
   return (
     <div style={{ padding: 24, maxWidth: 1200 }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Аналіз цін</h1>
           <p style={{ margin: '4px 0 0', color: '#6B7280', fontSize: 14 }}>
             Порівняння ваших цін з Prom.ua та Epicentr
           </p>
         </div>
-        <button
-          onClick={checkAll}
-          disabled={isBatchRunning}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {someSelected && (
+            <button
+              onClick={() => checkAll(Array.from(selected))}
+              disabled={isBatchRunning}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '10px 18px', borderRadius: 10,
+                background: isBatchRunning ? '#E5E7EB' : '#10B981',
+                color: isBatchRunning ? '#9CA3AF' : '#fff',
+                border: 'none', cursor: isBatchRunning ? 'not-allowed' : 'pointer',
+                fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap',
+              }}
+            >
+              <Play size={16} /> Перевірити вибрані ({selected.size})
+            </button>
+          )}
+          <button
+            onClick={() => checkAll()}
+            disabled={isBatchRunning}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '10px 20px', borderRadius: 10,
+              background: isBatchRunning ? '#E5E7EB' : '#1D4ED8',
+              color: isBatchRunning ? '#9CA3AF' : '#fff',
+              border: 'none', cursor: isBatchRunning ? 'not-allowed' : 'pointer',
+              fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap',
+            }}
+          >
+            {isBatchRunning ? (
+              <><RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                {batchProgress!.done}/{batchProgress!.total} перевірено</>
+            ) : (
+              <><Play size={16} /> Перевірити всі ({rows.length})</>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Search + category filter */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: '1 1 300px' }}>
+          <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
+          <input
+            type="text"
+            placeholder="Пошук за назвою, SKU, брендом..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              width: '100%', height: 44, paddingLeft: 42, paddingRight: 16,
+              borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 14, outline: 'none',
+            }}
+          />
+        </div>
+        <select
+          value={filterCategory}
+          onChange={e => setFilterCategory(e.target.value)}
           style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '10px 20px', borderRadius: 10,
-            background: isBatchRunning ? '#E5E7EB' : '#1D4ED8',
-            color: isBatchRunning ? '#9CA3AF' : '#fff',
-            border: 'none', cursor: isBatchRunning ? 'not-allowed' : 'pointer',
-            fontWeight: 600, fontSize: 14,
+            flex: '0 1 240px', height: 44, padding: '0 16px', borderRadius: 10,
+            border: '1px solid #E5E7EB', fontSize: 14,
+            background: filterCategory ? '#EFF6FF' : '#fff',
           }}
         >
-          {isBatchRunning ? (
-            <><RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
-              {batchProgress!.done}/{batchProgress!.total} перевірено</>
-          ) : (
-            <><Play size={16} /> Перевірити всі ({rows.length})</>
+          <option value="">Всі категорії</option>
+          {parentCats.map(c => (
+            <option key={c.slug} value={c.slug}>{c.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Selection bar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, minHeight: 28 }}>
+        <div style={{ fontSize: 13, color: '#6B7280' }}>
+          Знайдено: {visibleRows.length} товарів
+          {someSelected && (
+            <span style={{ marginLeft: 8, color: '#10B981', fontWeight: 600 }}>
+              · вибрано {selected.size}
+            </span>
           )}
-        </button>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {!allVisibleSelected && visibleRows.length > 0 && (
+            <button
+              onClick={() => setSelected(new Set(visibleRows.map(r => r.sku)))}
+              style={{
+                height: 30, padding: '0 12px', borderRadius: 8,
+                border: '1px solid #E5E7EB', background: '#fff',
+                color: '#6B7280', fontSize: 13, cursor: 'pointer',
+              }}
+            >
+              Вибрати всі {visibleRows.length}
+            </button>
+          )}
+          {someSelected && (
+            <button
+              onClick={() => setSelected(new Set())}
+              style={{
+                height: 30, padding: '0 12px', borderRadius: 8,
+                border: '1px solid #E5E7EB', background: '#fff',
+                color: '#6B7280', fontSize: 13, cursor: 'pointer',
+              }}
+            >
+              Зняти вибір
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stats row */}
@@ -305,12 +446,18 @@ export default function PricingClient({ rows }: Props) {
         {/* Table header */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 95px 95px 110px 110px 90px 110px 130px 100px',
+          gridTemplateColumns: '32px 1fr 95px 95px 110px 110px 90px 110px 130px 100px',
           padding: '12px 16px',
           background: '#F9FAFB', borderBottom: '1px solid #E5E7EB',
           fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase',
           letterSpacing: '0.05em',
         }}>
+          <input
+            type="checkbox"
+            checked={allVisibleSelected}
+            onChange={toggleSelectAll}
+            style={{ cursor: 'pointer', width: 15, height: 15 }}
+          />
           <span>Товар</span>
           <span style={{ textAlign: 'right' }}>Роздріб</span>
           <span style={{ textAlign: 'right' }}>Опт</span>
@@ -345,18 +492,25 @@ export default function PricingClient({ rows }: Props) {
           const isLoading   = loading[row.sku] ?? false;
           const isExpanded  = expanded[row.sku] ?? false;
           const delta   = c?.delta_pct ?? null;
+          const isSelected  = selected.has(row.sku);
 
           return (
             <div key={row.sku} style={{ borderBottom: '1px solid #F3F4F6' }}>
               {/* Main row */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 95px 95px 110px 110px 90px 110px 130px 100px',
+                gridTemplateColumns: '32px 1fr 95px 95px 110px 110px 90px 110px 130px 100px',
                 padding: '12px 16px',
                 alignItems: 'center',
-                background: isLoading ? '#FAFAFA' : undefined,
+                background: isSelected ? 'rgba(16,185,129,0.05)' : isLoading ? '#FAFAFA' : undefined,
                 transition: 'background 0.15s',
               }}>
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleSelect(row.sku)}
+                  style={{ cursor: 'pointer', width: 15, height: 15 }}
+                />
                 {/* Product name */}
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 13, color: '#111' }}>

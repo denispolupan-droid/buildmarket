@@ -10,10 +10,15 @@ export default async function PricingPage() {
   // Load all active products with their current prices
   const { data: products } = await db
     .from('products')
-    .select('sku, name, brand, volume, is_active')
+    .select('sku, name, brand, volume, category_slug, is_active')
     .eq('is_active', true)
     .order('brand')
     .order('name');
+
+  const { data: categories } = await db
+    .from('categories')
+    .select('id, slug, name, sort_order, parent_slug, prom_section_url, prom_section_id, created_at')
+    .order('sort_order');
 
   const skus = (products ?? []).map(p => p.sku);
 
@@ -46,10 +51,11 @@ export default async function PricingPage() {
     name:             p.name,
     brand:            p.brand,
     volume:           p.volume,
+    category_slug:    p.category_slug,
     our_price:        stockMap[p.sku]?.unit   ?? null,
     our_price_retail: stockMap[p.sku]?.retail ?? null,
     check:            checkMap[p.sku] ?? null,
   }));
 
-  return <PricingClient rows={rows} />;
+  return <PricingClient rows={rows} categories={categories ?? []} />;
 }
