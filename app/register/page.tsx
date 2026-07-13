@@ -150,18 +150,19 @@ function RegisterForm() {
 
         <form onSubmit={handleSubmit}>
 
-          {/* Account type cards */}
+          {/* Account type cards — compact 2-col grid, icon + label only */}
           <div className="auth-field">
             <label className="auth-label">Тип акаунту</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginTop: '4px' }}>
               {ACCOUNT_TYPES.map(t => (
                 <button
                   key={t.value}
                   type="button"
                   onClick={() => setAccountType(t.value)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: '12px',
-                    padding: '12px 14px', borderRadius: '10px', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '10px 12px', borderRadius: '10px', cursor: 'pointer',
+                    gridColumn: t.value === 'dropship' ? '1 / -1' : undefined,
                     border: accountType === t.value
                       ? '2px solid #4880B8'
                       : '1px solid var(--border)',
@@ -169,27 +170,10 @@ function RegisterForm() {
                     transition: 'all 0.15s', textAlign: 'left',
                   }}
                 >
-                  <span style={{ fontSize: '22px', flexShrink: 0 }}>{t.emoji}</span>
-                  <div>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: accountType === t.value ? '#1E3A5F' : 'var(--text-primary)' }}>
-                      {t.label}
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                      {t.sub}
-                    </div>
-                  </div>
-                  <div style={{
-                    marginLeft: 'auto', width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0,
-                    border: accountType === t.value ? 'none' : '2px solid var(--border)',
-                    background: accountType === t.value ? '#4880B8' : 'transparent',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {accountType === t.value && (
-                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                        <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </div>
+                  <span style={{ fontSize: '18px', flexShrink: 0 }}>{t.emoji}</span>
+                  <span style={{ fontSize: '13px', fontWeight: 700, lineHeight: 1.25, color: accountType === t.value ? '#1E3A5F' : 'var(--text-primary)' }}>
+                    {t.label}
+                  </span>
                 </button>
               ))}
             </div>
@@ -203,16 +187,20 @@ function RegisterForm() {
               value={contactPerson} onChange={e => setContactPerson(e.target.value)}
             />
           </div>
-          {!isRetail && (
-            <div className="auth-field">
-              <label className="auth-label" htmlFor="companyName">Назва компанії</label>
-              <input
-                id="companyName" type="text" className="auth-input" required
-                placeholder="ТОВ «Будмайстер»"
-                value={companyName} onChange={e => setCompanyName(e.target.value)}
-              />
+          {/* Collapses shut (grid-template-rows 0fr) + fades instead of unmounting, so
+              switching account type animates these in/out smoothly. */}
+          <div style={{ display: 'grid', gridTemplateRows: isRetail ? '0fr' : '1fr', transition: 'grid-template-rows 0.3s ease' }}>
+            <div style={{ minHeight: 0, overflow: 'hidden', opacity: isRetail ? 0 : 1, transition: 'opacity 0.2s ease' }}>
+              <div className="auth-field">
+                <label className="auth-label" htmlFor="companyName">Назва компанії</label>
+                <input
+                  id="companyName" type="text" className="auth-input" required={!isRetail}
+                  placeholder="ТОВ «Будмайстер»"
+                  value={companyName} onChange={e => setCompanyName(e.target.value)}
+                />
+              </div>
             </div>
-          )}
+          </div>
           <div className="auth-field">
             <label className="auth-label" htmlFor="phone">Телефон</label>
             <input
@@ -229,26 +217,26 @@ function RegisterForm() {
               value={email} onChange={e => setEmail(e.target.value)}
             />
           </div>
-          {!isRetail && (
-            <div className="auth-field">
-              <label className="auth-label" htmlFor="city">Місто</label>
-              <input
-                id="city" type="text" className="auth-input" required
-                placeholder="Харків"
-                value={city} onChange={e => setCity(e.target.value)}
-              />
+          <div style={{ display: 'grid', gridTemplateRows: isRetail ? '0fr' : '1fr', transition: 'grid-template-rows 0.3s ease' }}>
+            <div style={{ minHeight: 0, overflow: 'hidden', opacity: isRetail ? 0 : 1, transition: 'opacity 0.2s ease' }}>
+              <div className="auth-field">
+                <label className="auth-label" htmlFor="city">Місто</label>
+                <input
+                  id="city" type="text" className="auth-input" required={!isRetail}
+                  placeholder="Харків"
+                  value={city} onChange={e => setCity(e.target.value)}
+                />
+              </div>
+              <div className="auth-field">
+                <label className="auth-label" htmlFor="taxNumber">ЄДРПОУ / ІПН</label>
+                <input
+                  id="taxNumber" type="text" className="auth-input" required={!isRetail}
+                  placeholder="12345678"
+                  value={taxNumber} onChange={e => setTaxNumber(e.target.value)}
+                />
+              </div>
             </div>
-          )}
-          {!isRetail && (
-            <div className="auth-field">
-              <label className="auth-label" htmlFor="taxNumber">ЄДРПОУ / ІПН</label>
-              <input
-                id="taxNumber" type="text" className="auth-input" required
-                placeholder="12345678"
-                value={taxNumber} onChange={e => setTaxNumber(e.target.value)}
-              />
-            </div>
-          )}
+          </div>
           <div className="auth-field">
             <label className="auth-label" htmlFor="password">Пароль</label>
             <input
