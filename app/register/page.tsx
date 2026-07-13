@@ -150,19 +150,18 @@ function RegisterForm() {
 
         <form onSubmit={handleSubmit}>
 
-          {/* Account type cards — compact 2-col grid, icon + label only */}
+          {/* Account type cards */}
           <div className="auth-field">
             <label className="auth-label">Тип акаунту</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginTop: '4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
               {ACCOUNT_TYPES.map(t => (
                 <button
                   key={t.value}
                   type="button"
                   onClick={() => setAccountType(t.value)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: '8px',
-                    padding: '10px 12px', borderRadius: '10px', cursor: 'pointer',
-                    gridColumn: t.value === 'dropship' ? '1 / -1' : undefined,
+                    display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '12px 14px', borderRadius: '10px', cursor: 'pointer',
                     border: accountType === t.value
                       ? '2px solid #4880B8'
                       : '1px solid var(--border)',
@@ -170,10 +169,27 @@ function RegisterForm() {
                     transition: 'all 0.15s', textAlign: 'left',
                   }}
                 >
-                  <span style={{ fontSize: '18px', flexShrink: 0 }}>{t.emoji}</span>
-                  <span style={{ fontSize: '13px', fontWeight: 700, lineHeight: 1.25, color: accountType === t.value ? '#1E3A5F' : 'var(--text-primary)' }}>
-                    {t.label}
-                  </span>
+                  <span style={{ fontSize: '22px', flexShrink: 0 }}>{t.emoji}</span>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: accountType === t.value ? '#1E3A5F' : 'var(--text-primary)' }}>
+                      {t.label}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                      {t.sub}
+                    </div>
+                  </div>
+                  <div style={{
+                    marginLeft: 'auto', width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0,
+                    border: accountType === t.value ? 'none' : '2px solid var(--border)',
+                    background: accountType === t.value ? '#4880B8' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {accountType === t.value && (
+                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                        <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>
