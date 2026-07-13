@@ -8,7 +8,9 @@ const serviceClient = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-async function ensureCustomerRecord(userId: string, role: 'dropship' | 'wholesale', user: { email?: string; user_metadata?: { company_name?: string } }) {
+type SignupMeta = { company_name?: string; contact_person?: string; phone?: string; city?: string; tax_number?: string };
+
+async function ensureCustomerRecord(userId: string, role: 'dropship' | 'wholesale', user: { email?: string; user_metadata?: SignupMeta }) {
   const { data: existing } = await serviceClient
     .from('customers')
     .select('id')
@@ -17,11 +19,16 @@ async function ensureCustomerRecord(userId: string, role: 'dropship' | 'wholesal
 
   if (!existing) {
     const isDropship = role === 'dropship';
+    const meta = user.user_metadata ?? {};
     await serviceClient.from('customers').insert({
       auth_user_id: userId,
       type:         isDropship ? 'dropship_partner' : 'wholesale',
       price_tier:   isDropship ? 'drop' : 'wholesale',
-      name:         user.user_metadata?.company_name || user.email || 'Клієнт',
+      name:         meta.contact_person || meta.company_name || user.email || 'Клієнт',
+      company:      meta.company_name || null,
+      phone:        meta.phone || null,
+      city:         meta.city || null,
+      tax_number:   meta.tax_number || null,
       email:        user.email,
       is_active:    true,
       balance:      0,

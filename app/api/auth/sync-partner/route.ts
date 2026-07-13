@@ -27,13 +27,18 @@ export async function POST() {
 
   if (!existing) {
     const isDropship = role === 'dropship';
-    const customerName = user.user_metadata?.company_name || user.email || 'Клієнт';
+    const meta = user.user_metadata ?? {};
+    const customerName = meta.contact_person || meta.company_name || user.email || 'Клієнт';
 
     const { data: newCustomer } = await serviceClient.from('customers').insert({
       auth_user_id: user.id,
       type:         isDropship ? 'dropship_partner' : 'wholesale',
       price_tier:   isDropship ? 'drop' : 'wholesale',
       name:         customerName,
+      company:      meta.company_name || null,
+      phone:        meta.phone || null,
+      city:         meta.city || null,
+      tax_number:   meta.tax_number || null,
       email:        user.email,
       is_active:    true,
       balance:      0,

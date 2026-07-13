@@ -49,16 +49,21 @@ const ACCOUNT_TYPES = [
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email,       setEmail]       = useState('');
-  const [password,    setPassword]    = useState('');
-  const [company,     setCompany]     = useState('');
-  const [accountType, setAccountType] = useState('dealer');
+  const [email,         setEmail]         = useState('');
+  const [password,      setPassword]      = useState('');
+  const [contactPerson, setContactPerson] = useState('');
+  const [companyName,   setCompanyName]   = useState('');
+  const [phone,         setPhone]         = useState('');
+  const [city,          setCity]          = useState('');
+  const [taxNumber,     setTaxNumber]     = useState('');
+  const [accountType,   setAccountType]   = useState('dealer');
   const [error,       setError]       = useState('');
   const [loading,     setLoading]     = useState(false);
   const [done,        setDone]        = useState(false);
 
   const nextUrl = searchParams.get('next') ?? '';
   const { theme } = useTheme();
+  const isRetail = ACCOUNT_TYPES.find(t => t.value === accountType)?.group === 'retail';
 
   useEffect(() => {
     const type = searchParams.get('type');
@@ -78,7 +83,14 @@ function RegisterForm() {
       email,
       password,
       options: {
-        data: { company_name: company, account_type: accountType },
+        data: {
+          company_name: isRetail ? '' : companyName,
+          contact_person: contactPerson,
+          account_type: accountType,
+          phone,
+          city: isRetail ? '' : city,
+          tax_number: isRetail ? '' : taxNumber,
+        },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
@@ -184,11 +196,29 @@ function RegisterForm() {
           </div>
 
           <div className="auth-field">
-            <label className="auth-label" htmlFor="company">Назва компанії / ПІБ</label>
+            <label className="auth-label" htmlFor="contactPerson">{isRetail ? 'ПІБ' : 'Контактна особа (ПІБ)'}</label>
             <input
-              id="company" type="text" className="auth-input" required
-              placeholder="ТОВ «Будмайстер» або Іваненко Іван"
-              value={company} onChange={e => setCompany(e.target.value)}
+              id="contactPerson" type="text" className="auth-input" required
+              placeholder="Іваненко Іван"
+              value={contactPerson} onChange={e => setContactPerson(e.target.value)}
+            />
+          </div>
+          {!isRetail && (
+            <div className="auth-field">
+              <label className="auth-label" htmlFor="companyName">Назва компанії</label>
+              <input
+                id="companyName" type="text" className="auth-input" required
+                placeholder="ТОВ «Будмайстер»"
+                value={companyName} onChange={e => setCompanyName(e.target.value)}
+              />
+            </div>
+          )}
+          <div className="auth-field">
+            <label className="auth-label" htmlFor="phone">Телефон</label>
+            <input
+              id="phone" type="tel" className="auth-input" required={!isRetail}
+              placeholder="+380 XX XXX XX XX"
+              value={phone} onChange={e => setPhone(e.target.value)}
             />
           </div>
           <div className="auth-field">
@@ -199,6 +229,26 @@ function RegisterForm() {
               value={email} onChange={e => setEmail(e.target.value)}
             />
           </div>
+          {!isRetail && (
+            <div className="auth-field">
+              <label className="auth-label" htmlFor="city">Місто</label>
+              <input
+                id="city" type="text" className="auth-input" required
+                placeholder="Харків"
+                value={city} onChange={e => setCity(e.target.value)}
+              />
+            </div>
+          )}
+          {!isRetail && (
+            <div className="auth-field">
+              <label className="auth-label" htmlFor="taxNumber">ЄДРПОУ / ІПН</label>
+              <input
+                id="taxNumber" type="text" className="auth-input" required
+                placeholder="12345678"
+                value={taxNumber} onChange={e => setTaxNumber(e.target.value)}
+              />
+            </div>
+          )}
           <div className="auth-field">
             <label className="auth-label" htmlFor="password">Пароль</label>
             <input
