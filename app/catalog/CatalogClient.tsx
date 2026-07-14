@@ -41,6 +41,25 @@ function CopySkuBtn({ sku, lang }: { sku: string; lang: 'uk' | 'ru' }) {
   );
 }
 
+// Native `behavior: 'smooth'` has a fixed, fairly snappy browser-controlled duration —
+// this gives the category auto-lift its own slower, eased animation instead.
+function easeInOutCubic(t: number) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 700) {
+  const startTop = el.scrollTop;
+  const distance = targetTop - startTop;
+  if (distance === 0) return;
+  const startTime = performance.now();
+  const step = (now: number) => {
+    const progress = Math.min((now - startTime) / duration, 1);
+    el.scrollTop = startTop + distance * easeInOutCubic(progress);
+    if (progress < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
 type Props = { products: ProductFull[]; categories: Category[]; reviewStats?: ReviewStats; initialSearch?: string; initialCategory?: string; initialSaleOnly?: boolean };
 
 export default function CatalogClient({ products, categories, reviewStats, initialSearch = '', initialCategory = '', initialSaleOnly = false }: Props) {
@@ -110,7 +129,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
     const container = sidebarRef.current;
     if (!catEl || !container) return;
     const offset = catEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-    container.scrollTo({ top: Math.max(0, container.scrollTop + offset - 8), behavior: 'smooth' });
+    smoothScrollTo(container, Math.max(0, container.scrollTop + offset - 8), 700);
   }, []);
 
   const selectCat = (slug: string, scrollSlug?: string) => {
