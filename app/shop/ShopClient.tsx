@@ -28,7 +28,7 @@ function easeOutQuad(t: number) {
   return 1 - (1 - t) * (1 - t);
 }
 
-function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 750) {
+function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 620) {
   const startTop = el.scrollTop;
   const distance = targetTop - startTop;
   if (distance === 0) return;
@@ -393,7 +393,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     const sidebar = sidebarRef.current;
     if (!catEl || !sidebar) return;
     const offset = catEl.getBoundingClientRect().top - sidebar.getBoundingClientRect().top;
-    smoothScrollTo(sidebar, Math.max(0, sidebar.scrollTop + offset - 16), 750);
+    smoothScrollTo(sidebar, Math.max(0, sidebar.scrollTop + offset - 16), 620);
   }, []);
 
   // Top-level category owning a given slug (walks up parent_slug), used to tell whether
