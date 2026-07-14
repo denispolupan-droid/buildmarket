@@ -55,8 +55,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <head>
         <link rel="preconnect" href="https://boaztnparrdoeknajprn.supabase.co" />
         <link rel="dns-prefetch" href="https://boaztnparrdoeknajprn.supabase.co" />
-        <link rel="preconnect" href="https://pub-ee4454239bbe4b968083d949887cc780.r2.dev" />
-        <link rel="dns-prefetch" href="https://pub-ee4454239bbe4b968083d949887cc780.r2.dev" />
+        <link rel="preconnect" href="https://pan2.uk" />
+        <link rel="dns-prefetch" href="https://pan2.uk" />
         {/* Blocking script — applies theme BEFORE first paint, eliminates white flash */}
         <script dangerouslySetInnerHTML={{ __html: `
           try {

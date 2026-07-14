@@ -34,7 +34,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'pub-ee4454239bbe4b968083d949887cc780.r2.dev',
+        hostname: 'pan2.uk',
       },
     ],
   },
