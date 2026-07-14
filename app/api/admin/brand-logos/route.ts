@@ -4,6 +4,7 @@ import { revalidateTag } from 'next/cache';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeBrandLogo } from '../../../../lib/brand-logo';
+import { uploadToR2, deleteFromR2 } from '../../../../lib/r2';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -46,6 +47,13 @@ export async function POST(req: NextRequest) {
   if (!file)  return NextResponse.json({ error: 'Файл не вказано' },  { status: 400 });
   if (!brand) return NextResponse.json({ error: 'Бренд не вказано' }, { status: 400 });
 
+  const { data: existing } = await serviceClient
+    .from('brand_logos')
+    .select('logo_url')
+    .eq('brand_name', brand)
+    .single();
+  const oldLogoUrl = existing?.logo_url ?? null;
+
   const srcBuf = Buffer.from(await file.arrayBuffer());
 
   let webpBuf: Buffer;
@@ -60,16 +68,25 @@ export async function POST(req: NextRequest) {
   const version = createHash('sha256').update(webpBuf).digest('hex').slice(0, 10);
   const storagePath = `brand-logos/${brandSlug(brand)}-${version}.webp`;
 
-  const { error: upErr } = await serviceClient.storage
-    .from('products')
-    .upload(storagePath, webpBuf, { contentType: 'image/webp', upsert: true, cacheControl: '31536000' });
-  if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
+  let logoUrl: string;
+  try {
+    logoUrl = await uploadToR2(storagePath, webpBuf, 'image/webp');
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Upload failed' }, { status: 500 });
+  }
 
-  const logoUrl = `/img/products/${storagePath}`;
   const { error: dbErr } = await serviceClient
     .from('brand_logos')
     .upsert({ brand_name: brand, logo_url: logoUrl, updated_at: new Date().toISOString() }, { onConflict: 'brand_name' });
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
+
+  if (oldLogoUrl && oldLogoUrl.startsWith('/img/products/') && oldLogoUrl !== logoUrl) {
+    try {
+      await deleteFromR2([oldLogoUrl.replace(/^\/img\/products\//, '')]);
+    } catch {
+      // Non-fatal — see the equivalent product-photo upload route for why.
+    }
+  }
 
   revalidateTag('brand-logos', 'max');
   return NextResponse.json({ logoUrl });
@@ -98,8 +115,22 @@ export async function DELETE(req: NextRequest) {
   const { brand } = await req.json() as { brand?: string };
   if (!brand) return NextResponse.json({ error: 'Бренд не вказано' }, { status: 400 });
 
+  const { data: existing } = await serviceClient
+    .from('brand_logos')
+    .select('logo_url')
+    .eq('brand_name', brand)
+    .single();
+
   const { error } = await serviceClient.from('brand_logos').delete().eq('brand_name', brand);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (existing?.logo_url?.startsWith('/img/products/')) {
+    try {
+      await deleteFromR2([existing.logo_url.replace(/^\/img\/products\//, '')]);
+    } catch {
+      // Non-fatal — see the equivalent product-photo upload route for why.
+    }
+  }
 
   revalidateTag('brand-logos', 'max');
   return NextResponse.json({ ok: true });
