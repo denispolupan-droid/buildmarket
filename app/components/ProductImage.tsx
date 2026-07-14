@@ -189,6 +189,8 @@ function FadeProductImage({ imageUrl, alt }: { imageUrl: string; alt: string }) 
       alt={alt}
       width={400}
       height={400}
+      quality={90}
+      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 40vw, 500px"
       style={{
         height: '100%', width: '100%', objectFit: 'contain', display: 'block',
         opacity: loaded ? 1 : 0, transition: 'opacity 350ms ease',
