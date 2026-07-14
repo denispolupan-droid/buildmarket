@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL ?? '';
 
 const securityHeaders = [
   { key: 'X-DNS-Prefetch-Control',  value: 'on' },
@@ -34,7 +34,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'boaztnparrdoeknajprn.supabase.co',
+        hostname: 'pub-ee4454239bbe4b968083d949887cc780.r2.dev',
       },
     ],
   },
@@ -58,9 +58,13 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     return [
+      // Every image URL on the site is "/img/products/...", because the old Supabase
+      // Storage bucket was named "products" — R2's public URL is already scoped to a
+      // single bucket, so "products" is dropped here rather than re-keying the R2
+      // objects (which were migrated 1:1 without that prefix) to match.
       {
-        source: '/img/:path*',
-        destination: `${SUPABASE_URL}/storage/v1/object/public/:path*`,
+        source: '/img/products/:path*',
+        destination: `${R2_PUBLIC_URL}/:path*`,
       },
     ];
   },

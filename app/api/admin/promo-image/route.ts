@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
-
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+import { uploadToR2, deleteFromR2 } from '../../../../lib/r2';
 
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer();
@@ -21,15 +16,17 @@ export async function POST(req: NextRequest) {
   const path = `promo/banner.${ext}`;
   const bytes = await file.arrayBuffer();
 
-  const { error } = await serviceClient.storage
-    .from('products')
-    .upload(path, Buffer.from(bytes), { contentType: file.type, upsert: true });
+  let url: string;
+  try {
+    // Fixed filename (no content hash) — short cache so a re-upload shows up promptly;
+    // the "?t=" query string still isn't honored by the edge cache, but a 5-minute
+    // max-age bounds staleness on its own.
+    url = await uploadToR2(path, Buffer.from(bytes), file.type, 'public, max-age=300');
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Upload failed' }, { status: 500 });
+  }
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const { data: { publicUrl } } = serviceClient.storage.from('products').getPublicUrl(path);
-  // append cache-bust so new image shows immediately
-  return NextResponse.json({ url: `${publicUrl}?t=${Date.now()}` });
+  return NextResponse.json({ url: `${url}?t=${Date.now()}` });
 }
 
 export async function DELETE() {
@@ -38,6 +35,6 @@ export async function DELETE() {
   if (!user || user.user_metadata?.role !== 'admin')
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  await serviceClient.storage.from('products').remove(['promo/banner.webp', 'promo/banner.jpg', 'promo/banner.png']);
+  await deleteFromR2(['promo/banner.webp', 'promo/banner.jpg', 'promo/banner.png']);
   return NextResponse.json({ ok: true });
 }

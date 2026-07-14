@@ -44,8 +44,8 @@ async function fetchImageBuffer(imagePath: string): Promise<Buffer | null> {
     return await toJpeg(buf);
   } catch { /* not in public/ */ }
 
-  const supabaseSrc = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${imagePath.replace(/^\/img\//, '')}`;
-  const raw = await fetchUrl(supabaseSrc);
+  const r2Src = `${process.env.R2_PUBLIC_URL}/${imagePath.replace(/^\/img\/products\//, '')}`;
+  const raw = await fetchUrl(r2Src);
   if (!raw) return null;
   try { return await toJpeg(raw); } catch { return null; }
 }

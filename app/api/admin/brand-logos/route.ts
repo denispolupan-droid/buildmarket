@@ -4,6 +4,7 @@ import { revalidateTag } from 'next/cache';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeBrandLogo } from '../../../../lib/brand-logo';
+import { uploadToR2 } from '../../../../lib/r2';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -60,12 +61,13 @@ export async function POST(req: NextRequest) {
   const version = createHash('sha256').update(webpBuf).digest('hex').slice(0, 10);
   const storagePath = `brand-logos/${brandSlug(brand)}-${version}.webp`;
 
-  const { error: upErr } = await serviceClient.storage
-    .from('products')
-    .upload(storagePath, webpBuf, { contentType: 'image/webp', upsert: true, cacheControl: '31536000' });
-  if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
+  let logoUrl: string;
+  try {
+    logoUrl = await uploadToR2(storagePath, webpBuf, 'image/webp');
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Upload failed' }, { status: 500 });
+  }
 
-  const logoUrl = `/img/products/${storagePath}`;
   const { error: dbErr } = await serviceClient
     .from('brand_logos')
     .upsert({ brand_name: brand, logo_url: logoUrl, updated_at: new Date().toISOString() }, { onConflict: 'brand_name' });
