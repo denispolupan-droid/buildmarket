@@ -20,6 +20,25 @@ import type { ProductFull, Category, ReviewStats } from '../../lib/supabase';
 import { getCategoryMeta } from '../../lib/category-descriptions';
 import { useStickyCompact } from '../../lib/useStickyCompact';
 
+// Native `behavior: 'smooth'` has a fixed, fairly snappy browser-controlled duration —
+// this gives the category auto-lift its own slower, eased animation instead.
+function easeInOutCubic(t: number) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 700) {
+  const startTop = el.scrollTop;
+  const distance = targetTop - startTop;
+  if (distance === 0) return;
+  const startTime = performance.now();
+  const step = (now: number) => {
+    const progress = Math.min((now - startTime) / duration, 1);
+    el.scrollTop = startTop + distance * easeInOutCubic(progress);
+    if (progress < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
 const SHOP_STATE_KEY = 'shop_filter_state';
 
 function readShopSession<T>(field: string, fallback: T): T {
@@ -370,7 +389,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     const sidebar = sidebarRef.current;
     if (!catEl || !sidebar) return;
     const offset = catEl.getBoundingClientRect().top - sidebar.getBoundingClientRect().top;
-    sidebar.scrollTo({ top: Math.max(0, sidebar.scrollTop + offset - 16), behavior: 'smooth' });
+    smoothScrollTo(sidebar, Math.max(0, sidebar.scrollTop + offset - 16), 700);
   }, []);
 
   const selectCat = (slug: string | null, scrollSlug?: string) => {
