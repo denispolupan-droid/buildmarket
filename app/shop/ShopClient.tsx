@@ -21,9 +21,11 @@ import { getCategoryMeta } from '../../lib/category-descriptions';
 import { useStickyCompact } from '../../lib/useStickyCompact';
 
 // Native `behavior: 'smooth'` has a fixed, fairly snappy browser-controlled duration —
-// this gives the category auto-lift its own slower, eased animation instead.
-function easeInOutCubic(t: number) {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+// this gives the category auto-lift its own slower, eased animation instead. Ease-out
+// (fast start, gentle settle) reads as "pulling" the category up, rather than the
+// uniform, scroll-like motion an ease-in-out curve produces.
+function easeOutCubic(t: number) {
+  return 1 - Math.pow(1 - t, 3);
 }
 
 function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 700) {
@@ -33,7 +35,7 @@ function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 700) {
   const startTime = performance.now();
   const step = (now: number) => {
     const progress = Math.min((now - startTime) / duration, 1);
-    el.scrollTop = startTop + distance * easeInOutCubic(progress);
+    el.scrollTop = startTop + distance * easeOutCubic(progress);
     if (progress < 1) requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
