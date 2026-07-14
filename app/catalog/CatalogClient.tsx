@@ -107,7 +107,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
 
   const scrollCatToTop = useCallback((slug: string) => {
     const catEl = catRefs.current[slug];
-    const container = catsListRef.current;
+    const container = sidebarRef.current;
     if (!catEl || !container) return;
     const offset = catEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
     container.scrollTo({ top: Math.max(0, container.scrollTop + offset - 8), behavior: 'smooth' });
