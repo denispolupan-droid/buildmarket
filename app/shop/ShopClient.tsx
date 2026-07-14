@@ -394,12 +394,26 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     smoothScrollTo(sidebar, Math.max(0, sidebar.scrollTop + offset - 16), 900);
   }, []);
 
+  // Top-level category owning a given slug (walks up parent_slug), used to tell whether
+  // a child/grandchild click is still inside the currently active branch (already visible,
+  // no need to scroll) or jumps to a different expanded branch (needs re-lifting).
+  const getRootCat = useCallback((slug: string | null): string => {
+    if (!slug) return '';
+    let current = categories.find(c => c.slug === slug);
+    while (current?.parent_slug) {
+      current = categories.find(c => c.slug === current!.parent_slug);
+    }
+    return current?.slug ?? '';
+  }, [categories]);
+
   const selectCat = (slug: string | null, scrollSlug?: string) => {
     // На brand-сторінці заголовок рендериться сервером — потрібна повна навігація
     if (initialBrand) {
       router.push(slug ? `${shopBase}/${slug}` : shopBase);
       return;
     }
+    const prevRoot = getRootCat(selCat);
+    const newRoot = getRootCat(slug);
     setSelCat(slug);
     window.history.pushState(null, '', slug ? `${shopBase}/${slug}` : shopBase);
     sidebarRef.current?.scrollTo({ top: 0 });
@@ -407,7 +421,10 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     setVisibleCount(24);
     setMobilePanel(null);
     const target = scrollSlug ?? slug;
-    if (target) setTimeout(() => scrollCatToTop(target), 120);
+    // scrollSlug is only passed for child/grandchild clicks — those stay silent unless
+    // they jump to a different top-level branch than the one currently active.
+    const shouldScroll = !scrollSlug || newRoot !== prevRoot;
+    if (target && shouldScroll) setTimeout(() => scrollCatToTop(target), 120);
   };
   const { skus: wishSkus, toggle: toggleWish } = useWishlist();
 

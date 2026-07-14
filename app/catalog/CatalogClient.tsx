@@ -134,7 +134,21 @@ export default function CatalogClient({ products, categories, reviewStats, initi
     smoothScrollTo(container, Math.max(0, container.scrollTop + offset - 8), 900);
   }, []);
 
+  // Top-level category owning a given slug (walks up parent_slug), used to tell whether
+  // a child/grandchild click is still inside the currently active branch (already visible,
+  // no need to scroll) or jumps to a different expanded branch (needs re-lifting).
+  const getRootCat = useCallback((slug: string): string => {
+    if (!slug) return '';
+    let current = categories.find(c => c.slug === slug);
+    while (current?.parent_slug) {
+      current = categories.find(c => c.slug === current!.parent_slug);
+    }
+    return current?.slug ?? '';
+  }, [categories]);
+
   const selectCat = (slug: string, scrollSlug?: string) => {
+    const prevRoot = getRootCat(selCat);
+    const newRoot = getRootCat(slug);
     setSelCat(slug);
     router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
     document.documentElement.scrollTop = 0; document.body.scrollTop = 0;
@@ -143,7 +157,10 @@ export default function CatalogClient({ products, categories, reviewStats, initi
     setVisibleCount(50);
     setMobilePanel(null);
     const target = scrollSlug ?? slug;
-    if (target) setTimeout(() => scrollCatToTop(target), 120);
+    // scrollSlug is only passed for child/grandchild clicks — those stay silent unless
+    // they jump to a different top-level branch than the one currently active.
+    const shouldScroll = !scrollSlug || newRoot !== prevRoot;
+    if (target && shouldScroll) setTimeout(() => scrollCatToTop(target), 120);
   };
   const [filterValues,     setFilterValues]     = useState<Record<string, string[]>>({});
   const [filterVolumes,    setFilterVolumes]    = useState<string[]>([]);
@@ -717,7 +734,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                                       ref={el => { catRefs.current[gc.slug] = el; }}
                                       className={'cat-item' + (selCat === gc.slug ? ' active' : '')}
                                       style={{ paddingLeft: '26px', fontSize: '12px' }}
-                                      onClick={() => selectCat(selCat === gc.slug ? '' : gc.slug, child.slug)}
+                                      onClick={() => selectCat(selCat === gc.slug ? '' : gc.slug, cat.slug)}
                                     >
                                       <span className="cat-item-label">{cName(gc.name, gc.slug)}</span>
                                     </div>
