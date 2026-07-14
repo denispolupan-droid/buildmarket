@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
+import { createClient } from '@supabase/supabase-js';
 import { normalizeProductImage } from '../../../../../lib/product-image';
-import { uploadToR2 } from '../../../../../lib/r2';
+import { uploadToR2, deleteFromR2 } from '../../../../../lib/r2';
+
+const serviceClient = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer();
@@ -19,6 +25,16 @@ export async function POST(req: NextRequest) {
   if (!file)  return NextResponse.json({ error: 'Файл не вказано' },  { status: 400 });
   if (!brand) return NextResponse.json({ error: 'Бренд не вказано' }, { status: 400 });
   if (!sku)   return NextResponse.json({ error: 'SKU не вказано' },   { status: 400 });
+
+  // Look up the product's current photo now, before it's overwritten below, so the old
+  // R2 object can be cleaned up once the new one is safely uploaded — otherwise every
+  // re-upload leaves an orphaned file behind, same as the old Supabase Storage did.
+  const { data: existing } = await serviceClient
+    .from('products')
+    .select('image')
+    .eq('sku', sku)
+    .single();
+  const oldImage = existing?.image ?? null;
 
   const srcBuf = Buffer.from(await file.arrayBuffer());
 
@@ -41,6 +57,18 @@ export async function POST(req: NextRequest) {
     imageUrl = await uploadToR2(storagePath, webpBuf, 'image/webp');
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Upload failed' }, { status: 500 });
+  }
+
+  // Clean up the previous photo now that the new one is safely in place. Only ever
+  // deletes our own /img/products/... keys — a stray external or malformed value in
+  // the DB is left untouched rather than risking a delete on some unrelated URL.
+  if (oldImage && oldImage.startsWith('/img/products/') && oldImage !== imageUrl) {
+    try {
+      await deleteFromR2([oldImage.replace(/^\/img\/products\//, '')]);
+    } catch {
+      // Non-fatal — the new photo already uploaded fine; an orphaned old file just
+      // sits unused in R2 (well within the free tier) rather than breaking the upload.
+    }
   }
 
   return NextResponse.json({ imageUrl });
