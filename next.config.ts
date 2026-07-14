@@ -32,6 +32,9 @@ const nextConfig: NextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 86400,
+    localPatterns: [
+      { pathname: '/img/**' },
+    ],
     remotePatterns: [
       {
         protocol: 'https',
