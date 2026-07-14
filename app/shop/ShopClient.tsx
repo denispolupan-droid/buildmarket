@@ -376,13 +376,15 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Скрол вгору (сторінка + сайдбар) після зміни категорії — спрацьовує після рендеру
+  // Скрол вгору сторінки після зміни категорії — спрацьовує після рендеру. Сайдбар сюди
+  // навмисно не входить: його позицією керує лише scrollCatToTop, і лише коли потрібно
+  // (див. shouldScroll у selectCat) — інакше клік всередині вже розкритої гілки збивав
+  // скрол сайдбара до нуля щоразу.
   useEffect(() => {
     if (selCat !== prevSelCat.current) {
       prevSelCat.current = selCat;
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
-      sidebarRef.current?.scrollTo({ top: 0 });
     }
   }, [selCat]);
 
@@ -416,7 +418,6 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     const newRoot = getRootCat(slug);
     setSelCat(slug);
     window.history.pushState(null, '', slug ? `${shopBase}/${slug}` : shopBase);
-    sidebarRef.current?.scrollTo({ top: 0 });
     setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]); setFilterPlasticGroup(''); setExpandedValues(new Set());
     setVisibleCount(24);
     setMobilePanel(null);

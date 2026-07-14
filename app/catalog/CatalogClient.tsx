@@ -121,8 +121,6 @@ export default function CatalogClient({ products, categories, reviewStats, initi
       prevSelCat.current = selCat;
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
-      sidebarRef.current?.scrollTo({ top: 0 });
-      if (catsListRef.current) catsListRef.current.scrollTop = 0;
     }
   }, [selCat]);
 
@@ -152,8 +150,6 @@ export default function CatalogClient({ products, categories, reviewStats, initi
     setSelCat(slug);
     router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
     document.documentElement.scrollTop = 0; document.body.scrollTop = 0;
-    sidebarRef.current?.scrollTo({ top: 0 });
-    if (catsListRef.current) catsListRef.current.scrollTop = 0;
     setVisibleCount(50);
     setMobilePanel(null);
     const target = scrollSlug ?? slug;
