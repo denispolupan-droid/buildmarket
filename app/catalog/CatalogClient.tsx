@@ -45,18 +45,18 @@ function CopySkuBtn({ sku, lang }: { sku: string; lang: 'uk' | 'ru' }) {
 // this gives the category auto-lift its own slower, eased animation instead. Ease-out
 // (fast start, gentle settle) reads as "pulling" the category up, rather than the
 // uniform, scroll-like motion an ease-in-out curve produces.
-function easeOutCubic(t: number) {
-  return 1 - Math.pow(1 - t, 3);
+function easeOutQuad(t: number) {
+  return 1 - (1 - t) * (1 - t);
 }
 
-function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 700) {
+function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 900) {
   const startTop = el.scrollTop;
   const distance = targetTop - startTop;
   if (distance === 0) return;
   const startTime = performance.now();
   const step = (now: number) => {
     const progress = Math.min((now - startTime) / duration, 1);
-    el.scrollTop = startTop + distance * easeOutCubic(progress);
+    el.scrollTop = startTop + distance * easeOutQuad(progress);
     if (progress < 1) requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
@@ -131,7 +131,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
     const container = sidebarRef.current;
     if (!catEl || !container) return;
     const offset = catEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-    smoothScrollTo(container, Math.max(0, container.scrollTop + offset - 8), 700);
+    smoothScrollTo(container, Math.max(0, container.scrollTop + offset - 8), 900);
   }, []);
 
   const selectCat = (slug: string, scrollSlug?: string) => {
