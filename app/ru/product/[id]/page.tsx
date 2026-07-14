@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 
 import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached } from '../../../../lib/supabase';
 import { getCategoryNameRu } from '../../../../lib/ru';
+import { createSupabaseServer } from '../../../../lib/supabase-server';
+import { isWholesale } from '../../../../lib/user-role';
 import { getCategoryMeta } from '../../../../lib/category-descriptions';
 import ProductTabs from '../../../product/[id]/ProductTabs';
 import ProductOrderPanel from '../../../product/[id]/ProductOrderPanel';
@@ -26,7 +28,7 @@ const service = createClient(
 
 const BASE = 'https://fixline.com.ua';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id: sku } = await params;
@@ -97,7 +99,14 @@ function stockDot(stockStatus: string | undefined, stockQty: number, minOrder: n
 
 export default async function RuProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ from?: string }> }) {
   const [{ id: sku }, sp] = await Promise.all([params, searchParams]);
-  const isRetail = sp.from === 'shop';
+
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  // Wholesale prices only when wholesale account AND coming from /ru/catalog (not /ru/shop
+  // or direct) — matches the uk product page; previously this only checked ?from=shop,
+  // so anyone landing here any other way (search engines, /ru/catalog itself) silently
+  // got wholesale pricing regardless of their actual account type.
+  const isRetail = !isWholesale(user) || sp.from !== 'catalog';
 
   const product = await getProductBySkuCached(sku);
   if (!product) notFound();

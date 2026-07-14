@@ -1002,7 +1002,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                       const qty          = getQty(p.sku, 1);
                       return (
                         <div key={p.sku} className="catalog-card">
-                          <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}`} className="catalog-card__img-wrap">
+                          <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}?from=catalog`} className="catalog-card__img-wrap">
                             <div className="catalog-card__badge-stack">
                               {isSale && <span className="catalog-card__badge">{t('АКЦІЯ', 'АКЦИЯ')}</span>}
                               {p.is_hit && <span className="catalog-card__badge catalog-card__badge--hit">{t('ХІТ', 'ХИТ')}</span>}
@@ -1015,7 +1015,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                             />
                           </Link>
                           <div className="catalog-card__body">
-                            <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}`} className="catalog-card__name">{displayName(p)}</Link>
+                            <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}?from=catalog`} className="catalog-card__name">{displayName(p)}</Link>
                             <div className="catalog-card__meta">
                               {/* This group truncates as a unit (color badge is the flexible/ellipsis one) so
                                   the rating badge stays fully visible at the right edge instead of wrapping
@@ -1149,7 +1149,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                       return (
                         <tr key={p.sku} style={{ position: 'relative' }}>
                           <td>
-                            <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}`} className="tr-link" aria-label={displayName(p)} />
+                            <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}?from=catalog`} className="tr-link" aria-label={displayName(p)} />
                             <div className="cell-photo">
                               <ProductImage
                                 brand={p.brand} nl1={p.nl1 ?? ''} nl2={p.nl2 ?? undefined}
@@ -1227,7 +1227,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                               >
                                 <Heart size={13} strokeWidth={2} fill={isLiked(p.sku) ? '#EF4444' : 'none'} />
                               </button>
-                              <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}`} className="action-icon-btn" title={t('Переглянути', 'Просмотреть')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}?from=catalog`} className="action-icon-btn" title={t('Переглянути', 'Просмотреть')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <Eye size={13} strokeWidth={2} />
                               </Link>
                             </div>
