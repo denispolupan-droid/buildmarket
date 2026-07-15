@@ -396,36 +396,45 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     smoothScrollTo(sidebar, Math.max(0, sidebar.scrollTop + offset - 16), 620);
   }, []);
 
-  // Top-level category owning a given slug (walks up parent_slug), used to tell whether
-  // a child/grandchild click is still inside the currently active branch (already visible,
-  // no need to scroll) or jumps to a different expanded branch (needs re-lifting).
-  const getRootCat = useCallback((slug: string | null): string => {
-    if (!slug) return '';
-    let current = categories.find(c => c.slug === slug);
-    while (current?.parent_slug) {
-      current = categories.find(c => c.slug === current!.parent_slug);
-    }
-    return current?.slug ?? '';
-  }, [categories]);
-
   const selectCat = (slug: string | null, scrollSlug?: string) => {
     // На brand-сторінці заголовок рендериться сервером — потрібна повна навігація
     if (initialBrand) {
       router.push(slug ? `${shopBase}/${slug}` : shopBase);
       return;
     }
-    const prevRoot = getRootCat(selCat);
-    const newRoot = getRootCat(slug);
     setSelCat(slug);
     window.history.pushState(null, '', slug ? `${shopBase}/${slug}` : shopBase);
     setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]); setFilterPlasticGroup(''); setExpandedValues(new Set());
     setVisibleCount(24);
     setMobilePanel(null);
     const target = scrollSlug ?? slug;
-    // scrollSlug is only passed for child/grandchild clicks — those stay silent unless
-    // they jump to a different top-level branch than the one currently active.
-    const shouldScroll = !scrollSlug || newRoot !== prevRoot;
-    if (target && shouldScroll) setTimeout(() => scrollCatToTop(target), 120);
+    if (!target) return;
+    // scrollSlug is only passed for child/grandchild clicks. Those only need the lift when
+    // the clicked branch — root category through its last visible child (or grandchild, if
+    // that last child is itself expanded) — isn't entirely visible in the sidebar. Top-level
+    // clicks (no scrollSlug) always scroll.
+    if (scrollSlug) {
+      const container = sidebarRef.current;
+      const topEl = catRefs.current[scrollSlug];
+      let lastSlug = scrollSlug;
+      const rootChildren = categories.filter(c => c.parent_slug === scrollSlug);
+      if (rootChildren.length) {
+        const lastChild = rootChildren[rootChildren.length - 1];
+        lastSlug = lastChild.slug;
+        if (expandedCats.has(lastChild.slug)) {
+          const grandchildren = categories.filter(c => c.parent_slug === lastChild.slug);
+          if (grandchildren.length) lastSlug = grandchildren[grandchildren.length - 1].slug;
+        }
+      }
+      const bottomEl = catRefs.current[lastSlug];
+      if (container && topEl && bottomEl) {
+        const containerRect = container.getBoundingClientRect();
+        const topRect = topEl.getBoundingClientRect();
+        const bottomRect = bottomEl.getBoundingClientRect();
+        if (topRect.top >= containerRect.top && bottomRect.bottom <= containerRect.bottom) return;
+      }
+    }
+    setTimeout(() => scrollCatToTop(target), 120);
   };
   const { skus: wishSkus, toggle: toggleWish } = useWishlist();
 
