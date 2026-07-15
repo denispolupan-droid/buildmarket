@@ -727,6 +727,21 @@ export default function ShopClient({ products, categories, reviewStats, initialS
       <aside className={`shop-sidebar${mobilePanel ? ' mobile-open' : ''}${mobilePanel === 'cats' ? ' mobile-cats' : ''}${mobilePanel === 'filters' ? ' mobile-filters' : ''}`} ref={sidebarRef}>
         <div className="sidebar-cats-section">
         <h3>{t('Категорії', 'Категории')}</h3>
+        {(() => {
+          const expandableSlugs = parentCats.filter(cat => (childrenOf[cat.slug] ?? []).length > 0).map(cat => cat.slug);
+          if (!expandableSlugs.length) return null;
+          const allExpanded = expandableSlugs.every(slug => expandedCats.has(slug));
+          return (
+            <div className="shop-filter-controls">
+              <button
+                className="shop-filter-ctrl-btn"
+                onClick={() => setExpandedCats(allExpanded ? new Set() : new Set(expandableSlugs))}
+              >
+                {allExpanded ? t('Згорнути все', 'Свернуть все') : t('Розгорнути все', 'Развернуть все')}
+              </button>
+            </div>
+          );
+        })()}
 
         <div ref={catsListRef} className="shop-cats-list">
           <button

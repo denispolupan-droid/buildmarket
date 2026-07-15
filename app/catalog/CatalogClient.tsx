@@ -652,6 +652,21 @@ export default function CatalogClient({ products, categories, reviewStats, initi
             {/* Categories */}
             <div className="sidebar-section sidebar-cats-section">
               <div className="sidebar-heading">{t('Категорії', 'Категории')}</div>
+              {(() => {
+                const expandableSlugs = parentCats.filter(cat => (childrenOf[cat.slug] ?? []).length > 0).map(cat => cat.slug);
+                if (!expandableSlugs.length) return null;
+                const allExpanded = expandableSlugs.every(slug => expandedCats.has(slug));
+                return (
+                  <div className="filter-controls">
+                    <button
+                      className="filter-ctrl-btn"
+                      onClick={() => setExpandedCats(allExpanded ? new Set() : new Set(expandableSlugs))}
+                    >
+                      {allExpanded ? t('Згорнути все', 'Свернуть все') : t('Розгорнути все', 'Развернуть все')}
+                    </button>
+                  </div>
+                );
+              })()}
               <div
                 ref={catsListRef}
                 className="cat-list"
