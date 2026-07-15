@@ -726,22 +726,22 @@ export default function ShopClient({ products, categories, reviewStats, initialS
       {/* Sidebar */}
       <aside className={`shop-sidebar${mobilePanel ? ' mobile-open' : ''}${mobilePanel === 'cats' ? ' mobile-cats' : ''}${mobilePanel === 'filters' ? ' mobile-filters' : ''}`} ref={sidebarRef}>
         <div className="sidebar-cats-section">
-        <h3>{t('Категорії', 'Категории')}</h3>
-        {(() => {
-          const expandableSlugs = parentCats.filter(cat => (childrenOf[cat.slug] ?? []).length > 0).map(cat => cat.slug);
-          if (!expandableSlugs.length) return null;
-          const allExpanded = expandableSlugs.every(slug => expandedCats.has(slug));
-          return (
-            <div className="shop-filter-controls">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+          <h3 style={{ margin: 0 }}>{t('Категорії', 'Категории')}</h3>
+          {(() => {
+            const expandableSlugs = parentCats.filter(cat => (childrenOf[cat.slug] ?? []).length > 0).map(cat => cat.slug);
+            if (!expandableSlugs.length) return null;
+            const allExpanded = expandableSlugs.every(slug => expandedCats.has(slug));
+            return (
               <button
                 className="shop-filter-ctrl-btn"
                 onClick={() => setExpandedCats(allExpanded ? new Set() : new Set(expandableSlugs))}
               >
                 {allExpanded ? t('Згорнути все', 'Свернуть все') : t('Розгорнути все', 'Развернуть все')}
               </button>
-            </div>
-          );
-        })()}
+            );
+          })()}
+        </div>
 
         <div ref={catsListRef} className="shop-cats-list">
           <button
