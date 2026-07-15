@@ -96,11 +96,18 @@ export async function GET() {
     const markup     = Number(p.rozetka_markup_pct ?? cat.rozetka_markup_pct ?? 0);
     const price      = commission > 0 || markup > 0 ? rzPrice(base, commission, markup) : retail;
     const priceOld   = stock.price_old ? Number(stock.price_old) : null;
-    const qty = Math.max(0, Math.floor(Number(stock.stock_qty) || 0));
     // Same "in stock" rule as the storefront (ShopClient/CatalogClient) — suppliers report a
     // binary in_stock/out_of_stock status, not exact counts, so stock_qty alone is unreliable.
-    const inStock = stock.stock_status === 'in_stock' || qty >= 1;
+    const rawQty  = Math.max(0, Math.floor(Number(stock.stock_qty) || 0));
+    const inStock = stock.stock_status === 'in_stock' || rawQty >= 1;
     const available = inStock ? 'true' : 'false';
+    // Rozetka requires a real positive stock_quantity to actually list an offer as buyable —
+    // available="true" with quantity 0 (or the tag omitted) is NOT enough, confirmed against a
+    // competitor's live feed (every one of their 964 available offers carries a positive count,
+    // the 5 unavailable ones are the only stock_quantity=0). We don't track exact counts, so use
+    // a conservative placeholder for in-stock items instead of the real (always-0) number.
+    const DEFAULT_IN_STOCK_QTY = 50;
+    const qty = inStock ? (rawQty > 0 ? rawQty : DEFAULT_IN_STOCK_QTY) : 0;
 
     const imgUrl = p.image
       ? (p.image.startsWith('http') ? p.image : `${SITE_URL}${p.image}`)
@@ -131,12 +138,9 @@ export async function GET() {
     const rzName = p.rozetka_name || formatForRozetka(p.name, p.brand, p.volume, p.color);
     lines.push(`      <name_ua>${x(rzName)}</name_ua>`);
     lines.push(`      <name>${x(rzName)}</name>`);
-    // qty is 0 whenever we only know a binary in_stock/out_of_stock status (no real count) —
-    // sending <stock_quantity>0</stock_quantity> alongside available="true" reads as "0 in
-    // stock" to Rozetka regardless of the available flag, which is exactly what was still
-    // showing "Немає в наявності" after the available fix. Omit the tag when we don't have a
-    // real number, same as the Prom feed already does.
-    if (qty > 0) lines.push(`      <stock_quantity>${qty}</stock_quantity>`);
+    // Always present, matching the competitor feed's pattern (stock_quantity on every offer,
+    // 0 only alongside available="false").
+    lines.push(`      <stock_quantity>${qty}</stock_quantity>`);
     // <description> = Russian if available, otherwise Ukrainian (required field)
     // <description_ua> = Ukrainian (only if different from <description>)
     if (descRu) {
