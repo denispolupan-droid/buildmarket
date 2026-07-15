@@ -166,7 +166,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
         // Even a fully-visible short branch (1-2 children) still gets lifted if it sits
         // in the lower half of the sidebar — comfortably "visible" isn't the same as
         // comfortably reachable.
-        const belowMidpoint = topRect.top > containerRect.top + containerRect.height / 2;
+        const belowMidpoint = topRect.top > containerRect.top + containerRect.height * 0.4;
         if (fullyVisible && !belowMidpoint) return;
       }
     }
