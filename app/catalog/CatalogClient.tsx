@@ -162,7 +162,12 @@ export default function CatalogClient({ products, categories, reviewStats, initi
         const containerRect = container.getBoundingClientRect();
         const topRect = topEl.getBoundingClientRect();
         const bottomRect = bottomEl.getBoundingClientRect();
-        if (topRect.top >= containerRect.top && bottomRect.bottom <= containerRect.bottom) return;
+        const fullyVisible = topRect.top >= containerRect.top && bottomRect.bottom <= containerRect.bottom;
+        // Even a fully-visible short branch (1-2 children) still gets lifted if it sits
+        // in the lower half of the sidebar — comfortably "visible" isn't the same as
+        // comfortably reachable.
+        const belowMidpoint = topRect.top > containerRect.top + containerRect.height / 2;
+        if (fullyVisible && !belowMidpoint) return;
       }
     }
     setTimeout(() => scrollCatToTop(target), 120);
