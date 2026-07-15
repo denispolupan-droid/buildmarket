@@ -131,7 +131,12 @@ export async function GET() {
     const rzName = p.rozetka_name || formatForRozetka(p.name, p.brand, p.volume, p.color);
     lines.push(`      <name_ua>${x(rzName)}</name_ua>`);
     lines.push(`      <name>${x(rzName)}</name>`);
-    lines.push(`      <stock_quantity>${qty}</stock_quantity>`);
+    // qty is 0 whenever we only know a binary in_stock/out_of_stock status (no real count) —
+    // sending <stock_quantity>0</stock_quantity> alongside available="true" reads as "0 in
+    // stock" to Rozetka regardless of the available flag, which is exactly what was still
+    // showing "Немає в наявності" after the available fix. Omit the tag when we don't have a
+    // real number, same as the Prom feed already does.
+    if (qty > 0) lines.push(`      <stock_quantity>${qty}</stock_quantity>`);
     // <description> = Russian if available, otherwise Ukrainian (required field)
     // <description_ua> = Ukrainian (only if different from <description>)
     if (descRu) {
