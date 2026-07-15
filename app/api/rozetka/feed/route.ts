@@ -27,13 +27,13 @@ export async function GET() {
       sku, name, rozetka_name, brand, category_slug, image, color, volume,
       on_rozetka, rozetka_markup_pct,
       description, description_full, description_ru, description_full_ru,
-      stock:product_stock(price_retail, price_cost, price_old, stock_qty),
+      stock:product_stock(price_retail, price_cost, price_old, stock_qty, stock_status),
       characteristics:product_characteristics(label, value, sort_order)
     `).eq('is_active', true).eq('on_rozetka', true).order('sort_order'),
   ]);
 
   type Cat = { id: number; slug: string; name: string; rozetka_category_id: string | null; rozetka_commission_pct: number | null; rozetka_markup_pct: number | null };
-  type Stock = { price_retail: number | null; price_cost: number | null; price_old: number | null; stock_qty: number | null };
+  type Stock = { price_retail: number | null; price_cost: number | null; price_old: number | null; stock_qty: number | null; stock_status: string | null };
   type Char = { label: string; value: string; sort_order: number };
   type Product = {
     sku: string; name: string; rozetka_name: string | null; brand: string; category_slug: string;
@@ -97,7 +97,10 @@ export async function GET() {
     const price      = commission > 0 || markup > 0 ? rzPrice(base, commission, markup) : retail;
     const priceOld   = stock.price_old ? Number(stock.price_old) : null;
     const qty = Math.max(0, Math.floor(Number(stock.stock_qty) || 0));
-    const available = qty > 0 ? 'true' : 'false';
+    // Same "in stock" rule as the storefront (ShopClient/CatalogClient) — suppliers report a
+    // binary in_stock/out_of_stock status, not exact counts, so stock_qty alone is unreliable.
+    const inStock = stock.stock_status === 'in_stock' || qty >= 1;
+    const available = inStock ? 'true' : 'false';
 
     const imgUrl = p.image
       ? (p.image.startsWith('http') ? p.image : `${SITE_URL}${p.image}`)
