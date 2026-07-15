@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import path from 'path';
 import { pathToFileURL } from 'url';
+import { createSupabaseServer } from '../../../../../lib/supabase-server';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
+
+async function checkAdmin() {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.user_metadata?.role === 'admin' ? user : null;
+}
 
 type RefEntry = { rz_id: string; name: string; commission_pct: number };
 
@@ -72,6 +79,8 @@ function parsePdf(text: string): { commissions: Map<string, number>; refs: RefEn
 
 // GET: fetch all refs for the dropdown
 export async function GET() {
+  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
   const { data, error } = await db
     .from('rozetka_commission_refs')
     .select('rz_id, name, commission_pct')
@@ -82,6 +91,8 @@ export async function GET() {
 
 // PATCH: apply pre-parsed changes (second step — no re-upload needed)
 export async function PATCH(req: NextRequest) {
+  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
   const { changes } = await req.json() as { changes: Array<{ slug: string; new_pct: number; new_label?: string | null; new_category_name?: string | null }> };
   if (!Array.isArray(changes) || changes.length === 0) {
     return NextResponse.json({ error: 'Немає змін' }, { status: 400 });
@@ -96,6 +107,8 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
   const form = await req.formData();
   const file = form.get('pdf') as File | null;
 
