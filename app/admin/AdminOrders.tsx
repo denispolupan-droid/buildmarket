@@ -2050,7 +2050,7 @@ export default function AdminOrders({
                         );
                       })()}
 
-                      {order.delivery_type === 'nova' && (
+                      {(order.delivery_type === 'nova' || order.delivery_type === 'nova_poshta') && (
                         <div>
                           <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ТТН Нової Пошти</div>
                           <div style={{ display: 'flex', gap: '6px' }}>

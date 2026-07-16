@@ -5,6 +5,7 @@ import { resolveOrderFulfillment } from '../../../../../../lib/accounting/fulfil
 import { createReservation, getReservationTtlDays, computeExpiresAt } from '../../../../../../lib/accounting/reservations';
 import { createDocument } from '../../../../../../lib/accounting/documents';
 import { notifyAdminStatusChange } from '../../../../../../lib/telegram';
+import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../../lib/rozetka-api';
 
 export async function POST(
   req: NextRequest,
@@ -27,7 +28,7 @@ export async function POST(
 
   const { data: order, error: orderError } = await db
     .from('orders')
-    .select('id, order_number, status, items, channel_code, tracking_number, contact, phone')
+    .select('id, order_number, status, items, channel_code, tracking_number, contact, phone, rozetka_order_id')
     .eq('id', id)
     .single();
 
@@ -183,6 +184,17 @@ export async function POST(
       newStatus,
     );
   } catch { /* не критично */ }
+
+  // Push status to Rozetka (fire-and-forget) if this is a Rozetka order
+  const rozetkaOrderId = order.rozetka_order_id as number | null;
+  if (rozetkaOrderId) {
+    const rozStatus = ourStatusToRozetkaStatus(newStatus);
+    if (rozStatus) {
+      setRozetkaOrderStatus(rozetkaOrderId, rozStatus).catch(err =>
+        console.error('[rozetka] setRozetkaOrderStatus failed:', err),
+      );
+    }
+  }
 
   return NextResponse.json({
     ok: true,

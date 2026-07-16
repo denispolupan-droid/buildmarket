@@ -191,7 +191,7 @@ export async function getRozetkaOrderStatuses(): Promise<RozetkaOrderStatus[]> {
 // order first lands, so we don't touch it until our side actually confirms/ships/etc.
 const STATUS_MAP: Record<string, number | null> = {
   new:            null,
-  confirmed:      2,  // Комплектується. Дані підтверджені
+  confirmed:      26, // Обробляється менеджером
   awaiting_stock: null,
   picking:        null,
   shipped:        3,  // Передано до служби доставки (ttn required)
