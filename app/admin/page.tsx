@@ -39,8 +39,9 @@ export default async function AdminPage({
   const SORT_COLS: Record<string, string> = { created_at: 'created_at', total_price: 'total_price', order_number: 'order_number' };
   const sortBy  = SORT_COLS[sortByParam ?? ''] ?? 'created_at';
   const sortAsc = sortDirParam === 'asc';
-  // Якщо відкриваємо конкретне замовлення — показуємо всі статуси
-  const status = expandOrderId ? (statusParam ?? '') : (statusParam ?? '');
+  // Якщо відкриваємо конкретне замовлення — показуємо всі статуси.
+  // Без явного ?status= в URL (перший заход на сторінку) — за замовчуванням показуємо нові.
+  const status = expandOrderId ? (statusParam ?? '') : (statusParam ?? 'new');
   const page = Math.max(1, parseInt(pageStr ?? '1'));
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
