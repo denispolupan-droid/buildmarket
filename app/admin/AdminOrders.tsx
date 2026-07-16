@@ -49,6 +49,7 @@ type Order = {
   payment_type: string;
   comment: string | null;
   tracking_number: string | null;
+  carrier_accepted_at: string | null;
   payment_confirmed:  boolean;
   amount_paid:        number;
   callback_done:      boolean;
@@ -2194,6 +2195,11 @@ export default function AdminOrders({
                           <div style={{ fontSize: '13px', fontWeight: 700, padding: '6px 10px', borderRadius: '8px', color: status.color, background: status.bg, textAlign: 'center' }}>
                             {status.label}
                           </div>
+                          {order.status === 'shipped' && order.tracking_number && (
+                            <div style={{ fontSize: '11px', fontWeight: 600, textAlign: 'center', color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
+                              {order.carrier_accepted_at ? '✓ Прийнято НП' : '⏳ Очікує приймання НП'}
+                            </div>
+                          )}
 
                           {/* Manual status dropdown */}
                           <div>

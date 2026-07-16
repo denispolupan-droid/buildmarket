@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
+import { setRozetkaOrderStatus } from '../../../../lib/rozetka-api';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +9,10 @@ const serviceClient = createClient(
 );
 
 const DELIVERED_CODES = new Set(['9', '10', '11']);
+// Code 1 is specifically and only "sender created the waybill, hasn't handed it over yet"
+// (verified against a live tracking response) — any other code means NP has registered some
+// movement on the parcel, i.e. it was actually accepted at the branch/pickup.
+const NOT_HANDED_OVER_CODE = '1';
 
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer();
@@ -19,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   const { data: orders, error } = await serviceClient
     .from('orders')
-    .select('id, tracking_number')
+    .select('id, tracking_number, carrier_accepted_at, channel_code, rozetka_order_id')
     .eq('status', 'shipped')
     .not('tracking_number', 'is', null);
 
@@ -29,6 +34,7 @@ export async function POST(req: NextRequest) {
 
   const CHUNK = 100;
   let updated = 0;
+  let accepted = 0;
 
   for (let i = 0; i < orders.length; i += CHUNK) {
     const chunk = orders.slice(i, i + CHUNK);
@@ -51,10 +57,17 @@ export async function POST(req: NextRequest) {
     if (!data.success) continue;
 
     const deliveredIds: string[] = [];
+    const acceptedOrders: typeof chunk = [];
+
     for (const doc of (data.data ?? [])) {
-      if (DELIVERED_CODES.has(String(doc.StatusCode))) {
-        const order = chunk.find(o => o.tracking_number === doc.Number);
-        if (order) deliveredIds.push(order.id);
+      const order = chunk.find(o => o.tracking_number === doc.Number);
+      if (!order) continue;
+      const code = String(doc.StatusCode);
+
+      if (DELIVERED_CODES.has(code)) {
+        deliveredIds.push(order.id);
+      } else if (code !== NOT_HANDED_OVER_CODE && !order.carrier_accepted_at) {
+        acceptedOrders.push(order);
       }
     }
 
@@ -65,7 +78,23 @@ export async function POST(req: NextRequest) {
         .in('id', deliveredIds);
       updated += deliveredIds.length;
     }
+
+    if (acceptedOrders.length) {
+      await serviceClient
+        .from('orders')
+        .update({ carrier_accepted_at: new Date().toISOString() })
+        .in('id', acceptedOrders.map(o => o.id));
+      accepted += acceptedOrders.length;
+
+      for (const o of acceptedOrders) {
+        if (o.channel_code === 'rozetka' && o.rozetka_order_id) {
+          setRozetkaOrderStatus(Number(o.rozetka_order_id), 3, { ttn: o.tracking_number as string }).catch(err =>
+            console.error('[sync-delivery-status] rozetka status 3 push failed:', err),
+          );
+        }
+      }
+    }
   }
 
-  return NextResponse.json({ updated, checked: orders.length });
+  return NextResponse.json({ updated, accepted, checked: orders.length });
 }
