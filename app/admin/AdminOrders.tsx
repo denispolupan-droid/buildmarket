@@ -147,7 +147,7 @@ export default function AdminOrders({
   const [supplierQueueDone,    setSupplierQueueDone]    = useState(false);
   const [ttnModalOrder,  setTtnModalOrder]  = useState<Order | null>(null);
   const [syncing,        setSyncing]        = useState(false);
-  const [syncResult,     setSyncResult]     = useState<{ updated: number; checked: number } | null>(null);
+  const [syncResult,     setSyncResult]     = useState<{ updated: number; accepted?: number; checked: number } | null>(null);
   const [creatingPo,     setCreatingPo]     = useState<string | null>(null);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -506,10 +506,8 @@ export default function AdminOrders({
       const res = await fetch('/api/admin/sync-delivery-status', { method: 'POST' });
       const data = await res.json();
       setSyncResult(data);
-      if (data.updated > 0) {
-        setOrders(prev => prev.map(o =>
-          data.updatedIds?.includes(o.id) ? { ...o, status: 'delivered' } : o
-        ));
+      if (data.updated > 0 || data.accepted > 0) {
+        router.refresh();
       }
       localStorage.setItem(SYNC_KEY, Date.now().toString());
     } catch {
@@ -987,9 +985,9 @@ export default function AdminOrders({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
             {syncResult && (
-              <span style={{ fontSize: '12px', color: syncResult.updated > 0 ? '#15803D' : 'var(--text-secondary)' }}>
-                {syncResult.updated > 0
-                  ? `✓ Оновлено: ${syncResult.updated} з ${syncResult.checked}`
+              <span style={{ fontSize: '12px', color: (syncResult.updated > 0 || (syncResult.accepted ?? 0) > 0) ? '#15803D' : 'var(--text-secondary)' }}>
+                {syncResult.updated > 0 || (syncResult.accepted ?? 0) > 0
+                  ? `✓ Доставлено: ${syncResult.updated}, прийнято НП: ${syncResult.accepted ?? 0} з ${syncResult.checked}`
                   : `Перевірено: ${syncResult.checked}, змін немає`}
               </span>
             )}
