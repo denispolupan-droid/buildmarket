@@ -4,18 +4,18 @@ import { createServiceClient } from '../../../../../../lib/supabase';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
-async function npCall(modelName: string, calledMethod: string, methodProperties: object) {
+async function npCall(apiKey: string, modelName: string, calledMethod: string, methodProperties: object) {
   const res = await fetch(NP_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ apiKey: process.env.NOVA_POSHTA_API_KEY, modelName, calledMethod, methodProperties }),
+    body: JSON.stringify({ apiKey, modelName, calledMethod, methodProperties }),
   });
   return res.json();
 }
 
-async function resolveRef(ttnNumber: string): Promise<string | null> {
+async function resolveRef(apiKey: string, ttnNumber: string): Promise<string | null> {
   // Try TrackingDocument first (fastest)
-  const track = await npCall('TrackingDocument', 'getStatusDocuments', {
+  const track = await npCall(apiKey, 'TrackingDocument', 'getStatusDocuments', {
     Documents: [{ DocumentNumber: ttnNumber }],
   });
   if (track.data?.[0]?.Ref) return track.data[0].Ref;
@@ -25,7 +25,7 @@ async function resolveRef(ttnNumber: string): Promise<string | null> {
   const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
   const fmt = (d: Date) => `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
 
-  const docs = await npCall('InternetDocument', 'getDocumentList', {
+  const docs = await npCall(apiKey, 'InternetDocument', 'getDocumentList', {
     DateTimeFrom: fmt(weekAgo), DateTimeTo: fmt(today), GetFullList: '1', Page: '1',
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,6 +46,9 @@ export async function DELETE(
   const { id } = await params;
   const db = createServiceClient();
 
+  const { data: keyRow } = await db.from('app_settings').select('value').eq('key', 'np_api_key').maybeSingle();
+  const apiKey = keyRow?.value || process.env.NOVA_POSHTA_API_KEY || '';
+
   const { data: order, error: orderErr } = await db
     .from('orders')
     .select('tracking_number, tracking_ref')
@@ -56,11 +59,13 @@ export async function DELETE(
   if (!order.tracking_number) return NextResponse.json({ error: 'Немає ТТН для видалення' }, { status: 400 });
 
   // Get Ref — from DB or resolve via NP API
-  const ref = order.tracking_ref ?? await resolveRef(order.tracking_number);
+  const ref = order.tracking_ref ?? (apiKey ? await resolveRef(apiKey, order.tracking_number) : null);
 
   let npError: string | null = null;
-  if (ref) {
-    const data = await npCall('InternetDocument', 'delete', { DocumentRefs: [ref] });
+  if (!apiKey) {
+    npError = 'API ключ НП не налаштовано';
+  } else if (ref) {
+    const data = await npCall(apiKey, 'InternetDocument', 'delete', { DocumentRefs: [ref] });
     if (!data.success) npError = data.errors?.join('; ') ?? 'Помилка видалення в НП';
   } else {
     npError = 'Не вдалося знайти ТТН в кабінеті НП';

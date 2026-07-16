@@ -9,16 +9,11 @@ const serviceClient = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-async function npCall(modelName: string, calledMethod: string, methodProperties: object) {
+async function npCall(apiKey: string, modelName: string, calledMethod: string, methodProperties: object) {
   const res = await fetch(NP_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      apiKey: process.env.NOVA_POSHTA_API_KEY,
-      modelName,
-      calledMethod,
-      methodProperties,
-    }),
+    body: JSON.stringify({ apiKey, modelName, calledMethod, methodProperties }),
   });
   return res.json();
 }
@@ -56,6 +51,14 @@ export async function POST(req: NextRequest) {
 
   const resolvedServiceType = serviceType ?? 'WarehouseWarehouse';
 
+  // API key: app_settings takes priority over env var — same precedence as /api/admin/np-sender,
+  // which is what resolved senderRef/senderContactRef/etc. for this same request.
+  const { data: keyRow } = await serviceClient.from('app_settings').select('value').eq('key', 'np_api_key').maybeSingle();
+  const apiKey = keyRow?.value || process.env.NOVA_POSHTA_API_KEY || '';
+  if (!apiKey) {
+    return NextResponse.json({ error: 'API ключ НП не налаштовано' }, { status: 400 });
+  }
+
   if (!senderRef) {
     return NextResponse.json(
       { error: 'Не знайдено контрагента-відправника в НП. Перейдіть у Налаштування → НП Відправник і перевірте дані.' },
@@ -72,7 +75,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Step 1: Create recipient counterparty
-  const cRes = await npCall('Counterparty', 'save', {
+  const cRes = await npCall(apiKey, 'Counterparty', 'save', {
     FirstName: firstName,
     LastName: lastName,
     MiddleName: middleName ?? '',
@@ -132,7 +135,7 @@ export async function POST(req: NextRequest) {
     }];
   }
 
-  const ttnRes = await npCall('InternetDocument', 'save', ttnPayload);
+  const ttnRes = await npCall(apiKey, 'InternetDocument', 'save', ttnPayload);
 
   if (!ttnRes.success) {
     return NextResponse.json(
