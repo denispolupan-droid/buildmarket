@@ -182,13 +182,25 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
         setSelectedCity(match);
         setCityQuery(match.Present);
         setWhLoading(true);
-        return npRequest('Address', 'getWarehouses', { SettlementRef: match.Ref, Limit: 500, Page: 1 })
-          .then((whData: Warehouse[]) => {
-            const filtered = isPostomat ? whData.filter(w => w.Description.toLowerCase().includes('поштомат')) : whData;
+
+        // Big cities (e.g. Kyiv has 12000+ warehouses/postomats) blow straight past a 500-item
+        // page, so the target department can be missing from the general list entirely. Run a
+        // server-side FindByString search for the parsed number alongside the regular browse
+        // list and merge them — guarantees the exact match is found regardless of city size,
+        // while still leaving the full list available for a manual override.
+        const numMatch = order.delivery_address?.match(/№\s*(\d+)/);
+        const num = numMatch?.[1];
+        const bulkPromise = npRequest('Address', 'getWarehouses', { SettlementRef: match.Ref, Limit: 500, Page: 1 });
+        const targetedPromise = num
+          ? npRequest('Address', 'getWarehouses', { SettlementRef: match.Ref, FindByString: num, Limit: 5, Page: 1 })
+          : Promise.resolve([] as Warehouse[]);
+
+        return Promise.all([bulkPromise, targetedPromise])
+          .then(([bulkData, targetedData]: [Warehouse[], Warehouse[]]) => {
+            const merged = [...targetedData, ...bulkData.filter(w => !targetedData.some(t => t.Ref === w.Ref))];
+            const filtered = isPostomat ? merged.filter(w => w.Description.toLowerCase().includes('поштомат')) : merged;
             setWarehouses(filtered);
-            const numMatch = order.delivery_address?.match(/№\s*(\d+)/);
-            if (numMatch) {
-              const num = numMatch[1];
+            if (num) {
               const wh = filtered.find(w => w.Number === num);
               if (wh) { setSelectedWH(wh); setWhQuery(wh.Description); }
               else setWhQuery(num);
