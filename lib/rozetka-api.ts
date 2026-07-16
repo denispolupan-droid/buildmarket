@@ -156,9 +156,8 @@ export async function getRozetkaOrders(opts: {
 
 /* ── Status push ────────────────────────────────────────────────────────── */
 
-// Status IDs per the Rozetka reference (order-statuses/search) — ttn required for 3 (Відправлено)
-// and 61 (per docs). Confirm exact IDs for this seller's account before relying on them; Rozetka
-// exposes GET /order-statuses/search to fetch the authoritative, account-specific list.
+// Status IDs confirmed live against this seller's account via GET /order-statuses/search
+// (the written apiDoc spec's field names/shape were wrong — see getRozetkaOrderStatuses below).
 export async function setRozetkaOrderStatus(
   orderId: number,
   status: number,
@@ -173,14 +172,35 @@ export async function setRozetkaOrderStatus(
 export interface RozetkaOrderStatus {
   id: number;
   name: string;
-  name_ua: string;
+  name_uk: string;
   status_group: 1 | 2 | 3;
   title: string;
 }
 
 export async function getRozetkaOrderStatuses(): Promise<RozetkaOrderStatus[]> {
-  const data = await rozetkaFetch<{ orderStatus: RozetkaOrderStatus[] }>('/order-statuses/search');
-  return data.orderStatus ?? [];
+  // Live response shape differs from the written apiDoc: the key is `orderStatuses` (plural)
+  // and the localized field is `name_uk`, not `orderStatus`/`name_ua` as documented.
+  const data = await rozetkaFetch<{ orderStatuses: RozetkaOrderStatus[] }>('/order-statuses/search');
+  return data.orderStatuses ?? [];
+}
+
+// Maps our internal order.status to this seller account's real Rozetka status IDs (confirmed
+// live, see getRozetkaOrderStatuses). null = no push for that transition (mirrors
+// lib/prom-api.ts's STATUS_MAP pattern). 'new'/'awaiting_stock'/'picking' are internal states
+// with no clean Rozetka equivalent — Rozetka already has its own "new order" status when the
+// order first lands, so we don't touch it until our side actually confirms/ships/etc.
+const STATUS_MAP: Record<string, number | null> = {
+  new:            null,
+  confirmed:      2,  // Комплектується. Дані підтверджені
+  awaiting_stock: null,
+  picking:        null,
+  shipped:        3,  // Передано до служби доставки (ttn required)
+  delivered:      6,  // Замовлення виконано
+  cancelled:      13, // Скасовано адміністратором
+};
+
+export function ourStatusToRozetkaStatus(ourStatus: string): number | null {
+  return STATUS_MAP[ourStatus] ?? null;
 }
 
 /* ── Mapping helpers ────────────────────────────────────────────────────── */

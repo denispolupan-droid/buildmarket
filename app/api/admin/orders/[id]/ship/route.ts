@@ -4,6 +4,7 @@ import { createServiceClient } from '../../../../../../lib/supabase';
 import { recordDropshipSale } from '../../../../../../lib/accounting/dropship';
 import { releaseReservation } from '../../../../../../lib/accounting/reservations';
 import { setPromTTN } from '../../../../../../lib/prom-api';
+import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../../lib/rozetka-api';
 
 export async function POST(
   req: NextRequest,
@@ -28,7 +29,7 @@ export async function POST(
 
   const { data: order, error } = await db
     .from('orders')
-    .select('id, order_number, status, items, channel_code, customer_id, delivery_type, prom_order_id, tracking_number')
+    .select('id, order_number, status, items, channel_code, customer_id, delivery_type, prom_order_id, rozetka_order_id, tracking_number')
     .eq('id', id)
     .single();
 
@@ -185,6 +186,17 @@ export async function POST(
     }).catch(err => {
       console.warn('[ship] setPromTTN failed:', err);
     });
+  }
+
+  // Push status(+TTN) to Rozetka after successful shipment (fire-and-forget)
+  const rozetkaOrderId = order.rozetka_order_id as number | null;
+  if (fullyShipped && rozetkaOrderId) {
+    const rozStatus = ourStatusToRozetkaStatus(finalStatus);
+    if (rozStatus) {
+      setRozetkaOrderStatus(rozetkaOrderId, rozStatus, effectiveTtn ? { ttn: effectiveTtn } : undefined).catch(err => {
+        console.warn('[ship] setRozetkaOrderStatus failed:', err);
+      });
+    }
   }
 
   return NextResponse.json({

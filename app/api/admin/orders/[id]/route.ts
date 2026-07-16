@@ -9,6 +9,7 @@ import { buildCustomerStatusEmail } from '../../../../../lib/invoice-email';
 import { recordCustomerPayment, recordMarketplaceCommission, recordShipment } from '../../../../../lib/accounting/money';
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/prom-api';
 import { computePromCommission } from '../../../../../lib/prom-commission';
+import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../lib/rozetka-api';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -418,6 +419,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     } catch (err) {
       console.error('[prom] status push lookup failed:', err);
+    }
+  }
+
+  // Push status to Rozetka (fire-and-forget) if this is a Rozetka order
+  if (status) {
+    try {
+      const { data: rozOrder } = await db
+        .from('orders')
+        .select('rozetka_order_id, channel_code, tracking_number')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (rozOrder?.channel_code === 'rozetka' && rozOrder.rozetka_order_id) {
+        const rozStatus = ourStatusToRozetkaStatus(status);
+        if (rozStatus) {
+          // status 3 (shipped) requires ttn — include it when already known, either from this
+          // same request or a previously saved tracking_number.
+          const ttn = (update.tracking_number as string | undefined) ?? (rozOrder.tracking_number as string | null) ?? undefined;
+          setRozetkaOrderStatus(Number(rozOrder.rozetka_order_id), rozStatus, ttn ? { ttn } : undefined).catch(err =>
+            console.error('[rozetka] setRozetkaOrderStatus failed:', err),
+          );
+        }
+      }
+    } catch (err) {
+      console.error('[rozetka] status push lookup failed:', err);
     }
   }
 

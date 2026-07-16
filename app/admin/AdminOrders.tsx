@@ -808,6 +808,16 @@ export default function AdminOrders({
           })
           .catch(() => showToast('Не вдалося надіслати ТТН на Prom', 'error'));
       }
+      // If Rozetka order already shipped — push TTN to Rozetka automatically
+      if (order?.channel_code === 'rozetka' && order.status === 'shipped' && ttnValues[id]) {
+        fetch(`/api/admin/orders/${id}/push-rozetka-ttn`, { method: 'POST' })
+          .then(r => r.json())
+          .then(d => {
+            if (d.ok) showToast('ТТН надіслано на Rozetka', 'success');
+            else showToast(`Rozetka TTN: ${d.error ?? 'помилка'}`, 'error');
+          })
+          .catch(() => showToast('Не вдалося надіслати ТТН на Rozetka', 'error'));
+      }
     }
     setTtnSaving(null);
   }
