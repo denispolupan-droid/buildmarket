@@ -2064,7 +2064,7 @@ export default function AdminOrders({
                               style={{ height: '32px', padding: '0 12px', borderRadius: '7px', background: '#1E3A5F', color: '#fff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: (ttnSaving === order.id || !!order.tracking_number) ? 'default' : 'pointer', opacity: (ttnSaving === order.id || !!order.tracking_number) ? 0.4 : 1 }}>
                               {ttnSaving === order.id ? '...' : 'Зберегти'}
                             </button>
-                            {order.delivery_type === 'nova' && (() => {
+                            {(order.delivery_type === 'nova' || order.delivery_type === 'nova_poshta') && (() => {
                               const hasTtn = !!order.tracking_number;
                               return (
                                 <button
@@ -2651,6 +2651,25 @@ export default function AdminOrders({
             setOrders(prev => prev.map(o => o.id === orderId ? { ...o, tracking_number: ttn } : o));
             setTtnModalOrder(null);
             if (isSupplier) await autoShipDropship(orderId);
+            // If Prom/Rozetka order already shipped — push the new TTN automatically
+            if (ttnModalOrder.channel_code === 'prom' && ttnModalOrder.status === 'shipped') {
+              fetch(`/api/admin/orders/${orderId}/push-prom-ttn`, { method: 'POST' })
+                .then(r => r.json())
+                .then(d => {
+                  if (d.ok) showToast('ТТН надіслано на Prom', 'success');
+                  else showToast(`Prom TTN: ${d.error ?? 'помилка'}`, 'error');
+                })
+                .catch(() => showToast('Не вдалося надіслати ТТН на Prom', 'error'));
+            }
+            if (ttnModalOrder.channel_code === 'rozetka' && ttnModalOrder.status === 'shipped') {
+              fetch(`/api/admin/orders/${orderId}/push-rozetka-ttn`, { method: 'POST' })
+                .then(r => r.json())
+                .then(d => {
+                  if (d.ok) showToast('ТТН надіслано на Rozetka', 'success');
+                  else showToast(`Rozetka TTN: ${d.error ?? 'помилка'}`, 'error');
+                })
+                .catch(() => showToast('Не вдалося надіслати ТТН на Rozetka', 'error'));
+            }
           }}
         />
       )}
