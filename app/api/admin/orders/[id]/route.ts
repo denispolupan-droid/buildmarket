@@ -9,6 +9,7 @@ import { buildCustomerStatusEmail } from '../../../../../lib/invoice-email';
 import { recordCustomerPayment, recordMarketplaceCommission, recordShipment } from '../../../../../lib/accounting/money';
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/prom-api';
 import { computePromCommission } from '../../../../../lib/prom-commission';
+import { computeRozetkaCommission } from '../../../../../lib/rozetka-commission';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../lib/rozetka-api';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -327,7 +328,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
               await recordMarketplaceCommission({
                 orderId:       id,
                 amount:        result.total_commission,
-                marketplace:   'Prom.ua',
+                marketplace:   'prom',
                 commissionPct: avgPct,
                 businessDate:  new Date().toISOString().slice(0, 10),
                 createdBy:     user.email ?? 'admin',
@@ -336,6 +337,38 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           }
         } catch (err) {
           console.error('[prom] commission record failed:', err);
+        }
+      }
+
+      // Rozetka commission — той самий принцип: точний розрахунок по SKU/категорії при доставці
+      if (order?.channel_code === 'rozetka') {
+        try {
+          const [{ data: fallbackRow }, { data: fullOrder }] = await Promise.all([
+            db.from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle(),
+            db.from('orders').select('items, total_price').eq('id', id).single(),
+          ]);
+
+          const fallbackPct = parseFloat(fallbackRow?.value ?? '15');
+          const items        = (fullOrder?.items ?? []) as { sku: string; qty: number; price: number }[];
+
+          if (items.length > 0) {
+            const result = await computeRozetkaCommission(items, { fallbackPct });
+            if (result.total_commission > 0) {
+              const avgPct = Number(fullOrder?.total_price) > 0
+                ? Math.round(result.total_commission / Number(fullOrder?.total_price) * 10000) / 100
+                : fallbackPct;
+              await recordMarketplaceCommission({
+                orderId:       id,
+                amount:        result.total_commission,
+                marketplace:   'rozetka',
+                commissionPct: avgPct,
+                businessDate:  new Date().toISOString().slice(0, 10),
+                createdBy:     user.email ?? 'admin',
+              });
+            }
+          }
+        } catch (err) {
+          console.error('[rozetka] commission record failed:', err);
         }
       }
 

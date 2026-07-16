@@ -23,6 +23,8 @@
  *   variance   — рахунок розбіжностей
  *   rounding   — округлення
  *   correction — коригування боргу
+ *   marketplace_balance — передоплачений баланс на маркетплейсі (Prom, Rozetka)
+ *   marketplace_fee      — комісія маркетплейсу за замовлення
  */
 
 import { createServiceClient } from '../supabase';
@@ -31,7 +33,8 @@ export type AccountType =
   | 'customer' | 'supplier' | 'partner'
   | 'cash' | 'bank' | 'acquiring' | 'advance'
   | 'inventory_asset'
-  | 'revenue' | 'cogs' | 'variance' | 'rounding' | 'correction';
+  | 'revenue' | 'cogs' | 'variance' | 'rounding' | 'correction'
+  | 'marketplace_balance' | 'marketplace_fee';
 
 export type MoneyEntry = {
   id:              string;
@@ -158,7 +161,12 @@ export async function recordCustomerPayment(params: {
   });
 }
 
-/** Комісія маркетплейсу (Prom, Rozetka тощо): дебет correction, кредит revenue */
+/**
+ * Комісія маркетплейсу (Prom, Rozetka тощо) за замовлення: дебет marketplace_fee (витрата),
+ * кредит marketplace_balance (списання з передоплаченого балансу на площадці).
+ * counterparty_id для обох сторін = ідентифікатор маркетплейсу ('prom' / 'rozetka'), так само
+ * як customer_id є counterparty_id для рахунку 'customer'.
+ */
 export async function recordMarketplaceCommission(params: {
   orderId:       string;
   docId?:        string;
@@ -169,8 +177,10 @@ export async function recordMarketplaceCommission(params: {
   createdBy?:    string;
 }): Promise<string> {
   return recordTxn({
-    debitAccount:   'correction',
-    creditAccount:  'revenue',
+    debitAccount:   'marketplace_fee',
+    debitParty:     params.marketplace,
+    creditAccount:  'marketplace_balance',
+    creditParty:    params.marketplace,
     amount:         params.amount,
     businessDate:   params.businessDate,
     docId:          params.docId,
@@ -179,8 +189,72 @@ export async function recordMarketplaceCommission(params: {
     description:    `Комісія ${params.marketplace} ${params.commissionPct}%`,
     idempotencyKey: `commission:${params.marketplace}:${params.orderId}`,
     createdBy:      params.createdBy,
-    meta:           { category: 'marketplace_fee', marketplace: params.marketplace, pct: params.commissionPct, auto: true },
+    meta:           { marketplace: params.marketplace, pct: params.commissionPct, auto: true },
   });
+}
+
+/** Поповнення балансу на маркетплейсі: дебет marketplace_balance, кредит bank/cash */
+export async function recordMarketplaceTopup(params: {
+  marketplace:     string;
+  amount:          number;
+  paymentMethod:   'bank' | 'cash';
+  businessDate?:   string;
+  createdBy?:      string;
+  idempotencyKey?: string;
+  description?:    string;
+}): Promise<string> {
+  return recordTxn({
+    debitAccount:   'marketplace_balance',
+    debitParty:     params.marketplace,
+    creditAccount:  params.paymentMethod,
+    creditParty:    null,
+    amount:         params.amount,
+    businessDate:   params.businessDate,
+    docType:        'marketplace_topup',
+    description:    params.description ?? `Поповнення балансу ${params.marketplace}`,
+    idempotencyKey: params.idempotencyKey,
+    createdBy:      params.createdBy,
+  });
+}
+
+/**
+ * Ручне коригування балансу маркетплейсу після звірки з реальним кабінетом.
+ * amount додатній — донарахування на нашу користь (баланс на площадці більший, ніж у нас),
+ * amount від'ємний — списання (площадка утримала більше, ніж ми зафіксували).
+ */
+export async function recordMarketplaceCorrection(params: {
+  marketplace:   string;
+  amount:        number;
+  reason:        string;
+  businessDate?: string;
+  createdBy?:    string;
+}): Promise<string> {
+  const isTopUp = params.amount >= 0;
+  return recordTxn({
+    debitAccount:   isTopUp ? 'marketplace_balance' : 'correction',
+    debitParty:     isTopUp ? params.marketplace : null,
+    creditAccount:  isTopUp ? 'correction' : 'marketplace_balance',
+    creditParty:    isTopUp ? null : params.marketplace,
+    amount:         Math.abs(params.amount),
+    businessDate:   params.businessDate,
+    docType:        'marketplace_reconciliation',
+    description:    `Звірка балансу ${params.marketplace}: ${params.reason}`,
+    createdBy:      params.createdBy,
+  });
+}
+
+/** Поточний баланс на маркетплейсі (сума всіх проводок по marketplace_balance) */
+export async function getMarketplaceBalance(marketplace: string): Promise<number> {
+  const db = createServiceClient();
+
+  const { data, error } = await db
+    .from('money_entries')
+    .select('amount')
+    .eq('account_type', 'marketplace_balance')
+    .eq('counterparty_id', marketplace);
+
+  if (error) throw error;
+  return (data ?? []).reduce((s, r) => s + Number(r.amount), 0);
 }
 
 /** Аванс від клієнта: дебет bank/cash, кредит advance */
