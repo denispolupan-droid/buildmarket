@@ -1327,12 +1327,19 @@ export default function AdminOrders({
                   </span>
 
                   {/* Статус */}
-                  <div style={{ width: '104px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+                  <div style={{ width: '118px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span
                       className={order.status === 'awaiting_stock' ? 'status-awaiting-pulse' : undefined}
                       style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '20px', color: status.color, background: status.bg, display: 'inline-flex', alignItems: 'center', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {status.label}
                     </span>
+                    {order.status === 'shipped' && order.tracking_number && (
+                      <span
+                        title={order.carrier_accepted_at ? 'Прийнято Новою Поштою' : 'Очікує приймання Новою Поштою'}
+                        style={{ fontSize: '12px', flexShrink: 0, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
+                        {order.carrier_accepted_at ? '✓' : '⏳'}
+                      </span>
+                    )}
                   </div>
 
                   {/* Канал */}
