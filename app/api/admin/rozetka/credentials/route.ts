@@ -32,10 +32,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Логін і пароль обов\'язкові' }, { status: 400 });
   }
 
-  const now = new Date().toISOString();
   const { error } = await db.from('app_settings').upsert([
-    { key: 'rozetka_login',    value: login.trim(),    updated_at: now },
-    { key: 'rozetka_password', value: password.trim(), updated_at: now },
+    { key: 'rozetka_login',    value: login.trim() },
+    { key: 'rozetka_password', value: password.trim() },
   ], { onConflict: 'key' });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

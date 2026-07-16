@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Невірний токен' }, { status: 400 });
     }
     await db.from('app_settings').upsert(
-      { key: 'rozetka_api_token', value: token.trim(), updated_at: new Date().toISOString() },
+      { key: 'rozetka_api_token', value: token.trim() },
       { onConflict: 'key' },
     );
     return NextResponse.json({ ok: true, maskedToken: `••••••••${token.trim().slice(-4)}` });

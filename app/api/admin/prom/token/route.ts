@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     }
 
     await db.from('app_settings').upsert(
-      { key: 'prom_api_token', value: token.trim(), updated_at: new Date().toISOString() },
+      { key: 'prom_api_token', value: token.trim() },
       { onConflict: 'key' }
     );
 

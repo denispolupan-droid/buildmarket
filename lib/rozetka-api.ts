@@ -19,7 +19,7 @@ async function getSetting(key: string): Promise<string | null> {
 }
 
 async function setSetting(key: string, value: string): Promise<void> {
-  await db().from('app_settings').upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  await db().from('app_settings').upsert({ key, value }, { onConflict: 'key' });
 }
 
 /* ── Auth: Rozetka tokens expire after 24h (unlike Prom's static token), so we log in with the
