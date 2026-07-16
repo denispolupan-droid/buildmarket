@@ -104,16 +104,48 @@ export default async function FinancePage() {
     : { data: [] };
 
   const { data: productNames } = allOrderSkus.length > 0
-    ? await db.from('products').select('sku, name, brand').in('sku', allOrderSkus)
+    ? await db.from('products').select('sku, name, brand, category_slug, categories(prom_commission_pct, prom_commission_pct_econom, rozetka_commission_pct)').in('sku', allOrderSkus)
     : { data: [] };
 
   const costMap  = new Map((stockPrices ?? []).map(s => [s.sku, Number(s.price_cost ?? 0)]));
   const prodMap  = new Map((productNames ?? []).map(p => [p.sku, p]));
 
+  // Комісія маркетплейсів по SKU/категорії — та сама ставка, що йде в леджер при доставці
+  // (lib/prom-commission.ts / lib/rozetka-commission.ts), щоб маржа тут з ним не розходилась.
+  const { data: commissionSettings } = await db
+    .from('app_settings')
+    .select('key, value')
+    .in('key', ['prom_plan', 'prom_commission_pct', 'rozetka_commission_pct']);
+  const settingsMap     = Object.fromEntries((commissionSettings ?? []).map(s => [s.key, s.value]));
+  const promPlan        = (settingsMap.prom_plan ?? 'single') as 'single' | 'econom';
+  const promFallbackPct = parseFloat(settingsMap.prom_commission_pct ?? '0');
+  const rozFallbackPct  = parseFloat(settingsMap.rozetka_commission_pct ?? '15');
+
+  const commissionPctMap = new Map<string, { prom: number; rozetka: number }>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const p of (productNames ?? []) as any[]) {
+    const promRaw = promPlan === 'econom' ? p.categories?.prom_commission_pct_econom : p.categories?.prom_commission_pct;
+    const promPctParsed = promRaw != null ? parseFloat(String(promRaw)) : NaN;
+    const rozRaw = p.categories?.rozetka_commission_pct;
+    const rozPctParsed = rozRaw != null ? parseFloat(String(rozRaw)) : NaN;
+    commissionPctMap.set(p.sku, {
+      prom:    isNaN(promPctParsed) ? promFallbackPct : promPctParsed,
+      rozetka: isNaN(rozPctParsed)  ? rozFallbackPct  : rozPctParsed,
+    });
+  }
+
+  function orderCommission(o: { channel_code: string | null; items: { sku: string; qty: number; price: number }[] }) {
+    if (o.channel_code !== 'prom' && o.channel_code !== 'rozetka') return 0;
+    const ch = o.channel_code as 'prom' | 'rozetka';
+    const total = (o.items ?? []).reduce((s, item) =>
+      s + item.qty * item.price * (commissionPctMap.get(item.sku)?.[ch] ?? 0) / 100, 0);
+    return Math.round(total * 100) / 100;
+  }
+
   type OrderRow = {
     id: string; order_number: number; status: string;
     total_price: number; created_at: string; channel_code: string | null;
-    cost: number; margin: number;
+    cost: number; commission: number; margin: number;
     items: { sku: string; qty: number; price: number }[];
   };
 
@@ -122,7 +154,8 @@ export default async function FinancePage() {
       ? accCostByOrder.get(o.id)!
       : (o.items ?? []).reduce((s: number, item: { sku: string; qty: number }) =>
           s + (costMap.get(item.sku) ?? 0) * item.qty, 0);
-    return { ...o, cost, margin: o.total_price - cost };
+    const commission = orderCommission(o);
+    return { ...o, cost, commission, margin: o.total_price - cost - commission };
   });
 
   // ── Поточний місяць ────────────────────────────────────────────────────────
@@ -131,12 +164,13 @@ export default async function FinancePage() {
   const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
   const prevMonthRows  = rows.filter(r => r.created_at >= prevMonthStart && r.created_at < monthStart);
 
-  const sumRevenue = (arr: OrderRow[]) => arr.reduce((s, r) => s + r.total_price, 0);
-  const sumCost    = (arr: OrderRow[]) => arr.reduce((s, r) => s + r.cost, 0);
-  const sumMargin  = (arr: OrderRow[]) => arr.reduce((s, r) => s + r.margin, 0);
+  const sumRevenue    = (arr: OrderRow[]) => arr.reduce((s, r) => s + r.total_price, 0);
+  const sumCost       = (arr: OrderRow[]) => arr.reduce((s, r) => s + r.cost, 0);
+  const sumCommission = (arr: OrderRow[]) => arr.reduce((s, r) => s + r.commission, 0);
+  const sumMargin     = (arr: OrderRow[]) => arr.reduce((s, r) => s + r.margin, 0);
 
-  const cur = { revenue: sumRevenue(thisMonthRows), cost: sumCost(thisMonthRows), margin: sumMargin(thisMonthRows), count: thisMonthRows.length };
-  const prv = { revenue: sumRevenue(prevMonthRows), cost: sumCost(prevMonthRows), margin: sumMargin(prevMonthRows), count: prevMonthRows.length };
+  const cur = { revenue: sumRevenue(thisMonthRows), cost: sumCost(thisMonthRows), commission: sumCommission(thisMonthRows), margin: sumMargin(thisMonthRows), count: thisMonthRows.length };
+  const prv = { revenue: sumRevenue(prevMonthRows), cost: sumCost(prevMonthRows), commission: sumCommission(prevMonthRows), margin: sumMargin(prevMonthRows), count: prevMonthRows.length };
 
   const marginPct  = cur.revenue > 0 ? Math.round(cur.margin / cur.revenue * 100) : 0;
   const revDelta   = prv.revenue > 0 ? Math.round((cur.revenue - prv.revenue) / prv.revenue * 100) : null;
@@ -158,10 +192,12 @@ export default async function FinancePage() {
 
   const skuStats: Record<string, { revenue: number; cost: number; qty: number }> = {};
   for (const row of thisMonthRows) {
+    const ch = row.channel_code === 'prom' || row.channel_code === 'rozetka' ? row.channel_code : null;
     for (const item of (row.items ?? [])) {
       if (!skuStats[item.sku]) skuStats[item.sku] = { revenue: 0, cost: 0, qty: 0 };
+      const itemCommission = ch ? item.price * item.qty * (commissionPctMap.get(item.sku)?.[ch] ?? 0) / 100 : 0;
       skuStats[item.sku].revenue += item.price * item.qty;
-      skuStats[item.sku].cost   += (skuAccCostMap.get(item.sku) ?? costMap.get(item.sku) ?? 0) * item.qty;
+      skuStats[item.sku].cost   += (skuAccCostMap.get(item.sku) ?? costMap.get(item.sku) ?? 0) * item.qty + itemCommission;
       skuStats[item.sku].qty    += item.qty;
     }
   }
@@ -245,7 +281,7 @@ export default async function FinancePage() {
           },
           {
             label: 'Маржа', value: `${fmt(cur.margin)} ₴`,
-            sub: `${marginPct}% від виручки`,
+            sub: `${marginPct}% від виручки${cur.commission > 0 ? ` · з них комісія маркетплейсів −${fmt(cur.commission)} ₴` : ''}`,
             color: cur.margin >= 0 ? '#15803D' : '#DC2626',
             bg:    cur.margin >= 0 ? '#F0FDF4' : '#FEF2F2',
             icon: cur.margin >= 0 ? TrendingUp : TrendingDown,
