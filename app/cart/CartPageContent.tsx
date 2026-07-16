@@ -216,6 +216,17 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const [qtyInputs, setQtyInputs] = useState<Record<string, string>>({});
+  function getQtyInputVal(sku: string, fallback: number) { return qtyInputs[sku] ?? String(fallback); }
+  function commitQtyInput(sku: string, minOrder: number) {
+    const raw = qtyInputs[sku];
+    if (raw === undefined) return;
+    const v = parseInt(raw, 10);
+    const valid = !isNaN(v) && v >= minOrder ? v : minOrder;
+    updateQty(sku, valid);
+    setQtyInputs(prev => { const n = { ...prev }; delete n[sku]; return n; });
+  }
+
   const DELIVERY_OPTIONS = [
     { value: 'nova', label: tr.deliveryNova },
   ];
@@ -774,14 +785,27 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <button
-                              onClick={() => updateQty(item.sku, item.qty - item.min_order)}
+                              onClick={() => { setQtyInputs(prev => { const n = { ...prev }; delete n[item.sku]; return n; }); updateQty(item.sku, item.qty - item.min_order); }}
                               style={{ width: '36px', height: '36px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
                             >
                               <Minus size={14} />
                             </button>
-                            <span style={{ fontSize: '13px', fontWeight: 600, minWidth: '28px', textAlign: 'center' }}>{item.qty}</span>
+                            <input
+                              type="number"
+                              min={item.min_order}
+                              value={getQtyInputVal(item.sku, item.qty)}
+                              onChange={e => setQtyInputs(prev => ({ ...prev, [item.sku]: e.target.value }))}
+                              onBlur={() => commitQtyInput(item.sku, item.min_order)}
+                              onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                              style={{
+                                width: '44px', height: '36px', borderRadius: '8px',
+                                border: '1px solid var(--border)', background: 'var(--bg-card)',
+                                textAlign: 'center', fontSize: '13px', fontWeight: 600,
+                                color: 'var(--text-primary)', outline: 'none',
+                              }}
+                            />
                             <button
-                              onClick={() => updateQty(item.sku, item.qty + item.min_order)}
+                              onClick={() => { setQtyInputs(prev => { const n = { ...prev }; delete n[item.sku]; return n; }); updateQty(item.sku, item.qty + item.min_order); }}
                               style={{ width: '36px', height: '36px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
                             >
                               <Plus size={14} />

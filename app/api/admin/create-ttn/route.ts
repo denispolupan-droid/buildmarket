@@ -128,11 +128,12 @@ export async function POST(req: NextRequest) {
   }
 
   if (codEnabled && codAmount > 0) {
-    ttnPayload.BackwardDeliveryData = [{
-      PayerType:        'Sender',
-      CargoType:        'Money',
-      RedeliveryString: String(Math.round(parseFloat(codAmount))),
-    }];
+    // This account uses "Контроль оплати" (NovaPay settlement-account routing) — as of Nova
+    // Poshta's 2025 policy, classic cash post-payment via BackwardDeliveryData is no longer
+    // available for FOP/legal-entity senders, and sending it alongside payment control causes
+    // "Передана послуга Післяплата недоступна". AfterpaymentOnGoodsCost is the documented
+    // replacement field (routes the COD sum to the sender's bank account instead of cash).
+    ttnPayload.AfterpaymentOnGoodsCost = String(Math.round(parseFloat(codAmount)));
   }
 
   const ttnRes = await npCall(apiKey, 'InternetDocument', 'save', ttnPayload);
