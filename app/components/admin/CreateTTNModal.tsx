@@ -187,7 +187,12 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
             const filtered = isPostomat ? whData.filter(w => w.Description.toLowerCase().includes('поштомат')) : whData;
             setWarehouses(filtered);
             const numMatch = order.delivery_address?.match(/№\s*(\d+)/);
-            if (numMatch) setWhQuery(numMatch[1]);
+            if (numMatch) {
+              const num = numMatch[1];
+              const wh = filtered.find(w => w.Number === num);
+              if (wh) { setSelectedWH(wh); setWhQuery(wh.Description); }
+              else setWhQuery(num);
+            }
           }).finally(() => setWhLoading(false));
       })
       .finally(() => setCityLoading(false));
