@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
-import { setRozetkaOrderStatus } from '../../../../../../lib/rozetka-api';
+import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../../lib/rozetka-api';
 
 export async function POST(
   _req: NextRequest,
@@ -41,8 +41,10 @@ export async function POST(
       return NextResponse.json({ error: 'ТТН не вказана' }, { status: 400 });
     }
 
-    // status 3 = Передано до служби доставки (see lib/rozetka-api.ts STATUS_MAP)
-    await setRozetkaOrderStatus(rozetkaOrderId, 3, { ttn });
+    const rozStatus = ourStatusToRozetkaStatus('shipped'); // see lib/rozetka-api.ts STATUS_MAP
+    if (rozStatus) {
+      await setRozetkaOrderStatus(rozetkaOrderId, rozStatus, { ttn });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {

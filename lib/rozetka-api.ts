@@ -194,7 +194,8 @@ const STATUS_MAP: Record<string, number | null> = {
   confirmed:      26, // Обробляється менеджером
   awaiting_stock: null,
   picking:        null,
-  shipped:        3,  // Передано до служби доставки (ttn required)
+  shipped:        61, // Заплановано передачу перевізникові (ttn required — id 3 "Передано до
+                       // служби доставки" is the later, physical-handover status, not this one)
   delivered:      6,  // Замовлення виконано
   cancelled:      13, // Скасовано адміністратором
 };
