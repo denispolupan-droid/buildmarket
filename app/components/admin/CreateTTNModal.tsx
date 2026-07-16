@@ -31,6 +31,7 @@ type OrderSnap = {
   delivery_city_name: string | null;
   delivery_warehouse_ref: string | null;
   delivery_subtype?: string | null;
+  delivery_address?: string | null;
 };
 
 type Props = { order: OrderSnap; onClose: () => void; onCreated: (ttn: string) => void };
@@ -151,18 +152,45 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
 
   useEffect(() => {
     const ref = order.delivery_city_ref;
-    if (!ref) return;
     const name = order.delivery_city_name ?? '';
-    setSelectedCity({ Ref: ref, Present: name, MainDescription: name, Area: '', RegionsDescription: '' });
-    setCityQuery(name);
-    setWhLoading(true);
-    npRequest('Address', 'getWarehouses', { SettlementRef: ref, Limit: 500, Page: 1 })
-      .then((data: Warehouse[]) => {
-        const filtered = isPostomat ? data.filter(w => w.Description.toLowerCase().includes('поштомат')) : data;
-        setWarehouses(filtered);
-        const wRef = order.delivery_warehouse_ref;
-        if (wRef) { const m = data.find(w => w.Ref === wRef); if (m) { setSelectedWH(m); setWhQuery(m.Description); } }
-      }).finally(() => setWhLoading(false));
+
+    if (ref) {
+      setSelectedCity({ Ref: ref, Present: name, MainDescription: name, Area: '', RegionsDescription: '' });
+      setCityQuery(name);
+      setWhLoading(true);
+      npRequest('Address', 'getWarehouses', { SettlementRef: ref, Limit: 500, Page: 1 })
+        .then((data: Warehouse[]) => {
+          const filtered = isPostomat ? data.filter(w => w.Description.toLowerCase().includes('поштомат')) : data;
+          setWarehouses(filtered);
+          const wRef = order.delivery_warehouse_ref;
+          if (wRef) { const m = data.find(w => w.Ref === wRef); if (m) { setSelectedWH(m); setWhQuery(m.Description); } }
+        }).finally(() => setWhLoading(false));
+      return;
+    }
+
+    // No stored NP ref (Rozetka/Prom orders only give us a human-readable city name, not a
+    // real Nova Poshta SettlementRef — confirmed live, their own ref_id doesn't resolve via
+    // getWarehouses) — resolve the city by name via a live search instead, and prefill the
+    // warehouse/postomat number parsed out of the free-text delivery address so the admin only
+    // has to confirm a match rather than search from scratch.
+    if (!name) return;
+    setCityLoading(true);
+    npRequest('Address', 'searchSettlements', { CityName: name, Limit: 5, Page: 1 })
+      .then((data: { Addresses: Settlement[] }[]) => {
+        const match = data[0]?.Addresses?.[0];
+        if (!match) return;
+        setSelectedCity(match);
+        setCityQuery(match.Present);
+        setWhLoading(true);
+        return npRequest('Address', 'getWarehouses', { SettlementRef: match.Ref, Limit: 500, Page: 1 })
+          .then((whData: Warehouse[]) => {
+            const filtered = isPostomat ? whData.filter(w => w.Description.toLowerCase().includes('поштомат')) : whData;
+            setWarehouses(filtered);
+            const numMatch = order.delivery_address?.match(/№\s*(\d+)/);
+            if (numMatch) setWhQuery(numMatch[1]);
+          }).finally(() => setWhLoading(false));
+      })
+      .finally(() => setCityLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

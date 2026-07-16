@@ -213,13 +213,6 @@ export function rozetkaOrderToOurFormat(order: RozetkaOrder) {
 
   const del = order.delivery;
   const cityName = del?.city?.city_name ?? del?.city?.title ?? '';
-  const addressParts = [
-    del?.place_number ? `Відділення №${del.place_number}` : null,
-    del?.place_street,
-    del?.place_house,
-    del?.place_flat ? `кв. ${del.place_flat}` : null,
-  ].filter(Boolean);
-  const deliveryAddress = [cityName, ...addressParts].filter(Boolean).join(', ');
 
   // delivery_service_name isn't a fixed enum on Rozetka's side — normalize the common case
   // (Nova Poshta) and fall back to a generic "courier" bucket otherwise, matching the shape
@@ -228,6 +221,15 @@ export function rozetkaOrderToOurFormat(order: RozetkaOrder) {
   const deliveryType = serviceName.includes('нова') || serviceName.includes('пошта')
     ? 'nova_poshta'
     : 'courier';
+  const isPostomat = serviceName.includes('поштомат');
+
+  const addressParts = [
+    del?.place_number ? `${isPostomat ? 'Поштомат' : 'Відділення'} №${del.place_number}` : null,
+    del?.place_street,
+    del?.place_house,
+    del?.place_flat ? `кв. ${del.place_flat}` : null,
+  ].filter(Boolean);
+  const deliveryAddress = [cityName, ...addressParts].filter(Boolean).join(', ');
 
   const paymentType = order.payment?.payment_type === 'cash' ? 'cod' : 'invoice';
 
@@ -247,6 +249,12 @@ export function rozetkaOrderToOurFormat(order: RozetkaOrder) {
     email:            del?.email ?? '',
     delivery_type:    deliveryType,
     delivery_address: deliveryAddress,
+    // No real Nova Poshta refs available from Rozetka's own delivery payload (city.ref_id is a
+    // Rozetka-internal id, not an NP SettlementRef — verified live, getWarehouses against it
+    // returns zero results) — only the human-readable city name and postomat/warehouse hint,
+    // which the TTN-creation modal resolves via a live NP search instead.
+    delivery_city_name: cityName || null,
+    delivery_subtype:   deliveryType === 'nova_poshta' ? (isPostomat ? 'postomat' as const : 'warehouse' as const) : null,
     payment_type:     paymentType,
     comment:          order.comment,
     items,

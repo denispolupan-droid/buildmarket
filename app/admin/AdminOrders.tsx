@@ -773,6 +773,8 @@ export default function AdminOrders({
       delivery_city_ref: primary.delivery_city_ref,
       delivery_city_name: primary.delivery_city_name,
       delivery_warehouse_ref: primary.delivery_warehouse_ref,
+      delivery_subtype: primary.delivery_subtype,
+      delivery_address: primary.delivery_address,
     });
   }
 
@@ -2642,6 +2644,7 @@ export default function AdminOrders({
             delivery_city_name: ttnModalOrder.delivery_city_name,
             delivery_warehouse_ref: ttnModalOrder.delivery_warehouse_ref,
             delivery_subtype: ttnModalOrder.delivery_subtype,
+            delivery_address: ttnModalOrder.delivery_address,
           }}
           onClose={() => setTtnModalOrder(null)}
           onCreated={async (ttn) => {
