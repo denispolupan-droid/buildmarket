@@ -194,6 +194,7 @@ function FadeProductImage({ imageUrl, alt, priority }: { imageUrl: string; alt: 
         width={400}
         height={400}
         priority
+        fetchPriority="high"
         style={{ height: '100%', width: '100%', objectFit: 'contain', display: 'block' }}
       />
     );
