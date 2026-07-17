@@ -4,7 +4,12 @@
 // Запуск: npx tsx --env-file=.env.local scripts/supabase/translate-enriched-ru.mts [--limit N]
 import { createClient } from '@supabase/supabase-js';
 import { appendFileSync } from 'node:fs';
-import { translateEnrichment } from '../../lib/catalog-enricher';
+import { pathToFileURL } from 'node:url';
+import path from 'node:path';
+
+const enricher = await import(pathToFileURL(path.resolve('lib/catalog-enricher.ts')).href) as
+  typeof import('../../lib/catalog-enricher');
+const { translateEnrichment } = enricher;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
