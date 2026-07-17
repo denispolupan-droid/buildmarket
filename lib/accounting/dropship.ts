@@ -16,7 +16,7 @@
  */
 
 import { createServiceClient } from '../supabase';
-import { recordCOGS, recordTxn } from './money';
+import { recordCOGS, recordTxn, type AccountType } from './money';
 import { createDocument, confirmDocument } from './documents';
 import { resolveOrderFulfillment } from './fulfillment';
 import type { OrderItem } from '../../types';
@@ -328,4 +328,77 @@ export async function recordDropshipSale(
   );
 
   return doc.id;
+}
+
+// ── Сторно dropship-специфічних проводок при скасуванні замовлення ───────────
+//
+// recordDropshipSale() записує COGS і борг перед постачальником окремими
+// recordTxn/recordCOGS викликами ПОЗА стандартним потоком confirmDocument
+// (buildMovements пропускає fulfillment_type='dropship' — товар транзитом,
+// на нашому складі його ніколи не було). Це означає, що cancelDocument()
+// (яке створює сторно-документ і реверсує лінії через confirmDocument)
+// реверсує виручку, але НЕ чіпає ці дві окремі проводки — вони лишаються
+// висіти, наприклад показуючи борг постачальнику по скасованому замовленню.
+//
+// Реверсуємо не перерахунком (щоб не розійтися з оригіналом при зміні цін/
+// собівартості між часом продажу і скасуванням), а прямим дзеркалюванням
+// вже записаних проводок по цьому doc_id: для кожної транзакції міняємо
+// дебет↔кредит місцями з тією ж сумою.
+export async function reverseDropshipLedgerExtras(params: {
+  orderId:     string;
+  docId:       string;
+  createdBy?:  string;
+}): Promise<void> {
+  const db = createServiceClient();
+
+  const { data: entries } = await db
+    .from('money_entries')
+    .select('txn_id, account_type, counterparty_id, amount, description, doc_type')
+    .eq('doc_id', params.docId)
+    .in('account_type', ['cogs', 'supplier', 'inventory_asset']);
+
+  if (!entries?.length) return;
+
+  const byTxn = new Map<string, typeof entries>();
+  for (const e of entries) {
+    if (!byTxn.has(e.txn_id)) byTxn.set(e.txn_id, []);
+    byTxn.get(e.txn_id)!.push(e);
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  for (const [txnId, legs] of byTxn) {
+    // Reversal transactions created by this same function (below) also carry
+    // account_type in (cogs, supplier, inventory_asset), so without this check a second
+    // call would "reverse the reversal" — matched by doc_type: 'dropship_cancel' instead
+    // of the original 'cogs'/'sale' doc_type recordCOGS/recordTxn used to post them.
+    if (legs.every(l => l.doc_type === 'dropship_cancel')) continue;
+
+    const reversalKey = `reversal:${txnId}`;
+    const { data: already } = await db
+      .from('money_entries')
+      .select('id')
+      .eq('idempotency_key', reversalKey)
+      .maybeSingle();
+    if (already) continue;
+
+    const debitLeg  = legs.find(l => Number(l.amount) > 0);
+    const creditLeg = legs.find(l => Number(l.amount) < 0);
+    if (!debitLeg || !creditLeg) continue;
+
+    await recordTxn({
+      debitAccount:   creditLeg.account_type as AccountType,
+      debitParty:     creditLeg.counterparty_id,
+      creditAccount:  debitLeg.account_type as AccountType,
+      creditParty:    debitLeg.counterparty_id,
+      amount:         Math.abs(Number(debitLeg.amount)),
+      businessDate:   today,
+      docId:          params.docId,
+      docType:        'dropship_cancel',
+      orderId:        params.orderId,
+      description:    `Сторно (скасування замовлення): ${debitLeg.description ?? ''}`.trim(),
+      idempotencyKey: reversalKey,
+      createdBy:      params.createdBy,
+    });
+  }
 }

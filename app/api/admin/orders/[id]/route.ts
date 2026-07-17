@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
-import { recordDropshipSale } from '../../../../../lib/accounting/dropship';
+import { recordDropshipSale, reverseDropshipLedgerExtras } from '../../../../../lib/accounting/dropship';
+import { cancelDocument } from '../../../../../lib/accounting/documents';
 import { releaseReservation } from '../../../../../lib/accounting/reservations';
 import { notifyAdminStatusChange, notifyCustomerStatus } from '../../../../../lib/telegram';
 import { buildCustomerStatusEmail } from '../../../../../lib/invoice-email';
@@ -243,6 +244,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     } catch (err) {
       console.error('[balance] refund on cancel failed:', err);
+    }
+
+    // Якщо замовлення вже було відвантажено (є підтверджена РН) — сторнуємо
+    // облік: виручку/склад через cancelDocument, а COGS і борг перед
+    // постачальником (записані recordDropshipSale окремо від документа)
+    // через reverseDropshipLedgerExtras. Без цього скасоване замовлення
+    // лишало б висіти виручку в дебіторці і борг постачальнику в кредиторці.
+    try {
+      const { data: saleDoc } = await db
+        .from('acc_documents')
+        .select('id')
+        .eq('order_id', id)
+        .eq('doc_type', 'sale')
+        .eq('status', 'confirmed')
+        .maybeSingle();
+
+      if (saleDoc) {
+        await cancelDocument(saleDoc.id, user.email ?? 'admin', 'Замовлення скасовано');
+        await reverseDropshipLedgerExtras({ orderId: id, docId: saleDoc.id, createdBy: user.email ?? 'admin' });
+      }
+    } catch (err) {
+      console.error('[accounting] cancel reversal failed:', err);
     }
   }
 

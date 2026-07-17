@@ -15,7 +15,8 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { createDocument, confirmDocument, cancelDocument } from '../../lib/accounting/documents';
 import { createReservation, releaseReservation } from '../../lib/accounting/reservations';
-import { recordSupplierPayment } from '../../lib/accounting/money';
+import { recordSupplierPayment, recordCOGS, recordTxn } from '../../lib/accounting/money';
+import { reverseDropshipLedgerExtras } from '../../lib/accounting/dropship';
 
 // ── Фікстури (знаходяться динамічно в beforeAll) ──────────────────────────────
 
@@ -294,6 +295,68 @@ describe('Storno — відміна підтвердженого докумен�
     const reversalEntries = await getMoneyEntries(reversal!.id);
     const supplierDebit = reversalEntries.find(e => e.account_type === 'supplier' && Number(e.amount) > 0);
     expect(supplierDebit, 'supplier debit (storno) missing').toBeTruthy();
+
+    await assertInvariants();
+  });
+});
+
+// recordDropshipSale() records COGS and the supplier payable via standalone recordTxn/recordCOGS
+// calls, OUTSIDE the document's own buildMovements flow (dropship lines never touch our stock,
+// so buildMovements skips them). cancelDocument() reverses whatever confirmDocument auto-posted
+// for the doc's lines (revenue), but has no idea these two extra entries exist — that's exactly
+// the bug reverseDropshipLedgerExtras() fixes. Bypasses the fulfillment router (which needs real
+// supplier_stock/supplier_sku_map fixtures to classify a line as dropship) and instead reproduces
+// the exact entries recordDropshipSale() would have posted, to test the reversal in isolation.
+describe('Dropship cancel — reverses COGS and supplier payable left outside the document flow', () => {
+  it('reverseDropshipLedgerExtras nets the cogs and supplier entries to zero', async () => {
+    const testOrderId = crypto.randomUUID();
+
+    const doc = await createDocument({
+      doc_type:     'sale',
+      warehouse_id: warehouseId,
+      customer_id:  customerId || undefined,
+      order_id:     testOrderId,
+      notes:        '[TEST] Dropship sale test',
+      meta:         { test: true },
+      lines: [{
+        sku:              testSku,
+        qty:              2,
+        price:            300,
+        cost_price:       150,
+        fulfillment_type: 'dropship',
+        supplier_id:      supplierId,
+      }],
+    });
+    await confirmDocument(doc.id, 'test-user');
+
+    // Mimic recordDropshipSale()'s two extra postings for a dropship line.
+    await recordCOGS({
+      amount: 300, docId: doc.id, orderId: testOrderId,
+      idempotencyKey: `cogs:${testOrderId}:${doc.id}`,
+    });
+    await recordTxn({
+      debitAccount: 'inventory_asset', creditAccount: 'supplier', creditParty: String(supplierId),
+      amount: 300, docId: doc.id, docType: 'sale', orderId: testOrderId,
+      description:    'Дропшип: борг перед постачальником (тест)',
+      idempotencyKey: `dropship-payable:${testOrderId}:${supplierId}`,
+    });
+
+    const before = await getMoneyEntries(doc.id);
+    expect(before.filter(e => e.account_type === 'cogs')).toHaveLength(1);
+    expect(before.filter(e => e.account_type === 'supplier')).toHaveLength(1);
+
+    await reverseDropshipLedgerExtras({ orderId: testOrderId, docId: doc.id, createdBy: 'test-user' });
+
+    const after = await getMoneyEntries(doc.id);
+    const cogsSum     = after.filter(e => e.account_type === 'cogs').reduce((s, e) => s + Number(e.amount), 0);
+    const supplierSum = after.filter(e => e.account_type === 'supplier').reduce((s, e) => s + Number(e.amount), 0);
+    expect(cogsSum,     'cogs entries should net to zero after reversal').toBe(0);
+    expect(supplierSum, 'supplier entries should net to zero after reversal').toBe(0);
+
+    // Idempotency: reversing twice must not double-post
+    await reverseDropshipLedgerExtras({ orderId: testOrderId, docId: doc.id, createdBy: 'test-user' });
+    const afterTwice = await getMoneyEntries(doc.id);
+    expect(afterTwice.length).toBe(after.length);
 
     await assertInvariants();
   });
