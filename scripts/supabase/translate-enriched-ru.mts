@@ -58,9 +58,11 @@ for (const row of faqRows ?? []) {
 }
 
 let queue = (products ?? []).filter(p => {
-  const enriched = (p.description_full ?? '').length >= ENRICHED_CHARS;
-  if (!enriched) return false;
-  const ruStale = (p.description_full_ru ?? '').length < ENRICHED_CHARS;
+  const ukLen = (p.description_full ?? '').length;
+  if (ukLen < ENRICHED_CHARS) return false;
+  // Свіжий переклад можна порівняти за обсягом з оригіналом; старі рос. описи
+  // (800–900 симв.) помітно коротші за нові укр (~2000) — поріг у частках довжини
+  const ruStale = (p.description_full_ru ?? '').length < ukLen * 0.75;
   const faqUntranslated = (faqBySku.get(p.sku) ?? []).some(f => !f.question_ru);
   return ruStale || faqUntranslated;
 });
@@ -117,7 +119,7 @@ async function worker(): Promise<void> {
     if (!p) return;
     try {
       const faq = faqBySku.get(p.sku) ?? [];
-      const ruDescFresh = (p.description_full_ru ?? '').length >= ENRICHED_CHARS;
+      const ruDescFresh = (p.description_full_ru ?? '').length >= (p.description_full ?? '').length * 0.75;
       let faqRu: { q: string; a: string }[];
 
       if (ruDescFresh) {

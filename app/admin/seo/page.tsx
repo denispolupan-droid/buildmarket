@@ -51,7 +51,7 @@ export default async function SeoQueuePage() {
     gaps: {
       thinDesc: (p.description_full ?? '').length < THIN_DESCRIPTION_CHARS,
       noFaq: !hasFaq.has(p.sku),
-      ruDesc: (p.description_full_ru ?? '').length < THIN_DESCRIPTION_CHARS || hasUntranslatedFaq.has(p.sku),
+      ruDesc: (p.description_full_ru ?? '').length < (p.description_full ?? '').length * 0.75 || hasUntranslatedFaq.has(p.sku),
       noRu: !p.name_ru || !p.description_ru,
       noKeywords: !p.keywords,
       noChars: !hasChars.has(p.sku),
