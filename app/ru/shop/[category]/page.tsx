@@ -6,6 +6,7 @@ import ShopLoader from '../../../shop/ShopLoader';
 import { getCategoriesCached, getProductsCached } from '../../../../lib/supabase';
 import { getCategoryNameRu, getCategoryDescriptionRu } from '../../../../lib/ru';
 import { getCategoryMetaRu } from '../../../../lib/category-descriptions-ru';
+import { categoryMeta, listingStats, productDisplayName, retailPrice } from '../../../../lib/seo/meta';
 import '../../../shop/shop.css';
 
 const BASE = 'https://fixline.com.ua';
@@ -22,31 +23,11 @@ export async function generateMetadata(
   if (!cat) return { robots: { index: false, follow: false } };
 
   const nameRu = getCategoryNameRu(cat.slug, cat.name);
-  const description = getCategoryDescriptionRu(cat.slug, nameRu);
-
-  return {
-    title: `${nameRu} купить — цены, доставка по Украине`,
-    description,
-    keywords: [nameRu, 'купить', 'оптом', 'строительная химия', 'Украина'],
-    robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
-    alternates: {
-      canonical: `${BASE}/ru/shop/${category}`,
-      languages: {
-        'uk': `${BASE}/shop/${category}`,
-        'ru': `${BASE}/ru/shop/${category}`,
-        'x-default': `${BASE}/shop/${category}`,
-      },
-    },
-    openGraph: {
-      title: `${nameRu} | FIXLINE`,
-      description: `${nameRu} — купить оптом с доставкой по Украине.`,
-      url: `${BASE}/ru/shop/${category}`,
-      siteName: 'FIXLINE',
-      locale: 'ru_RU',
-      type: 'website',
-      images: [{ url: `${BASE}/shop/${category}/opengraph-image`, width: 1200, height: 630, alt: `${nameRu} | FIXLINE` }],
-    },
-  };
+  const products = await getProductsCached({ category });
+  return categoryMeta(cat, listingStats(products), 'ru', {
+    nameRu,
+    curatedDescription: getCategoryDescriptionRu(cat.slug, nameRu) ?? null,
+  });
 }
 
 export default async function RuShopCategoryPage({ params }: { params: Promise<{ category: string }> }) {
@@ -82,13 +63,13 @@ export default async function RuShopCategoryPage({ params }: { params: Promise<{
       position: i + 1,
       item: {
         '@type': 'Product',
-        name: p.name,
+        name: productDisplayName(p, 'ru'),
         url: `${BASE}/ru/product/${p.sku}`,
         brand: { '@type': 'Brand', name: p.brand },
-        ...(p.stock ? {
+        ...(p.stock && retailPrice(p) ? {
           offers: {
             '@type': 'Offer',
-            price: p.stock.price_unit,
+            price: retailPrice(p),
             priceCurrency: 'UAH',
             availability: p.stock.stock_status === 'in_stock'
               ? 'https://schema.org/InStock'

@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 
 import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached } from '../../../lib/supabase';
 import { getCategoryMeta } from '../../../lib/category-descriptions';
+import { productMeta, productDisplayName, productH1 } from '../../../lib/seo/meta';
 import ProductTabs from './ProductTabs';
 import ProductOrderPanel from './ProductOrderPanel';
 import ProductGallery from './ProductGallery';
@@ -33,40 +34,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id: sku } = await params;
   const product = await getProductBySkuCached(sku);
   if (!product) return { title: 'Товар не знайдено', robots: { index: false } };
-
-  const price = product.stock?.price_unit;
-  const priceStr = price ? ` — ${price} грн` : '';
-  const volume = product.volume && !product.name.includes(product.volume) ? ` ${product.volume}` : '';
-  const title = `${product.brand} ${product.name}${volume}${priceStr}`;
-  const rawDesc = product.description
-    ?? `Купити ${product.brand} ${product.name}${volume} оптом. Артикул ${product.sku}. Оптові ціни для дилерів та підрядників на FIXLINE. Купить ${product.brand} ${product.name}${volume} оптом в Украине.`;
-  const description = rawDesc.length <= 155 ? rawDesc : rawDesc.slice(0, rawDesc.lastIndexOf(' ', 155)) + '…';
-
-  return {
-    title,
-    description,
-    keywords: [
-      ...((product as any).keywords?.split(',').map((k: string) => k.trim()).filter(Boolean) ?? []),
-      product.brand, product.name, 'купити', 'оптом', 'будівельна хімія', product.sku,
-    ],
-    openGraph: {
-      title,
-      description,
-      url: `${BASE}/product/${sku}`,
-      siteName: 'FIXLINE',
-      locale: 'uk_UA',
-      type: 'website',
-      images: [{ url: `${BASE}/product/${sku}/opengraph-image`, width: 1200, height: 630, alt: title }],
-    },
-    alternates: {
-      canonical: `${BASE}/product/${sku}`,
-      languages: {
-        'uk': `${BASE}/product/${sku}`,
-        'ru': `${BASE}/ru/product/${sku}`,
-        'x-default': `${BASE}/product/${sku}`,
-      },
-    },
-  };
+  return productMeta(product, 'uk');
 }
 
 function brandToSlug(brand: string): string {
@@ -147,7 +115,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   if (productCat) {
     breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: productCat.name, item: `${BASE}/shop/${productCat.slug}` });
   }
-  breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: `${product.brand} ${product.name}`, item: `${BASE}/product/${product.sku}` });
+  breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: productDisplayName(product), item: `${BASE}/product/${product.sku}` });
 
   const breadcrumbLd = {
     '@context': 'https://schema.org',
@@ -155,9 +123,11 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     itemListElement: breadcrumbItems,
   };
 
-  const productFullName = `${product.brand} ${product.name}${product.volume ? ' ' + product.volume : ''}`;
-  const productImage = (product as { image?: string }).image
-    || `${BASE}/product/${product.sku}/opengraph-image`;
+  const productFullName = productDisplayName(product);
+  const rawImage = (product as { image?: string }).image;
+  const productImage = rawImage
+    ? (rawImage.startsWith('http') ? rawImage : `${BASE}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`)
+    : `${BASE}/product/${product.sku}/opengraph-image`;
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -214,7 +184,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
           {/* Інформація */}
           <div className="product-info">
             <div className="product-info__brand">{product.brand}</div>
-            <h1 className="product-info__title">{product.name}</h1>
+            <h1 className="product-info__title">{productH1(product)}</h1>
 
             {reviewCount > 0 && (
               <a href="#reviews" style={{ display: 'inline-block', textDecoration: 'none', marginBottom: '4px' }}>

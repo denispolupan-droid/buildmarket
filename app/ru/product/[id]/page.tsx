@@ -7,6 +7,7 @@ import { getCategoryNameRu } from '../../../../lib/ru';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { isWholesale } from '../../../../lib/user-role';
 import { getCategoryMeta } from '../../../../lib/category-descriptions';
+import { productMeta, productDisplayName, productH1 } from '../../../../lib/seo/meta';
 import ProductTabs from '../../../product/[id]/ProductTabs';
 import ProductOrderPanel from '../../../product/[id]/ProductOrderPanel';
 import ProductGallery from '../../../product/[id]/ProductGallery';
@@ -34,45 +35,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id: sku } = await params;
   const product = await getProductBySkuCached(sku);
   if (!product) return { title: 'Товар не найден', robots: { index: false } };
-
-  const price = product.stock?.price_unit;
-  const priceStr = price ? ` — ${price} грн` : '';
-  const metaNameRu = (product as { name_ru?: string | null }).name_ru ?? product.name;
-  const volume = product.volume && !metaNameRu.includes(product.volume) ? ` ${product.volume}` : '';
-  const title = `${product.brand} ${metaNameRu}${volume}${priceStr} купить оптом`;
-
-  const rawDesc = (product as { description_ru?: string | null }).description_ru
-    ?? product.description
-    ?? `Купить ${product.brand} ${metaNameRu}${volume} оптом. Артикул ${product.sku}. Оптовые цены для дилеров и подрядчиков на FIXLINE.`;
-  const description = rawDesc.length <= 155 ? rawDesc : rawDesc.slice(0, rawDesc.lastIndexOf(' ', 155)) + '…';
-
-  return {
-    title,
-    description,
-    keywords: [
-      ...((product as { keywords_ru?: string | null }).keywords_ru?.split(',').map((k: string) => k.trim()).filter(Boolean)
-        ?? (product as { keywords?: string }).keywords?.split(',').map((k: string) => k.trim()).filter(Boolean)
-        ?? []),
-      product.brand, metaNameRu, 'купить', 'оптом', 'строительная химия', product.sku,
-    ],
-    openGraph: {
-      title,
-      description,
-      url: `${BASE}/ru/product/${sku}`,
-      siteName: 'FIXLINE',
-      locale: 'ru_RU',
-      type: 'website',
-      images: [{ url: `${BASE}/product/${sku}/opengraph-image`, width: 1200, height: 630, alt: title }],
-    },
-    alternates: {
-      canonical: `${BASE}/ru/product/${sku}`,
-      languages: {
-        'uk': `${BASE}/product/${sku}`,
-        'ru': `${BASE}/ru/product/${sku}`,
-        'x-default': `${BASE}/product/${sku}`,
-      },
-    },
-  };
+  return productMeta(product, 'ru');
 }
 
 function brandToSlug(brand: string): string {
@@ -157,12 +120,15 @@ export default async function RuProductPage({ params, searchParams }: { params: 
   if (productCat) {
     breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: categoryName, item: `${BASE}/ru/shop/${productCat.slug}` });
   }
-  breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: `${product.brand} ${nameRu}`, item: `${BASE}/ru/product/${product.sku}` });
+  breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: productDisplayName(product, 'ru'), item: `${BASE}/ru/product/${product.sku}` });
 
   const breadcrumbLd = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: breadcrumbItems };
 
-  const productFullName = `${product.brand} ${nameRu}${product.volume ? ' ' + product.volume : ''}`;
-  const productImage = (product as { image?: string }).image || `${BASE}/product/${product.sku}/opengraph-image`;
+  const productFullName = productDisplayName(product, 'ru');
+  const rawImage = (product as { image?: string }).image;
+  const productImage = rawImage
+    ? (rawImage.startsWith('http') ? rawImage : `${BASE}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`)
+    : `${BASE}/product/${product.sku}/opengraph-image`;
 
   const descriptionRu = (product as { description_ru?: string | null }).description_ru ?? product.description ?? undefined;
 
@@ -219,7 +185,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
 
           <div className="product-info">
             <div className="product-info__brand">{product.brand}</div>
-            <h1 className="product-info__title">{nameRu}</h1>
+            <h1 className="product-info__title">{productH1(product, 'ru')}</h1>
 
             {reviewCount > 0 && (
               <a href="#reviews" style={{ display: 'inline-block', textDecoration: 'none', marginBottom: '4px' }}>

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Footer from '../../../components/Footer';
 import ShopLoader from '../../ShopLoader';
 import { getCategoriesCached, getProductsCached } from '../../../../lib/supabase';
+import { categoryBrandMeta, listingStats } from '../../../../lib/seo/meta';
 import '../../shop.css';
 
 const BASE = 'https://fixline.com.ua';
@@ -68,26 +69,12 @@ export async function generateMetadata(
   const resolved = await resolveParams(category, brandSlug);
 
   if (!resolved) return { robots: { index: false, follow: false } };
-  const { cat, brandName, count } = resolved;
+  const { cat, brandName, products } = resolved;
 
-  return {
-    title: `${brandName} ${cat.name.toLowerCase()} купити — ціни`,
-    description: `${brandName} ${cat.name.toLowerCase()} — ${count} товарів в наявності. Вигідні ціни, доставка Новою Поштою по всій Україні. Купити ${brandName} ${cat.name.toLowerCase()} від 1 шт.`,
-    keywords: [brandName, cat.name, 'купити', 'ціни', 'Україна'],
-    robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
-    alternates: {
-      canonical: `${BASE}/shop/${category}/${brandSlug}`,
-      languages: { 'uk': `${BASE}/shop/${category}/${brandSlug}`, 'ru': `${BASE}/ru/shop/${category}/${brandSlug}`, 'x-default': `${BASE}/shop/${category}/${brandSlug}` },
-    },
-    openGraph: {
-      title: `${brandName} ${cat.name} | FIXLINE`,
-      description: `${brandName} ${cat.name.toLowerCase()} — купити від 1 шт з доставкою по Україні.`,
-      url: `${BASE}/shop/${category}/${brandSlug}`,
-      siteName: 'FIXLINE',
-      locale: 'uk_UA',
-      type: 'website',
-    },
-  };
+  const brandProducts = products.filter(
+    p => p.category_slug === category && brandToSlug(p.brand?.trim() ?? '') === brandSlug
+  );
+  return categoryBrandMeta(cat, brandName, brandSlug, listingStats(brandProducts), 'uk');
 }
 
 export default async function ShopCategoryBrandPage(

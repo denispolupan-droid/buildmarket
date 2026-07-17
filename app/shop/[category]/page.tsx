@@ -5,6 +5,7 @@ import Footer from '../../components/Footer';
 import ShopLoader from '../ShopLoader';
 import { getCategoriesCached, getProductsCached } from '../../../lib/supabase';
 import { getCategoryMeta } from '../../../lib/category-descriptions';
+import { categoryMeta, listingStats, productDisplayName, retailPrice } from '../../../lib/seo/meta';
 import '../shop.css';
 
 const BASE = 'https://fixline.com.ua';
@@ -20,32 +21,10 @@ export async function generateMetadata(
 
   if (!cat) return { robots: { index: false, follow: false } };
 
-  const meta = getCategoryMeta(category);
-  const fallbackDesc = `Купити ${cat.name.toLowerCase()} в роздріб від 1 одиниці. Широкий асортимент, низькі ціни, швидка доставка по всій Україні. Купить ${cat.name.toLowerCase()} с доставкой по Украине.`;
-  const description = meta?.description ?? fallbackDesc;
-
-  return {
-    title: `${cat.name} купити — ціни, доставка по Україні`,
-    description,
-    keywords: [cat.name, 'купити', 'купить', 'будівельна хімія', 'строительная химия', 'Україна', 'Украина'],
-    robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
-    alternates: {
-      canonical: `${BASE}/shop/${category}`,
-      languages: {
-        'uk': `${BASE}/shop/${category}`,
-        'ru': `${BASE}/ru/shop/${category}`,
-        'x-default': `${BASE}/shop/${category}`,
-      },
-    },
-    openGraph: {
-      title: `${cat.name} | Магазин FIXLINE`,
-      description: `${cat.name} — купити від 1 шт з доставкою по Україні.`,
-      url: `${BASE}/shop/${category}`,
-      siteName: 'FIXLINE',
-      locale: 'uk_UA',
-      type: 'website',
-    },
-  };
+  const products = await getProductsCached({ category });
+  return categoryMeta(cat, listingStats(products), 'uk', {
+    curatedDescription: getCategoryMeta(category)?.description ?? null,
+  });
 }
 
 export default async function ShopCategoryPage({ params }: { params: Promise<{ category: string }> }) {
@@ -77,14 +56,14 @@ export default async function ShopCategoryPage({ params }: { params: Promise<{ c
       position: i + 1,
       item: {
         '@type': 'Product',
-        name: p.name,
+        name: productDisplayName(p),
         url: `${BASE}/product/${p.sku}`,
         ...(p.image ? { image: `${BASE}${p.image.startsWith('/') ? '' : '/'}${p.image}` } : {}),
         brand: { '@type': 'Brand', name: p.brand },
-        ...(p.stock ? {
+        ...(p.stock && retailPrice(p) ? {
           offers: {
             '@type': 'Offer',
-            price: p.stock.price_unit,
+            price: retailPrice(p),
             priceCurrency: 'UAH',
             availability: p.stock.stock_status === 'in_stock'
               ? 'https://schema.org/InStock'

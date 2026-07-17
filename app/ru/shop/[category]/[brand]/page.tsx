@@ -6,6 +6,7 @@ import ShopLoader from '../../../../shop/ShopLoader';
 import '../../../../shop/shop.css';
 import { getCategoriesCached, getProductsCached } from '../../../../../lib/supabase';
 import { getCategoryNameRu } from '../../../../../lib/ru';
+import { categoryBrandMeta, listingStats } from '../../../../../lib/seo/meta';
 
 const BASE = 'https://fixline.com.ua';
 
@@ -69,32 +70,13 @@ export async function generateMetadata(
   const resolved = await resolveParams(category, brandSlug);
 
   if (!resolved) return { robots: { index: false, follow: false } };
-  const { cat, brandName, count } = resolved;
+  const { cat, brandName, products } = resolved;
 
   const catNameRu = getCategoryNameRu(cat.slug, cat.name);
-
-  return {
-    title: `${brandName} ${catNameRu.toLowerCase()} купить — цены`,
-    description: `${brandName} ${catNameRu.toLowerCase()} — ${count} товаров в наличии. Выгодные цены, доставка Новой Почтой по всей Украине. Купить ${brandName} ${catNameRu.toLowerCase()} от 1 шт.`,
-    keywords: [brandName, catNameRu, 'купить', 'цены', 'Украина'],
-    robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
-    alternates: {
-      canonical: `${BASE}/ru/shop/${category}/${brandSlug}`,
-      languages: {
-        'uk': `${BASE}/shop/${category}/${brandSlug}`,
-        'ru': `${BASE}/ru/shop/${category}/${brandSlug}`,
-        'x-default': `${BASE}/shop/${category}/${brandSlug}`,
-      },
-    },
-    openGraph: {
-      title: `${brandName} ${catNameRu} | FIXLINE`,
-      description: `${brandName} ${catNameRu.toLowerCase()} — купить от 1 шт с доставкой по Украине.`,
-      url: `${BASE}/ru/shop/${category}/${brandSlug}`,
-      siteName: 'FIXLINE',
-      locale: 'ru_RU',
-      type: 'website',
-    },
-  };
+  const brandProducts = products.filter(
+    p => p.category_slug === category && brandToSlug(p.brand?.trim() ?? '') === brandSlug
+  );
+  return categoryBrandMeta(cat, brandName, brandSlug, listingStats(brandProducts), 'ru', { nameRu: catNameRu });
 }
 
 export default async function ShopCategoryBrandRuPage(

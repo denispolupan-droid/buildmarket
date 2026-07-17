@@ -5,6 +5,7 @@ import Footer from '../../../../components/Footer';
 import ShopLoader from '../../../../shop/ShopLoader';
 import '../../../../shop/shop.css';
 import { getBrandsCached, getProductsCached } from '../../../../../lib/supabase';
+import { brandMeta, listingStats } from '../../../../../lib/seo/meta';
 
 const BASE = 'https://fixline.com.ua';
 
@@ -28,34 +29,13 @@ export async function generateMetadata(
   if (!brand) return { robots: { index: false, follow: false } };
 
   const allProducts = await getProductsCached();
-  const brandProductCount = allProducts.filter(
+  const brandProducts = allProducts.filter(
     p => p.brand.trim().toLowerCase() === brand.trim().toLowerCase()
-  ).length;
+  );
 
-  if (brandProductCount < 5) return { robots: { index: false, follow: true } };
+  if (brandProducts.length < 5) return { robots: { index: false, follow: true } };
 
-  return {
-    title: `${brand} купить на Украине — выгодные цены`,
-    description: `Купить ${brand} в розницу и оптом. Широкий ассортимент, выгодные цены, доставка по всей Украине.`,
-    keywords: [brand, 'купить', 'строительная химия', 'Украина', 'оптом'],
-    robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
-    alternates: {
-      canonical: `${BASE}/ru/shop/brand/${slug}`,
-      languages: {
-        'uk': `${BASE}/shop/brand/${slug}`,
-        'ru': `${BASE}/ru/shop/brand/${slug}`,
-        'x-default': `${BASE}/shop/brand/${slug}`,
-      },
-    },
-    openGraph: {
-      title: `${brand} | Магазин FIXLINE`,
-      description: `${brand} — купить от 1 шт с доставкой по Украине. Широкий ассортимент.`,
-      url: `${BASE}/ru/shop/brand/${slug}`,
-      siteName: 'FIXLINE',
-      locale: 'ru_RU',
-      type: 'website',
-    },
-  };
+  return brandMeta(brand, slug, listingStats(brandProducts), 'ru');
 }
 
 export default async function ShopBrandRuPage({ params }: { params: Promise<{ brand: string }> }) {
