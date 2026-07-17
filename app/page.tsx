@@ -29,7 +29,7 @@ import DeliveryMapCard from './components/DeliveryMapCard';
 import Reveal from './components/Reveal';
 import AnimatedNumber from './components/AnimatedNumber';
 import BgFadeImage from './components/BgFadeImage';
-import { ARTICLES } from '../lib/blog';
+import { getPublishedPostsCached } from '../lib/blog-db';
 
 
 export default async function Home() {
@@ -40,6 +40,21 @@ export default async function Home() {
   const visibleBrandLogos = await getVisibleBrandLogosCached();
   const brandTiles = mergeVisibleBrands(visibleBrandLogos);
   const reviewStats = await getReviewStatsCached();
+
+  // Карусель блогу: опубліковані статті з БД (тільки з обкладинкою)
+  const blogArticles = (await getPublishedPostsCached())
+    .filter(p => p.image)
+    .slice(0, 10)
+    .map(p => ({
+      slug: p.slug,
+      title: p.title,
+      titleRu: p.title_ru ?? undefined,
+      description: p.description,
+      descriptionRu: p.description_ru ?? undefined,
+      category: p.category,
+      categoryRu: p.category_ru ?? undefined,
+      image: p.image as string,
+    }));
 
   const orgLd = {
     '@context': 'https://schema.org',
@@ -475,7 +490,7 @@ export default async function Home() {
                 Всі статті →
               </Link>
             </div>
-            <BlogCarousel articles={ARTICLES} />
+            <BlogCarousel articles={blogArticles} />
           </Reveal>
         </div>
       </section>

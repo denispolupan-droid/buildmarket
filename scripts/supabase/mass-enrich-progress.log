@@ -1,0 +1,1113 @@
+2026-07-17T09:46:52.364Z START total=768 pending=3 done_before=0 concurrency=6
+2026-07-17T09:47:19.694Z OK 1503-003 words=253 faq=4 [1/0]
+2026-07-17T09:47:20.388Z OK 1702-111 words=239 faq=4 [2/0]
+2026-07-17T09:47:22.098Z OK 1503-057 words=254 faq=4 [3/0]
+2026-07-17T09:47:22.098Z DONE ok=3 failed=0
+2026-07-17T09:48:01.785Z START total=768 pending=765 done_before=3 concurrency=6
+2026-07-17T09:48:33.580Z OK 2101-005 words=269 faq=4 [1/759]
+2026-07-17T09:48:33.681Z OK 1001-013 words=252 faq=4 [2/758]
+2026-07-17T09:48:33.791Z OK 1601-003 words=267 faq=4 [3/757]
+2026-07-17T09:48:33.875Z OK 1600-003 words=274 faq=4 [4/756]
+2026-07-17T09:48:34.086Z OK 2101-046 words=259 faq=4 [5/755]
+2026-07-17T09:48:34.800Z OK 2101-066 words=258 faq=4 [6/754]
+2026-07-17T09:49:03.466Z OK 1503-025 words=255 faq=4 [7/753]
+2026-07-17T09:49:03.480Z OK 2109-023 words=250 faq=4 [8/752]
+2026-07-17T09:49:03.691Z OK 1002-003 words=261 faq=4 [9/751]
+2026-07-17T09:49:04.030Z OK 1402-003 words=270 faq=4 [10/750]
+2026-07-17T09:49:04.241Z OK 1503-046 words=252 faq=4 [11/749]
+2026-07-17T09:49:04.970Z OK 1005-012 words=263 faq=4 [12/748]
+2026-07-17T09:49:35.175Z OK 1001-006 words=256 faq=4 [13/747]
+2026-07-17T09:49:35.200Z OK 1403-002 words=250 faq=4 [14/746]
+2026-07-17T09:49:35.277Z OK 1104-003 words=252 faq=4 [15/745]
+2026-07-17T09:49:35.280Z OK 1503-027 words=262 faq=4 [16/744]
+2026-07-17T09:49:35.282Z OK 1001-008 words=237 faq=4 [17/743]
+2026-07-17T09:49:35.980Z OK 1000-015 words=268 faq=4 [18/742]
+2026-07-17T09:50:10.586Z OK 1101-011 words=258 faq=4 [19/741]
+2026-07-17T09:50:10.597Z OK 1901-027 words=248 faq=4 [20/740]
+2026-07-17T09:50:10.607Z OK 2109-017 words=267 faq=4 [21/739]
+2026-07-17T09:50:10.610Z OK 1901-026 words=244 faq=4 [22/738]
+2026-07-17T09:50:10.626Z OK 1101-010 words=272 faq=4 [23/737]
+2026-07-17T09:50:10.661Z OK 1603-008 words=269 faq=4 [24/736]
+2026-07-17T09:50:49.676Z OK 2101-036 words=253 faq=4 [25/735]
+2026-07-17T09:50:49.682Z OK 2101-053 words=255 faq=4 [26/734]
+2026-07-17T09:50:49.684Z OK 1005-030 words=268 faq=4 [27/733]
+2026-07-17T09:50:49.976Z OK 2105-015 words=246 faq=4 [28/732]
+2026-07-17T09:50:50.105Z OK 1300-039 words=279 faq=4 [29/731]
+2026-07-17T09:50:50.182Z OK 1503-053 words=283 faq=4 [30/730]
+2026-07-17T09:51:21.894Z OK 1702-042 words=252 faq=4 [31/729]
+2026-07-17T09:51:21.998Z OK 2101-006 words=255 faq=4 [32/728]
+2026-07-17T09:51:22.014Z OK 1702-047 words=261 faq=4 [33/727]
+2026-07-17T09:51:22.016Z OK 1203-030 words=258 faq=4 [34/726]
+2026-07-17T09:51:22.019Z OK 1901-025 words=264 faq=4 [35/725]
+2026-07-17T09:51:22.055Z OK 1503-047 words=243 faq=4 [36/724]
+2026-07-17T09:51:49.683Z OK 2101-025 words=265 faq=4 [37/723]
+2026-07-17T09:51:50.626Z OK 1801-004 words=261 faq=4 [38/722]
+2026-07-17T09:51:52.657Z OK 1204-001 words=262 faq=4 [39/721]
+2026-07-17T09:51:52.802Z OK 2101-076 words=256 faq=4 [40/720]
+2026-07-17T09:51:53.296Z OK 2100-024 words=285 faq=4 [41/719]
+2026-07-17T09:51:54.418Z OK 1300-021 words=280 faq=4 [42/718]
+2026-07-17T09:52:21.293Z OK 2100-004 words=267 faq=4 [43/717]
+2026-07-17T09:52:21.448Z OK 2101-081 words=254 faq=4 [44/716]
+2026-07-17T09:52:21.633Z OK 2100-023 words=255 faq=4 [45/715]
+2026-07-17T09:52:23.250Z OK 2101-089 words=256 faq=5 [46/714]
+2026-07-17T09:52:23.266Z OK 2109-038 words=261 faq=4 [47/713]
+2026-07-17T09:52:23.431Z OK 2101-085 words=271 faq=4 [48/712]
+2026-07-17T09:52:50.152Z OK 1101-006 words=253 faq=4 [49/711]
+2026-07-17T09:52:50.228Z OK 2101-098 words=263 faq=4 [50/710]
+2026-07-17T09:52:51.887Z OK 1503-042 words=242 faq=4 [51/709]
+2026-07-17T09:52:51.901Z OK 2101-057 words=258 faq=4 [52/708]
+2026-07-17T09:52:51.955Z OK 2101-038 words=236 faq=4 [53/707]
+2026-07-17T09:52:52.602Z OK 2105-022 words=265 faq=4 [54/706]
+2026-07-17T09:53:19.193Z OK 1001-003 words=259 faq=4 [55/705]
+2026-07-17T09:53:19.238Z OK 2101-086 words=268 faq=4 [56/704]
+2026-07-17T09:53:20.427Z OK 2101-014 words=244 faq=4 [57/703]
+2026-07-17T09:53:21.143Z OK 1102-003 words=249 faq=4 [58/702]
+2026-07-17T09:53:22.596Z OK 2101-069 words=255 faq=4 [59/701]
+2026-07-17T09:53:42.706Z FAIL 1100-003: [object Object]
+2026-07-17T09:53:47.477Z OK 1203-012 words=243 faq=4 [61/699]
+2026-07-17T09:53:48.184Z OK 1600-026 words=269 faq=4 [62/698]
+2026-07-17T09:53:48.305Z OK 2101-015 words=244 faq=4 [63/697]
+2026-07-17T09:53:58.489Z OK 1202-015 words=272 faq=4 [64/696]
+2026-07-17T09:53:58.493Z OK 1203-029 words=263 faq=4 [65/695]
+2026-07-17T09:54:15.398Z OK 1604-012 words=261 faq=4 [66/694]
+2026-07-17T09:54:16.215Z OK 1803-003 words=275 faq=4 [67/693]
+2026-07-17T09:54:17.713Z OK 1802-003 words=259 faq=4 [68/692]
+2026-07-17T09:54:18.561Z OK 1802-002 words=273 faq=4 [69/691]
+2026-07-17T09:54:30.969Z OK 1202-009 words=273 faq=4 [70/690]
+2026-07-17T09:54:30.983Z OK 1203-008 words=255 faq=4 [71/689]
+2026-07-17T09:54:45.515Z OK 2109-014 words=251 faq=4 [72/688]
+2026-07-17T09:54:46.681Z OK 2101-019 words=255 faq=4 [73/687]
+2026-07-17T09:54:49.571Z OK 1005-021 words=283 faq=4 [74/686]
+2026-07-17T09:54:50.364Z OK 1300-028 words=265 faq=4 [75/685]
+2026-07-17T09:54:54.909Z OK 1203-022 words=249 faq=4 [76/684]
+2026-07-17T09:55:05.113Z OK 2100-012 words=271 faq=4 [77/683]
+2026-07-17T09:55:16.076Z OK 1001-011 words=254 faq=4 [78/682]
+2026-07-17T09:55:16.849Z OK 2109-029 words=277 faq=4 [79/681]
+2026-07-17T09:55:18.615Z OK 1202-006 words=264 faq=4 [80/680]
+2026-07-17T09:55:29.836Z OK 2101-020 words=247 faq=4 [81/679]
+2026-07-17T09:55:30.667Z OK 1204-009 words=256 faq=4 [82/678]
+2026-07-17T09:55:35.457Z OK 2001-002 words=251 faq=4 [83/677]
+2026-07-17T09:55:44.325Z OK 1601-021 words=261 faq=4 [84/676]
+2026-07-17T09:55:54.590Z OK 2105-006 words=261 faq=4 [85/675]
+2026-07-17T09:55:57.545Z OK 2104-009 words=250 faq=4 [86/674]
+2026-07-17T09:55:57.680Z OK 1606-003 words=235 faq=4 [87/673]
+2026-07-17T09:55:57.787Z OK 1202-002 words=240 faq=4 [88/672]
+2026-07-17T09:56:06.854Z OK 1601-028 words=257 faq=4 [89/671]
+2026-07-17T09:56:10.994Z OK 2104-013 words=245 faq=4 [90/670]
+2026-07-17T09:56:24.920Z OK 1605-006 words=264 faq=4 [91/669]
+2026-07-17T09:56:25.466Z OK 1503-017 words=257 faq=4 [92/668]
+2026-07-17T09:56:27.250Z OK 1100-001 words=278 faq=4 [93/667]
+2026-07-17T09:56:28.015Z OK 2101-003 words=261 faq=4 [94/666]
+2026-07-17T09:56:38.295Z OK 2101-011 words=252 faq=4 [95/665]
+2026-07-17T09:56:38.664Z OK 2101-033 words=233 faq=4 [96/664]
+2026-07-17T09:57:01.000Z OK 2101-045 words=253 faq=4 [97/663]
+2026-07-17T09:57:01.030Z OK 1100-004 words=250 faq=4 [98/662]
+2026-07-17T09:57:01.046Z OK 1702-109 words=254 faq=4 [99/661]
+2026-07-17T09:57:01.051Z OK 2101-034 words=235 faq=4 [100/660]
+2026-07-17T09:57:07.125Z OK 2101-080 words=274 faq=4 [101/659]
+2026-07-17T09:57:13.796Z OK 2002-019 words=267 faq=4 [102/658]
+2026-07-17T09:57:38.888Z OK 2104-004 words=255 faq=4 [103/657]
+2026-07-17T09:57:39.056Z OK 2101-009 words=250 faq=4 [104/656]
+2026-07-17T09:57:39.086Z OK 2101-048 words=252 faq=4 [105/655]
+2026-07-17T09:57:39.121Z OK 2101-058 words=256 faq=4 [106/654]
+2026-07-17T09:57:41.741Z OK 1202-018 words=258 faq=4 [107/653]
+2026-07-17T09:57:42.216Z OK 2101-012 words=256 faq=4 [108/652]
+2026-07-17T09:58:09.166Z OK 1102-006 words=257 faq=4 [109/651]
+2026-07-17T09:58:09.180Z OK 1600-041 words=256 faq=4 [110/650]
+2026-07-17T09:58:09.972Z OK 2104-005 words=252 faq=4 [111/649]
+2026-07-17T09:58:10.400Z OK 2002-017 words=263 faq=4 [112/648]
+2026-07-17T09:58:10.951Z OK 2101-079 words=268 faq=4 [113/647]
+2026-07-17T09:58:23.452Z OK 2101-042 words=263 faq=4 [114/646]
+2026-07-17T09:58:40.407Z OK 1802-001 words=268 faq=5 [115/645]
+2026-07-17T09:58:40.420Z OK 1901-016 words=252 faq=4 [116/644]
+2026-07-17T09:58:40.434Z OK 1605-005 words=259 faq=4 [117/643]
+2026-07-17T09:58:41.377Z OK 2101-007 words=258 faq=4 [118/642]
+2026-07-17T09:58:42.804Z OK 2101-075 words=271 faq=4 [119/641]
+2026-07-17T09:59:05.587Z FAIL 1402-018: [object Object]
+2026-07-17T09:59:07.657Z OK 1604-001 words=257 faq=4 [121/639]
+2026-07-17T09:59:08.429Z OK 1801-001 words=249 faq=4 [122/638]
+2026-07-17T09:59:09.835Z OK 1600-004 words=275 faq=4 [123/637]
+2026-07-17T09:59:10.080Z OK 2101-041 words=227 faq=4 [124/636]
+2026-07-17T09:59:11.071Z OK 1804-002 words=263 faq=4 [125/635]
+2026-07-17T09:59:36.267Z OK 1300-025 words=268 faq=4 [126/634]
+2026-07-17T09:59:37.322Z OK 2101-083 words=263 faq=4 [127/633]
+2026-07-17T09:59:37.553Z OK 1702-046 words=242 faq=4 [128/632]
+2026-07-17T09:59:39.170Z OK 1601-011 words=280 faq=4 [129/631]
+2026-07-17T09:59:40.461Z OK 1503-060 words=251 faq=4 [130/630]
+2026-07-17T09:59:42.467Z OK 2101-002 words=258 faq=4 [131/629]
+2026-07-17T10:00:05.342Z OK 1603-015 words=249 faq=4 [132/628]
+2026-07-17T10:00:07.083Z OK 2101-084 words=249 faq=4 [133/627]
+2026-07-17T10:00:07.217Z OK 1600-022 words=261 faq=4 [134/626]
+2026-07-17T10:00:07.562Z OK 1300-027 words=266 faq=4 [135/625]
+2026-07-17T10:00:10.014Z OK 1604-010 words=267 faq=4 [136/624]
+2026-07-17T10:00:10.230Z OK 2101-016 words=233 faq=4 [137/623]
+2026-07-17T10:00:37.167Z OK 1402-017 words=255 faq=4 [138/622]
+2026-07-17T10:00:38.038Z OK 2101-032 words=262 faq=4 [139/621]
+2026-07-17T10:00:38.043Z OK 1402-016 words=258 faq=4 [140/620]
+2026-07-17T10:00:38.257Z OK 1605-003 words=258 faq=4 [141/619]
+2026-07-17T10:00:38.948Z OK 2101-027 words=271 faq=4 [142/618]
+2026-07-17T10:00:39.273Z OK 1402-001 words=266 faq=4 [143/617]
+2026-07-17T10:01:06.650Z OK 1503-036 words=246 faq=4 [144/616]
+2026-07-17T10:01:06.898Z OK 1604-019 words=256 faq=4 [145/615]
+2026-07-17T10:01:07.404Z OK 2000-002 words=252 faq=4 [146/614]
+2026-07-17T10:01:08.831Z OK 2101-049 words=277 faq=4 [147/613]
+2026-07-17T10:01:09.513Z OK 2101-050 words=245 faq=4 [148/612]
+2026-07-17T10:01:09.578Z OK 2105-001 words=255 faq=4 [149/611]
+2026-07-17T10:01:40.234Z OK 2101-062 words=257 faq=4 [150/610]
+2026-07-17T10:01:40.237Z OK 1101-002 words=262 faq=4 [151/609]
+2026-07-17T10:01:40.240Z OK 2101-017 words=235 faq=4 [152/608]
+2026-07-17T10:01:40.242Z OK 2101-063 words=244 faq=4 [153/607]
+2026-07-17T10:01:40.245Z OK 1503-029 words=252 faq=4 [154/606]
+2026-07-17T10:01:40.439Z OK 2101-024 words=257 faq=4 [155/605]
+2026-07-17T10:02:10.273Z OK 1802-004 words=253 faq=4 [156/604]
+2026-07-17T10:02:10.366Z OK 1203-003 words=248 faq=4 [157/603]
+2026-07-17T10:02:10.382Z OK 2101-047 words=259 faq=4 [158/602]
+2026-07-17T10:02:10.639Z OK 2101-029 words=275 faq=4 [159/601]
+2026-07-17T10:02:11.103Z OK 1901-021 words=257 faq=4 [160/600]
+2026-07-17T10:02:12.795Z OK 2101-026 words=247 faq=4 [161/599]
+2026-07-17T10:02:37.285Z OK 2104-008 words=256 faq=4 [162/598]
+2026-07-17T10:02:39.375Z OK 2101-055 words=241 faq=4 [163/597]
+2026-07-17T10:02:39.842Z OK 2101-052 words=261 faq=4 [164/596]
+2026-07-17T10:02:39.895Z OK 1603-009 words=268 faq=4 [165/595]
+2026-07-17T10:02:40.015Z OK 2101-061 words=268 faq=4 [166/594]
+2026-07-17T10:02:41.564Z OK 2105-003 words=260 faq=4 [167/593]
+2026-07-17T10:03:06.791Z OK 1604-004 words=261 faq=4 [168/592]
+2026-07-17T10:03:07.206Z OK 1402-004 words=272 faq=4 [169/591]
+2026-07-17T10:03:07.919Z OK 1701-009 words=255 faq=4 [170/590]
+2026-07-17T10:03:09.272Z OK 1701-016 words=252 faq=4 [171/589]
+2026-07-17T10:03:10.854Z OK 1203-007 words=291 faq=4 [172/588]
+2026-07-17T10:03:11.320Z OK 1701-015 words=251 faq=4 [173/587]
+2026-07-17T10:03:36.440Z OK 1701-011 words=255 faq=4 [174/586]
+2026-07-17T10:03:37.094Z OK 1701-046 words=261 faq=4 [175/585]
+2026-07-17T10:03:39.569Z OK 1204-004 words=273 faq=4 [176/584]
+2026-07-17T10:03:40.358Z OK 1005-017 words=272 faq=4 [177/583]
+2026-07-17T10:03:40.672Z OK 1701-014 words=244 faq=4 [178/582]
+2026-07-17T10:03:43.444Z OK 2109-034 words=282 faq=4 [179/581]
+2026-07-17T10:04:05.531Z OK 1605-004 words=260 faq=4 [180/580]
+2026-07-17T10:04:06.447Z OK 1005-014 words=257 faq=4 [181/579]
+2026-07-17T10:04:08.697Z OK 2101-022 words=242 faq=4 [182/578]
+2026-07-17T10:04:09.272Z OK 2101-060 words=242 faq=4 [183/577]
+2026-07-17T10:04:11.625Z OK 1503-054 words=263 faq=4 [184/576]
+2026-07-17T10:04:17.657Z OK 1603-016 words=272 faq=4 [185/575]
+2026-07-17T10:04:33.621Z OK 1803-005 words=252 faq=4 [186/574]
+2026-07-17T10:04:35.601Z OK 1101-001 words=253 faq=4 [187/573]
+2026-07-17T10:04:37.666Z OK 2002-003 words=251 faq=4 [188/572]
+2026-07-17T10:04:39.196Z OK 2004-003 words=252 faq=4 [189/571]
+2026-07-17T10:04:39.479Z OK 2101-090 words=269 faq=4 [190/570]
+2026-07-17T10:04:47.341Z OK 1204-010 words=270 faq=4 [191/569]
+2026-07-17T10:05:01.972Z OK 2101-096 words=254 faq=4 [192/568]
+2026-07-17T10:05:03.007Z OK 2100-009 words=259 faq=4 [193/567]
+2026-07-17T10:05:05.030Z OK 2101-099 words=256 faq=4 [194/566]
+2026-07-17T10:05:06.661Z OK 1503-013 words=249 faq=4 [195/565]
+2026-07-17T10:05:11.851Z OK 1203-021 words=265 faq=4 [196/564]
+2026-07-17T10:05:13.771Z OK 1101-008 words=266 faq=4 [197/563]
+2026-07-17T10:05:31.402Z OK 1203-019 words=267 faq=4 [198/562]
+2026-07-17T10:05:32.080Z OK 1101-012 words=264 faq=4 [199/561]
+2026-07-17T10:05:33.724Z OK 1001-005 words=264 faq=4 [200/560]
+2026-07-17T10:05:40.052Z OK 1102-007 words=291 faq=4 [201/559]
+2026-07-17T10:05:40.698Z OK 1300-049 words=255 faq=4 [202/558]
+2026-07-17T10:05:45.681Z OK 2108-021 words=264 faq=4 [203/557]
+2026-07-17T10:05:58.396Z OK 2104-012 words=253 faq=4 [204/556]
+2026-07-17T10:06:00.772Z OK 1503-021 words=249 faq=4 [205/555]
+2026-07-17T10:06:08.544Z OK 1102-005 words=254 faq=4 [206/554]
+2026-07-17T10:06:08.978Z OK 2101-056 words=252 faq=4 [207/553]
+2026-07-17T10:06:13.166Z OK 1402-014 words=278 faq=4 [208/552]
+2026-07-17T10:06:16.118Z OK 1605-007 words=267 faq=4 [209/551]
+2026-07-17T10:06:26.087Z OK 2104-006 words=262 faq=4 [210/550]
+2026-07-17T10:06:34.727Z OK 2104-019 words=274 faq=4 [211/549]
+2026-07-17T10:06:38.245Z OK 1601-014 words=273 faq=4 [212/548]
+2026-07-17T10:06:39.779Z OK 1604-023 words=274 faq=4 [213/547]
+2026-07-17T10:06:43.258Z OK 1600-005 words=260 faq=4 [214/546]
+2026-07-17T10:06:45.939Z OK 2002-012 words=262 faq=4 [215/545]
+2026-07-17T10:06:52.683Z OK 1004-001 words=245 faq=4 [216/544]
+2026-07-17T10:07:04.284Z OK 1000-006 words=279 faq=4 [217/543]
+2026-07-17T10:07:08.274Z OK 2104-001 words=250 faq=4 [218/542]
+2026-07-17T10:07:13.180Z OK 2002-014 words=251 faq=4 [219/541]
+2026-07-17T10:07:13.702Z OK 2101-054 words=270 faq=4 [220/540]
+2026-07-17T10:07:17.712Z OK 1605-010 words=244 faq=4 [221/539]
+2026-07-17T10:07:21.347Z OK 1603-010 words=252 faq=4 [222/538]
+2026-07-17T10:07:34.797Z OK 2101-093 words=274 faq=4 [223/537]
+2026-07-17T10:07:35.908Z OK 1604-003 words=272 faq=4 [224/536]
+2026-07-17T10:07:48.525Z OK 1901-012 words=274 faq=4 [225/535]
+2026-07-17T10:07:49.408Z OK 1203-001 words=252 faq=4 [226/534]
+2026-07-17T10:07:51.277Z OK 1402-005 words=261 faq=4 [227/533]
+2026-07-17T10:07:52.007Z OK 1701-012 words=274 faq=5 [228/532]
+2026-07-17T10:08:00.169Z OK 2107-003 words=259 faq=4 [229/531]
+2026-07-17T10:08:05.817Z OK 1603-013 words=276 faq=4 [230/530]
+2026-07-17T10:08:16.724Z OK 1603-020 words=245 faq=4 [231/529]
+2026-07-17T10:08:18.040Z OK 1101-009 words=251 faq=4 [232/528]
+2026-07-17T10:08:18.161Z OK 1604-007 words=268 faq=4 [233/527]
+2026-07-17T10:08:18.763Z OK 1603-002 words=272 faq=4 [234/526]
+2026-07-17T10:08:28.159Z OK 1202-013 words=266 faq=4 [235/525]
+2026-07-17T10:08:39.468Z OK 1901-014 words=259 faq=4 [236/524]
+2026-07-17T10:08:44.672Z OK 1204-012 words=251 faq=4 [237/523]
+2026-07-17T10:08:45.981Z OK 1002-004 words=259 faq=4 [238/522]
+2026-07-17T10:08:46.421Z OK 2716-047 words=264 faq=4 [239/521]
+2026-07-17T10:08:47.953Z OK 1604-008 words=267 faq=4 [240/520]
+2026-07-17T10:08:58.886Z OK 1005-016 words=273 faq=4 [241/519]
+2026-07-17T10:09:09.732Z OK 2004-002 words=258 faq=4 [242/518]
+2026-07-17T10:09:13.180Z OK 1503-015 words=246 faq=4 [243/517]
+2026-07-17T10:09:14.059Z OK 1901-019 words=268 faq=4 [244/516]
+2026-07-17T10:09:17.678Z OK 1701-017 words=252 faq=4 [245/515]
+2026-07-17T10:09:18.469Z OK 1604-015 words=276 faq=4 [246/514]
+2026-07-17T10:09:28.213Z OK 1604-022 words=263 faq=4 [247/513]
+2026-07-17T10:09:40.525Z OK 1300-002 words=271 faq=4 [248/512]
+2026-07-17T10:09:41.149Z OK 2104-020 words=244 faq=4 [249/511]
+2026-07-17T10:09:46.110Z OK 1503-048 words=261 faq=4 [250/510]
+2026-07-17T10:09:46.324Z OK 1604-025 words=276 faq=4 [251/509]
+2026-07-17T10:09:46.493Z OK 1503-052 words=258 faq=4 [252/508]
+2026-07-17T10:09:54.610Z OK 1605-001 words=264 faq=4 [253/507]
+2026-07-17T10:10:10.090Z OK 1203-002 words=276 faq=4 [254/506]
+2026-07-17T10:10:10.390Z OK 2001-005 words=249 faq=4 [255/505]
+2026-07-17T10:10:13.162Z OK 2100-011 words=257 faq=4 [256/504]
+2026-07-17T10:10:14.399Z OK 2100-001 words=265 faq=4 [257/503]
+2026-07-17T10:10:22.965Z OK 2109-025 words=262 faq=4 [258/502]
+2026-07-17T10:10:25.771Z OK 1402-002 words=277 faq=4 [259/501]
+2026-07-17T10:10:40.217Z OK 2002-010 words=283 faq=4 [260/500]
+2026-07-17T10:10:41.482Z OK 1005-008 words=263 faq=5 [261/499]
+2026-07-17T10:10:41.723Z OK 1202-014 words=249 faq=4 [262/498]
+2026-07-17T10:10:49.943Z OK 2104-010 words=257 faq=4 [263/497]
+2026-07-17T10:10:50.895Z OK 1203-031 words=261 faq=4 [264/496]
+2026-07-17T10:10:51.946Z OK 1001-010 words=257 faq=4 [265/495]
+2026-07-17T10:11:09.405Z OK 2109-026 words=248 faq=4 [266/494]
+2026-07-17T10:11:10.676Z OK 1000-003 words=263 faq=4 [267/493]
+2026-07-17T10:11:12.933Z OK 2101-043 words=254 faq=4 [268/492]
+2026-07-17T10:11:16.381Z OK 1203-004 words=278 faq=4 [269/491]
+2026-07-17T10:11:17.924Z OK 1605-009 words=251 faq=4 [270/490]
+2026-07-17T10:11:22.995Z OK 1102-002 words=284 faq=4 [271/489]
+2026-07-17T10:11:37.223Z OK 1604-020 words=256 faq=4 [272/488]
+2026-07-17T10:11:37.611Z OK 1402-010 words=266 faq=4 [273/487]
+2026-07-17T10:11:45.570Z OK 1503-051 words=270 faq=4 [274/486]
+2026-07-17T10:11:46.359Z OK 1604-021 words=269 faq=4 [275/485]
+2026-07-17T10:11:47.013Z OK 1204-006 words=256 faq=4 [276/484]
+2026-07-17T10:11:49.870Z OK 1604-011 words=263 faq=4 [277/483]
+2026-07-17T10:12:03.358Z OK 1901-015 words=250 faq=4 [278/482]
+2026-07-17T10:12:05.457Z OK 1503-049 words=242 faq=4 [279/481]
+2026-07-17T10:12:13.518Z OK 1604-018 words=258 faq=4 [280/480]
+2026-07-17T10:12:14.051Z OK 1702-045 words=271 faq=4 [281/479]
+2026-07-17T10:12:16.556Z OK 2104-002 words=264 faq=4 [282/478]
+2026-07-17T10:12:21.286Z OK 1801-003 words=270 faq=4 [283/477]
+2026-07-17T10:12:31.742Z OK 1901-013 words=252 faq=4 [284/476]
+2026-07-17T10:12:37.338Z OK 1901-018 words=268 faq=4 [285/475]
+2026-07-17T10:12:42.842Z OK 1702-043 words=260 faq=4 [286/474]
+2026-07-17T10:12:43.340Z OK 1601-016 words=248 faq=4 [287/473]
+2026-07-17T10:12:45.689Z OK 1701-013 words=253 faq=4 [288/472]
+2026-07-17T10:12:55.930Z OK 1604-006 words=261 faq=4 [289/471]
+2026-07-17T10:12:58.115Z OK 2002-015 words=265 faq=4 [290/470]
+2026-07-17T10:13:04.664Z OK 1401-002 words=268 faq=4 [291/469]
+2026-07-17T10:13:10.724Z OK 1901-023 words=269 faq=4 [292/468]
+2026-07-17T10:13:13.451Z OK 1203-027 words=259 faq=4 [293/467]
+2026-07-17T10:13:14.671Z OK 1801-008 words=260 faq=4 [294/466]
+2026-07-17T10:13:27.051Z OK 2108-012 words=256 faq=4 [295/465]
+2026-07-17T10:13:27.080Z OK 1001-002 words=275 faq=4 [296/464]
+2026-07-17T10:13:32.189Z OK 1202-005 words=241 faq=4 [297/463]
+2026-07-17T10:13:45.433Z OK 1901-024 words=253 faq=4 [298/462]
+2026-07-17T10:13:47.498Z OK 1300-034 words=276 faq=4 [299/461]
+2026-07-17T10:13:50.216Z OK 1601-017 words=262 faq=4 [300/460]
+2026-07-17T10:14:00.013Z OK 1005-025 words=265 faq=4 [301/459]
+2026-07-17T10:14:02.514Z OK 1005-002 words=259 faq=4 [302/458]
+2026-07-17T10:14:03.552Z OK 1204-018 words=269 faq=4 [303/457]
+2026-07-17T10:14:17.192Z OK 1202-008 words=262 faq=4 [304/456]
+2026-07-17T10:14:17.361Z OK 1005-018 words=269 faq=4 [305/455]
+2026-07-17T10:14:18.795Z OK 1503-028 words=282 faq=4 [306/454]
+2026-07-17T10:14:29.062Z OK 2109-040 words=275 faq=4 [307/453]
+2026-07-17T10:14:30.482Z OK 1600-024 words=254 faq=4 [308/452]
+2026-07-17T10:14:33.306Z OK 1503-014 words=249 faq=4 [309/451]
+2026-07-17T10:14:47.514Z OK 1503-020 words=270 faq=4 [310/450]
+2026-07-17T10:14:48.698Z OK 2101-039 words=264 faq=4 [311/449]
+2026-07-17T10:14:51.678Z OK 1503-023 words=255 faq=4 [312/448]
+2026-07-17T10:14:58.459Z OK 1503-019 words=247 faq=4 [313/447]
+2026-07-17T10:14:58.802Z OK 1402-006 words=266 faq=4 [314/446]
+2026-07-17T10:15:02.001Z OK 2108-003 words=267 faq=4 [315/445]
+2026-07-17T10:15:14.694Z OK 1601-018 words=253 faq=4 [316/444]
+2026-07-17T10:15:16.371Z OK 1503-044 words=241 faq=4 [317/443]
+2026-07-17T10:15:19.614Z OK 1503-005 words=259 faq=4 [318/442]
+2026-07-17T10:15:25.251Z OK 1503-031 words=254 faq=4 [319/441]
+2026-07-17T10:15:28.180Z OK 2108-016 words=270 faq=4 [320/440]
+2026-07-17T10:15:35.819Z OK 2109-006 words=269 faq=4 [321/439]
+2026-07-17T10:15:44.043Z OK 1600-025 words=263 faq=4 [322/438]
+2026-07-17T10:15:44.410Z OK 1803-006 words=257 faq=4 [323/437]
+2026-07-17T10:15:50.869Z OK 2108-013 words=279 faq=4 [324/436]
+2026-07-17T10:15:52.077Z OK 1502-002 words=275 faq=4 [325/435]
+2026-07-17T10:15:57.048Z OK 2108-020 words=265 faq=4 [326/434]
+2026-07-17T10:16:05.029Z OK 2109-016 words=260 faq=4 [327/433]
+2026-07-17T10:16:12.366Z OK 2100-007 words=259 faq=4 [328/432]
+2026-07-17T10:16:13.134Z OK 2109-003 words=262 faq=4 [329/431]
+2026-07-17T10:16:21.990Z OK 1403-001 words=251 faq=4 [330/430]
+2026-07-17T10:16:22.326Z OK 1805-001 words=251 faq=4 [331/429]
+2026-07-17T10:16:22.775Z OK 2200-002 words=279 faq=4 [332/428]
+2026-07-17T10:16:36.064Z OK 1300-004 words=277 faq=4 [333/427]
+2026-07-17T10:16:43.429Z OK 1300-037 words=261 faq=4 [334/426]
+2026-07-17T10:16:44.588Z OK 1300-010 words=261 faq=4 [335/425]
+2026-07-17T10:16:48.162Z OK 2109-002 words=238 faq=4 [336/424]
+2026-07-17T10:16:50.919Z OK 2101-088 words=253 faq=4 [337/423]
+2026-07-17T10:16:52.064Z OK 1901-017 words=253 faq=4 [338/422]
+2026-07-17T10:17:02.475Z OK 1601-015 words=246 faq=4 [339/421]
+2026-07-17T10:17:15.052Z OK 2101-100 words=266 faq=4 [340/420]
+2026-07-17T10:17:16.251Z OK 1100-002 words=272 faq=4 [341/419]
+2026-07-17T10:17:17.243Z OK 1600-038 words=271 faq=4 [342/418]
+2026-07-17T10:17:19.523Z OK 1402-009 words=264 faq=4 [343/417]
+2026-07-17T10:17:23.175Z OK 2108-010 words=264 faq=4 [344/416]
+2026-07-17T10:17:32.010Z OK 1300-017 words=251 faq=4 [345/415]
+2026-07-17T10:17:42.976Z OK 1600-017 words=252 faq=4 [346/414]
+2026-07-17T10:17:43.234Z OK 1503-016 words=275 faq=4 [347/413]
+2026-07-17T10:17:47.198Z OK 1901-005 words=255 faq=4 [348/412]
+2026-07-17T10:17:47.225Z OK 1300-051 words=278 faq=4 [349/411]
+2026-07-17T10:17:56.992Z OK 2109-032 words=281 faq=4 [350/410]
+2026-07-17T10:17:59.875Z OK 2108-004 words=253 faq=4 [351/409]
+2026-07-17T10:18:10.780Z OK 1203-026 words=251 faq=4 [352/408]
+2026-07-17T10:18:13.120Z OK 1603-014 words=276 faq=4 [353/407]
+2026-07-17T10:18:17.001Z OK 1300-031 words=257 faq=4 [354/406]
+2026-07-17T10:18:17.784Z OK 1503-041 words=262 faq=4 [355/405]
+2026-07-17T10:18:21.700Z OK 1205-024 words=240 faq=4 [356/404]
+2026-07-17T10:18:28.905Z OK 2105-009 words=262 faq=4 [357/403]
+2026-07-17T10:18:38.536Z OK 2101-018 words=251 faq=4 [358/402]
+2026-07-17T10:18:40.417Z OK 1600-015 words=264 faq=4 [359/401]
+2026-07-17T10:18:43.602Z OK 2101-072 words=282 faq=4 [360/400]
+2026-07-17T10:18:45.127Z OK 1901-010 words=244 faq=4 [361/399]
+2026-07-17T10:18:49.767Z OK 1601-004 words=254 faq=4 [362/398]
+2026-07-17T10:18:58.890Z OK 2000-001 words=248 faq=4 [363/397]
+2026-07-17T10:19:08.393Z OK 2200-001 words=292 faq=4 [364/396]
+2026-07-17T10:19:10.900Z OK 1300-040 words=256 faq=4 [365/395]
+2026-07-17T10:19:11.854Z OK 1600-023 words=276 faq=4 [366/394]
+2026-07-17T10:19:13.109Z OK 1203-017 words=253 faq=4 [367/393]
+2026-07-17T10:19:21.080Z OK 1001-001 words=281 faq=4 [368/392]
+2026-07-17T10:19:29.600Z OK 1002-002 words=263 faq=4 [369/391]
+2026-07-17T10:19:36.107Z OK 1901-008 words=265 faq=4 [370/390]
+2026-07-17T10:19:38.326Z OK 1203-016 words=259 faq=4 [371/389]
+2026-07-17T10:19:43.464Z OK 1202-007 words=242 faq=4 [372/388]
+2026-07-17T10:19:43.505Z OK 1005-020 words=269 faq=4 [373/387]
+2026-07-17T10:19:47.586Z OK 2101-092 words=248 faq=4 [374/386]
+2026-07-17T10:19:56.761Z OK 1505-004 words=244 faq=4 [375/385]
+2026-07-17T10:20:06.589Z OK 1005-011 words=253 faq=4 [376/384]
+2026-07-17T10:20:08.332Z OK 1300-023 words=259 faq=4 [377/383]
+2026-07-17T10:20:14.742Z OK 1005-029 words=268 faq=4 [378/382]
+2026-07-17T10:20:14.925Z OK 1000-010 words=262 faq=4 [379/381]
+2026-07-17T10:20:17.250Z OK 1601-012 words=261 faq=4 [380/380]
+2026-07-17T10:20:25.094Z OK 2107-005 words=256 faq=4 [381/379]
+2026-07-17T10:20:34.605Z OK 1204-011 words=266 faq=4 [382/378]
+2026-07-17T10:20:35.208Z OK 1101-007 words=261 faq=4 [383/377]
+2026-07-17T10:20:43.479Z OK 1300-053 words=257 faq=4 [384/376]
+2026-07-17T10:20:44.023Z OK 1005-001 words=261 faq=4 [385/375]
+2026-07-17T10:20:45.244Z OK 1300-019 words=266 faq=4 [386/374]
+2026-07-17T10:20:53.187Z OK 1300-011 words=271 faq=4 [387/373]
+2026-07-17T10:21:02.904Z OK 2101-095 words=261 faq=4 [388/372]
+2026-07-17T10:21:04.623Z OK 1300-044 words=279 faq=4 [389/371]
+2026-07-17T10:21:11.047Z OK 1502-010 words=260 faq=4 [390/370]
+2026-07-17T10:21:11.101Z OK 1605-008 words=248 faq=4 [391/369]
+2026-07-17T10:21:11.428Z OK 1503-022 words=242 faq=4 [392/368]
+2026-07-17T10:21:21.574Z OK 1503-008 words=263 faq=4 [393/367]
+2026-07-17T10:21:34.423Z OK 2101-004 words=241 faq=4 [394/366]
+2026-07-17T10:21:34.668Z OK 1005-024 words=267 faq=4 [395/365]
+2026-07-17T10:21:34.909Z OK 1603-017 words=244 faq=4 [396/364]
+2026-07-17T10:21:38.815Z OK 1603-011 words=254 faq=4 [397/363]
+2026-07-17T10:21:39.822Z OK 1901-004 words=260 faq=4 [398/362]
+2026-07-17T10:21:49.408Z OK 2107-001 words=257 faq=4 [399/361]
+2026-07-17T10:22:02.588Z OK 1603-018 words=272 faq=4 [400/360]
+2026-07-17T10:22:03.119Z OK 1402-008 words=266 faq=4 [401/359]
+2026-07-17T10:22:03.668Z OK 1201-001 words=258 faq=4 [402/358]
+2026-07-17T10:22:04.217Z OK 1600-009 words=273 faq=4 [403/357]
+2026-07-17T10:22:07.535Z OK 2101-023 words=254 faq=4 [404/356]
+2026-07-17T10:22:15.516Z OK 2101-094 words=268 faq=4 [405/355]
+2026-07-17T10:22:30.760Z OK 1000-001 words=249 faq=4 [406/354]
+2026-07-17T10:22:31.203Z OK 2101-044 words=246 faq=4 [407/353]
+2026-07-17T10:22:32.324Z OK 2109-035 words=252 faq=4 [408/352]
+2026-07-17T10:22:33.469Z OK 1204-016 words=259 faq=4 [409/351]
+2026-07-17T10:22:35.807Z OK 2001-007 words=261 faq=4 [410/350]
+2026-07-17T10:22:43.528Z OK 1503-056 words=259 faq=4 [411/349]
+2026-07-17T10:22:55.172Z OK 2101-037 words=244 faq=4 [412/348]
+2026-07-17T10:23:01.037Z OK 1300-003 words=246 faq=4 [413/347]
+2026-07-17T10:23:01.121Z OK 1600-008 words=251 faq=4 [414/346]
+2026-07-17T10:23:03.966Z OK 1601-025 words=238 faq=4 [415/345]
+2026-07-17T10:23:04.135Z OK 1102-001 words=276 faq=4 [416/344]
+2026-07-17T10:23:12.361Z OK 1601-027 words=260 faq=4 [417/343]
+2026-07-17T10:23:24.201Z OK 2109-009 words=251 faq=4 [418/342]
+2026-07-17T10:23:29.176Z OK 1203-011 words=250 faq=4 [419/341]
+2026-07-17T10:23:29.816Z OK 2105-021 words=260 faq=4 [420/340]
+2026-07-17T10:23:34.408Z OK 1600-006 words=268 faq=4 [421/339]
+2026-07-17T10:23:40.058Z OK 1701-010 words=246 faq=4 [422/338]
+2026-07-17T10:23:48.236Z OK 2101-091 words=256 faq=4 [423/337]
+2026-07-17T10:23:48.845Z FAIL 1300-016: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:49.345Z FAIL 1000-009: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:49.812Z FAIL 2105-005: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:50.632Z FAIL 1000-014: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:50.720Z OK 2108-001 words=248 faq=4 [428/332]
+2026-07-17T10:23:51.072Z FAIL 1502-003: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:51.420Z FAIL 1804-004: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:51.670Z FAIL 2200-004: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:51.840Z FAIL 1604-009: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:52.177Z FAIL 1604-013: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:52.361Z FAIL 1005-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:52.609Z FAIL 1202-021: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:52.813Z FAIL 1503-006: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:53.037Z FAIL 1503-050: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:53.440Z FAIL 1601-024: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:53.486Z FAIL 2109-036: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:53.897Z FAIL 1601-006: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:54.201Z FAIL 1202-001: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:54.381Z FAIL 1702-113: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:54.657Z FAIL 1402-015: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:54.886Z FAIL 2101-078: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:55.109Z FAIL 1300-052: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:55.334Z FAIL 1601-013: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:55.645Z FAIL 1801-006: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:55.940Z FAIL 1204-003: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:56.109Z FAIL 1300-029: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:56.402Z FAIL 2105-002: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:56.545Z FAIL 1901-002: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:56.920Z OK 2105-019 words=259 faq=4 [452/308]
+2026-07-17T10:23:56.977Z FAIL 2105-014: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:57.189Z FAIL 1402-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:57.393Z FAIL 2108-002: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:57.405Z FAIL 1300-055: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:57.465Z OK 1600-010 words=277 faq=4 [457/303]
+2026-07-17T10:23:57.941Z FAIL 1401-001: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:57.952Z FAIL 1503-002: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:58.089Z FAIL 1803-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:58.389Z FAIL 1101-005: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:58.436Z FAIL 1005-031: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:58.469Z FAIL 1005-028: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:58.529Z FAIL 1300-015: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:58.870Z FAIL 1000-013: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:58.949Z FAIL 1601-020: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:58.971Z FAIL 1502-006: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:58.981Z FAIL 1503-040: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:59.309Z FAIL 2109-021: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:59.389Z FAIL 1300-041: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:59.396Z FAIL 1601-023: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:59.413Z FAIL 2100-015: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:59.819Z FAIL 1502-005: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:59.821Z FAIL 1601-026: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:59.836Z FAIL 2200-003: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:23:59.905Z FAIL 1102-004: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:00.237Z FAIL 2104-011: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:00.272Z FAIL 2105-011: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:00.338Z FAIL 2100-021: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:00.497Z FAIL 2002-002: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:00.689Z FAIL 1603-004: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:00.732Z FAIL 1601-022: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:00.778Z FAIL 1203-018: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:01.149Z FAIL 1802-006: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:01.277Z FAIL 2100-019: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:01.297Z FAIL 2108-017: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:01.377Z OK 1802-005 words=250 faq=4 [487/273]
+2026-07-17T10:24:01.473Z FAIL 1503-043: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:01.584Z FAIL 1901-022: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:01.708Z FAIL 2101-065: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:01.729Z FAIL 1603-005: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:01.805Z FAIL 2101-068: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:01.897Z FAIL 1202-003: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:02.213Z FAIL 2105-020: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:02.274Z FAIL 1702-110: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:02.281Z FAIL 2100-003: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:02.338Z FAIL 1603-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:02.657Z FAIL 2109-001: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:02.713Z FAIL 1300-008: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:02.789Z FAIL 2109-005: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:02.813Z FAIL 1204-005: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:03.084Z FAIL 1803-002: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:03.269Z FAIL 1401-003: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:03.373Z FAIL 2002-013: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:03.441Z FAIL 1300-048: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:03.517Z FAIL 1204-020: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:03.772Z FAIL 1300-033: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:03.782Z FAIL 2105-013: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:03.997Z FAIL 1300-038: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:04.045Z FAIL 1604-014: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:04.261Z FAIL 2100-010: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:04.325Z FAIL 1600-039: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:04.461Z FAIL 1203-005: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:04.677Z FAIL 1300-006: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:04.787Z FAIL 1600-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:04.788Z FAIL 1503-026: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:04.918Z FAIL 2104-017: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:05.145Z FAIL 1901-009: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:05.219Z FAIL 1104-002: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:05.241Z FAIL 2109-010: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:05.397Z FAIL 2105-012: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:05.609Z FAIL 2100-022: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:05.620Z FAIL 1300-046: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:05.642Z FAIL 1503-058: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:05.853Z FAIL 1005-026: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:06.145Z FAIL 2001-004: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:06.225Z FAIL 2101-064: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:06.237Z FAIL 1104-005: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:06.301Z FAIL 2109-024: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:06.380Z FAIL 2109-008: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:06.592Z FAIL 2100-020: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:06.648Z FAIL 1002-001: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:06.685Z FAIL 1204-014: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:06.727Z FAIL 2100-014: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:06.853Z FAIL 1000-012: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:07.106Z FAIL 2109-031: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:07.111Z FAIL 1901-006: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:07.201Z FAIL 1502-008: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:07.313Z FAIL 2100-006: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:07.520Z FAIL 1000-002: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:07.528Z FAIL 1503-033: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:07.554Z FAIL 1604-002: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:07.688Z FAIL 2108-009: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:07.765Z FAIL 1600-011: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:07.926Z FAIL 2105-018: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:07.949Z FAIL 1300-022: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:08.033Z FAIL 1503-009: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:08.142Z FAIL 1005-022: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:08.190Z FAIL 1300-024: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:08.505Z FAIL 1503-055: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:08.545Z FAIL 1901-003: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:08.648Z FAIL 1104-001: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:08.693Z FAIL 1204-008: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:08.753Z OK 1502-004 words=255 faq=4 [554/206]
+2026-07-17T10:24:08.945Z FAIL 2100-002: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:08.971Z FAIL 1202-017: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:09.060Z FAIL 2108-018: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:09.109Z FAIL 1605-002: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:09.125Z FAIL 1702-044: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:09.345Z FAIL 1202-012: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:09.357Z FAIL 1701-002: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:09.558Z FAIL 1505-005: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:09.563Z FAIL 1600-043: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:09.582Z FAIL 1000-005: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:09.596Z FAIL 1203-014: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:09.761Z FAIL 1601-005: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:09.805Z FAIL 1600-040: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:10.053Z FAIL 2108-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:10.077Z FAIL 2105-004: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:10.148Z FAIL 1503-037: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:10.158Z FAIL 1204-013: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:10.204Z FAIL 2105-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:10.213Z FAIL 2109-027: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:10.462Z FAIL 2001-008: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:10.477Z FAIL 1300-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:10.582Z FAIL 1104-004: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:10.601Z FAIL 1804-003: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:10.657Z FAIL 1402-012: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:10.690Z FAIL 1505-001: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:11.045Z FAIL 1300-026: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:11.061Z FAIL 1202-020: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:11.120Z FAIL 1604-016: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:11.159Z FAIL 2101-071: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:11.233Z FAIL 1503-038: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:11.486Z FAIL 1604-024: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:11.545Z FAIL 1005-023: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:11.573Z FAIL 1005-009: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:11.664Z FAIL 1605-011: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:11.730Z FAIL 1300-018: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:11.978Z FAIL 1600-012: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:12.009Z FAIL 1300-032: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:12.041Z FAIL 1600-013: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:12.089Z FAIL 1005-019: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:12.218Z FAIL 2004-001: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:12.425Z FAIL 1502-009: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:12.437Z FAIL 1604-017: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:12.449Z FAIL 1202-004: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:12.532Z FAIL 1204-002: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:12.662Z FAIL 2107-002: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:12.905Z FAIL 2109-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:12.982Z FAIL 2104-014: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:13.089Z FAIL 1101-003: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:13.096Z FAIL 1300-056: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:13.121Z FAIL 1802-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:13.369Z FAIL 1000-008: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:13.425Z FAIL 2101-059: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:13.557Z FAIL 2101-040: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:13.633Z FAIL 1203-006: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:13.809Z FAIL 1204-019: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:13.865Z FAIL 2100-025: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:14.100Z FAIL 1300-043: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:14.126Z FAIL 2101-035: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:14.260Z FAIL 1204-015: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:14.293Z FAIL 1300-009: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:14.300Z FAIL 1202-016: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:14.561Z FAIL 1203-020: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:14.582Z FAIL 2001-006: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:14.729Z FAIL 2105-008: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:14.793Z FAIL 2002-016: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:14.977Z FAIL 2104-016: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:14.993Z FAIL 1300-001: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:15.001Z FAIL 1300-047: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:15.153Z FAIL 2109-033: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:15.253Z FAIL 1600-036: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:15.401Z FAIL 1603-001: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:15.421Z FAIL 2101-051: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:15.581Z FAIL 2002-020: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:15.818Z FAIL 2101-077: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:15.853Z FAIL 1204-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:15.946Z FAIL 1600-042: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:15.965Z FAIL 1203-023: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:16.117Z FAIL 1402-013: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:16.162Z FAIL 2104-003: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:16.387Z FAIL 1300-005: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:16.397Z FAIL 1203-025: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:16.497Z FAIL 2101-073: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:16.557Z FAIL 1503-010: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:16.581Z FAIL 1601-008: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:16.733Z FAIL 2101-082: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:16.961Z FAIL 1901-011: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:17.017Z FAIL 1004-002: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:17.023Z FAIL 2109-013: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:17.053Z FAIL 1901-020: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:17.129Z FAIL 1202-019: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:17.196Z FAIL 1603-012: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:17.444Z FAIL 2109-030: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:17.481Z FAIL 1503-032: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:17.560Z FAIL 1702-112: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:17.636Z FAIL 1803-004: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:17.665Z FAIL 1503-024: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:17.667Z FAIL 1101-004: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:17.885Z FAIL 1601-009: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:17.905Z FAIL 2109-028: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:18.036Z FAIL 1603-003: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:18.088Z FAIL 1503-045: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:18.161Z FAIL 1203-024: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:18.184Z FAIL 1503-034: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:18.359Z FAIL 1000-004: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:18.457Z FAIL 1804-001: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:18.526Z FAIL 1300-014: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:18.528Z FAIL 1601-019: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:18.667Z FAIL 2101-030: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:18.761Z FAIL 1503-030: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:18.861Z FAIL 2004-004: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:18.913Z FAIL 2101-097: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:19.120Z FAIL 1601-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:19.189Z FAIL 1502-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:19.274Z FAIL 2109-037: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:19.279Z FAIL 2002-011: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:19.340Z FAIL 2108-015: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:19.377Z FAIL 1702-048: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:19.562Z FAIL 1203-009: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:19.662Z FAIL 2109-015: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:19.773Z FAIL 1604-005: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:19.881Z FAIL 1203-028: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:19.897Z FAIL 1801-002: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:20.009Z FAIL 1801-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:20.139Z FAIL 1606-002: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:20.189Z FAIL 1205-023: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:20.333Z FAIL 2108-014: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:20.386Z FAIL 1202-011: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:20.397Z FAIL 2109-011: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:20.786Z FAIL 1503-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:20.805Z FAIL 1300-036: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:20.926Z FAIL 2109-039: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:20.966Z FAIL 1204-017: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:21.005Z FAIL 1203-015: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:21.189Z FAIL 1300-042: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:21.221Z FAIL 1000-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:21.393Z FAIL 2109-022: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:21.417Z FAIL 2001-001: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:21.661Z FAIL 1005-004: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:21.701Z FAIL 1300-050: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:21.758Z FAIL 2108-008: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:21.823Z FAIL 1203-010: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:21.909Z FAIL 2104-015: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:22.082Z FAIL 1001-004: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:22.117Z FAIL 2109-020: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:22.319Z FAIL 2101-028: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:22.325Z FAIL 2109-004: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:22.405Z FAIL 2108-005: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:22.505Z FAIL 1803-001: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:22.637Z FAIL 1603-006: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:22.738Z FAIL 2105-010: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:22.743Z FAIL 1801-005: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:22.852Z FAIL 2100-018: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:22.950Z FAIL 1402-011: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:23.080Z FAIL 1005-006: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:23.174Z FAIL 2105-016: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:23.179Z FAIL 2108-019: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:23.370Z FAIL 1005-015: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:23.507Z FAIL 2104-018: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:23.625Z FAIL 1001-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:23.786Z FAIL 2108-022: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:23.865Z FAIL 2104-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:23.978Z FAIL 1503-035: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:24.001Z FAIL 1001-009: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:24.049Z FAIL 2109-041: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:24.065Z FAIL 2101-087: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:24.195Z FAIL 2108-011: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:24.302Z FAIL 1205-021: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:24.434Z FAIL 1503-004: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:24.440Z FAIL 1300-035: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:24.602Z FAIL 1005-027: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:24.689Z FAIL 1203-013: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:24.696Z FAIL 2109-019: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:24.865Z FAIL 1503-039: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:24.873Z FAIL 2105-017: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:24.880Z FAIL 2109-012: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:25.034Z FAIL 2109-018: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:25.142Z FAIL 1005-005: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:25.277Z FAIL 1901-007: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:25.317Z FAIL 1001-012: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:25.324Z FAIL 2101-074: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:25.537Z FAIL 1300-013: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:25.578Z FAIL 1600-028: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:25.625Z FAIL 2100-008: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:25.754Z FAIL 1005-010: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:25.811Z FAIL 1300-012: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:26.018Z FAIL 1300-054: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:26.157Z FAIL 1205-015: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:26.222Z FAIL 2101-010: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:26.266Z FAIL 2001-003: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:26.480Z FAIL 1300-020: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:26.607Z FAIL 1600-031: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:26.641Z FAIL 1503-018: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:26.741Z FAIL 2101-070: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:26.757Z FAIL 1300-045: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:26.977Z FAIL 1300-030: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:27.113Z FAIL 1005-013: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:27.146Z FAIL 2101-001: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:27.173Z FAIL 2105-023: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:27.381Z FAIL 2101-021: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:27.401Z FAIL 2105-024: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:27.597Z FAIL 2105-026: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:27.617Z FAIL 2105-027: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:27.802Z FAIL 2105-028: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:27.826Z FAIL 2105-029: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:28.186Z FAIL 2105-025: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:28.249Z FAIL 2105-033: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:28.261Z FAIL 2105-032: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:28.469Z FAIL 2105-030: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:28.577Z FAIL 2105-031: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:28.622Z FAIL 2105-034: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:29.117Z FAIL 1601-010: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}
+2026-07-17T10:24:29.118Z DONE ok=426 failed=339
+2026-07-17T10:57:52.089Z START total=768 pending=339 done_before=429 concurrency=6
+2026-07-17T10:58:21.231Z OK 1300-016 words=250 faq=4 [1/333]
+2026-07-17T10:58:22.671Z OK 1402-018 words=274 faq=4 [2/332]
+2026-07-17T10:58:23.554Z OK 2105-005 words=265 faq=4 [3/331]
+2026-07-17T10:58:24.113Z OK 1000-009 words=268 faq=4 [4/330]
+2026-07-17T10:58:25.036Z OK 1100-003 words=273 faq=4 [5/329]
+2026-07-17T10:58:25.636Z OK 1000-014 words=263 faq=4 [6/328]
+2026-07-17T10:58:48.297Z OK 1604-009 words=239 faq=4 [7/327]
+2026-07-17T10:58:49.446Z OK 1502-003 words=254 faq=4 [8/326]
+2026-07-17T10:58:50.039Z OK 1804-004 words=274 faq=4 [9/325]
+2026-07-17T10:58:51.018Z OK 1604-013 words=238 faq=4 [10/324]
+2026-07-17T10:58:52.285Z OK 2200-004 words=261 faq=4 [11/323]
+2026-07-17T10:58:55.663Z OK 1005-007 words=267 faq=4 [12/322]
+2026-07-17T10:59:15.801Z OK 1503-006 words=266 faq=4 [13/321]
+2026-07-17T10:59:17.552Z OK 1202-021 words=258 faq=4 [14/320]
+2026-07-17T10:59:17.855Z OK 1601-024 words=254 faq=4 [15/319]
+2026-07-17T10:59:20.092Z OK 1503-050 words=248 faq=4 [16/318]
+2026-07-17T10:59:21.072Z OK 2109-036 words=259 faq=4 [17/317]
+2026-07-17T10:59:27.416Z OK 1601-006 words=273 faq=4 [18/316]
+2026-07-17T10:59:43.336Z OK 1202-001 words=252 faq=4 [19/315]
+2026-07-17T10:59:47.096Z OK 1402-015 words=280 faq=4 [20/314]
+2026-07-17T10:59:47.980Z OK 1702-113 words=289 faq=4 [21/313]
+2026-07-17T10:59:48.748Z OK 2101-078 words=259 faq=4 [22/312]
+2026-07-17T10:59:49.190Z OK 1300-052 words=265 faq=4 [23/311]
+2026-07-17T10:59:57.522Z OK 1601-013 words=267 faq=4 [24/310]
+2026-07-17T11:00:13.226Z OK 1300-029 words=230 faq=4 [25/309]
+2026-07-17T11:00:14.426Z OK 1901-002 words=245 faq=4 [26/308]
+2026-07-17T11:00:14.805Z OK 1801-006 words=278 faq=4 [27/307]
+2026-07-17T11:00:17.091Z OK 2105-002 words=249 faq=4 [28/306]
+2026-07-17T11:00:17.872Z OK 1204-003 words=254 faq=4 [29/305]
+2026-07-17T11:00:28.910Z OK 2105-014 words=261 faq=4 [30/304]
+2026-07-17T11:00:41.074Z OK 1402-007 words=264 faq=4 [31/303]
+2026-07-17T11:00:42.953Z OK 1300-055 words=263 faq=4 [32/302]
+2026-07-17T11:00:43.559Z OK 1401-001 words=246 faq=4 [33/301]
+2026-07-17T11:00:44.813Z OK 2108-002 words=261 faq=4 [34/300]
+2026-07-17T11:00:46.335Z OK 1503-002 words=246 faq=4 [35/299]
+2026-07-17T11:00:55.749Z OK 1005-031 words=248 faq=4 [36/298]
+2026-07-17T11:01:09.157Z OK 1803-007 words=247 faq=4 [37/297]
+2026-07-17T11:01:10.657Z OK 1005-028 words=265 faq=4 [38/296]
+2026-07-17T11:01:10.849Z OK 1101-005 words=263 faq=4 [39/295]
+2026-07-17T11:01:14.602Z OK 1300-015 words=265 faq=4 [40/294]
+2026-07-17T11:01:15.668Z OK 1503-040 words=243 faq=4 [41/293]
+2026-07-17T11:01:27.243Z OK 1000-013 words=249 faq=4 [42/292]
+2026-07-17T11:01:37.280Z OK 1601-020 words=255 faq=4 [43/291]
+2026-07-17T11:01:39.186Z OK 1502-006 words=252 faq=4 [44/290]
+2026-07-17T11:01:41.737Z OK 2109-021 words=250 faq=4 [45/289]
+2026-07-17T11:01:42.971Z OK 2100-015 words=260 faq=4 [46/288]
+2026-07-17T11:01:53.864Z OK 1601-023 words=289 faq=4 [47/287]
+2026-07-17T11:01:55.409Z OK 1300-041 words=263 faq=4 [48/286]
+2026-07-17T11:02:09.466Z OK 1502-005 words=265 faq=4 [49/285]
+2026-07-17T11:02:12.886Z OK 2200-003 words=251 faq=4 [50/284]
+2026-07-17T11:02:12.935Z OK 1601-026 words=269 faq=4 [51/283]
+2026-07-17T11:02:15.718Z OK 1102-004 words=262 faq=4 [52/282]
+2026-07-17T11:02:23.847Z OK 2104-011 words=258 faq=4 [53/281]
+2026-07-17T11:02:26.353Z OK 2105-011 words=252 faq=4 [54/280]
+2026-07-17T11:02:38.539Z OK 2100-021 words=242 faq=4 [55/279]
+2026-07-17T11:02:42.074Z OK 2002-002 words=270 faq=4 [56/278]
+2026-07-17T11:02:48.059Z OK 1203-018 words=282 faq=4 [57/277]
+2026-07-17T11:02:48.127Z OK 1603-004 words=255 faq=4 [58/276]
+2026-07-17T11:02:51.656Z OK 1601-022 words=270 faq=4 [59/275]
+2026-07-17T11:03:00.030Z OK 1802-006 words=264 faq=4 [60/274]
+2026-07-17T11:03:06.111Z OK 2100-019 words=264 faq=4 [61/273]
+2026-07-17T11:03:14.835Z OK 1901-022 words=249 faq=4 [62/272]
+2026-07-17T11:03:19.347Z OK 2108-017 words=281 faq=4 [63/271]
+2026-07-17T11:03:19.670Z OK 1603-005 words=275 faq=4 [64/270]
+2026-07-17T11:03:26.511Z OK 1503-043 words=278 faq=4 [65/269]
+2026-07-17T11:03:28.634Z OK 2101-065 words=248 faq=4 [66/268]
+2026-07-17T11:03:33.653Z OK 2101-068 words=260 faq=4 [67/267]
+2026-07-17T11:03:44.670Z OK 1202-003 words=260 faq=4 [68/266]
+2026-07-17T11:03:49.477Z OK 2100-003 words=269 faq=4 [69/265]
+2026-07-17T11:03:55.229Z OK 2105-020 words=276 faq=4 [70/264]
+2026-07-17T11:03:57.333Z OK 1702-110 words=257 faq=4 [71/263]
+2026-07-17T11:03:57.706Z OK 1603-007 words=271 faq=4 [72/262]
+2026-07-17T11:04:03.389Z OK 2109-008 words=264 faq=4 [73/261]
+2026-07-17T11:04:14.824Z OK 2109-001 words=268 faq=4 [74/260]
+2026-07-17T11:04:20.254Z OK 1300-008 words=281 faq=4 [75/259]
+2026-07-17T11:04:24.758Z OK 1803-002 words=267 faq=4 [76/258]
+2026-07-17T11:04:26.829Z OK 1204-005 words=268 faq=4 [77/257]
+2026-07-17T11:04:33.674Z OK 2109-005 words=265 faq=4 [78/256]
+2026-07-17T11:04:36.371Z OK 1300-048 words=262 faq=4 [79/255]
+2026-07-17T11:04:43.238Z OK 1401-003 words=260 faq=4 [80/254]
+2026-07-17T11:04:48.872Z OK 2002-013 words=268 faq=4 [81/253]
+2026-07-17T11:04:54.667Z OK 1204-020 words=254 faq=4 [82/252]
+2026-07-17T11:04:57.382Z OK 2105-013 words=264 faq=4 [83/251]
+2026-07-17T11:05:00.789Z OK 1300-033 words=272 faq=4 [84/250]
+2026-07-17T11:05:04.544Z OK 1604-014 words=261 faq=4 [85/249]
+2026-07-17T11:05:11.100Z OK 1300-038 words=255 faq=4 [86/248]
+2026-07-17T11:05:17.068Z OK 1600-039 words=278 faq=4 [87/247]
+2026-07-17T11:05:23.543Z OK 1203-005 words=246 faq=4 [88/246]
+2026-07-17T11:05:24.226Z OK 2100-010 words=264 faq=4 [89/245]
+2026-07-17T11:05:28.658Z OK 1300-006 words=262 faq=4 [90/244]
+2026-07-17T11:05:34.671Z OK 1503-026 words=254 faq=4 [91/243]
+2026-07-17T11:05:39.633Z OK 1600-007 words=265 faq=4 [92/242]
+2026-07-17T11:05:44.035Z OK 2104-017 words=265 faq=4 [93/241]
+2026-07-17T11:05:51.345Z OK 1901-009 words=246 faq=4 [94/240]
+2026-07-17T11:05:55.029Z OK 2109-010 words=261 faq=4 [95/239]
+2026-07-17T11:05:58.470Z OK 1104-002 words=261 faq=4 [96/238]
+2026-07-17T11:06:04.418Z OK 2105-012 words=263 faq=4 [97/237]
+2026-07-17T11:06:13.338Z OK 2100-022 words=280 faq=4 [98/236]
+2026-07-17T11:06:15.859Z OK 1503-058 words=266 faq=4 [99/235]
+2026-07-17T11:06:21.175Z OK 1300-046 words=267 faq=4 [100/234]
+2026-07-17T11:06:24.516Z OK 2001-004 words=251 faq=4 [101/233]
+2026-07-17T11:06:24.942Z OK 1005-026 words=262 faq=4 [102/232]
+2026-07-17T11:06:33.699Z OK 1104-005 words=266 faq=4 [103/231]
+2026-07-17T11:06:44.134Z OK 2101-064 words=259 faq=4 [104/230]
+2026-07-17T11:06:46.610Z OK 2109-024 words=260 faq=4 [105/229]
+2026-07-17T11:06:49.923Z OK 2100-020 words=255 faq=4 [106/228]
+2026-07-17T11:06:54.300Z OK 1002-001 words=275 faq=4 [107/227]
+2026-07-17T11:06:54.563Z OK 1204-014 words=260 faq=4 [108/226]
+2026-07-17T11:07:02.458Z OK 2100-014 words=270 faq=4 [109/225]
+2026-07-17T11:07:14.202Z OK 1000-012 words=245 faq=4 [110/224]
+2026-07-17T11:07:16.198Z OK 1503-033 words=258 faq=4 [111/223]
+2026-07-17T11:07:17.290Z OK 2109-031 words=252 faq=4 [112/222]
+2026-07-17T11:07:24.679Z OK 1901-006 words=291 faq=4 [113/221]
+2026-07-17T11:07:24.878Z OK 1502-008 words=268 faq=4 [114/220]
+2026-07-17T11:07:35.483Z OK 2100-006 words=277 faq=5 [115/219]
+2026-07-17T11:07:44.331Z OK 1604-002 words=277 faq=4 [116/218]
+2026-07-17T11:07:46.837Z OK 1000-002 words=280 faq=4 [117/217]
+2026-07-17T11:07:49.830Z OK 2108-009 words=265 faq=4 [118/216]
+2026-07-17T11:07:55.511Z OK 1600-011 words=263 faq=4 [119/215]
+2026-07-17T11:07:56.146Z OK 2105-018 words=257 faq=4 [120/214]
+2026-07-17T11:08:07.924Z OK 1300-022 words=272 faq=4 [121/213]
+2026-07-17T11:08:15.200Z OK 1503-009 words=247 faq=4 [122/212]
+2026-07-17T11:08:19.407Z OK 1300-024 words=253 faq=4 [123/211]
+2026-07-17T11:08:19.498Z OK 1005-022 words=271 faq=4 [124/210]
+2026-07-17T11:08:23.362Z OK 1901-003 words=257 faq=4 [125/209]
+2026-07-17T11:08:27.057Z OK 1503-055 words=270 faq=4 [126/208]
+2026-07-17T11:08:36.025Z OK 1204-008 words=260 faq=4 [127/207]
+2026-07-17T11:08:42.834Z OK 1104-001 words=257 faq=4 [128/206]
+2026-07-17T11:08:48.267Z OK 2100-002 words=272 faq=4 [129/205]
+2026-07-17T11:08:49.502Z OK 2108-018 words=261 faq=4 [130/204]
+2026-07-17T11:08:52.198Z OK 1202-017 words=267 faq=4 [131/203]
+2026-07-17T11:08:54.849Z OK 1605-002 words=261 faq=4 [132/202]
+2026-07-17T11:09:05.697Z OK 1702-044 words=265 faq=4 [133/201]
+2026-07-17T11:09:12.188Z OK 1202-012 words=264 faq=4 [134/200]
+2026-07-17T11:09:17.621Z OK 1701-002 words=259 faq=4 [135/199]
+2026-07-17T11:09:17.860Z OK 1203-014 words=258 faq=4 [136/198]
+2026-07-17T11:09:22.052Z OK 1505-005 words=278 faq=4 [137/197]
+2026-07-17T11:09:27.692Z OK 1600-043 words=275 faq=4 [138/196]
+2026-07-17T11:09:31.432Z OK 1000-005 words=262 faq=4 [139/195]
+2026-07-17T11:09:38.929Z OK 1600-040 words=256 faq=4 [140/194]
+2026-07-17T11:09:45.749Z OK 2108-007 words=256 faq=4 [141/193]
+2026-07-17T11:09:49.332Z OK 1601-005 words=274 faq=4 [142/192]
+2026-07-17T11:09:54.728Z OK 1204-013 words=277 faq=4 [143/191]
+2026-07-17T11:09:56.625Z OK 2105-004 words=245 faq=4 [144/190]
+2026-07-17T11:10:09.761Z OK 2109-027 words=245 faq=4 [145/189]
+2026-07-17T11:10:10.292Z OK 1503-037 words=260 faq=4 [146/188]
+2026-07-17T11:10:13.129Z OK 2105-007 words=240 faq=4 [147/187]
+2026-07-17T11:10:18.633Z OK 2001-008 words=266 faq=4 [148/186]
+2026-07-17T11:10:22.636Z OK 1300-007 words=268 faq=4 [149/185]
+2026-07-17T11:10:24.689Z OK 1104-004 words=253 faq=4 [150/184]
+2026-07-17T11:10:40.334Z OK 1804-003 words=282 faq=4 [151/183]
+2026-07-17T11:10:43.262Z OK 1402-012 words=252 faq=4 [152/182]
+2026-07-17T11:10:45.113Z OK 1505-001 words=267 faq=4 [153/181]
+2026-07-17T11:10:48.304Z OK 2101-071 words=264 faq=4 [154/180]
+2026-07-17T11:10:50.118Z OK 1300-026 words=269 faq=4 [155/179]
+2026-07-17T11:10:52.342Z OK 1503-038 words=256 faq=4 [156/178]
+2026-07-17T11:11:12.510Z OK 1604-024 words=275 faq=4 [157/177]
+2026-07-17T11:11:13.097Z OK 1202-020 words=265 faq=4 [158/176]
+2026-07-17T11:11:16.908Z OK 1605-011 words=256 faq=4 [159/175]
+2026-07-17T11:11:18.041Z OK 1604-016 words=274 faq=4 [160/174]
+2026-07-17T11:11:20.751Z OK 1600-012 words=267 faq=4 [161/173]
+2026-07-17T11:11:22.416Z OK 1005-023 words=268 faq=4 [162/172]
+2026-07-17T11:11:40.854Z OK 1300-018 words=253 faq=4 [163/171]
+2026-07-17T11:11:43.156Z OK 1005-009 words=280 faq=4 [164/170]
+2026-07-17T11:11:45.517Z OK 1300-032 words=258 faq=4 [165/169]
+2026-07-17T11:11:47.105Z OK 1600-013 words=242 faq=4 [166/168]
+2026-07-17T11:11:48.581Z OK 1005-019 words=281 faq=4 [167/167]
+2026-07-17T11:11:50.774Z OK 2004-001 words=266 faq=4 [168/166]
+2026-07-17T11:12:08.326Z OK 1604-017 words=251 faq=4 [169/165]
+2026-07-17T11:12:09.493Z OK 1204-007 words=253 faq=4 [170/164]
+2026-07-17T11:12:12.469Z OK 1502-009 words=245 faq=4 [171/163]
+2026-07-17T11:12:15.591Z OK 1202-004 words=261 faq=4 [172/162]
+2026-07-17T11:12:19.066Z OK 2107-002 words=264 faq=4 [173/161]
+2026-07-17T11:12:19.225Z OK 1204-002 words=268 faq=4 [174/160]
+2026-07-17T11:12:36.634Z OK 2109-007 words=246 faq=4 [175/159]
+2026-07-17T11:12:37.930Z OK 2104-014 words=255 faq=4 [176/158]
+2026-07-17T11:12:39.478Z OK 1300-056 words=254 faq=4 [177/157]
+2026-07-17T11:12:45.550Z OK 1802-007 words=257 faq=4 [178/156]
+2026-07-17T11:12:45.705Z OK 1000-008 words=253 faq=4 [179/155]
+2026-07-17T11:12:47.146Z OK 1101-003 words=248 faq=4 [180/154]
+2026-07-17T11:13:04.400Z OK 2101-059 words=265 faq=4 [181/153]
+2026-07-17T11:13:06.511Z OK 1203-006 words=256 faq=4 [182/152]
+2026-07-17T11:13:09.214Z OK 1204-019 words=255 faq=4 [183/151]
+2026-07-17T11:13:15.159Z OK 2101-040 words=241 faq=4 [184/150]
+2026-07-17T11:13:16.424Z OK 1300-043 words=275 faq=4 [185/149]
+2026-07-17T11:13:18.599Z OK 2100-025 words=286 faq=4 [186/148]
+2026-07-17T11:13:33.727Z OK 1300-009 words=270 faq=4 [187/147]
+2026-07-17T11:13:34.440Z OK 2101-035 words=236 faq=4 [188/146]
+2026-07-17T11:13:39.316Z OK 1204-015 words=271 faq=4 [189/145]
+2026-07-17T11:13:44.892Z OK 1202-016 words=280 faq=4 [190/144]
+2026-07-17T11:13:46.667Z OK 2001-006 words=261 faq=4 [191/143]
+2026-07-17T11:13:48.556Z OK 1203-020 words=266 faq=4 [192/142]
+2026-07-17T11:14:01.920Z OK 2002-016 words=255 faq=4 [193/141]
+2026-07-17T11:14:03.084Z OK 2105-008 words=260 faq=4 [194/140]
+2026-07-17T11:14:08.037Z OK 1300-001 words=279 faq=4 [195/139]
+2026-07-17T11:14:12.156Z OK 1300-047 words=250 faq=4 [196/138]
+2026-07-17T11:14:15.504Z OK 2104-016 words=265 faq=4 [197/137]
+2026-07-17T11:14:18.985Z OK 2109-033 words=249 faq=4 [198/136]
+2026-07-17T11:14:31.677Z OK 1600-036 words=249 faq=4 [199/135]
+2026-07-17T11:14:33.532Z OK 1402-013 words=264 faq=4 [200/134]
+2026-07-17T11:14:36.022Z OK 2101-051 words=248 faq=4 [201/133]
+2026-07-17T11:14:44.796Z OK 1603-001 words=278 faq=4 [202/132]
+2026-07-17T11:14:47.304Z OK 2002-020 words=261 faq=4 [203/131]
+2026-07-17T11:14:49.549Z OK 2101-077 words=274 faq=4 [204/130]
+2026-07-17T11:14:58.894Z OK 1600-042 words=253 faq=4 [205/129]
+2026-07-17T11:15:00.946Z OK 1203-023 words=258 faq=4 [206/128]
+2026-07-17T11:15:03.583Z OK 2104-003 words=271 faq=4 [207/127]
+2026-07-17T11:15:13.837Z OK 2101-082 words=270 faq=4 [208/126]
+2026-07-17T11:15:17.821Z OK 2101-073 words=266 faq=4 [209/125]
+2026-07-17T11:15:19.422Z OK 1203-025 words=271 faq=4 [210/124]
+2026-07-17T11:15:29.821Z OK 1601-008 words=253 faq=4 [211/123]
+2026-07-17T11:15:30.265Z OK 1503-010 words=250 faq=4 [212/122]
+2026-07-17T11:15:30.473Z OK 1300-005 words=270 faq=4 [213/121]
+2026-07-17T11:15:42.110Z OK 1004-002 words=269 faq=4 [214/120]
+2026-07-17T11:15:45.389Z OK 1901-020 words=257 faq=4 [215/119]
+2026-07-17T11:15:47.671Z OK 1901-011 words=262 faq=4 [216/118]
+2026-07-17T11:15:57.713Z OK 1603-012 words=258 faq=4 [217/117]
+2026-07-17T11:15:58.700Z OK 1202-019 words=262 faq=4 [218/116]
+2026-07-17T11:15:59.008Z OK 2109-013 words=267 faq=4 [219/115]
+2026-07-17T11:16:14.637Z OK 2109-030 words=245 faq=4 [220/114]
+2026-07-17T11:16:16.453Z OK 1803-004 words=272 faq=4 [221/113]
+2026-07-17T11:16:16.701Z OK 1503-024 words=255 faq=4 [222/112]
+2026-07-17T11:16:27.321Z OK 1503-032 words=260 faq=4 [223/111]
+2026-07-17T11:16:27.394Z OK 1101-004 words=275 faq=4 [224/110]
+2026-07-17T11:16:28.864Z OK 1702-112 words=239 faq=4 [225/109]
+2026-07-17T11:16:41.862Z OK 1601-009 words=268 faq=4 [226/108]
+2026-07-17T11:16:42.833Z OK 1603-003 words=262 faq=4 [227/107]
+2026-07-17T11:16:46.898Z OK 2109-028 words=272 faq=4 [228/106]
+2026-07-17T11:16:57.078Z OK 1503-034 words=259 faq=4 [229/105]
+2026-07-17T11:16:57.320Z OK 1203-024 words=253 faq=4 [230/104]
+2026-07-17T11:16:57.353Z OK 1503-045 words=252 faq=4 [231/103]
+2026-07-17T11:17:10.454Z OK 1000-004 words=280 faq=4 [232/102]
+2026-07-17T11:17:15.051Z OK 1804-001 words=274 faq=4 [233/101]
+2026-07-17T11:17:15.514Z OK 1300-014 words=277 faq=4 [234/100]
+2026-07-17T11:17:25.406Z OK 2101-030 words=268 faq=4 [235/99]
+2026-07-17T11:17:26.238Z OK 1601-019 words=262 faq=4 [236/98]
+2026-07-17T11:17:27.124Z OK 1503-030 words=249 faq=4 [237/97]
+2026-07-17T11:17:38.377Z OK 2004-004 words=254 faq=4 [238/96]
+2026-07-17T11:17:41.221Z OK 2101-097 words=251 faq=4 [239/95]
+2026-07-17T11:17:42.101Z OK 1601-007 words=252 faq=4 [240/94]
+2026-07-17T11:17:54.263Z OK 2109-037 words=257 faq=4 [241/93]
+2026-07-17T11:17:54.629Z OK 1502-007 words=252 faq=4 [242/92]
+2026-07-17T11:17:59.615Z OK 2002-011 words=248 faq=4 [243/91]
+2026-07-17T11:18:08.067Z OK 1203-009 words=257 faq=4 [244/90]
+2026-07-17T11:18:10.343Z OK 1702-048 words=249 faq=4 [245/89]
+2026-07-17T11:18:10.577Z OK 2108-015 words=274 faq=4 [246/88]
+2026-07-17T11:18:22.218Z OK 1203-028 words=263 faq=4 [247/87]
+2026-07-17T11:18:22.907Z OK 2109-015 words=256 faq=4 [248/86]
+2026-07-17T11:18:29.675Z OK 1801-002 words=238 faq=4 [249/85]
+2026-07-17T11:18:36.002Z OK 1801-007 words=258 faq=4 [250/84]
+2026-07-17T11:18:39.691Z OK 1604-005 words=272 faq=4 [251/83]
+2026-07-17T11:18:40.595Z OK 2108-014 words=275 faq=4 [252/82]
+2026-07-17T11:18:50.500Z OK 1205-023 words=262 faq=4 [253/81]
+2026-07-17T11:18:51.444Z OK 1606-002 words=268 faq=4 [254/80]
+2026-07-17T11:18:58.687Z OK 2109-011 words=267 faq=4 [255/79]
+2026-07-17T11:19:01.411Z OK 1202-011 words=255 faq=4 [256/78]
+2026-07-17T11:19:09.243Z OK 2109-041 words=268 faq=4 [257/77]
+2026-07-17T11:19:10.299Z OK 1204-017 words=273 faq=4 [258/76]
+2026-07-17T11:19:21.167Z OK 2109-039 words=255 faq=4 [259/75]
+2026-07-17T11:19:23.675Z OK 1300-036 words=278 faq=4 [260/74]
+2026-07-17T11:19:25.865Z OK 1203-015 words=255 faq=4 [261/73]
+2026-07-17T11:19:26.904Z OK 1503-007 words=264 faq=4 [262/72]
+2026-07-17T11:19:36.028Z OK 1300-042 words=265 faq=4 [263/71]
+2026-07-17T11:19:39.056Z OK 1000-007 words=257 faq=4 [264/70]
+2026-07-17T11:19:49.036Z OK 2109-022 words=261 faq=4 [265/69]
+2026-07-17T11:19:52.276Z OK 2001-001 words=231 faq=4 [266/68]
+2026-07-17T11:19:55.948Z OK 2108-008 words=259 faq=4 [267/67]
+2026-07-17T11:19:57.544Z OK 1005-004 words=263 faq=4 [268/66]
+2026-07-17T11:20:03.492Z OK 1300-050 words=271 faq=4 [269/65]
+2026-07-17T11:20:07.604Z OK 2104-015 words=266 faq=4 [270/64]
+2026-07-17T11:20:17.284Z OK 1203-010 words=265 faq=4 [271/63]
+2026-07-17T11:20:22.936Z OK 1001-004 words=275 faq=4 [272/62]
+2026-07-17T11:20:25.005Z OK 2109-004 words=262 faq=4 [273/61]
+2026-07-17T11:20:25.628Z OK 2109-020 words=281 faq=4 [274/60]
+2026-07-17T11:20:32.896Z OK 2101-028 words=259 faq=4 [275/59]
+2026-07-17T11:20:35.715Z OK 2108-005 words=259 faq=4 [276/58]
+2026-07-17T11:20:46.565Z OK 1803-001 words=263 faq=4 [277/57]
+2026-07-17T11:20:53.205Z OK 1603-006 words=271 faq=4 [278/56]
+2026-07-17T11:20:53.805Z OK 1801-005 words=272 faq=4 [279/55]
+2026-07-17T11:20:54.644Z OK 2105-010 words=261 faq=4 [280/54]
+2026-07-17T11:21:01.713Z OK 2100-018 words=267 faq=4 [281/53]
+2026-07-17T11:21:03.368Z OK 1402-011 words=272 faq=4 [282/52]
+2026-07-17T11:21:20.939Z OK 2105-016 words=251 faq=4 [283/51]
+2026-07-17T11:21:21.942Z OK 1503-035 words=250 faq=4 [284/50]
+2026-07-17T11:21:22.925Z OK 2108-019 words=247 faq=4 [285/49]
+2026-07-17T11:21:24.717Z OK 1005-006 words=285 faq=4 [286/48]
+2026-07-17T11:21:30.468Z OK 1005-015 words=258 faq=4 [287/47]
+2026-07-17T11:21:31.544Z OK 2104-018 words=255 faq=4 [288/46]
+2026-07-17T11:21:48.298Z OK 2104-007 words=252 faq=4 [289/45]
+2026-07-17T11:21:51.046Z OK 1001-007 words=265 faq=4 [290/44]
+2026-07-17T11:21:51.344Z OK 2108-022 words=263 faq=4 [291/43]
+2026-07-17T11:21:53.320Z OK 1001-009 words=266 faq=4 [292/42]
+2026-07-17T11:22:01.134Z OK 2101-087 words=258 faq=4 [293/41]
+2026-07-17T11:22:01.244Z OK 2108-011 words=258 faq=4 [294/40]
+2026-07-17T11:22:15.422Z OK 1205-021 words=261 faq=4 [295/39]
+2026-07-17T11:22:18.966Z OK 1503-004 words=256 faq=4 [296/38]
+2026-07-17T11:22:20.633Z OK 1300-035 words=267 faq=4 [297/37]
+2026-07-17T11:22:23.614Z OK 1503-039 words=271 faq=4 [298/36]
+2026-07-17T11:22:30.814Z OK 1203-013 words=253 faq=4 [299/35]
+2026-07-17T11:22:33.049Z OK 1005-027 words=272 faq=4 [300/34]
+2026-07-17T11:22:42.914Z OK 2109-019 words=245 faq=4 [301/33]
+2026-07-17T11:22:45.278Z OK 2105-017 words=255 faq=4 [302/32]
+2026-07-17T11:22:53.646Z OK 2109-018 words=256 faq=4 [303/31]
+2026-07-17T11:22:56.166Z OK 2109-012 words=264 faq=4 [304/30]
+2026-07-17T11:23:02.322Z OK 1005-005 words=266 faq=4 [305/29]
+2026-07-17T11:23:04.486Z OK 1300-013 words=250 faq=4 [306/28]
+2026-07-17T11:23:11.366Z OK 1001-012 words=254 faq=4 [307/27]
+2026-07-17T11:23:16.855Z OK 1901-007 words=261 faq=4 [308/26]
+2026-07-17T11:23:21.795Z OK 2101-074 words=256 faq=4 [309/25]
+2026-07-17T11:23:24.878Z OK 2100-008 words=250 faq=4 [310/24]
+2026-07-17T11:23:30.486Z OK 1600-028 words=268 faq=4 [311/23]
+2026-07-17T11:23:37.339Z OK 1005-010 words=278 faq=4 [312/22]
+2026-07-17T11:23:39.566Z OK 1300-012 words=262 faq=4 [313/21]
+2026-07-17T11:23:46.546Z OK 1300-045 words=251 faq=4 [314/20]
+2026-07-17T11:23:50.843Z OK 1300-054 words=263 faq=4 [315/19]
+2026-07-17T11:23:53.923Z OK 1601-010 words=260 faq=4 [316/18]
+2026-07-17T11:24:00.507Z OK 2101-010 words=254 faq=4 [317/17]
+2026-07-17T11:24:05.403Z OK 1205-015 words=261 faq=4 [318/16]
+2026-07-17T11:24:07.635Z OK 2001-003 words=266 faq=4 [319/15]
+2026-07-17T11:24:19.356Z OK 1600-031 words=270 faq=4 [320/14]
+2026-07-17T11:24:19.569Z OK 1300-020 words=257 faq=4 [321/13]
+2026-07-17T11:24:21.390Z OK 1503-018 words=255 faq=4 [322/12]
+2026-07-17T11:24:29.044Z OK 2101-070 words=254 faq=4 [323/11]
+2026-07-17T11:24:33.783Z OK 1300-030 words=272 faq=4 [324/10]
+2026-07-17T11:24:36.600Z OK 1005-013 words=256 faq=4 [325/9]
+2026-07-17T11:24:46.308Z OK 2101-001 words=238 faq=4 [326/8]
+2026-07-17T11:24:47.696Z OK 2101-021 words=252 faq=4 [327/7]
+2026-07-17T11:24:48.551Z OK 2105-023 words=264 faq=4 [328/6]
+2026-07-17T11:25:00.076Z OK 2105-024 words=297 faq=4 [329/5]
+2026-07-17T11:25:00.800Z OK 2105-025 words=278 faq=4 [330/4]
+2026-07-17T11:25:03.404Z OK 2105-026 words=272 faq=4 [331/3]
+2026-07-17T11:25:14.244Z OK 2105-027 words=279 faq=4 [332/2]
+2026-07-17T11:25:16.532Z OK 2105-029 words=272 faq=4 [333/1]
+2026-07-17T11:25:22.424Z OK 2105-028 words=284 faq=4 [334/0]
+2026-07-17T11:25:27.776Z OK 2105-030 words=253 faq=4 [335/0]
+2026-07-17T11:25:29.368Z OK 2105-031 words=257 faq=4 [336/0]
+2026-07-17T11:25:31.943Z OK 2105-032 words=277 faq=4 [337/0]
+2026-07-17T11:25:43.093Z OK 2105-034 words=274 faq=4 [338/0]
+2026-07-17T11:25:43.524Z OK 2105-033 words=280 faq=4 [339/0]
+2026-07-17T11:25:43.527Z DONE ok=339 failed=0

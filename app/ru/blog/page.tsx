@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
-import { ARTICLES } from '../../../lib/blog';
 import { getPublishedPostsCached } from '../../../lib/blog-db';
 import { BookOpen, Clock, ArrowRight } from 'lucide-react';
 
@@ -29,34 +28,20 @@ export const metadata: Metadata = {
 };
 
 export default async function BlogRuPage() {
-  // Статичні статті + нові з БД, найсвіжіші зверху
+  // Усі статті — з БД (blog_posts), найсвіжіші зверху
   const dbPosts = await getPublishedPostsCached();
-  const items = [
-    ...dbPosts.map(p => ({
-      slug: p.slug,
-      titleRu: p.title_ru ?? p.title,
-      title: p.title,
-      descriptionRu: p.description_ru ?? p.description,
-      description: p.description,
-      categoryRu: p.category_ru ?? p.category,
-      category: p.category,
-      readTime: p.read_time,
-      date: (p.published_at ?? p.created_at).slice(0, 10),
-      image: p.image,
-    })),
-    ...ARTICLES.map(a => ({
-      slug: a.slug,
-      titleRu: a.titleRu ?? a.title,
-      title: a.title,
-      descriptionRu: a.descriptionRu ?? a.description,
-      description: a.description,
-      categoryRu: a.categoryRu ?? a.category,
-      category: a.category,
-      readTime: a.readTime,
-      date: a.date,
-      image: a.image as string | null,
-    })),
-  ].sort((a, b) => b.date.localeCompare(a.date));
+  const items = dbPosts.map(p => ({
+    slug: p.slug,
+    titleRu: p.title_ru ?? p.title,
+    title: p.title,
+    descriptionRu: p.description_ru ?? p.description,
+    description: p.description,
+    categoryRu: p.category_ru ?? p.category,
+    category: p.category,
+    readTime: p.read_time,
+    date: (p.published_at ?? p.created_at).slice(0, 10),
+    image: p.image,
+  })).sort((a, b) => b.date.localeCompare(a.date));
   const blogLd = {
     '@context': 'https://schema.org',
     '@type': 'Blog',

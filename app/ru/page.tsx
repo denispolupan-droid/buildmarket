@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   },
 };
 import { ShieldCheck, Truck, Store, LayoutGrid, CheckCircle, MessageCircle, Tag, PackageCheck, ShoppingCart, Phone, Package, ArrowRight } from 'lucide-react';
+import { getPublishedPostsCached } from '../../lib/blog-db';
 import { getCategoriesCached, getPreviewProductsCached, getBrandLogosCached, getVisibleBrandLogosCached, getReviewStatsCached } from '../../lib/supabase';
 import { mergeVisibleBrands } from '../../lib/brands';
 import Footer from '../components/Footer';
@@ -31,7 +32,7 @@ import DeliveryMapCard from '../components/DeliveryMapCard';
 import Reveal from '../components/Reveal';
 import AnimatedNumber from '../components/AnimatedNumber';
 import BgFadeImage from '../components/BgFadeImage';
-import { ARTICLES } from '../../lib/blog';
+
 
 
 export default async function HomeRu() {
@@ -42,6 +43,21 @@ export default async function HomeRu() {
   const visibleBrandLogos = await getVisibleBrandLogosCached();
   const brandTiles = mergeVisibleBrands(visibleBrandLogos);
   const reviewStats = await getReviewStatsCached();
+
+  // Карусель блога: опубликованные статьи из БД (только с обложкой)
+  const blogArticles = (await getPublishedPostsCached())
+    .filter(p => p.image)
+    .slice(0, 10)
+    .map(p => ({
+      slug: p.slug,
+      title: p.title,
+      titleRu: p.title_ru ?? undefined,
+      description: p.description,
+      descriptionRu: p.description_ru ?? undefined,
+      category: p.category,
+      categoryRu: p.category_ru ?? undefined,
+      image: p.image as string,
+    }));
 
   const orgLd = {
     '@context': 'https://schema.org',
@@ -456,7 +472,7 @@ export default async function HomeRu() {
                 Все статьи →
               </Link>
             </div>
-            <BlogCarousel articles={ARTICLES} />
+            <BlogCarousel articles={blogArticles} />
           </Reveal>
         </div>
       </section>

@@ -60,6 +60,28 @@ export default function BlogAdminClient() {
     }
   }
 
+  async function createManual() {
+    if (!topic.trim()) return;
+    setGenerating(true);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/blog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic, manual: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setTopic('');
+      await load();
+      await openEditor(data.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   async function openEditor(id: number) {
     const res = await fetch(`/api/admin/blog?id=${id}`);
     if (res.ok) setEditing(await res.json());
@@ -132,6 +154,14 @@ export default function BlogAdminClient() {
           style={{ padding: '10px 22px', background: '#3DBFB8', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: generating || !topic.trim() ? 0.6 : 1, whiteSpace: 'nowrap' }}
         >
           {generating ? '⏳ Генеруємо (1–2 хв)…' : '✨ Згенерувати статтю'}
+        </button>
+        <button
+          onClick={createManual}
+          disabled={generating || !topic.trim()}
+          title="Порожня чернетка з цим заголовком — текст пишете самі в редакторі"
+          style={{ padding: '10px 18px', background: '#fff', color: '#475569', border: '1px solid #CBD5E1', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: generating || !topic.trim() ? 0.6 : 1, whiteSpace: 'nowrap' }}
+        >
+          ✍️ Створити вручну
         </button>
       </div>
       {error && <p style={{ color: '#EF4444', fontSize: 13 }}>{error}</p>}

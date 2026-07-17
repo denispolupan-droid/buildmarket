@@ -34,15 +34,31 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(data ?? []);
 }
 
-// Генерація нової статті (чернетка) — єдине місце витрат API, тільки по кнопці
+// Генерація нової статті (чернетка) — єдине місце витрат API, тільки по кнопці.
+// manual: true — порожня чернетка без AI (ручне написання).
 export async function POST(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  const { topic, focusQuery, mustLink } = await req.json() as {
+  const { topic, focusQuery, mustLink, manual } = await req.json() as {
     topic?: string;
     focusQuery?: string;
     mustLink?: { href: string; label: string };
+    manual?: boolean;
   };
   if (!topic?.trim()) return NextResponse.json({ error: 'Вкажіть тему статті' }, { status: 400 });
+
+  if (manual) {
+    const { slugify } = await import('../../../../lib/seo/slug');
+    let slug = slugify(topic.trim(), 70) || `stattia-${Date.now() % 100000}`;
+    const { data: taken } = await serviceClient.from('blog_posts').select('slug').eq('slug', slug).maybeSingle();
+    if (taken) slug = `${slug}-${Date.now() % 10000}`;
+    const { data, error } = await serviceClient
+      .from('blog_posts')
+      .insert({ slug, title: topic.trim(), description: '', content_html: '<p></p>', is_published: false })
+      .select('id, slug, title')
+      .single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(data);
+  }
   try {
     const post = await generateBlogPost(topic.trim(), {
       focusQuery: focusQuery?.trim() || undefined,

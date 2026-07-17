@@ -1,6 +1,5 @@
 import { MetadataRoute } from 'next';
 import { getProductsCached, getCategoriesCached } from '../lib/supabase';
-import { ARTICLES } from '../lib/blog';
 import { getPublishedPostsCached } from '../lib/blog-db';
 
 function brandToSlug(brand: string): string {
@@ -58,20 +57,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   const dbPosts = await getPublishedPostsCached();
-  const blogRoutes: MetadataRoute.Sitemap = [
-    ...ARTICLES.map(a => ({
-      url: `${BASE}/blog/${a.slug}`,
-      lastModified: new Date(a.date),
-      changeFrequency: 'monthly' as const,
-      priority: 0.7,
-    })),
-    ...dbPosts.map(p => ({
-      url: `${BASE}/blog/${p.slug}`,
-      lastModified: new Date(p.updated_at),
-      changeFrequency: 'monthly' as const,
-      priority: 0.7,
-    })),
-  ];
+  const blogRoutes: MetadataRoute.Sitemap = dbPosts.map(p => ({
+    url: `${BASE}/blog/${p.slug}`,
+    lastModified: new Date(p.updated_at),
+    changeFrequency: 'monthly' as const,
+    priority: 0.7,
+  }));
 
   // /shop — публічний магазин, категорії індексуємо
   const shopCategoryRoutes: MetadataRoute.Sitemap = categories.map(cat => ({
@@ -133,20 +124,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/ru/returns`,    lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },
   ];
 
-  const ruBlogRoutes: MetadataRoute.Sitemap = [
-    ...ARTICLES.map(a => ({
-      url: `${BASE}/ru/blog/${a.slug}`,
-      lastModified: new Date(a.date),
-      changeFrequency: 'monthly' as const,
-      priority: 0.25,
-    })),
-    ...dbPosts.map(p => ({
-      url: `${BASE}/ru/blog/${p.slug}`,
-      lastModified: new Date(p.updated_at),
-      changeFrequency: 'monthly' as const,
-      priority: 0.25,
-    })),
-  ];
+  const ruBlogRoutes: MetadataRoute.Sitemap = dbPosts.map(p => ({
+    url: `${BASE}/ru/blog/${p.slug}`,
+    lastModified: new Date(p.updated_at),
+    changeFrequency: 'monthly' as const,
+    priority: 0.25,
+  }));
 
   const ruShopCategoryRoutes: MetadataRoute.Sitemap = categories.map(cat => ({
     url: `${BASE}/ru/shop/${cat.slug}`,

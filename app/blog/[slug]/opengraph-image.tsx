@@ -1,14 +1,14 @@
 import { ImageResponse } from 'next/og';
 import fs from 'fs';
 import path from 'path';
-import { getArticle } from '../../../lib/blog';
+import { getPostBySlug } from '../../../lib/blog-db';
 
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
 export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const article = getArticle(slug);
+  const article = await getPostBySlug(slug);
 
   const logoBuffer = fs.readFileSync(path.join(process.cwd(), 'public', 'fixline-logo.png'));
   const logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;

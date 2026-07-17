@@ -2,8 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Clock } from 'lucide-react';
 import Footer from '../../components/Footer';
-import type { BlogPost } from '../../../lib/blog-db';
-import { ARTICLES } from '../../../lib/blog';
+import { getPublishedPostsCached, type BlogPost } from '../../../lib/blog-db';
 
 // Рендер статті з БД — той самий шаблон, що й у статичних статей (lib/blog.ts),
 // тіло — довірений HTML з нашого AI-конвеєра через .article-body.
@@ -26,7 +25,7 @@ export function postText(post: BlogPost, lang: 'uk' | 'ru') {
   return { title: post.title, description: post.description, category: post.category, content: post.content_html, faq: post.faq };
 }
 
-export default function DbArticle({ post, lang = 'uk' }: Props) {
+export default async function DbArticle({ post, lang = 'uk' }: Props) {
   const t = postText(post, lang);
   const prefix = lang === 'ru' ? '/ru' : '';
   const date = post.published_at ?? post.created_at;
@@ -64,7 +63,7 @@ export default function DbArticle({ post, lang = 'uk' }: Props) {
     mainEntity: t.faq.map(({ q, a }) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
   } : null;
 
-  const related = ARTICLES.slice(0, 3);
+  const related = (await getPublishedPostsCached()).filter(p => p.slug !== post.slug).slice(0, 3);
 
   return (
     <>
@@ -143,9 +142,9 @@ export default function DbArticle({ post, lang = 'uk' }: Props) {
                   <Link key={a.slug} href={`${prefix}/blog/${a.slug}`} style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px', textDecoration: 'none' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px', lineHeight: 1.3 }}>
-                        {lang === 'ru' ? (a.titleRu ?? a.title) : a.title}
+                        {lang === 'ru' ? (a.title_ru ?? a.title) : a.title}
                       </p>
-                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>{a.readTime} {L.min}</p>
+                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>{a.read_time} {L.min}</p>
                     </div>
                     <span style={{ fontSize: '16px', color: 'var(--text-muted)', flexShrink: 0 }}>›</span>
                   </Link>
