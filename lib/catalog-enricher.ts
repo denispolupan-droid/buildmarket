@@ -20,7 +20,7 @@ function db() {
 export type EnrichEvent =
   | { type: 'start'; total: number }
   | { type: 'progress'; sku: string; name: string; done: number; total: number }
-  | { type: 'result'; sku: string; description_full: string; faqCount: number }
+  | { type: 'result'; sku: string; description_full: string; faqCount: number; ru: boolean }
   | { type: 'error'; sku: string; error: string }
   | { type: 'done'; done: number; errors: number };
 
@@ -47,6 +47,60 @@ const OUTPUT_SCHEMA = {
   required: ['description_full', 'faq'],
   additionalProperties: false,
 };
+
+const TRANSLATE_SCHEMA = {
+  type: 'object' as const,
+  properties: {
+    description_full_ru: {
+      type: 'string' as const,
+      description: 'Перевод полного описания на русский, те же абзацы',
+    },
+    faq_ru: {
+      type: 'array' as const,
+      items: {
+        type: 'object' as const,
+        properties: {
+          q: { type: 'string' as const },
+          a: { type: 'string' as const },
+        },
+        required: ['q', 'a'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['description_full_ru', 'faq_ru'],
+  additionalProperties: false,
+};
+
+/** Переклад опису + FAQ на російську (для російськомовної аудиторії в Україні). */
+export async function translateEnrichment(
+  descriptionFull: string,
+  faq: { q: string; a: string }[],
+): Promise<{ description_full_ru: string; faq_ru: { q: string; a: string }[] }> {
+  const message = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 8000,
+    output_config: { format: { type: 'json_schema', schema: TRANSLATE_SCHEMA } },
+    messages: [{
+      role: 'user',
+      content: `Переведи текст о товаре с украинского на русский (аудитория — русскоязычные покупатели в Украине).
+Правила: названия брендов, артикулы и все числа оставляй без изменений; естественный русский язык без кальки; сохрани разбиение на абзацы (пустая строка между абзацами); FAQ переведи попарно, количество пар не меняй.
+
+Полное описание:
+${descriptionFull}
+
+FAQ:
+${faq.map((f, i) => `${i + 1}. Q: ${f.q}\n   A: ${f.a}`).join('\n')}`,
+    }],
+  });
+
+  if (message.stop_reason !== 'end_turn') throw new Error(`translate stop_reason=${message.stop_reason}`);
+  const block = message.content.find(b => b.type === 'text');
+  if (!block || block.type !== 'text') throw new Error('translate: no text block');
+  const parsed = JSON.parse(block.text) as { description_full_ru: string; faq_ru: { q: string; a: string }[] };
+  if (parsed.faq_ru.length !== faq.length) throw new Error(`translate: faq count mismatch ${parsed.faq_ru.length} != ${faq.length}`);
+  return parsed;
+}
 
 export async function* enrichCatalog(opts: {
   limit?: number;
@@ -113,15 +167,25 @@ export async function* enrichCatalog(opts: {
       const words = parsed.description_full.split(/\s+/).filter(Boolean).length;
       if (words < 150) throw new Error(`description too short: ${words} words`);
 
+      // Російська версія — обов'язкова (велика російськомовна аудиторія в Україні).
+      // Якщо переклад упав — зберігаємо укр і позначаємо, окремо доперекладається з /admin/seo.
+      let ru: { description_full_ru: string; faq_ru: { q: string; a: string }[] } | null = null;
+      try {
+        ru = await translateEnrichment(parsed.description_full, parsed.faq);
+      } catch { /* залишиться пробіл "рос. версія" в SEO-черзі */ }
+
       const { error: upErr } = await supabase
         .from('products')
-        .update({ description_full: parsed.description_full })
+        .update({
+          description_full: parsed.description_full,
+          ...(ru ? { description_full_ru: ru.description_full_ru } : {}),
+        })
         .eq('sku', product.sku);
       if (upErr) throw upErr;
 
-      await replaceFaq(supabase, product.sku, parsed.faq);
+      await replaceFaq(supabase, product.sku, parsed.faq, ru?.faq_ru);
 
-      yield { type: 'result', sku: product.sku, description_full: parsed.description_full, faqCount: parsed.faq.length };
+      yield { type: 'result', sku: product.sku, description_full: parsed.description_full, faqCount: parsed.faq.length, ru: !!ru };
       done++;
     } catch (err) {
       errors++;
@@ -136,12 +200,20 @@ export async function replaceFaq(
   supabase: ReturnType<typeof db>,
   sku: string,
   faq: { q: string; a: string }[],
+  faqRu?: { q: string; a: string }[],
 ): Promise<void> {
   const { error: delErr } = await supabase.from('product_faq').delete().eq('product_sku', sku);
   if (delErr) throw delErr;
   if (!faq.length) return;
   const { error: insErr } = await supabase.from('product_faq').insert(
-    faq.map((f, i) => ({ product_sku: sku, question: f.q, answer: f.a, sort_order: i })),
+    faq.map((f, i) => ({
+      product_sku: sku,
+      question: f.q,
+      answer: f.a,
+      question_ru: faqRu?.[i]?.q ?? null,
+      answer_ru: faqRu?.[i]?.a ?? null,
+      sort_order: i,
+    })),
   );
   if (insErr) throw insErr;
 }

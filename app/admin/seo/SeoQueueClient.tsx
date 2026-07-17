@@ -11,6 +11,7 @@ export type QueueItem = {
   gaps: {
     thinDesc: boolean;   // description_full < порога — заповнюється кнопкою тут
     noFaq: boolean;      // немає FAQ — заповнюється кнопкою тут (разом з описом)
+    ruDesc: boolean;     // рос. опис застарів / FAQ без перекладу — кнопкою тут
     noRu: boolean;       // немає name_ru/description_ru — AI-кнопка в картці товару
     noKeywords: boolean; // немає keywords — AI-кнопка в картці товару
     noChars: boolean;    // немає характеристик — AI-кнопка в картці товару
@@ -21,16 +22,17 @@ export type QueueItem = {
 type EnrichEvent =
   | { type: 'start'; total: number }
   | { type: 'progress'; sku: string; name: string; done: number; total: number }
-  | { type: 'result'; sku: string; description_full: string; faqCount: number }
+  | { type: 'result'; sku: string; description_full: string; faqCount: number; ru: boolean }
   | { type: 'error'; sku: string; error: string }
   | { type: 'done'; done: number; errors: number };
 
-const COST_PER_PRODUCT_USD = 0.03;
+const COST_PER_PRODUCT_USD = 0.04; // укр генерація (opus) + рос переклад (haiku)
 
 const GAP_LABELS: { key: keyof QueueItem['gaps']; label: string; color: string }[] = [
   { key: 'thinDesc',   label: 'короткий опис',    color: '#F59E0B' },
   { key: 'noFaq',      label: 'немає FAQ',        color: '#F59E0B' },
-  { key: 'noRu',       label: 'немає рос. версії', color: '#8B5CF6' },
+  { key: 'ruDesc',     label: 'рос. опис/FAQ',    color: '#F59E0B' },
+  { key: 'noRu',       label: 'немає рос. назви', color: '#8B5CF6' },
   { key: 'noKeywords', label: 'немає keywords',   color: '#8B5CF6' },
   { key: 'noChars',    label: 'немає характеристик', color: '#EF4444' },
   { key: 'noImage',    label: 'немає фото',       color: '#EF4444' },
@@ -60,9 +62,9 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
     return counts;
   }, [withGaps]);
 
-  // Кнопка запускає генерацію опис+FAQ — має сенс тільки для товарів з цими пробілами
+  // Кнопка запускає генерацію опис+FAQ (укр) + переклад (рос) — для товарів з цими пробілами
   const enrichable = useMemo(
-    () => visible.filter(i => i.gaps.thinDesc || i.gaps.noFaq),
+    () => visible.filter(i => i.gaps.thinDesc || i.gaps.noFaq || i.gaps.ruDesc),
     [visible],
   );
   const selectedEnrichable = enrichable.filter(i => selected.has(i.sku));
@@ -111,7 +113,7 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
           else if (event.type === 'progress') setCurrentName(event.name);
           else if (event.type === 'result') {
             setProgress(p => ({ ...p, done: p.done + 1 }));
-            setLog(l => [{ sku: event.sku, text: `${event.description_full.split(/\s+/).length} слів, FAQ: ${event.faqCount}`, ok: true }, ...l]);
+            setLog(l => [{ sku: event.sku, text: `${event.description_full.split(/\s+/).length} слів, FAQ: ${event.faqCount}${event.ru ? ', рос. ✓' : ', рос. ✗'}`, ok: true }, ...l]);
           } else if (event.type === 'error') {
             setProgress(p => ({ ...p, errors: p.errors + 1 }));
             setLog(l => [{ sku: event.sku, text: event.error, ok: false }, ...l]);
@@ -210,7 +212,7 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
           </thead>
           <tbody>
             {visible.map(item => {
-              const canEnrich = item.gaps.thinDesc || item.gaps.noFaq;
+              const canEnrich = item.gaps.thinDesc || item.gaps.noFaq || item.gaps.ruDesc;
               return (
                 <tr key={item.sku} style={{ borderTop: '1px solid #F1F5F9' }}>
                   <td style={td}>
@@ -249,7 +251,7 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
       </div>
 
       <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 12 }}>
-        «Опис + FAQ» генеруються пакетно тут. Російська версія, keywords і характеристики — AI-кнопкою в картці товару. Фото — вручну.
+        «Опис + FAQ» генеруються пакетно тут одразу двома мовами (укр + рос). Рос. назва, keywords і характеристики — AI-кнопкою в картці товару. Фото — вручну.
       </p>
     </div>
   );

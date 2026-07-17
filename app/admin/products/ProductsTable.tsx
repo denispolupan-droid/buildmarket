@@ -26,6 +26,7 @@ function seoGaps(p: ProductFull): string[] {
   else if (p.description_full.length < 800) gaps.push('короткий опис');
   if (!p.keywords) gaps.push('немає keywords');
   if (!p.name_ru || !p.description_ru) gaps.push('немає рос. версії');
+  if (p.description_full && p.description_full.length >= 800 && (p.description_full_ru ?? '').length < 800) gaps.push('рос. опис застарів');
   if (!p.characteristics?.length) gaps.push('немає характеристик');
   return gaps;
 }
