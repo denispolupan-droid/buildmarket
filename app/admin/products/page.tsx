@@ -31,6 +31,19 @@ export default async function AdminProductsPage() {
     .select('*')
     .order('sort_order');
 
+  // SKU з прайсів постачальників (supplier_stock) — для фільтра "сиріт".
+  // Пагінація: supabase обрізає вибірки до 1000 рядків
+  const supplierSkuSet = new Set<string>();
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await serviceClient
+      .from('supplier_stock')
+      .select('sku')
+      .range(from, from + 999);
+    if (error) break;
+    for (const r of data ?? []) supplierSkuSet.add(r.sku);
+    if (!data || data.length < 1000) break;
+  }
+
   const { data: brandLogoRows } = await serviceClient
     .from('brand_logos')
     .select('brand_name, logo_url, show_on_home');
@@ -84,7 +97,7 @@ export default async function AdminProductsPage() {
           </Link>
         </div>
       </div>
-      <ProductsTable products={products ?? []} categories={categories ?? []} brandLogos={brandLogos} />
+      <ProductsTable products={products ?? []} categories={categories ?? []} brandLogos={brandLogos} supplierSkus={[...supplierSkuSet]} />
     </div>
   );
 }

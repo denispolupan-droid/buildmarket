@@ -13,6 +13,7 @@ type Props = {
   products: ProductFull[];
   categories: Category[];
   brandLogos?: Record<string, BrandLogoEntry>;
+  supplierSkus?: string[]; // SKU, що є хоч в одному прайсі постачальника (supplier_stock)
 };
 
 const PAGE_SIZE = 100;
@@ -44,7 +45,7 @@ function SeoBadge({ p }: { p: ProductFull }) {
   );
 }
 
-export default function ProductsTable({ products, categories, brandLogos = {} }: Props) {
+export default function ProductsTable({ products, categories, brandLogos = {}, supplierSkus = [] }: Props) {
   const [search, setSearch]               = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterBrand, setFilterBrand]     = useState('');
@@ -133,6 +134,11 @@ export default function ProductsTable({ products, categories, brandLogos = {} }:
       );
     } else if (filterStatus === 'few_chars') {
       list = list.filter(p => (p.characteristics?.length ?? 0) < 6);
+    } else if (filterStatus === 'no_supplier') {
+      // "Сироти": активний товар без жодного рядка в прайсах постачальників —
+      // ціни заморожені, наявність не оновлюється (постачальник зняв позицію)
+      const supplied = new Set(supplierSkus);
+      list = list.filter(p => p.is_active && !supplied.has(p.sku));
     }
 
     return list;
@@ -247,6 +253,7 @@ export default function ProductsTable({ products, categories, brandLogos = {} }:
           <option value="out_of_stock">Немає в наявності</option>
           <option value="unfilled">Незаповнені (без опису/keywords/характеристик)</option>
           <option value="few_chars">Мало характеристик (менше 6)</option>
+          <option value="no_supplier">Немає в прайсах постачальників</option>
         </select>
       </div>
 
