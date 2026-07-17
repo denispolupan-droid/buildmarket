@@ -39,6 +39,7 @@ const NAV = [
   { href: '/admin/rozetka',              label: 'Rozetka',        icon: SocketIcon as typeof Store, exact: false },
   { href: '/admin/pricing',              label: 'Аналіз цін',     icon: TrendingUp,     exact: false },
   { href: '/admin/seo',                  label: 'SEO',            icon: Search,         exact: false },
+  { href: '/admin/blog',                 label: 'Блог',           icon: BookOpen,       exact: false },
   { href: '/admin/finance',              label: 'Фінанси',        icon: BarChart3,      exact: false },
   { href: '/admin/accounting/documents', label: 'Облік',          icon: BookOpen,       exact: false },
   { href: '/admin/accounting/stock',     label: 'Залишки',        icon: Warehouse,      exact: false },

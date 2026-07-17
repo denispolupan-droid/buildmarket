@@ -2,7 +2,10 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../components/Footer';
 import { ARTICLES } from '../../lib/blog';
+import { getPublishedPostsCached } from '../../lib/blog-db';
 import { BookOpen, Clock, ArrowRight } from 'lucide-react';
+
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: 'Блог — поради щодо будівельної хімії',
@@ -22,7 +25,30 @@ export const metadata: Metadata = {
 
 const BASE = 'https://fixline.com.ua';
 
-export default function BlogPage() {
+export default async function BlogPage() {
+  // Об'єднуємо статичні статті (lib/blog.ts) з новими з БД, найсвіжіші зверху
+  const dbPosts = await getPublishedPostsCached();
+  const items = [
+    ...dbPosts.map(p => ({
+      slug: p.slug,
+      title: p.title,
+      description: p.description,
+      category: p.category,
+      readTime: p.read_time,
+      date: (p.published_at ?? p.created_at).slice(0, 10),
+      image: p.image,
+    })),
+    ...ARTICLES.map(a => ({
+      slug: a.slug,
+      title: a.title,
+      description: a.description,
+      category: a.category,
+      readTime: a.readTime,
+      date: a.date,
+      image: a.image as string | null,
+    })),
+  ].sort((a, b) => b.date.localeCompare(a.date));
+
   const blogLd = {
     '@context': 'https://schema.org',
     '@type': 'Blog',
@@ -30,13 +56,13 @@ export default function BlogPage() {
     url: `${BASE}/blog`,
     description: 'Корисні статті про герметики, монтажну піну, клеї та ґрунтовки.',
     publisher: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
-    blogPost: ARTICLES.map(a => ({
+    blogPost: items.map(a => ({
       '@type': 'BlogPosting',
       headline: a.title,
       description: a.description,
       url: `${BASE}/blog/${a.slug}`,
       datePublished: a.date,
-      image: `${BASE}${a.image}`,
+      ...(a.image ? { image: `${BASE}${a.image}` } : {}),
     })),
   };
 
@@ -57,7 +83,7 @@ export default function BlogPage() {
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {ARTICLES.map(article => (
+            {items.map(article => (
               <Link
                 key={article.slug}
                 href={`/blog/${article.slug}`}

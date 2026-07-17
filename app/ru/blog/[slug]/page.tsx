@@ -5,10 +5,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Footer from '../../../components/Footer';
 import { getArticle, ARTICLES } from '../../../../lib/blog';
+import { getPostBySlugCached } from '../../../../lib/blog-db';
+import DbArticle, { postText } from '../../../blog/[slug]/DbArticle';
 import { getCategoryNameRu } from '../../../../lib/ru';
 import { Clock } from 'lucide-react';
 
 const BASE = 'https://fixline.com.ua';
+
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return ARTICLES.map(a => ({ slug: a.slug }));
@@ -17,7 +21,27 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const article = getArticle(slug);
-  if (!article) return {};
+  if (!article) {
+    const post = await getPostBySlugCached(slug);
+    if (!post) return {};
+    const t = postText(post, 'ru');
+    return {
+      title: t.title,
+      description: t.description,
+      keywords: post.keywords,
+      alternates: { canonical: `${BASE}/ru/blog/${slug}`, languages: { 'uk': `${BASE}/blog/${slug}`, 'ru': `${BASE}/ru/blog/${slug}`, 'x-default': `${BASE}/blog/${slug}` } },
+      openGraph: {
+        title: t.title,
+        description: t.description,
+        url: `${BASE}/ru/blog/${slug}`,
+        siteName: 'FIXLINE',
+        locale: 'ru_RU',
+        type: 'article',
+        publishedTime: post.published_at ?? undefined,
+        ...(post.image ? { images: [{ url: `${BASE}${post.image}`, width: 1200, height: 630, alt: t.title }] } : {}),
+      },
+    };
+  }
   const title = article.titleRu ?? article.title;
   const description = article.descriptionRu ?? article.description;
   return {
@@ -841,7 +865,11 @@ const FAQS_RU: Record<string, { q: string; a: string }[]> = {
 export default async function RuBlogArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const article = getArticle(slug);
-  if (!article) notFound();
+  if (!article) {
+    const post = await getPostBySlugCached(slug);
+    if (!post) notFound();
+    return <DbArticle post={post} lang="ru" />;
+  }
 
   const Content = ARTICLE_CONTENT_RU[slug];
   if (!Content) notFound();
