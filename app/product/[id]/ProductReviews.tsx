@@ -10,6 +10,7 @@ type Review = {
   rating: number;
   review_text: string | null;
   created_at: string;
+  is_verified?: boolean;
 };
 
 export default function ProductReviews({ sku, productName }: { sku: string; productName: string }) {
@@ -178,7 +179,14 @@ export default function ProductReviews({ sku, productName }: { sku: string; prod
                   {r.author_name[0].toUpperCase()}
                 </div>
                 <div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{r.author_name}</div>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {r.author_name}
+                    {r.is_verified && (
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: '#10B981', background: '#10B98118', padding: '2px 8px', borderRadius: 999 }}>
+                        ✓ {lang === 'ru' ? 'подтверждённая покупка' : 'підтверджена покупка'}
+                      </span>
+                    )}
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Stars rating={r.rating} size={13} />
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
