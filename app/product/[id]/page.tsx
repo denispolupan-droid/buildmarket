@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached } from '../../../lib/supabase';
+import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsCached } from '../../../lib/supabase';
 import { getCategoryMeta } from '../../../lib/category-descriptions';
-import { productMeta, productDisplayName, productH1 } from '../../../lib/seo/meta';
+import { productMeta, productDisplayName, productH1, findVariants } from '../../../lib/seo/meta';
 import ProductTabs from './ProductTabs';
 import ProductOrderPanel from './ProductOrderPanel';
 import ProductGallery from './ProductGallery';
@@ -73,8 +73,9 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   const product = await getProductBySkuCached(sku);
   if (!product) notFound();
 
-  const [related, categories, reviewsData, reviewStats] = await Promise.all([
+  const [related, categoryProducts, categories, reviewsData, reviewStats] = await Promise.all([
     product.category_slug ? getRelatedProductsCached(product.category_slug, product.sku, 5) : Promise.resolve([]),
+    product.category_slug ? getProductsCached({ category: product.category_slug }) : Promise.resolve([]),
     getCategoriesCached(),
     service.from('product_reviews')
       .select('rating')
@@ -101,6 +102,8 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   const minOrder    = 1;
   const inStock     = isInStock(stockStatus, stockQty, minOrder);
   const pricePack = isRetail ? priceUnit : priceUnit * product.pack_qty;
+
+  const variants = findVariants(categoryProducts, product);
 
   const productCat   = categories.find((c) => c.slug === product.category_slug);
   const categoryName = productCat?.name ?? 'Каталог';
@@ -147,6 +150,13 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
         : 'https://schema.org/OutOfStock',
       seller: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
     },
+    ...(product.characteristics.length > 0 ? {
+      additionalProperty: product.characteristics.map((c) => ({
+        '@type': 'PropertyValue',
+        name: c.label,
+        value: c.value,
+      })),
+    } : {}),
     ...(reviewCount >= 1 ? {
       aggregateRating: {
         '@type': 'AggregateRating',
@@ -196,6 +206,17 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
               {product.volume && <span className="badge">{volLabel(product.volume)}: {product.volume}</span>}
               {(() => { const c = product.color ?? product.characteristics.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="badge">Колір: {c}</span> : null; })()}
             </div>
+
+            {variants.length > 0 && (
+              <div className="product-info__badges" style={{ alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Інші фасовки:</span>
+                {variants.map(v => (
+                  <Link key={v.sku} href={`/product/${v.sku}`} className="badge" style={{ textDecoration: 'none', color: 'var(--brand-main)' }}>
+                    {v.volume}
+                  </Link>
+                ))}
+              </div>
+            )}
 
             <div className="product-info__stock-row">
               <div className="product-info__stock">

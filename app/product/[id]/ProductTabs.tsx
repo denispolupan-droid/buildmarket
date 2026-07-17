@@ -70,21 +70,23 @@ export default function ProductTabs({ description, descriptionFull, characterist
         </button>
       </div>
 
+      {/* Усі панелі завжди в DOM (SEO: характеристики мають бути в initial HTML),
+          неактивні ховаються через hidden */}
       <div className="product-tabs__content">
-        {tab === 'desc' && (
-          displayDesc
+        <div hidden={tab !== 'desc'}>
+          {displayDesc
             ? <div className="product-tabs__desc">
-                {formatDescription(displayDesc).map((para, i) => (
-                  <p key={i} style={{ marginBottom: i < formatDescription(displayDesc).length - 1 ? '12px' : 0 }}>
+                {formatDescription(displayDesc).map((para, i, arr) => (
+                  <p key={i} style={{ marginBottom: i < arr.length - 1 ? '12px' : 0 }}>
                     {para}
                   </p>
                 ))}
               </div>
-            : <p className="product-tabs__desc" style={{color:'var(--text-muted)'}}>{t('Опис відсутній', 'Описание отсутствует')}</p>
-        )}
+            : <p className="product-tabs__desc" style={{color:'var(--text-muted)'}}>{t('Опис відсутній', 'Описание отсутствует')}</p>}
+        </div>
 
-        {tab === 'chars' && (
-          characteristics.length > 0
+        <div hidden={tab !== 'chars'}>
+          {characteristics.length > 0
             ? (
               <table className="chars-table">
                 <tbody>
@@ -97,14 +99,14 @@ export default function ProductTabs({ description, descriptionFull, characterist
                 </tbody>
               </table>
             )
-            : <p className="product-tabs__desc" style={{color:'var(--text-muted)'}}>{t('Характеристики відсутні', 'Характеристики отсутствуют')}</p>
-        )}
+            : <p className="product-tabs__desc" style={{color:'var(--text-muted)'}}>{t('Характеристики відсутні', 'Характеристики отсутствуют')}</p>}
+        </div>
 
-        {tab === 'docs' && (
+        <div hidden={tab !== 'docs'}>
           <p className="product-tabs__desc" style={{color:'var(--text-muted)'}}>
             {t('Документи поки що не завантажені', 'Документы пока не загружены')}
           </p>
-        )}
+        </div>
       </div>
     </div>
   );

@@ -177,6 +177,37 @@ export function productMeta(product: ProductFull, lang: Lang = 'uk'): Metadata {
   };
 }
 
+/** Базова назва без фасовки в кінці — для групування варіантів одного продукту. */
+export function variantBaseName(name: string): string {
+  return collapse(name)
+    .replace(/[,–—-]?\s*\d[\d.,]*\s*(л|мл|кг|г)\.?\s*$/i, '')
+    .toLowerCase();
+}
+
+/** Об'єм/вага у базових одиницях (мл/г) — для сортування фасовок. */
+export function volumeValue(volume: string | null): number {
+  if (!volume) return 0;
+  const m = collapse(volume).match(/(\d[\d.,]*)\s*(л|мл|кг|г)/i);
+  if (!m) return 0;
+  const n = parseFloat(m[1].replace(',', '.'));
+  const unit = m[2].toLowerCase();
+  return unit === 'л' || unit === 'кг' ? n * 1000 : n;
+}
+
+/** Інші фасовки того самого продукту (той самий бренд + базова назва), за зростанням об'єму. */
+export function findVariants<T extends Pick<ProductFull, 'sku' | 'name' | 'brand' | 'volume'>>(
+  products: T[],
+  current: Pick<ProductFull, 'sku' | 'name' | 'brand'>,
+): T[] {
+  const base = variantBaseName(current.name);
+  return products
+    .filter(p => p.sku !== current.sku
+      && !!p.volume
+      && p.brand.trim().toLowerCase() === current.brand.trim().toLowerCase()
+      && variantBaseName(p.name) === base)
+    .sort((a, b) => volumeValue(a.volume) - volumeValue(b.volume));
+}
+
 export type ListingStats = { count: number; minPrice: number | null; maxPrice: number | null };
 
 export function listingStats(products: ProductListItem[]): ListingStats {

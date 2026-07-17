@@ -2,12 +2,12 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached } from '../../../../lib/supabase';
+import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsCached } from '../../../../lib/supabase';
 import { getCategoryNameRu } from '../../../../lib/ru';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { isWholesale } from '../../../../lib/user-role';
 import { getCategoryMeta } from '../../../../lib/category-descriptions';
-import { productMeta, productDisplayName, productH1 } from '../../../../lib/seo/meta';
+import { productMeta, productDisplayName, productH1, findVariants } from '../../../../lib/seo/meta';
 import ProductTabs from '../../../product/[id]/ProductTabs';
 import ProductOrderPanel from '../../../product/[id]/ProductOrderPanel';
 import ProductGallery from '../../../product/[id]/ProductGallery';
@@ -74,8 +74,9 @@ export default async function RuProductPage({ params, searchParams }: { params: 
   const product = await getProductBySkuCached(sku);
   if (!product) notFound();
 
-  const [related, categories, reviewsData, reviewStats] = await Promise.all([
+  const [related, categoryProducts, categories, reviewsData, reviewStats] = await Promise.all([
     product.category_slug ? getRelatedProductsCached(product.category_slug, product.sku, 5) : Promise.resolve([]),
+    product.category_slug ? getProductsCached({ category: product.category_slug }) : Promise.resolve([]),
     getCategoriesCached(),
     service.from('product_reviews')
       .select('rating')
@@ -90,17 +91,20 @@ export default async function RuProductPage({ params, searchParams }: { params: 
     ? Math.round((approvedReviews.reduce((s: number, r: { rating: number }) => s + r.rating, 0) / reviewCount) * 10) / 10
     : 0;
 
+  const pricePromo = isRetail ? (product.stock?.price_promo ?? null) : null;
   const priceUnit = isRetail
-    ? (product.stock?.price_retail ?? 0)
+    ? (pricePromo ?? product.stock?.price_retail ?? 0)
     : (product.stock?.price_unit ?? 0);
   const priceOld = isRetail
-    ? (product.stock?.price_retail_old ?? null)
+    ? (pricePromo ? (product.stock?.price_retail ?? null) : (product.stock?.price_retail_old ?? null))
     : (product.stock?.price_old ?? null);
   const stockQty    = product.stock?.stock_qty    ?? 0;
   const stockStatus = product.stock?.stock_status;
   const minOrder    = isRetail ? 1 : product.min_order;
   const inStock     = isInStock(stockStatus, stockQty, minOrder);
   const pricePack   = isRetail ? priceUnit : priceUnit * product.pack_qty;
+
+  const variants = findVariants(categoryProducts, product);
 
   const productCat   = categories.find((c) => c.slug === product.category_slug);
   const categoryName = productCat
@@ -148,6 +152,13 @@ export default async function RuProductPage({ params, searchParams }: { params: 
       availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
       seller: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
     },
+    ...(product.characteristics.length > 0 ? {
+      additionalProperty: product.characteristics.map((c) => ({
+        '@type': 'PropertyValue',
+        name: c.label,
+        value: c.value,
+      })),
+    } : {}),
     ...(reviewCount >= 1 ? {
       aggregateRating: {
         '@type': 'AggregateRating',
@@ -197,6 +208,17 @@ export default async function RuProductPage({ params, searchParams }: { params: 
               {product.volume && <span className="badge">{volLabel(product.volume)}: {product.volume}</span>}
               {(() => { const c = product.color ?? product.characteristics.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="badge">Цвет: {tFilterValue(c, 'ru')}</span> : null; })()}
             </div>
+
+            {variants.length > 0 && (
+              <div className="product-info__badges" style={{ alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Другие фасовки:</span>
+                {variants.map(v => (
+                  <Link key={v.sku} href={`/ru/product/${v.sku}`} className="badge" style={{ textDecoration: 'none', color: 'var(--brand-main)' }}>
+                    {v.volume}
+                  </Link>
+                ))}
+              </div>
+            )}
 
             <div className="product-info__stock-row">
               <div className="product-info__stock">
