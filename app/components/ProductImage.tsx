@@ -13,6 +13,7 @@ export type ProductImageProps = {
   type?: 'tube' | 'canister'
   variant?: 'front' | 'angle' | 'label'
   imageUrl?: string  // real photo URL — takes priority over SVG
+  priority?: boolean // LCP-зображення (головне фото картки товару): preload, eager, без fade
 }
 
 /* ─── Tube front view ─────────────────────────────────────────── */
@@ -179,9 +180,24 @@ function CanisterAngle({ brand, nl1, nl2, volume, bc = '#1A3A6A', ac = '#3A80C0'
 /* ─── Real photo — fades in on load instead of popping in once the
    network request resolves, so it doesn't visually clash with the
    surrounding scroll-reveal animation ──────────────────────────── */
-function FadeProductImage({ imageUrl, alt }: { imageUrl: string; alt: string }) {
+function FadeProductImage({ imageUrl, alt, priority }: { imageUrl: string; alt: string; priority?: boolean }) {
   const [loaded, setLoaded] = useState(false);
   useEffect(() => { setLoaded(false); }, [imageUrl]);
+  // LCP-зображення не можна ані лінивити, ані ховати в opacity:0 до onLoad —
+  // браузер тоді не може ні пріоритетно завантажити, ні швидко відмалювати його
+  if (priority) {
+    return (
+      <Image
+        key={imageUrl}
+        src={imageUrl}
+        alt={alt}
+        width={400}
+        height={400}
+        priority
+        style={{ height: '100%', width: '100%', objectFit: 'contain', display: 'block' }}
+      />
+    );
+  }
   return (
     <Image
       key={imageUrl}
@@ -204,10 +220,11 @@ export default function ProductImage({
   type = 'tube',
   variant = 'front',
   imageUrl,
+  priority,
   ...rest
 }: ProductImageProps) {
   if (imageUrl) {
-    return <FadeProductImage imageUrl={imageUrl} alt={[rest.brand, rest.nl1, rest.nl2, rest.volume].filter(Boolean).join(' ')} />;
+    return <FadeProductImage imageUrl={imageUrl} priority={priority} alt={[rest.brand, rest.nl1, rest.nl2, rest.volume].filter(Boolean).join(' ')} />;
   }
   if (type === 'canister') {
     return variant === 'angle'
