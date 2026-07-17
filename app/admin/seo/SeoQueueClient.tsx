@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 
 export type QueueItem = {
@@ -133,6 +133,33 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
 
   const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
 
+  // ── Запити з Search Console (позиції 8–35 = "дожимаємі") ──
+  type GscRow = { query: string; page: string; clicks: number; impressions: number; position: number };
+  const [gscRows, setGscRows] = useState<GscRow[] | null>(null);
+  const [gscError, setGscError] = useState('');
+  useEffect(() => {
+    fetch('/api/admin/seo/gsc?min=8&max=35&limit=25')
+      .then(async res => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        setGscRows(data);
+      })
+      .catch(err => setGscError(String(err)));
+  }, []);
+
+  function pickGscRow(row: GscRow) {
+    setBoostQuery(row.query);
+    // Якщо запит веде на сторінку товару — підставляємо SKU автоматично
+    const m = /\/product\/([^/?#]+)/.exec(row.page);
+    if (m) {
+      const target = items.find(i => i.slug === m[1] || i.sku === m[1]);
+      setBoostSku(target?.sku ?? '');
+    } else {
+      setBoostSku('');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   // ── "Дожим" запиту: посилення сторінки під конкретний пошуковий запит ──
   const [boostQuery, setBoostQuery] = useState('');
   const [boostSku, setBoostSku] = useState('');
@@ -242,6 +269,49 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
           </p>
         )}
         {boostMsg && <p style={{ fontSize: 13, margin: '8px 0 0', color: boostMsg.startsWith('✓') ? '#10B981' : '#EF4444' }}>{boostMsg}</p>}
+
+        {/* Автопідтяжка запитів із Search Console */}
+        <div style={{ marginTop: 14, borderTop: '1px solid #E2E8F0', paddingTop: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', marginBottom: 8 }}>
+            Запити з Search Console за 28 днів (позиції 8–35, за показами) — клікніть, щоб підставити:
+          </div>
+          {gscError && <p style={{ fontSize: 12, color: '#EF4444' }}>GSC недоступний: {gscError.slice(0, 160)}</p>}
+          {!gscRows && !gscError && <p style={{ fontSize: 12, color: '#94A3B8' }}>Завантажуємо…</p>}
+          {gscRows && gscRows.length === 0 && <p style={{ fontSize: 12, color: '#94A3B8' }}>Поки немає запитів у діапазоні 8–35 — сайт молодий, список наповниться.</p>}
+          {gscRows && gscRows.length > 0 && (
+            <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', color: '#64748B' }}>
+                    <th style={{ padding: '4px 8px' }}>Запит</th>
+                    <th style={{ padding: '4px 8px' }}>Сторінка</th>
+                    <th style={{ padding: '4px 8px', textAlign: 'right' }}>Позиція</th>
+                    <th style={{ padding: '4px 8px', textAlign: 'right' }}>Покази</th>
+                    <th style={{ padding: '4px 8px', textAlign: 'right' }}>Кліки</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gscRows.map((r, i) => (
+                    <tr
+                      key={i}
+                      onClick={() => pickGscRow(r)}
+                      style={{ cursor: 'pointer', borderTop: '1px solid #F1F5F9' }}
+                      title="Клік — підставити запит у форму дожиму"
+                    >
+                      <td style={{ padding: '5px 8px', fontWeight: 600, color: '#1E293B' }}>{r.query}</td>
+                      <td style={{ padding: '5px 8px', color: '#64748B', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {r.page.replace('https://fixline.com.ua', '') || '/'}
+                      </td>
+                      <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 700, color: r.position <= 15 ? '#F59E0B' : '#64748B' }}>{r.position.toFixed(1)}</td>
+                      <td style={{ padding: '5px 8px', textAlign: 'right' }}>{r.impressions}</td>
+                      <td style={{ padding: '5px 8px', textAlign: 'right' }}>{r.clicks}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Фільтри-чипси */}
