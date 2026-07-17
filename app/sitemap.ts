@@ -22,6 +22,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const b = p.brand?.trim();
     if (b) brandCounts.set(b, (brandCounts.get(b) ?? 0) + 1);
   }
+
+  // lastmod для категорій/брендів/перетинів — максимальний updated_at їхніх товарів
+  const categoryUpdated = new Map<string, Date>();
+  const brandUpdated = new Map<string, Date>();
+  const catBrandUpdated = new Map<string, Date>();
+  const bumpMax = (map: Map<string, Date>, key: string, d: Date) => {
+    const cur = map.get(key);
+    if (!cur || d > cur) map.set(key, d);
+  };
+  for (const p of products) {
+    if (!p.updated_at) continue;
+    const d = new Date(p.updated_at);
+    if (p.category_slug) bumpMax(categoryUpdated, p.category_slug, d);
+    const b = p.brand?.trim();
+    if (b) bumpMax(brandUpdated, b, d);
+    if (b && p.category_slug) bumpMax(catBrandUpdated, `${p.category_slug}::${b}`, d);
+  }
   const significantBrands = [...brandCounts.entries()]
     .filter(([, count]) => count >= 5)
     .map(([brand]) => brand);
@@ -49,7 +66,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // /shop — публічний магазин, категорії індексуємо
   const shopCategoryRoutes: MetadataRoute.Sitemap = categories.map(cat => ({
     url: `${BASE}/shop/${cat.slug}`,
-    lastModified: new Date(cat.created_at),
+    lastModified: categoryUpdated.get(cat.slug) ?? new Date(cat.created_at),
     changeFrequency: 'daily',
     priority: 0.8,
   }));
@@ -66,7 +83,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const brandRoutes: MetadataRoute.Sitemap = significantBrands.map(brand => ({
     url: `${BASE}/shop/brand/${brandToSlug(brand)}`,
-    lastModified: SITE_UPDATED,
+    lastModified: brandUpdated.get(brand) ?? SITE_UPDATED,
     changeFrequency: 'weekly',
     priority: 0.75,
   }));
@@ -87,7 +104,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const brandName = key.slice(sep + 2);
     categoryBrandRoutes.push({
       url: `${BASE}/shop/${categorySlug}/${brandToSlug(brandName)}`,
-      lastModified: SITE_UPDATED,
+      lastModified: catBrandUpdated.get(key) ?? SITE_UPDATED,
       changeFrequency: 'weekly',
       priority: 0.72,
     });
@@ -115,14 +132,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const ruShopCategoryRoutes: MetadataRoute.Sitemap = categories.map(cat => ({
     url: `${BASE}/ru/shop/${cat.slug}`,
-    lastModified: new Date(cat.created_at),
+    lastModified: categoryUpdated.get(cat.slug) ?? new Date(cat.created_at),
     changeFrequency: 'monthly',
     priority: 0.3,
   }));
 
   const ruBrandRoutes: MetadataRoute.Sitemap = significantBrands.map(brand => ({
     url: `${BASE}/ru/shop/brand/${brandToSlug(brand)}`,
-    lastModified: SITE_UPDATED,
+    lastModified: brandUpdated.get(brand) ?? SITE_UPDATED,
     changeFrequency: 'monthly',
     priority: 0.25,
   }));
@@ -135,7 +152,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const brandName = key.slice(sep + 2);
     ruCategoryBrandRoutes.push({
       url: `${BASE}/ru/shop/${categorySlug}/${brandToSlug(brandName)}`,
-      lastModified: SITE_UPDATED,
+      lastModified: catBrandUpdated.get(key) ?? SITE_UPDATED,
       changeFrequency: 'monthly',
       priority: 0.2,
     });

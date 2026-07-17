@@ -12,6 +12,7 @@ import ProductImage from '../../components/ProductImage';
 import RelatedCarousel from './RelatedCarousel';
 import BackButton from './BackButton';
 import CoverageCalculator from './CoverageCalculator';
+import DeliveryInfo from './DeliveryInfo';
 import Footer from '../../components/Footer';
 import ProductReviews from './ProductReviews';
 import { RatingBadge } from '../../components/StarRating';
@@ -289,6 +290,8 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
           descriptionFull={product.description_full ?? null}
           characteristics={product.characteristics}
         />
+
+        <DeliveryInfo lang="uk" />
 
         {/* Стаття по темі */}
         {(() => { const blogSlug = product.category_slug ? getCategoryMeta(product.category_slug)?.blogSlug : null; return blogSlug ? (

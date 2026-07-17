@@ -15,6 +15,7 @@ import ProductImage from '../../../components/ProductImage';
 import RelatedCarousel from '../../../product/[id]/RelatedCarousel';
 import BackButton from '../../../product/[id]/BackButton';
 import CoverageCalculator from '../../../product/[id]/CoverageCalculator';
+import DeliveryInfo from '../../../product/[id]/DeliveryInfo';
 import Footer from '../../../components/Footer';
 import ProductReviews from '../../../product/[id]/ProductReviews';
 import { RatingBadge } from '../../../components/StarRating';
@@ -288,6 +289,8 @@ export default async function RuProductPage({ params, searchParams }: { params: 
           descriptionFull={descriptionFullRu}
           characteristics={product.characteristics}
         />
+
+        <DeliveryInfo lang="ru" />
 
         {/* Статья по теме */}
         {(() => { const blogSlug = product.category_slug ? getCategoryMeta(product.category_slug)?.blogSlug : null; return blogSlug ? (

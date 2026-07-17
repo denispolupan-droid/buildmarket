@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { productDisplayName, variantBaseName } from '../../../lib/seo/meta';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
       .order('sort_order'),
     serviceClient
       .from('product_stock')
-      .select('sku, price_retail, price_unit, stock_status'),
+      .select('sku, price_retail, price_promo, stock_status'),
     serviceClient
       .from('categories')
       .select('slug, name, parent_slug'),
@@ -63,28 +64,43 @@ export async function GET(request: NextRequest) {
     return parent ? `${parent.name} > ${cat.name}` : cat.name;
   }
 
+  // item_group_id: групуємо фасовки одного продукту (бренд + назва без об'єму),
+  // id групи — найменший SKU у групі
+  const groupId = new Map<string, string>();
+  for (const p of products ?? []) {
+    const key = `${p.brand.trim().toLowerCase()}::${variantBaseName(p.name)}`;
+    const existing = groupId.get(key);
+    if (!existing || p.sku < existing) groupId.set(key, p.sku);
+  }
+
   const items = (products ?? [])
     .map(p => {
       const s = stockMap.get(p.sku);
       if (!s) return null;
 
-      const price = s.price_retail ?? s.price_unit;
+      // Ціна у фіді має точно збігатися зі сторінкою: базова = роздрібна,
+      // акційна = g:sale_price. price_unit (опт) у публічний фід не потрапляє.
+      const price = s.price_retail;
       if (!price || price <= 0) return null;
+      const salePrice = s.price_promo && s.price_promo > 0 && s.price_promo < price
+        ? s.price_promo
+        : null;
 
       const img = imageUrl(p.image);
       if (!img) return null;
 
       const available = s.stock_status === 'in_stock' ? 'in stock' : 'out of stock';
 
-      const volume = p.volume && !p.name.includes(p.volume) ? ` ${p.volume}` : '';
-      const title = truncate(`${p.brand} ${p.name}${volume}`.trim(), 150);
+      const title = truncate(productDisplayName(p), 150);
 
       const rawDesc = (p as { description_full?: string | null }).description_full
         ?? p.description
-        ?? `${p.brand} ${p.name}${volume} — будівельна хімія від FIXLINE. Доставка по всій Україні.`;
+        ?? `${title} — будівельна хімія від FIXLINE. Доставка по всій Україні.`;
       const description = truncate(rawDesc, 5000);
 
       const productType = categoryPath(p.category_slug);
+      const gKey = `${p.brand.trim().toLowerCase()}::${variantBaseName(p.name)}`;
+      const gid = groupId.get(gKey);
 
       return `    <item>
       <g:id>${x(p.sku)}</g:id>
@@ -95,8 +111,10 @@ export async function GET(request: NextRequest) {
       <g:condition>new</g:condition>
       <g:availability>${available}</g:availability>
       <g:price>${price.toFixed(2)} UAH</g:price>
+      ${salePrice ? `<g:sale_price>${salePrice.toFixed(2)} UAH</g:sale_price>` : ''}
       <g:brand>${x(p.brand)}</g:brand>
       <g:identifier_exists>false</g:identifier_exists>
+      ${gid ? `<g:item_group_id>${x(gid)}</g:item_group_id>` : ''}
       ${productType ? `<g:product_type>${x(productType)}</g:product_type>` : ''}
     </item>`;
     })
