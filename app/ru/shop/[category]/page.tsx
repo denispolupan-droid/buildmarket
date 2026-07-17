@@ -3,10 +3,11 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '../../../components/Footer';
 import ShopLoader from '../../../shop/ShopLoader';
+import AllProductsLinks from '../../../shop/AllProductsLinks';
 import { getCategoriesCached, getProductsCached } from '../../../../lib/supabase';
 import { getCategoryNameRu, getCategoryDescriptionRu } from '../../../../lib/ru';
 import { getCategoryMetaRu } from '../../../../lib/category-descriptions-ru';
-import { categoryMeta, listingStats, productDisplayName, retailPrice } from '../../../../lib/seo/meta';
+import { categoryMeta, listingStats, productDisplayName, retailPrice, categoryFamilySlugs } from '../../../../lib/seo/meta';
 import '../../../shop/shop.css';
 
 const BASE = 'https://fixline.com.ua';
@@ -23,7 +24,8 @@ export async function generateMetadata(
   if (!cat) return { robots: { index: false, follow: false } };
 
   const nameRu = getCategoryNameRu(cat.slug, cat.name);
-  const products = await getProductsCached({ category });
+  const family = new Set(categoryFamilySlugs(categories, category));
+  const products = (await getProductsCached()).filter(p => p.category_slug && family.has(p.category_slug));
   return categoryMeta(cat, listingStats(products), 'ru', {
     nameRu,
     curatedDescription: getCategoryDescriptionRu(cat.slug, nameRu) ?? null,
@@ -51,7 +53,9 @@ export default async function RuShopCategoryPage({ params }: { params: Promise<{
 
   const meta = getCategoryMetaRu(cat.slug);
 
-  const itemListProducts = await getProductsCached({ category: cat.slug, limit: 10 });
+  const family = new Set(categoryFamilySlugs(categories, cat.slug));
+  const allCategoryProducts = (await getProductsCached()).filter(p => p.category_slug && family.has(p.category_slug));
+  const itemListProducts = allCategoryProducts.slice(0, 10);
   const itemListLd = itemListProducts.length > 0 ? {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
@@ -114,6 +118,7 @@ export default async function RuShopCategoryPage({ params }: { params: Promise<{
             {nameRu}
           </h1>
           <ShopLoader initialCategory={category} />
+          <AllProductsLinks products={allCategoryProducts} lang="ru" />
           {meta && (
             <div style={{ marginTop: '32px', padding: '16px 20px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '8px' }}>

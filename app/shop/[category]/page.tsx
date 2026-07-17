@@ -3,9 +3,10 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
 import ShopLoader from '../ShopLoader';
+import AllProductsLinks from '../AllProductsLinks';
 import { getCategoriesCached, getProductsCached } from '../../../lib/supabase';
 import { getCategoryMeta } from '../../../lib/category-descriptions';
-import { categoryMeta, listingStats, productDisplayName, retailPrice } from '../../../lib/seo/meta';
+import { categoryMeta, listingStats, productDisplayName, retailPrice, categoryFamilySlugs } from '../../../lib/seo/meta';
 import '../shop.css';
 
 const BASE = 'https://fixline.com.ua';
@@ -21,7 +22,9 @@ export async function generateMetadata(
 
   if (!cat) return { robots: { index: false, follow: false } };
 
-  const products = await getProductsCached({ category });
+  // Товари прив'язані до підкатегорій — для батьківської категорії беремо всю родину
+  const family = new Set(categoryFamilySlugs(categories, category));
+  const products = (await getProductsCached()).filter(p => p.category_slug && family.has(p.category_slug));
   return categoryMeta(cat, listingStats(products), 'uk', {
     curatedDescription: getCategoryMeta(category)?.description ?? null,
   });
@@ -44,7 +47,9 @@ export default async function ShopCategoryPage({ params }: { params: Promise<{ c
   ];
   const breadcrumbLd = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: breadcrumbItems };
 
-  const itemListProducts = await getProductsCached({ category: cat.slug, limit: 10 });
+  const family = new Set(categoryFamilySlugs(categories, cat.slug));
+  const allCategoryProducts = (await getProductsCached()).filter(p => p.category_slug && family.has(p.category_slug));
+  const itemListProducts = allCategoryProducts.slice(0, 10);
   const itemListLd = itemListProducts.length > 0 ? {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
@@ -109,6 +114,7 @@ export default async function ShopCategoryPage({ params }: { params: Promise<{ c
             {cat.name}
           </h1>
           <ShopLoader initialCategory={category} />
+          <AllProductsLinks products={allCategoryProducts} lang="uk" />
         </div>
       </div>
       <Footer />

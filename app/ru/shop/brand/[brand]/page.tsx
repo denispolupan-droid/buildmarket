@@ -5,7 +5,8 @@ import Footer from '../../../../components/Footer';
 import ShopLoader from '../../../../shop/ShopLoader';
 import '../../../../shop/shop.css';
 import { getBrandsCached, getProductsCached } from '../../../../../lib/supabase';
-import { brandMeta, listingStats } from '../../../../../lib/seo/meta';
+import { brandMeta, listingStats, productDisplayName, retailPrice } from '../../../../../lib/seo/meta';
+import AllProductsLinks from '../../../../shop/AllProductsLinks';
 
 const BASE = 'https://fixline.com.ua';
 
@@ -48,9 +49,9 @@ export default async function ShopBrandRuPage({ params }: { params: Promise<{ br
 
   if (!brand) notFound();
 
-  const brandProducts = allProducts
-    .filter(p => p.brand.trim().toLowerCase() === brand.trim().toLowerCase())
-    .slice(0, 10);
+  const allBrandProducts = allProducts
+    .filter(p => p.brand.trim().toLowerCase() === brand.trim().toLowerCase());
+  const brandProducts = allBrandProducts.slice(0, 10);
 
   const breadcrumbLd = {
     '@context': 'https://schema.org',
@@ -73,14 +74,14 @@ export default async function ShopBrandRuPage({ params }: { params: Promise<{ br
       position: i + 1,
       item: {
         '@type': 'Product',
-        name: p.name,
+        name: productDisplayName(p, 'ru'),
         url: `${BASE}/ru/product/${p.sku}`,
         brand: { '@type': 'Brand', name: p.brand },
         ...(p.image ? { image: `${BASE}${p.image.startsWith('/') ? '' : '/'}${p.image}` } : {}),
-        ...(p.stock ? {
+        ...(p.stock && retailPrice(p) ? {
           offers: {
             '@type': 'Offer',
-            price: p.stock.price_unit,
+            price: retailPrice(p),
             priceCurrency: 'UAH',
             availability: p.stock.stock_status === 'in_stock'
               ? 'https://schema.org/InStock'
@@ -111,6 +112,7 @@ export default async function ShopBrandRuPage({ params }: { params: Promise<{ br
             Широкий ассортимент продукции {brand} по выгодным ценам. Оптовые и розничные условия, быстрая доставка Новой Почтой по всей Украине.
           </p>
           <ShopLoader initialBrand={brand} />
+          <AllProductsLinks products={allBrandProducts} lang="ru" />
         </div>
       </div>
       <Footer />

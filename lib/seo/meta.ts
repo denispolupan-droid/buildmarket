@@ -177,6 +177,11 @@ export function productMeta(product: ProductFull, lang: Lang = 'uk'): Metadata {
   };
 }
 
+/** Слаги категорії разом з її підкатегоріями (товари прив'язані до підкатегорій). */
+export function categoryFamilySlugs(categories: Pick<Category, 'slug' | 'parent_slug'>[], slug: string): string[] {
+  return [slug, ...categories.filter(c => c.parent_slug === slug).map(c => c.slug)];
+}
+
 /** Базова назва без фасовки в кінці — для групування варіантів одного продукту. */
 export function variantBaseName(name: string): string {
   return collapse(name)

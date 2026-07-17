@@ -6,7 +6,8 @@ import ShopLoader from '../../../../shop/ShopLoader';
 import '../../../../shop/shop.css';
 import { getCategoriesCached, getProductsCached } from '../../../../../lib/supabase';
 import { getCategoryNameRu } from '../../../../../lib/ru';
-import { categoryBrandMeta, listingStats } from '../../../../../lib/seo/meta';
+import { categoryBrandMeta, listingStats, productDisplayName, retailPrice } from '../../../../../lib/seo/meta';
+import AllProductsLinks from '../../../../shop/AllProductsLinks';
 
 const BASE = 'https://fixline.com.ua';
 
@@ -103,9 +104,9 @@ export default async function ShopCategoryBrandRuPage(
     ],
   };
 
-  const pageProducts = products
-    .filter(p => p.category_slug === category && brandToSlug(p.brand?.trim() ?? '') === brandSlug)
-    .slice(0, 10);
+  const allPageProducts = products
+    .filter(p => p.category_slug === category && brandToSlug(p.brand?.trim() ?? '') === brandSlug);
+  const pageProducts = allPageProducts.slice(0, 10);
 
   const itemListLd = {
     '@context': 'https://schema.org',
@@ -118,14 +119,14 @@ export default async function ShopCategoryBrandRuPage(
       position: i + 1,
       item: {
         '@type': 'Product',
-        name: p.name,
+        name: productDisplayName(p, 'ru'),
         url: `${BASE}/ru/product/${p.sku}`,
         brand: { '@type': 'Brand', name: p.brand },
         ...(p.image ? { image: `${BASE}${p.image.startsWith('/') ? '' : '/'}${p.image}` } : {}),
-        ...(p.stock ? {
+        ...(p.stock && retailPrice(p) ? {
           offers: {
             '@type': 'Offer',
-            price: p.stock.price_unit,
+            price: retailPrice(p),
             priceCurrency: 'UAH',
             availability: p.stock.stock_status === 'in_stock'
               ? 'https://schema.org/InStock'
@@ -166,6 +167,7 @@ export default async function ShopCategoryBrandRuPage(
           </p>
 
           <ShopLoader initialCategory={category} initialBrand={brandName} />
+          <AllProductsLinks products={allPageProducts} lang="ru" />
         </div>
       </div>
       <Footer />

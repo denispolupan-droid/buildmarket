@@ -4,7 +4,8 @@ import Link from 'next/link';
 import Footer from '../../../components/Footer';
 import ShopLoader from '../../ShopLoader';
 import { getBrandsCached, getProductsCached } from '../../../../lib/supabase';
-import { brandMeta, listingStats } from '../../../../lib/seo/meta';
+import { brandMeta, listingStats, productDisplayName, retailPrice } from '../../../../lib/seo/meta';
+import AllProductsLinks from '../../AllProductsLinks';
 import '../../shop.css';
 
 const BASE = 'https://fixline.com.ua';
@@ -48,9 +49,9 @@ export default async function ShopBrandPage({ params }: { params: Promise<{ bran
 
   if (!brand) notFound();
 
-  const brandProducts = allProducts
-    .filter(p => p.brand.trim().toLowerCase() === brand.trim().toLowerCase())
-    .slice(0, 10);
+  const allBrandProducts = allProducts
+    .filter(p => p.brand.trim().toLowerCase() === brand.trim().toLowerCase());
+  const brandProducts = allBrandProducts.slice(0, 10);
 
   const breadcrumbLd = {
     '@context': 'https://schema.org',
@@ -73,14 +74,14 @@ export default async function ShopBrandPage({ params }: { params: Promise<{ bran
       position: i + 1,
       item: {
         '@type': 'Product',
-        name: p.name,
+        name: productDisplayName(p),
         url: `${BASE}/product/${p.sku}`,
         brand: { '@type': 'Brand', name: p.brand },
         ...(p.image ? { image: `${BASE}${p.image.startsWith('/') ? '' : '/'}${p.image}` } : {}),
-        ...(p.stock ? {
+        ...(p.stock && retailPrice(p) ? {
           offers: {
             '@type': 'Offer',
-            price: p.stock.price_unit,
+            price: retailPrice(p),
             priceCurrency: 'UAH',
             availability: p.stock.stock_status === 'in_stock'
               ? 'https://schema.org/InStock'
@@ -111,6 +112,7 @@ export default async function ShopBrandPage({ params }: { params: Promise<{ bran
             Широкий асортимент продукції {brand} за вигідними цінами. Оптові та роздрібні умови, швидка доставка Новою Поштою по всій Україні.
           </p>
           <ShopLoader initialBrand={brand} />
+          <AllProductsLinks products={allBrandProducts} lang="uk" />
         </div>
       </div>
       <Footer />
