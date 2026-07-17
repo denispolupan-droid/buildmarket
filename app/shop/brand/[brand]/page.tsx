@@ -75,7 +75,7 @@ export default async function ShopBrandPage({ params }: { params: Promise<{ bran
       item: {
         '@type': 'Product',
         name: productDisplayName(p),
-        url: `${BASE}/product/${p.sku}`,
+        url: `${BASE}/product/${p.slug ?? p.sku}`,
         brand: { '@type': 'Brand', name: p.brand },
         ...(p.image ? { image: `${BASE}${p.image.startsWith('/') ? '' : '/'}${p.image}` } : {}),
         ...(p.stock && retailPrice(p) ? {

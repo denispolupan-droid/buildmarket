@@ -153,7 +153,7 @@ function ProductCard({ product, isRetail, bordered, lang, prefix, rating }: { pr
   const inStock   = product.stock?.stock_status === 'in_stock' || stockQty > 0;
   const isSale    = priceOld != null && priceUnit > 0 && priceUnit < priceOld;
   const discount  = isSale ? Math.round((1 - priceUnit / priceOld!) * 100) : 0;
-  const prodHref  = isRetail ? `${prefix}/product/${product.sku}?from=shop` : `${prefix}/product/${product.sku}`;
+  const prodHref  = isRetail ? `${prefix}/product/${product.slug ?? product.sku}?from=shop` : `${prefix}/product/${product.slug ?? product.sku}`;
   const displayName = lang === 'ru' ? ((product as { name_ru?: string | null }).name_ru ?? product.name) : product.name;
 
   function handleAddToCart() {

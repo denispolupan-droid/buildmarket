@@ -44,6 +44,12 @@ const T = {
 
 const collapse = (s: string) => s.replace(/\s+/g, ' ').trim();
 
+/** Канонічний шлях товару: ЧПУ-слаг, з фолбеком на SKU (старі URL 308-редіректяться). */
+export function productPath(p: { slug?: string | null; sku: string }, lang: Lang = 'uk'): string {
+  const path = `/product/${p.slug ?? p.sku}`;
+  return lang === 'ru' ? `/ru${path}` : path;
+}
+
 /** Роздрібна ціна — та сама, що бачить гість на сторінці та в Product JSON-LD. */
 export function retailPrice(product: { stock: ProductListItem['stock'] }): number | null {
   const s = product.stock;
@@ -159,7 +165,7 @@ function ogTwitter(title: string, description: string, url: string, lang: Lang, 
 export function productMeta(product: ProductFull, lang: Lang = 'uk'): Metadata {
   const title = productTitle(product, lang);
   const description = productDescription(product, lang);
-  const path = `/product/${product.sku}`;
+  const path = productPath(product);
   const url = lang === 'uk' ? `${BASE}${path}` : `${BASE}/ru${path}`;
   const keywordsRaw = (lang === 'ru' ? product.keywords_ru : null) ?? product.keywords;
   return {

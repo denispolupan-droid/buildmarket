@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
+import { generateProductSlug } from '../../../../../lib/seo/slug';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -395,6 +396,24 @@ export async function POST(req: NextRequest) {
       results.success++;
     } catch (err) {
       results.errors.push({ row: i + 2, sku, error: String(err) });
+    }
+  }
+
+  // ЧПУ-слаги для нових товарів (наявні слаги НЕ чіпаємо — вони незмінні, інакше
+  // зламаються вже проіндексовані URL). Колізія → суфікс SKU.
+  const { data: noSlug } = await serviceClient
+    .from('products')
+    .select('sku, name, brand, volume')
+    .is('slug', null);
+  if (noSlug?.length) {
+    const { data: allSlugs } = await serviceClient
+      .from('products').select('slug').not('slug', 'is', null);
+    const used = new Set((allSlugs ?? []).map(r => r.slug as string));
+    for (const p of noSlug) {
+      let slug = generateProductSlug(p) || p.sku.toLowerCase();
+      if (used.has(slug)) slug = `${slug}-${p.sku.toLowerCase()}`;
+      used.add(slug);
+      await serviceClient.from('products').update({ slug }).eq('sku', p.sku);
     }
   }
 

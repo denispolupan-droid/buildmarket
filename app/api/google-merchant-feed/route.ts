@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
   const [{ data: products }, { data: stock }, { data: categories }] = await Promise.all([
     serviceClient
       .from('products')
-      .select('sku, name, brand, category_slug, volume, description, description_full, image')
+      .select('sku, slug, name, brand, category_slug, volume, description, description_full, image')
       .eq('is_active', true)
       .order('sort_order'),
     serviceClient
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
       <g:id>${x(p.sku)}</g:id>
       <title>${x(title)}</title>
       <description>${x(description)}</description>
-      <link>${BASE_URL}/product/${x(p.sku)}</link>
+      <link>${BASE_URL}/product/${x(p.slug ?? p.sku)}</link>
       <g:image_link>${x(img)}</g:image_link>
       <g:condition>new</g:condition>
       <g:availability>${available}</g:availability>

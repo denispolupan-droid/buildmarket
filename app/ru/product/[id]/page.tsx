@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 
-import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsCached, getProductFaqCached } from '../../../../lib/supabase';
+import { getProductBySkuCached, getProductBySlugCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsCached, getProductFaqCached } from '../../../../lib/supabase';
 import { getCategoryNameRu } from '../../../../lib/ru';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { isWholesale } from '../../../../lib/user-role';
 import { getCategoryMeta } from '../../../../lib/category-descriptions';
-import { productMeta, productDisplayName, productH1, findVariants } from '../../../../lib/seo/meta';
+import { productMeta, productDisplayName, productH1, findVariants, productPath } from '../../../../lib/seo/meta';
 import ProductTabs from '../../../product/[id]/ProductTabs';
 import ProductOrderPanel from '../../../product/[id]/ProductOrderPanel';
 import ProductGallery from '../../../product/[id]/ProductGallery';
@@ -33,10 +33,17 @@ const BASE = 'https://fixline.com.ua';
 
 export const dynamic = 'force-dynamic';
 
+// URL товару — ЧПУ-слаг; старі SKU-адреси 308-редіректяться на слаг
+async function resolveProduct(id: string) {
+  return (await getProductBySlugCached(id)) ?? (await getProductBySkuCached(id));
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const { id: sku } = await params;
-  const product = await getProductBySkuCached(sku);
+  const { id } = await params;
+  const product = await resolveProduct(id);
   if (!product) return { title: 'Товар не найден', robots: { index: false } };
+  // 308 со старого SKU-URL на слаг до начала стриминга страницы
+  if (product.slug && id !== product.slug) permanentRedirect(`/ru/product/${product.slug}`);
   return productMeta(product, 'ru');
 }
 
@@ -63,7 +70,7 @@ function stockDot(stockStatus: string | undefined, stockQty: number, minOrder: n
 }
 
 export default async function RuProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ from?: string }> }) {
-  const [{ id: sku }, sp] = await Promise.all([params, searchParams]);
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
 
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -73,8 +80,12 @@ export default async function RuProductPage({ params, searchParams }: { params: 
   // got wholesale pricing regardless of their actual account type.
   const isRetail = !isWholesale(user) || sp.from !== 'catalog';
 
-  const product = await getProductBySkuCached(sku);
+  const product = await resolveProduct(id);
   if (!product) notFound();
+  if (product.slug && id !== product.slug) {
+    permanentRedirect(`/ru/product/${product.slug}${sp.from ? `?from=${sp.from}` : ''}`);
+  }
+  const sku = product.sku;
 
   const [related, categoryProducts, faq, categories, reviewsData, reviewStats] = await Promise.all([
     product.category_slug ? getRelatedProductsCached(product.category_slug, product.sku, 5) : Promise.resolve([]),
@@ -127,7 +138,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
   if (productCat) {
     breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: categoryName, item: `${BASE}/ru/shop/${productCat.slug}` });
   }
-  breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: productDisplayName(product, 'ru'), item: `${BASE}/ru/product/${product.sku}` });
+  breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: productDisplayName(product, 'ru'), item: `${BASE}${productPath(product, 'ru')}` });
 
   const breadcrumbLd = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: breadcrumbItems };
 
@@ -147,7 +158,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
     brand: { '@type': 'Brand', name: product.brand },
     description: descriptionRu,
     image: productImage,
-    url: `${BASE}/ru/product/${product.sku}`,
+    url: `${BASE}${productPath(product, 'ru')}`,
     offers: {
       '@type': 'Offer',
       priceCurrency: 'UAH',
@@ -226,7 +237,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
               <div className="product-info__badges" style={{ alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Другие фасовки:</span>
                 {variants.map(v => (
-                  <Link key={v.sku} href={`/ru/product/${v.sku}`} className="badge" style={{ textDecoration: 'none', color: 'var(--brand-main)' }}>
+                  <Link key={v.sku} href={productPath(v, 'ru')} className="badge" style={{ textDecoration: 'none', color: 'var(--brand-main)' }}>
                     {v.volume}
                   </Link>
                 ))}

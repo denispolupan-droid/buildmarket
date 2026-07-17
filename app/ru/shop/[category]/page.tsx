@@ -68,7 +68,7 @@ export default async function RuShopCategoryPage({ params }: { params: Promise<{
       item: {
         '@type': 'Product',
         name: productDisplayName(p, 'ru'),
-        url: `${BASE}/ru/product/${p.sku}`,
+        url: `${BASE}/ru/product/${p.slug ?? p.sku}`,
         brand: { '@type': 'Brand', name: p.brand },
         ...(p.stock && retailPrice(p) ? {
           offers: {

@@ -29,7 +29,7 @@ export default function AllProductsLinks({ products, lang = 'uk' }: Props) {
           const price = retailPrice(p);
           return (
             <li key={p.sku} style={{ fontSize: '13px', lineHeight: 1.5 }}>
-              <Link href={`${prefix}/product/${p.sku}`} style={{ color: 'var(--brand-main)', textDecoration: 'none' }}>
+              <Link href={`${prefix}/product/${p.slug ?? p.sku}`} style={{ color: 'var(--brand-main)', textDecoration: 'none' }}>
                 {productDisplayName(p, lang)}
               </Link>
               {price ? <span style={{ color: 'var(--text-muted)' }}> — {price} грн</span> : null}

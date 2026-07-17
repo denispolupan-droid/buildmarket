@@ -31,8 +31,37 @@ const PUBLIC_OVERRIDES = ['/account/wishlist'];
 const WHOLESALE_ROUTES = ['/catalog'];
 const AUTH_ROUTES = ['/login', '/register'];
 
+// Старі товарні URL /product/{SKU} → 308 на ЧПУ-слаг. Робимо це в proxy, бо
+// кореневий app/loading.tsx вмикає стрімінг і redirect() зі сторінки віддає
+// статус 200 з meta refresh — Google це "м'який" редірект, а не справжній 308.
+const LEGACY_PRODUCT_URL = /^\/(ru\/)?product\/(\d{4}-\d{3})$/;
+
+async function legacyProductRedirect(request: NextRequest): Promise<NextResponse | null> {
+  const m = request.nextUrl.pathname.match(LEGACY_PRODUCT_URL);
+  if (!m) return null;
+  const [, ruPrefix, sku] = m;
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/products?sku=eq.${sku}&select=slug`,
+      { headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}` } },
+    );
+    if (!res.ok) return null;
+    const rows = await res.json() as { slug: string | null }[];
+    const slug = rows?.[0]?.slug;
+    if (!slug) return null;
+    const url = request.nextUrl.clone();
+    url.pathname = `/${ruPrefix ?? ''}product/${slug}`;
+    return NextResponse.redirect(url, 308);
+  } catch {
+    return null; // сторінка сама зробить фолбек-редірект
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  const legacyRedirect = await legacyProductRedirect(request);
+  if (legacyRedirect) return legacyRedirect;
 
   // Inject x-pathname so server components (layout, Footer, Header) can detect language
   const requestHeaders = new Headers(request.headers);

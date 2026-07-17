@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 
-import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsCached, getProductFaqCached } from '../../../lib/supabase';
+import { getProductBySkuCached, getProductBySlugCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsCached, getProductFaqCached } from '../../../lib/supabase';
 import { getCategoryMeta } from '../../../lib/category-descriptions';
-import { productMeta, productDisplayName, productH1, findVariants } from '../../../lib/seo/meta';
+import { productMeta, productDisplayName, productH1, findVariants, productPath } from '../../../lib/seo/meta';
 import ProductTabs from './ProductTabs';
 import ProductOrderPanel from './ProductOrderPanel';
 import ProductGallery from './ProductGallery';
@@ -32,10 +32,18 @@ const BASE = 'https://fixline.com.ua';
 
 export const dynamic = 'force-dynamic';
 
+// URL товару — ЧПУ-слаг; старі SKU-адреси 308-редіректяться на слаг
+async function resolveProduct(id: string) {
+  return (await getProductBySlugCached(id)) ?? (await getProductBySkuCached(id));
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const { id: sku } = await params;
-  const product = await getProductBySkuCached(sku);
+  const { id } = await params;
+  const product = await resolveProduct(id);
   if (!product) return { title: 'Товар не знайдено', robots: { index: false } };
+  // 308 зі старого SKU-URL на слаг ще до початку стрімінгу сторінки —
+  // інакше loading.tsx зафіксує статус 200 і редірект стане "м'яким" (meta refresh)
+  if (product.slug && id !== product.slug) permanentRedirect(`/product/${product.slug}`);
   return productMeta(product, 'uk');
 }
 
@@ -63,7 +71,7 @@ function stockDot(stockStatus: string | undefined, stockQty: number, minOrder: n
 }
 
 export default async function ProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ from?: string }> }) {
-  const [{ id: sku }, sp] = await Promise.all([params, searchParams]);
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
 
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -72,8 +80,12 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   // Wholesale prices only when wholesale account AND coming from /catalog (not /shop or direct)
   const isRetail = !isWholesaleUser || sp.from !== 'catalog';
 
-  const product = await getProductBySkuCached(sku);
+  const product = await resolveProduct(id);
   if (!product) notFound();
+  if (product.slug && id !== product.slug) {
+    permanentRedirect(`/product/${product.slug}${sp.from ? `?from=${sp.from}` : ''}`);
+  }
+  const sku = product.sku;
 
   const [related, categoryProducts, faq, categories, reviewsData, reviewStats] = await Promise.all([
     product.category_slug ? getRelatedProductsCached(product.category_slug, product.sku, 5) : Promise.resolve([]),
@@ -121,7 +133,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   if (productCat) {
     breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: productCat.name, item: `${BASE}/shop/${productCat.slug}` });
   }
-  breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: productDisplayName(product), item: `${BASE}/product/${product.sku}` });
+  breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: productDisplayName(product), item: `${BASE}${productPath(product)}` });
 
   const breadcrumbLd = {
     '@context': 'https://schema.org',
@@ -143,7 +155,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     brand: { '@type': 'Brand', name: product.brand },
     description: product.description ?? undefined,
     image: productImage,
-    url: `${BASE}/product/${product.sku}`,
+    url: `${BASE}${productPath(product)}`,
     offers: {
       '@type': 'Offer',
       priceCurrency: 'UAH',
@@ -225,7 +237,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
               <div className="product-info__badges" style={{ alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Інші фасовки:</span>
                 {variants.map(v => (
-                  <Link key={v.sku} href={`/product/${v.sku}`} className="badge" style={{ textDecoration: 'none', color: 'var(--brand-main)' }}>
+                  <Link key={v.sku} href={productPath(v)} className="badge" style={{ textDecoration: 'none', color: 'var(--brand-main)' }}>
                     {v.volume}
                   </Link>
                 ))}

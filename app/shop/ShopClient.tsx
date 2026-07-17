@@ -114,7 +114,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
 
   return (
     <div className="shop-card">
-      <Link href={lang === 'ru' ? `/ru/product/${p.sku}?from=shop` : `/product/${p.sku}?from=shop`} className="shop-card__clickable" onClick={() => onSaveState?.()}>
+      <Link href={lang === 'ru' ? `/ru/product/${p.slug ?? p.sku}?from=shop` : `/product/${p.slug ?? p.sku}?from=shop`} className="shop-card__clickable" onClick={() => onSaveState?.()}>
         <div className="shop-card__img">
           <div className="shop-card__badge-stack">
             {salePercent && salePercent > 0 && (

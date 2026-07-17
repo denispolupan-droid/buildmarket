@@ -62,7 +62,7 @@ export default async function ShopCategoryPage({ params }: { params: Promise<{ c
       item: {
         '@type': 'Product',
         name: productDisplayName(p),
-        url: `${BASE}/product/${p.sku}`,
+        url: `${BASE}/product/${p.slug ?? p.sku}`,
         ...(p.image ? { image: `${BASE}${p.image.startsWith('/') ? '' : '/'}${p.image}` } : {}),
         brand: { '@type': 'Brand', name: p.brand },
         ...(p.stock && retailPrice(p) ? {

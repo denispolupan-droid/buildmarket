@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag, revalidatePath } from 'next/cache';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
+import { generateProductSlug } from '../../../../lib/seo/slug';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -91,6 +92,15 @@ export async function POST(req: NextRequest) {
   if (!product.sku || product.sku === 'auto') {
     product.sku = await generateSku(product.category_slug);
     if (stock) stock.sku = product.sku;
+  }
+
+  // ЧПУ-слаг генерується автоматично при створенні (SEO); при колізії — суфікс SKU
+  if (!product.slug && product.name && product.brand) {
+    let slug = generateProductSlug(product);
+    const { data: slugTaken } = await serviceClient
+      .from('products').select('sku').eq('slug', slug).maybeSingle();
+    if (slugTaken) slug = `${slug}-${String(product.sku).toLowerCase()}`;
+    product.slug = slug;
   }
 
   const { data: existing } = await serviceClient

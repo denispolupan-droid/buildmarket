@@ -54,7 +54,7 @@ export async function getCategories(): Promise<Category[]> {
 
 // Поля для списку — без description (зберігає ~200KB на запит)
 const PRODUCT_LIST_SELECT = `
-  id, sku, name, name_ru, brand, category_slug, is_active, is_hit, is_new, sort_order,
+  id, sku, slug, name, name_ru, brand, category_slug, is_active, is_hit, is_new, sort_order,
   nl1, nl2, bc, ac, img_type, color, product_type, volume, image,
   min_order, pack_qty,
   stock:product_stock(*),
@@ -108,7 +108,7 @@ export async function getProductsLight(opts?: {
   let query = supabase
     .from('products')
     .select(`
-      id, sku, name, brand, category_slug, is_active, sort_order,
+      id, sku, slug, name, brand, category_slug, is_active, sort_order,
       nl1, nl2, bc, ac, img_type, color, product_type, volume, image,
       stock:product_stock(*)
     `)
@@ -152,6 +152,27 @@ export async function getProductBySku(sku: string): Promise<ProductFull | null> 
   if (error) return null;
   return data as ProductFull;
 }
+
+export async function getProductBySlug(slug: string): Promise<ProductFull | null> {
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      stock:product_stock(*),
+      characteristics:product_characteristics(*)
+    `)
+    .eq('slug', slug)
+    .eq('is_active', true)
+    .single();
+  if (error) return null;
+  return data as ProductFull;
+}
+
+export const getProductBySlugCached = unstable_cache(
+  async (slug: string) => getProductBySlug(slug),
+  ['product-by-slug'],
+  { revalidate: 60, tags: ['products'] }
+);
 
 export async function getBrands(): Promise<string[]> {
   const { data, error } = await supabase

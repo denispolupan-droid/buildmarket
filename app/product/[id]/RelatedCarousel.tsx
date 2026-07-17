@@ -108,11 +108,11 @@ export default function RelatedCarousel({ products, retail = false, reviewStats 
                 style={{ flex: `0 0 calc((100% - ${(VISIBLE - 1) * GAP + 2}px) / ${VISIBLE})` }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px', marginBottom: '10px' }}>
-                  <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}${retail ? '?from=shop' : ''}`} className="pc-name" style={{ textDecoration: 'none', color: 'inherit' }} title={relDisplayName}>{relDisplayName}</Link>
+                  <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.slug ?? p.sku}${retail ? '?from=shop' : ''}`} className="pc-name" style={{ textDecoration: 'none', color: 'inherit' }} title={relDisplayName}>{relDisplayName}</Link>
                   {isSale && <span style={{ flexShrink: 0, background: '#EF4444', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '5px', whiteSpace: 'nowrap' }}>−{Math.round((1 - relPrice / relPriceOld!) * 100)}%</span>}
                 </div>
 
-                <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}${retail ? '?from=shop' : ''}`} className="pc-top" style={{ textDecoration: 'none', display: 'flex' }}>
+                <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.slug ?? p.sku}${retail ? '?from=shop' : ''}`} className="pc-top" style={{ textDecoration: 'none', display: 'flex' }}>
                   <div className="pc-img">
                     <ProductImage brand={p.brand} nl1={p.nl1 ?? ''} nl2={p.nl2 ?? undefined}
                                   volume={p.volume ?? ''} bc={p.bc} ac={p.ac} type={p.img_type}

@@ -1,14 +1,15 @@
 import { ImageResponse } from 'next/og';
 import fs from 'fs';
 import path from 'path';
-import { getProductBySku } from '../../../lib/supabase';
+import { getProductBySku, getProductBySlug } from '../../../lib/supabase';
 
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
 export default async function Image({ params }: { params: Promise<{ id: string }> }) {
-  const { id: sku } = await params;
-  const product = await getProductBySku(sku);
+  const { id } = await params;
+  // id — це ЧПУ-слаг або (старі URL) SKU
+  const product = (await getProductBySlug(id)) ?? (await getProductBySku(id));
 
   const logoBuffer = fs.readFileSync(path.join(process.cwd(), 'public', 'fixline-logo.png'));
   const logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
