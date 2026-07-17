@@ -77,10 +77,8 @@ export default async function Home() {
     email: 'info@fixline.com.ua',
     address: {
       '@type': 'PostalAddress',
-      streetAddress: 'Площа Свободи',
       addressLocality: 'Харків',
       addressRegion: 'Харківська область',
-      postalCode: '61000',
       addressCountry: 'UA',
     },
     openingHoursSpecification: {

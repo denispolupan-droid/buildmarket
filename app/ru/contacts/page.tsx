@@ -35,10 +35,8 @@ export default function ContactsRuPage() {
     email: 'info@fixline.com.ua',
     address: {
       '@type': 'PostalAddress',
-      streetAddress: 'Площадь Свободы',
       addressLocality: 'Харьков',
       addressRegion: 'Харьковская область',
-      postalCode: '61000',
       addressCountry: 'UA',
     },
     openingHoursSpecification: {
