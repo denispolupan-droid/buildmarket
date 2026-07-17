@@ -37,10 +37,17 @@ export async function GET(req: NextRequest) {
 // Генерація нової статті (чернетка) — єдине місце витрат API, тільки по кнопці
 export async function POST(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  const { topic } = await req.json() as { topic?: string };
+  const { topic, focusQuery, mustLink } = await req.json() as {
+    topic?: string;
+    focusQuery?: string;
+    mustLink?: { href: string; label: string };
+  };
   if (!topic?.trim()) return NextResponse.json({ error: 'Вкажіть тему статті' }, { status: 400 });
   try {
-    const post = await generateBlogPost(topic.trim());
+    const post = await generateBlogPost(topic.trim(), {
+      focusQuery: focusQuery?.trim() || undefined,
+      mustLink: mustLink?.href?.startsWith('/') ? mustLink : undefined,
+    });
     return NextResponse.json(post);
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });

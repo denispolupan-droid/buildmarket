@@ -30,7 +30,7 @@ export default async function SeoQueuePage() {
   const [{ data: products }, charsRes, faqRes] = await Promise.all([
     serviceClient
       .from('products')
-      .select('sku, name, brand, category_slug, description_full, description_full_ru, name_ru, description_ru, keywords, image')
+      .select('sku, slug, name, brand, category_slug, description_full, description_full_ru, name_ru, description_ru, keywords, image')
       .eq('is_active', true)
       .order('category_slug')
       .order('sku'),
@@ -45,6 +45,7 @@ export default async function SeoQueuePage() {
 
   const items: QueueItem[] = (products ?? []).map(p => ({
     sku: p.sku,
+    slug: p.slug,
     name: p.name,
     brand: p.brand,
     category: p.category_slug ?? '',

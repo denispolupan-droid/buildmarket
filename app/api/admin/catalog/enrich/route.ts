@@ -10,11 +10,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { limit = 10, category, sku, skus } = await req.json() as {
+  const { limit = 10, category, sku, skus, targetQuery } = await req.json() as {
     limit?: number;
     category?: string;
     sku?: string;
     skus?: string[];
+    targetQuery?: string;
   };
 
   const encoder = new TextEncoder();
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
 
       try {
-        for await (const event of enrichCatalog({ limit, category, sku, skus })) {
+        for await (const event of enrichCatalog({ limit, category, sku, skus, targetQuery })) {
           send(event);
         }
       } catch (err) {

@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 export type QueueItem = {
   sku: string;
+  slug: string | null;
   name: string;
   brand: string;
   category: string;
@@ -132,6 +133,62 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
 
   const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
 
+  // ── "Дожим" запиту: посилення сторінки під конкретний пошуковий запит ──
+  const [boostQuery, setBoostQuery] = useState('');
+  const [boostSku, setBoostSku] = useState('');
+  const [boostBusy, setBoostBusy] = useState<'' | 'product' | 'article'>('');
+  const [boostMsg, setBoostMsg] = useState('');
+  const boostItem = items.find(i => i.sku === boostSku.trim());
+
+  async function boostProduct() {
+    if (!boostQuery.trim() || !boostItem) return;
+    setBoostBusy('product');
+    setBoostMsg('');
+    try {
+      const res = await fetch('/api/admin/catalog/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skus: [boostItem.sku], limit: 1, targetQuery: boostQuery.trim() }),
+      });
+      // читаємо SSE-стрім до кінця, дивимось чи був result
+      const text = await res.text();
+      if (text.includes('"type":"result"')) {
+        setBoostMsg(`✓ Картку ${boostItem.sku} перегенеровано під запит (опис + FAQ + keywords, обидві мови)`);
+      } else {
+        const err = /"error":"([^"]*)"/.exec(text)?.[1];
+        throw new Error(err ?? 'генерація не повернула результат');
+      }
+    } catch (err) {
+      setBoostMsg(`✗ ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setBoostBusy('');
+    }
+  }
+
+  async function boostArticle() {
+    if (!boostQuery.trim()) return;
+    setBoostBusy('article');
+    setBoostMsg('');
+    try {
+      const res = await fetch('/api/admin/blog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: boostQuery.trim(),
+          focusQuery: boostQuery.trim(),
+          ...(boostItem ? { mustLink: { href: `/product/${boostItem.slug ?? boostItem.sku}`, label: `${boostItem.brand} ${boostItem.name}` } } : {}),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setBoostMsg(`✓ Стаття-чернетка «${data.title}» створена — опублікуйте її в розділі Блог`);
+    } catch (err) {
+      setBoostMsg(`✗ ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setBoostBusy('');
+    }
+  }
+
   return (
     <div style={{ padding: '32px 36px 64px', overflowY: 'auto', flex: 1 }}>
       <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>SEO-черга</h1>
@@ -140,6 +197,52 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
         Генерація опису + FAQ запускається тільки вручну — кнопкою нижче, з оцінкою вартості.
         {!faqTableReady && ' ⚠️ Таблиця FAQ ще не створена (міграція 048) — генерація впаде на кроці FAQ.'}
       </p>
+
+      {/* Дожим запиту: посилення сторінок під запити з GSC (позиції 11–30) */}
+      <div style={{ padding: '16px 20px', background: 'var(--bg-card, #fff)', border: '1px solid #E2E8F0', borderRadius: 10, marginBottom: 20 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#1E293B', marginBottom: 4 }}>🎯 Дожим запиту</div>
+        <p style={{ fontSize: 12, color: '#64748B', margin: '0 0 12px' }}>
+          Запити з 2–3 сторінки Google (Search Console → Ефективність, позиції 11–30) дожимаємо контентом:
+          посилення картки товару (~$0.04) та/або стаття в блог під запит (~$0.20, чернетка).
+        </p>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            value={boostQuery}
+            onChange={e => setBoostQuery(e.target.value)}
+            disabled={!!boostBusy}
+            placeholder="Пошуковий запит, напр.: грунтовка для газобетону яка краще"
+            style={{ flex: 2, minWidth: 260, padding: '9px 13px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13 }}
+          />
+          <input
+            value={boostSku}
+            onChange={e => setBoostSku(e.target.value)}
+            disabled={!!boostBusy}
+            placeholder="SKU товару (напр. 1203-002)"
+            style={{ width: 180, padding: '9px 13px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, fontFamily: 'monospace' }}
+          />
+          <button
+            onClick={boostProduct}
+            disabled={!!boostBusy || !boostQuery.trim() || !boostItem}
+            title={boostSku && !boostItem ? 'SKU не знайдено серед активних товарів' : ''}
+            style={{ ...btnPrimary, opacity: boostBusy || !boostQuery.trim() || !boostItem ? 0.5 : 1 }}
+          >
+            {boostBusy === 'product' ? '⏳ Генеруємо…' : 'Посилити товар'}
+          </button>
+          <button
+            onClick={boostArticle}
+            disabled={!!boostBusy || !boostQuery.trim()}
+            style={{ ...btnPrimary, background: '#4880B8', opacity: boostBusy || !boostQuery.trim() ? 0.5 : 1 }}
+          >
+            {boostBusy === 'article' ? '⏳ Пишемо (1–2 хв)…' : 'Стаття під запит'}
+          </button>
+        </div>
+        {boostSku.trim() && (
+          <p style={{ fontSize: 12, margin: '8px 0 0', color: boostItem ? '#10B981' : '#EF4444' }}>
+            {boostItem ? `Товар: ${boostItem.brand} ${boostItem.name}` : 'SKU не знайдено серед активних товарів'}
+          </p>
+        )}
+        {boostMsg && <p style={{ fontSize: 13, margin: '8px 0 0', color: boostMsg.startsWith('✓') ? '#10B981' : '#EF4444' }}>{boostMsg}</p>}
+      </div>
 
       {/* Фільтри-чипси */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>

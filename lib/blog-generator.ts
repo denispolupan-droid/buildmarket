@@ -68,7 +68,7 @@ export function sanitizeArticleHtml(html: string): string {
     .replace(/<\/?([a-zA-Z][a-zA-Z0-9]*)((?:\s+[a-zA-Z-]+(?:="[^"]*")?)*)\s*\/?>/g, (m, tag: string, attrs: string) => {
       const t = tag.toLowerCase();
       if (!ALLOWED_TAGS.has(t)) return '';
-      // атрибути: тільки href на <a>, і тільки внутрішні посилання
+      // атрибути: тільки href на <a>, і тільки внутрішні посилання (у т.ч. /product/, /shop/, /blog/)
       if (t === 'a') {
         const href = /href="([^"]*)"/.exec(attrs)?.[1] ?? '';
         if (m.startsWith('</')) return '</a>';
@@ -78,11 +78,26 @@ export function sanitizeArticleHtml(html: string): string {
     });
 }
 
-export async function generateBlogPost(topic: string): Promise<{ id: number; slug: string; title: string }> {
+export async function generateBlogPost(
+  topic: string,
+  opts?: {
+    /** "Дожим": пошуковий запит, під який оптимізується стаття */
+    focusQuery?: string;
+    /** Обов'язкове внутрішнє посилання (напр., на товар, що дожимається) */
+    mustLink?: { href: string; label: string };
+  },
+): Promise<{ id: number; slug: string; title: string }> {
   const supabase = db();
 
   const { data: categories } = await supabase.from('categories').select('slug, name').order('sort_order');
   const catList = (categories ?? []).map(c => `${c.slug} — ${c.name}`).join('\n');
+
+  const boostBlock = opts?.focusQuery
+    ? `\nВАЖЛИВО (SEO): стаття має ранжуватися за запитом "${opts.focusQuery}" — використай його у заголовку (або близьке формулювання), у першому абзаці та в одному з FAQ-питань. Без переспаму.`
+    : '';
+  const linkBlock = opts?.mustLink
+    ? `\nОбов'язково додай у текст природне посилання <a href="${opts.mustLink.href}">${opts.mustLink.label}</a> там, де це доречно за змістом.`
+    : '';
 
   // Стрімінг обов'язковий: велика відповідь (дві мови ~10-15 тис. токенів)
   const stream = anthropic.messages.stream({
@@ -94,6 +109,7 @@ export async function generateBlogPost(topic: string): Promise<{ id: number; slu
       content: `Ти — редактор блогу українського інтернет-магазину будівельної хімії FIXLINE (fixline.com.ua, доставка Новою Поштою по всій Україні). Пиши практичні статті для домашніх майстрів і будівельних бригад.
 
 Напиши статтю на тему: "${topic}"
+${boostBlock}${linkBlock}
 
 Вимоги до статті:
 - 900–1300 слів, структура: короткий вступ (проблема читача) → розділи <h2>/<h3> → порівняльна таблиця, якщо доречно → типові помилки → висновок з порадою;

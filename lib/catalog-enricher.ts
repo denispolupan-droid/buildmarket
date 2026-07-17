@@ -107,6 +107,8 @@ export async function* enrichCatalog(opts: {
   category?: string;
   sku?: string;
   skus?: string[];
+  /** "Дожим": пошуковий запит, який треба природно інтегрувати в опис/FAQ/keywords */
+  targetQuery?: string;
 }): AsyncGenerator<EnrichEvent> {
   const supabase = db();
 
@@ -156,7 +158,7 @@ export async function* enrichCatalog(opts: {
         output_config: { format: { type: 'json_schema', schema: OUTPUT_SCHEMA } },
         messages: [{
           role: 'user',
-          content: buildPrompt(product, charsText, catName.get(product.category_slug ?? '') ?? product.category_slug ?? ''),
+          content: buildPrompt(product, charsText, catName.get(product.category_slug ?? '') ?? product.category_slug ?? '', opts.targetQuery),
         }],
       });
 
@@ -174,11 +176,22 @@ export async function* enrichCatalog(opts: {
         ru = await translateEnrichment(parsed.description_full, parsed.faq);
       } catch { /* залишиться пробіл "рос. версія" в SEO-черзі */ }
 
+      // Дожим: цільовий запит додаємо в keywords, якщо його там ще немає
+      let keywordsUpdate: Record<string, string> = {};
+      if (opts.targetQuery) {
+        const q = opts.targetQuery.trim().toLowerCase();
+        const existing = product.keywords ?? '';
+        if (!existing.toLowerCase().includes(q)) {
+          keywordsUpdate = { keywords: existing ? `${existing}, ${opts.targetQuery.trim()}` : opts.targetQuery.trim() };
+        }
+      }
+
       const { error: upErr } = await supabase
         .from('products')
         .update({
           description_full: parsed.description_full,
           ...(ru ? { description_full_ru: ru.description_full_ru } : {}),
+          ...keywordsUpdate,
         })
         .eq('sku', product.sku);
       if (upErr) throw upErr;
@@ -222,9 +235,13 @@ function buildPrompt(
   product: { name: string; brand: string; description: string | null; keywords: string | null },
   characteristics: string,
   categoryName: string,
+  targetQuery?: string,
 ): string {
+  const boostBlock = targetQuery
+    ? `\nВАЖЛИВО (SEO-дожим): сторінка має краще ранжуватися за запитом "${targetQuery}". Природно інтегруй цей запит (та його близькі формулювання) у текст опису та зроби одне з FAQ-питань прямою відповіддю на нього. Без переспаму — запит має виглядати органічно.\n`
+    : '';
   return `Ти SEO-копірайтер українського інтернет-магазину будівельної хімії FIXLINE (fixline.com.ua, доставка Новою Поштою по всій Україні).
-
+${boostBlock}
 Напиши для товару:
 1. Повний опис (description_full): 250–400 слів, 4–5 абзаців у такому порядку:
    - призначення товару та ключова властивість (почни з бренду й назви);
