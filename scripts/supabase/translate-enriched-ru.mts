@@ -28,16 +28,27 @@ function log(line: string) {
   console.log(line);
 }
 
-const [{ data: products, error }, { data: faqRows, error: faqErr }] = await Promise.all([
-  supabase
-    .from('products')
-    .select('sku, description_full, description_full_ru')
-    .eq('is_active', true)
-    .order('sort_order'),
-  supabase.from('product_faq').select('id, product_sku, question, answer, question_ru, sort_order').order('sort_order'),
-]);
+const { data: products, error } = await supabase
+  .from('products')
+  .select('sku, description_full, description_full_ru')
+  .eq('is_active', true)
+  .order('sort_order');
 if (error) throw error;
-if (faqErr) throw faqErr;
+
+// Supabase обрізає вибірку до 1000 рядків — тягнемо FAQ посторінково
+type FaqRow = { id: number; product_sku: string; question: string; answer: string; question_ru: string | null; sort_order: number };
+const faqRows: FaqRow[] = [];
+for (let from = 0; ; from += 1000) {
+  const { data, error: faqErr } = await supabase
+    .from('product_faq')
+    .select('id, product_sku, question, answer, question_ru, sort_order')
+    .order('id')
+    .range(from, from + 999);
+  if (faqErr) throw faqErr;
+  faqRows.push(...(data ?? []) as FaqRow[]);
+  if (!data || data.length < 1000) break;
+}
+faqRows.sort((a, b) => a.sort_order - b.sort_order);
 
 const faqBySku = new Map<string, { id: number; question: string; answer: string; question_ru: string | null }[]>();
 for (const row of faqRows ?? []) {

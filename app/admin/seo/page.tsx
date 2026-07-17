@@ -16,20 +16,30 @@ export default async function SeoQueuePage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.user_metadata?.role !== 'admin') redirect('/');
 
-  const [{ data: products }, { data: charRows }, faqRes] = await Promise.all([
+  // Supabase обрізає вибірки до 1000 рядків — службові таблиці тягнемо посторінково
+  async function fetchAll<T>(table: string, columns: string): Promise<{ rows: T[]; ok: boolean }> {
+    const rows: T[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await serviceClient.from(table).select(columns).range(from, from + 999);
+      if (error) return { rows, ok: false }; // напр., product_faq до міграції 048
+      rows.push(...(data ?? []) as T[]);
+      if (!data || data.length < 1000) return { rows, ok: true };
+    }
+  }
+
+  const [{ data: products }, charsRes, faqRes] = await Promise.all([
     serviceClient
       .from('products')
       .select('sku, name, brand, category_slug, description_full, description_full_ru, name_ru, description_ru, keywords, image')
       .eq('is_active', true)
       .order('category_slug')
       .order('sku'),
-    serviceClient.from('product_characteristics').select('product_sku'),
-    // Таблиця product_faq може ще не існувати (до міграції 048) — не валимо сторінку
-    serviceClient.from('product_faq').select('product_sku, question_ru'),
+    fetchAll<{ product_sku: string }>('product_characteristics', 'product_sku'),
+    fetchAll<{ product_sku: string; question_ru: string | null }>('product_faq', 'product_sku, question_ru'),
   ]);
 
-  const hasChars = new Set((charRows ?? []).map(r => r.product_sku));
-  const faqRows = faqRes.error ? [] : faqRes.data ?? [];
+  const hasChars = new Set(charsRes.rows.map(r => r.product_sku));
+  const faqRows = faqRes.ok ? faqRes.rows : [];
   const hasFaq = new Set(faqRows.map(r => r.product_sku));
   const hasUntranslatedFaq = new Set(faqRows.filter(r => !r.question_ru).map(r => r.product_sku));
 
@@ -49,5 +59,5 @@ export default async function SeoQueuePage() {
     },
   }));
 
-  return <SeoQueueClient items={items} faqTableReady={!faqRes.error} />;
+  return <SeoQueueClient items={items} faqTableReady={faqRes.ok} />;
 }
