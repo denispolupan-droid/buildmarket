@@ -59,32 +59,80 @@ log(`START pending=${queue.length} concurrency=${CONCURRENCY}`);
 let ok = 0, failed = 0;
 const total = queue.length;
 
+// Дешевий шлях: якщо рос. опис уже свіжий, перекладаємо ТІЛЬКИ FAQ (haiku, малий вихід)
+import Anthropic from '@anthropic-ai/sdk';
+const anthropic = new Anthropic();
+const FAQ_ONLY_SCHEMA = {
+  type: 'object' as const,
+  properties: {
+    faq_ru: {
+      type: 'array' as const,
+      items: {
+        type: 'object' as const,
+        properties: { q: { type: 'string' as const }, a: { type: 'string' as const } },
+        required: ['q', 'a'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['faq_ru'],
+  additionalProperties: false,
+};
+
+async function translateFaqOnly(faq: { q: string; a: string }[]): Promise<{ q: string; a: string }[]> {
+  const message = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 4000,
+    output_config: { format: { type: 'json_schema', schema: FAQ_ONLY_SCHEMA } },
+    messages: [{
+      role: 'user',
+      content: `Переведи FAQ о товаре с украинского на русский (аудитория — русскоязычные покупатели в Украине). Бренды, артикулы и числа не меняй. Количество пар не меняй.
+
+FAQ:
+${faq.map((f, i) => `${i + 1}. Q: ${f.q}\n   A: ${f.a}`).join('\n')}`,
+    }],
+  });
+  if (message.stop_reason !== 'end_turn') throw new Error(`faq translate stop_reason=${message.stop_reason}`);
+  const block = message.content.find(b => b.type === 'text');
+  if (!block || block.type !== 'text') throw new Error('faq translate: no text block');
+  const parsed = JSON.parse(block.text) as { faq_ru: { q: string; a: string }[] };
+  if (parsed.faq_ru.length !== faq.length) throw new Error(`faq count mismatch ${parsed.faq_ru.length} != ${faq.length}`);
+  return parsed.faq_ru;
+}
+
 async function worker(): Promise<void> {
   while (queue.length > 0) {
     const p = queue.shift();
     if (!p) return;
     try {
       const faq = faqBySku.get(p.sku) ?? [];
-      const ru = await translateEnrichment(
-        p.description_full!,
-        faq.map(f => ({ q: f.question, a: f.answer })),
-      );
+      const ruDescFresh = (p.description_full_ru ?? '').length >= ENRICHED_CHARS;
+      let faqRu: { q: string; a: string }[];
 
-      const { error: upErr } = await supabase
-        .from('products')
-        .update({ description_full_ru: ru.description_full_ru })
-        .eq('sku', p.sku);
-      if (upErr) throw upErr;
+      if (ruDescFresh) {
+        faqRu = faq.length ? await translateFaqOnly(faq.map(f => ({ q: f.question, a: f.answer }))) : [];
+      } else {
+        const ru = await translateEnrichment(
+          p.description_full!,
+          faq.map(f => ({ q: f.question, a: f.answer })),
+        );
+        faqRu = ru.faq_ru;
+        const { error: upErr } = await supabase
+          .from('products')
+          .update({ description_full_ru: ru.description_full_ru })
+          .eq('sku', p.sku);
+        if (upErr) throw upErr;
+      }
 
       for (let i = 0; i < faq.length; i++) {
         const { error: fErr } = await supabase
           .from('product_faq')
-          .update({ question_ru: ru.faq_ru[i].q, answer_ru: ru.faq_ru[i].a })
+          .update({ question_ru: faqRu[i].q, answer_ru: faqRu[i].a })
           .eq('id', faq[i].id);
         if (fErr) throw fErr;
       }
       ok++;
-      log(`OK ${p.sku} faq=${faq.length} [${ok + failed}/${total}]`);
+      log(`OK ${p.sku} faq=${faq.length}${ruDescFresh ? ' (faq-only)' : ''} [${ok + failed}/${total}]`);
     } catch (err) {
       failed++;
       log(`FAIL ${p.sku}: ${String(err).slice(0, 200)}`);
