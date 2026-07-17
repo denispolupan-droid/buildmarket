@@ -17,6 +17,32 @@ type Props = {
 
 const PAGE_SIZE = 100;
 
+// SEO-готовність товару: зелений — усе на місці, жовтий — контентні пробіли,
+// червоний — критично (немає опису або фото). Поріг тонкого опису — 800 симв.
+function seoGaps(p: ProductFull): string[] {
+  const gaps: string[] = [];
+  if (!p.image) gaps.push('немає фото');
+  if (!p.description_full) gaps.push('немає повного опису');
+  else if (p.description_full.length < 800) gaps.push('короткий опис');
+  if (!p.keywords) gaps.push('немає keywords');
+  if (!p.name_ru || !p.description_ru) gaps.push('немає рос. версії');
+  if (!p.characteristics?.length) gaps.push('немає характеристик');
+  return gaps;
+}
+
+function SeoBadge({ p }: { p: ProductFull }) {
+  const gaps = seoGaps(p);
+  const critical = !p.image || !p.description_full;
+  const color = gaps.length === 0 ? '#22C55E' : critical ? '#EF4444' : '#F59E0B';
+  return (
+    <Link
+      href="/admin/seo"
+      title={gaps.length ? `SEO: ${gaps.join(', ')}` : 'SEO: усе заповнено'}
+      style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: color }}
+    />
+  );
+}
+
 export default function ProductsTable({ products, categories, brandLogos = {} }: Props) {
   const [search, setSearch]               = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -300,6 +326,7 @@ export default function ProductsTable({ products, categories, brandLogos = {} }:
               <th title="Хіт" style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)', width: 44 }}>🔥</th>
               <th title="Новинка" style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)', width: 44 }}>✨</th>
               <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}>Статус</th>
+              <th title="SEO-готовність" style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)', width: 44 }}>SEO</th>
               <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}></th>
             </tr>
           </thead>
@@ -402,6 +429,9 @@ export default function ProductsTable({ products, categories, brandLogos = {} }:
                         }} />
                       </button>
                     </div>
+                  </td>
+                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                    <SeoBadge p={p} />
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                     <Link

@@ -268,6 +268,31 @@ export const getProductBySkuCached = unstable_cache(
   { revalidate: 60, tags: ['products'] }
 );
 
+export type ProductFaqItem = {
+  question: string;
+  answer: string;
+  question_ru: string | null;
+  answer_ru: string | null;
+  sort_order: number;
+};
+
+// Толерантно до відсутньої таблиці (до міграції 048) — просто без FAQ-блоку
+export async function getProductFaq(sku: string): Promise<ProductFaqItem[]> {
+  const { data, error } = await supabase
+    .from('product_faq')
+    .select('question, answer, question_ru, answer_ru, sort_order')
+    .eq('product_sku', sku)
+    .order('sort_order');
+  if (error) return [];
+  return (data ?? []) as ProductFaqItem[];
+}
+
+export const getProductFaqCached = unstable_cache(
+  async (sku: string) => getProductFaq(sku),
+  ['product-faq'],
+  { revalidate: 300, tags: ['products'] }
+);
+
 export async function getRelatedProducts(categorySlug: string, excludeSku: string, limit = 5): Promise<ProductFull[]> {
   const { data, error } = await supabase
     .from('products')

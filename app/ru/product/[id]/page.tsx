@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsCached } from '../../../../lib/supabase';
+import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsCached, getProductFaqCached } from '../../../../lib/supabase';
 import { getCategoryNameRu } from '../../../../lib/ru';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { isWholesale } from '../../../../lib/user-role';
@@ -16,6 +16,7 @@ import RelatedCarousel from '../../../product/[id]/RelatedCarousel';
 import BackButton from '../../../product/[id]/BackButton';
 import CoverageCalculator from '../../../product/[id]/CoverageCalculator';
 import DeliveryInfo from '../../../product/[id]/DeliveryInfo';
+import ProductFaq, { faqText } from '../../../product/[id]/ProductFaq';
 import Footer from '../../../components/Footer';
 import ProductReviews from '../../../product/[id]/ProductReviews';
 import { RatingBadge } from '../../../components/StarRating';
@@ -75,9 +76,10 @@ export default async function RuProductPage({ params, searchParams }: { params: 
   const product = await getProductBySkuCached(sku);
   if (!product) notFound();
 
-  const [related, categoryProducts, categories, reviewsData, reviewStats] = await Promise.all([
+  const [related, categoryProducts, faq, categories, reviewsData, reviewStats] = await Promise.all([
     product.category_slug ? getRelatedProductsCached(product.category_slug, product.sku, 5) : Promise.resolve([]),
     product.category_slug ? getProductsCached({ category: product.category_slug }) : Promise.resolve([]),
+    getProductFaqCached(sku),
     getCategoriesCached(),
     service.from('product_reviews')
       .select('rating')
@@ -173,10 +175,20 @@ export default async function RuProductPage({ params, searchParams }: { params: 
 
   const descriptionFullRu = (product as { description_full_ru?: string | null }).description_full_ru ?? null;
 
+  const faqLd = faq.length ? {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faq.map(f => {
+      const { q, a } = faqText(f, 'ru');
+      return { '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } };
+    }),
+  } : null;
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />}
       <BackButton breadcrumbId="product-breadcrumb" />
       <div style={{ background: 'var(--bg-page)', minHeight: '100vh' }}>
       <div className="page-container" style={{paddingTop: '8px', paddingBottom: '48px'}}>
@@ -289,6 +301,8 @@ export default async function RuProductPage({ params, searchParams }: { params: 
           descriptionFull={descriptionFullRu}
           characteristics={product.characteristics}
         />
+
+        <ProductFaq faq={faq} lang="ru" />
 
         <DeliveryInfo lang="ru" />
 

@@ -9,7 +9,7 @@ import {
   Settings, BookOpen, Warehouse, BarChart3, Users, Star,
   MessageSquare, ShoppingCart, Mail, ExternalLink, TrendingUp,
   ChevronLeft, ChevronRight, ShoppingBasket, Sparkles, Megaphone,
-  Tags, Layers, Menu, X,
+  Tags, Layers, Menu, X, Search,
 } from 'lucide-react';
 
 function SocketIcon({ size = 24, color = 'currentColor', strokeWidth = 2, style }: {
@@ -38,6 +38,7 @@ const NAV = [
   { href: '/admin/prom',                 label: 'Prom.ua',        icon: ShoppingBasket, exact: false },
   { href: '/admin/rozetka',              label: 'Rozetka',        icon: SocketIcon as typeof Store, exact: false },
   { href: '/admin/pricing',              label: 'Аналіз цін',     icon: TrendingUp,     exact: false },
+  { href: '/admin/seo',                  label: 'SEO',            icon: Search,         exact: false },
   { href: '/admin/finance',              label: 'Фінанси',        icon: BarChart3,      exact: false },
   { href: '/admin/accounting/documents', label: 'Облік',          icon: BookOpen,       exact: false },
   { href: '/admin/accounting/stock',     label: 'Залишки',        icon: Warehouse,      exact: false },

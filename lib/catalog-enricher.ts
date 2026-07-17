@@ -1,7 +1,14 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 
+// SEO-збагачення каталогу (Фаза 5 SEO_SPEC): description_full 250–400 слів + FAQ.
+// Промпт погоджено на зразках (SEO_DESCRIPTION_SAMPLES.md, 2026-07-17).
+// Запускається ТІЛЬКИ вручну з адмінки (/admin/seo) — жодних фонових витрат API.
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+// description_full коротший за цей поріг вважається "тонким" контентом
+export const THIN_DESCRIPTION_CHARS = 800;
 
 function db() {
   return createClient(
@@ -13,31 +20,65 @@ function db() {
 export type EnrichEvent =
   | { type: 'start'; total: number }
   | { type: 'progress'; sku: string; name: string; done: number; total: number }
-  | { type: 'result'; sku: string; description_full: string }
+  | { type: 'result'; sku: string; description_full: string; faqCount: number }
   | { type: 'error'; sku: string; error: string }
   | { type: 'done'; done: number; errors: number };
+
+const OUTPUT_SCHEMA = {
+  type: 'object' as const,
+  properties: {
+    description_full: {
+      type: 'string' as const,
+      description: 'Повний опис товару українською, 250–400 слів, 4–5 абзаців, розділені порожнім рядком, без markdown і заголовків',
+    },
+    faq: {
+      type: 'array' as const,
+      items: {
+        type: 'object' as const,
+        properties: {
+          q: { type: 'string' as const },
+          a: { type: 'string' as const },
+        },
+        required: ['q', 'a'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['description_full', 'faq'],
+  additionalProperties: false,
+};
 
 export async function* enrichCatalog(opts: {
   limit?: number;
   category?: string;
   sku?: string;
+  skus?: string[];
 }): AsyncGenerator<EnrichEvent> {
   const supabase = db();
 
   let query = supabase
     .from('products')
-    .select('sku, name, brand, category_slug, description, keywords')
-    .or('description_full.is.null,description_full.eq.')
+    .select('sku, name, brand, category_slug, description, description_full, keywords')
     .eq('is_active', true)
     .order('sort_order');
 
   if (opts.sku)      query = query.eq('sku', opts.sku);
+  if (opts.skus?.length) query = query.in('sku', opts.skus);
   if (opts.category) query = query.eq('category_slug', opts.category);
-  if (opts.limit)    query = query.limit(opts.limit);
 
-  const { data: products, error } = await query;
+  const { data: allProducts, error } = await query;
   if (error) throw error;
-  if (!products?.length) { yield { type: 'start', total: 0 }; yield { type: 'done', done: 0, errors: 0 }; return; }
+
+  // Явний список SKU обробляємо як є; інакше — тільки товари з тонким описом
+  let products = opts.sku || opts.skus?.length
+    ? (allProducts ?? [])
+    : (allProducts ?? []).filter(p => (p.description_full ?? '').length < THIN_DESCRIPTION_CHARS);
+  if (opts.limit) products = products.slice(0, opts.limit);
+
+  if (!products.length) { yield { type: 'start', total: 0 }; yield { type: 'done', done: 0, errors: 0 }; return; }
+
+  const { data: categories } = await supabase.from('categories').select('slug, name');
+  const catName = new Map((categories ?? []).map(c => [c.slug, c.name]));
 
   yield { type: 'start', total: products.length };
 
@@ -48,44 +89,39 @@ export async function* enrichCatalog(opts: {
     yield { type: 'progress', sku: product.sku, name: product.name, done, total: products.length };
 
     try {
-      const [{ data: chars }, { data: examples }] = await Promise.all([
-        supabase
-          .from('product_characteristics')
-          .select('label, value')
-          .eq('product_sku', product.sku),
-        supabase
-          .from('products')
-          .select('name, description, description_full')
-          .eq('category_slug', product.category_slug)
-          .not('description_full', 'is', null)
-          .neq('description_full', '')
-          .neq('sku', product.sku)
-          .limit(2),
-      ]);
+      const { data: chars } = await supabase
+        .from('product_characteristics')
+        .select('label, value')
+        .eq('product_sku', product.sku);
 
       const charsText = (chars ?? []).map(c => `${c.label}: ${c.value}`).join('\n');
 
-      const examplesText = (examples ?? [])
-        .map(e => `Назва: ${e.name}\nКороткий опис: ${e.description}\nПовний опис: ${e.description_full}`)
-        .join('\n\n---\n\n');
-
       const message = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 600,
+        model: 'claude-opus-4-8',
+        max_tokens: 8000,
+        output_config: { format: { type: 'json_schema', schema: OUTPUT_SCHEMA } },
         messages: [{
           role: 'user',
-          content: buildPrompt(product, charsText, examplesText),
+          content: buildPrompt(product, charsText, catName.get(product.category_slug ?? '') ?? product.category_slug ?? ''),
         }],
       });
 
-      const description_full = (message.content[0] as { type: string; text: string }).text.trim();
+      if (message.stop_reason !== 'end_turn') throw new Error(`stop_reason=${message.stop_reason}`);
+      const block = message.content.find(b => b.type === 'text');
+      if (!block || block.type !== 'text') throw new Error('no text block in response');
+      const parsed = JSON.parse(block.text) as { description_full: string; faq: { q: string; a: string }[] };
+      const words = parsed.description_full.split(/\s+/).filter(Boolean).length;
+      if (words < 150) throw new Error(`description too short: ${words} words`);
 
-      await supabase
+      const { error: upErr } = await supabase
         .from('products')
-        .update({ description_full })
+        .update({ description_full: parsed.description_full })
         .eq('sku', product.sku);
+      if (upErr) throw upErr;
 
-      yield { type: 'result', sku: product.sku, description_full };
+      await replaceFaq(supabase, product.sku, parsed.faq);
+
+      yield { type: 'result', sku: product.sku, description_full: parsed.description_full, faqCount: parsed.faq.length };
       done++;
     } catch (err) {
       errors++;
@@ -96,28 +132,47 @@ export async function* enrichCatalog(opts: {
   yield { type: 'done', done, errors };
 }
 
+export async function replaceFaq(
+  supabase: ReturnType<typeof db>,
+  sku: string,
+  faq: { q: string; a: string }[],
+): Promise<void> {
+  const { error: delErr } = await supabase.from('product_faq').delete().eq('product_sku', sku);
+  if (delErr) throw delErr;
+  if (!faq.length) return;
+  const { error: insErr } = await supabase.from('product_faq').insert(
+    faq.map((f, i) => ({ product_sku: sku, question: f.q, answer: f.a, sort_order: i })),
+  );
+  if (insErr) throw insErr;
+}
+
 function buildPrompt(
   product: { name: string; brand: string; description: string | null; keywords: string | null },
   characteristics: string,
-  examples: string,
+  categoryName: string,
 ): string {
-  return `Ти копірайтер для українського інтернет-магазину будівельної хімії FIXLINE.
-Напиши детальний опис товару (description_full) українською мовою.
+  return `Ти SEO-копірайтер українського інтернет-магазину будівельної хімії FIXLINE (fixline.com.ua, доставка Новою Поштою по всій Україні).
 
-Вимоги:
-- 3–4 речення, 80–150 слів
-- Починай з назви бренду та ключової властивості товару
-- Включай технічні характеристики, сферу застосування, переваги
-- SEO-дружній, природній текст без перерахування через кому
-- Без заголовків, markdown і вступних фраз — одразу текст
-- Мова: українська (не суржик)
+Напиши для товару:
+1. Повний опис (description_full): 250–400 слів, 4–5 абзаців у такому порядку:
+   - призначення товару та ключова властивість (почни з бренду й назви);
+   - сфера застосування: конкретні поверхні, типи робіт, внутрішні/зовнішні;
+   - технічні характеристики своїми словами (витрата, час висихання, температура, фасовка) — ТІЛЬКИ з наданих даних, нічого не вигадуй;
+   - переваги перед аналогами (без назв конкурентів);
+   - умови покупки: відправка Новою Поштою по Україні (Київ, Харків, Дніпро, Одеса, Львів та ін.), оплата при отриманні або передоплата.
+2. FAQ: 3–4 пари питання-відповідь під реальні пошукові запити (витрата на м², як застосовувати, чим відрізняється від схожих типів, скільки сохне). Відповіді 2–3 речення, тільки на основі наданих даних.
+
+Вимоги до тексту:
+- природна українська мова, без суржику й канцеляризмів;
+- без markdown, без заголовків усередині опису;
+- не перераховуй характеристики списком через кому — вплітай у речення;
+- цифри з характеристик використовуй точно як надано.
 
 Товар:
 Назва: ${product.name}
 Бренд: ${product.brand}
+Категорія: ${categoryName}
 Короткий опис: ${product.description ?? ''}
 ${product.keywords ? `Ключові слова: ${product.keywords}` : ''}
-${characteristics ? `\nХарактеристики:\n${characteristics}` : ''}
-${examples ? `\nПриклади описів з цієї ж категорії:\n\n${examples}\n` : ''}
-Повний опис:`;
+${characteristics ? `Характеристики:\n${characteristics}` : 'Характеристики: немає даних'}`;
 }

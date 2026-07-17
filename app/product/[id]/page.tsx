@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsCached } from '../../../lib/supabase';
+import { getProductBySkuCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsCached, getProductFaqCached } from '../../../lib/supabase';
 import { getCategoryMeta } from '../../../lib/category-descriptions';
 import { productMeta, productDisplayName, productH1, findVariants } from '../../../lib/seo/meta';
 import ProductTabs from './ProductTabs';
@@ -13,6 +13,7 @@ import RelatedCarousel from './RelatedCarousel';
 import BackButton from './BackButton';
 import CoverageCalculator from './CoverageCalculator';
 import DeliveryInfo from './DeliveryInfo';
+import ProductFaq from './ProductFaq';
 import Footer from '../../components/Footer';
 import ProductReviews from './ProductReviews';
 import { RatingBadge } from '../../components/StarRating';
@@ -74,9 +75,10 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   const product = await getProductBySkuCached(sku);
   if (!product) notFound();
 
-  const [related, categoryProducts, categories, reviewsData, reviewStats] = await Promise.all([
+  const [related, categoryProducts, faq, categories, reviewsData, reviewStats] = await Promise.all([
     product.category_slug ? getRelatedProductsCached(product.category_slug, product.sku, 5) : Promise.resolve([]),
     product.category_slug ? getProductsCached({ category: product.category_slug }) : Promise.resolve([]),
+    getProductFaqCached(sku),
     getCategoriesCached(),
     service.from('product_reviews')
       .select('rating')
@@ -169,10 +171,21 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     } : {}),
   };
 
+  const faqLd = faq.length ? {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faq.map(f => ({
+      '@type': 'Question',
+      name: f.question,
+      acceptedAnswer: { '@type': 'Answer', text: f.answer },
+    })),
+  } : null;
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />}
       <BackButton breadcrumbId="product-breadcrumb" />
       <div style={{ background: 'var(--bg-page)', minHeight: '100vh' }}>
       <div className="page-container" style={{paddingTop: '8px', paddingBottom: '48px'}}>
@@ -290,6 +303,8 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
           descriptionFull={product.description_full ?? null}
           characteristics={product.characteristics}
         />
+
+        <ProductFaq faq={faq} lang="uk" />
 
         <DeliveryInfo lang="uk" />
 
