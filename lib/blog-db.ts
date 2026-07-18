@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { unstable_cache } from 'next/cache';
+import { sanitizeArticleHtml } from './sanitize-article';
 
 // Статті блогу з БД (нове покоління; старі статті — у lib/blog.ts + JSX).
 // content_html — довірений HTML (генерується нашим AI-конвеєром, редагується
@@ -37,6 +38,17 @@ export type BlogPost = {
   updated_at: string;
 };
 
+// Defense-in-depth: чистимо content_html на межі читання, тож будь-який
+// рендер (через dangerouslySetInnerHTML) отримує вже безпечний HTML —
+// навіть для контенту, збереженого старим (обхідним) санітайзером.
+function sanitizePost(p: BlogPost): BlogPost {
+  return {
+    ...p,
+    content_html: sanitizeArticleHtml(p.content_html),
+    content_html_ru: p.content_html_ru ? sanitizeArticleHtml(p.content_html_ru) : null,
+  };
+}
+
 export async function getPublishedPosts(): Promise<BlogPost[]> {
   const { data, error } = await supabase
     .from('blog_posts')
@@ -44,7 +56,7 @@ export async function getPublishedPosts(): Promise<BlogPost[]> {
     .eq('is_published', true)
     .order('published_at', { ascending: false });
   if (error) return [];
-  return (data ?? []) as BlogPost[];
+  return ((data ?? []) as BlogPost[]).map(sanitizePost);
 }
 
 export const getPublishedPostsCached = unstable_cache(
@@ -61,7 +73,7 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
     .eq('is_published', true)
     .single();
   if (error) return null;
-  return data as BlogPost;
+  return sanitizePost(data as BlogPost);
 }
 
 export const getPostBySlugCached = unstable_cache(

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import ExcelJS from 'exceljs';
+import { checkAdmin } from '../../../../../../lib/check-admin';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -56,6 +57,8 @@ function numToWords(n: number): string {
 
 // UUID is the auth — anyone with the link can download
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
   const { id } = await params;
   const { data: order, error } = await db.from('orders').select('*').eq('id', id).single();
   if (error || !order) return NextResponse.json({ error: 'Not found' }, { status: 404 });

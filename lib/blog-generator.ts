@@ -58,25 +58,11 @@ const OUTPUT_SCHEMA = {
   additionalProperties: false,
 };
 
-// Дозволені теги в тілі статті — усе інше вирізається (контент іде в dangerouslySetInnerHTML)
-const ALLOWED_TAGS = new Set(['p', 'h2', 'h3', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'strong', 'em', 'a', 'br']);
-
-export function sanitizeArticleHtml(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<\/?([a-zA-Z][a-zA-Z0-9]*)((?:\s+[a-zA-Z-]+(?:="[^"]*")?)*)\s*\/?>/g, (m, tag: string, attrs: string) => {
-      const t = tag.toLowerCase();
-      if (!ALLOWED_TAGS.has(t)) return '';
-      // атрибути: тільки href на <a>, і тільки внутрішні посилання (у т.ч. /product/, /shop/, /blog/)
-      if (t === 'a') {
-        const href = /href="([^"]*)"/.exec(attrs)?.[1] ?? '';
-        if (m.startsWith('</')) return '</a>';
-        return href.startsWith('/') ? `<a href="${href}">` : '<a>';
-      }
-      return m.startsWith('</') ? `</${t}>` : `<${t}>`;
-    });
-}
+// Санітайзер тіла статті винесено в lib/sanitize-article (щоб blog-db міг
+// чистити на рендері без імпорту важкого Anthropic SDK). Реекспорт — для
+// зворотної сумісності з наявними імпортами.
+import { sanitizeArticleHtml } from './sanitize-article';
+export { sanitizeArticleHtml };
 
 export async function generateBlogPost(
   topic: string,

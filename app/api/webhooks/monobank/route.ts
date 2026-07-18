@@ -80,19 +80,23 @@ export async function POST(req: NextRequest) {
       .from('customers').select('id').eq('id', customerId).single();
 
     if (customer) {
-      await serviceClient
+      // Idempotent on the Monobank invoiceId: a retried webhook no longer
+      // double-credits the balance (unique index on external_ref).
+      const extRef = `mono:topup:${body.invoiceId ?? reference}`;
+      const { error: topupErr } = await serviceClient
         .from('partner_balance_transactions')
-        .delete()
-        .eq('customer_id', customerId)
-        .eq('created_by', 'monobank_pending');
-
-      await serviceClient.from('partner_balance_transactions').insert({
-        customer_id: customerId,
-        tx_type:     'top_up',
-        amount:      amountUah,
-        description: `Поповнення карткою онлайн — ${amountUah.toFixed(2)} ₴`,
-        created_by:  'monobank_webhook',
-      });
+        .upsert({
+          customer_id:  customerId,
+          tx_type:      'top_up',
+          amount:       amountUah,
+          description:  `Поповнення карткою онлайн — ${amountUah.toFixed(2)} ₴`,
+          created_by:   'monobank_webhook',
+          external_ref: extRef,
+        }, { onConflict: 'external_ref', ignoreDuplicates: true });
+      if (topupErr) {
+        console.error('[monobank webhook] top-up insert failed:', topupErr);
+        return NextResponse.json({ error: 'top-up failed' }, { status: 500 });
+      }
     }
     return NextResponse.json({ ok: true });
   }
@@ -116,12 +120,18 @@ export async function POST(req: NextRequest) {
 
     const { data: order, error: orderErr } = await serviceClient
       .from('orders')
-      .insert({ ...draft.payload, status: 'confirmed' })
+      .insert({ ...draft.payload, status: 'confirmed', payment_reference: reference })
       .select('id, order_number, contact, company, phone, email, items, total_price, delivery_type, delivery_address, delivery_city_name, comment, channel_code')
       .single();
 
     if (orderErr || !order) {
-      // Return 500 so Monobank retries; pending record is still intact
+      // Unique violation on payment_reference => a concurrent or previous
+      // delivery already materialised this order. Idempotent success.
+      if (orderErr?.code === '23505') {
+        await serviceClient.from('pending_card_orders').delete().eq('id', pendingId);
+        return NextResponse.json({ ok: true });
+      }
+      // Otherwise return 500 so Monobank retries; pending record is still intact
       console.error('[monobank webhook] order insert failed:', orderErr);
       notifyAdminOrderFailed(reference, draft.email, amountUah, orderErr?.message ?? 'unknown');
       return NextResponse.json({ error: 'order insert failed' }, { status: 500 });
@@ -129,6 +139,13 @@ export async function POST(req: NextRequest) {
 
     // Order saved — now safe to remove the pending draft
     await serviceClient.from('pending_card_orders').delete().eq('id', pendingId);
+
+    // Defense-in-depth: the paid amount must match the order total (KRIT-2 makes
+    // the invoice server-priced, so a mismatch signals tampering/desync).
+    if (typeof order.total_price === 'number' && Math.abs(amountUah - Number(order.total_price)) > 0.01) {
+      notifyAdminOrderFailed(reference, order.email, amountUah,
+        `Оплачено ${amountUah}₴, а сума замовлення ${order.total_price}₴ — перевірте вручну!`);
+    }
 
     if (draft.payload?.promo_code) {
       serviceClient.rpc('increment_promo_used', { p_code: draft.payload.promo_code }).then(() => {});
@@ -246,9 +263,14 @@ function notifyAdminOrderFailed(reference: string, email: string, amount: number
   }).catch(() => {});
 }
 
-function businessDate(body: { createdAt?: number }): string {
-  const ts = body.createdAt ? body.createdAt * 1000 : Date.now();
-  return new Date(ts).toISOString().slice(0, 10);
+function businessDate(body: { createdDate?: string; modifiedDate?: string }): string {
+  // Monobank merchant webhooks send ISO strings createdDate/modifiedDate,
+  // NOT a unix `createdAt` — the old field was always undefined.
+  const raw = body.modifiedDate ?? body.createdDate;
+  const ts = raw ? new Date(raw).getTime() : Date.now();
+  return Number.isFinite(ts)
+    ? new Date(ts).toISOString().slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
 }
 
 async function recordOrderPaymentToLedger(

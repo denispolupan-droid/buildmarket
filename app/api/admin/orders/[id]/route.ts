@@ -286,7 +286,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         .eq('id', id)
         .single();
 
-      if (order?.items?.length && order.channel_code !== 'dropship') {
+      // Idempotency guard (H2): if a confirmed sale document already exists for
+      // this order (e.g. shipped earlier via /ship, or the status was re-selected
+      // in the dropdown, or the request was retried) — do NOT record the sale
+      // again, otherwise revenue + COGS get double-counted in the ledger.
+      const { data: existingSale } = await db
+        .from('acc_documents')
+        .select('id')
+        .eq('order_id', id)
+        .eq('doc_type', 'sale')
+        .eq('status', 'confirmed')
+        .maybeSingle();
+
+      if (!existingSale && order?.items?.length && order.channel_code !== 'dropship') {
         const bizDate = order.created_at
           ? new Date(order.created_at).toISOString().slice(0, 10)
           : new Date().toISOString().slice(0, 10);

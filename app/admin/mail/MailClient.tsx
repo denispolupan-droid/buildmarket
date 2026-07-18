@@ -402,8 +402,15 @@ export default function MailClient() {
                 const html = (mc.htmlBody || mc.content || mc.body || mc.html || '') as string;
                 const text = (mc.textBody || mc.text || mc.plainBody || '') as string;
                 if (html) return (
-                  <div style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.7 }}
-                    dangerouslySetInnerHTML={{ __html: html }} />
+                  // Untrusted sender-controlled HTML: render inside a fully
+                  // sandboxed iframe (no scripts, no same-origin) so any embedded
+                  // JS/handlers cannot execute in the admin origin.
+                  <iframe
+                    title="Тіло листа"
+                    sandbox=""
+                    srcDoc={html}
+                    style={{ width: '100%', minHeight: '400px', border: 'none', background: '#fff' }}
+                  />
                 );
                 if (text) return (
                   <pre style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.7, whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
