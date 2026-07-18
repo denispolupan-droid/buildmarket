@@ -9,7 +9,10 @@ type Props = {
 };
 
 export default function AnimatedNumber({ value, suffix = '', duration = 1300 }: Props) {
-  const [display, setDisplay] = useState(0);
+  // Ініціалізуємо фінальним значенням, а не 0: SSR (те, що індексує Google) і рендер без JS
+  // мають показувати реальне число, інакше в пошуковому сніпеті світиться "0+SKU 0+брендів".
+  // На клієнті анімація нижче все одно програється (стартовий кадр зі значенням — 1 фрейм).
+  const [display, setDisplay] = useState(value);
 
   // No "already started" ref guard here on purpose — React's dev-mode StrictMode runs this
   // effect, its cleanup, and then the effect again on mount. A guard that only lets the

@@ -166,7 +166,7 @@ export default async function Home() {
             {/* Stat chips with icons — numbers count up on load */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '32px' }}>
               {[
-                { icon: Package, value: 700, label: 'SKU' },
+                { icon: Package, value: 800, label: 'SKU' },
                 { icon: Tag,     value: 40,  label: 'брендів' },
               ].map(({ icon: Icon, value, label }) => (
                 <span key={label} style={{
