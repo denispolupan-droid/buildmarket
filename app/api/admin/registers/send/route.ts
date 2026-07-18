@@ -111,7 +111,7 @@ async function generatePdf(
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!user || user.app_metadata?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { toEmail, toName, registerNumber, registerRef, ttns: clientTtns } = await req.json();
   if (!toEmail) return NextResponse.json({ error: 'Email обов\'язковий' }, { status: 400 });

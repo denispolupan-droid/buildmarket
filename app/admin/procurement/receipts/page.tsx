@@ -12,7 +12,7 @@ const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPAB
 export default async function ReceiptsPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+  if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
   const { data: receipts } = await db
     .from('acc_documents')

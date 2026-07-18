@@ -41,7 +41,7 @@ export default async function ExpensesPage({
 }) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+  if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
   const { from, to } = await searchParams;
   const today      = new Date().toISOString().slice(0, 10);

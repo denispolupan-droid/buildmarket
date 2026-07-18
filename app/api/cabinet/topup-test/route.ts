@@ -5,7 +5,7 @@ import { getRole } from '../../../../lib/user-role';
 export async function GET() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || (getRole(user) !== 'dropship' && getRole(user) !== 'wholesale' && user.user_metadata?.role !== 'admin')) {
+  if (!user || (getRole(user) !== 'dropship' && getRole(user) !== 'wholesale' && user.app_metadata?.role !== 'admin')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

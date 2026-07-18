@@ -32,7 +32,7 @@ export default async function AdminPage({
 }) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  const userRole = user?.user_metadata?.role ?? '';
+  const userRole = user?.app_metadata?.role ?? '';
   if (!user || !['admin', 'manager'].includes(userRole)) redirect('/');
 
   const { page: pageStr, status: statusParam, expand: expandOrderId, dateFrom, dateTo, sortBy: sortByParam, sortDir: sortDirParam } = await searchParams;

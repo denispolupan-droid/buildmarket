@@ -75,7 +75,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
 
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  const accountType = user?.user_metadata?.account_type as string | undefined;
+  const accountType = user?.app_metadata?.account_type as string | undefined;
   const isWholesaleUser = WHOLESALE_TYPES.includes(accountType ?? '');
   // Wholesale prices only when wholesale account AND coming from /catalog (not /shop or direct)
   const isRetail = !isWholesaleUser || sp.from !== 'catalog';

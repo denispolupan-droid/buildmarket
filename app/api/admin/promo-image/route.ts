@@ -5,7 +5,7 @@ import { uploadToR2, deleteFromR2 } from '../../../../lib/r2';
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin')
+  if (!user || user.app_metadata?.role !== 'admin')
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const formData = await req.formData();
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin')
+  if (!user || user.app_metadata?.role !== 'admin')
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   await deleteFromR2(['promo/banner.webp', 'promo/banner.jpg', 'promo/banner.png']);

@@ -15,7 +15,7 @@ const db = createClient(
 export default async function PayablesPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+  if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
   // 1. Всі проводки по рахунку постачальника
   const { data: entries } = await db

@@ -18,7 +18,7 @@ const TARGET_LABEL: Record<string, string> = {
 async function getAdmin() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !['admin', 'manager'].includes(user.user_metadata?.role ?? '')) return null;
+  if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) return null;
   return user;
 }
 

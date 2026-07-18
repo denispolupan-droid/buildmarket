@@ -13,7 +13,7 @@ function db() {
 async function assertAdmin() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') return null;
+  if (!user || user.app_metadata?.role !== 'admin') return null;
   return user;
 }
 

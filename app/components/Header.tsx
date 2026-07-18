@@ -165,7 +165,7 @@ export default function Header() {
                       }}>
                         <Heart size={15} strokeWidth={2} />{lang === 'ru' ? 'Избранное' : 'Обране'}
                       </Link>
-                      {user.user_metadata?.role === 'admin' && (
+                      {user.app_metadata?.role === 'admin' && (
                         <Link href="/admin" onClick={() => setMenuOpen(false)} style={{
                           display: 'flex', alignItems: 'center', gap: '8px',
                           padding: '8px 12px', borderRadius: '7px', fontSize: '14px', color: 'var(--text-primary)',
@@ -317,7 +317,7 @@ export default function Header() {
                 }}>
                   <User size={18} strokeWidth={2} />{lang === 'ru' ? 'Личный кабинет' : 'Особистий кабінет'}
                 </Link>
-                {user.user_metadata?.role === 'admin' && (
+                {user.app_metadata?.role === 'admin' && (
                   <Link href="/admin" style={{
                     display: 'flex', alignItems: 'center', gap: '12px',
                     padding: '12px 16px', borderRadius: '10px', fontSize: '15px', color: '#374151',

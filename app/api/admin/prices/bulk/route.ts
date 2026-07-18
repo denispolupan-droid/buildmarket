@@ -10,7 +10,7 @@ const db = createClient(
 async function checkAdmin() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  return !!(user && ['admin', 'manager'].includes(user.user_metadata?.role ?? ''));
+  return !!(user && ['admin', 'manager'].includes(user.app_metadata?.role ?? ''));
 }
 
 // Single SKU edit: { skus: [sku], price_unit, price_retail, price_drop, price_cost, price_locked }

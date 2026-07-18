@@ -10,7 +10,7 @@ const serviceClient = createClient(
 async function checkAdmin() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  return user?.user_metadata?.role === 'admin';
+  return user?.app_metadata?.role === 'admin';
 }
 
 // POST — зберегти маппінг і видалити з немаплених

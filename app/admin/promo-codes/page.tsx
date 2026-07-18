@@ -12,7 +12,7 @@ const db = createClient(
 export default async function PromoCodesPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/admin');
+  if (!user || user.app_metadata?.role !== 'admin') redirect('/admin');
 
   const { data: codes } = await db
     .from('promo_codes')

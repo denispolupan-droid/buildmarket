@@ -58,11 +58,22 @@ export async function GET(req: NextRequest) {
 
     const deliveredIds: string[] = [];
     const acceptedOrders: typeof chunk = [];
+    const statusTextUpdates: PromiseLike<unknown>[] = [];
+    const now = new Date().toISOString();
 
     for (const doc of (data.data ?? [])) {
       const order = chunk.find(o => o.tracking_number === doc.Number);
       if (!order) continue;
       const code = String(doc.StatusCode);
+
+      if (doc.Status) {
+        statusTextUpdates.push(
+          serviceClient
+            .from('orders')
+            .update({ carrier_status_text: doc.Status, carrier_status_synced_at: now })
+            .eq('id', order.id),
+        );
+      }
 
       if (DELIVERED_CODES.has(code)) {
         deliveredIds.push(order.id);
@@ -70,6 +81,8 @@ export async function GET(req: NextRequest) {
         acceptedOrders.push(order);
       }
     }
+
+    if (statusTextUpdates.length) await Promise.all(statusTextUpdates);
 
     if (deliveredIds.length) {
       await serviceClient

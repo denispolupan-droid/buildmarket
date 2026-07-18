@@ -13,7 +13,7 @@ export const metadata = { title: 'Замовлення Prom.ua — Адмін' }
 export default async function PromOrdersPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+  if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
   const [{ data: orders, count }, { data: statsRows }] = await Promise.all([
     db.from('orders')

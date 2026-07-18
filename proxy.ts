@@ -115,8 +115,8 @@ export async function proxy(request: NextRequest) {
   if (AUTH_ROUTES.some(route => pathname.startsWith(route))) {
     if (user) {
       const next        = request.nextUrl.searchParams.get('next');
-      const accountType = user.user_metadata?.account_type as string | undefined;
-      const role        = user.user_metadata?.role as string | undefined;
+      const accountType = user.app_metadata?.account_type as string | undefined;
+      const role        = user.app_metadata?.role as string | undefined;
       // Редирект залежно від ролі
       if (next) return NextResponse.redirect(new URL(next, request.url));
       if (accountType === 'dropship') return NextResponse.redirect(new URL('/cabinet', request.url));
@@ -140,7 +140,7 @@ export async function proxy(request: NextRequest) {
       redirectUrl.searchParams.set('next', pathname + request.nextUrl.search);
       return NextResponse.redirect(redirectUrl);
     }
-    const accountType = user.user_metadata?.account_type as string | undefined;
+    const accountType = user.app_metadata?.account_type as string | undefined;
     const isWholesale = ['dealer', 'wholesale', 'contractor', 'shop_owner'].includes(accountType ?? '');
     if (!isWholesale) {
       const category = request.nextUrl.searchParams.get('category');

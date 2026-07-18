@@ -8,7 +8,7 @@ const DROPSHIP_TYPES  = ['dropship'];
 
 export function getRole(user: User | null): UserRole {
   if (!user) return 'guest';
-  const type = user.user_metadata?.account_type as string | undefined;
+  const type = user.app_metadata?.account_type as string | undefined;
   if (DROPSHIP_TYPES.includes(type ?? ''))  return 'dropship';
   if (WHOLESALE_TYPES.includes(type ?? '')) return 'wholesale';
   return 'retail';

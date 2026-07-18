@@ -10,7 +10,7 @@ const db = createClient(
 async function checkAdmin() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  return !!(user && user.user_metadata?.role === 'admin');
+  return !!(user && user.app_metadata?.role === 'admin');
 }
 
 export async function PATCH(req: NextRequest) {

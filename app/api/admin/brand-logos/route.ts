@@ -14,7 +14,7 @@ const serviceClient = createClient(
 async function requireAdmin() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  return user && user.user_metadata?.role === 'admin';
+  return user && user.app_metadata?.role === 'admin';
 }
 
 // Supabase Storage object keys reject non-ASCII characters, but brand names are often

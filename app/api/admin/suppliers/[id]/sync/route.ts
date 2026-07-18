@@ -6,7 +6,7 @@ import { syncSupplier } from '../../../../../../lib/supplier-sync';
 async function checkAdmin() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  return user?.user_metadata?.role === 'admin';
+  return user?.app_metadata?.role === 'admin';
 }
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -26,8 +26,8 @@ export default function CategorySection({ categories, products, reviewStats }: P
   const [role, setRole] = useState<UserRole>('guest');
 
   useEffect(() => {
-    getSupabaseBrowser().auth.getUser().then(({ data }: { data: { user: { user_metadata?: { account_type?: string } } | null } }) => {
-      const type = data.user?.user_metadata?.account_type;
+    getSupabaseBrowser().auth.getUser().then(({ data }: { data: { user: { app_metadata?: { account_type?: string } } | null } }) => {
+      const type = data.user?.app_metadata?.account_type;
       if (DROPSHIP_TYPES.includes(type ?? '')) setRole('dropship');
       else if (WHOLESALE_TYPES.includes(type ?? '')) setRole('wholesale');
       else if (data.user) setRole('retail');

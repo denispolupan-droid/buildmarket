@@ -15,7 +15,7 @@ const db = createClient(
 export default async function CashRegisterPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+  if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
   const now       = new Date();
   const from      = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;

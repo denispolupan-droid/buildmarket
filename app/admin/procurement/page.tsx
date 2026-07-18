@@ -22,7 +22,7 @@ export default async function ProcurementPage({
   const initialFilter = params.filter ?? 'all';
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+  if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
   const [{ data: pos }, { data: suppliers }, { data: receipts }] = await Promise.all([
     db.from('open_purchase_orders').select('*').limit(200),

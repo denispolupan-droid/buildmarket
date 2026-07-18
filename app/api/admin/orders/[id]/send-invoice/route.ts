@@ -10,7 +10,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !['admin', 'manager'].includes(user.user_metadata?.role ?? '')) {
+  if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

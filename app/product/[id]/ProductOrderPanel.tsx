@@ -45,7 +45,7 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
 
   useEffect(() => {
     getSupabaseBrowser().auth.getUser().then(({ data }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
-      const type = data.user?.user_metadata?.account_type as string | undefined;
+      const type = data.user?.app_metadata?.account_type as string | undefined;
       setIsWholesale(['dealer', 'wholesale', 'contractor', 'shop_owner'].includes(type ?? ''));
     });
   }, []);

@@ -12,7 +12,7 @@ const serviceClient = createClient(
 export default async function PromoPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+  if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
   const { data } = await serviceClient
     .from('app_settings').select('value').eq('key', 'promo_config').single();

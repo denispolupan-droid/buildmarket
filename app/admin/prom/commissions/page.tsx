@@ -13,7 +13,7 @@ export const metadata = { title: 'Комісії Prom.ua — Адмін' };
 export default async function PromCommissionsPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+  if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
   const [{ data: categories }, { data: planRow }] = await Promise.all([
     db.from('categories')

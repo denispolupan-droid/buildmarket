@@ -302,7 +302,7 @@ const db = createClient(
 async function assertAdmin() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') throw new Error('Unauthorized');
+  if (!user || user.app_metadata?.role !== 'admin') throw new Error('Unauthorized');
 }
 
 // GET /api/admin/prom/attributes?category=<prom_category_id>

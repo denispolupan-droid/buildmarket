@@ -65,7 +65,7 @@ async function resolveTtnRef(apiKey: string, ttnNumber: string): Promise<string 
 export async function GET(req: NextRequest) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!user || user.app_metadata?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const apiKey = await getNpApiKey();
   const ref = new URL(req.url).searchParams.get('ref');
@@ -115,7 +115,7 @@ export async function GET(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!user || user.app_metadata?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { ttnNumber, registerRef, ttnNumbers } = await req.json() as { ttnNumber?: string; registerRef: string; ttnNumbers?: string[] };
   if (!registerRef) return NextResponse.json({ error: 'registerRef required' }, { status: 400 });
@@ -186,7 +186,7 @@ export async function DELETE(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!user || user.app_metadata?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { ttnNumber, registerRef } = await req.json();
   if (!ttnNumber) return NextResponse.json({ error: 'TTN number required' }, { status: 400 });

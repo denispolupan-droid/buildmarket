@@ -13,7 +13,7 @@ const db = createClient(
 export default async function RozetkaAuditPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+  if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
   const { data: products } = await db
     .from('products')

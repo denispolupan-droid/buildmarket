@@ -13,7 +13,7 @@ export const metadata = { title: 'Атрибути Прома — Адмін' };
 export default async function PromAttributesPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+  if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
   const { data: rows } = await db
     .from('prom_attributes')

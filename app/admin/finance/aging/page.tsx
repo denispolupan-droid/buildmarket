@@ -22,7 +22,7 @@ const BUCKET_CFG: Record<string, { label: string; color: string; bg: string }> =
 export default async function AgingPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+  if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
   const { data: rows } = await db
     .from('ar_aging')

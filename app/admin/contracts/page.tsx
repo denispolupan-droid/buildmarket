@@ -11,7 +11,7 @@ const db = createClient(
 export default async function ContractsPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+  if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
   const [{ data: contracts }, { data: balances }] = await Promise.all([
     db.from('customer_contracts').select('*').order('created_at', { ascending: false }),

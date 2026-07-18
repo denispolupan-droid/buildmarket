@@ -13,7 +13,7 @@ const db = createClient(
 export default async function RozetkaOrdersPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+  if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
   const [{ data: loginRow }, { data: recentOrders }, { count: totalSynced }] = await Promise.all([
     db.from('app_settings').select('value').eq('key', 'rozetka_login').maybeSingle(),

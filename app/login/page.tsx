@@ -49,7 +49,7 @@ function LoginForm() {
     // щоб уникнути race condition в Next.js App Router при логіні
     if (role === 'dropship') {
       window.location.href = '/cabinet';
-    } else if (data.user?.user_metadata?.role === 'admin') {
+    } else if (data.user?.app_metadata?.role === 'admin') {
       window.location.href = '/admin';
     } else {
       window.location.href = nextUrl;

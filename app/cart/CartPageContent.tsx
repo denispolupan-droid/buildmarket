@@ -257,7 +257,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
         setRole('guest');
         return;
       }
-      const type = data.user.user_metadata?.account_type as string | undefined;
+      const type = data.user.app_metadata?.account_type as string | undefined;
       const wholesale = ['dealer', 'wholesale', 'contractor', 'shop_owner'].includes(type ?? '');
       setRole(wholesale ? 'wholesale' : 'retail');
       setCompany(data.user.user_metadata?.company_name ?? '');

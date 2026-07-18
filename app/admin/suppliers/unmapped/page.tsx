@@ -11,7 +11,7 @@ const serviceClient = createClient(
 export default async function UnmappedPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+  if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
   const { data: unmapped } = await serviceClient
     .from('supplier_unmapped_skus')

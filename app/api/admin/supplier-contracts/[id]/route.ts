@@ -7,7 +7,7 @@ const db = createServiceClient();
 async function checkAdmin() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  return user?.user_metadata?.role === 'admin' ? user : null;
+  return user?.app_metadata?.role === 'admin' ? user : null;
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

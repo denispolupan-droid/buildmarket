@@ -13,7 +13,7 @@ function adminClient() {
 async function assertAdmin() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') return null;
+  if (!user || user.app_metadata?.role !== 'admin') return null;
   return user;
 }
 
@@ -26,11 +26,11 @@ export async function GET() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const filtered = (users ?? [])
-    .filter(u => ['admin', 'manager'].includes(u.user_metadata?.role ?? ''))
+    .filter(u => ['admin', 'manager'].includes(u.app_metadata?.role ?? ''))
     .map(u => ({
       id:              u.id,
       email:           u.email ?? '',
-      role:            u.user_metadata?.role ?? '',
+      role:            u.app_metadata?.role ?? '',
       name:            u.user_metadata?.name ?? u.user_metadata?.full_name ?? '',
       created_at:      u.created_at,
       last_sign_in_at: u.last_sign_in_at ?? null,
@@ -52,11 +52,18 @@ export async function POST(req: NextRequest) {
     ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
 
   const { data, error } = await db.auth.admin.inviteUserByEmail(email, {
-    data: { role: 'manager', name: name?.trim() ?? '' },
+    data: { name: name?.trim() ?? '' },
     redirectTo: `${appUrl}/admin`,
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  // Роль зберігаємо в app_metadata (пишеться лише service-role ключем; користувач
+  // не може змінити її через updateUser — на відміну від user_metadata).
+  const { error: roleErr } = await db.auth.admin.updateUserById(data.user.id, {
+    app_metadata: { role: 'manager' },
+  });
+  if (roleErr) return NextResponse.json({ error: roleErr.message }, { status: 500 });
 
   return NextResponse.json({
     ok: true,

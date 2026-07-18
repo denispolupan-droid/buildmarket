@@ -16,7 +16,7 @@ const PRODUCT_SELECT = 'sku, name, brand, volume, category_slug, is_active, prom
 export default async function PricesPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !['admin', 'manager'].includes(user.user_metadata?.role ?? '')) redirect('/');
+  if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) redirect('/');
 
   const [{ data: stock }, { data: categories }, { data: activePromos }] = await Promise.all([
     db.from('product_stock')

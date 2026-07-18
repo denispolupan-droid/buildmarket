@@ -50,6 +50,8 @@ type Order = {
   comment: string | null;
   tracking_number: string | null;
   carrier_accepted_at: string | null;
+  carrier_status_text: string | null;
+  carrier_status_synced_at: string | null;
   payment_confirmed:  boolean;
   amount_paid:        number;
   callback_done:      boolean;
@@ -1335,7 +1337,7 @@ export default function AdminOrders({
                     </span>
                     {order.status === 'shipped' && order.tracking_number && (
                       <span
-                        title={order.carrier_accepted_at ? 'Прийнято Новою Поштою' : 'Очікує приймання Новою Поштою'}
+                        title={order.carrier_status_text ?? (order.carrier_accepted_at ? 'Прийнято Новою Поштою' : 'Очікує приймання Новою Поштою')}
                         style={{ fontSize: '12px', flexShrink: 0, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
                         {order.carrier_accepted_at ? '✓' : '⏳'}
                       </span>
@@ -2201,8 +2203,9 @@ export default function AdminOrders({
                             {status.label}
                           </div>
                           {order.status === 'shipped' && order.tracking_number && (
-                            <div style={{ fontSize: '11px', fontWeight: 600, textAlign: 'center', color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
-                              {order.carrier_accepted_at ? '✓ Прийнято НП' : '⏳ Очікує приймання НП'}
+                            <div title={order.carrier_status_synced_at ? `Оновлено: ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
+                              style={{ fontSize: '11px', fontWeight: 600, textAlign: 'center', lineHeight: 1.3, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
+                              {order.carrier_accepted_at ? '✓' : '⏳'} {order.carrier_status_text ?? (order.carrier_accepted_at ? 'Прийнято НП' : 'Очікує приймання НП')}
                             </div>
                           )}
 

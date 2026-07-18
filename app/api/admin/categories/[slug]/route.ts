@@ -13,7 +13,7 @@ export async function PATCH(
 ) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !['admin', 'manager'].includes(user.user_metadata?.role ?? '')) {
+  if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

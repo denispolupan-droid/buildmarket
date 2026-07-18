@@ -4,6 +4,7 @@ import { createSupabaseServer, createSupabaseAdmin } from '../../../lib/supabase
 import { buildAdminNotificationHtml, buildCustomerOrderEmail } from '../../../lib/invoice-email';
 import { notifyAdminNewOrder, notifyCustomerNewOrder } from '../../../lib/telegram';
 import { rateLimit, getClientIp } from '../../../lib/rate-limit';
+import type { CartItem } from '../../../types';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -19,8 +20,8 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const { company, contact, phone, email, deliveryType, deliverySubtype, deliveryAddress,
-          deliveryCityRef, deliveryCityName, deliveryWarehouseRef, paymentType, comment, items, totalPrice,
-          promoCode, promoEligibleTotal,
+          deliveryCityRef, deliveryCityName, deliveryWarehouseRef, paymentType, comment, items,
+          promoCode,
           utm_source, utm_medium, utm_campaign, utm_content, utm_term, referrer_url } = body;
 
   const phoneClean = String(phone ?? '').replace(/[\s\-()]/g, '');
@@ -30,15 +31,61 @@ export async function POST(req: NextRequest) {
   if (!deliveryType)  return NextResponse.json({ error: 'Вкажіть тип доставки' }, { status: 400 });
   if (!paymentType)   return NextResponse.json({ error: 'Вкажіть тип оплати' }, { status: 400 });
   if (!Array.isArray(items) || items.length === 0) return NextResponse.json({ error: 'Кошик порожній' }, { status: 400 });
-  if (typeof totalPrice !== 'number' || totalPrice < 0) return NextResponse.json({ error: 'Невірна сума' }, { status: 400 });
 
   const WHOLESALE_TYPES = ['dealer', 'wholesale', 'contractor', 'shop_owner'];
-  const accountType = user?.user_metadata?.account_type as string | undefined;
+  const accountType = user?.app_metadata?.account_type as string | undefined;
 
   const admin  = createSupabaseAdmin();
 
+  // ── Server-side re-pricing: NEVER trust client item prices or totals ───────
+  //    Every line price is recomputed from product_stock by SKU for the user's
+  //    tier (retail: price_promo ?? price_retail; wholesale: price_unit).
+  const isWholesaleUser = WHOLESALE_TYPES.includes(accountType ?? '');
+  type OrderItem = { sku?: unknown; qty?: unknown; [k: string]: unknown };
+  const rawItems = items as OrderItem[];
+  const skus: string[] = [];
+  for (const it of rawItems) {
+    if (typeof it?.sku !== 'string' || !it.sku.trim())
+      return NextResponse.json({ error: 'Некоректний товар у кошику' }, { status: 400 });
+    const q = Number(it.qty);
+    if (!Number.isInteger(q) || q <= 0 || q > 100000)
+      return NextResponse.json({ error: 'Некоректна кількість товару' }, { status: 400 });
+    skus.push(it.sku);
+  }
+
+  const { data: priceRows, error: priceErr } = await admin
+    .from('product_stock')
+    .select('sku, price_promo, price_retail, price_unit')
+    .in('sku', skus);
+  if (priceErr)
+    return NextResponse.json({ error: 'Не вдалось перевірити ціни. Спробуйте ще раз.' }, { status: 500 });
+
+  const priceBySku = new Map((priceRows ?? []).map(r => [r.sku, r]));
+
+  let serverTotal = 0;            // authoritative order subtotal
+  let serverEligibleTotal = 0;    // sum of non-promo lines (promo-discount base)
+  const serverItems: Record<string, unknown>[] = [];
+  for (const it of rawItems) {
+    const row = priceBySku.get(it.sku as string);
+    if (!row) return NextResponse.json({ error: `Товар ${it.sku} більше недоступний` }, { status: 400 });
+    const promo = isWholesaleUser ? null : (row.price_promo ?? null);
+    const unit  = isWholesaleUser
+      ? Number(row.price_unit ?? 0)
+      : Number(promo ?? row.price_retail ?? 0);
+    if (!(unit > 0))
+      return NextResponse.json({ error: `Для товару ${it.sku} не встановлено ціну` }, { status: 400 });
+    const qty = Number(it.qty);
+    const isPromoLine = !isWholesaleUser && promo != null;
+    const line = Math.round(unit * qty * 100) / 100;
+    serverTotal += line;
+    if (!isPromoLine) serverEligibleTotal += line;
+    serverItems.push({ ...it, price: unit, is_promo: isPromoLine });
+  }
+  serverTotal = Math.round(serverTotal * 100) / 100;
+  serverEligibleTotal = Math.round(serverEligibleTotal * 100) / 100;
+
   // ── Promo code: validate server-side and compute final total ─────────────
-  let finalTotal      = totalPrice as number;
+  let finalTotal      = serverTotal;
   let promoDiscount:  number | null = null;
   let resolvedPromoCode: string | null = null;
 
@@ -54,17 +101,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Термін дії промокоду закінчився' }, { status: 400 });
     if (promo.max_uses !== null && promo.uses_count >= promo.max_uses)
       return NextResponse.json({ error: 'Промокод вичерпано' }, { status: 400 });
-    if (promo.min_order_amount && totalPrice < promo.min_order_amount)
+    if (promo.min_order_amount && serverTotal < promo.min_order_amount)
       return NextResponse.json({ error: `Мінімальна сума для цього промокоду — ${promo.min_order_amount} ₴` }, { status: 400 });
-    const discountBase = (typeof promoEligibleTotal === 'number' && promoEligibleTotal > 0)
-      ? promoEligibleTotal
-      : totalPrice;
+    const discountBase = serverEligibleTotal;
     promoDiscount = promo.discount_type === 'percent'
       ? Math.round(discountBase * promo.discount_value / 100 * 100) / 100
       : Math.min(Number(promo.discount_value), discountBase);
     if (promo.max_discount_amount && promoDiscount > promo.max_discount_amount)
       promoDiscount = promo.max_discount_amount;
-    finalTotal = Math.max(0, totalPrice - (promoDiscount ?? 0));
+    finalTotal = Math.max(0, serverTotal - (promoDiscount ?? 0));
     resolvedPromoCode = promo.code;
   }
 
@@ -127,7 +172,7 @@ export async function POST(req: NextRequest) {
       delivery_warehouse_ref: deliveryWarehouseRef ?? null,
       payment_type:          'card',
       comment:               comment ?? null,
-      items,
+      items:                 serverItems,
       total_price:           finalTotal,
       promo_code:            resolvedPromoCode,
       promo_discount:        promoDiscount,
@@ -144,7 +189,7 @@ export async function POST(req: NextRequest) {
       user_id:     user?.id ?? null,
       payload,
       reference,
-      total_price: totalPrice,
+      total_price: serverTotal,
       email,
     });
     if (pendingErr) {
@@ -177,7 +222,7 @@ export async function POST(req: NextRequest) {
       payment_type:   paymentType,
       status:         'new',
       comment:        comment ?? null,
-      items,
+      items:          serverItems,
       total_price:    finalTotal,
       promo_code:     resolvedPromoCode,
       promo_discount: promoDiscount,
@@ -208,7 +253,7 @@ export async function POST(req: NextRequest) {
 
   const orderData = {
     orderNumber: data.order_number, company: company ?? '', contact,
-    phone, email, items, totalPrice, deliveryType,
+    phone, email, items: serverItems as unknown as CartItem[], totalPrice: finalTotal, deliveryType,
     deliveryAddress: deliveryAddress ?? '', paymentType, comment,
   };
 
@@ -217,7 +262,7 @@ export async function POST(req: NextRequest) {
     contact,
     company:            company ?? null,
     phone,
-    total_price:        totalPrice,
+    total_price:        finalTotal,
     payment_type:       paymentType,
     delivery_city_name: body.deliveryCityName ?? null,
   });
@@ -244,7 +289,7 @@ export async function POST(req: NextRequest) {
   if (existingChatId) {
     await admin.from('orders').update({ telegram_chat_id: existingChatId }).eq('id', data.id);
     notifyCustomerNewOrder(existingChatId, {
-      order_number: data.order_number, items, total_price: totalPrice,
+      order_number: data.order_number, items: serverItems as unknown as CartItem[], total_price: finalTotal,
       payment_type: paymentType, delivery_city_name: deliveryCityName ?? null,
       invoice_url: paymentType === 'invoice' ? invoiceUrl : undefined,
     });
@@ -257,7 +302,7 @@ export async function POST(req: NextRequest) {
     from: FROM, to: email, subject: customerSubject,
     html: buildCustomerOrderEmail({
       orderNumber: data.order_number, orderId: data.id,
-      company: company ?? '', contact, totalPrice, paymentType,
+      company: company ?? '', contact, totalPrice: finalTotal, paymentType,
       userId: user?.id ?? null, invoiceUrl, siteUrl,
       telegramBotUsername: existingChatId ? undefined : process.env.TELEGRAM_BOT_USERNAME,
     }),

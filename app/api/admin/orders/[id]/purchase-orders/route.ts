@@ -10,7 +10,7 @@ export async function GET(
 ) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  const role = user?.user_metadata?.role ?? '';
+  const role = user?.app_metadata?.role ?? '';
   if (!user || !['admin', 'manager'].includes(role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }

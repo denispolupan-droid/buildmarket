@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
       if (role === 'dropship') {
         return NextResponse.redirect(`${origin}/cabinet`);
       }
-      if (user?.user_metadata?.role === 'admin') {
+      if (user?.app_metadata?.role === 'admin') {
         return NextResponse.redirect(`${origin}/admin`);
       }
       return NextResponse.redirect(`${origin}${next}`);

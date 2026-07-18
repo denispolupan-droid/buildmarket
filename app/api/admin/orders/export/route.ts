@@ -22,7 +22,7 @@ const PAYMENT_LABELS: Record<string, string> = {
 export async function GET(req: NextRequest) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !['admin', 'manager'].includes(user.user_metadata?.role ?? '')) {
+  if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

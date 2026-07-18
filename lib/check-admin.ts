@@ -8,7 +8,7 @@ export async function checkAdmin(): Promise<boolean> {
   try {
     const supabase = await createSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();
-    return user?.user_metadata?.role === 'admin';
+    return user?.app_metadata?.role === 'admin';
   } catch {
     return false;
   }

@@ -13,7 +13,7 @@ function adminClient() {
 async function assertAdmin() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') return null;
+  if (!user || user.app_metadata?.role !== 'admin') return null;
   return user;
 }
 
@@ -35,7 +35,7 @@ export async function DELETE(
   const db = adminClient();
   const { data: { user }, error: fetchErr } = await db.auth.admin.getUserById(id);
   if (fetchErr || !user) return NextResponse.json({ error: 'Користувача не знайдено' }, { status: 404 });
-  if (user.user_metadata?.role === 'admin') {
+  if (user.app_metadata?.role === 'admin') {
     return NextResponse.json({ error: 'Не можна видаляти адміністраторів' }, { status: 400 });
   }
 

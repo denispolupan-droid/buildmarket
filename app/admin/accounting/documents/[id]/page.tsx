@@ -35,7 +35,7 @@ function fmt(n: number) { return n.toLocaleString('uk-UA', { minimumFractionDigi
 export default async function DocumentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'admin') redirect('/');
+  if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
   const { id } = await params;
 
