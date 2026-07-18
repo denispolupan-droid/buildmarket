@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Footer from '../../components/Footer';
 import Reveal from '../../components/Reveal';
-import { ShieldCheck, Users, Package, Award, Truck, MessageCircle } from 'lucide-react';
+import { ShieldCheck, Users, Package, Award, Truck, MessageCircle, Target, Rocket, TrendingUp, Zap, Lightbulb } from 'lucide-react';
 import { mergeVisibleBrands } from '../../../lib/brands';
 import { getBrandLogosCached, getVisibleBrandLogosCached } from '../../../lib/supabase';
 
@@ -40,6 +40,20 @@ const values = [
   { icon: Truck,         title: 'Надёжная логистика',        text: 'Собственная логистика и Новая Почта по всей Украине. Заказы, принятые до 14:00, отправляем в тот же день.' },
   { icon: MessageCircle, title: 'Персональный подход',        text: 'За каждым клиентом закреплён менеджер. Консультируем по выбору материалов и подбору аналогов.' },
   { icon: Package,       title: 'Гибкие условия',            text: 'От 1 единицы в розницу до крупного опта. Индивидуальные цены и условия оплаты для постоянных партнёров.' },
+  { icon: Zap,           title: 'Цифровая платформа',        text: 'Собственный B2B-кабинет, XML/YML-фиды и автоматическое обновление цен и остатков — технологии, которых нет у обычных оптовиков.' },
+  { icon: Lightbulb,     title: 'Экспертиза',                text: 'Мы знаем продукт: подбираем аналоги, консультируем по техническим вопросам и помогаем выбрать решение под задачу и бюджет.' },
+];
+
+const mission = [
+  { icon: Target,     title: 'Миссия',  text: 'Сделать профессиональную строительную химию доступной каждому — мастеру, магазину, подрядчику — так же просто, как бытовые товары: в один клик, по честной цене, с консультацией эксперта.' },
+  { icon: Rocket,     title: 'Видение', text: 'Стать первой ассоциацией со словами «строительная химия» в Украине — брендом №1 в своей категории, как Rozetka в электронике или Эпицентр в строительстве.' },
+  { icon: TrendingUp, title: 'Амбиция', text: 'Построить B2B-экосистему — платформу, фиды, сервис и логистику, — благодаря которой тысячи магазинов, дропшиперов и мастеров по всей Украине растут вместе с нами.' },
+];
+
+const roadmap = [
+  { step: '01', title: 'Сегодня — прочный фундамент',       text: '10+ лет опыта, 1000+ артикулов на собственном складе, 500+ B2B-клиентов и собственная торговая платформа с кабинетом партнёра и фидами для дропшиперов.' },
+  { step: '02', title: 'Завтра — национальный охват',       text: 'Выход на крупнейшие маркетплейсы страны, расширение портфеля брендов, региональная логистика и полная автоматизация закупок для партнёров.' },
+  { step: '03', title: 'Цель — бренд №1 в категории',       text: 'Когда в Украине говорят «строительная химия» — думают FIXLINE. Собственная торговая марка, склады в ключевых регионах и API-экосистема для тысяч партнёров.' },
 ];
 
 export default async function AboutRuPage() {
@@ -113,14 +127,48 @@ export default async function AboutRuPage() {
             </div>
             </Reveal>
             <Reveal delay={100}>
-            <h1 style={{ fontSize: 'clamp(20px, 2.5vw, 30px)', fontWeight: 700, color: '#fff', lineHeight: 1.3, marginBottom: '16px', letterSpacing: '-0.3px' }}>
-              Линия фиксации — всё для надёжного монтажа
+            <h1 style={{ fontSize: 'clamp(22px, 3vw, 36px)', fontWeight: 800, color: '#fff', lineHeight: 1.3, marginBottom: '16px', letterSpacing: '-0.5px' }}>
+              Всё держится на FIXLINE
             </h1>
-            <p style={{ fontSize: '16px', color: '#94A3B8', lineHeight: 1.7, maxWidth: '580px', margin: 0 }}>
-              Герметики, клеи, монтажные пены, грунтовки — материалы, которые фиксируют,
-              защищают и держат. От проверенных производителей по конкурентным ценам.
+            <p style={{ fontSize: '16px', color: '#94A3B8', lineHeight: 1.7, maxWidth: '620px', margin: 0 }}>
+              Мы строим национальный бренд строительной химии. Герметики, клеи, монтажные
+              пены, грунтовки — материалы, которые фиксируют, защищают и держат. От
+              проверенных производителей — в каждый уголок Украины.
             </p>
             </Reveal>
+          </div>
+        </section>
+
+        {/* Mission / Vision / Ambition */}
+        <section style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', padding: '64px 0' }}>
+          <div className="page-container">
+            <Reveal>
+            <div style={{ textAlign: 'center', maxWidth: '760px', margin: '0 auto 44px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#4880B8' }}>
+                FIXLINE — это больше, чем магазин
+              </span>
+              <h2 style={{ fontSize: 'clamp(24px, 3vw, 34px)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.35, margin: '12px 0 0', letterSpacing: '-0.5px' }}>
+                Делаем надёжность доступной —{' '}
+                <span style={{
+                  background: 'linear-gradient(135deg, #4880B8 0%, #14B8A6 100%)',
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                }}>для каждого мастера, магазина и стройки</span>
+              </h2>
+            </div>
+            </Reveal>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }} className="about-mission-grid">
+              {mission.map(({ icon: Icon, title, text }, i) => (
+                <Reveal key={title} delay={i * 100}>
+                <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px 24px', height: '100%' }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, rgba(72,128,184,0.12) 0%, rgba(20,184,166,0.12) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+                    <Icon size={20} color="#4880B8" strokeWidth={2} />
+                  </div>
+                  <h3 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '10px' }}>{title}</h3>
+                  <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>{text}</p>
+                </div>
+                </Reveal>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -247,11 +295,14 @@ export default async function AboutRuPage() {
         <section style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border)', padding: '64px 0' }}>
           <div className="page-container">
             <Reveal>
-            <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '40px', textAlign: 'center' }}>
-              Наши принципы
+            <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', textAlign: 'center' }}>
+              Почему с нами
             </h2>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '40px' }}>
+              Шесть причин, почему дилеры, магазины и мастера выбирают FIXLINE
+            </p>
             </Reveal>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }} className="about-values-grid">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }} className="about-values-grid">
               {values.map(({ icon: Icon, title, text }, i) => (
                 <Reveal key={title} delay={i * 90}>
                 <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px 24px' }}>
@@ -260,6 +311,35 @@ export default async function AboutRuPage() {
                   </div>
                   <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '10px' }}>{title}</h3>
                   <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>{text}</p>
+                </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Roadmap */}
+        <section style={{ padding: '64px 0', borderTop: '1px solid var(--border)', background: 'var(--bg-soft)' }}>
+          <div className="page-container">
+            <Reveal>
+            <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', textAlign: 'center' }}>
+              Куда мы идём
+            </h2>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '40px' }}>
+              Стратегия FIXLINE: от нишевого поставщика к национальному бренду
+            </p>
+            </Reveal>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }} className="about-roadmap-grid">
+              {roadmap.map(({ step, title, text }, i) => (
+                <Reveal key={step} delay={i * 110}>
+                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px 24px', height: '100%', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{
+                    fontSize: '64px', fontWeight: 900, lineHeight: 1, position: 'absolute', top: '12px', right: '16px',
+                    background: 'linear-gradient(135deg, rgba(72,128,184,0.14) 0%, rgba(20,184,166,0.14) 100%)',
+                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                  }}>{step}</div>
+                  <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '12px', paddingRight: '56px', position: 'relative' }}>{title}</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0, position: 'relative' }}>{text}</p>
                 </div>
                 </Reveal>
               ))}
@@ -308,11 +388,12 @@ export default async function AboutRuPage() {
           <div className="page-container">
             <Reveal>
             <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', marginBottom: '12px' }}>
-              Стать партнёром FIXLINE
+              Расти вместе с FIXLINE
             </h2>
-            <p style={{ fontSize: '14px', color: '#94A3B8', marginBottom: '32px', maxWidth: '480px', margin: '0 auto 32px' }}>
-              Дилеры, подрядчики, строительные магазины — регистрируйтесь и получайте
-              доступ к оптовым ценам и персональному менеджеру.
+            <p style={{ fontSize: '14px', color: '#94A3B8', marginBottom: '32px', maxWidth: '520px', margin: '0 auto 32px' }}>
+              Мы строим бренд №1 в строительной химии — и лучшие условия получают те,
+              кто присоединился раньше. Дилеры, подрядчики, магазины — регистрируйтесь
+              и получайте оптовые цены и персонального менеджера.
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link href="/register" style={{ height: '48px', padding: '0 28px', borderRadius: '10px', background: '#4880B8', color: '#fff', fontSize: '14px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
@@ -333,6 +414,8 @@ export default async function AboutRuPage() {
         @media (max-width: 768px) {
           .about-stats-grid  { grid-template-columns: repeat(2, 1fr) !important; }
           .about-values-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .about-mission-grid { grid-template-columns: 1fr !important; }
+          .about-roadmap-grid { grid-template-columns: 1fr !important; }
           .about-content-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
           .brands-grid { grid-template-columns: repeat(3, 1fr) !important; }
         }

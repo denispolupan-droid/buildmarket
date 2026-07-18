@@ -159,7 +159,7 @@ export default function EditPricesButton({
       const parsed = await parseFile(file);
       const results: MatchResult[] = lines.map(l => {
         // 1. Try exact SKU match
-        let price = parsed.skuMap.get(normSku(l.sku));
+        const price = parsed.skuMap.get(normSku(l.sku));
         if (price !== undefined) return { sku: l.sku, found: true, filePrice: price, via: 'sku' };
 
         // 2. Fallback: name similarity match

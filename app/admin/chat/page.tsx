@@ -23,7 +23,7 @@ export default async function AdminChatPage() {
     .limit(100);
 
   const sessionIds = (sessions ?? []).map(s => s.id);
-  let lastMessages: Record<string, string> = {};
+  const lastMessages: Record<string, string> = {};
 
   if (sessionIds.length) {
     const { data: msgs } = await db

@@ -22,7 +22,7 @@ export async function GET() {
 
   // Остання операція по кожному клієнту (для розрахунку прострочення)
   const customerIds = [...new Set((data ?? []).map((r: { customer_id: string }) => r.customer_id))];
-  let lastOpMap: Record<string, string> = {};
+  const lastOpMap: Record<string, string> = {};
   if (customerIds.length > 0) {
     const { data: lastOps } = await db
       .from('ar_transactions')

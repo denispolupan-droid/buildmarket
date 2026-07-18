@@ -453,7 +453,7 @@ export default function AdminOrders({
         if (ttns.length > 0) setRegistryAdded(new Set(ttns));
       } catch { /* silent */ }
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []);
 
   async function openSupplierPO(order: Order) {
@@ -2590,7 +2590,7 @@ export default function AdminOrders({
                       <Mail size={11} /> {item.contacts.length > 0 ? 'Або інший email' : 'Email отримувача'}
                     </div>
                     <input
-                      // eslint-disable-next-line jsx-a11y/no-autofocus
+                       
                       autoFocus={item.contacts.length === 0}
                       type="email"
                       value={item.email}

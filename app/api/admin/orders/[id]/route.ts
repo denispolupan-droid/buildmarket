@@ -185,7 +185,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
       if (ord && ord.customer_id) {
         // Шукаємо активний договір клієнта (якщо є)
-        let payContractId: string | undefined;
         const { data: ctr } = await db
           .from('customer_contracts')
           .select('id')
@@ -194,7 +193,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        payContractId = ctr?.id ?? undefined;
+        const payContractId = ctr?.id ?? undefined;
 
         const methodLabel = payMethod === 'cash' ? 'Готівка' : payMethod === 'acquiring' ? 'Еквайринг' : 'Безготівковий';
         await recordCustomerPayment({

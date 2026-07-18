@@ -271,7 +271,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
       .then(r => r.json())
       .then(d => setInvoiceFile({ url: d.url, name: d.name }))
       .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [po.id]);
 
   useEffect(() => {

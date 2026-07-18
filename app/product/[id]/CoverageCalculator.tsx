@@ -95,25 +95,36 @@ export default function CoverageCalculator({ characteristics, volume, priceUnit 
   const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
   // Find consumption characteristic (any label containing "витрат" or "розхід")
   const coverageChar = characteristics.find(c => /витрат|розхід/i.test(c.label));
-  if (!coverageChar) return null;
-
-  const parsed      = parseCoverageRate(coverageChar.value);
-  const productVolG = parseVolumeBase(volume);
-  if (!parsed || !productVolG) return null;
 
   // "Витрата концентрату" means the rate is already per unit of concentrate —
-  // dilution does NOT reduce the amount needed further.
-  const isConcentrateLabel = /концентрат/i.test(coverageChar.label);
+  // dilution does NOT reduce the amount needed further. (null-safe: коли coverageChar
+  // немає, компонент нижче поверне null, але хуки мають викликатись безумовно.)
+  const isConcentrateLabel = coverageChar ? /концентрат/i.test(coverageChar.label) : false;
 
   // ── dilution detection ─────────────────────────────────────────────────────
   // 1. Explicit dilution characteristic
   const dilutionChar = characteristics.find(c => /розведен|розбавлен|розчинен/i.test(c.label));
   // 2. Dilution hint embedded inside coverage value: "після розведення 1:10"
-  const embeddedOptions = parseDilutionOptions(coverageChar.value);
+  const embeddedOptions = coverageChar ? parseDilutionOptions(coverageChar.value) : [];
   const explicitOptions  = dilutionChar ? parseDilutionOptions(dilutionChar.value) : [];
 
   // Merge: explicit wins, else embedded
   const detectedOptions = explicitOptions.length ? explicitOptions : embeddedOptions;
+
+  // Default: first detected value (most conservative = most product), or 0
+  const defaultN = !isConcentrateLabel && detectedOptions.length > 0 ? detectedOptions[0] : 0;
+
+  // ── local state — хуки ПЕРЕД ранніми return (React rules-of-hooks) ───────────
+  const [open,       setOpen]       = useState(false);
+  const [area,       setArea]       = useState('');
+  const [coats,      setCoats]      = useState(1);
+  const [dilutionN,  setDilutionN]  = useState(defaultN);
+
+  // ── guards (після хуків) ─────────────────────────────────────────────────────
+  if (!coverageChar) return null;
+  const parsed      = parseCoverageRate(coverageChar.value);
+  const productVolG = parseVolumeBase(volume);
+  if (!parsed || !productVolG) return null;
 
   // Build select options shown to user
   const selectOptions: { label: string; n: number }[] = [{ label: t('Без розведення', 'Без разбавления'), n: 0 }];
@@ -128,15 +139,6 @@ export default function CoverageCalculator({ characteristics, volume, priceUnit 
       }
     });
   }
-
-  // Default: first detected value (most conservative = most product), or 0
-  const defaultN = !isConcentrateLabel && detectedOptions.length > 0 ? detectedOptions[0] : 0;
-
-  // ── local state ───────────────────────────────────────────────────────────
-  const [open,       setOpen]       = useState(false);
-  const [area,       setArea]       = useState('');
-  const [coats,      setCoats]      = useState(1);
-  const [dilutionN,  setDilutionN]  = useState(defaultN);
 
   // ── calculation ───────────────────────────────────────────────────────────
   // Dilution 1:N → 1 unit of concentrate yields (1+N) units of working solution.

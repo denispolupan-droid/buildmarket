@@ -99,7 +99,6 @@ export async function POST(
     const bizDate = payment_date ?? new Date().toISOString().slice(0, 10);
 
     // Активний договір клієнта
-    let contractId: string | undefined;
     const { data: ctr } = await db
       .from('customer_contracts')
       .select('id')
@@ -108,7 +107,7 @@ export async function POST(
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    contractId = ctr?.id ?? undefined;
+    const contractId = ctr?.id ?? undefined;
 
     try {
       // Створюємо ваучер-документ → дає doc_id для money_entries

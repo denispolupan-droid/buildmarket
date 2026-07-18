@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Групуємо документи по постачальнику
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const supplierGroups = new Map<string | number, typeof docs>();
   for (const doc of docs) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
