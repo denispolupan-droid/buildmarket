@@ -1,7 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { saveTokens } from '../../../../../../lib/zoho-mail';
+import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 
 export async function GET(req: NextRequest) {
+  const site = process.env.NEXT_PUBLIC_SITE_URL;
+
+  // Require an admin session (the callback carries first-party cookies) …
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || user.app_metadata?.role !== 'admin') {
+    return NextResponse.redirect(`${site}/admin/mail?error=unauthorized`);
+  }
+
+  // … and verify the CSRF state set in the authorize step.
+  const state       = req.nextUrl.searchParams.get('state');
+  const cookieState = req.cookies.get('mail_oauth_state')?.value;
+  if (!state || !cookieState || state !== cookieState) {
+    return NextResponse.redirect(`${site}/admin/mail?error=bad_state`);
+  }
+
   const code  = req.nextUrl.searchParams.get('code');
   const error = req.nextUrl.searchParams.get('error');
 

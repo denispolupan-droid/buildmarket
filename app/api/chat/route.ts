@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
+import { escapeOrTerm } from '../../../lib/pg-filter';
 import { sendTelegram } from '../../../lib/telegram';
 import { rateLimit, getClientIp } from '../../../lib/rate-limit';
 
@@ -100,7 +101,7 @@ async function searchProducts(query: string, category?: string): Promise<string>
     .limit(6);
 
   for (const word of words) {
-    const term = `%${word}%`;
+    const term = `%${escapeOrTerm(word)}%`;
     q = q.or(`name.ilike.${term},brand.ilike.${term},description.ilike.${term},category_slug.ilike.${term}`);
   }
 

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { unstable_cache } from 'next/cache';
 import { env } from './env';
+import { escapeOrTerm } from './pg-filter';
 
 export type {
   Category,
@@ -77,7 +78,7 @@ export async function getProducts(opts?: {
     query = query.eq('category_slug', opts.category);
   }
   if (opts?.search) {
-    const term = `%${opts.search}%`;
+    const term = `%${escapeOrTerm(opts.search)}%`;
     query = query.or(`name.ilike.${term},sku.ilike.${term},brand.ilike.${term}`);
   }
   if (opts?.inStockOnly) {
@@ -119,7 +120,7 @@ export async function getProductsLight(opts?: {
     query = query.eq('category_slug', opts.category);
   }
   if (opts?.search) {
-    const term = `%${opts.search}%`;
+    const term = `%${escapeOrTerm(opts.search)}%`;
     query = query.or(`name.ilike.${term},sku.ilike.${term},brand.ilike.${term}`);
   }
   if (opts?.limit) {

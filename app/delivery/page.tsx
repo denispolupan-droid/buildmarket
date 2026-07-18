@@ -31,7 +31,7 @@ export default function DeliveryPage() {
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd).replace(/</g, '\\u003c') }} />
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
         <div style={{ maxWidth: '860px', margin: '0 auto', padding: '48px 32px 80px' }}>
 

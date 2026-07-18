@@ -117,8 +117,10 @@ export async function proxy(request: NextRequest) {
       const next        = request.nextUrl.searchParams.get('next');
       const accountType = user.app_metadata?.account_type as string | undefined;
       const role        = user.app_metadata?.role as string | undefined;
-      // Редирект залежно від ролі
-      if (next) return NextResponse.redirect(new URL(next, request.url));
+      // Редирект залежно від ролі. `next` приймаємо ТІЛЬКИ як внутрішній шлях
+      // (починається з одного «/»), інакше — open redirect на чужий домен.
+      if (next && next.startsWith('/') && !next.startsWith('//'))
+        return NextResponse.redirect(new URL(next, request.url));
       if (accountType === 'dropship') return NextResponse.redirect(new URL('/cabinet', request.url));
       if (role === 'admin') return NextResponse.redirect(new URL('/admin', request.url));
       return NextResponse.redirect(new URL('/', request.url));

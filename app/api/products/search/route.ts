@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { escapeOrTerm } from '../../../../lib/pg-filter';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,7 +11,7 @@ export async function GET(req: NextRequest) {
   const q = new URL(req.url).searchParams.get('q')?.trim() ?? '';
   if (q.length < 2) return NextResponse.json({ results: [] });
 
-  const term = q.replace(/[%_]/g, '\\$&'); // escape special chars
+  const term = escapeOrTerm(q); // strip PostgREST filter metachars (comma injection)
   const { data } = await supabase
     .from('products')
     .select('sku, name, brand, volume')

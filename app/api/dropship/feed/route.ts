@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { escapeOrTerm } from '../../../../lib/pg-filter';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,11 +18,13 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  // Validate token — partner_code or customer UUID
+  // Validate token — partner_code or customer UUID. escapeOrTerm strips filter
+  // metachars so a crafted token can't inject extra OR conditions.
+  const safeToken = escapeOrTerm(token);
   const { data: customer } = await serviceClient
     .from('customers')
     .select('id, is_active')
-    .or(`id.eq.${token},partner_code.eq.${token}`)
+    .or(`id.eq.${safeToken},partner_code.eq.${safeToken}`)
     .eq('is_active', true)
     .single();
 

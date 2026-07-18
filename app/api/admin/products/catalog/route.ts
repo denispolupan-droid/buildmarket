@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
+import { escapeOrTerm } from '../../../../../lib/pg-filter';
 
 const db = createServiceClient();
 
@@ -34,7 +35,8 @@ export async function GET(req: NextRequest) {
     .limit(300);
 
   if (q.length >= 2) {
-    query = query.or(`sku.ilike.%${q}%,name.ilike.%${q}%,brand.ilike.%${q}%`);
+    const term = escapeOrTerm(q);
+    query = query.or(`sku.ilike.%${term}%,name.ilike.%${term}%,brand.ilike.%${term}%`);
   } else if (categorySlug) {
     query = query.eq('category_slug', categorySlug);
   }

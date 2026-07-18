@@ -14,13 +14,22 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // CSRF state — echoed back by Zoho and verified in the callback so an attacker
+  // cannot bind their own Zoho account by luring an admin to the callback URL.
+  const state = crypto.randomUUID();
+
   const params = new URLSearchParams({
     scope:         SCOPES,
     client_id:     process.env.ZOHO_CLIENT_ID!,
     response_type: 'code',
     redirect_uri:  process.env.ZOHO_REDIRECT_URI!,
     access_type:   'offline',
+    state,
   });
 
-  return NextResponse.redirect(`https://accounts.zoho.eu/oauth/v2/auth?${params}`);
+  const res = NextResponse.redirect(`https://accounts.zoho.eu/oauth/v2/auth?${params}`);
+  res.cookies.set('mail_oauth_state', state, {
+    httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: 600,
+  });
+  return res;
 }

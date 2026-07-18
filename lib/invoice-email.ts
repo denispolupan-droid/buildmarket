@@ -267,13 +267,25 @@ const PAYMENT_LABELS: Record<string, string> = {
   cod: 'Оплата при отриманні',
 };
 
+// Escape customer-controlled values before interpolating into email HTML —
+// otherwise an order field (name, comment, address…) can inject markup/script
+// into the admin notification email.
+function esc(s: unknown): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function buildAdminNotificationHtml(d: OrderEmailData): string {
   const date = new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const rows = d.items.map(item => `
     <tr>
       <td style="padding:8px 12px;border-bottom:1px solid #F1F5F9;font-size:13px;color:#374151;">
-        <div style="font-weight:600;">${item.name}</div>
-        <div style="font-size:11px;color:#94A3B8;">${item.brand} · ${item.sku}</div>
+        <div style="font-weight:600;">${esc(item.name)}</div>
+        <div style="font-size:11px;color:#94A3B8;">${esc(item.brand)} · ${esc(item.sku)}</div>
       </td>
       <td style="padding:8px 12px;border-bottom:1px solid #F1F5F9;font-size:13px;text-align:center;">${item.qty}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #F1F5F9;font-size:13px;font-weight:700;color:#1E3A5F;text-align:right;">${(item.price * item.qty).toFixed(2)} грн</td>
@@ -290,11 +302,11 @@ export function buildAdminNotificationHtml(d: OrderEmailData): string {
     <div style="padding:20px 28px;border-bottom:1px solid #F1F5F9;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         ${[
-          ['Клієнт', d.company ? `${d.company} / ${d.contact}` : d.contact],
-          ['Телефон', `<a href="tel:${d.phone}" style="color:#1E3A5F;font-weight:700;">${d.phone}</a>`],
-          ['Email', `<a href="mailto:${d.email}" style="color:#1E3A5F;">${d.email}</a>`],
+          ['Клієнт', d.company ? `${esc(d.company)} / ${esc(d.contact)}` : esc(d.contact)],
+          ['Телефон', `<a href="tel:${esc(d.phone)}" style="color:#1E3A5F;font-weight:700;">${esc(d.phone)}</a>`],
+          ['Email', `<a href="mailto:${esc(d.email)}" style="color:#1E3A5F;">${esc(d.email)}</a>`],
           ['Доставка', DELIVERY_LABELS[d.deliveryType] ?? d.deliveryType],
-          ['Адреса', d.deliveryAddress || '—'],
+          ['Адреса', esc(d.deliveryAddress) || '—'],
           ['Оплата', PAYMENT_LABELS[d.paymentType] ?? d.paymentType],
         ].map(([k, v]) => `
           <div>
@@ -302,7 +314,7 @@ export function buildAdminNotificationHtml(d: OrderEmailData): string {
             <div style="font-size:13px;color:#0F172A;">${v}</div>
           </div>
         `).join('')}
-        ${d.comment ? `<div style="grid-column:1/-1"><div style="font-size:11px;font-weight:600;color:#94A3B8;text-transform:uppercase;margin-bottom:3px;">Коментар</div><div style="font-size:13px;color:#0F172A;">${d.comment}</div></div>` : ''}
+        ${d.comment ? `<div style="grid-column:1/-1"><div style="font-size:11px;font-weight:600;color:#94A3B8;text-transform:uppercase;margin-bottom:3px;">Коментар</div><div style="font-size:13px;color:#0F172A;">${esc(d.comment)}</div></div>` : ''}
       </div>
     </div>
     <div style="padding:20px 28px;">
@@ -327,8 +339,8 @@ export function buildCustomerConfirmationHtml(d: OrderEmailData): string {
   const rows = d.items.map(item => `
     <tr>
       <td style="padding:8px 12px;border-bottom:1px solid #F1F5F9;font-size:13px;color:#374151;">
-        <div style="font-weight:600;">${item.name}</div>
-        <div style="font-size:11px;color:#94A3B8;">${item.brand} · ${item.sku}</div>
+        <div style="font-weight:600;">${esc(item.name)}</div>
+        <div style="font-size:11px;color:#94A3B8;">${esc(item.brand)} · ${esc(item.sku)}</div>
       </td>
       <td style="padding:8px 12px;border-bottom:1px solid #F1F5F9;font-size:13px;text-align:center;">${item.qty}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #F1F5F9;font-size:13px;font-weight:700;color:#1E3A5F;text-align:right;">${(item.price * item.qty).toFixed(2)} грн</td>
@@ -345,7 +357,7 @@ export function buildCustomerConfirmationHtml(d: OrderEmailData): string {
     <div style="padding:28px 32px;border-bottom:1px solid #F1F5F9;">
       <div style="font-size:22px;font-weight:800;color:#0F172A;margin-bottom:8px;">✅ Замовлення прийнято!</div>
       <div style="font-size:14px;color:#64748B;line-height:1.6;">
-        Дякуємо, <strong>${d.contact}</strong>! Ваше замовлення <strong>№${d.orderNumber}</strong> від ${date} успішно оформлено.<br>
+        Дякуємо, <strong>${esc(d.contact)}</strong>! Ваше замовлення <strong>№${d.orderNumber}</strong> від ${date} успішно оформлено.<br>
         Менеджер зв'яжеться з вами найближчим часом для підтвердження та уточнення деталей доставки.
       </div>
     </div>
@@ -353,7 +365,7 @@ export function buildCustomerConfirmationHtml(d: OrderEmailData): string {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div><div style="font-size:11px;font-weight:600;color:#94A3B8;text-transform:uppercase;margin-bottom:3px;">Доставка</div><div style="font-size:13px;color:#0F172A;">${DELIVERY_LABELS[d.deliveryType] ?? d.deliveryType}</div></div>
         <div><div style="font-size:11px;font-weight:600;color:#94A3B8;text-transform:uppercase;margin-bottom:3px;">Оплата</div><div style="font-size:13px;color:#0F172A;">${PAYMENT_LABELS[d.paymentType] ?? d.paymentType}</div></div>
-        ${d.deliveryAddress ? `<div style="grid-column:1/-1"><div style="font-size:11px;font-weight:600;color:#94A3B8;text-transform:uppercase;margin-bottom:3px;">Адреса</div><div style="font-size:13px;color:#0F172A;">${d.deliveryAddress}</div></div>` : ''}
+        ${d.deliveryAddress ? `<div style="grid-column:1/-1"><div style="font-size:11px;font-weight:600;color:#94A3B8;text-transform:uppercase;margin-bottom:3px;">Адреса</div><div style="font-size:13px;color:#0F172A;">${esc(d.deliveryAddress)}</div></div>` : ''}
       </div>
     </div>
     <div style="padding:20px 32px;">
@@ -429,9 +441,9 @@ export function buildInvoiceHtml(d: InvoiceData): string {
       <div>
         <div style="font-size:11px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Платник</div>
         <div style="font-size:14px;font-weight:700;color:#0F172A;">${d.company || d.contact}</div>
-        <div style="font-size:13px;color:#64748B;margin-top:2px;">${d.contact}</div>
-        <div style="font-size:13px;color:#64748B;">${d.phone}</div>
-        <div style="font-size:13px;color:#64748B;">${d.email}</div>
+        <div style="font-size:13px;color:#64748B;margin-top:2px;">${esc(d.contact)}</div>
+        <div style="font-size:13px;color:#64748B;">${esc(d.phone)}</div>
+        <div style="font-size:13px;color:#64748B;">${esc(d.email)}</div>
       </div>
       <div>
         <div style="font-size:11px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Доставка</div>

@@ -69,7 +69,7 @@ export default async function Catalog({
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd).replace(/</g, '\\u003c') }} />
       <CatalogLoader
         initialSearch={q ?? ''}
         initialCategory={category ?? ''}

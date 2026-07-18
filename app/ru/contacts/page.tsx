@@ -52,7 +52,7 @@ export default function ContactsRuPage() {
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessLd).replace(/</g, '\\u003c') }} />
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
         <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 32px 64px' }}>
 

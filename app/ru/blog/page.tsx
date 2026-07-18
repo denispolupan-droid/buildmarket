@@ -61,7 +61,7 @@ export default async function BlogRuPage() {
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogLd).replace(/</g, '\\u003c') }} />
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
         <div style={{ maxWidth: '860px', margin: '0 auto', padding: '48px 32px 64px' }}>
 
