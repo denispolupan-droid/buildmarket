@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { productDisplayName, variantBaseName } from '../../../lib/seo/meta';
+import { fetchAllRows } from '../../../lib/db-paginate';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,15 +39,19 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  const [{ data: products }, { data: stock }, { data: categories }] = await Promise.all([
-    serviceClient
+  const [products, stock, { data: categories }] = await Promise.all([
+    // paginate: past 1000 products the feed would silently drop items and
+    // Merchant Center would stop listing them.
+    fetchAllRows((f, t) => serviceClient
       .from('products')
       .select('sku, slug, name, brand, category_slug, volume, description, description_full, image')
       .eq('is_active', true)
-      .order('sort_order'),
-    serviceClient
+      .order('sort_order')
+      .range(f, t)),
+    fetchAllRows((f, t) => serviceClient
       .from('product_stock')
-      .select('sku, price_retail, price_promo, stock_status'),
+      .select('sku, price_retail, price_promo, stock_status')
+      .range(f, t)),
     serviceClient
       .from('categories')
       .select('slug, name, parent_slug'),

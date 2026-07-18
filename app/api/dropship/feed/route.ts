@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { escapeOrTerm } from '../../../../lib/pg-filter';
+import { fetchAllRows } from '../../../../lib/db-paginate';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,9 +34,10 @@ export async function GET(request: NextRequest) {
   }
 
   // Load catalog
-  const [{ data: products }, { data: stock }, { data: categories }] = await Promise.all([
-    serviceClient.from('products').select('sku, name, brand, category_slug, volume, color, product_type, description, image').eq('is_active', true).order('sort_order'),
-    serviceClient.from('product_stock').select('sku, price_drop, stock_status'),
+  const [products, stock, { data: categories }] = await Promise.all([
+    // paginate past the 1000-row cap so a growing catalog isn't truncated
+    fetchAllRows((f, t) => serviceClient.from('products').select('sku, name, brand, category_slug, volume, color, product_type, description, image').eq('is_active', true).order('sort_order').range(f, t)),
+    fetchAllRows((f, t) => serviceClient.from('product_stock').select('sku, price_drop, stock_status').range(f, t)),
     serviceClient.from('categories').select('slug, name, parent_slug').order('sort_order'),
   ]);
 

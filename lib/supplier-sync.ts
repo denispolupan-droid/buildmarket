@@ -6,6 +6,7 @@
  */
 
 import { XMLParser } from 'fast-xml-parser';
+import { fetchAllRows } from './db-paginate';
 import * as XLSX from 'xlsx';
 import { createClient } from '@supabase/supabase-js';
 
@@ -282,31 +283,33 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
   // 3. Завантажуємо маппінг артикулів + дані для цін
   const syncStartedAt = new Date().toISOString();
   const now = syncStartedAt;
+  // fetchAllRows pages past the PostgREST 1000-row cap so the pricing sync never
+  // silently drops brand/stock/lock rows once the catalog exceeds 1000 items.
   const [
-    { data: skuMapRows },
-    { data: stockRows },
-    { data: productBrands },
-    { data: productOverrides },
-    { data: promotions },
-    { data: priceLockRows },
-    { data: physStockRows },
+    skuMapRows,
+    stockRows,
+    productBrands,
+    productOverrides,
+    promotions,
+    priceLockRows,
+    physStockRows,
   ] = await Promise.all([
-    supabase.from('supplier_sku_map').select('supplier_sku, our_sku').eq('supplier_id', supplierId),
-    supabase.from('product_stock').select('sku, supplier_sku'),
-    supabase.from('products').select('sku, brand'),
-    supabase.from('supplier_product_overrides')
+    fetchAllRows((f, t) => supabase.from('supplier_sku_map').select('supplier_sku, our_sku').eq('supplier_id', supplierId).range(f, t)),
+    fetchAllRows((f, t) => supabase.from('product_stock').select('sku, supplier_sku').range(f, t)),
+    fetchAllRows((f, t) => supabase.from('products').select('sku, brand').range(f, t)),
+    fetchAllRows((f, t) => supabase.from('supplier_product_overrides')
       .select('our_sku, markup_retail, markup_wholesale, markup_drop, fixed_retail, fixed_wholesale, fixed_drop')
-      .eq('supplier_id', supplierId),
-    supabase.from('supplier_promotions')
+      .eq('supplier_id', supplierId).range(f, t)),
+    fetchAllRows((f, t) => supabase.from('supplier_promotions')
       .select('our_sku, brand, promo_type, value, apply_retail, apply_wholesale, apply_drop, starts_at, ends_at')
       .eq('supplier_id', supplierId)
       .eq('is_active', true)
       .or(`starts_at.is.null,starts_at.lte.${now}`)
-      .or(`ends_at.is.null,ends_at.gte.${now}`),
+      .or(`ends_at.is.null,ends_at.gte.${now}`).range(f, t)),
     // Заблоковані ціни (встановлені при приході товару)
-    supabase.from('product_stock').select('sku').eq('price_locked', true),
+    fetchAllRows((f, t) => supabase.from('product_stock').select('sku').eq('price_locked', true).range(f, t)),
     // Фізичні залишки на власних складах
-    supabase.from('stock_balance').select('sku').gt('qty_total', 0),
+    fetchAllRows((f, t) => supabase.from('stock_balance').select('sku').gt('qty_total', 0).range(f, t)),
   ]);
 
   // SKU з заблокованими цінами, які ще є в наявності → не перезаписуємо

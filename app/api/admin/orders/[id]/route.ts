@@ -56,7 +56,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         new: 0, confirmed: 1, awaiting_stock: 2, picking: 3, shipped: 4, delivered: 5,
       };
       const currentStatus = current?.status ?? 'new';
-      const isBackward = (STATUS_RANK[status] ?? -1) < (STATUS_RANK[currentStatus] ?? 0);
+      // 'cancelled' isn't on the linear rank scale — exclude it here and let
+      // isCancelNonNew decide, otherwise (rank -1 < any) blocks every cancel,
+      // including cancelling a still-'new' order which managers are allowed to do.
+      const isBackward = status !== 'cancelled'
+        && (STATUS_RANK[status] ?? -1) < (STATUS_RANK[currentStatus] ?? 0);
       const isCancelNonNew = status === 'cancelled' && currentStatus !== 'new';
       if (isBackward || isCancelNonNew) {
         return NextResponse.json({ error: 'Недостатньо прав для зміни статусу в зворотньому порядку' }, { status: 403 });
