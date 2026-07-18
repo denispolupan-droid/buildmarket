@@ -68,7 +68,7 @@ const ecosystem = [
   { icon: Cpu,        title: 'API для інтеграцій',           status: 'будуємо',     live: false },
   { icon: Smartphone, title: 'Мобільний застосунок',         status: 'попереду',    live: false },
   { icon: Bot,        title: 'ШІ-помічник підбору матеріалів', status: 'попереду',  live: false },
-  { icon: CreditCard, title: 'Фінансування закупівель',      status: 'попереду',    live: false },
+  { icon: CreditCard, title: 'Відстрочка платежу для партнерів', status: 'попереду', live: false },
 ];
 
 const stats = [
@@ -125,7 +125,7 @@ export default async function AboutPage() {
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
 
         {/* ===== Hero — манифест ===== */}
-        <section style={{ background: 'linear-gradient(160deg, #1E293B 0%, #1E3A5F 100%)', padding: '64px 0 64px' }}>
+        <section style={{ background: 'radial-gradient(1000px 520px at 88% -10%, rgba(94,234,212,0.16), transparent 60%), radial-gradient(800px 480px at -5% 110%, rgba(72,128,184,0.35), transparent 60%), linear-gradient(160deg, #0F172A 0%, #1E3A5F 55%, #123B54 100%)', padding: '64px 0 64px' }}>
           <div className="page-container">
             <nav style={{ fontSize: '13px', color: '#64748B', marginBottom: '32px', display: 'flex', gap: '6px', alignItems: 'center' }}>
               <Link href="/" style={{ color: '#64748B', textDecoration: 'none' }}>Головна</Link>
@@ -205,7 +205,7 @@ export default async function AboutPage() {
         </section>
 
         {/* ===== Завтра: один день с FIXLINE (dark) ===== */}
-        <section style={{ background: 'linear-gradient(160deg, #1E293B 0%, #1E3059 100%)', padding: '72px 0' }}>
+        <section style={{ background: 'radial-gradient(900px 450px at 50% -20%, rgba(72,128,184,0.30), transparent 65%), radial-gradient(700px 400px at 95% 110%, rgba(94,234,212,0.10), transparent 60%), linear-gradient(160deg, #0F172A 0%, #1E3059 100%)', padding: '72px 0' }}>
           <div className="page-container">
             <Reveal>
             <div style={{ textAlign: 'center', maxWidth: '640px', margin: '0 auto 40px' }}>
@@ -469,7 +469,7 @@ export default async function AboutPage() {
         </section>
 
         {/* ===== Философия + CTA ===== */}
-        <section style={{ background: 'linear-gradient(160deg, #1E293B 0%, #1E3059 100%)', padding: '72px 0', textAlign: 'center' }}>
+        <section style={{ background: 'radial-gradient(800px 420px at 50% 120%, rgba(94,234,212,0.14), transparent 60%), radial-gradient(700px 400px at 5% -10%, rgba(72,128,184,0.28), transparent 60%), linear-gradient(160deg, #0F172A 0%, #1E3059 100%)', padding: '72px 0', textAlign: 'center' }}>
           <div className="page-container">
             <Reveal>
             <div style={{ maxWidth: '640px', margin: '0 auto 40px' }}>
