@@ -340,12 +340,16 @@ export async function getPreviewProducts(categorySlugs: string[], limitPerCatego
   // "order by sort_order limit N" truncates at an arbitrary row and can starve
   // entire categories of any products. Fetch every candidate row and let the
   // loop below cap each category individually.
+  // NB: no characteristics embed here. The homepage showcase never renders
+  // product characteristics (only name/price/image via `stock`), so pulling all
+  // ~10k characteristic rows was dead weight that pushed this query past the DB
+  // statement timeout at build time. Product-page SEO (JSON-LD additionalProperty)
+  // uses getProductBySku*, which is unaffected.
   const { data, error } = await supabase
     .from('products')
     .select(`
       *,
-      stock:product_stock(*),
-      characteristics:product_characteristics(*)
+      stock:product_stock(*)
     `)
     .eq('is_active', true)
     .in('category_slug', categorySlugs)
