@@ -1,0 +1,23 @@
+# Синхронізація замовлень Rozetka кожні 30 хвилин.
+# Vercel Hobby дозволяє тільки добові crons — тому частий тригер живе тут:
+# GitHub Actions смикає захищений cron-роут із секретом CRON_SECRET.
+name: Rozetka orders sync
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call sync endpoint
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" -m 120 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://fixline.com.ua/api/cron/rozetka-orders")
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          CODE=$(echo "$RESPONSE" | tail -n 1)
+          echo "HTTP $CODE: $BODY"
+          [ "$CODE" = "200" ] || exit 1
