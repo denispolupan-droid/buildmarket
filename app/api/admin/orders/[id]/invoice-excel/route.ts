@@ -1,7 +1,9 @@
+import { hryvniaInWords } from "../../../../../../lib/number-to-words";
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import ExcelJS from 'exceljs';
 import { checkAdmin } from '../../../../../../lib/check-admin';
+import { SELLER } from '../../../../../../lib/company';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,46 +17,6 @@ function formatIban(raw: string) {
   return s.match(/.{1,4}/g)?.join(' ') ?? s;
 }
 
-function numToWords(n: number): string {
-  const ones = ['', 'одна', 'дві', 'три', 'чотири', "п'ять", 'шість', 'сім', 'вісім', "дев'ять",
-    'десять', 'одинадцять', 'дванадцять', 'тринадцять', 'чотирнадцять', "п'ятнадцять",
-    'шістнадцять', 'сімнадцять', 'вісімнадцять', "дев'ятнадцять"];
-  const tens = ['', '', 'двадцять', 'тридцять', 'сорок', "п'ятдесят", 'шістдесят', 'сімдесят', 'вісімдесят', "дев'яносто"];
-  const hundreds = ['', 'сто', 'двісті', 'триста', 'чотириста', "п'ятсот", 'шістсот', 'сімсот', 'вісімсот', "дев'ятсот"];
-  function chunk(x: number): string {
-    if (x === 0) return '';
-    const parts: string[] = [];
-    if (Math.floor(x / 100) > 0) parts.push(hundreds[Math.floor(x / 100)]);
-    const rem = x % 100;
-    if (rem >= 20) { parts.push(tens[Math.floor(rem / 10)]); if (rem % 10 > 0) parts.push(ones[rem % 10]); }
-    else if (rem > 0) parts.push(ones[rem]);
-    return parts.join(' ');
-  }
-  const intPart = Math.floor(n);
-  const kopPart = Math.round((n - intPart) * 100);
-  const millions = Math.floor(intPart / 1_000_000);
-  const thous    = Math.floor((intPart % 1_000_000) / 1_000);
-  const rem      = intPart % 1_000;
-  function declThousands(x: number) {
-    if (x % 100 >= 11 && x % 100 <= 19) return 'тисяч';
-    if (x % 10 === 1) return 'тисяча';
-    if (x % 10 >= 2 && x % 10 <= 4) return 'тисячі';
-    return 'тисяч';
-  }
-  const parts: string[] = [];
-  if (millions > 0) parts.push(chunk(millions) + ' мільйонів');
-  if (thous > 0)    parts.push(chunk(thous) + ' ' + declThousands(thous));
-  if (rem > 0 || intPart === 0) parts.push(chunk(rem || 0));
-  const gryvn = parts.join(' ').trim();
-  const r = intPart % 100;
-  const gryvDecl = (r >= 11 && r <= 19) ? 'гривень'
-    : (intPart % 10 === 1) ? 'гривня'
-    : (intPart % 10 >= 2 && intPart % 10 <= 4) ? 'гривні'
-    : 'гривень';
-  const first = gryvn.charAt(0).toUpperCase() + gryvn.slice(1);
-  return `${first} ${gryvDecl} ${String(kopPart).padStart(2, '0')} копійок`;
-}
-
 // UUID is the auth — anyone with the link can download
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -63,12 +25,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { data: order, error } = await db.from('orders').select('*').eq('id', id).single();
   if (error || !order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const bankRecipient = process.env.BANK_RECIPIENT ?? '';
-  const bankIban      = process.env.BANK_IBAN      ?? '';
-  const bankName      = process.env.BANK_NAME      ?? '';
-  const bankEdrpou    = process.env.BANK_EDRPOU    ?? '';
-  const bankAddress   = process.env.BANK_ADDRESS   ?? '';
-  const signatoryName = process.env.SIGNATORY_NAME ?? '';
+  const bankRecipient = SELLER.name;
+  const bankIban      = SELLER.iban;
+  const bankName      = SELLER.bank;
+  const bankEdrpou    = SELLER.edrpou;
+  const bankAddress   = SELLER.address;
+  const signatoryName = SELLER.signatory;
   const ibanDisplay   = formatIban(bankIban);
 
   const date      = new Date(order.created_at).toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -364,7 +326,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   r++;
   ws.mergeCells(r, 1, r, 7);
   const wordsCell = ws.getCell(r, 1);
-  wordsCell.value = numToWords(total);
+  wordsCell.value = hryvniaInWords(total);
   wordsCell.font  = font({ size: 10, italic: true, color: { argb: 'FF555555' } });
   wordsCell.alignment = { horizontal: 'left', vertical: 'middle' };
   ws.getRow(r).height = 14;

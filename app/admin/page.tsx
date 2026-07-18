@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../lib/supabase-server';
+import { fetchAllRows } from '../../lib/db-paginate';
 import AdminOrders from './AdminOrders';
 import Link from 'next/link';
 import { Send } from 'lucide-react';
@@ -58,21 +59,27 @@ export default async function AdminPage({
 
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  // Status counts + amounts — with same date filter as the main list
-  let statusQuery = serviceClient.from('orders').select('status');
-  let amountQuery = serviceClient.from('orders').select('status, total_price').neq('status', 'cancelled');
-  if (dateFrom) { statusQuery = statusQuery.gte('created_at', `${dateFrom}T00:00:00`); amountQuery = amountQuery.gte('created_at', `${dateFrom}T00:00:00`); }
-  if (dateTo)   { statusQuery = statusQuery.lte('created_at', `${dateTo}T23:59:59`);   amountQuery = amountQuery.lte('created_at', `${dateTo}T23:59:59`); }
-
-  const [{ data: orders, count }, { data: statusRows }, { count: recentReceiptCount }, { data: allAmountRows }, { data: promSetting }] = await Promise.all([
+  // Status counts + amounts — with same date filter as the main list.
+  // Пагінація: без range() лічильники вкладок і суми по статусах мовчки обрізалися б на 1000.
+  const [{ data: orders, count }, statusRows, { count: recentReceiptCount }, allAmountRows, { data: promSetting }] = await Promise.all([
     query,
-    statusQuery,
+    fetchAllRows<{ status: string }>((f, t) => {
+      let q = serviceClient.from('orders').select('status');
+      if (dateFrom) q = q.gte('created_at', `${dateFrom}T00:00:00`);
+      if (dateTo)   q = q.lte('created_at', `${dateTo}T23:59:59`);
+      return q.range(f, t);
+    }),
     serviceClient.from('acc_documents')
       .select('id', { count: 'exact', head: true })
       .in('doc_type', ['receipt', 'stock_in'])
       .eq('status', 'confirmed')
       .gte('confirmed_at', oneDayAgo),
-    amountQuery,
+    fetchAllRows<{ status: string; total_price: number | null }>((f, t) => {
+      let q = serviceClient.from('orders').select('status, total_price').neq('status', 'cancelled');
+      if (dateFrom) q = q.gte('created_at', `${dateFrom}T00:00:00`);
+      if (dateTo)   q = q.lte('created_at', `${dateTo}T23:59:59`);
+      return q.range(f, t);
+    }),
     serviceClient.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle(),
   ]);
   const promCommissionPct = parseFloat(promSetting?.value ?? '3');

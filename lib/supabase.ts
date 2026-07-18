@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { unstable_cache } from 'next/cache';
 import { env } from './env';
 import { escapeOrTerm } from './pg-filter';
+import { fetchAllRows } from './db-paginate';
 
 export type {
   Category,
@@ -264,6 +265,29 @@ export const getBrandsCached = unstable_cache(
   async () => getBrands(),
   ['brands'],
   { revalidate: 60, tags: ['brands'] }
+);
+
+// Топ-бренди (за кількістю активних товарів). Легка заміна повного getProducts()
+// у Footer, який рендериться на кожній сторінці — тягнемо тільки колонку brand.
+export async function getTopBrands(minCount = 5, limit = 10): Promise<string[]> {
+  const rows = await fetchAllRows<{ brand: string | null }>((f, t) =>
+    supabase.from('products').select('brand').eq('is_active', true).range(f, t));
+  const counts = new Map<string, number>();
+  for (const { brand } of rows) {
+    const b = brand?.trim();
+    if (b) counts.set(b, (counts.get(b) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .filter(([, c]) => c >= minCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([b]) => b);
+}
+
+export const getTopBrandsCached = unstable_cache(
+  async () => getTopBrands(),
+  ['top-brands'],
+  { revalidate: 300, tags: ['products', 'brands'] }
 );
 
 export const getBrandLogosCached = unstable_cache(

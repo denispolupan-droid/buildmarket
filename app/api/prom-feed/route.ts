@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { fetchAllRows } from '@/lib/db-paginate';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -286,34 +287,37 @@ export async function GET(request: NextRequest) {
   // Fetch product_characteristics in 20 parallel pages of 1000 rows each
   // (Supabase PostgREST caps any single response at max_rows=1000 regardless of Range header)
   const CHAR_PAGE = 1000;
-  const allResults = await Promise.all([
-    serviceClient
+  const [products, stock, categories, charPages] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client, preserves prior field access
+    fetchAllRows<any>((f, t) => serviceClient
       .from('products')
       .select('sku, name, name_ru, brand, category_slug, volume, description, description_full, description_ru, description_full_ru, image, keywords, keywords_ru, min_order, prom_portal_url, prom_markup_pct')
       .eq('is_active', true)
       .eq('on_prom', true)
-      .order('sort_order'),
-    serviceClient
+      .order('sort_order')
+      .range(f, t)),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client, preserves prior field access
+    fetchAllRows<any>((f, t) => serviceClient
       .from('product_stock')
-      .select('sku, price_retail, price_unit, price_retail_old, price_old, stock_qty, stock_status, price_wholesale, price_cost'),
-    serviceClient
+      .select('sku, price_retail, price_unit, price_retail_old, price_old, stock_qty, stock_status, price_wholesale, price_cost')
+      .range(f, t)),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client, preserves prior field access
+    fetchAllRows<any>((f, t) => serviceClient
       .from('categories')
       .select('id, slug, name, parent_slug, prom_section_id, prom_section_url, prom_commission_pct, prom_markup_pct')
-      .order('sort_order'),
-    ...Array.from({ length: 20 }, (_, i) =>
+      .order('sort_order')
+      .range(f, t)),
+    Promise.all(Array.from({ length: 20 }, (_, i) =>
       serviceClient
         .from('product_characteristics')
         .select('product_sku, label, value')
         .order('product_sku')
         .order('sort_order')
         .range(i * CHAR_PAGE, (i + 1) * CHAR_PAGE - 1)
-    ),
+    )),
   ]);
 
-  const products    = allResults[0].data;
-  const stock       = allResults[1].data;
-  const categories  = allResults[2].data;
-  const characteristics = allResults.slice(3).flatMap(r => (r.data ?? []) as { product_sku: string; label: string; value: string }[]);
+  const characteristics = charPages.flatMap(r => (r.data ?? []) as { product_sku: string; label: string; value: string }[]);
 
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
 

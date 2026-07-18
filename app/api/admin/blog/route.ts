@@ -13,8 +13,6 @@ const serviceClient = createClient(
 );
 
 function bustBlogCache() {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   revalidateTag('blog', 'max');
 }
 

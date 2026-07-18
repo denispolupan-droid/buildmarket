@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 
-import { getProductBySkuCached, getProductBySlugCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsCached, getProductFaqCached } from '../../../lib/supabase';
+import { getProductBySkuCached, getProductBySlugCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsLightCached, getProductFaqCached } from '../../../lib/supabase';
 import { getCategoryMeta } from '../../../lib/category-descriptions';
 import { productMeta, productDisplayName, productH1, findVariants, productPath } from '../../../lib/seo/meta';
 import ProductTabs from './ProductTabs';
@@ -89,7 +89,9 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
 
   const [related, categoryProducts, faq, categories, reviewsData, reviewStats] = await Promise.all([
     product.category_slug ? getRelatedProductsCached(product.category_slug, product.sku, 5) : Promise.resolve([]),
-    product.category_slug ? getProductsCached({ category: product.category_slug }) : Promise.resolve([]),
+    // Лише для findVariants (список фасовок) — беремо ту саму категорію, але легкою вибіркою
+    // (без описів/характеристик), findVariants однаково фільтрує лише по бренду+базовій назві.
+    product.category_slug ? getProductsLightCached({ category: product.category_slug }) : Promise.resolve([]),
     getProductFaqCached(sku),
     getCategoriesCached(),
     service.from('product_reviews')

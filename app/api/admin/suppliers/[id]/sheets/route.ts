@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
+import { assertPublicUrl } from '../../../../../../lib/safe-fetch-url';
 import * as XLSX from 'xlsx';
 
 const serviceClient = createClient(
@@ -27,6 +28,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!supplier?.source_url) return NextResponse.json({ error: 'URL не вказано' }, { status: 400 });
   if (supplier.file_format !== 'xls') return NextResponse.json({ error: 'Тільки для Excel-файлів' }, { status: 400 });
+
+  try {
+    assertPublicUrl(supplier.source_url); // SSRF-захист
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Некоректний URL' }, { status: 400 });
+  }
 
   const res = await fetch(supplier.source_url);
   if (!res.ok) return NextResponse.json({ error: `Не вдалось завантажити файл (HTTP ${res.status})` }, { status: 502 });

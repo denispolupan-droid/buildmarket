@@ -68,10 +68,12 @@ export async function proxy(request: NextRequest) {
   requestHeaders.set('x-pathname', pathname);
   const nextWithPathname = { request: { headers: requestHeaders } };
 
-  // Rate limiting
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-    ?? request.headers.get('x-real-ip')
-    ?? 'unknown';
+  // Rate limiting. Prefer x-real-ip (set by the trusted Vercel edge); for
+  // x-forwarded-for take the LAST entry — leading entries are client-spoofable
+  // and would let an attacker rotate the header to bypass the limit.
+  const xff = request.headers.get('x-forwarded-for');
+  const xffLast = xff?.split(',').map(s => s.trim()).filter(Boolean).pop();
+  const ip = request.headers.get('x-real-ip')?.trim() ?? xffLast ?? 'unknown';
   if (!checkRateLimit(ip, pathname)) {
     return new NextResponse('Too Many Requests', { status: 429, headers: { 'Retry-After': '60' } });
   }

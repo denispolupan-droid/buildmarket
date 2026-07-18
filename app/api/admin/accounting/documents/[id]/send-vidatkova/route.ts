@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { buildVidatkovaHtml } from '../../../../../../../lib/vidatkova-html';
 import { buildVidatkovaPdf } from '../../../../../../../lib/vidatkova-pdf';
+import { SELLER } from '../../../../../../../lib/company';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -59,15 +60,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     docDate: doc.doc_date,
     lines: printLines,
     total,
-    sellerName:    process.env.BANK_RECIPIENT ?? '',
-    sellerEdrpou:  process.env.BANK_EDRPOU ?? '',
-    sellerAddress: process.env.BANK_ADDRESS ?? '',
-    sellerBank:    process.env.BANK_NAME ?? '',
-    sellerIban:    process.env.BANK_IBAN ?? '',
+    sellerName:    SELLER.name,
+    sellerEdrpou:  SELLER.edrpou,
+    sellerAddress: SELLER.address,
+    sellerBank:    SELLER.bank,
+    sellerIban:    SELLER.iban,
     buyerName,
     buyerPhone:    order?.phone ?? null,
     orderNumber:   order?.order_number ?? null,
-    signatoryName: process.env.SIGNATORY_NAME ?? '',
+    signatoryName: SELLER.signatory,
     printUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/vidatkova/${id}`,
   };
 
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const date = new Date(doc.doc_date).toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' });
 
   const { error: sendErr } = await resend.emails.send({
-    from:    `${process.env.BANK_RECIPIENT ?? 'Buildmarket'} <${process.env.RESEND_FROM_EMAIL ?? process.env.ADMIN_EMAIL ?? 'noreply@buildmarket.com.ua'}>`,
+    from:    `${SELLER.name} <${process.env.RESEND_FROM_EMAIL ?? process.env.ADMIN_EMAIL ?? 'noreply@buildmarket.com.ua'}>`,
     to:      toEmail,
     subject: `Видаткова накладна ${doc.doc_number} від ${date}`,
     html,

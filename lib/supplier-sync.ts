@@ -7,6 +7,7 @@
 
 import { XMLParser } from 'fast-xml-parser';
 import { fetchAllRows } from './db-paginate';
+import { assertPublicUrl } from './safe-fetch-url';
 import * as XLSX from 'xlsx';
 import { createClient } from '@supabase/supabase-js';
 
@@ -231,6 +232,7 @@ function normalizeUrl(url: string): { url: string; isGoogleSheets: boolean } {
 // ── Скачування файлу ──────────────────────────────────────────────────────────
 
 async function fetchFile(url: string): Promise<Buffer> {
+  assertPublicUrl(url); // SSRF-захист: лише public http(s), не приватні адреси
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status} при завантаженні файлу`);
   return Buffer.from(await res.arrayBuffer());

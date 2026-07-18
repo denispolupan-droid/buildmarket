@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { fetchAllRows } from '@/lib/db-paginate';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -73,15 +74,23 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  const [{ data: products }, { data: stock }] = await Promise.all([
-    serviceClient
+  type ProductRow = {
+    sku: string; name: string; brand: string; category_slug: string | null;
+    volume: string | null; description: string | null; image: string | null;
+  };
+  type StockRow = { sku: string; price_retail: number | null; price_unit: number | null; stock_status: string };
+
+  const [products, stock] = await Promise.all([
+    fetchAllRows<ProductRow>((from, to) => serviceClient
       .from('products')
       .select('sku, name, brand, category_slug, volume, description, image')
       .eq('is_active', true)
-      .order('sort_order'),
-    serviceClient
+      .order('sort_order')
+      .range(from, to)),
+    fetchAllRows<StockRow>((from, to) => serviceClient
       .from('product_stock')
-      .select('sku, price_retail, price_unit, stock_status'),
+      .select('sku, price_retail, price_unit, stock_status')
+      .range(from, to)),
   ]);
 
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
@@ -91,11 +100,11 @@ export async function GET(request: NextRequest) {
       const s = stockMap.get(p.sku);
       if (!s) return false;
       const price = s.price_retail ?? s.price_unit;
-      return s.stock_status === 'in_stock' && price > 0;
+      return s.stock_status === 'in_stock' && (price ?? 0) > 0;
     })
     .map(p => {
       const s = stockMap.get(p.sku)!;
-      const price = (s.price_retail ?? s.price_unit).toFixed(2);
+      const price = (s.price_retail ?? s.price_unit ?? 0).toFixed(2);
       const title = x(`${p.brand} ${p.name}${p.volume ? ' ' + p.volume : ''}`);
       const desc  = x(p.description ?? `${p.brand} ${p.name} — будівельна хімія від FIXLINE. Оптом для дилерів та підрядників.`);
       const avail = s.stock_status === 'in_stock' ? 'in stock' : 'out of stock';

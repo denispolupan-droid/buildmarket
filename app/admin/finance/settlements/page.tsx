@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
+import { fetchAllRows } from '../../../../lib/db-paginate';
 import { redirect } from 'next/navigation';
 import SettlementsClient from './SettlementsClient';
 
@@ -26,14 +27,16 @@ export default async function SettlementsPage({
     .order('customer_name');
 
   // Клієнти з money_entries (включно з тими, що без договору — напр. Водяний)
-  const { data: meEntries } = await db
+  //    Пагінація: без range() частина клієнтів зникала б зі звірки при > 1000 проводок.
+  const meEntries = await fetchAllRows((f, t) => db
     .from('money_entries')
     .select('counterparty_id')
     .eq('account_type', 'customer')
-    .not('counterparty_id', 'is', null);
+    .not('counterparty_id', 'is', null)
+    .range(f, t));
 
   const contractCustomerIds = new Set((contracts ?? []).map(c => c.customer_id).filter(Boolean));
-  const meCustomerIds = [...new Set((meEntries ?? []).map(e => e.counterparty_id as string).filter(Boolean))];
+  const meCustomerIds = [...new Set(meEntries.map(e => e.counterparty_id as string).filter(Boolean))];
   const allCustomerIds = [...new Set([...contractCustomerIds, ...meCustomerIds])];
 
   const customers = allCustomerIds.length > 0

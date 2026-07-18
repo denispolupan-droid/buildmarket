@@ -4,6 +4,7 @@ import { createServiceClient } from '../../../../../../lib/supabase';
 import { Resend } from 'resend';
 import { buildInvoiceHtml } from '../../../../../../lib/invoice-html';
 import { buildInvoicePdf } from '../../../../../../lib/invoice-pdf';
+import { SELLER } from '../../../../../../lib/company';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -28,12 +29,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const bankParams = {
     order,
-    bankRecipient: process.env.BANK_RECIPIENT ?? '',
-    bankIban:      process.env.BANK_IBAN ?? '',
-    bankName:      process.env.BANK_NAME ?? '',
-    bankEdrpou:    process.env.BANK_EDRPOU ?? '',
-    bankAddress:   process.env.BANK_ADDRESS ?? '',
-    signatoryName: process.env.SIGNATORY_NAME ?? '',
+    bankRecipient: SELLER.name,
+    bankIban:      SELLER.iban,
+    bankName:      SELLER.bank,
+    bankEdrpou:    SELLER.edrpou,
+    bankAddress:   SELLER.address,
+    signatoryName: SELLER.signatory,
   };
 
   const [html, pdfBuffer] = await Promise.all([
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
 
   const { error: sendErr } = await resend.emails.send({
-    from:    `${process.env.BANK_RECIPIENT ?? 'Buildmarket'} <${process.env.RESEND_FROM_EMAIL ?? process.env.ADMIN_EMAIL ?? 'noreply@buildmarket.com.ua'}>`,
+    from:    `${SELLER.name} <${process.env.RESEND_FROM_EMAIL ?? process.env.ADMIN_EMAIL ?? 'noreply@buildmarket.com.ua'}>`,
     to:      toEmail,
     subject: `Рахунок на оплату №${order.order_number} від ${date}`,
     html,

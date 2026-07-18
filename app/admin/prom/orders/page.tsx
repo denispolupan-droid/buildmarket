@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
+import { fetchAllRows } from '../../../../lib/db-paginate';
 import PromOrdersClient from './PromOrdersClient';
 
 const db = createClient(
@@ -15,15 +16,18 @@ export default async function PromOrdersPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
-  const [{ data: orders, count }, { data: statsRows }] = await Promise.all([
+  // statsRows пагінується: без range() статистика/виручка каналу prom обрізалися б на 1000.
+  const [{ data: orders, count }, statsRows] = await Promise.all([
     db.from('orders')
       .select('id, order_number, created_at, status, contact, phone, total_price, prom_order_id', { count: 'exact' })
       .eq('channel_code', 'prom')
       .order('created_at', { ascending: false })
       .limit(50),
-    db.from('orders')
+    fetchAllRows<{ status: string; total_price: number | null }>((f, t) => db
+      .from('orders')
       .select('status, total_price')
-      .eq('channel_code', 'prom'),
+      .eq('channel_code', 'prom')
+      .range(f, t)),
   ]);
 
   const statuses = ['new', 'confirmed', 'shipped', 'delivered', 'cancelled'];

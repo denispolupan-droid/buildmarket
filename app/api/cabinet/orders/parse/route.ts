@@ -3,6 +3,11 @@ import * as XLSX from 'xlsx';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { getRole } from '../../../../../lib/user-role';
+import { fetchAllRows } from '../../../../../lib/db-paginate';
+
+// xlsx (SheetJS 0.18.x) має відомі CVE при парсингу недовірених файлів; обмежуємо розмір,
+// щоб зняти вектор zip-bomb / OOM від завантажень партнерів.
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -74,6 +79,9 @@ export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const file = formData.get('file') as File | null;
   if (!file) return NextResponse.json({ error: 'Файл не знайдено' }, { status: 400 });
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return NextResponse.json({ error: 'Файл завеликий (максимум 5 МБ)' }, { status: 413 });
+  }
 
   const buf = Buffer.from(await file.arrayBuffer());
   const wb  = XLSX.read(buf, { type: 'buffer' });
@@ -88,15 +96,19 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Завантажуємо каталог SKU + ціни ───────────────────────────────────────────
-  const { data: stockData } = await serviceClient
+  // Пагінація: без range() каталог > 1000 SKU мовчки обрізався б і частина товарів
+  // партнера позначалась би як "не знайдено".
+  const stockData = await fetchAllRows<{ sku: string; price_drop: number | null; stock_status: string }>((f, t) => serviceClient
     .from('product_stock')
-    .select('sku, price_drop, stock_status');
-  const { data: productsData } = await serviceClient
+    .select('sku, price_drop, stock_status')
+    .range(f, t));
+  const productsData = await fetchAllRows<{ sku: string; name: string; brand: string }>((f, t) => serviceClient
     .from('products')
-    .select('sku, name, brand');
+    .select('sku, name, brand')
+    .range(f, t));
 
-  const stockMap   = new Map((stockData   ?? []).map(s => [s.sku, s]));
-  const productMap = new Map((productsData ?? []).map(p => [p.sku, p]));
+  const stockMap   = new Map(stockData.map(s => [s.sku, s]));
+  const productMap = new Map(productsData.map(p => [p.sku, p]));
 
   // ── Батч-пошук міст (дедуплікація) ────────────────────────────────────────────
   const cityNames = [...new Set(dataRows.map((r: unknown[]) => String(r[7] ?? '').trim()).filter(Boolean))];

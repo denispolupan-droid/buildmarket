@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
+import { fetchAllRows } from '../../../../lib/db-paginate';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
@@ -30,13 +31,15 @@ export default async function ReportsPage({
   // ══ P&L DATA ════════════════════════════════════════════════════════════════
 
   // 1. Підтверджені продажі за період
-  const { data: sales } = await db
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client
+  const sales = await fetchAllRows<any>((f, t) => db
     .from('acc_documents')
     .select('total_amount, total_cost, channel_code')
     .eq('doc_type', 'sale')
     .eq('status', 'confirmed')
     .gte('doc_date', dateFrom)
-    .lte('doc_date', dateTo);
+    .lte('doc_date', dateTo)
+    .range(f, t));
 
   const revenue   = (sales ?? []).reduce((s, d) => s + Number(d.total_amount ?? 0), 0);
   const cogs      = (sales ?? []).reduce((s, d) => s + Number(d.total_cost   ?? 0), 0);
@@ -54,10 +57,12 @@ export default async function ReportsPage({
     .sort((a, b) => b.revenue - a.revenue);
 
   // 2. Landed costs за приходами в цьому ж периоді
-  const { data: lcLines } = await db
+  //    Пагінація: landed_cost_lines накопичується безмежно.
+  const lcLines = await fetchAllRows((f, t) => db
     .from('landed_cost_lines')
     .select('amount, document_id')
-    .eq('distributed', true);
+    .eq('distributed', true)
+    .range(f, t));
 
   // Фільтруємо по датах через документи
   const lcDocIds = [...new Set((lcLines ?? []).map(l => l.document_id).filter(Boolean))];
@@ -112,20 +117,23 @@ export default async function ReportsPage({
   // ══ CASH FLOW DATA ══════════════════════════════════════════════════════════
 
   // Відкриваючий залишок (всі рахунки каса+банк+еквайринг ДО dateFrom)
-  const { data: prevCash } = await db
+  //    Пагінація критична: вся історія до періоду майже завжди > 1000.
+  const prevCash = await fetchAllRows((f, t) => db
     .from('money_entries')
     .select('amount')
     .in('account_type', ['cash', 'bank', 'acquiring'])
-    .lt('business_date', dateFrom);
-  const opening = (prevCash ?? []).reduce((s, e) => s + Number(e.amount), 0);
+    .lt('business_date', dateFrom)
+    .range(f, t));
+  const opening = prevCash.reduce((s, e) => s + Number(e.amount), 0);
 
   // Всі рухи за період
-  const { data: cfEntries } = await db
+  const cfEntries = await fetchAllRows((f, t) => db
     .from('money_entries')
     .select('account_type, amount, doc_type, counterparty_id, txn_id')
     .in('account_type', ['cash', 'bank', 'acquiring'])
     .gte('business_date', dateFrom)
-    .lte('business_date', dateTo);
+    .lte('business_date', dateTo)
+    .range(f, t));
 
   // Рухи по рахунках
   const accountMap: Record<string, { in: number; out: number }> = {};

@@ -2285,7 +2285,7 @@ export default function AdminOrders({
                                         </div>
                                       )}
                                       {docs.map(doc => (
-                                        <a key={doc.id} href={`/vydatkova/${doc.id}`} target="_blank"
+                                        <a key={doc.id} href={`/vidatkova/${doc.id}`} target="_blank"
                                           style={{ fontSize: '11px', color: '#1E3A5F', fontWeight: 600, textDecoration: 'none', textAlign: 'center', padding: '2px 0' }}>
                                           📄 {doc.number}
                                         </a>
@@ -2328,7 +2328,7 @@ export default function AdminOrders({
                                       <Check size={13} /> Доставлено
                                     </button>
                                     {(saleDocMap[order.id] ?? []).map(doc => (
-                                      <a key={doc.id} href={`/vydatkova/${doc.id}`} target="_blank"
+                                      <a key={doc.id} href={`/vidatkova/${doc.id}`} target="_blank"
                                         style={{ fontSize: '11px', color: '#1E3A5F', fontWeight: 600, textDecoration: 'none', textAlign: 'center', padding: '2px 0' }}>
                                         📄 {doc.number}
                                       </a>

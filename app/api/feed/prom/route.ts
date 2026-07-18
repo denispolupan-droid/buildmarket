@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { fetchAllRows } from '@/lib/db-paginate';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -44,23 +45,36 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  const [{ data: products }, { data: stock }, { data: categories }, { data: chars }] = await Promise.all([
-    serviceClient
+  type ProductRow = {
+    sku: string; name: string; brand: string; category_slug: string | null;
+    volume: string | null; description: string | null; image: string | null;
+    product_type: string | null; color: string | null; min_order: number | null;
+  };
+  type StockRow = { sku: string; price_retail: number | null; price_unit: number | null; stock_status: string };
+  type CategoryRow = { slug: string; name: string; parent_slug: string | null };
+  type CharRow = { product_sku: string; label: string; value: string };
+
+  const [products, stock, categories, chars] = await Promise.all([
+    fetchAllRows<ProductRow>((from, to) => serviceClient
       .from('products')
       .select('sku, name, brand, category_slug, volume, description, image, product_type, color, min_order')
       .eq('is_active', true)
-      .order('sort_order'),
-    serviceClient
+      .order('sort_order')
+      .range(from, to)),
+    fetchAllRows<StockRow>((from, to) => serviceClient
       .from('product_stock')
-      .select('sku, price_retail, price_unit, stock_status'),
-    serviceClient
+      .select('sku, price_retail, price_unit, stock_status')
+      .range(from, to)),
+    fetchAllRows<CategoryRow>((from, to) => serviceClient
       .from('categories')
       .select('slug, name, parent_slug')
-      .order('sort_order'),
-    serviceClient
+      .order('sort_order')
+      .range(from, to)),
+    fetchAllRows<CharRow>((from, to) => serviceClient
       .from('product_characteristics')
       .select('product_sku, label, value')
-      .order('sort_order'),
+      .order('sort_order')
+      .range(from, to)),
   ]);
 
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
@@ -77,7 +91,7 @@ export async function GET(request: NextRequest) {
       const s = stockMap.get(p.sku);
       if (!s) return false;
       const price = s.price_retail ?? s.price_unit;
-      return s.stock_status === 'in_stock' && price > 0;
+      return s.stock_status === 'in_stock' && (price ?? 0) > 0;
     })
     .map(p => {
       const s     = stockMap.get(p.sku)!;

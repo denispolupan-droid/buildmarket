@@ -61,22 +61,25 @@ export async function getOrderFulfillmentInfo(
   const db = createServiceClient();
   const skus = orderItems.map(i => i.sku);
 
-  // Загружаем себестоимость и данные поставщика для каждого SKU
-  const { data: stockRows } = await db
-    .from('product_stock')
-    .select('sku, price_cost, supplier_sku')
-    .in('sku', skus);
+  // Незалежні запити виконуємо паралельно (раніше — 4 послідовні round-trip).
+  const [
+    { data: stockRows },
+    { data: skuMapRows },
+    { data: supplierRows },
+    { data: supplierStockRows },
+  ] = await Promise.all([
+    db.from('product_stock').select('sku, price_cost, supplier_sku').in('sku', skus),
+    db.from('supplier_sku_map').select('our_sku, supplier_id, supplier_sku').in('our_sku', skus),
+    db.from('suppliers').select('id, name'),
+    db.from('supplier_stock').select('sku, supplier_id').in('sku', skus),
+  ]);
 
-  const { data: skuMapRows } = await db
-    .from('supplier_sku_map')
-    .select('our_sku, supplier_id, supplier_sku')
-    .in('our_sku', skus);
-
-  const { data: supplierRows } = await db
-    .from('suppliers')
-    .select('id, name');
+  const supplierByStockSku = new Map(
+    (supplierStockRows ?? []).map(r => [r.sku, r.supplier_id]),
+  );
 
   // Fallback 1: match by supplier_sku value from product_stock → supplier_sku_map
+  // (залежить від stockRows, тому виконується після Promise.all вище)
   const supplierSkusFromStock = (stockRows ?? []).map(r => r.supplier_sku).filter(Boolean);
   const { data: fallbackMaps } = supplierSkusFromStock.length
     ? await db.from('supplier_sku_map')
@@ -85,15 +88,6 @@ export async function getOrderFulfillmentInfo(
     : { data: [] };
   const fallbackBySupplierSku = new Map(
     (fallbackMaps ?? []).map(r => [r.supplier_sku, r.supplier_id]),
-  );
-
-  // Fallback 2: supplier_stock — пишется при каждом синке, содержит supplier_id напрямую
-  const { data: supplierStockRows } = await db
-    .from('supplier_stock')
-    .select('sku, supplier_id')
-    .in('sku', skus);
-  const supplierByStockSku = new Map(
-    (supplierStockRows ?? []).map(r => [r.sku, r.supplier_id]),
   );
 
   // Индексы для быстрого поиска
@@ -194,32 +188,20 @@ export async function recordDropshipSale(
 ): Promise<string> {
   const db = createServiceClient();
 
-  // Получаем дефолтный склад (физический — просто для обязательного поля)
-  const { data: warehouse } = await db
-    .from('warehouses')
-    .select('id')
-    .eq('is_default', true)
-    .single();
-
-  if (!warehouse) throw new Error('Default warehouse not found');
-
   const skus = input.order_items.map(i => i.sku);
 
-  // Берём себестоимость из product_stock
-  const { data: stockRows } = await db
-    .from('product_stock')
-    .select('sku, price_cost')
-    .in('sku', skus);
+  // Незалежні запити паралельно (склад + собівартість + постачальники по SKU).
+  const [{ data: warehouse }, { data: stockRows }, { data: skuMapRows }] = await Promise.all([
+    db.from('warehouses').select('id').eq('is_default', true).single(),
+    db.from('product_stock').select('sku, price_cost').in('sku', skus),
+    db.from('supplier_sku_map').select('our_sku, supplier_id').in('our_sku', skus),
+  ]);
+
+  if (!warehouse) throw new Error('Default warehouse not found');
 
   const costMap = new Map(
     (stockRows ?? []).map(r => [r.sku, r.price_cost ?? 0]),
   );
-
-  // Получаем поставщика для каждого SKU (для привязки строк)
-  const { data: skuMapRows } = await db
-    .from('supplier_sku_map')
-    .select('our_sku, supplier_id')
-    .in('our_sku', skus);
 
   const supplierMap = new Map(
     (skuMapRows ?? []).map(r => [r.our_sku, r.supplier_id]),

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
+import { fetchAllRows } from '../../../../lib/db-paginate';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, CreditCard } from 'lucide-react';
@@ -17,13 +18,15 @@ export default async function PayablesPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
-  // 1. Всі проводки по рахунку постачальника
-  const { data: entries } = await db
+  // 1. Всі проводки по рахунку постачальника (пагінація: money_entries росте безмежно,
+  //    без range() PostgREST мовчки обрізав би на 1000 → неправильні баланси постачальників)
+  const entries = await fetchAllRows((f, t) => db
     .from('money_entries')
     .select('counterparty_id, doc_type, amount, business_date, description, doc_id')
     .eq('account_type', 'supplier')
     .not('counterparty_id', 'is', null)
-    .order('business_date', { ascending: true });
+    .order('business_date', { ascending: true })
+    .range(f, t));
 
   // 2. Номери документів
   const docIds = [...new Set((entries ?? []).map(e => e.doc_id).filter(Boolean))];

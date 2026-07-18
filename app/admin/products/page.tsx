@@ -1,6 +1,7 @@
 ﻿import { createClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../lib/supabase-server';
+import { fetchAllRows } from '../../../lib/db-paginate';
 import ProductsTable from './ProductsTable';
 import Link from 'next/link';
 import { Plus, Upload, Download } from 'lucide-react';
@@ -16,7 +17,10 @@ export default async function AdminProductsPage() {
 
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
-  const { data: products } = await serviceClient
+  // Пагінація: 768 товарів вже майже впритул до ліміту 1000; без range() лічильник
+  // і сам список мовчки обрізалися б, щойно каталог перевищить 1000 SKU.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client, typed by ProductsTable props
+  const products = await fetchAllRows<any>((f, t) => serviceClient
     .from('products')
     .select(`
       *,
@@ -24,7 +28,8 @@ export default async function AdminProductsPage() {
       characteristics:product_characteristics(*)
     `)
     .order('category_slug', { ascending: true })
-    .order('sku', { ascending: true });
+    .order('sku', { ascending: true })
+    .range(f, t));
 
   const { data: categories } = await serviceClient
     .from('categories')

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
+import { getRole } from '../../../../lib/user-role';
 import { escapeOrTerm } from '../../../../lib/pg-filter';
 
 const serviceClient = createClient(
@@ -12,6 +13,9 @@ export async function GET(req: NextRequest) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ results: [] }, { status: 401 });
+  // price_drop — це дроп-ціна для партнерів; віддаємо лише dropship-акаунтам,
+  // інакше будь-який зареєстрований роздрібний покупець бачив би опт по всіх SKU.
+  if (getRole(user) !== 'dropship') return NextResponse.json({ results: [] }, { status: 403 });
 
   const q = new URL(req.url).searchParams.get('q')?.trim() ?? '';
   if (q.length < 2) return NextResponse.json({ results: [] });

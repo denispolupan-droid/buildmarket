@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Trash2, ShoppingCart, ArrowLeft, Plus, Minus, Check, ChevronDown, ChevronUp, User, Truck, CreditCard, MessageSquare, AlertCircle } from 'lucide-react';
 
-const WHOLESALE_MIN = 3000;
+import { WHOLESALE_MIN } from '../../lib/site';
 import { useCart } from '../../lib/cart';
 import { trackBeginCheckout, trackPurchase } from '../../lib/analytics';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 
-import { getProductBySkuCached, getProductBySlugCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsCached, getProductFaqCached } from '../../../../lib/supabase';
+import { getProductBySkuCached, getProductBySlugCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsLightCached, getProductFaqCached } from '../../../../lib/supabase';
 import { getCategoryNameRu } from '../../../../lib/ru';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { isWholesale } from '../../../../lib/user-role';
@@ -89,7 +89,8 @@ export default async function RuProductPage({ params, searchParams }: { params: 
 
   const [related, categoryProducts, faq, categories, reviewsData, reviewStats] = await Promise.all([
     product.category_slug ? getRelatedProductsCached(product.category_slug, product.sku, 5) : Promise.resolve([]),
-    product.category_slug ? getProductsCached({ category: product.category_slug }) : Promise.resolve([]),
+    // Лише для findVariants (список фасовок) — легка вибірка тієї ж категорії.
+    product.category_slug ? getProductsLightCached({ category: product.category_slug }) : Promise.resolve([]),
     getProductFaqCached(sku),
     getCategoriesCached(),
     service.from('product_reviews')

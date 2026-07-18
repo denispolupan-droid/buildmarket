@@ -41,7 +41,9 @@ async function ensureCustomerRecord(userId: string, role: 'dropship' | 'wholesal
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/';
+  // Валідація next проти open redirect: лише внутрішні шляхи (не //host, не https://host).
+  const rawNext = searchParams.get('next') ?? '/';
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/';
 
   if (code) {
     const supabase = await createSupabaseServer();

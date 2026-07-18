@@ -18,8 +18,7 @@ import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { getCategoryNameRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 
-const WHOLESALE_MIN = 3000;
-
+import { WHOLESALE_MIN } from '../../lib/site';
 import { getCategoryMeta } from '../../lib/category-descriptions';
 import { useStickyCompact } from '../../lib/useStickyCompact';
 import './catalog.css';

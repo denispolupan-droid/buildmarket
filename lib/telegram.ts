@@ -23,7 +23,10 @@ export async function sendTelegram(chatId: string | number, text: string): Promi
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
     });
-  } catch {}
+  } catch (err) {
+    // Не валимо основний потік (оформлення замовлення), але й не ковтаємо помилку мовчки.
+    console.error('[telegram] sendMessage failed:', err);
+  }
 }
 
 export function notifyAdminNewOrder(order: {

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { Inter } from "next/font/google";
-import { headers } from "next/headers";
 import "./globals.css";
 import Header from "./components/Header";
 import ChatWidget from "./components/ChatWidget";
@@ -46,24 +45,25 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({ children }: { children: ReactNode }) {
-  const headersList = await headers();
-  const pathname = headersList.get('x-pathname') ?? '';
-  const lang = pathname.startsWith('/ru') ? 'ru' : 'uk';
+export default function RootLayout({ children }: { children: ReactNode }) {
+  // Раніше мову визначали через await headers() — це переводило КОРЕНЕВИЙ layout (а отже
+  // весь сайт) у dynamic rendering і обнуляло ISR. Тепер SSR ставить lang="uk" статично,
+  // а блокуючий head-скрипт нижче коригує lang для /ru ще до першого рендера.
   return (
-    <html lang={lang} className={inter.className} suppressHydrationWarning>
+    <html lang="uk" className={inter.className} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://boaztnparrdoeknajprn.supabase.co" />
         <link rel="dns-prefetch" href="https://boaztnparrdoeknajprn.supabase.co" />
         <link rel="preconnect" href="https://pan2.uk" />
         <link rel="dns-prefetch" href="https://pan2.uk" />
-        {/* Blocking script — applies theme BEFORE first paint, eliminates white flash */}
+        {/* Blocking script — applies theme + lang BEFORE first paint, eliminates white flash */}
         <script dangerouslySetInnerHTML={{ __html: `
           try {
             var t = localStorage.getItem('theme') ||
               (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
             document.documentElement.setAttribute('data-theme', t);
             if (t === 'dark') document.documentElement.style.background = '#252B38';
+            document.documentElement.lang = location.pathname.indexOf('/ru') === 0 ? 'ru' : 'uk';
           } catch(e) {}
         ` }} />
       </head>

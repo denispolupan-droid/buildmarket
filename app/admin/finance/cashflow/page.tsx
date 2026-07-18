@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
+import { fetchAllRows } from '../../../../lib/db-paginate';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, TrendingUp, Banknote } from 'lucide-react';
@@ -27,23 +28,29 @@ export default async function CashflowPage({
   const to     = params.to   ?? now.toISOString().slice(0, 10);
 
   // ── 1. Fetch cash/bank/acquiring entries for the period ──────────────────────
-  const { data: rawEntries } = await db
+  //    Пагінація: за широкий період кількість проводок легко перевищить 1000.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client
+  const rawEntries = await fetchAllRows<any>((f, t) => db
     .from('money_entries')
     .select('id, txn_id, account_type, amount, description, business_date, doc_id, doc_type, created_at')
     .in('account_type', ['cash', 'bank', 'acquiring'])
     .gte('business_date', from)
     .lte('business_date', to)
     .order('business_date', { ascending: false })
-    .order('created_at',    { ascending: false });
+    .order('created_at',    { ascending: false })
+    .range(f, t));
 
   // ── 2. Opening balance = sum of all entries BEFORE period start ───────────────
-  const { data: prevEntries } = await db
+  //    Пагінація критична: вся історія до періоду майже завжди > 1000 → без range()
+  //    вхідний залишок мовчки занижувався.
+  const prevEntries = await fetchAllRows<{ amount: number }>((f, t) => db
     .from('money_entries')
     .select('amount')
     .in('account_type', ['cash', 'bank', 'acquiring'])
-    .lt('business_date', from);
+    .lt('business_date', from)
+    .range(f, t));
 
-  const openingBalance = (prevEntries ?? []).reduce((s: number, e: { amount: number }) => s + Number(e.amount), 0);
+  const openingBalance = prevEntries.reduce((s: number, e: { amount: number }) => s + Number(e.amount), 0);
 
   // ── 3. Doc numbers ─────────────────────────────────────────────────────────
   const docIds = [...new Set((rawEntries ?? []).map(e => e.doc_id).filter(Boolean))] as string[];

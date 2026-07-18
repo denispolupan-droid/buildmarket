@@ -1,0 +1,128 @@
+import { describe, it, expect } from 'vitest';
+import { repriceItems, applyPromoCode, type PriceRow, type PromoCodeRow } from '../lib/pricing';
+
+function priceMap(rows: PriceRow[]): Map<string, PriceRow> {
+  return new Map(rows.map(r => [r.sku, r]));
+}
+
+describe('repriceItems — server-side re-pricing', () => {
+  it('роздрібна ціна: price_retail коли промо немає', () => {
+    const map = priceMap([{ sku: 'A', price_promo: null, price_retail: 100, price_unit: 70 }]);
+    const r = repriceItems([{ sku: 'A', qty: 2 }], map, false);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.serverTotal).toBe(200);
+    expect(r.serverEligibleTotal).toBe(200);
+    expect(r.serverItems[0]).toMatchObject({ price: 100, is_promo: false });
+  });
+
+  it('роздрібна: price_promo має пріоритет над price_retail і виключається з eligible', () => {
+    const map = priceMap([{ sku: 'A', price_promo: 80, price_retail: 100, price_unit: 70 }]);
+    const r = repriceItems([{ sku: 'A', qty: 1 }], map, false);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.serverTotal).toBe(80);
+    expect(r.serverEligibleTotal).toBe(0); // акційний рядок не входить у базу знижки
+    expect(r.serverItems[0]).toMatchObject({ price: 80, is_promo: true });
+  });
+
+  it('оптовик: бере price_unit і ігнорує промо', () => {
+    const map = priceMap([{ sku: 'A', price_promo: 80, price_retail: 100, price_unit: 70 }]);
+    const r = repriceItems([{ sku: 'A', qty: 3 }], map, true);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.serverTotal).toBe(210);
+    expect(r.serverEligibleTotal).toBe(210);
+    expect(r.serverItems[0]).toMatchObject({ price: 70, is_promo: false });
+  });
+
+  it('НЕ довіряє ціні клієнта — перезаписує price з product_stock', () => {
+    const map = priceMap([{ sku: 'A', price_promo: null, price_retail: 100, price_unit: 70 }]);
+    const r = repriceItems([{ sku: 'A', qty: 1, price: 1 } as never], map, false);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.serverItems[0].price).toBe(100);
+  });
+
+  it('відсутній SKU → помилка', () => {
+    const r = repriceItems([{ sku: 'X', qty: 1 }], priceMap([]), false);
+    expect(r).toEqual({ ok: false, error: 'Товар X більше недоступний' });
+  });
+
+  it('ціна 0/відсутня → помилка', () => {
+    const map = priceMap([{ sku: 'A', price_promo: null, price_retail: 0, price_unit: 0 }]);
+    const r = repriceItems([{ sku: 'A', qty: 1 }], map, false);
+    expect(r).toEqual({ ok: false, error: 'Для товару A не встановлено ціну' });
+  });
+
+  it('коректне округлення дробових сум', () => {
+    const map = priceMap([{ sku: 'A', price_promo: null, price_retail: 10.1, price_unit: 5 }]);
+    const r = repriceItems([{ sku: 'A', qty: 3 }], map, false);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.serverTotal).toBe(30.3);
+  });
+
+  it('кілька рядків підсумовуються, eligible рахує лише не-акційні', () => {
+    const map = priceMap([
+      { sku: 'A', price_promo: null, price_retail: 100, price_unit: 70 },
+      { sku: 'B', price_promo: 50, price_retail: 90, price_unit: 40 },
+    ]);
+    const r = repriceItems([{ sku: 'A', qty: 1 }, { sku: 'B', qty: 2 }], map, false);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.serverTotal).toBe(200);       // 100 + 100
+    expect(r.serverEligibleTotal).toBe(100); // лише A
+  });
+});
+
+describe('applyPromoCode — валідація і знижка', () => {
+  const now = new Date('2026-07-18T12:00:00Z');
+  const base = (over: Partial<PromoCodeRow>): PromoCodeRow => ({
+    code: 'SAVE', discount_type: 'percent', discount_value: 10,
+    valid_from: null, valid_until: null, max_uses: null, uses_count: 0,
+    min_order_amount: null, max_discount_amount: null, ...over,
+  });
+
+  it('відсоткова знижка від eligible-суми, не від загальної', () => {
+    const r = applyPromoCode(base({ discount_type: 'percent', discount_value: 10 }), 1000, 800, now);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.promoDiscount).toBe(80);   // 10% від 800
+    expect(r.finalTotal).toBe(920);     // 1000 - 80
+  });
+
+  it('фіксована знижка обмежена базою eligible', () => {
+    const r = applyPromoCode(base({ discount_type: 'fixed', discount_value: 500 }), 1000, 300, now);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.promoDiscount).toBe(300);  // min(500, 300)
+    expect(r.finalTotal).toBe(700);
+  });
+
+  it('max_discount_amount обмежує знижку', () => {
+    const r = applyPromoCode(base({ discount_type: 'percent', discount_value: 50, max_discount_amount: 100 }), 1000, 1000, now);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.promoDiscount).toBe(100);
+    expect(r.finalTotal).toBe(900);
+  });
+
+  it('finalTotal не може бути від’ємним', () => {
+    const r = applyPromoCode(base({ discount_type: 'fixed', discount_value: 5000 }), 100, 100, now);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.finalTotal).toBe(0);
+  });
+
+  it('відхиляє прострочений промокод', () => {
+    const r = applyPromoCode(base({ valid_until: '2026-07-01' }), 1000, 1000, now);
+    expect(r).toEqual({ ok: false, error: 'Термін дії промокоду закінчився' });
+  });
+
+  it('відхиляє ще-не-активний промокод', () => {
+    const r = applyPromoCode(base({ valid_from: '2026-08-01' }), 1000, 1000, now);
+    expect(r).toEqual({ ok: false, error: 'Промокод ще не діє' });
+  });
+
+  it('відхиляє вичерпаний промокод', () => {
+    const r = applyPromoCode(base({ max_uses: 5, uses_count: 5 }), 1000, 1000, now);
+    expect(r).toEqual({ ok: false, error: 'Промокод вичерпано' });
+  });
+
+  it('перевіряє мінімальну суму замовлення', () => {
+    const r = applyPromoCode(base({ min_order_amount: 2000 }), 1000, 1000, now);
+    expect(r).toEqual({ ok: false, error: 'Мінімальна сума для цього промокоду — 2000 ₴' });
+  });
+});

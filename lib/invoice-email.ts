@@ -1,3 +1,5 @@
+import { SELLER } from './company';
+
 export type Item = { sku: string; name: string; brand: string; qty: number; price: number };
 
 export type CustomerOrderEmailData = {
@@ -489,10 +491,10 @@ export function buildInvoiceHtml(d: InvoiceData): string {
           <div style="font-size:12px;font-weight:700;color:#1E3A5F;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">Реквізити для оплати</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
             ${[
-              ['Отримувач', process.env.BANK_RECIPIENT ?? 'ФОП Buildmarket'],
-              ['IBAN',      process.env.BANK_IBAN      ?? '— уточніть у менеджера —'],
-              ['Банк',      process.env.BANK_NAME      ?? 'АТ «ПриватБанк»'],
-              ['ЄДРПОУ',   process.env.BANK_EDRPOU    ?? '—'],
+              ['Отримувач', SELLER.name],
+              ['IBAN',      SELLER.iban],
+              ['Банк',      SELLER.bank],
+              ['ЄДРПОУ',   SELLER.edrpou],
             ].map(([k, v]) => `
               <div style="font-size:11px;color:#64748B;">${k}</div>
               <div style="font-size:12px;font-weight:600;color:#0F172A;">${v}</div>

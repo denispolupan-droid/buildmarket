@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import { SELLER } from '../../../lib/company';
 import VidatkovaNakladna from './VidatkovaNakladna';
 
 export const metadata: Metadata = {
@@ -62,15 +63,15 @@ export default async function VidatkovaPage({ params }: { params: Promise<{ id: 
       docDate={doc.doc_date}
       lines={printLines}
       total={total}
-      sellerName={process.env.BANK_RECIPIENT ?? 'ФОП Buildmarket'}
-      sellerEdrpou={process.env.BANK_EDRPOU ?? ''}
-      sellerAddress={process.env.BANK_ADDRESS ?? ''}
-      sellerBank={process.env.BANK_NAME ?? ''}
-      sellerIban={process.env.BANK_IBAN ?? ''}
+      sellerName={SELLER.name}
+      sellerEdrpou={SELLER.edrpou}
+      sellerAddress={SELLER.address}
+      sellerBank={SELLER.bank}
+      sellerIban={SELLER.iban}
       buyerName={buyerName}
       buyerPhone={order?.phone ?? null}
       orderNumber={order?.order_number ?? null}
-      signatoryName={process.env.SIGNATORY_NAME ?? ''}
+      signatoryName={SELLER.signatory}
       defaultEmail={order?.email ?? null}
     />
   );

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import { SELLER } from '../../../lib/company';
 import InvoicePrint from './InvoicePrint';
 
 export const metadata: Metadata = {
@@ -27,12 +28,12 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   return (
     <InvoicePrint
       order={order}
-      bankRecipient={process.env.BANK_RECIPIENT ?? 'ФОП Buildmarket'}
-      bankIban={process.env.BANK_IBAN ?? 'UA00 0000 0000 0000 0000 0000 000'}
-      bankName={process.env.BANK_NAME ?? 'АТ «ПриватБанк»'}
-      bankEdrpou={process.env.BANK_EDRPOU ?? '00000000'}
-      bankAddress={process.env.BANK_ADDRESS ?? ''}
-      signatoryName={process.env.SIGNATORY_NAME ?? ''}
+      bankRecipient={SELLER.name}
+      bankIban={SELLER.iban}
+      bankName={SELLER.bank}
+      bankEdrpou={SELLER.edrpou}
+      bankAddress={SELLER.address}
+      signatoryName={SELLER.signatory}
     />
   );
 }

@@ -42,11 +42,22 @@ export function rateLimit(key: string, limit: number, windowMs: number): boolean
   return true;
 }
 
-/** Extract the best available IP from Next.js request headers */
+/**
+ * Extract the client IP from request headers.
+ *
+ * On Vercel `x-real-ip` is set by the trusted edge to the actual peer, so we
+ * prefer it. For `x-forwarded-for` we take the LAST entry (appended by the
+ * trusted proxy) — the leading entries can be spoofed by the client, which
+ * would let an attacker rotate the header to bypass per-IP rate limits.
+ */
 export function getClientIp(req: { headers: { get(name: string): string | null } }): string {
-  return (
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    req.headers.get('x-real-ip') ??
-    'unknown'
-  );
+  const realIp = req.headers.get('x-real-ip')?.trim();
+  if (realIp) return realIp;
+
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) {
+    const parts = xff.split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length) return parts[parts.length - 1];
+  }
+  return 'unknown';
 }

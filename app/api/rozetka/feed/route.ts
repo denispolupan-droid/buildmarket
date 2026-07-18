@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../lib/supabase';
 import { formatForRozetka, toRozetkaVolume } from '../../../../lib/rozetka-name';
+import { fetchAllRows } from '../../../../lib/db-paginate';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://fixline.com.ua';
 const SHOP_NAME = 'Fixline';
@@ -21,17 +22,6 @@ function x(str: string | null | undefined): string {
 export async function GET() {
   const db = createServiceClient();
 
-  const [{ data: categories }, { data: products }] = await Promise.all([
-    db.from('categories').select('id, slug, name, rozetka_category_id, rozetka_commission_pct, rozetka_markup_pct').order('sort_order'),
-    db.from('products').select(`
-      sku, name, rozetka_name, brand, category_slug, image, color, volume,
-      on_rozetka, rozetka_markup_pct,
-      description, description_full, description_ru, description_full_ru,
-      stock:product_stock(price_retail, price_cost, price_old, stock_qty, stock_status),
-      characteristics:product_characteristics(label, value, sort_order)
-    `).eq('is_active', true).eq('on_rozetka', true).order('sort_order'),
-  ]);
-
   type Cat = { id: number; slug: string; name: string; rozetka_category_id: string | null; rozetka_commission_pct: number | null; rozetka_markup_pct: number | null };
   type Stock = { price_retail: number | null; price_cost: number | null; price_old: number | null; stock_qty: number | null; stock_status: string | null };
   type Char = { label: string; value: string; sort_order: number };
@@ -44,6 +34,21 @@ export async function GET() {
     stock: Stock | Stock[] | null;
     characteristics: Char[] | null;
   };
+
+  const [categories, products] = await Promise.all([
+    fetchAllRows<Cat>((from, to) => db
+      .from('categories')
+      .select('id, slug, name, rozetka_category_id, rozetka_commission_pct, rozetka_markup_pct')
+      .order('sort_order')
+      .range(from, to)),
+    fetchAllRows<Product>((from, to) => db.from('products').select(`
+      sku, name, rozetka_name, brand, category_slug, image, color, volume,
+      on_rozetka, rozetka_markup_pct,
+      description, description_full, description_ru, description_full_ru,
+      stock:product_stock(price_retail, price_cost, price_old, stock_qty, stock_status),
+      characteristics:product_characteristics(label, value, sort_order)
+    `).eq('is_active', true).eq('on_rozetka', true).order('sort_order').range(from, to)),
+  ]);
 
   function rzPrice(retail: number, commission: number, markup: number): number {
     const withMarkup = retail * (1 + markup / 100);

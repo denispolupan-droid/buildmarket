@@ -203,8 +203,6 @@ export async function PUT(req: NextRequest) {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   revalidateTag('products', 'max');
   revalidatePath(`/product/${sku}`);
   revalidatePath(`/ru/product/${sku}`);
@@ -230,8 +228,6 @@ export async function PATCH(req: NextRequest) {
 
   const { error } = await serviceClient.from('products').update(update).eq('sku', sku);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   revalidateTag('products', 'max');
   return NextResponse.json({ ok: true });
 }
@@ -264,8 +260,6 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   revalidateTag('products', 'max');
   return NextResponse.json({ ok: true });
 }

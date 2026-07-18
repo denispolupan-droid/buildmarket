@@ -42,6 +42,10 @@ next-env.d.ts
 
 .vercel
 catalog-export.xlsx
+# Generated/exported spreadsheets and Excel lock files — regenerable, not source
+export-products-*.xlsx
+products-template.xlsx
+~$*
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 fixline-audit.zip

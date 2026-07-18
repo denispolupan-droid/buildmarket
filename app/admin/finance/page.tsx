@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, ShoppingBag, Package, FileText, Clock, ArrowLeftRight, CreditCard, BarChart2, Scale } from 'lucide-react';
 import FinanceActions from './FinanceActions';
+import { fetchAllRows } from '../../../lib/db-paginate';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -36,12 +37,15 @@ export default async function FinancePage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
   // Замовлення (не нові і не скасовані) за останні 6 місяців
-  const { data: orders } = await db
+  //    Пагінація: за 6 місяців кількість замовлень легко > 1000 → дашборд занижував виручку.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client
+  const orders = await fetchAllRows<any>((f, t) => db
     .from('orders')
     .select('id, order_number, status, total_price, created_at, channel_code, items')
     .not('status', 'in', '(new,cancelled)')
     .gte('created_at', sixAgo.toISOString())
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range(f, t));
 
   // Точні дані обліку (якщо є підтверджені продажі)
   const { data: arContracts } = await db
@@ -56,13 +60,14 @@ export default async function FinancePage() {
   }));
 
   // Підтверджені РН з реальною FIFO-собівартістю, прив'язані до замовлень
-  const { data: accDocs } = await db
+  const accDocs = await fetchAllRows((f, t) => db
     .from('acc_documents')
     .select('id, order_id, doc_date, total_amount, total_cost, channel_code')
     .eq('doc_type', 'sale')
     .eq('status', 'confirmed')
     .not('order_id', 'is', null)
-    .gte('doc_date', sixAgo.toISOString());
+    .gte('doc_date', sixAgo.toISOString())
+    .range(f, t));
 
   const hasAccData = (accDocs?.length ?? 0) > 0;
 
@@ -72,10 +77,11 @@ export default async function FinancePage() {
   );
 
   // Рядки підтверджених РН — для собівартості по SKU в таблиці топ-товарів
-  const accDocIds = (accDocs ?? []).map(d => d.id as string);
-  const { data: accLines } = accDocIds.length > 0
-    ? await db.from('acc_document_lines').select('sku, qty, cost_price').in('document_id', accDocIds)
-    : { data: [] };
+  const accDocIds = accDocs.map(d => d.id as string);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client
+  const accLines: any[] = accDocIds.length > 0
+    ? await fetchAllRows<any>((f, t) => db.from('acc_document_lines').select('sku, qty, cost_price').in('document_id', accDocIds).range(f, t))
+    : [];
 
   // Зважена середня собівартість за SKU з FIFO-даних РН
   const skuCostAgg: Record<string, { totalCost: number; totalQty: number }> = {};

@@ -4,6 +4,8 @@ import { createSupabaseServer, createSupabaseAdmin } from '../../../lib/supabase
 import { buildAdminNotificationHtml, buildCustomerOrderEmail } from '../../../lib/invoice-email';
 import { notifyAdminNewOrder, notifyCustomerNewOrder } from '../../../lib/telegram';
 import { rateLimit, getClientIp } from '../../../lib/rate-limit';
+import { WHOLESALE_MIN } from '../../../lib/site';
+import { repriceItems, applyPromoCode, type RepriceItem, type PriceRow, type PromoCodeRow } from '../../../lib/pricing';
 import type { CartItem } from '../../../types';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -62,27 +64,9 @@ export async function POST(req: NextRequest) {
 
   const priceBySku = new Map((priceRows ?? []).map(r => [r.sku, r]));
 
-  let serverTotal = 0;            // authoritative order subtotal
-  let serverEligibleTotal = 0;    // sum of non-promo lines (promo-discount base)
-  const serverItems: Record<string, unknown>[] = [];
-  for (const it of rawItems) {
-    const row = priceBySku.get(it.sku as string);
-    if (!row) return NextResponse.json({ error: `Товар ${it.sku} більше недоступний` }, { status: 400 });
-    const promo = isWholesaleUser ? null : (row.price_promo ?? null);
-    const unit  = isWholesaleUser
-      ? Number(row.price_unit ?? 0)
-      : Number(promo ?? row.price_retail ?? 0);
-    if (!(unit > 0))
-      return NextResponse.json({ error: `Для товару ${it.sku} не встановлено ціну` }, { status: 400 });
-    const qty = Number(it.qty);
-    const isPromoLine = !isWholesaleUser && promo != null;
-    const line = Math.round(unit * qty * 100) / 100;
-    serverTotal += line;
-    if (!isPromoLine) serverEligibleTotal += line;
-    serverItems.push({ ...it, price: unit, is_promo: isPromoLine });
-  }
-  serverTotal = Math.round(serverTotal * 100) / 100;
-  serverEligibleTotal = Math.round(serverEligibleTotal * 100) / 100;
+  const priced = repriceItems(rawItems as RepriceItem[], priceBySku as Map<string, PriceRow>, isWholesaleUser);
+  if (!priced.ok) return NextResponse.json({ error: priced.error }, { status: 400 });
+  const { serverTotal, serverEligibleTotal, serverItems } = priced;
 
   // ── Promo code: validate server-side and compute final total ─────────────
   let finalTotal      = serverTotal;
@@ -94,26 +78,14 @@ export async function POST(req: NextRequest) {
       .select('*').eq('code', String(promoCode).toUpperCase().trim()).eq('is_active', true).maybeSingle();
     if (!promo)
       return NextResponse.json({ error: 'Промокод не знайдено або неактивний' }, { status: 400 });
-    const now = new Date();
-    if (promo.valid_from && new Date(promo.valid_from) > now)
-      return NextResponse.json({ error: 'Промокод ще не діє' }, { status: 400 });
-    if (promo.valid_until && new Date(promo.valid_until) < now)
-      return NextResponse.json({ error: 'Термін дії промокоду закінчився' }, { status: 400 });
-    if (promo.max_uses !== null && promo.uses_count >= promo.max_uses)
-      return NextResponse.json({ error: 'Промокод вичерпано' }, { status: 400 });
-    if (promo.min_order_amount && serverTotal < promo.min_order_amount)
-      return NextResponse.json({ error: `Мінімальна сума для цього промокоду — ${promo.min_order_amount} ₴` }, { status: 400 });
-    const discountBase = serverEligibleTotal;
-    promoDiscount = promo.discount_type === 'percent'
-      ? Math.round(discountBase * promo.discount_value / 100 * 100) / 100
-      : Math.min(Number(promo.discount_value), discountBase);
-    if (promo.max_discount_amount && promoDiscount > promo.max_discount_amount)
-      promoDiscount = promo.max_discount_amount;
-    finalTotal = Math.max(0, serverTotal - (promoDiscount ?? 0));
-    resolvedPromoCode = promo.code;
+    const applied = applyPromoCode(promo as PromoCodeRow, serverTotal, serverEligibleTotal, new Date());
+    if (!applied.ok) return NextResponse.json({ error: applied.error }, { status: 400 });
+    finalTotal = applied.finalTotal;
+    promoDiscount = applied.promoDiscount;
+    resolvedPromoCode = applied.code;
   }
 
-  if (WHOLESALE_TYPES.includes(accountType ?? '') && finalTotal < 3000) {
+  if (WHOLESALE_TYPES.includes(accountType ?? '') && finalTotal < WHOLESALE_MIN) {
     return NextResponse.json({ error: 'Мінімальна сума оптового замовлення — 3 000 ₴' }, { status: 400 });
   }
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;

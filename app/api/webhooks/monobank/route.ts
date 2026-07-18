@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import * as crypto from 'crypto';
 import { Resend } from 'resend';
 import { buildCustomerOrderEmail, buildAdminNotificationHtml } from '../../../../lib/invoice-email';
 import { notifyAdminNewOrder } from '../../../../lib/telegram';
 import { recordCustomerPayment } from '../../../../lib/accounting/money';
+import { verifyMonoSignature } from '../../../../lib/mono-signature';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -31,21 +31,8 @@ async function getMonoPubKey(): Promise<string | null> {
 }
 
 async function verifySignature(body: string, signature: string | null): Promise<boolean> {
-  if (!signature) return false;
-  try {
-    const pubKeyB64 = await getMonoPubKey();
-    if (!pubKeyB64) return false;
-    const pubKeyDer = Buffer.from(pubKeyB64, 'base64');
-    const pubKey = crypto.createPublicKey({ key: pubKeyDer, format: 'der', type: 'spki' });
-    return crypto.verify(
-      'SHA256',
-      Buffer.from(body),
-      { key: pubKey, padding: crypto.constants.RSA_PKCS1_PSS_PADDING },
-      Buffer.from(signature, 'base64'),
-    );
-  } catch {
-    return false;
-  }
+  const pubKeyB64 = await getMonoPubKey();
+  return verifyMonoSignature(body, signature, pubKeyB64);
 }
 
 export async function POST(req: NextRequest) {

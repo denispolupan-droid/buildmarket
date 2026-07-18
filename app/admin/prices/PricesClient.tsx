@@ -540,7 +540,7 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
       ...(!plAllBrands   ? { brand: [...plFilterBrands].join(',') } : {}),
       ...(plFilterSearch ? { search: plFilterSearch } : {}),
     };
-    const xlsxParamsJSON = JSON.stringify(xlsxParamsObj);
+    const xlsxParamsJSON = JSON.stringify(xlsxParamsObj).replace(/</g, '\\u003c');
 
     // Build category rows HTML
     // Cost prices come straight from purchase invoices and land at all sorts of
@@ -588,7 +588,8 @@ ${desc ? `<div class="cat-desc">${desc}</div>` : ''}
 </table>`;
     }).join('');
 
-    const contactsJSON = JSON.stringify(contacts);
+    // < екранує '<' → рядок клієнта з '</script>' не може розірвати <script> (stored XSS).
+    const contactsJSON = JSON.stringify(contacts).replace(/</g, '\\u003c');
 
     const FOP_NAME  = 'ФОП Полупан Д.О.';
     const FOP_PHONE = '+380 66 82 82 290';
@@ -703,7 +704,8 @@ ${catBlocks}
 <script>
 const CONTACTS=${contactsJSON};
 let fc=CONTACTS.slice();
-function renderC(list){fc=list;const cl=document.getElementById('cl');if(!cl)return;cl.innerHTML=list.map((c,i)=>'<div style="padding:7px 10px;cursor:pointer;border-bottom:1px solid #f3f4f6;font-size:12px" onclick="selC('+i+')"><b>'+(c.company||c.name)+'</b><br><span style="color:#6B7280;font-size:11px">'+c.email+'</span></div>').join('');}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function renderC(list){fc=list;const cl=document.getElementById('cl');if(!cl)return;cl.innerHTML=list.map((c,i)=>'<div style="padding:7px 10px;cursor:pointer;border-bottom:1px solid #f3f4f6;font-size:12px" onclick="selC('+i+')"><b>'+esc(c.company||c.name)+'</b><br><span style="color:#6B7280;font-size:11px">'+esc(c.email)+'</span></div>').join('');}
 function filterC(q){const lq=q.toLowerCase();renderC(lq?CONTACTS.filter(c=>(c.name+' '+(c.company||'')+' '+c.email).toLowerCase().includes(lq)):CONTACTS);}
 function selC(i){const c=fc[i];if(c)document.getElementById('ei').value=c.email;}
 function closeModal(){document.getElementById('eo').classList.remove('show');document.getElementById('ei').value='';document.getElementById('em').textContent='';const cs=document.getElementById('cs');if(cs){cs.value='';renderC(CONTACTS);}document.getElementById('sendBtn').disabled=false;}
