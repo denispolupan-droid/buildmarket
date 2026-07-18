@@ -1,0 +1,120 @@
+name: Weekly security audit
+
+# Автоматична перевірка раз на тиждень (плюс запуск вручну): вразливості залежностей
+# (npm audit) + рекомендації Supabase (security + performance advisors — ті самі, що в
+# дашборді). Результат: живий GitHub Issue "🔒 Weekly security audit — latest report",
+# який оновлюється щоразу останнім звітом, і Step Summary у вкладці Actions.
+# Джоб падає (→ лист власнику) лише на СРОЧНОМУ: critical-вразливість npm або
+# security-advisor рівня ERROR. Інше (high/WARN) — у звіті, без хибних тривог.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # щопонеділка 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  audit:
+    name: Security audit
+    runs-on: ubuntu-latest
+    env:
+      PROD_REF: boaztnparrdoeknajprn   # prod-проєкт Supabase (не секрет — є в URL)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      - name: Collect audit report
+        id: collect
+        env:
+          SB_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -e
+          REPORT=report.md
+          echo "# 🔒 Аудит безпеки — $(date -u '+%Y-%m-%d %H:%M UTC')" > $REPORT
+          echo "" >> $REPORT
+
+          # ── npm audit ──────────────────────────────────────────────────────
+          npm audit --json > audit.json || true
+          CRIT=$(jq -r '.metadata.vulnerabilities.critical // 0' audit.json)
+          HIGH=$(jq -r '.metadata.vulnerabilities.high // 0' audit.json)
+          MOD=$(jq  -r '.metadata.vulnerabilities.moderate // 0' audit.json)
+          LOW=$(jq  -r '.metadata.vulnerabilities.low // 0' audit.json)
+          {
+            echo "## 📦 npm audit (залежності)"
+            echo ""
+            echo "| critical | high | moderate | low |"
+            echo "|---|---|---|---|"
+            echo "| $CRIT | $HIGH | $MOD | $LOW |"
+            echo ""
+            if [ "$CRIT" != "0" ] || [ "$HIGH" != "0" ]; then
+              echo "**Пакети high/critical:**"
+              echo '```'
+              jq -r '.vulnerabilities | to_entries[] | select(.value.severity=="high" or .value.severity=="critical") | "\(.value.severity)\t\(.key)\t\(.value.range)"' audit.json || true
+              echo '```'
+            fi
+            echo ""
+          } >> $REPORT
+
+          # ── Supabase advisors ──────────────────────────────────────────────
+          SEC_ERR=0
+          if [ -n "$SB_TOKEN" ]; then
+            curl -s -H "Authorization: Bearer $SB_TOKEN" \
+              "https://api.supabase.com/v1/projects/$PROD_REF/advisors/security" > sec.json || echo '{}' > sec.json
+            curl -s -H "Authorization: Bearer $SB_TOKEN" \
+              "https://api.supabase.com/v1/projects/$PROD_REF/advisors/performance" > perf.json || echo '{}' > perf.json
+            SEC_ERR=$(jq -r '[.lints[]? | select(.level=="ERROR")] | length' sec.json)
+            SEC_WARN=$(jq -r '[.lints[]? | select(.level=="WARN")] | length' sec.json)
+            PERF_WARN=$(jq -r '[.lints[]? | select(.level=="WARN" or .level=="ERROR")] | length' perf.json)
+            {
+              echo "## 🛡️ Supabase security advisors (prod)"
+              echo ""
+              echo "ERROR: **$SEC_ERR** · WARN: **$SEC_WARN**"
+              if [ "$SEC_ERR" != "0" ] || [ "$SEC_WARN" != "0" ]; then
+                echo '```'
+                jq -r '.lints[]? | select(.level=="ERROR" or .level=="WARN") | "\(.level)\t\(.name)\t\(.detail // .title)"' sec.json || true
+                echo '```'
+              fi
+              echo ""
+              echo "## ⚡ Supabase performance advisors (prod)"
+              echo ""
+              echo "WARN/ERROR: **$PERF_WARN** (INFO не рахуємо)"
+              echo ""
+            } >> $REPORT
+          else
+            echo "## 🛡️ Supabase advisors" >> $REPORT
+            echo "" >> $REPORT
+            echo "_Пропущено: не заданий секрет \`SUPABASE_ACCESS_TOKEN\`._" >> $REPORT
+            echo "" >> $REPORT
+          fi
+
+          echo "crit=$CRIT"     >> $GITHUB_OUTPUT
+          echo "high=$HIGH"     >> $GITHUB_OUTPUT
+          echo "sec_err=$SEC_ERR" >> $GITHUB_OUTPUT
+
+          cat $REPORT >> $GITHUB_STEP_SUMMARY
+
+      - name: Upsert tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITLE="🔒 Weekly security audit — latest report"
+          NUM=$(gh issue list --state open --search "in:title $TITLE" --json number -q '.[0].number' 2>/dev/null || echo "")
+          if [ -n "$NUM" ]; then
+            gh issue edit "$NUM" --body-file report.md
+            echo "Оновлено issue #$NUM"
+          else
+            gh issue create --title "$TITLE" --body-file report.md
+          fi
+
+      - name: Fail on urgent findings
+        if: ${{ steps.collect.outputs.crit != '0' || steps.collect.outputs.sec_err != '0' }}
+        run: |
+          echo "::error::Термінові знахідки: npm critical=${{ steps.collect.outputs.crit }}, Supabase security ERROR=${{ steps.collect.outputs.sec_err }}"
+          exit 1
