@@ -592,12 +592,19 @@ export default function CatalogClient({ products, categories, reviewStats, initi
     setInputVals(prev => ({ ...prev, [sku]: String(valid) }));
   }
   function handleAddToCart(p: ProductFull, qty: number) {
+    const unit = p.stock?.price_unit ?? 0;
+    const retail = p.stock?.price_retail != null ? Number(p.stock.price_retail) : 0;
+    const retailPromo = p.stock?.price_promo != null ? Number(p.stock.price_promo) : null;
+    // опт-акція = той самий % знижки, що й у роздрібі; на checkout ціна перераховується так само
+    const wholesalePromo = (retailPromo != null && retail > 0 && retailPromo < retail)
+      ? Math.round(unit * (retailPromo / retail) * 100) / 100 : null;
     addItem({
       sku: p.sku, name: p.name, name_ru: (p as { name_ru?: string | null }).name_ru ?? null,
       brand: p.brand, volume: p.volume,
-      price: p.stock?.price_unit ?? 0, min_order: 1,
+      price: wholesalePromo ?? unit, min_order: 1,
       nl1: p.nl1 ?? '', nl2: p.nl2 ?? undefined,
       bc: p.bc, ac: p.ac, img_type: p.img_type, imageUrl: p.image ?? undefined,
+      is_promo: wholesalePromo != null,
     }, qty);
     setAdded(prev => ({ ...prev, [p.sku]: true }));
     setTimeout(() => setAdded(prev => ({ ...prev, [p.sku]: false })), 1500);
@@ -1054,9 +1061,13 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                   <div className="catalog-grid">
                     {filtered.slice(0, visibleCount).map(p => {
                       const priceUnit    = p.stock?.price_unit  ?? 0;
-                      const pricePromo   = p.stock?.price_promo != null ? Number(p.stock.price_promo) : null;
-                      const hasPromoDisc = pricePromo != null && pricePromo < priceUnit;
-                      const displayPrice = hasPromoDisc ? pricePromo : priceUnit;
+                      const priceRetail  = p.stock?.price_retail != null ? Number(p.stock.price_retail) : 0;
+                      const retailPromo  = p.stock?.price_promo != null ? Number(p.stock.price_promo) : null;
+                      // акція діє і для опту: той самий % знижки (promo/retail) застосовуємо до оптової ціни
+                      const wholesalePromo = (retailPromo != null && priceRetail > 0 && retailPromo < priceRetail)
+                        ? Math.round(priceUnit * (retailPromo / priceRetail) * 100) / 100 : null;
+                      const hasPromoDisc = wholesalePromo != null && wholesalePromo < priceUnit;
+                      const displayPrice = hasPromoDisc ? wholesalePromo : priceUnit;
                       const priceOld     = hasPromoDisc ? priceUnit : (p.stock?.price_old ?? null);
                       const stockQty     = p.stock?.stock_qty  ?? 0;
                       const inStock      = p.stock?.stock_status === 'in_stock' || stockQty >= 1;
@@ -1197,9 +1208,13 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                   <tbody>
                     {filtered.slice(0, visibleCount).map(p => {
                       const priceUnit    = p.stock?.price_unit  ?? 0;
-                      const pricePromo   = p.stock?.price_promo != null ? Number(p.stock.price_promo) : null;
-                      const hasPromoDisc = pricePromo != null && pricePromo < priceUnit;
-                      const displayPrice = hasPromoDisc ? pricePromo : priceUnit;
+                      const priceRetail  = p.stock?.price_retail != null ? Number(p.stock.price_retail) : 0;
+                      const retailPromo  = p.stock?.price_promo != null ? Number(p.stock.price_promo) : null;
+                      // акція діє і для опту: той самий % знижки (promo/retail) застосовуємо до оптової ціни
+                      const wholesalePromo = (retailPromo != null && priceRetail > 0 && retailPromo < priceRetail)
+                        ? Math.round(priceUnit * (retailPromo / priceRetail) * 100) / 100 : null;
+                      const hasPromoDisc = wholesalePromo != null && wholesalePromo < priceUnit;
+                      const displayPrice = hasPromoDisc ? wholesalePromo : priceUnit;
                       const priceOld     = hasPromoDisc ? priceUnit : (p.stock?.price_old ?? null);
                       const stockQty     = p.stock?.stock_qty    ?? 0;
                       const stockSt      = p.stock?.stock_status;

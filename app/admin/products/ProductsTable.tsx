@@ -372,7 +372,7 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
                     )}
                   </td>
                   <td style={{ padding: '12px 16px', maxWidth: '300px' }}>
-                    <div style={{ fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div title={p.name} style={{ fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {p.name}
                     </div>
                     {p.volume && <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{p.volume}</div>}

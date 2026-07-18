@@ -30,14 +30,29 @@ export function repriceItems(
     const row = priceBySku.get(it.sku);
     if (!row) return { ok: false, error: `Товар ${it.sku} більше недоступний` };
 
-    const promo = isWholesaleUser ? null : (row.price_promo ?? null);
-    const unit = isWholesaleUser
-      ? Number(row.price_unit ?? 0)
-      : Number(promo ?? row.price_retail ?? 0);
+    const retail = Number(row.price_retail ?? 0);
+    const promoPrice = row.price_promo != null ? Number(row.price_promo) : null;
+
+    // Акція діє і для роздрібу, і для опту. Для опту застосовуємо ТОЙ САМИЙ відсоток
+    // знижки, що й у роздрібі (price_promo / price_retail), до оптової ціни price_unit.
+    let unit: number;
+    let isPromoLine: boolean;
+    if (isWholesaleUser) {
+      const base = Number(row.price_unit ?? 0);
+      if (promoPrice != null && retail > 0 && promoPrice < retail) {
+        unit = Math.round(base * (promoPrice / retail) * 100) / 100;
+        isPromoLine = true;
+      } else {
+        unit = base;
+        isPromoLine = false;
+      }
+    } else {
+      unit = Number(promoPrice ?? retail);
+      isPromoLine = promoPrice != null;
+    }
     if (!(unit > 0)) return { ok: false, error: `Для товару ${it.sku} не встановлено ціну` };
 
     const qty = Number(it.qty);
-    const isPromoLine = !isWholesaleUser && promo != null;
     const line = Math.round(unit * qty * 100) / 100;
     serverTotal += line;
     if (!isPromoLine) serverEligibleTotal += line;

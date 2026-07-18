@@ -3,23 +3,23 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Footer from '../../components/Footer';
 import Reveal from '../../components/Reveal';
-import { ShieldCheck, Users, Package, Award, Truck, MessageCircle, Target, Rocket, TrendingUp, Zap, Lightbulb } from 'lucide-react';
+import { ShieldCheck, Users, Package, Award, X, Check, Zap, Eye, Cpu, TrendingUp, Gauge, Smartphone, Bot, CreditCard, Plug, FileText, Truck, PlayCircle, Calculator, RefreshCw, ClipboardList, Layers } from 'lucide-react';
 import { mergeVisibleBrands } from '../../../lib/brands';
 import { getBrandLogosCached, getVisibleBrandLogosCached } from '../../../lib/supabase';
 
 const BASE = 'https://fixline.com.ua';
 
 export const metadata: Metadata = {
-  title: 'О компании FIXLINE — поставщик строительной химии',
-  description: 'Поставщик строительной химии на Украине: герметики, клеи, монтажные пены, грунтовки от проверенных производителей. 10+ лет на рынке, 500+ клиентов B2B.',
-  keywords: ['о компании FIXLINE', 'поставщик строительной химии', 'оптовая строительная химия', 'герметики оптом поставщик', 'Харьков строительная химия'],
+  title: 'О компании FIXLINE — цифровая платформа строительных решений',
+  description: 'FIXLINE — цифровая платформа строительных решений: герметики, клеи, монтажные пены, грунтовки от проверенных производителей. B2B-кабинет, онлайн-остатки, доставка по Украине.',
+  keywords: ['о компании FIXLINE', 'поставщик строительной химии', 'цифровая платформа строительных решений', 'оптовая строительная химия', 'герметики оптом поставщик', 'Харьков строительная химия'],
   alternates: {
     canonical: `${BASE}/ru/about`,
     languages: { 'uk': `${BASE}/about`, 'ru': `${BASE}/ru/about`, 'x-default': `${BASE}/about` },
   },
   openGraph: {
     title: 'О компании FIXLINE',
-    description: 'Официальный поставщик строительной химии на Украине. 10+ лет, 500+ клиентов, 1000+ артикулов.',
+    description: 'Цифровая платформа строительных решений. Мы делаем закупку материалов такой же простой, как заказ такси.',
     url: `${BASE}/ru/about`,
     siteName: 'FIXLINE',
     locale: 'ru_RU',
@@ -28,32 +28,59 @@ export const metadata: Metadata = {
   },
 };
 
+const pains = [
+  'Поиск по десяткам сайтов',
+  'Несколько поставщиков на один объект',
+  'Разные цены каждую неделю',
+  'Никто не знает остатков',
+  'Проблемы со счетами и документами',
+  'Потерянные часы и дни',
+];
+
+const dayTasks = [
+  { icon: Package,       text: 'Заказать пену' },
+  { icon: Layers,        text: 'Проверить остатки' },
+  { icon: FileText,      text: 'Получить счёт' },
+  { icon: ShieldCheck,   text: 'Скачать сертификат' },
+  { icon: Award,         text: 'Оформить гарантию' },
+  { icon: Truck,         text: 'Вызвать доставку' },
+  { icon: Calculator,    text: 'Узнать расход клея' },
+  { icon: RefreshCw,     text: 'Подобрать аналог герметика' },
+  { icon: PlayCircle,    text: 'Посмотреть видео применения' },
+  { icon: ClipboardList, text: 'Закрыть объект полностью' },
+];
+
+const beliefs = [
+  'Технологии должны экономить время',
+  'Закупка материалов должна занимать минуты, а не дни',
+  'Информация должна быть прозрачной: цены, остатки, документы',
+  'Клиент не должен искать ответы — сервис должен предугадывать вопросы',
+];
+
+const principles = [
+  { icon: Gauge,      title: 'Скорость',     text: 'Каждый процесс должен быть быстрее, чем вчера. Если функция замедляет клиента — она не выходит.' },
+  { icon: Zap,        title: 'Простота',     text: 'Мы убираем сложность из строительного бизнеса. Если нужно объяснять — упрощаем.' },
+  { icon: Eye,        title: 'Прозрачность', text: 'Никаких скрытых условий. Цена, остаток и срок видны до заказа, а не после.' },
+  { icon: Cpu,        title: 'Технологии',   text: 'Автоматизируем всё, что можно автоматизировать. Ручная операция для нас — это баг.' },
+  { icon: TrendingUp, title: 'Развитие',     text: 'Сервис совершенствуется постоянно. «Работает — не трогай» — это не про нас.' },
+];
+
+const ecosystem = [
+  { icon: Users,      title: 'B2B-кабинет партнёра',          status: 'уже работает', live: true },
+  { icon: Plug,       title: 'XML/YML-фиды для дропшиперов',  status: 'уже работает', live: true },
+  { icon: Layers,     title: 'Онлайн-остатки и цены',          status: 'уже работает', live: true },
+  { icon: FileText,   title: 'Счета и документы онлайн',       status: 'уже работает', live: true },
+  { icon: Cpu,        title: 'API для интеграций',             status: 'строим',       live: false },
+  { icon: Smartphone, title: 'Мобильное приложение',           status: 'впереди',      live: false },
+  { icon: Bot,        title: 'ИИ-помощник подбора материалов', status: 'впереди',      live: false },
+  { icon: CreditCard, title: 'Финансирование закупок',         status: 'впереди',      live: false },
+];
+
 const stats = [
   { icon: Award,       stat: '10+',   label: 'лет на рынке',          text: 'Надёжный поставщик с подтверждённой репутацией среди дилеров и подрядчиков.' },
   { icon: Users,       stat: '500+',  label: 'активных клиентов',      text: 'B2B партнёры по всей Украине: строительные магазины, подрядчики, дропшиперы.' },
   { icon: Package,     stat: '1000+', label: 'артикулов',              text: 'Широкий ассортимент в наличии на складе с постоянным пополнением.' },
   { icon: ShieldCheck, stat: '100%',  label: 'сертифицированная продукция', text: 'Только оригинальные товары с документами качества и техническими паспортами.' },
-];
-
-const values = [
-  { icon: ShieldCheck,   title: 'Качество без компромиссов', text: 'Мы работаем только с проверенными производителями и официальными дистрибьюторами. Каждая партия сопровождается документами качества.' },
-  { icon: Truck,         title: 'Надёжная логистика',        text: 'Собственная логистика и Новая Почта по всей Украине. Заказы, принятые до 14:00, отправляем в тот же день.' },
-  { icon: MessageCircle, title: 'Персональный подход',        text: 'За каждым клиентом закреплён менеджер. Консультируем по выбору материалов и подбору аналогов.' },
-  { icon: Package,       title: 'Гибкие условия',            text: 'От 1 единицы в розницу до крупного опта. Индивидуальные цены и условия оплаты для постоянных партнёров.' },
-  { icon: Zap,           title: 'Цифровая платформа',        text: 'Собственный B2B-кабинет, XML/YML-фиды и автоматическое обновление цен и остатков — технологии, которых нет у обычных оптовиков.' },
-  { icon: Lightbulb,     title: 'Экспертиза',                text: 'Мы знаем продукт: подбираем аналоги, консультируем по техническим вопросам и помогаем выбрать решение под задачу и бюджет.' },
-];
-
-const mission = [
-  { icon: Target,     title: 'Миссия',  text: 'Сделать профессиональную строительную химию доступной каждому — мастеру, магазину, подрядчику — так же просто, как бытовые товары: в один клик, по честной цене, с консультацией эксперта.' },
-  { icon: Rocket,     title: 'Видение', text: 'Стать первой ассоциацией со словами «строительная химия» в Украине — брендом №1 в своей категории, как Rozetka в электронике или Эпицентр в строительстве.' },
-  { icon: TrendingUp, title: 'Амбиция', text: 'Построить B2B-экосистему — платформу, фиды, сервис и логистику, — благодаря которой тысячи магазинов, дропшиперов и мастеров по всей Украине растут вместе с нами.' },
-];
-
-const roadmap = [
-  { step: '01', title: 'Сегодня — прочный фундамент',       text: '10+ лет опыта, 1000+ артикулов на собственном складе, 500+ B2B-клиентов и собственная торговая платформа с кабинетом партнёра и фидами для дропшиперов.' },
-  { step: '02', title: 'Завтра — национальный охват',       text: 'Выход на крупнейшие маркетплейсы страны, расширение портфеля брендов, региональная логистика и полная автоматизация закупок для партнёров.' },
-  { step: '03', title: 'Цель — бренд №1 в категории',       text: 'Когда в Украине говорят «строительная химия» — думают FIXLINE. Собственная торговая марка, склады в ключевых регионах и API-экосистема для тысяч партнёров.' },
 ];
 
 export default async function AboutRuPage() {
@@ -75,7 +102,7 @@ export default async function AboutRuPage() {
     name: 'FIXLINE',
     url: BASE,
     logo: `${BASE}/fixline-logo.png`,
-    description: 'Поставщик строительной химии на Украине: герметики, монтажные пены, клеи, грунтовки оптом и в розницу.',
+    description: 'Цифровая платформа строительных решений: герметики, монтажные пены, клеи, грунтовки оптом и в розницу.',
     address: { '@type': 'PostalAddress', addressLocality: 'Харьков', addressCountry: 'UA' },
     contactPoint: {
       '@type': 'ContactPoint',
@@ -86,6 +113,11 @@ export default async function AboutRuPage() {
     },
   };
 
+  const gradientText = {
+    background: 'linear-gradient(135deg, #93C5FD 0%, #5EEAD4 100%)',
+    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+  } as const;
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd).replace(/</g, '\\u003c') }} />
@@ -93,78 +125,169 @@ export default async function AboutRuPage() {
 
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
 
-        {/* Hero */}
-        <section style={{ background: 'linear-gradient(160deg, #1E293B 0%, #1E3A5F 100%)', padding: '64px 0 56px' }}>
+        {/* ===== Hero — манифест ===== */}
+        <section style={{ background: 'linear-gradient(160deg, #1E293B 0%, #1E3A5F 100%)', padding: '64px 0 64px' }}>
           <div className="page-container">
-            <nav style={{ fontSize: '13px', color: '#64748B', marginBottom: '24px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <nav style={{ fontSize: '13px', color: '#64748B', marginBottom: '32px', display: 'flex', gap: '6px', alignItems: 'center' }}>
               <Link href="/ru" style={{ color: '#64748B', textDecoration: 'none' }}>Главная</Link>
               <span>/</span>
               <span style={{ color: '#94A3B8' }}>О компании</span>
             </nav>
+
             <Reveal>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0', marginBottom: '28px', userSelect: 'none' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{
-                  fontSize: 'clamp(40px, 6vw, 72px)', fontWeight: 900, letterSpacing: '-2px', lineHeight: 1,
-                  background: 'linear-gradient(135deg, #fff 0%, #93C5FD 100%)',
-                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-                }}>FIX</span>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: '#4880B8', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: '4px' }}>
-                  фиксация
-                </span>
-              </div>
-              <span style={{ fontSize: 'clamp(40px, 6vw, 72px)', fontWeight: 900, color: 'rgba(255,255,255,0.15)', margin: '0 2px', lineHeight: 1, alignSelf: 'flex-start', paddingTop: '2px' }}>+</span>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{
-                  fontSize: 'clamp(40px, 6vw, 72px)', fontWeight: 900, letterSpacing: '-2px', lineHeight: 1,
-                  background: 'linear-gradient(135deg, #93C5FD 0%, #5EEAD4 100%)',
-                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-                }}>LINE</span>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: '#5EEAD4', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: '4px' }}>
-                  линия
-                </span>
-              </div>
-            </div>
+            <span style={{ display: 'inline-block', fontSize: '12px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#5EEAD4', marginBottom: '20px' }}>
+              Цифровая платформа строительных решений
+            </span>
             </Reveal>
-            <Reveal delay={100}>
-            <h1 style={{ fontSize: 'clamp(22px, 3vw, 36px)', fontWeight: 800, color: '#fff', lineHeight: 1.3, marginBottom: '16px', letterSpacing: '-0.5px' }}>
-              Всё держится на FIXLINE
+
+            <Reveal delay={80}>
+            <h1 style={{ fontSize: 'clamp(28px, 4.5vw, 52px)', fontWeight: 900, color: '#fff', lineHeight: 1.2, marginBottom: '24px', letterSpacing: '-1px', maxWidth: '860px' }}>
+              Мы не строим очередной интернет-магазин.{' '}
+              <span style={gradientText}>Мы строим цифровую платформу строительного рынка Украины.</span>
             </h1>
-            <p style={{ fontSize: '16px', color: '#94A3B8', lineHeight: 1.7, maxWidth: '620px', margin: 0 }}>
-              Мы строим национальный бренд строительной химии. Герметики, клеи, монтажные
-              пены, грунтовки — материалы, которые фиксируют, защищают и держат. От
-              проверенных производителей — в каждый уголок Украины.
+            </Reveal>
+
+            <Reveal delay={160}>
+            <p style={{ fontSize: '17px', color: '#94A3B8', lineHeight: 1.7, maxWidth: '640px', margin: '0 0 28px' }}>
+              Сегодня — строительная химия: герметики, клеи, пены, грунтовки от проверенных
+              производителей. Завтра — место, где строительный рынок работает каждый день.
+              Не покупает. Работает.
             </p>
+            </Reveal>
+
+            <Reveal delay={240}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '999px', padding: '10px 20px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#5EEAD4', flexShrink: 0 }} />
+              <span style={{ fontSize: '14px', fontWeight: 700, color: '#E2E8F0', letterSpacing: '0.02em' }}>Всё держится на FIXLINE</span>
+            </div>
             </Reveal>
           </div>
         </section>
 
-        {/* Mission / Vision / Ambition */}
-        <section style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', padding: '64px 0' }}>
+        {/* ===== Манифест: почему существует FIXLINE ===== */}
+        <section style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', padding: '72px 0' }}>
+          <div className="page-container">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '56px', alignItems: 'center' }} className="about-content-grid">
+
+              <Reveal><div>
+                <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#4880B8' }}>
+                  Почему существует FIXLINE
+                </span>
+                <h2 style={{ fontSize: 'clamp(24px, 3vw, 34px)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.3, margin: '12px 0 20px', letterSpacing: '-0.5px' }}>
+                  Мы строим новую культуру закупок строительных материалов
+                </h2>
+                <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.8, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <p>Строительный рынок Украины до сих пор работает сложно. Поиск товаров отнимает часы. Поставщиков — несколько на один объект. Цены разные, остатков никто не знает, документы — отдельный квест.</p>
+                  <p style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Мы считаем, что это можно изменить.<br />Именно поэтому существует FIXLINE.
+                  </p>
+                </div>
+              </div></Reveal>
+
+              <Reveal delay={120}>
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '20px', padding: '28px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '18px' }}>
+                  Закупка сегодня — это:
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {pains.map(p => (
+                    <div key={p} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ width: '26px', height: '26px', borderRadius: '8px', background: 'rgba(239,68,68,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <X size={14} color="#EF4444" strokeWidth={2.5} />
+                      </span>
+                      <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>{p}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              </Reveal>
+
+            </div>
+          </div>
+        </section>
+
+        {/* ===== Завтра: один день с FIXLINE (dark) ===== */}
+        <section style={{ background: 'linear-gradient(160deg, #1E293B 0%, #1E3059 100%)', padding: '72px 0' }}>
           <div className="page-container">
             <Reveal>
-            <div style={{ textAlign: 'center', maxWidth: '760px', margin: '0 auto 44px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#4880B8' }}>
-                FIXLINE — это больше, чем магазин
+            <div style={{ textAlign: 'center', maxWidth: '640px', margin: '0 auto 40px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#5EEAD4' }}>
+                Представьте завтрашний день
               </span>
-              <h2 style={{ fontSize: 'clamp(24px, 3vw, 34px)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.35, margin: '12px 0 0', letterSpacing: '-0.5px' }}>
-                Делаем надёжность доступной —{' '}
-                <span style={{
-                  background: 'linear-gradient(135deg, #4880B8 0%, #14B8A6 100%)',
-                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-                }}>для каждого мастера, магазина и стройки</span>
+              <h2 style={{ fontSize: 'clamp(22px, 3vw, 32px)', fontWeight: 900, color: '#fff', lineHeight: 1.35, margin: '12px 0 0', letterSpacing: '-0.5px' }}>
+                Мастер открывает телефон. Ему нужно:
               </h2>
             </div>
             </Reveal>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }} className="about-mission-grid">
-              {mission.map(({ icon: Icon, title, text }, i) => (
-                <Reveal key={title} delay={i * 100}>
-                <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px 24px', height: '100%' }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, rgba(72,128,184,0.12) 0%, rgba(20,184,166,0.12) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-                    <Icon size={20} color="#4880B8" strokeWidth={2} />
-                  </div>
-                  <h3 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '10px' }}>{title}</h3>
-                  <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>{text}</p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '44px' }} className="about-tasks-grid">
+              {dayTasks.map(({ icon: Icon, text }, i) => (
+                <Reveal key={text} delay={i * 50}>
+                <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '14px', padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: '10px', height: '100%' }}>
+                  <Icon size={18} color="#93C5FD" strokeWidth={2} />
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#E2E8F0', lineHeight: 1.4 }}>{text}</span>
+                </div>
+                </Reveal>
+              ))}
+            </div>
+
+            <Reveal delay={200}>
+            <div style={{ textAlign: 'center', maxWidth: '560px', margin: '0 auto' }}>
+              <p style={{ fontSize: 'clamp(22px, 3vw, 30px)', fontWeight: 900, color: '#fff', lineHeight: 1.3, margin: '0 0 16px', letterSpacing: '-0.5px' }}>
+                Он открывает <span style={gradientText}>FIXLINE</span>.
+              </p>
+              <p style={{ fontSize: '16px', color: '#94A3B8', lineHeight: 1.7, margin: 0 }}>
+                Не потому, что дешевле. А потому, что удобно.<br />
+                <span style={{ color: '#E2E8F0', fontWeight: 600 }}>Именно так рождается бренд.</span>
+              </p>
+            </div>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* ===== Миссия и видение ===== */}
+        <section style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', padding: '72px 0' }}>
+          <div className="page-container">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }} className="about-mission-grid">
+              <Reveal>
+              <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '20px', padding: '36px 32px', height: '100%' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#4880B8' }}>Миссия</span>
+                <p style={{ fontSize: 'clamp(20px, 2.2vw, 26px)', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.4, margin: '14px 0 0', letterSpacing: '-0.3px' }}>
+                  Сделать закупку строительных материалов такой же простой, как заказ такси.
+                </p>
+              </div>
+              </Reveal>
+              <Reveal delay={120}>
+              <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '20px', padding: '36px 32px', height: '100%' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#14B8A6' }}>Видение</span>
+                <p style={{ fontSize: 'clamp(20px, 2.2vw, 26px)', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.4, margin: '14px 0 12px', letterSpacing: '-0.3px' }}>
+                  Стать цифровым стандартом строительного рынка Украины.
+                </p>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+                  Не крупнейшим магазином. <strong style={{ color: 'var(--text-primary)' }}>Стандартом.</strong>
+                </p>
+              </div>
+              </Reveal>
+            </div>
+          </div>
+        </section>
+
+        {/* ===== Во что мы верим ===== */}
+        <section style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', padding: '64px 0' }}>
+          <div className="page-container">
+            <Reveal>
+            <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '32px', textAlign: 'center' }}>
+              Во что мы верим
+            </h2>
+            </Reveal>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', maxWidth: '860px', margin: '0 auto' }} className="about-beliefs-grid">
+              {beliefs.map((b, i) => (
+                <Reveal key={b} delay={i * 80}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px 22px', height: '100%' }}>
+                  <span style={{ width: '26px', height: '26px', borderRadius: '8px', background: 'rgba(20,184,166,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>
+                    <Check size={15} color="#14B8A6" strokeWidth={2.5} />
+                  </span>
+                  <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.5 }}>{b}</span>
                 </div>
                 </Reveal>
               ))}
@@ -172,14 +295,102 @@ export default async function AboutRuPage() {
           </div>
         </section>
 
-        {/* Name story */}
-        <section style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', padding: '48px 0' }}>
+        {/* ===== Принципы — правила решений ===== */}
+        <section style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', padding: '64px 0' }}>
+          <div className="page-container">
+            <Reveal>
+            <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', textAlign: 'center' }}>
+              Наши принципы
+            </h2>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '40px' }}>
+              Это не ценности для стены — это правила, по которым мы принимаем решения
+            </p>
+            </Reveal>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="about-values-grid">
+              {principles.map(({ icon: Icon, title, text }, i) => (
+                <Reveal key={title} delay={i * 80}>
+                <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '16px', padding: '26px 24px', height: '100%' }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, rgba(72,128,184,0.12) 0%, rgba(20,184,166,0.12) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+                    <Icon size={20} color="#4880B8" strokeWidth={2} />
+                  </div>
+                  <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>{title}</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{text}</p>
+                </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ===== Куда мы идем — экосистема ===== */}
+        <section style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', padding: '72px 0' }}>
+          <div className="page-container">
+            <Reveal>
+            <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 40px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#4880B8' }}>
+                Куда мы идём
+              </span>
+              <h2 style={{ fontSize: 'clamp(22px, 3vw, 32px)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.35, margin: '12px 0 14px', letterSpacing: '-0.5px' }}>
+                Мы создаём платформу, которая объединит производителей, дилеров, строительные компании и мастеров в единую экосистему
+              </h2>
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
+                «Экосистема» для нас — не красивое слово, а конкретный план. Вот что за ним стоит — честно, со статусами:
+              </p>
+            </div>
+            </Reveal>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }} className="about-eco-grid">
+              {ecosystem.map(({ icon: Icon, title, status, live }, i) => (
+                <Reveal key={title} delay={i * 60}>
+                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '22px 20px', height: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Icon size={20} color="#4880B8" strokeWidth={2} />
+                    <span style={{
+                      fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '999px', whiteSpace: 'nowrap',
+                      background: live ? 'rgba(20,184,166,0.12)' : 'rgba(100,116,139,0.10)',
+                      color: live ? '#0D9488' : 'var(--text-secondary)',
+                    }}>{status}</span>
+                  </div>
+                  <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 }}>{title}</span>
+                </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ===== Цифры — фундамент ===== */}
+        <section style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
+          <div className="page-container" style={{ padding: '56px 32px' }}>
+            <Reveal>
+            <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '36px', textAlign: 'center' }}>
+              Амбиции стоят на прочном фундаменте
+            </h2>
+            </Reveal>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '32px' }} className="about-stats-grid">
+              {stats.map(({ icon: Icon, stat, label, text }, i) => (
+                <Reveal key={label} delay={i * 90}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                    <Icon size={22} color="#4880B8" strokeWidth={2} />
+                  </div>
+                  <div style={{ fontSize: '32px', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1 }}>{stat}</div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', margin: '4px 0 8px' }}>{label}</div>
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>{text}</p>
+                </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ===== Имя — концепция ===== */}
+        <section style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', padding: '56px 0' }}>
           <div className="page-container">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px', alignItems: 'center' }} className="about-content-grid">
               <Reveal><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 {[
-                  { word: 'FIX',  color: '#4880B8', bg: 'rgba(72,128,184,0.08)', border: 'rgba(72,128,184,0.2)',  meanings: ['Фиксировать', 'Крепить',      'Склеивать', 'Герметизировать'] },
-                  { word: 'LINE', color: '#14B8A6', bg: 'rgba(20,184,166,0.08)',  border: 'rgba(20,184,166,0.2)', meanings: ['Линия',       'Ассортимент', 'Подбор',    'Система'] },
+                  { word: 'FIX',  color: '#4880B8', bg: 'rgba(72,128,184,0.08)', border: 'rgba(72,128,184,0.2)', meanings: ['Фиксировать', 'Крепить', 'Склеивать', 'Герметизировать'] },
+                  { word: 'LINE', color: '#14B8A6', bg: 'rgba(20,184,166,0.08)', border: 'rgba(20,184,166,0.2)', meanings: ['Линия', 'Ассортимент', 'Подбор', 'Система'] },
                 ].map(({ word, color, bg, border, meanings }) => (
                   <div key={word} style={{ background: bg, border: `1px solid ${border}`, borderRadius: '16px', padding: '24px 20px' }}>
                     <div style={{ fontSize: '36px', fontWeight: 900, color, marginBottom: '16px', letterSpacing: '-1px', lineHeight: 1 }}>{word}</div>
@@ -199,7 +410,7 @@ export default async function AboutRuPage() {
                   </div>
                   <div style={{ width: '1px', height: '32px', background: 'var(--border)', flexShrink: 0 }} />
                   <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-                    Линия материалов для фиксации — полный ассортимент того, что крепит, клеит, герметизирует и защищает в строительстве и ремонте.
+                    Линия фиксации — полный ассортимент того, что крепит, клеит, герметизирует и защищает в строительстве и ремонте.
                   </p>
                 </div>
               </div></Reveal>
@@ -209,13 +420,13 @@ export default async function AboutRuPage() {
                 </h2>
                 <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.8, display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <p>
-                    <strong style={{ color: 'var(--text-primary)' }}>FIX</strong> — от английского &ldquo;fix&rdquo;: фиксировать, крепить, устранять. Это суть строительной химии: клей держит, герметик защищает, пена фиксирует.
+                    <strong style={{ color: 'var(--text-primary)' }}>FIX</strong> — фиксировать, крепить, решать. Это суть строительной химии: клей держит, герметик защищает, пена фиксирует.
                   </p>
                   <p>
-                    <strong style={{ color: 'var(--text-primary)' }}>LINE</strong> — линия, ассортимент, система. Не один продукт, а полная линейка материалов для любой задачи на стройплощадке или в ремонте.
+                    <strong style={{ color: 'var(--text-primary)' }}>LINE</strong> — линия, ассортимент, система. Не один продукт, а полная линейка решений для любой задачи на объекте.
                   </p>
                   <p>
-                    Вместе <strong style={{ color: 'var(--text-primary)' }}>FIXLINE</strong> — это линия фиксации: всё что нужно, чтобы всё держалось надёжно.
+                    Вместе <strong style={{ color: 'var(--text-primary)' }}>FIXLINE</strong> — линия, на которой всё держится: и монтаж, и работа рынка.
                   </p>
                 </div>
               </div></Reveal>
@@ -223,132 +434,8 @@ export default async function AboutRuPage() {
           </div>
         </section>
 
-        {/* Stats */}
-        <section style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
-          <div className="page-container" style={{ padding: '48px 32px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '32px' }} className="about-stats-grid">
-              {stats.map(({ icon: Icon, stat, label, text }, i) => (
-                <Reveal key={label} delay={i * 90}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                    <Icon size={22} color="#4880B8" strokeWidth={2} />
-                  </div>
-                  <div style={{ fontSize: '32px', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1 }}>{stat}</div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', margin: '4px 0 8px' }}>{label}</div>
-                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>{text}</p>
-                </div>
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* About text */}
+        {/* ===== Бренды ===== */}
         <section style={{ padding: '64px 0' }}>
-          <div className="page-container">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '64px', alignItems: 'start' }} className="about-content-grid">
-              <Reveal><div>
-                <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '20px' }}>
-                  Кто мы
-                </h2>
-                <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.8, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <p>
-                    FIXLINE — B2B поставщик строительной химии для дилеров, подрядчиков,
-                    строительных магазинов и дропшиперов по всей Украине.
-                  </p>
-                  <p>
-                    Мы не производитель — мы связываем клиентов с проверенными производителями и
-                    брендами. Наша задача: широкий ассортимент, актуальные цены и быстрая
-                    доставка Новой Почтой в любую точку Украины.
-                  </p>
-                  <p>
-                    Работаем как с розничными покупателями от 1 единицы, так и с оптовыми
-                    клиентами. Предлагаем гибкие условия и подбор аналогов под бюджет.
-                  </p>
-                </div>
-              </div></Reveal>
-              <Reveal delay={120}><div>
-                <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '20px' }}>
-                  Доставка и логистика
-                </h2>
-                <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.8, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <p>
-                    Отправляем Новой Почтой по всей Украине. Заказы до 14:00 — отправка
-                    в тот же день. Широкий ассортимент поддерживается в постоянном наличии.
-                  </p>
-                  <p>
-                    Для крупных оптовых партий — адресная доставка по Харькову и региону,
-                    условия обсуждаются с менеджером индивидуально.
-                  </p>
-                  <p>
-                    Дропшиперам предоставляем XML/YML-фид с актуальными остатками и ценами,
-                    который обновляется несколько раз в день. Доставляем напрямую клиенту
-                    от имени вашего магазина.
-                  </p>
-                </div>
-              </div></Reveal>
-            </div>
-          </div>
-        </section>
-
-        {/* Values */}
-        <section style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border)', padding: '64px 0' }}>
-          <div className="page-container">
-            <Reveal>
-            <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', textAlign: 'center' }}>
-              Почему с нами
-            </h2>
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '40px' }}>
-              Шесть причин, почему дилеры, магазины и мастера выбирают FIXLINE
-            </p>
-            </Reveal>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }} className="about-values-grid">
-              {values.map(({ icon: Icon, title, text }, i) => (
-                <Reveal key={title} delay={i * 90}>
-                <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px 24px' }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-                    <Icon size={20} color="#4880B8" strokeWidth={2} />
-                  </div>
-                  <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '10px' }}>{title}</h3>
-                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>{text}</p>
-                </div>
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Roadmap */}
-        <section style={{ padding: '64px 0', borderTop: '1px solid var(--border)', background: 'var(--bg-soft)' }}>
-          <div className="page-container">
-            <Reveal>
-            <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', textAlign: 'center' }}>
-              Куда мы идём
-            </h2>
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '40px' }}>
-              Стратегия FIXLINE: от нишевого поставщика к национальному бренду
-            </p>
-            </Reveal>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }} className="about-roadmap-grid">
-              {roadmap.map(({ step, title, text }, i) => (
-                <Reveal key={step} delay={i * 110}>
-                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px 24px', height: '100%', position: 'relative', overflow: 'hidden' }}>
-                  <div style={{
-                    fontSize: '64px', fontWeight: 900, lineHeight: 1, position: 'absolute', top: '12px', right: '16px',
-                    background: 'linear-gradient(135deg, rgba(72,128,184,0.14) 0%, rgba(20,184,166,0.14) 100%)',
-                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-                  }}>{step}</div>
-                  <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '12px', paddingRight: '56px', position: 'relative' }}>{title}</h3>
-                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0, position: 'relative' }}>{text}</p>
-                </div>
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Brands */}
-        <section style={{ padding: '64px 0', borderTop: '1px solid var(--border)' }}>
           <div className="page-container">
             <Reveal>
             <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', textAlign: 'center' }}>
@@ -383,21 +470,25 @@ export default async function AboutRuPage() {
           </div>
         </section>
 
-        {/* CTA */}
-        <section style={{ background: '#1E3059', padding: '56px 0', textAlign: 'center' }}>
+        {/* ===== Философия + CTA ===== */}
+        <section style={{ background: 'linear-gradient(160deg, #1E293B 0%, #1E3059 100%)', padding: '72px 0', textAlign: 'center' }}>
           <div className="page-container">
             <Reveal>
-            <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', marginBottom: '12px' }}>
-              Расти вместе с FIXLINE
-            </h2>
-            <p style={{ fontSize: '14px', color: '#94A3B8', marginBottom: '32px', maxWidth: '520px', margin: '0 auto 32px' }}>
-              Мы строим бренд №1 в строительной химии — и лучшие условия получают те,
-              кто присоединился раньше. Дилеры, подрядчики, магазины — регистрируйтесь
-              и получайте оптовые цены и персонального менеджера.
-            </p>
+            <div style={{ maxWidth: '640px', margin: '0 auto 40px' }}>
+              <p style={{ fontSize: 'clamp(20px, 2.6vw, 28px)', fontWeight: 800, color: '#fff', lineHeight: 1.45, margin: '0 0 18px', letterSpacing: '-0.3px' }}>
+                Мы не стремимся стать самым большим магазином.<br />
+                Мы стремимся стать <span style={gradientText}>самым удобным</span>.
+              </p>
+              <p style={{ fontSize: '16px', color: '#94A3B8', lineHeight: 1.7, margin: 0 }}>
+                Потому что размер можно купить рекламой.<br />
+                <span style={{ color: '#E2E8F0', fontWeight: 600 }}>Доверие — нельзя.</span>
+              </p>
+            </div>
+            </Reveal>
+            <Reveal delay={150}>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link href="/register" style={{ height: '48px', padding: '0 28px', borderRadius: '10px', background: '#4880B8', color: '#fff', fontSize: '14px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
-                Зарегистрироваться
+                Присоединиться к платформе
               </Link>
               <Link href="/ru/contacts" style={{ height: '48px', padding: '0 28px', borderRadius: '10px', border: '1.5px solid rgba(255,255,255,0.2)', color: '#E2E8F0', fontSize: '14px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', textDecoration: 'none', background: 'transparent' }}>
                 Связаться с нами
@@ -411,17 +502,23 @@ export default async function AboutRuPage() {
       <Footer />
       <style>{`
         .about-brand-tile:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.10); border-color: #93C5FD; transform: translateY(-2px); }
+        @media (max-width: 900px) {
+          .about-tasks-grid { grid-template-columns: repeat(3, 1fr) !important; }
+          .about-eco-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
         @media (max-width: 768px) {
           .about-stats-grid  { grid-template-columns: repeat(2, 1fr) !important; }
           .about-values-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .about-mission-grid { grid-template-columns: 1fr !important; }
-          .about-roadmap-grid { grid-template-columns: 1fr !important; }
+          .about-beliefs-grid { grid-template-columns: 1fr !important; }
           .about-content-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
           .brands-grid { grid-template-columns: repeat(3, 1fr) !important; }
         }
         @media (max-width: 480px) {
           .about-stats-grid  { grid-template-columns: 1fr !important; }
           .about-values-grid { grid-template-columns: 1fr !important; }
+          .about-tasks-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .about-eco-grid { grid-template-columns: 1fr !important; }
           .brands-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
       `}</style>

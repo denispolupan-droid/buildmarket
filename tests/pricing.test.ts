@@ -25,12 +25,29 @@ describe('repriceItems — server-side re-pricing', () => {
     expect(r.serverItems[0]).toMatchObject({ price: 80, is_promo: true });
   });
 
-  it('оптовик: бере price_unit і ігнорує промо', () => {
-    const map = priceMap([{ sku: 'A', price_promo: 80, price_retail: 100, price_unit: 70 }]);
+  it('оптовик без акції: бере price_unit', () => {
+    const map = priceMap([{ sku: 'A', price_promo: null, price_retail: 100, price_unit: 70 }]);
     const r = repriceItems([{ sku: 'A', qty: 3 }], map, true);
     if (!r.ok) throw new Error(r.error);
     expect(r.serverTotal).toBe(210);
     expect(r.serverEligibleTotal).toBe(210);
+    expect(r.serverItems[0]).toMatchObject({ price: 70, is_promo: false });
+  });
+
+  it('оптовик з акцією: той самий % знижки застосовується до оптової ціни', () => {
+    // роздріб: 100 → 80 (−20%). опт 70 → 70×0.8 = 56.
+    const map = priceMap([{ sku: 'A', price_promo: 80, price_retail: 100, price_unit: 70 }]);
+    const r = repriceItems([{ sku: 'A', qty: 3 }], map, true);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.serverItems[0]).toMatchObject({ price: 56, is_promo: true });
+    expect(r.serverTotal).toBe(168);            // 56 × 3
+    expect(r.serverEligibleTotal).toBe(0);      // акційний рядок не входить у базу промокоду
+  });
+
+  it('оптовик: без price_retail акція не застосовується (нема від чого рахувати %)', () => {
+    const map = priceMap([{ sku: 'A', price_promo: 80, price_retail: 0, price_unit: 70 }]);
+    const r = repriceItems([{ sku: 'A', qty: 1 }], map, true);
+    if (!r.ok) throw new Error(r.error);
     expect(r.serverItems[0]).toMatchObject({ price: 70, is_promo: false });
   });
 

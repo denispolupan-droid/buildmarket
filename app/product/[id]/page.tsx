@@ -239,7 +239,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
               <div className="product-info__badges" style={{ alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Інші фасовки:</span>
                 {variants.map(v => (
-                  <Link key={v.sku} href={productPath(v)} className="badge" style={{ textDecoration: 'none', color: 'var(--brand-main)' }}>
+                  <Link key={v.sku} href={sp.from ? `${productPath(v)}?from=${sp.from}` : productPath(v)} className="badge" style={{ textDecoration: 'none', color: 'var(--brand-main)' }}>
                     {v.volume}
                   </Link>
                 ))}

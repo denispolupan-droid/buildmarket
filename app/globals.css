@@ -696,7 +696,13 @@ input, select { font-family: inherit; }
    stacked on the right. Named areas (rather than relying on DOM order + `order`) let the
    mobile override below rearrange all three blocks independently, since items list and
    totals/submit are siblings of the form, not nested inside one shared summary column. */
-.cart-grid { grid-template-areas: "form items" "form totals"; }
+/* Права колонка (items + totals) content-розміру, зайву висоту від високої форми
+   зліва з'їдає третій порожній рядок — інакше рядки розтягуються і між списком
+   товарів та блоком підсумку з'являється велика порожнеча. */
+.cart-grid {
+  grid-template-areas: "form items" "form totals" "form .";
+  grid-template-rows: min-content min-content 1fr;
+}
 .cart-form-col { grid-area: form; }
 .cart-items-list { grid-area: items; }
 .cart-totals-block { grid-area: totals; }
@@ -742,6 +748,7 @@ input, select { font-family: inherit; }
   .cart-grid {
     grid-template-columns: 1fr !important;
     grid-template-areas: "items" "form" "totals" !important;
+    grid-template-rows: auto !important;
   }
 
   /* Account stats */

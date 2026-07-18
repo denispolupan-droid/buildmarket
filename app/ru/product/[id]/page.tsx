@@ -238,7 +238,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
               <div className="product-info__badges" style={{ alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Другие фасовки:</span>
                 {variants.map(v => (
-                  <Link key={v.sku} href={productPath(v, 'ru')} className="badge" style={{ textDecoration: 'none', color: 'var(--brand-main)' }}>
+                  <Link key={v.sku} href={sp.from ? `${productPath(v, 'ru')}?from=${sp.from}` : productPath(v, 'ru')} className="badge" style={{ textDecoration: 'none', color: 'var(--brand-main)' }}>
                     {v.volume}
                   </Link>
                 ))}
