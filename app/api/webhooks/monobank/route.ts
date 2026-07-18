@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (draft.payload?.promo_code) {
-      serviceClient.rpc('increment_promo_used', { p_code: draft.payload.promo_code }).then(() => {});
+      await serviceClient.rpc('increment_promo_used', { p_code: draft.payload.promo_code });
     }
 
     const invoiceUrl = `${siteUrl}/invoice/${order.id}`;

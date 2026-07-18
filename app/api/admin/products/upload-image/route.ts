@@ -26,6 +26,13 @@ export async function POST(req: NextRequest) {
   if (!brand) return NextResponse.json({ error: 'Бренд не вказано' }, { status: 400 });
   if (!sku)   return NextResponse.json({ error: 'SKU не вказано' },   { status: 400 });
 
+  // brand/sku go straight into the R2 object key — reject path separators and
+  // traversal so an upload cannot escape its prefix or overwrite arbitrary keys.
+  if (/[\/\\]|\.\./.test(brand) || /[\/\\]|\.\./.test(sku))
+    return NextResponse.json({ error: 'Некоректний бренд або SKU' }, { status: 400 });
+  if (file.size > 10 * 1024 * 1024)
+    return NextResponse.json({ error: 'Файл завеликий (макс. 10 МБ)' }, { status: 413 });
+
   // Look up the product's current photo now, before it's overwritten below, so the old
   // R2 object can be cleaned up once the new one is safely uploaded — otherwise every
   // re-upload leaves an orphaned file behind, same as the old Supabase Storage did.

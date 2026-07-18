@@ -1,6 +1,12 @@
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID ?? '';
 
+// Escape user-controlled values before putting them in a parse_mode:'HTML'
+// Telegram message — prevents tag injection and malformed-HTML send failures.
+function escTg(s: unknown): string {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 const STATUS_UA: Record<string, string> = {
   new: 'Нове',
   confirmed: 'Підтверджено',
@@ -30,14 +36,14 @@ export function notifyAdminNewOrder(order: {
   delivery_city_name?: string | null;
 }) {
   if (!ADMIN_CHAT_ID) return;
-  const company = order.company ? ` (${order.company})` : '';
-  const city = order.delivery_city_name ? `\n📦 ${order.delivery_city_name}` : '';
+  const company = order.company ? ` (${escTg(order.company)})` : '';
+  const city = order.delivery_city_name ? `\n📦 ${escTg(order.delivery_city_name)}` : '';
   const payment = order.payment_type === 'cod' ? 'Накладений платіж'
                 : order.payment_type === 'card' ? '💳 Картка — оплачено'
                 : 'Безготівковий';
   sendTelegram(
     ADMIN_CHAT_ID,
-    `🛒 <b>Нове замовлення №${order.order_number}</b>\n👤 ${order.contact}${company}\n📱 ${order.phone}\n💰 ${order.total_price} грн (${payment})${city}`,
+    `🛒 <b>Нове замовлення №${order.order_number}</b>\n👤 ${escTg(order.contact)}${company}\n📱 ${escTg(order.phone)}\n💰 ${order.total_price} грн (${payment})${city}`,
   );
 }
 
@@ -49,7 +55,7 @@ export function notifyAdminStatusChange(order: {
   if (!ADMIN_CHAT_ID) return;
   sendTelegram(
     ADMIN_CHAT_ID,
-    `🔄 <b>Замовлення №${order.order_number}</b> → ${STATUS_UA[newStatus] ?? newStatus}\n👤 ${order.contact} | ${order.phone}`,
+    `🔄 <b>Замовлення №${order.order_number}</b> → ${STATUS_UA[newStatus] ?? newStatus}\n👤 ${escTg(order.contact)} | ${escTg(order.phone)}`,
   );
 }
 
@@ -69,7 +75,7 @@ export async function notifyCustomerNewOrder(
     invoice: 'Безготівковий розрахунок',
   };
   const itemLines = order.items
-    .map(i => `▪️ ${i.brand} ${i.name} × ${i.qty} — ${(i.price * i.qty).toFixed(0)} ₴`)
+    .map(i => `▪️ ${escTg(i.brand)} ${escTg(i.name)} × ${i.qty} — ${(i.price * i.qty).toFixed(0)} ₴`)
     .join('\n');
   const city = order.delivery_city_name ? `\n📍 ${order.delivery_city_name}` : '';
   const payment = PAYMENT_UA[order.payment_type] ?? order.payment_type;

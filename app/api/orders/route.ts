@@ -197,9 +197,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Помилка збереження замовлення. Спробуйте ще раз.' }, { status: 500 });
     }
 
-    admin.from('abandoned_carts')
+    await admin.from('abandoned_carts')
       .update({ recovered_at: new Date().toISOString() })
-      .eq('email', email).is('recovered_at', null).then(() => {});
+      .eq('email', email).is('recovered_at', null);
 
     return NextResponse.json({ pageUrl });
   }
@@ -242,12 +242,14 @@ export async function POST(req: NextRequest) {
   }
 
   if (resolvedPromoCode) {
-    admin.rpc('increment_promo_used', { p_code: resolvedPromoCode }).then(() => {});
+    // await: fire-and-forget is dropped when the serverless instance freezes
+    // after the response, so max_uses would never be enforced.
+    await admin.rpc('increment_promo_used', { p_code: resolvedPromoCode });
   }
 
-  admin.from('abandoned_carts')
+  await admin.from('abandoned_carts')
     .update({ recovered_at: new Date().toISOString() })
-    .eq('email', email).is('recovered_at', null).then(() => {});
+    .eq('email', email).is('recovered_at', null);
 
   const invoiceUrl = `${siteUrl}/invoice/${data.id}`;
 

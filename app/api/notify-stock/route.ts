@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdmin } from '../../../lib/supabase-server';
+import { rateLimit, getClientIp } from '../../../lib/rate-limit';
 
 export async function POST(req: NextRequest) {
+  if (!rateLimit(`notify:${getClientIp(req)}`, 20, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'Забагато запитів' }, { status: 429 });
+  }
+
   const { sku, email, name } = await req.json();
 
   if (!sku || !email || !email.includes('@')) {
