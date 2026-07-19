@@ -24,6 +24,9 @@ type Order = {
   items: Item[];
   total_price: number;
   payment_due_date?: string | null;
+  channel_code?: string | null;
+  prom_order_id?: string | number | null;
+  rozetka_order_id?: string | number | null;
 };
 
 export default function InvoicePrint({
@@ -208,7 +211,8 @@ export default function InvoicePrint({
               <InvoiceMessengerButtons variant="toolbar"
                 phone={order.phone} contact={order.contact}
                 orderNumber={order.order_number} orderId={order.id}
-                total={total} />
+                total={total} channel={order.channel_code}
+                promOrderId={order.prom_order_id} rozetkaOrderId={order.rozetka_order_id} />
               <button onClick={exportExcel} style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 18px', borderRadius: '10px', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 3px 12px rgba(21,128,61,0.3)' }}>
                 <FileSpreadsheet size={15} /> Excel
               </button>

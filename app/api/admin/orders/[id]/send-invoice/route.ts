@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { Resend } from 'resend';
-import { buildInvoiceHtml } from '../../../../../../lib/invoice-html';
+import { buildInvoiceHtml, orderMarketplace } from '../../../../../../lib/invoice-html';
 import { buildInvoicePdf } from '../../../../../../lib/invoice-pdf';
 import { SELLER } from '../../../../../../lib/company';
 import { SITE_URL } from '../../../../../../lib/site';
@@ -50,7 +50,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { error: sendErr } = await resend.emails.send({
     from:    `${SELLER.name} <${process.env.RESEND_FROM_EMAIL ?? process.env.ADMIN_EMAIL ?? 'noreply@buildmarket.com.ua'}>`,
     to:      toEmail,
-    subject: `Рахунок на оплату №${order.order_number} від ${date}`,
+    subject: (() => {
+      const mp = orderMarketplace(order);
+      return mp
+        ? `Рахунок на оплату — ваше замовлення на ${mp.name} №${mp.num}`
+        : `Рахунок на оплату №${order.order_number} від ${date}`;
+    })(),
     html,
     attachments: [{
       filename: `Рахунок_${order.order_number}.pdf`,

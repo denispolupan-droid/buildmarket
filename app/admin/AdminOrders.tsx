@@ -58,6 +58,8 @@ type Order = {
   callback_done:      boolean;
   supplier_sent_at:   string | null;
   channel_code:       string | null;
+  prom_order_id:      string | number | null;
+  rozetka_order_id:   string | number | null;
   fulfillment_mode:   string | null;
   confirmed_at:       string | null;
   shipped_at:         string | null;
@@ -2343,7 +2345,8 @@ export default function AdminOrders({
                                 <InvoiceMessengerButtons
                                   phone={order.phone} contact={order.contact}
                                   orderNumber={order.order_number} orderId={order.id}
-                                  total={order.total_price} />
+                                  total={order.total_price} channel={order.channel_code}
+                                  promOrderId={order.prom_order_id} rozetkaOrderId={order.rozetka_order_id} />
 
                                 <button onClick={() => openSupplierPO(order)} disabled={creatingPo === order.id}
                                   style={{ ...btnMuted, cursor: creatingPo === order.id ? 'wait' : 'pointer', opacity: creatingPo === order.id ? 0.6 : 1 }}>

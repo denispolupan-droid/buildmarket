@@ -13,7 +13,17 @@ type Order = {
   items: Item[];
   total_price: number;
   payment_due_date?: string | null;
+  channel_code?: string | null;
+  prom_order_id?: string | number | null;
+  rozetka_order_id?: string | number | null;
 };
+
+/** Маркетплейс-джерело замовлення: назва + номер замовлення саме на маркетплейсі. */
+export function orderMarketplace(order: Pick<Order, 'channel_code' | 'prom_order_id' | 'rozetka_order_id' | 'order_number'>): { name: string; num: string } | null {
+  if (order.channel_code === 'rozetka') return { name: 'Rozetka', num: String(order.rozetka_order_id ?? order.order_number) };
+  if (order.channel_code === 'prom')    return { name: 'Prom.ua', num: String(order.prom_order_id ?? order.order_number) };
+  return null;
+}
 
 function formatIban(raw: string) {
   const s = raw.replace(/\s/g, '');
@@ -92,7 +102,12 @@ export function buildInvoiceHtml(params: {
         Вітаємо, ${esc(buyerName)}! 👋
       </div>
       <div style="font-size:13.5px;color:#475569;line-height:1.7;">
-        Дякуємо за ваше замовлення <strong>№${order.order_number}</strong> від ${date}.
+        ${(() => {
+          const mp = orderMarketplace(order);
+          return mp
+            ? `Дякуємо за ваше замовлення на <strong>${mp.name}</strong> <strong>№${esc(mp.num)}</strong> від ${date}.`
+            : `Дякуємо за ваше замовлення <strong>№${order.order_number}</strong> від ${date}.`;
+        })()}
         Рахунок на оплату — нижче в цьому листі та у PDF-вкладенні.
       </div>
       <div style="margin-top:14px;background:#F0FDFA;border:1px solid #99F6E4;border-radius:8px;padding:12px 16px;

@@ -39,6 +39,7 @@ async function copyText(text: string): Promise<boolean> {
 
 export default function InvoiceMessengerButtons({
   phone, contact, orderNumber, orderId, total, variant = 'admin',
+  channel = null, promOrderId = null, rozetkaOrderId = null,
 }: {
   phone: string;
   contact: string;
@@ -46,13 +47,22 @@ export default function InvoiceMessengerButtons({
   orderId: string;
   total: number;
   variant?: 'admin' | 'toolbar';
+  channel?: string | null;
+  promOrderId?: string | number | null;
+  rozetkaOrderId?: string | number | null;
 }) {
   const [done, setDone] = useState<'tg' | 'viber' | 'copy' | null>(null);
   const normPhone = normalizePhone(phone);
 
+  const mp = channel === 'rozetka' ? { name: 'Rozetka', num: String(rozetkaOrderId ?? orderNumber) }
+           : channel === 'prom'    ? { name: 'Prom.ua', num: String(promOrderId ?? orderNumber) }
+           : null;
+
   const message = [
     `Вітаємо, ${contact}! 🤝`,
-    `Дякуємо за замовлення №${orderNumber} у FIXLINE на суму ${Number(total).toFixed(2)} грн.`,
+    mp
+      ? `Дякуємо за замовлення №${mp.num} на ${mp.name} — на суму ${Number(total).toFixed(2)} грн.`
+      : `Дякуємо за замовлення №${orderNumber} у FIXLINE на суму ${Number(total).toFixed(2)} грн.`,
     `Рахунок на оплату: ${typeof window !== 'undefined' ? window.location.origin : 'https://fixline.com.ua'}/invoice/${orderId}`,
     `Після оплати повідомте нас, будь ласка, — замовлення, оплачені до 14:00, відправляємо того ж дня 🚚`,
   ].join('\n');
