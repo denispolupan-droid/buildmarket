@@ -5,6 +5,7 @@ import { Resend } from 'resend';
 import { buildInvoiceHtml } from '../../../../../../lib/invoice-html';
 import { buildInvoicePdf } from '../../../../../../lib/invoice-pdf';
 import { SELLER } from '../../../../../../lib/company';
+import { SITE_URL } from '../../../../../../lib/site';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   };
 
   const [html, pdfBuffer] = await Promise.all([
-    Promise.resolve(buildInvoiceHtml({ ...bankParams, invoiceUrl })),
+    Promise.resolve(buildInvoiceHtml({ ...bankParams, invoiceUrl, siteUrl: SITE_URL })),
     buildInvoicePdf(bankParams),
   ]);
 

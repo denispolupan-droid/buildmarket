@@ -20,6 +20,16 @@ function formatIban(raw: string) {
   return s.match(/.{1,4}/g)?.join(' ') ?? s;
 }
 
+// Ім'я покупця походить з форми замовлення — екрануємо перед вставкою в HTML листа.
+function esc(s: unknown): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function buildInvoiceHtml(params: {
   order: Order;
   bankRecipient: string;
@@ -29,9 +39,11 @@ export function buildInvoiceHtml(params: {
   bankAddress?: string;
   signatoryName?: string;
   invoiceUrl?: string;
+  /** Якщо передано — лист отримує сопровідний блок (подяка) зверху та промо-блок (акції/каталог/контакти) знизу. */
+  siteUrl?: string;
 }): string {
   const { order, bankRecipient, bankIban, bankName, bankEdrpou,
-          bankAddress = '', signatoryName = '', invoiceUrl } = params;
+          bankAddress = '', signatoryName = '', invoiceUrl, siteUrl } = params;
 
   const date = new Date(order.created_at).toLocaleDateString('uk-UA', {
     day: '2-digit', month: 'long', year: 'numeric',
@@ -48,13 +60,13 @@ export function buildInvoiceHtml(params: {
   const deliveryAddr = [order.delivery_city_name, order.delivery_address].filter(Boolean).join(', ');
 
   const itemRows = items.map((item, i) => {
-    const name = [item.brand, item.name].filter(Boolean).join(' ');
+    const name = esc([item.brand, item.name].filter(Boolean).join(' '));
     const sum  = (item.qty * Number(item.price)).toFixed(2);
     const bg   = i % 2 === 1 ? '#F8FAFC' : '#ffffff';
     return `
       <tr style="background:${bg};">
         <td style="border:1px solid #ccc;padding:5px 6px;text-align:center;font-size:11px;">${i + 1}</td>
-        <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;font-family:monospace;font-size:10px;color:#444;">${item.sku}</td>
+        <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;font-family:monospace;font-size:10px;color:#444;">${esc(item.sku)}</td>
         <td style="border:1px solid #ccc;padding:5px 8px;font-size:11px;">${name}</td>
         <td style="border:1px solid #ccc;padding:5px 6px;text-align:right;font-size:11px;">${item.qty}</td>
         <td style="border:1px solid #ccc;padding:5px 6px;text-align:center;font-size:11px;color:#555;">шт</td>
@@ -62,6 +74,80 @@ export function buildInvoiceHtml(params: {
         <td style="border:1px solid #ccc;padding:5px 8px;text-align:right;font-size:11px;font-weight:700;">${sum}</td>
       </tr>`;
   }).join('');
+
+  // Сопровідний блок над рахунком: подяка + що робити далі.
+  const coverBlock = siteUrl ? `
+  <div style="max-width:680px;margin:24px auto 16px;background:#fff;border-radius:12px;overflow:hidden;
+              box-shadow:0 2px 16px rgba(0,0,0,0.08);">
+    <div style="background:#1E3A5F;padding:22px 28px;">
+      <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px;">
+        <a href="${siteUrl}" style="text-decoration:none;"><span style="color:#93C5FD;">FIX</span><span style="color:#5EEAD4;">LINE</span></a>
+      </div>
+      <div style="color:#94A3B8;font-size:11px;margin-top:3px;letter-spacing:0.06em;text-transform:uppercase;">
+        Цифрова платформа будівельних рішень
+      </div>
+    </div>
+    <div style="padding:22px 28px;">
+      <div style="font-size:17px;font-weight:800;color:#0F172A;margin-bottom:8px;">
+        Вітаємо, ${esc(buyerName)}! 👋
+      </div>
+      <div style="font-size:13.5px;color:#475569;line-height:1.7;">
+        Дякуємо за ваше замовлення <strong>№${order.order_number}</strong> від ${date}.
+        Рахунок на оплату — нижче в цьому листі та у PDF-вкладенні.
+      </div>
+      <div style="margin-top:14px;background:#F0FDFA;border:1px solid #99F6E4;border-radius:8px;padding:12px 16px;
+                  font-size:12.5px;color:#0F766E;line-height:1.65;">
+        💡 Після оплати повідомте нас, будь ласка, — замовлення, оплачені до <strong>14:00</strong>,
+        відправляємо Новою Поштою того ж дня.
+      </div>
+    </div>
+  </div>` : '';
+
+  // Промо-блок під рахунком: акції, каталог, контакти.
+  const promoBlock = siteUrl ? `
+  <div style="max-width:680px;margin:16px auto 0;background:#fff;border-radius:12px;overflow:hidden;
+              box-shadow:0 2px 16px rgba(0,0,0,0.08);">
+    <div style="padding:22px 28px;text-align:center;">
+      <div style="font-size:14px;font-weight:800;color:#0F172A;margin-bottom:6px;">
+        Поки замовлення в дорозі — загляньте до нас 🛒
+      </div>
+      <div style="font-size:12.5px;color:#64748B;line-height:1.6;margin-bottom:16px;">
+        Щотижня оновлюємо акційні пропозиції на герметики, піни, клеї та ґрунтовки.
+      </div>
+      <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+        <tr>
+          <td style="padding:0 5px;">
+            <a href="${siteUrl}/shop/sale" style="display:inline-block;background:#1E3A5F;color:#fff;
+               font-size:12.5px;font-weight:700;padding:10px 18px;border-radius:8px;text-decoration:none;">
+              🔥 Акції та знижки
+            </a>
+          </td>
+          <td style="padding:0 5px;">
+            <a href="${siteUrl}/shop" style="display:inline-block;background:#F1F5F9;color:#1E3A5F;
+               font-size:12.5px;font-weight:700;padding:10px 18px;border-radius:8px;text-decoration:none;">
+              Каталог товарів
+            </a>
+          </td>
+          <td style="padding:0 5px;">
+            <a href="${siteUrl}/blog" style="display:inline-block;background:#F1F5F9;color:#1E3A5F;
+               font-size:12.5px;font-weight:700;padding:10px 18px;border-radius:8px;text-decoration:none;">
+              Поради в блозі
+            </a>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div style="background:#F8FAFC;border-top:1px solid #EEF2F6;padding:16px 28px;text-align:center;">
+      <div style="font-size:12px;color:#64748B;margin-bottom:4px;">
+        Питання щодо замовлення чи оплати:
+        <a href="tel:+380991997788" style="color:#1E3A5F;font-weight:700;text-decoration:none;">+38 (099) 199-77-88</a>
+        &nbsp;·&nbsp;
+        <a href="mailto:info@fixline.com.ua" style="color:#1E3A5F;font-weight:600;">info@fixline.com.ua</a>
+      </div>
+      <div style="font-size:11px;color:#94A3B8;margin-top:6px;font-weight:700;">Все тримається на FIXLINE</div>
+      <div style="font-size:11px;color:#CBD5E1;margin-top:2px;"><a href="${siteUrl}" style="color:#CBD5E1;text-decoration:none;">fixline.com.ua</a></div>
+    </div>
+  </div>` : '';
 
   const printBtn = invoiceUrl
     ? `<div style="text-align:center;margin:24px 0 8px;">
@@ -81,7 +167,8 @@ export function buildInvoiceHtml(params: {
   <title>Рахунок на оплату №${order.order_number}</title>
 </head>
 <body style="margin:0;padding:0;background:#E8ECF0;font-family:Arial,Helvetica,sans-serif;color:#111;">
-<div style="max-width:680px;margin:24px auto;background:#fff;border-radius:4px;
+${coverBlock}
+<div style="max-width:680px;margin:${siteUrl ? '0' : '24px'} auto;background:#fff;border-radius:4px;
             box-shadow:0 2px 16px rgba(0,0,0,0.1);padding:24px 28px 28px;">
 
   <!-- Warning -->
@@ -146,9 +233,9 @@ export function buildInvoiceHtml(params: {
     <tr>
       <td style="padding:3px 0;font-weight:700;vertical-align:top;">Покупець:</td>
       <td style="padding:3px 0;vertical-align:top;">
-        ${buyerName}
-        ${order.company && order.contact !== order.company ? `<br/>${order.contact}` : ''}
-        ${order.phone ? `<br/><span style="color:#555;font-size:11px;">Тел.: ${order.phone}</span>` : ''}
+        ${esc(buyerName)}
+        ${order.company && order.contact !== order.company ? `<br/>${esc(order.contact)}` : ''}
+        ${order.phone ? `<br/><span style="color:#555;font-size:11px;">Тел.: ${esc(order.phone)}</span>` : ''}
       </td>
     </tr>
     ${dueDateStr ? `
@@ -161,7 +248,7 @@ export function buildInvoiceHtml(params: {
     <tr><td colspan="2" style="padding:3px 0;"><hr style="border:none;border-top:1px dashed #ccc;"/></td></tr>
     <tr>
       <td style="padding:3px 0;font-weight:700;">Адреса доставки:</td>
-      <td style="padding:3px 0;">${deliveryAddr}</td>
+      <td style="padding:3px 0;">${esc(deliveryAddr)}</td>
     </tr>` : ''}
   </table>
 
@@ -217,6 +304,8 @@ export function buildInvoiceHtml(params: {
   ${printBtn}
 
 </div>
+
+${promoBlock}
 
 <!-- Email footer -->
 <div style="max-width:680px;margin:0 auto;padding:10px 0;text-align:center;
