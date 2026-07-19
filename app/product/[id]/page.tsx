@@ -12,6 +12,7 @@ import ProductImage from '../../components/ProductImage';
 import RelatedCarousel from './RelatedCarousel';
 import BackButton from './BackButton';
 import CoverageCalculator from './CoverageCalculator';
+import CalculatorLink from './CalculatorLink';
 import DeliveryInfo from './DeliveryInfo';
 import ProductFaq from './ProductFaq';
 import Footer from '../../components/Footer';
@@ -298,6 +299,8 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
               volume={product.volume}
               priceUnit={priceUnit}
             />
+
+            <CalculatorLink categorySlug={product.category_slug} locale="uk" />
           </div>
         </div>
 

@@ -15,6 +15,7 @@ import ProductImage from '../../../components/ProductImage';
 import RelatedCarousel from '../../../product/[id]/RelatedCarousel';
 import BackButton from '../../../product/[id]/BackButton';
 import CoverageCalculator from '../../../product/[id]/CoverageCalculator';
+import CalculatorLink from '../../../product/[id]/CalculatorLink';
 import DeliveryInfo from '../../../product/[id]/DeliveryInfo';
 import ProductFaq, { faqText } from '../../../product/[id]/ProductFaq';
 import Footer from '../../../components/Footer';
@@ -294,6 +295,8 @@ export default async function RuProductPage({ params, searchParams }: { params: 
               volume={product.volume}
               priceUnit={priceUnit}
             />
+
+            <CalculatorLink categorySlug={product.category_slug} locale="ru" />
           </div>
         </div>
 
