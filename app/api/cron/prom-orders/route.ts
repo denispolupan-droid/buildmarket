@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncPromOrders } from '../../../../lib/prom-sync';
+import { watchPromCancellations } from '../../../../lib/marketplace-cancel-watch';
 import { alertAdmin } from '../../../../lib/alert';
 
 export async function GET(req: NextRequest) {
@@ -10,7 +11,16 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await syncPromOrders();
-    return NextResponse.json(result);
+
+    // Детект скасувань покупцем після створення замовлення
+    let cancelWatch: unknown = null;
+    try {
+      cancelWatch = await watchPromCancellations();
+    } catch (err) {
+      console.error('[prom-cancel-watch]', err);
+    }
+
+    return NextResponse.json({ ...result, cancelWatch });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     alertAdmin('Cron: синк замовлень Prom впав', msg);

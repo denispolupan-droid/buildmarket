@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncRozetkaOrders } from '../../../../lib/rozetka-sync';
+import { watchRozetkaCancellations } from '../../../../lib/marketplace-cancel-watch';
 import { alertAdmin } from '../../../../lib/alert';
 
 export async function GET(req: NextRequest) {
@@ -10,7 +11,17 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await syncRozetkaOrders();
-    return NextResponse.json(result);
+
+    // Детект скасувань покупцем після створення замовлення (авто-скасування
+    // невідвантажених; алерт для відвантажених — оформити повернення вручну)
+    let cancelWatch: unknown = null;
+    try {
+      cancelWatch = await watchRozetkaCancellations();
+    } catch (err) {
+      console.error('[rozetka-cancel-watch]', err);
+    }
+
+    return NextResponse.json({ ...result, cancelWatch });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     alertAdmin('Cron: синк замовлень Rozetka впав', msg);

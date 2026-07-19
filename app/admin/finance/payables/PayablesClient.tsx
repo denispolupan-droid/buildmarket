@@ -16,6 +16,11 @@ export type SupplierTransaction = {
   acc_doc_type:  string | null;
 };
 
+export type SupplierAging = {
+  d0_30: number; d31_60: number; d61_90: number; d90p: number;
+  oldest_date: string | null;
+};
+
 export type SupplierBalance = {
   supplier_id:    number;
   supplier_name:  string;
@@ -23,6 +28,7 @@ export type SupplierBalance = {
   total_payments: number;
   balance:        number;
   transactions:   SupplierTransaction[];
+  aging?:         SupplierAging;
 };
 
 function fmt(n: number) {
@@ -346,6 +352,26 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                         <Banknote size={11} /> Оплатити
                       </button>
                     </div>
+                    {/* AP-aging: старіння непогашеного боргу (оплати погашають найстаріші борги за FIFO) */}
+                    {!dateApplied && b.aging && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '5px', flexWrap: 'wrap' }}>
+                        {([
+                          ['0–30 дн', b.aging.d0_30,  '#64748B', '#F1F5F9'],
+                          ['31–60',   b.aging.d31_60, '#B45309', '#FEF3C7'],
+                          ['61–90',   b.aging.d61_90, '#C2410C', '#FFEDD5'],
+                          ['90+',     b.aging.d90p,   '#DC2626', '#FEE2E2'],
+                        ] as const).filter(([, v]) => v > 0.005).map(([lbl, v, color, bg]) => (
+                          <span key={lbl} style={{ fontSize: '10.5px', fontWeight: 700, color, background: bg, borderRadius: '5px', padding: '1px 7px' }}>
+                            {lbl}: {fmt(v)} ₴
+                          </span>
+                        ))}
+                        {b.aging.oldest_date && (
+                          <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                            найстаріший борг: {new Date(b.aging.oldest_date).toLocaleDateString('uk-UA')}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div style={{ textAlign: 'right' }}>

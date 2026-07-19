@@ -79,6 +79,39 @@ export default async function PayablesPage() {
     });
   }
 
+  // AP-aging: старіння непогашеного боргу. Оплати (дебети) погашають борги
+  // (кредити) за FIFO від найстарішого; залишки бакетуються за віком.
+  function computeAging(txns: { amount: number; business_date: string }[]) {
+    const debts: { date: string; left: number }[] = [];
+    let payPool = 0;
+    for (const t of txns) {           // транзакції вже відсортовані за датою asc
+      if (t.amount < 0) debts.push({ date: t.business_date, left: -t.amount });
+      else payPool += t.amount;
+    }
+    for (const d of debts) {
+      if (payPool <= 0) break;
+      const use = Math.min(d.left, payPool);
+      d.left -= use; payPool -= use;
+    }
+    const buckets = { d0_30: 0, d31_60: 0, d61_90: 0, d90p: 0 };
+    let oldest: string | null = null;
+    const nowMs = Date.now();
+    for (const d of debts) {
+      if (d.left <= 0.005) continue;
+      if (!oldest) oldest = d.date;
+      const age = Math.floor((nowMs - new Date(d.date).getTime()) / 86400000);
+      if (age <= 30) buckets.d0_30 += d.left;
+      else if (age <= 60) buckets.d31_60 += d.left;
+      else if (age <= 90) buckets.d61_90 += d.left;
+      else buckets.d90p += d.left;
+    }
+    return { ...buckets, oldest_date: oldest };
+  }
+
+  for (const agg of aggMap.values()) {
+    if (agg.balance < -0.005) agg.aging = computeAging(agg.transactions);
+  }
+
   // Сортуємо: спочатку найбільший борг (balance найменший = ми найбільше винні)
   // Не фільтруємо по балансу тут — клієнт сам вирішує що показати (при фільтрі по даті може бути 0)
   const balances: SupplierBalance[] = [...aggMap.values()]
