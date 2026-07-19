@@ -116,6 +116,25 @@ export default async function StockHubPage() {
             </div>
           </div>
         </Link>
+        <Link href="/admin/accounting/inventory" style={{ textDecoration: 'none', gridColumn: '1 / -1' }}>
+          <div className="stock-card" style={{
+            background: 'var(--bg-card)', border: '1.5px solid var(--border)',
+            borderRadius: '16px', padding: '20px 24px',
+            display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer',
+          }}>
+            <div style={{ padding: '10px', background: '#EFF6FF', borderRadius: '12px', display: 'inline-flex' }}>
+              <Warehouse size={24} color="#1E3A5F" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>Інвентаризація</div>
+              <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                Перерахунок фактичних залишків: нестача/надлишок проводяться документом з відомістю розбіжностей
+              </div>
+            </div>
+            <ChevronRight size={20} color="#94A3B8" />
+          </div>
+        </Link>
+
         <Link href="/admin/accounting/stock/reorder" style={{ textDecoration: 'none', gridColumn: '1 / -1' }}>
           <div className="stock-card" style={{
             background: reorderCount > 0 ? '#FEF3C7' : 'var(--bg-card)',

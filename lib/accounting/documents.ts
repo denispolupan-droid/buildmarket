@@ -343,6 +343,39 @@ export async function confirmDocument(
       }
     }
 
+  } else if (doc.doc_type === 'inventory') {
+    // Інвентаризація: нестача → DR variance / CR inventory_asset (за фактичною
+    // FIFO-собівартістю списаних партій), надлишок → DR inventory_asset / CR variance
+    // (за cost_price оприбуткованих рядків). Сторно-документ симетричний сам по собі.
+    const { data: invMoves } = await db
+      .from('stock_movements')
+      .select('qty, cost_price, batch_cost')
+      .eq('document_id', documentId);
+    let shortageCost = 0, surplusCost = 0;
+    for (const m of invMoves ?? []) {
+      const q = Number(m.qty);
+      if (q < 0) shortageCost += Math.abs(Number(m.batch_cost ?? (Number(m.cost_price ?? 0) * q)));
+      else       surplusCost  += Number(m.cost_price ?? 0) * q;
+    }
+    if (shortageCost > 0.001) {
+      await recordTxn({
+        debitAccount: 'variance', creditAccount: 'inventory_asset',
+        amount: Math.round(shortageCost * 100) / 100, businessDate: bizDate,
+        docId: documentId, docType: 'inventory',
+        description: 'Інвентаризація: нестача (списання за FIFO)',
+        idempotencyKey: `inv-shortage:${documentId}`, createdBy: confirmedBy,
+      });
+    }
+    if (surplusCost > 0.001) {
+      await recordTxn({
+        debitAccount: 'inventory_asset', creditAccount: 'variance',
+        amount: Math.round(surplusCost * 100) / 100, businessDate: bizDate,
+        docId: documentId, docType: 'inventory',
+        description: 'Інвентаризація: надлишок (оприбуткування)',
+        idempotencyKey: `inv-surplus:${documentId}`, createdBy: confirmedBy,
+      });
+    }
+
   } else if (doc.doc_type === 'return_out' || doc.doc_type === 'supplier_return') {
     // Повернення постачальнику (два синоніми типу). Раніше return_out помилково
     // сторнував ВИРУЧКУ КЛІЄНТА (семантика клієнтського повернення) при тому, що

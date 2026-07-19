@@ -676,3 +676,96 @@ describe('Customer return (return_in)', () => {
     await assertInvariants();
   });
 });
+
+// ── Інвентаризація (inventory) ────────────────────────────────────────────────
+// Потік: прихід +10 (cost 100) → інвентаризація: факт 8 (нестача 2), потім
+// друга: факт 9 (надлишок 1). Очікування: склад коригується, гроші йдуть
+// на рахунок variance за FIFO-собівартістю.
+describe('Inventory count (inventory doc)', () => {
+  let invReceiptId: string;
+  let invShortageId: string;
+  let invSurplusId: string;
+
+  it('fixture: receipt +10 @100', async () => {
+    const receipt = await createDocument({
+      doc_type:     'receipt',
+      warehouse_id: warehouseId,
+      supplier_id:  supplierId,
+      notes:        '[TEST] Receipt for inventory flow',
+      meta:         { test: true },
+      lines: [{ sku: testSku, qty: 10, price: 100, cost_price: 100 }],
+    });
+    invReceiptId = receipt.id;
+    await confirmDocument(invReceiptId, 'test-user');
+    await assertInvariants();
+  });
+
+  it('shortage: fact 8 → stock -2, DR variance / CR inventory_asset = 200', async () => {
+    const before = await getStockBalance(testSku, warehouseId);
+    const qtyBefore = before?.qty_total ?? 0;
+
+    const doc = await createDocument({
+      doc_type:     'inventory',
+      warehouse_id: warehouseId,
+      notes:        '[TEST] Inventory shortage',
+      meta:         { test: true },
+      lines: [{ sku: testSku, qty: -2, price: 0, cost_price: 100 }],
+    });
+    invShortageId = doc.id;
+    await confirmDocument(invShortageId, 'test-user');
+
+    const after = await getStockBalance(testSku, warehouseId);
+    expect(after?.qty_total).toBe(qtyBefore - 2);
+
+    const entries = await getMoneyEntries(invShortageId);
+    const varianceDebit = entries.find(e => e.account_type === 'variance' && Number(e.amount) > 0);
+    const invCredit     = entries.find(e => e.account_type === 'inventory_asset' && Number(e.amount) < 0);
+    expect(varianceDebit, 'variance debit missing').toBeTruthy();
+    // Сума = ФАКТИЧНА FIFO-собівартість списаних партій (не обов'язково 2*100:
+    // сусідні тести могли лишити старіші партії з іншою ціною)
+    const { data: shortMoves } = await db
+      .from('stock_movements').select('batch_cost').eq('document_id', invShortageId).lt('qty', 0);
+    const fifoCost = (shortMoves ?? []).reduce((s, m) => s + Math.abs(Number(m.batch_cost ?? 0)), 0);
+    expect(fifoCost).toBeGreaterThan(0);
+    expect(Number(varianceDebit!.amount)).toBeCloseTo(Math.round(fifoCost * 100) / 100, 2);
+    expect(invCredit, 'inventory_asset credit missing').toBeTruthy();
+    expect(Number(invCredit!.amount)).toBeCloseTo(-Math.round(fifoCost * 100) / 100, 2);
+
+    await assertInvariants();
+  });
+
+  it('surplus: +1 → stock +1, DR inventory_asset / CR variance = 100', async () => {
+    const before = await getStockBalance(testSku, warehouseId);
+    const qtyBefore = before?.qty_total ?? 0;
+
+    const doc = await createDocument({
+      doc_type:     'inventory',
+      warehouse_id: warehouseId,
+      notes:        '[TEST] Inventory surplus',
+      meta:         { test: true },
+      lines: [{ sku: testSku, qty: 1, price: 0, cost_price: 100 }],
+    });
+    invSurplusId = doc.id;
+    await confirmDocument(invSurplusId, 'test-user');
+
+    const after = await getStockBalance(testSku, warehouseId);
+    expect(after?.qty_total).toBe(qtyBefore + 1);
+
+    const entries = await getMoneyEntries(invSurplusId);
+    const invDebit       = entries.find(e => e.account_type === 'inventory_asset' && Number(e.amount) > 0);
+    const varianceCredit = entries.find(e => e.account_type === 'variance' && Number(e.amount) < 0);
+    expect(invDebit, 'inventory_asset debit missing').toBeTruthy();
+    expect(Number(invDebit!.amount)).toBe(100);
+    expect(varianceCredit, 'variance credit missing').toBeTruthy();
+
+    await assertInvariants();
+  });
+
+  it('cleanup: cancel surplus, shortage-restock, receipt', async () => {
+    // Порядок: сторно надлишку (−1) → сторно нестачі (+2) → сторно приходу (−10)
+    await cancelDocument(invSurplusId,  'test-user', 'Тест: прибирання');
+    await cancelDocument(invShortageId, 'test-user', 'Тест: прибирання');
+    await cancelDocument(invReceiptId,  'test-user', 'Тест: прибирання');
+    await assertInvariants();
+  });
+});
