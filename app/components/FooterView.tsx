@@ -53,6 +53,7 @@ const serviceLinks = [
   { labelUk: "Зв'яжіться з нами",   labelRu: 'Свяжитесь с нами',         hrefUk: '/contacts', hrefRu: '/ru/contacts' },
   { labelUk: 'Умови доставки',      labelRu: 'Условия доставки',          hrefUk: '/delivery', hrefRu: '/ru/delivery' },
   { labelUk: 'Політика повернення', labelRu: 'Политика возврата',         hrefUk: '/returns',  hrefRu: '/ru/returns' },
+  { labelUk: 'Калькулятори витрати', labelRu: 'Калькуляторы расхода',     hrefUk: '/calculators', hrefRu: '/ru/calculators' },
   { labelUk: 'Часті питання',       labelRu: 'Часто задаваемые вопросы',  hrefUk: '/blog',     hrefRu: '/ru/blog' },
 ];
 

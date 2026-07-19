@@ -50,6 +50,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // /catalog — закритий B2B розділ, noindex, не додаємо в sitemap
     { url: `${BASE}/blog`,        lastModified: SITE_UPDATED, changeFrequency: 'weekly',  priority: 0.7 },
     { url: `${BASE}/about`,       lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${BASE}/calculators`, lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${BASE}/contacts`,    lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${BASE}/dropship`,    lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${BASE}/delivery`,    lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.4 },
@@ -118,6 +119,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/ru/shop/sale`,  lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.3 },
     { url: `${BASE}/ru/blog`,       lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.3 },
     { url: `${BASE}/ru/about`,      lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },
+    { url: `${BASE}/ru/calculators`, lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },
     { url: `${BASE}/ru/contacts`,   lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },
     { url: `${BASE}/ru/dropship`,   lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },
     { url: `${BASE}/ru/delivery`,   lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },
