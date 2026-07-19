@@ -14,12 +14,15 @@ type SaleLine = { sku: string; qty: number; price: number; cost_price: number; f
 async function loadReturnableState(db: ReturnType<typeof createServiceClient>, orderId: string) {
   const { data: saleDocs } = await db
     .from('acc_documents')
-    .select('id')
+    .select('id, doc_date')
     .eq('order_id', orderId)
     .eq('doc_type', 'sale')
     .eq('status', 'confirmed')
-    .is('reversal_of', null);
+    .is('reversal_of', null)
+    .order('doc_date', { ascending: true });
   const saleIds = (saleDocs ?? []).map(d => d.id);
+  // РН-основа для «введення на підставі»: остання РН замовлення
+  const lastSaleId: string | null = saleIds.length ? saleIds[saleIds.length - 1] : null;
 
   const { data: returnDocs } = await db
     .from('acc_documents')
@@ -51,7 +54,7 @@ async function loadReturnableState(db: ReturnType<typeof createServiceClient>, o
     const s = state.get(l.sku);
     if (s) s.returned += Number(l.qty);
   }
-  return { state, hasSale: saleIds.length > 0 };
+  return { state, hasSale: saleIds.length > 0, lastSaleId };
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -100,7 +103,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .single();
   if (!order) return NextResponse.json({ error: 'Замовлення не знайдено' }, { status: 404 });
 
-  const { state, hasSale } = await loadReturnableState(db, id);
+  const { state, hasSale, lastSaleId } = await loadReturnableState(db, id);
   if (!hasSale) return NextResponse.json({ error: 'Немає підтвердженої РН — повертати нічого' }, { status: 409 });
 
   for (const item of reqItems) {
@@ -119,6 +122,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const doc = await createDocument({
     doc_type:     'return_in',
     warehouse_id: warehouse.id,
+    parent_doc_id: lastSaleId ?? undefined,
     order_id:     order.id,
     customer_id:  order.customer_id ?? undefined,
     channel_code: order.channel_code ?? 'website',

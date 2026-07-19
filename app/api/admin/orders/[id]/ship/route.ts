@@ -10,6 +10,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const lock = { claimed: false, orderId: '' };
   try {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -19,6 +20,24 @@ export async function POST(
 
   const { id } = await params;
   const db = createServiceClient();
+
+  // Атомарний claim проти паралельної подвійної відгрузки: між SELECT існуючої
+  // РН і створенням нової немає блокування, тому два одночасні кліки могли
+  // створити дві РН. UPDATE із умовою — атомарний; протухлий лок (2 хв) можна
+  // перехопити, якщо попередній запит помер не звільнивши його.
+  const staleBefore = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+  const { data: claimed } = await db
+    .from('orders')
+    .update({ ship_lock: new Date().toISOString() })
+    .eq('id', id)
+    .or(`ship_lock.is.null,ship_lock.lt.${staleBefore}`)
+    .select('id')
+    .maybeSingle();
+  if (!claimed) {
+    return NextResponse.json({ error: 'Відгрузка цього замовлення вже виконується' }, { status: 409 });
+  }
+  lock.claimed = true;
+  lock.orderId = id;
 
   const body = await req.json().catch(() => ({})) as {
     items?: { sku: string; qty: number }[];
@@ -215,5 +234,9 @@ export async function POST(
       : String(err);
     console.error('[ship] unhandled error:', err);
     return NextResponse.json({ error: message }, { status: 500 });
+  } finally {
+    if (lock.claimed) {
+      await createServiceClient().from('orders').update({ ship_lock: null }).eq('id', lock.orderId);
+    }
   }
 }

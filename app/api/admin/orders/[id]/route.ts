@@ -15,6 +15,66 @@ import { applyDeliveredEffects } from '../../../../../lib/accounting/delivered-e
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// РН — кінцевий фінансовий документ виконаного замовлення. Ідемпотентно фіксує
+// продаж (документ + виручка + COGS + борг постачальнику), якщо підтвердженої
+// РН по замовленню ще немає. Викликається і на shipped, і на delivered.
+async function ensureSaleRecorded(
+  db: ReturnType<typeof createServiceClient>,
+  orderId: string,
+  byEmail: string,
+): Promise<void> {
+  try {
+    const { data: order } = await db
+      .from('orders')
+      .select('id, order_number, items, channel_code, partner_code, customer_id, payment_type, created_at, shipping_supplier_id')
+      .eq('id', orderId)
+      .single();
+
+    // Idempotency guard (H2): якщо підтверджена РН вже існує (відгружено через
+    // /ship, статус перевибрано, запит повторено) — не фіксуємо продаж повторно.
+    const { data: existingSale } = await db
+      .from('acc_documents')
+      .select('id')
+      .eq('order_id', orderId)
+      .eq('doc_type', 'sale')
+      .eq('status', 'confirmed')
+      .maybeSingle();
+
+    if (!existingSale && order?.items?.length && order.channel_code !== 'dropship') {
+      const bizDate = order.created_at
+        ? new Date(order.created_at).toISOString().slice(0, 10)
+        : new Date().toISOString().slice(0, 10);
+
+      let saleContractId: string | undefined;
+      if (order.customer_id) {
+        const { data: ctr } = await db
+          .from('customer_contracts')
+          .select('id')
+          .eq('customer_id', order.customer_id)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        saleContractId = ctr?.id ?? undefined;
+      }
+
+      await recordDropshipSale({
+        order_id:      order.id,
+        order_number:  order.order_number,
+        order_items:   order.items,
+        channel_code:  order.channel_code ?? 'website',
+        confirmed_by:  byEmail,
+        customer_id:   order.customer_id ?? undefined,
+        contract_id:   saleContractId,
+        business_date: bizDate,
+        shipping_supplier_id: order.shipping_supplier_id ?? null,
+      });
+    }
+  } catch (err) {
+    alertAdmin(`РН не зафіксувалась при зміні статусу (order ${orderId})`, err);
+  }
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -290,63 +350,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       console.error('[reservation] release on ship failed:', err);
     }
 
-    try {
-      const { data: order } = await db
-        .from('orders')
-        .select('id, order_number, items, channel_code, partner_code, customer_id, payment_type, created_at, shipping_supplier_id')
-        .eq('id', id)
-        .single();
-
-      // Idempotency guard (H2): if a confirmed sale document already exists for
-      // this order (e.g. shipped earlier via /ship, or the status was re-selected
-      // in the dropdown, or the request was retried) — do NOT record the sale
-      // again, otherwise revenue + COGS get double-counted in the ledger.
-      const { data: existingSale } = await db
-        .from('acc_documents')
-        .select('id')
-        .eq('order_id', id)
-        .eq('doc_type', 'sale')
-        .eq('status', 'confirmed')
-        .maybeSingle();
-
-      if (!existingSale && order?.items?.length && order.channel_code !== 'dropship') {
-        const bizDate = order.created_at
-          ? new Date(order.created_at).toISOString().slice(0, 10)
-          : new Date().toISOString().slice(0, 10);
-
-        let saleContractId: string | undefined;
-        if (order.customer_id) {
-          const { data: ctr } = await db
-            .from('customer_contracts')
-            .select('id')
-            .eq('customer_id', order.customer_id)
-            .eq('status', 'active')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          saleContractId = ctr?.id ?? undefined;
-        }
-
-        await recordDropshipSale({
-          order_id:      order.id,
-          order_number:  order.order_number,
-          order_items:   order.items,
-          channel_code:  order.channel_code ?? 'website',
-          confirmed_by:  user.email ?? 'admin',
-          customer_id:   order.customer_id ?? undefined,
-          contract_id:   saleContractId,
-          business_date: bizDate,
-          shipping_supplier_id: order.shipping_supplier_id ?? null,
-        });
-      }
-    } catch (err) {
-      console.error('[accounting] recordDropshipSale failed:', err);
-    }
+    await ensureSaleRecorded(db, id, user.email ?? 'admin');
   }
 
-  // delivered → облікові ефекти (комісія маркетплейсу, COD партнеру) — спільна
-  // ідемпотентна функція, та сама що викликається кроном sync-delivery-status
+  // delivered → гарантія РН (якщо статус стрибнув повз shipped — РН все одно
+  // створюється, інакше виконане замовлення лишилось би без накладної, виручки
+  // та списання складу; інваріант I7 це ловить) + облікові ефекти доставки
   if (status === 'delivered') {
+    await ensureSaleRecorded(db, id, user.email ?? 'admin');
     await applyDeliveredEffects(id, user.email ?? 'admin');
   }
 

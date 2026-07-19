@@ -28,8 +28,41 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!receipt) return NextResponse.json({ error: 'Прихід не знайдено' }, { status: 404 });
   if (receipt.status !== 'confirmed') return NextResponse.json({ error: 'Можна повертати тільки проведені приходи' }, { status: 409 });
 
-  // P5: не можна повернути більше ніж прийшло
-  // (check is done via procurement_summary view, simplified here)
+  // P5: не можна повернути постачальнику більше, ніж прийшло цим приходом
+  // (мінус те, що вже повернуто попередніми поверненнями по ньому).
+  const { data: receiptLines } = await db
+    .from('acc_document_lines')
+    .select('sku, qty')
+    .eq('document_id', receiptId);
+
+  const { data: priorReturns } = await db
+    .from('acc_documents')
+    .select('id')
+    .eq('parent_doc_id', receiptId)
+    .eq('doc_type', 'supplier_return')
+    .eq('status', 'confirmed')
+    .is('reversal_of', null);
+  const priorIds = (priorReturns ?? []).map(d => d.id);
+  const priorLines = priorIds.length
+    ? ((await db.from('acc_document_lines').select('sku, qty').in('document_id', priorIds)).data ?? [])
+    : [];
+
+  const availableBySku = new Map<string, number>();
+  for (const l of receiptLines ?? []) {
+    availableBySku.set(l.sku, (availableBySku.get(l.sku) ?? 0) + Number(l.qty));
+  }
+  for (const l of priorLines) {
+    availableBySku.set(l.sku, (availableBySku.get(l.sku) ?? 0) - Number(l.qty));
+  }
+  for (const l of body.lines.filter(x => x.qty > 0)) {
+    const avail = availableBySku.get(l.sku) ?? 0;
+    if (l.qty > avail + 1e-9) {
+      return NextResponse.json(
+        { error: `${l.sku}: по цьому приходу доступно до повернення ${avail}, запитано ${l.qty}` },
+        { status: 400 },
+      );
+    }
+  }
 
   const doc = await createDocument({
     doc_type:     'supplier_return',
