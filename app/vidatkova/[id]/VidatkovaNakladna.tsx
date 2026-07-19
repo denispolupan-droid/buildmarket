@@ -3,6 +3,7 @@
 import { hryvniaInWords } from "../../../lib/number-to-words";
 import { useState, useRef } from 'react';
 import { Printer, Mail } from 'lucide-react';
+import InvoiceMessengerButtons from '../../components/InvoiceMessengerButtons';
 
 function formatIban(raw: string) {
   const s = raw.replace(/\s/g, '');
@@ -80,6 +81,13 @@ export default function VidatkovaNakladna({
   const date = new Date(docDate).toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' });
   const ibanDisplay = formatIban(sellerIban);
 
+  // Text copied to the clipboard when sending the delivery note via a messenger.
+  const messengerMessage = [
+    `Вітаємо, ${buyerName}! 🤝`,
+    `Ваша видаткова накладна № ${docNumber} на суму ${total.toFixed(2)} грн.`,
+    `Переглянути онлайн: ${typeof window !== 'undefined' ? window.location.origin : 'https://fixline.com.ua'}/vidatkova/${docId}`,
+  ].join('\n');
+
   return (
     <>
       <style>{`
@@ -142,6 +150,13 @@ export default function VidatkovaNakladna({
           </div>
         )}
         <div style={{ display: 'flex', gap: '8px' }}>
+          <InvoiceMessengerButtons
+            variant="toolbar"
+            phone={buyerPhone ?? ''}
+            contact={buyerName}
+            total={total}
+            message={messengerMessage}
+          />
           <button
             onClick={() => { setShowEmailForm(v => !v); setSendResult(null); }}
             style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 18px', borderRadius: '10px', background: '#5B21B6', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 3px 12px rgba(91,33,182,0.3)' }}

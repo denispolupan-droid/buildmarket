@@ -40,16 +40,20 @@ export async function copyText(text: string): Promise<boolean> {
 export default function InvoiceMessengerButtons({
   phone, contact, orderNumber, orderId, total, variant = 'admin',
   channel = null, promOrderId = null, rozetkaOrderId = null,
+  message: messageOverride,
 }: {
   phone: string;
   contact: string;
-  orderNumber: number;
-  orderId: string;
-  total: number;
+  orderNumber?: number;
+  orderId?: string;
+  total?: number;
   variant?: 'admin' | 'toolbar';
   channel?: string | null;
   promOrderId?: string | number | null;
   rozetkaOrderId?: string | number | null;
+  /** Ready-made message to copy. When set, the default invoice text is not used
+   *  (lets other documents — e.g. видаткова накладна — reuse the same buttons). */
+  message?: string;
 }) {
   const [done, setDone] = useState<'tg' | 'viber' | 'copy' | null>(null);
   const normPhone = normalizePhone(phone);
@@ -58,7 +62,7 @@ export default function InvoiceMessengerButtons({
            : channel === 'prom'    ? { name: 'Prom.ua', num: String(promOrderId ?? orderNumber) }
            : null;
 
-  const message = [
+  const message = messageOverride ?? [
     `Вітаємо, ${contact}! 🤝`,
     mp
       ? `Дякуємо за замовлення №${mp.num} на ${mp.name} — на суму ${Number(total).toFixed(2)} грн.`
