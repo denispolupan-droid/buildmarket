@@ -3,6 +3,7 @@ import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
+import AddExpenseButton from './AddExpenseButton';
 
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
@@ -91,16 +92,19 @@ export default async function ExpensesPage({
     <div style={{ padding: '28px 32px', maxWidth: '1300px' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <Link href="/admin/finance" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-          <ArrowLeft size={16} />
-        </Link>
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Витрати</h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Операційні витрати · {rows.length} записів за період
-          </p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Link href="/admin/finance" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
+            <ArrowLeft size={16} />
+          </Link>
+          <div>
+            <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Витрати</h1>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
+              Операційні витрати · {rows.length} записів за період
+            </p>
+          </div>
         </div>
+        <AddExpenseButton />
       </div>
 
       {/* Date filter */}

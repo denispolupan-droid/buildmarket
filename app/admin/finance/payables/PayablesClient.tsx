@@ -40,9 +40,8 @@ function docLink(txn: SupplierTransaction): { href: string; label: string } | nu
   if (txn.doc_type === 'receipt' || txn.acc_doc_type === 'receipt') {
     return { href: `/admin/procurement/receipts/${txn.doc_id}`, label: txn.doc_number ?? 'Прихід' };
   }
-  if (txn.doc_type === 'supplier_payment') {
-    // Ваучер оплати — окремої сторінки не має, показуємо номер без посилання
-    return { href: '#', label: txn.doc_number ?? 'Оплата' };
+  if (txn.doc_type === 'supplier_payment' || txn.doc_type === 'supplier_payment_reversal') {
+    return { href: `/admin/finance/voucher/${txn.doc_id}`, label: txn.doc_number ?? 'Оплата' };
   }
   return txn.doc_number ? { href: '#', label: txn.doc_number } : null;
 }

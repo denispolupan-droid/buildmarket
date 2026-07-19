@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { Upload, X, Check, Zap, AlertCircle, Landmark } from 'lucide-react';
+import { Upload, X, Check, AlertCircle, Landmark } from 'lucide-react';
+import {
+  parseMonobankBusiness, autoMatchBankTxn, buildPaymentBody,
+  BANK_SPECIAL_OPTS, type BankContract as Contract,
+} from '../../../lib/bank-import';
 
-type Contract = {
-  id: string; contract_number: string;
-  customer_id: string; customer_name: string | null; balance?: number;
-};
 type ParsedTxn = {
   id: string; date: string; amount: number;
   description: string; counterparty?: string;
@@ -17,71 +17,6 @@ type ParsedTxn = {
 
 function fmt(n: number) { return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
-const CONTRACT_RE = /[Дд][Гг]-?\d{4}-[A-Za-z0-9]{6,}/g;
-
-function splitCSVLine(line: string, delim: string): string[] {
-  const result: string[] = []; let cur = ''; let inQ = false;
-  for (const ch of line) {
-    if (ch === '"') { inQ = !inQ; cur += ch; }
-    else if (ch === delim && !inQ) { result.push(cur); cur = ''; }
-    else cur += ch;
-  }
-  result.push(cur); return result;
-}
-
-function parseDate(raw: string): string | null {
-  const m = raw.match(/(\d{2})\.(\d{2})\.(\d{4})/);
-  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
-  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
-  return null;
-}
-
-function parseCSV(text: string) {
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-  if (lines.length < 2) return [];
-  const delim = lines[0].includes(';') ? ';' : ',';
-  const headers = lines[0].split(delim).map(h => h.replace(/"/g, '').toLowerCase().trim());
-  const col = (keys: string[]) => { for (const k of keys) { const i = headers.findIndex(h => h.includes(k)); if (i >= 0) return i; } return -1; };
-  const dateIdx = col(['дата і час','дата операц','date']);
-  const amtIdx  = col(['сума в валюті картки','сума операц','сума','amount']);
-  const descIdx = col(['деталі операції','призначення','description']);
-  const cpIdx   = col(['назва контрагента','назва платника','counterparty']);
-
-  return lines.slice(1).map((line, i) => {
-    const cols = splitCSVLine(line, delim);
-    const rawAmt = amtIdx >= 0 ? cols[amtIdx]?.replace(/["\s]/g,'').replace(',','.') : '';
-    const amount = parseFloat(rawAmt);
-    if (isNaN(amount) || amount <= 0) return null;
-    const date = parseDate(dateIdx >= 0 ? cols[dateIdx]?.replace(/"/g,'').trim() : '');
-    if (!date) return null;
-    return {
-      id: `${i}_${amount}_${date}`,
-      date, amount,
-      description: descIdx >= 0 ? cols[descIdx]?.replace(/"/g,'').trim() : '',
-      counterparty: cpIdx >= 0 ? cols[cpIdx]?.replace(/"/g,'').trim() : undefined,
-    };
-  }).filter(Boolean) as { id: string; date: string; amount: number; description: string; counterparty?: string }[];
-}
-
-function autoMatch(txn: { description: string; counterparty?: string; amount: number }, contracts: Contract[]) {
-  const hay = `${txn.description} ${txn.counterparty ?? ''}`;
-  const nums = [...hay.matchAll(CONTRACT_RE)];
-  if (nums.length > 0) {
-    const found = nums[0][0].toUpperCase().replace(/[Дд][Гг]-?/,'ДГ-');
-    const c = contracts.find(c => c.contract_number.toUpperCase() === found);
-    if (c) return { contractId: c.id, confidence: 'auto' as const, matchReason: `Номер: ${c.contract_number}` };
-  }
-  for (const c of contracts) {
-    const name = (c.customer_name ?? '').toLowerCase();
-    if (name.length > 3 && hay.toLowerCase().includes(name))
-      return { contractId: c.id, confidence: 'suggested' as const, matchReason: `Клієнт: ${c.customer_name}` };
-  }
-  for (const c of contracts) {
-    if (c.balance && Math.abs(c.balance - txn.amount) < 0.01)
-      return { contractId: c.id, confidence: 'suggested' as const, matchReason: `Сума = борг: ${fmt(c.balance)} ₴` };
-  }
-  return { contractId: '', confidence: 'none' as const, matchReason: '' };
-}
 
 const inp: React.CSSProperties = { height: '34px', padding: '0 8px', border: '1.5px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none', color: 'var(--text-primary)', background: 'var(--bg-soft)', width: '100%' };
 
@@ -98,9 +33,9 @@ export default function BankDrawerButton({ contracts }: { contracts: Contract[] 
     const reader = new FileReader();
     reader.onload = e => {
       try {
-        const parsed = parseCSV(e.target?.result as string);
+        const parsed = parseMonobankBusiness(e.target?.result as string);
         if (!parsed.length) { setErr('Не знайдено надходжень. Перевірте формат файлу.'); return; }
-        setTxns(parsed.map(t => ({ ...t, ...autoMatch(t, contracts), saving: false, saved: false })));
+        setTxns(parsed.map(t => ({ ...t, ...autoMatchBankTxn(t, contracts), saving: false, saved: false })));
       } catch { setErr('Помилка парсингу. Завантажте CSV виписку з Monobank Business.'); }
     };
     reader.readAsText(file, 'utf-8');
@@ -117,18 +52,13 @@ export default function BankDrawerButton({ contracts }: { contracts: Contract[] 
 
   async function saveOne(txn: ParsedTxn) {
     if (!txn.contractId || txn.saved) return;
-    const contract = contracts.find(c => c.id === txn.contractId);
-    if (!contract) return;
+    const body = buildPaymentBody(txn, txn.contractId, contracts);
+    if (!body) return;
     setField(txn.id, { saving: true, error: undefined });
     try {
       const res = await fetch('/api/admin/payments', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contractId: txn.contractId, customerId: contract.customer_id,
-          amount: txn.amount, paymentMethod: 'bank', businessDate: txn.date,
-          description: txn.description || 'Банківський переказ',
-          idempotencyKey: `csv:${txn.id}`,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (res.ok) setField(txn.id, { saving: false, saved: true });
@@ -263,7 +193,12 @@ export default function BankDrawerButton({ contracts }: { contracts: Contract[] 
                           onChange={e => setField(txn.id, { contractId: e.target.value, confidence: e.target.value ? 'suggested' : 'none' })}
                           style={{ ...inp, flex: 1, cursor: 'pointer' }}>
                           <option value="">— Оберіть договір —</option>
-                          {contracts.map(c => <option key={c.id} value={c.id}>{c.contract_number} · {c.customer_name || c.customer_id}</option>)}
+                          <optgroup label="Виплати без договору">
+                            {BANK_SPECIAL_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </optgroup>
+                          <optgroup label="Договори клієнтів">
+                            {contracts.map(c => <option key={c.id} value={c.id}>{c.contract_number} · {c.customer_name || c.customer_id}</option>)}
+                          </optgroup>
                         </select>
                         <button onClick={() => saveOne(txn)} disabled={!txn.contractId || txn.saving}
                           style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none', background: txn.contractId ? '#1E3A5F' : '#E2E8F0', color: txn.contractId ? '#fff' : '#94A3B8', fontSize: '12px', fontWeight: 700, cursor: txn.contractId ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>

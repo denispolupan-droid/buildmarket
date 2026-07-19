@@ -12,6 +12,7 @@ import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/pr
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../lib/rozetka-api';
 import { alertAdmin } from '../../../../../lib/alert';
 import { applyDeliveredEffects } from '../../../../../lib/accounting/delivered-effects';
+import { checkOrderCredit } from '../../../../../lib/accounting/credit-guard';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -124,6 +125,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const isCancelNonNew = status === 'cancelled' && currentStatus !== 'new';
       if (isBackward || isCancelNonNew) {
         return NextResponse.json({ error: 'Недостатньо прав для зміни статусу в зворотньому порядку' }, { status: 403 });
+      }
+    }
+
+    // Кредитний контроль: відгрузку в борг блокуємо ДО запису статусу
+    if (status === 'shipped') {
+      const credit = await checkOrderCredit(id);
+      if (!credit.ok) {
+        return NextResponse.json({ error: credit.reason }, { status: 409 });
       }
     }
 

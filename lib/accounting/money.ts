@@ -34,7 +34,10 @@ export type AccountType =
   | 'cash' | 'bank' | 'acquiring' | 'advance'
   | 'inventory_asset'
   | 'revenue' | 'cogs' | 'variance' | 'rounding' | 'correction'
-  | 'marketplace_balance' | 'marketplace_fee';
+  | 'marketplace_balance' | 'marketplace_fee'
+  // Витратні рахунки (CHECK у БД — міграція 046)
+  | 'logistics' | 'loading' | 'customs' | 'packaging' | 'acquiring_fee'
+  | 'rent' | 'salary' | 'marketing' | 'opex';
 
 export type MoneyEntry = {
   id:              string;

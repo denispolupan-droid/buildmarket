@@ -3,14 +3,10 @@
 import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Upload, Check, ChevronDown, AlertCircle, Banknote, Zap, ArrowLeft } from 'lucide-react';
-
-type Contract = {
-  id: string;
-  contract_number: string;
-  customer_id: string;
-  customer_name: string | null;
-  balance?: number;
-};
+import {
+  parseMonobankBusiness, autoMatchBankTxn, buildPaymentBody,
+  BANK_SPECIAL_OPTS as SPECIAL_OPTS, type BankContract as Contract,
+} from '../../../../lib/bank-import';
 
 type ParsedTxn = {
   id:          string;           // synthetic id
@@ -29,134 +25,6 @@ type ParsedTxn = {
 };
 
 function fmt(n: number) { return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-
-// ── CSV parsers ───────────────────────────────────────────────────────────────
-
-function parseMonobankBusiness(text: string): Omit<ParsedTxn, 'confidence' | 'contractId' | 'matchReason'>[] {
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-  if (lines.length < 2) return [];
-
-  // Detect delimiter
-  const delim = lines[0].includes(';') ? ';' : ',';
-  const headers = lines[0].split(delim).map(h => h.replace(/"/g, '').toLowerCase().trim());
-
-  // Column detection
-  const col = (keys: string[]) => {
-    for (const k of keys) {
-      const idx = headers.findIndex(h => h.includes(k));
-      if (idx >= 0) return idx;
-    }
-    return -1;
-  };
-
-  const dateIdx   = col(['дата і час', 'дата операц', 'date']);
-  const amountIdx = col(['сума в валюті картки', 'сума операц', 'сума', 'amount']);
-  const descIdx   = col(['деталі операції', 'призначення', 'опис', 'description']);
-  const cpIdx     = col(['назва контрагента', 'назва банку', 'counterparty', 'назва отримувача', 'назва платника']);
-  const ibanIdx   = col(['iban']);
-
-  const results: Omit<ParsedTxn, 'confidence' | 'contractId' | 'matchReason'>[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const cols = splitCSVLine(lines[i], delim);
-    if (cols.length < 3) continue;
-
-    const rawAmount = amountIdx >= 0 ? cols[amountIdx]?.replace(/["\s]/g, '').replace(',', '.') : '';
-    const amount = parseFloat(rawAmount);
-    if (isNaN(amount) || amount <= 0) continue; // only incoming
-
-    const rawDate = dateIdx >= 0 ? cols[dateIdx]?.replace(/"/g, '').trim() : '';
-    const date = parseDate(rawDate);
-    if (!date) continue;
-
-    results.push({
-      id:          `${i}_${amount}_${date}`,
-      date,
-      amount,
-      description: descIdx >= 0 ? cols[descIdx]?.replace(/"/g, '').trim() : '',
-      counterparty: cpIdx >= 0 ? cols[cpIdx]?.replace(/"/g, '').trim() : undefined,
-      iban:         ibanIdx >= 0 ? cols[ibanIdx]?.replace(/"/g, '').trim() : undefined,
-    });
-  }
-  return results;
-}
-
-function splitCSVLine(line: string, delim: string): string[] {
-  const result: string[] = [];
-  let cur = ''; let inQ = false;
-  for (const ch of line) {
-    if (ch === '"') { inQ = !inQ; cur += ch; }
-    else if (ch === delim && !inQ) { result.push(cur); cur = ''; }
-    else cur += ch;
-  }
-  result.push(cur);
-  return result;
-}
-
-function parseDate(raw: string): string | null {
-  if (!raw) return null;
-  // DD.MM.YYYY or DD.MM.YYYY HH:MM:SS
-  const m = raw.match(/(\d{2})\.(\d{2})\.(\d{4})/);
-  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
-  // YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
-  return null;
-}
-
-// ── Auto-matching logic ───────────────────────────────────────────────────────
-
-// Спец-дебітори без договору: виплати НП (наложені платежі) та маркетплейсів.
-// Значення в селекті кодуються як `sp:<counterparty>`, API отримує specialCounterparty.
-const SPECIAL_OPTS: { value: string; cp: 'np:cod' | 'mp:prom' | 'mp:rozetka'; label: string }[] = [
-  { value: 'sp:np:cod',      cp: 'np:cod',      label: '📦 Виплата НП (наложені платежі)' },
-  { value: 'sp:mp:rozetka',  cp: 'mp:rozetka',  label: '🟢 Виплата Rozetka' },
-  { value: 'sp:mp:prom',     cp: 'mp:prom',     label: '🟠 Виплата Prom.ua' },
-];
-
-const CONTRACT_RE = /[Дд][Гг]-?\d{4}-[A-Za-z0-9]{6,}/g;
-
-function autoMatch(
-  txn: Omit<ParsedTxn, 'confidence' | 'contractId' | 'matchReason'>,
-  contracts: Contract[],
-): { contractId: string; confidence: ParsedTxn['confidence']; matchReason: string } {
-  const haystack = `${txn.description} ${txn.counterparty ?? ''}`.toLowerCase();
-
-  // 1. Contract number in description → high confidence
-  const numMatches = [...(txn.description + ' ' + (txn.counterparty ?? '')).matchAll(CONTRACT_RE)];
-  if (numMatches.length > 0) {
-    const found = numMatches[0][0].toUpperCase().replace(/[Дд][Гг]-?/, 'ДГ-');
-    const contract = contracts.find(c => c.contract_number.toUpperCase() === found);
-    if (contract) return { contractId: contract.id, confidence: 'auto', matchReason: `Номер договору: ${contract.contract_number}` };
-  }
-
-  // 2. Customer name in description → suggested
-  for (const c of contracts) {
-    const name = (c.customer_name ?? '').toLowerCase();
-    if (name.length > 3 && haystack.includes(name)) {
-      return { contractId: c.id, confidence: 'suggested', matchReason: `Назва клієнта: ${c.customer_name}` };
-    }
-  }
-
-  // 3. Exact amount match to outstanding balance → suggested
-  for (const c of contracts) {
-    if (c.balance && Math.abs(c.balance - txn.amount) < 0.01) {
-      return { contractId: c.id, confidence: 'suggested', matchReason: `Сума збігається з боргом: ${fmt(c.balance)} ₴` };
-    }
-  }
-
-  // 4. Виплати спец-дебіторів: НП (COD) та маркетплейси
-  if (/нова\s*пошта|novaposhta|nova\s*poshta/.test(haystack)) {
-    return { contractId: 'sp:np:cod', confidence: 'suggested', matchReason: 'Схоже на виплату НП (наложені платежі)' };
-  }
-  if (/rozetka|розетка/.test(haystack)) {
-    return { contractId: 'sp:mp:rozetka', confidence: 'suggested', matchReason: 'Схоже на виплату Rozetka' };
-  }
-  if (/prom\.ua|пром\.юа|тов[\s"«]*уапром/.test(haystack)) {
-    return { contractId: 'sp:mp:prom', confidence: 'suggested', matchReason: 'Схоже на виплату Prom.ua' };
-  }
-
-  return { contractId: '', confidence: 'none', matchReason: '' };
-}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -184,7 +52,7 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
 
         const enriched: ParsedTxn[] = parsed.map(t => ({
           ...t,
-          ...autoMatch(t, contracts),
+          ...autoMatchBankTxn(t, contracts),
           saving: false, saved: false,
         }));
         setTxns(enriched);
@@ -205,30 +73,15 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
 
   async function saveOne(txn: ParsedTxn) {
     if (!txn.contractId || txn.saved) return;
-    const special = SPECIAL_OPTS.find(o => o.value === txn.contractId);
-    const contract = special ? null : contracts.find(c => c.id === txn.contractId);
-    if (!special && !contract) return;
+    const body = buildPaymentBody(txn, txn.contractId, contracts);
+    if (!body) return;
 
     setTxnField(txn.id, { saving: true, error: undefined });
     try {
       const res = await fetch('/api/admin/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(special ? {
-          specialCounterparty: special.cp,
-          amount:        txn.amount,
-          paymentMethod: 'bank',
-          businessDate:  txn.date,
-          description:   txn.description || special.label,
-        } : {
-          contractId:    txn.contractId,
-          customerId:    contract!.customer_id,
-          amount:        txn.amount,
-          paymentMethod: 'bank',
-          businessDate:  txn.date,
-          description:   txn.description || 'Банківський переказ',
-          idempotencyKey: `csv:${txn.id}`,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (res.ok) setTxnField(txn.id, { saving: false, saved: true });

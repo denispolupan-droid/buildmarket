@@ -3,6 +3,7 @@ import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { recordDropshipSale } from '../../../../../../lib/accounting/dropship';
 import { releaseReservation } from '../../../../../../lib/accounting/reservations';
+import { checkOrderCredit } from '../../../../../../lib/accounting/credit-guard';
 import { setPromTTN } from '../../../../../../lib/prom-api';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../../lib/rozetka-api';
 
@@ -38,6 +39,12 @@ export async function POST(
   }
   lock.claimed = true;
   lock.orderId = id;
+
+  // Кредитний контроль для замовлень з відстрочкою платежу
+  const credit = await checkOrderCredit(id);
+  if (!credit.ok) {
+    return NextResponse.json({ error: credit.reason }, { status: 409 });
+  }
 
   const body = await req.json().catch(() => ({})) as {
     items?: { sku: string; qty: number }[];
