@@ -2,8 +2,8 @@
 
 import { hryvniaInWords } from "../../../lib/number-to-words";
 import { useState, useRef } from 'react';
-import { Printer, FileSpreadsheet, Mail, FileDown } from 'lucide-react';
-import InvoiceMessengerButtons from '../../components/InvoiceMessengerButtons';
+import { Printer, FileSpreadsheet, Mail, FileDown, Copy, Check } from 'lucide-react';
+import InvoiceMessengerButtons, { copyText } from '../../components/InvoiceMessengerButtons';
 
 function formatIban(raw: string) {
   const s = raw.replace(/\s/g, '');
@@ -45,6 +45,32 @@ export default function InvoicePrint({
   const [sending, setSending]             = useState(false);
   const [sendResult, setSendResult]       = useState<'ok' | 'err' | null>(null);
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [copiedKey, setCopiedKey]         = useState<string | null>(null);
+
+  async function copyValue(key: string, value: string) {
+    await copyText(value);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(k => (k === key ? null : k)), 2000);
+  }
+
+  // Значення, яке зручно копіювати одним натисканням (IBAN — без пробілів).
+  function CopyTap({ k, value, children }: { k: string; value: string; children: React.ReactNode }) {
+    const copied = copiedKey === k;
+    return (
+      <span
+        onClick={() => copyValue(k, value)}
+        title="Натисніть, щоб скопіювати"
+        style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+      >
+        {children}
+        <span className="no-print" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+          {copied
+            ? <><Check size={14} color="#15803D" /><span style={{ fontSize: '10px', fontWeight: 700, color: '#15803D' }}>Скопійовано</span></>
+            : <Copy size={14} color="#94A3B8" />}
+        </span>
+      </span>
+    );
+  }
 
   type CustomerHit = { id: string; name: string; company: string | null; email: string | null };
   const [customerQ, setCustomerQ]         = useState('');
@@ -285,7 +311,9 @@ export default function InvoicePrint({
                 {bankEdrpou && (
                   <div>
                     <div style={{ fontSize: '9px', color: '#6B7E99', marginBottom: '2px', letterSpacing: '0.04em' }}>ЄДРПОУ / ДРФО</div>
-                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#111' }}>{bankEdrpou}</div>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#111' }}>
+                      <CopyTap k="edrpou" value={bankEdrpou}>{bankEdrpou}</CopyTap>
+                    </div>
                   </div>
                 )}
               </div>
@@ -298,7 +326,11 @@ export default function InvoicePrint({
                 <div style={{
                   fontFamily: "'Menlo', 'Monaco', 'Consolas', 'Lucida Console', monospace", fontSize: '15px', fontWeight: 700,
                   color: '#1E3A5F', letterSpacing: '0.08em',
-                }}>{ibanDisplay}</div>
+                }}>
+                  <CopyTap k="iban" value={bankIban.replace(/\s/g, '')}>
+                    <span style={{ overflowWrap: 'anywhere' }}>{ibanDisplay}</span>
+                  </CopyTap>
+                </div>
               </div>
             </div>
           </div>
@@ -316,10 +348,10 @@ export default function InvoicePrint({
                 <td style={{ padding: '3px 0', width: '130px', fontWeight: 700, verticalAlign: 'top', border: 'none' }}>Постачальник:</td>
                 <td style={{ padding: '3px 0', verticalAlign: 'top', border: 'none', lineHeight: '1.75' }}>
                   <strong>{bankRecipient}</strong>
-                  {bankEdrpou && <><br /><span style={{ color: '#555' }}>ЄДРПОУ/ДРФО: {bankEdrpou}</span></>}
+                  {bankEdrpou && <><br /><span style={{ color: '#555' }}>ЄДРПОУ/ДРФО: <CopyTap k="edrpou2" value={bankEdrpou}>{bankEdrpou}</CopyTap></span></>}
                   {bankAddress && <><br /><span style={{ color: '#555' }}>Адреса: {bankAddress}</span></>}
                   {bankName && <><br /><span style={{ color: '#555' }}>Банк: {bankName}</span></>}
-                  {bankIban && <><br /><span style={{ color: '#555' }}>IBAN: <span style={{ fontFamily: "'Menlo', 'Monaco', 'Consolas', 'Lucida Console', monospace", color: '#1E3A5F', fontWeight: 600 }}>{ibanDisplay}</span></span></>}
+                  {bankIban && <><br /><span style={{ color: '#555' }}>IBAN: <CopyTap k="iban2" value={bankIban.replace(/\s/g, '')}><span style={{ fontFamily: "'Menlo', 'Monaco', 'Consolas', 'Lucida Console', monospace", color: '#1E3A5F', fontWeight: 600, overflowWrap: 'anywhere' }}>{ibanDisplay}</span></CopyTap></span></>}
                 </td>
               </tr>
               <tr><td colSpan={2} style={{ border: 'none', padding: '2px 0' }}><hr style={{ border: 'none', borderTop: '1px dashed #ccc' }} /></td></tr>
