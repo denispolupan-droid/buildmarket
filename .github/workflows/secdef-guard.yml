@@ -1,0 +1,39 @@
+name: SECURITY DEFINER exposure guard (prod)
+
+# Щоденна перевірка: чи не з'явилась публічна SECURITY DEFINER функція, доступна
+# anon/authenticated через REST (новостворена функція без REVOKE). Дьоргає захищений
+# роут /api/cron/secdef-guard (він сам алертить у Telegram при знахідці) і падає
+# (→ лист власнику), якщо не 200. Це той самий клас проблеми, що open_period/
+# close_period — тепер ловиться щодня, а не раз на тиждень.
+
+on:
+  schedule:
+    - cron: '30 5 * * *'   # щодня 05:30 UTC
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check secdef exposure on prod
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          RESP=$(curl -s -w $'\n%{http_code}' --max-time 40 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://fixline.com.ua/api/cron/secdef-guard)
+          CODE=$(printf '%s' "$RESP" | tail -n1)
+          BODY=$(printf '%s' "$RESP" | sed '$d')
+          echo "HTTP $CODE"
+          {
+            echo "## SECURITY DEFINER exposure (prod)"
+            echo ""
+            echo "HTTP: **$CODE**"
+            echo '```json'
+            echo "$BODY"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$CODE" != "200" ]; then
+            echo "::error::Є SECURITY DEFINER функції, доступні anon/authenticated — потрібен REVOKE. Див. Telegram і тіло відповіді."
+            exit 1
+          fi
