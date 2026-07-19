@@ -12,6 +12,7 @@ import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/pr
 import { computePromCommission } from '../../../../../lib/prom-commission';
 import { computeRozetkaCommission } from '../../../../../lib/rozetka-commission';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../lib/rozetka-api';
+import { alertAdmin } from '../../../../../lib/alert';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -31,7 +32,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     payment_confirmed, callback_done, supplier_confirmed,
     items: bodyItems, total_price: bodyTotalPrice,
     delivery_type, delivery_subtype, delivery_city_name, delivery_address,
-    payment_type, payment_due_date,
+    payment_type, payment_due_date, shipping_supplier_id,
   } = body;
 
   const db = createServiceClient();
@@ -94,6 +95,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (delivery_address !== undefined)   update.delivery_address    = delivery_address;
   if (payment_due_date !== undefined)    update.payment_due_date    = payment_due_date;
   if (payment_type !== undefined)       update.payment_type        = payment_type;
+  if (shipping_supplier_id !== undefined) {
+    if (shipping_supplier_id !== null && !Number.isInteger(shipping_supplier_id)) {
+      return NextResponse.json({ error: 'Invalid shipping_supplier_id' }, { status: 400 });
+    }
+    update.shipping_supplier_id = shipping_supplier_id;
+  }
 
   const { error } = await db.from('orders').update(update).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -268,7 +275,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         await reverseDropshipLedgerExtras({ orderId: id, docId: saleDoc.id, createdBy: user.email ?? 'admin' });
       }
     } catch (err) {
-      console.error('[accounting] cancel reversal failed:', err);
+      // Якщо сторно не пройшло — по скасованому замовленню залишиться висіти
+      // виручка/борг постачальнику. Це треба лагодити руками, тому алертуємо.
+      alertAdmin(`Сторно обліку при скасуванні замовлення не пройшло (order ${id})`, err);
     }
   }
 
@@ -285,7 +294,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     try {
       const { data: order } = await db
         .from('orders')
-        .select('id, order_number, items, channel_code, partner_code, customer_id, payment_type, created_at')
+        .select('id, order_number, items, channel_code, partner_code, customer_id, payment_type, created_at, shipping_supplier_id')
         .eq('id', id)
         .single();
 
@@ -328,6 +337,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           customer_id:   order.customer_id ?? undefined,
           contract_id:   saleContractId,
           business_date: bizDate,
+          shipping_supplier_id: order.shipping_supplier_id ?? null,
         });
       }
     } catch (err) {

@@ -95,7 +95,7 @@ export async function POST(
 
   const { data: order } = await db
     .from('orders')
-    .select('id, order_number, items, contact, phone, delivery_city_name, tracking_number')
+    .select('id, order_number, items, contact, phone, delivery_city_name, tracking_number, shipping_supplier_id')
     .eq('id', id)
     .single();
 
@@ -177,7 +177,14 @@ export async function POST(
   }
 
   if (results.some(r => r.emailed)) {
-    await db.from('orders').update({ supplier_sent_at: new Date().toISOString() }).eq('id', id);
+    const update: Record<string, unknown> = { supplier_sent_at: new Date().toISOString() };
+    // Заявку відправлено рівно одному реальному постачальнику → фіксуємо його як
+    // фактичного постачальника відвантаження (якщо менеджер ще не обрав вручну).
+    const emailedIds = [...bySupplier.keys()].filter(sid => sid > 0);
+    if (emailedIds.length === 1 && !order.shipping_supplier_id) {
+      update.shipping_supplier_id = emailedIds[0];
+    }
+    await db.from('orders').update(update).eq('id', id);
   }
 
   return NextResponse.json({ ok: true, results });

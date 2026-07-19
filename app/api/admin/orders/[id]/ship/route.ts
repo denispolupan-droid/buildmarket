@@ -29,7 +29,7 @@ export async function POST(
 
   const { data: order, error } = await db
     .from('orders')
-    .select('id, order_number, status, items, channel_code, customer_id, delivery_type, prom_order_id, rozetka_order_id, tracking_number')
+    .select('id, order_number, status, items, channel_code, customer_id, delivery_type, prom_order_id, rozetka_order_id, tracking_number, shipping_supplier_id')
     .eq('id', id)
     .single();
 
@@ -114,6 +114,7 @@ export async function POST(
     confirmed_by:  user.email ?? 'admin',
     customer_id:   order.customer_id ?? undefined,
     business_date: new Date().toISOString().split('T')[0],
+    shipping_supplier_id: (order as { shipping_supplier_id?: number | null }).shipping_supplier_id ?? null,
   });
 
   // Check if all order items are now fully shipped

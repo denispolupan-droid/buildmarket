@@ -181,6 +181,9 @@ export type RecordDropshipSaleInput = {
   customer_id?:  string;
   contract_id?:  string;
   business_date?: string;
+  /** Фактичний постачальник відвантаження (orders.shipping_supplier_id).
+   *  Якщо задано — увесь дропшип-борг відноситься на нього, а не на постачальника з мапінгу SKU. */
+  shipping_supplier_id?: number | null;
 };
 
 export async function recordDropshipSale(
@@ -280,7 +283,7 @@ export async function recordDropshipSale(
   const dropshipGroups = new Map<string, number>(); // supplierId → total cost
   for (const src of plan.items) {
     if (src.fulfillment_type !== 'dropship') continue;
-    const supplierId = String(src.supplier_id ?? supplierMap.get(src.sku) ?? '');
+    const supplierId = String(input.shipping_supplier_id ?? src.supplier_id ?? supplierMap.get(src.sku) ?? '');
     if (!supplierId || supplierId === 'null' || supplierId === 'undefined') continue;
     const orderItem = input.order_items.find(i => i.sku === src.sku);
     if (!orderItem) continue;
