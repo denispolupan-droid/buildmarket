@@ -74,6 +74,23 @@ export default function PromDashboardClient({
     }
   }
 
+  const [pushingStock, setPushingStock] = useState(false);
+  async function doPushStock() {
+    setPushingStock(true);
+    setSyncMsg(null);
+    try {
+      const res  = await fetch('/api/admin/prom/push-stock', { method: 'POST' });
+      const data = await res.json();
+      if (data.error) setSyncMsg(`Помилка пушу залишків: ${data.error}`);
+      else if (data.skipped) setSyncMsg(`Пуш залишків пропущено: ${data.skipped}`);
+      else setSyncMsg(`Залишки: у кабінеті ${data.prom_total}, зіставлено ${data.matched}, оновлено ${data.pushed}`);
+    } catch {
+      setSyncMsg('Помилка запиту');
+    } finally {
+      setPushingStock(false);
+    }
+  }
+
   async function saveToken() {
     if (!tokenInput.trim()) return;
     setSavingToken(true);
@@ -253,6 +270,15 @@ export default function PromDashboardClient({
             >
               <RefreshCw size={12} style={syncing ? { animation: 'spin 1s linear infinite' } : {}} />
               {syncing ? 'Синхронізую…' : 'Синхронізувати'}
+            </button>
+            <button
+              onClick={doPushStock}
+              disabled={pushingStock || !hasToken}
+              title="Проштовхнути актуальні залишки в кабінет Prom через API (не чекаючи перечитування фіда)"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: 7, fontSize: 12, color: pushingStock || !hasToken ? '#CBD5E1' : '#475569', cursor: pushingStock || !hasToken ? 'not-allowed' : 'pointer' }}
+            >
+              <RefreshCw size={12} style={pushingStock ? { animation: 'spin 1s linear infinite' } : {}} />
+              {pushingStock ? 'Пуш…' : 'Пуш залишків'}
             </button>
             <button onClick={checkFeed} disabled={checking} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: 7, fontSize: 12, color: '#475569', cursor: 'pointer' }}>
               <RefreshCw size={12} style={checking ? { animation: 'spin 1s linear infinite' } : {}} />

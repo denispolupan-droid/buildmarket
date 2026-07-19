@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { syncSupplier } from '../../../../lib/supplier-sync';
+import { pushPromStock } from '../../../../lib/prom-stock-push';
 import { alertAdmin } from '../../../../lib/alert';
 
 const serviceClient = createClient(
@@ -44,7 +45,17 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, synced: results });
+  // Після оновлення залишків постачальників — одразу проштовхуємо їх у Prom
+  // (фід Prom перечитує рідко; API-пуш закриває вікно оверсейлу).
+  // Тихо пропускається, якщо Prom-кабінет ще не підключений.
+  let promPush: unknown = null;
+  try {
+    promPush = await pushPromStock();
+  } catch (err) {
+    console.error('[prom-stock-push]', err);
+  }
+
+  return NextResponse.json({ ok: true, synced: results, promPush });
 }
 
 export const POST = GET;

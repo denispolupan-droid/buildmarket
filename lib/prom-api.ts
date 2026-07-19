@@ -138,6 +138,16 @@ export async function setPromTTN(promOrderId: number, ttn: string, deliveryType 
   });
 }
 
+/* ── Product list ───────────────────────────────────────────────────────── */
+
+export async function getPromProducts(opts: { limit?: number; lastId?: number } = {}): Promise<PromProduct[]> {
+  const params = new URLSearchParams();
+  params.set('limit', String(opts.limit ?? 100));
+  if (opts.lastId) params.set('last_id', String(opts.lastId));
+  const data = await promFetch<{ products: PromProduct[] }>(`/products/list?${params.toString()}`);
+  return data.products ?? [];
+}
+
 /* ── Product stock/price update ─────────────────────────────────────────── */
 
 export async function updatePromProducts(products: {

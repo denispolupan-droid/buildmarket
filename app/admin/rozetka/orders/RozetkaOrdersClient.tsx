@@ -60,7 +60,7 @@ export default function RozetkaOrdersClient({ hasCredentials, recentOrders, tota
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#1E293B' }}>Ручний запуск</div>
-            <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Автоматична синхронізація ще вимкнена — запускайте вручну, поки не перевірено на реальних даних.</div>
+            <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Синхронізація автоматична: GitHub Actions кожні 30 хв + щоденний резервний крон. Кнопка — для миттєвого запуску.</div>
           </div>
           <button
             onClick={syncNow}
