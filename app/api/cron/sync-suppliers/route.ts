@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
   const { data: suppliers } = await serviceClient
     .from('suppliers')
-    .select('id, name, sync_interval_h, last_synced_at')
+    .select('id, name, sync_interval_h, last_synced_at, source_url')
     .eq('is_active', true);
 
   if (!suppliers?.length) return NextResponse.json({ ok: true, synced: [] });
@@ -27,6 +27,14 @@ export async function GET(req: NextRequest) {
   const results: { id: number; name: string; status: string }[] = [];
 
   for (const s of suppliers) {
+    // Постачальник без файлу-джерела не налаштований на авто-синк — це конфігурація,
+    // а не помилка. Тихо пропускаємо (інакше syncSupplier кидає "URL файлу не вказано"
+    // і алерт спамить у Telegram кожні 2 години).
+    if (!(s as { source_url?: string | null }).source_url?.trim()) {
+      results.push({ id: s.id, name: s.name, status: 'skipped: no source url' });
+      continue;
+    }
+
     // Перевіряємо чи настав час синхронізації
     const lastSynced = s.last_synced_at ? new Date(s.last_synced_at).getTime() : 0;
     const intervalMs = s.sync_interval_h * 60 * 60 * 1000;
