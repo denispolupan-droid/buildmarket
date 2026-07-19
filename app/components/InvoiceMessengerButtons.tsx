@@ -109,17 +109,17 @@ export default function InvoiceMessengerButtons({
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px' }}>
-        <button onClick={openTelegram} title={normPhone ? `Скопіювати текст рахунку і відкрити чат +${normPhone} у Telegram` : 'Номер телефону не розпізнано — текст буде скопійовано'}
+        <button onClick={openTelegram} title={normPhone ? `Рахунок у Telegram: скопіювати текст і відкрити чат +${normPhone}` : 'Номер телефону не розпізнано — текст буде скопійовано'}
           style={{ ...small, color: '#2AABEE', borderColor: '#BEE3F8' }}>
-          <Send size={13} /> {done === 'tg' ? '✓' : 'Telegram'}
+          {done === 'tg' ? <Check size={14} color="#15803D" /> : <Send size={14} />}
         </button>
-        <button onClick={openViber} title={normPhone ? `Скопіювати текст рахунку і відкрити чат +${normPhone} у Viber` : 'Номер телефону не розпізнано — текст буде скопійовано'}
+        <button onClick={openViber} title={normPhone ? `Рахунок у Viber: скопіювати текст і відкрити чат +${normPhone}` : 'Номер телефону не розпізнано — текст буде скопійовано'}
           style={{ ...small, color: '#7360F2', borderColor: '#DDD6FE' }}>
-          <Phone size={13} /> {done === 'viber' ? '✓' : 'Viber'}
+          {done === 'viber' ? <Check size={14} color="#15803D" /> : <Phone size={14} />}
         </button>
         <button onClick={copyOnly} title="Скопіювати текст із посиланням на рахунок"
-          style={{ ...small, flex: '0 0 34px', color: 'var(--text-secondary)' }}>
-          {done === 'copy' ? <Check size={13} color="#15803D" /> : <Copy size={13} />}
+          style={{ ...small, color: 'var(--text-secondary)' }}>
+          {done === 'copy' ? <Check size={14} color="#15803D" /> : <Copy size={14} />}
         </button>
       </div>
       {done && (
