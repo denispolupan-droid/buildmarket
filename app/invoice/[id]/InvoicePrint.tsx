@@ -3,6 +3,7 @@
 import { hryvniaInWords } from "../../../lib/number-to-words";
 import { useState, useRef } from 'react';
 import { Printer, FileSpreadsheet, Mail } from 'lucide-react';
+import InvoiceMessengerButtons from '../../components/InvoiceMessengerButtons';
 
 function formatIban(raw: string) {
   const s = raw.replace(/\s/g, '');
@@ -200,7 +201,11 @@ export default function InvoicePrint({
             </div>
           </div>
         )}
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <InvoiceMessengerButtons variant="toolbar"
+            phone={order.phone} contact={order.contact}
+            orderNumber={order.order_number} orderId={order.id}
+            total={total} />
           <button onClick={exportExcel} style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 18px', borderRadius: '10px', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 3px 12px rgba(21,128,61,0.3)' }}>
             <FileSpreadsheet size={15} /> Excel
           </button>

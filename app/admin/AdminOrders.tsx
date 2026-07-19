@@ -20,6 +20,7 @@ import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { showConfirm } from '../../lib/confirm';
 import { showToast } from '../../lib/toast';
 import SmartDateInput from '../components/SmartDateInput';
+import InvoiceMessengerButtons from '../components/InvoiceMessengerButtons';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number; is_bonus?: boolean; supplier_sku?: string };
 
@@ -2339,6 +2340,11 @@ export default function AdminOrders({
                                   style={btnMuted}>
                                   <Printer size={13} /> Друк / Рахунок
                                 </a>
+                                <InvoiceMessengerButtons
+                                  phone={order.phone} contact={order.contact}
+                                  orderNumber={order.order_number} orderId={order.id}
+                                  total={order.total_price} />
+
                                 <button onClick={() => openSupplierPO(order)} disabled={creatingPo === order.id}
                                   style={{ ...btnMuted, cursor: creatingPo === order.id ? 'wait' : 'pointer', opacity: creatingPo === order.id ? 0.6 : 1 }}>
                                   <ShoppingCart size={13} />
