@@ -60,6 +60,7 @@ type Order = {
   channel_code:       string | null;
   prom_order_id:      string | number | null;
   rozetka_order_id:   string | number | null;
+  shipping_supplier_id: number | null;
   fulfillment_mode:   string | null;
   confirmed_at:       string | null;
   shipped_at:         string | null;
@@ -133,6 +134,31 @@ export default function AdminOrders({
   const [orders, setOrders]         = useState<Order[]>(initialOrders);
   // Sync when server re-renders with new sort/filter
   useEffect(() => { setOrders(initialOrders); }, [initialOrders]);
+
+  // Список постачальників для вибору фактичного постачальника відвантаження
+  const [suppliersList, setSuppliersList] = useState<{ id: number; name: string }[]>([]);
+  useEffect(() => {
+    fetch('/api/admin/suppliers')
+      .then(r => (r.ok ? r.json() : []))
+      .then((rows: { id: number; name: string }[]) =>
+        setSuppliersList(Array.isArray(rows) ? rows.map(s => ({ id: s.id, name: s.name })) : []))
+      .catch(() => setSuppliersList([]));
+  }, []);
+
+  async function setShippingSupplier(orderId: string, supplierId: number | null) {
+    const res = await fetch(`/api/admin/orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shipping_supplier_id: supplierId }),
+    });
+    if (res.ok) {
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, shipping_supplier_id: supplierId } : o));
+      showToast(supplierId ? 'Постачальника відвантаження збережено' : 'Постачальника відвантаження скинуто');
+    } else {
+      showToast('Не вдалося зберегти постачальника', 'error');
+    }
+  }
+
   const [channelFilter, setChannelFilter] = useState('');
   const [search, setSearch]         = useState('');
   const [loading, setLoading]       = useState<string | null>(null);
@@ -2239,6 +2265,38 @@ export default function AdminOrders({
                             </select>
                           </div>
 
+                          {/* Фактичний постачальник відвантаження (дроп/змішані замовлення) */}
+                          {fMode !== 'own' && suppliersList.length > 0 && (
+                            <div>
+                              <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
+                                title="Хто фактично відвантажив товар. Борг перед постачальником при відправці буде віднесено саме на нього.">
+                                Відвантажує пост.
+                              </div>
+                              <select
+                                value={order.shipping_supplier_id ?? ''}
+                                onChange={e => {
+                                  const v = e.target.value === '' ? null : parseInt(e.target.value);
+                                  if (v !== (order.shipping_supplier_id ?? null)) setShippingSupplier(order.id, v);
+                                }}
+                                style={{
+                                  width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)',
+                                  borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer',
+                                  color: order.shipping_supplier_id ? 'var(--text-primary)' : 'var(--text-muted)',
+                                  fontWeight: order.shipping_supplier_id ? 600 : 400,
+                                }}
+                              >
+                                <option value="">— за мапінгом SKU —</option>
+                                {suppliersList.map(s => (
+                                  <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                              </select>
+                              {order.status === 'shipped' && !order.shipping_supplier_id && (
+                                <div style={{ fontSize: '10px', color: '#B45309', marginTop: '3px', lineHeight: 1.3 }}>
+                                  ⚠ Постачальника не підтверджено — борг віднесено за мапінгом
+                                </div>
+                              )}
+                            </div>
+                          )}
 
                           {/* Context action buttons */}
                           {(() => {
