@@ -1178,7 +1178,7 @@ export default function AdminOrders({
 
       {/* Table header */}
       {filtered.length > 0 && (
-        <div style={{
+        <div className="oc-hide-m" style={{
           display: 'flex', alignItems: 'center', gap: '10px',
           padding: '5px 15px', marginBottom: '2px',
           fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
@@ -1308,6 +1308,7 @@ export default function AdminOrders({
 
                 {/* ── Compact row ── */}
                 <div
+                  className="order-compact-row"
                   onClick={() => { const next = isExpanded ? null : order.id; setExpandedId(next); if (next) { loadFulfillment(next); loadLinkedPOs(next); loadPayments(next); } }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '10px',
@@ -1330,10 +1331,10 @@ export default function AdminOrders({
                   </div>
 
                   {/* № */}
-                  <span style={{ width: '70px', flexShrink: 0, fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)' }}>#{order.order_number}</span>
+                  <span className="oc-num" style={{ width: '70px', flexShrink: 0, fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)' }}>#{order.order_number}</span>
 
                   {/* Дата */}
-                  <span style={{ width: '90px', flexShrink: 0, fontSize: '11px', color: 'var(--text-muted)' }}>{date}</span>
+                  <span className="oc-hide-m" style={{ width: '90px', flexShrink: 0, fontSize: '11px', color: 'var(--text-muted)' }}>{date}</span>
 
                   {/* Клієнт / Товар */}
                   <div style={{ flex: '0 1 calc(50% - 230px)', minWidth: 0, overflow: 'hidden' }}>
@@ -1355,7 +1356,7 @@ export default function AdminOrders({
                   </div>
 
                   {/* Доставка */}
-                  <span style={{ flex: 1, minWidth: '100px', fontSize: '12px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span className="oc-hide-m" style={{ flex: 1, minWidth: '100px', fontSize: '12px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {order.delivery_type === 'pickup' ? 'Самовивіз'
                       : order.delivery_city_name
                         ? `${order.delivery_city_name}${order.delivery_subtype === 'courier' ? ' · кур.' : ''}${order.delivery_address ? ` · ${order.delivery_address}` : ''}`
@@ -1363,7 +1364,7 @@ export default function AdminOrders({
                   </span>
 
                   {/* Статус */}
-                  <div style={{ width: '118px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div className="oc-status" style={{ width: '118px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span
                       className={order.status === 'awaiting_stock' ? 'status-awaiting-pulse' : undefined}
                       style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '20px', color: status.color, background: status.bg, display: 'inline-flex', alignItems: 'center', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1379,14 +1380,14 @@ export default function AdminOrders({
                   </div>
 
                   {/* Канал */}
-                  <div style={{ width: '64px', flexShrink: 0, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+                  <div className="oc-hide-m" style={{ width: '64px', flexShrink: 0, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, padding: '1px 6px', borderRadius: '20px', color: channel.color, background: channel.bg, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>
                       {channel.label}
                     </span>
                   </div>
 
                   {/* Відправка */}
-                  <div style={{ width: '64px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div className="oc-hide-m" style={{ width: '64px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
                     {order.fulfillment_mode && (
                       <span
                         title={order.fulfillment_mode === 'own' ? 'Відправка зі складу' : order.fulfillment_mode === 'supplier' ? 'Відправка через постачальника' : 'Змішана відправка'}
@@ -1403,14 +1404,14 @@ export default function AdminOrders({
                   </div>
 
                   {/* Оплата */}
-                  <div style={{ width: '46px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+                  <div className="oc-hide-m" style={{ width: '46px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
                     <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '20px', background: 'var(--border-light)', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center' }}>
                       {order.payment_type === 'cod' ? 'НП' : order.payment_type === 'card' ? '💳' : order.payment_type === 'cash' ? 'Гот.' : order.payment_type === 'deferred' ? 'Відст.' : 'Рах.'}
                     </span>
                   </div>
 
                   {/* Дзвінок */}
-                  <div style={{ width: '34px', flexShrink: 0, textAlign: 'center' }}>
+                  <div className="oc-hide-m" style={{ width: '34px', flexShrink: 0, textAlign: 'center' }}>
                     {!isDropship && (
                       <span style={{ fontSize: '11px', padding: '2px 5px', borderRadius: '20px', display: 'inline-block',
                         background: noCallback || callbackDone ? '#DCFCE7' : '#FEF3C7',
@@ -1463,7 +1464,7 @@ export default function AdminOrders({
                 {/* ── Expanded panel ── */}
                 {isExpanded && (
                   <>
-                  <div style={{ borderTop: '1px solid var(--border-light)', display: 'grid', gridTemplateColumns: 'calc(50% - 14px) 1fr 200px' }}>
+                  <div className="order-expand-grid" style={{ borderTop: '1px solid var(--border-light)', display: 'grid', gridTemplateColumns: 'calc(50% - 14px) 1fr 200px' }}>
 
                     {/* Col 1: Items */}
                     <div style={{ padding: '14px 16px', borderRight: '1px solid var(--border-light)' }}>

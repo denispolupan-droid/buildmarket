@@ -273,7 +273,7 @@ export default async function FinancePage() {
       </div>
 
       {/* Quick links */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', flexWrap: 'wrap' }}>
         {[
           { href: '/admin/finance/cashflow',    label: 'Рух коштів',     icon: ArrowLeftRight, color: '#1D4ED8', bg: '#EFF6FF' },
           { href: '/admin/finance/payables',   label: 'Кредиторка',     icon: CreditCard,     color: '#1E3A5F', bg: '#EFF4FF' },

@@ -1133,3 +1133,47 @@ input, select { font-family: inherit; }
 .promo-chip:hover { opacity: 0.88; transform: translateY(-1px); }
 .promo-chip strong { font-weight: 800; }
 @media (max-width: 768px) { .promo-chip { display: none; } }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Адмін-панель: мобільна адаптація (телефони + планшети портретом).
+   Сайдбар вже стає off-canvas drawer на <=768px (AdminSidebar) — тут правила
+   для КОНТЕНТУ сторінок. Інлайнові стилі перекриваються attr-селекторами
+   (той самий патерн, що вище для density-стилів адмінки).
+   ──────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Компактні відступи сторінок: найпоширеніші інлайнові падінги.
+     React серіалізує style БЕЗ пробілу після двокрапки (padding:28px 32px). */
+  .admin-layout [style*="padding:28px 32px"] { padding: 14px 12px !important; }
+  .admin-layout [style*="padding:24px 32px"] { padding: 14px 12px !important; }
+  .admin-layout [style*="padding:20px 32px"] { padding: 12px 12px !important; }
+  .admin-layout [style*="padding:56px 32px"] { padding: 24px 12px !important; }
+
+  /* Широкі таблиці скроляться пальцем, а не тиснуть колонки в кашу */
+  .admin-layout table {
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* iOS Safari зумить сторінку при фокусі на полі з fontSize < 16px */
+  .admin-layout input, .admin-layout select, .admin-layout textarea { font-size: 16px; }
+
+  /* Статистичні сітки 4-в-ряд → 2 колонки */
+  .admin-layout [style*="repeat(4, 1fr)"],
+  .admin-layout [style*="repeat(4,1fr)"] { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Сітки "контент + бокова колонка" → в стовпчик */
+  .admin-layout [style*="grid-template-columns:1fr 240px"] { grid-template-columns: 1fr !important; }
+
+  /* ── Замовлення (AdminOrders) ── */
+  .oc-hide-m { display: none !important; }
+  .order-compact-row { gap: 6px !important; padding: 8px 10px !important; }
+  .order-compact-row .oc-num { width: auto !important; }
+  .oc-status { width: auto !important; }
+  .order-expand-grid { grid-template-columns: 1fr !important; }
+
+  /* ── Взаєморозрахунки (Payables) ── */
+  .sup-row { grid-template-columns: 1fr 116px 24px !important; }
+  .sup-txn-row { grid-template-columns: 84px 1fr 108px !important; padding-left: 12px !important; padding-right: 12px !important; }
+}

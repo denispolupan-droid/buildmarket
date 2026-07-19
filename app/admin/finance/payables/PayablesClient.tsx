@@ -322,6 +322,7 @@ export default function PayablesClient({ balances: allBalances }: Props) {
               }}>
                 {/* Header row */}
                 <div
+                  className="sup-row"
                   onClick={() => toggle(b.supplier_id)}
                   style={{
                     display: 'grid',
@@ -373,12 +374,12 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                     )}
                   </div>
 
-                  <div style={{ textAlign: 'right' }}>
+                  <div className="oc-hide-m" style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>Куплено</div>
                     <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{fmt(b.total_receipts)} ₴</div>
                   </div>
 
-                  <div style={{ textAlign: 'right' }}>
+                  <div className="oc-hide-m" style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>Оплачено</div>
                     <div style={{ fontSize: '14px', fontWeight: 600, color: '#15803D' }}>{fmt(b.total_payments)} ₴</div>
                   </div>
@@ -435,7 +436,7 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                 {/* Transactions */}
                 {isOpen && (
                   <div style={{ borderTop: '1px solid var(--border)' }}>
-                    <div style={{
+                    <div className="sup-txn-row" style={{
                       display: 'grid', gridTemplateColumns: '100px 140px 1fr 140px',
                       padding: '6px 20px', gap: '8px',
                       fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
@@ -443,7 +444,7 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                       borderBottom: '1px solid var(--border)',
                     }}>
                       <span>Дата</span>
-                      <span>Документ</span>
+                      <span className="oc-hide-m">Документ</span>
                       <span>Опис</span>
                       <span style={{ textAlign: 'right' }}>Сума</span>
                     </div>
@@ -460,7 +461,7 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                         const link = docLink(txn);
 
                         return (
-                          <div key={idx} style={{
+                          <div key={idx} className="sup-txn-row" style={{
                             display: 'grid', gridTemplateColumns: '100px 140px 1fr 140px',
                             padding: '9px 20px', gap: '8px', alignItems: 'center',
                             borderTop: idx > 0 ? '1px solid var(--border-light)' : 'none',
@@ -470,7 +471,7 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                               {new Date(txn.business_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                             </span>
 
-                            <span>
+                            <span className="oc-hide-m">
                               {link && link.href !== '#' ? (
                                 <Link href={link.href} onClick={e => e.stopPropagation()} style={{ fontSize: '12px', fontWeight: 700, color: '#1D4ED8', textDecoration: 'none', fontFamily: 'monospace' }}>
                                   {link.label}
@@ -500,7 +501,7 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                     })()}
 
                     {/* Total */}
-                    <div style={{
+                    <div className="sup-txn-row" style={{
                       display: 'grid', gridTemplateColumns: '100px 140px 1fr 140px',
                       padding: '8px 20px', gap: '8px',
                       borderTop: '2px solid var(--border)',
