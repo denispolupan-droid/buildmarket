@@ -129,15 +129,27 @@ export default function InvoicePrint({
         }
         body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #111; }
         table { border-collapse: collapse; width: 100%; }
+        @media screen and (max-width: 640px) {
+          .print-page-bg { padding: 12px 8px 120px !important; }
+          .doc-wrap { padding: 18px 14px 24px !important; }
+          .inv-parties td { display: block; width: auto !important; padding: 1px 0 !important; }
+          .inv-parties td:first-child { padding-top: 8px !important; }
+          .inv-items-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -14px; padding: 0 14px; }
+          .inv-items { min-width: 540px; }
+          .inv-toolbar { left: 12px; right: 12px !important; bottom: 12px !important; align-items: stretch !important; }
+          .inv-toolbar-row { justify-content: center !important; }
+          .inv-toolbar-row a, .inv-toolbar-row button { flex: 1 1 auto; justify-content: center; }
+          .inv-mailform { width: 100% !important; box-sizing: border-box; }
+        }
       `}</style>
 
       {/* ── Floating toolbar ── */}
-      <div className="no-print" style={{
+      <div className="no-print inv-toolbar" style={{
         position: 'fixed', bottom: '28px', right: '24px', zIndex: 100,
         display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px',
       }}>
         {showEmailForm && (
-          <div style={{
+          <div className="inv-mailform" style={{
             background: '#fff', borderRadius: '10px', padding: '12px 14px',
             boxShadow: '0 4px 24px rgba(0,0,0,0.15)', width: '320px',
           }}>
@@ -205,7 +217,7 @@ export default function InvoicePrint({
             </div>
           </div>
         )}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div className="inv-toolbar-row" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {isStaff && (
             <>
               <InvoiceMessengerButtons variant="toolbar"
@@ -298,7 +310,7 @@ export default function InvoicePrint({
           <hr style={{ border: 'none', borderTop: '2px solid #1E3A5F', marginBottom: '14px' }} />
 
           {/* 4. Parties */}
-          <table style={{ marginBottom: '10px', fontSize: '12px', border: 'none' }}>
+          <table className="inv-parties" style={{ marginBottom: '10px', fontSize: '12px', border: 'none' }}>
             <tbody>
               <tr>
                 <td style={{ padding: '3px 0', width: '130px', fontWeight: 700, verticalAlign: 'top', border: 'none' }}>Постачальник:</td>
@@ -338,7 +350,8 @@ export default function InvoicePrint({
           </table>
 
           {/* 5. Items table */}
-          <table style={{ marginBottom: '6px', fontSize: '11px', border: '1px solid #999' }}>
+          <div className="inv-items-wrap">
+          <table className="inv-items" style={{ marginBottom: '6px', fontSize: '11px', border: '1px solid #999' }}>
             <thead>
               <tr style={{ background: '#1E3A5F' }}>
                 <th style={{ border: '1px solid #4B6B8F', padding: '6px 6px', color: '#fff', width: '28px', textAlign: 'center' }}>№</th>
@@ -370,6 +383,7 @@ export default function InvoicePrint({
               </tr>
             </tfoot>
           </table>
+          </div>
 
           {/* 6. Sum summary */}
           <div style={{ fontSize: '11px', color: '#333', marginBottom: '2px' }}>
