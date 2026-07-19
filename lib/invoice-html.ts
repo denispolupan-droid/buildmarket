@@ -77,7 +77,7 @@ export function buildInvoiceHtml(params: {
 
   // Сопровідний блок над рахунком: подяка + що робити далі.
   const coverBlock = siteUrl ? `
-  <div style="max-width:680px;margin:24px auto 16px;background:#fff;border-radius:12px;overflow:hidden;
+  <div style="max-width:736px;margin:24px auto 16px;background:#fff;border-radius:12px;overflow:hidden;
               box-shadow:0 2px 16px rgba(0,0,0,0.08);">
     <div style="background:#1E3A5F;padding:22px 28px;">
       <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px;">
@@ -105,7 +105,7 @@ export function buildInvoiceHtml(params: {
 
   // Промо-блок під рахунком: акції, каталог, контакти.
   const promoBlock = siteUrl ? `
-  <div style="max-width:680px;margin:16px auto 0;background:#fff;border-radius:12px;overflow:hidden;
+  <div style="max-width:736px;margin:16px auto 0;background:#fff;border-radius:12px;overflow:hidden;
               box-shadow:0 2px 16px rgba(0,0,0,0.08);">
     <div style="padding:22px 28px;text-align:center;">
       <div style="font-size:14px;font-weight:800;color:#0F172A;margin-bottom:6px;">
@@ -308,7 +308,7 @@ ${coverBlock}
 ${promoBlock}
 
 <!-- Email footer -->
-<div style="max-width:680px;margin:0 auto;padding:10px 0;text-align:center;
+<div style="max-width:736px;margin:0 auto;padding:10px 0;text-align:center;
             font-size:10px;color:#9CA3AF;">
   Цей документ сформовано автоматично та є дійсним без печатки та підпису
   відповідно до Закону України «Про електронні документи та електронний документообіг».
