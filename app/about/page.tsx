@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Footer from '../components/Footer';
 import Reveal from '../components/Reveal';
-import { ShieldCheck, Users, Package, Award, X, Check, Zap, Eye, Cpu, TrendingUp, Gauge, Smartphone, Bot, CreditCard, Plug, FileText, Truck, PlayCircle, Calculator, RefreshCw, ClipboardList, Layers } from 'lucide-react';
+import { ShieldCheck, Users, Package, Award, X, Check, Zap, Eye, Cpu, TrendingUp, Gauge, Smartphone, Bot, CreditCard, Plug, FileText, Truck, PlayCircle, Calculator, RefreshCw, ClipboardList, Layers, Handshake } from 'lucide-react';
 import { mergeVisibleBrands } from '../../lib/brands';
 import { getBrandLogosCached, getVisibleBrandLogosCached } from '../../lib/supabase';
 
@@ -58,6 +58,7 @@ const principles = [
   { icon: Eye,        title: 'Прозорість',  text: 'Жодних прихованих умов. Ціна, залишок і строк видно до замовлення, а не після.' },
   { icon: Cpu,        title: 'Технології',  text: 'Автоматизуємо все, що можна автоматизувати. Ручна операція для нас — це баг.' },
   { icon: TrendingUp, title: 'Розвиток',    text: 'Сервіс вдосконалюється постійно. «Працює — не чіпай» — це не про нас.' },
+  { icon: Handshake,  title: 'Довіра',      text: 'Пообіцяли — зробили. Довіра будується вчинками, а не обіцянками, і ми не ризикуємо нею заради швидкого прибутку.' },
 ];
 
 const ecosystem = [
