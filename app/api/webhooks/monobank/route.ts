@@ -182,6 +182,95 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  // ── Оплата РАХУНКУ існуючого замовлення (кнопка «Сплатити» на /invoice/[id]) ──
+  const invoicePayMatch = reference?.match(/^invoice_([a-f0-9-]+)_\d+$/);
+  if (invoicePayMatch) {
+    const orderId = invoicePayMatch[1];
+
+    const { data: order } = await serviceClient
+      .from('orders')
+      .select('id, order_number, customer_id, total_price, amount_paid, payment_type, contact, phone, email')
+      .eq('id', orderId)
+      .maybeSingle();
+    if (!order) return NextResponse.json({ ok: true });
+
+    // Ідемпотентність: повторний вебхук по тому ж mono-інвойсу — no-op
+    const idemKey = `mono:invoice:${body.invoiceId ?? reference}`;
+    const { data: already } = await serviceClient
+      .from('money_entries')
+      .select('id')
+      .eq('idempotency_key', idemKey)
+      .maybeSingle();
+    if (already) return NextResponse.json({ ok: true });
+
+    // Наложка вже не потрібна — клієнт оплатив наперед
+    const newPaymentType = order.payment_type === 'cod' ? 'card' : order.payment_type;
+
+    // Дебітор: якщо виручка вже проведена (РН) — та сама сторона, що в леджері;
+    // інакше — та, на яку вона ляже при відгрузці (після зміни payment_type).
+    let party: string | null = null;
+    const { data: shipEntry } = await serviceClient
+      .from('money_entries')
+      .select('counterparty_id')
+      .eq('order_id', orderId)
+      .eq('account_type', 'customer')
+      .eq('doc_type', 'sale')
+      .gt('amount', 0)
+      .limit(1)
+      .maybeSingle();
+    party = shipEntry?.counterparty_id ?? null;
+    if (!party) {
+      party = order.customer_id
+        ?? (newPaymentType === 'cod' ? 'np:cod' : null);
+      if (!party) {
+        const { data: o2 } = await serviceClient
+          .from('orders').select('channel_code').eq('id', orderId).single();
+        party = o2?.channel_code === 'prom' ? 'mp:prom'
+          : o2?.channel_code === 'rozetka' ? 'mp:rozetka'
+          : 'guest';
+      }
+    }
+
+    try {
+      await recordCustomerPayment({
+        customerId:     party,
+        amount:         amountUah,
+        paymentMethod:  'acquiring',
+        businessDate:   businessDate(body),
+        description:    `Оплата карткою онлайн (Monobank) — замовлення #${order.order_number}`,
+        idempotencyKey: idemKey,
+        createdBy:      'monobank_webhook',
+      });
+    } catch (err) {
+      alertAdmin(`Monobank: оплату рахунку #${order.order_number} не записано в леджер`, err);
+      return NextResponse.json({ error: 'ledger write failed' }, { status: 500 });
+    }
+
+    const newPaid = Math.round((Number(order.amount_paid ?? 0) + amountUah) * 100) / 100;
+    await serviceClient.from('order_payments').insert({
+      order_id:     orderId,
+      amount:       amountUah,
+      payment_mode: 'card',
+      payment_date: businessDate(body),
+      note:         `Monobank онлайн (${body.invoiceId ?? reference})`,
+      created_by:   'monobank_webhook',
+    });
+    await serviceClient.from('orders').update({
+      payment_confirmed: newPaid >= Number(order.total_price) - 0.01,
+      amount_paid:       newPaid,
+      payment_type:      newPaymentType,
+    }).eq('id', orderId);
+
+    resend.emails.send({
+      from: FROM, to: ADMIN_EMAIL,
+      subject: `💳 Рахунок оплачено! Замовлення №${order.order_number} — ${amountUah.toFixed(2)} ₴ (${order.contact}, ${order.phone})`,
+      html: `<p>Клієнт оплатив рахунок карткою онлайн.</p>
+             <p>Замовлення <strong>№${order.order_number}</strong> · сума <strong>${amountUah.toFixed(2)} ₴</strong> · оплачено разом ${newPaid.toFixed(2)} з ${Number(order.total_price).toFixed(2)} ₴</p>`,
+    }).catch(() => {});
+
+    return NextResponse.json({ ok: true });
+  }
+
   // ── Оплата замовлення (стара схема: order_<uuid> — зворотна сумісність) ─
   const orderMatch = reference?.match(/^order_([a-f0-9-]+)_\d+$/);
   if (orderMatch) {

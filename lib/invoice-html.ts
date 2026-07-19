@@ -169,7 +169,7 @@ export function buildInvoiceHtml(params: {
         <a href="${invoiceUrl}" style="display:inline-block;background:#1E3A5F;color:#fff;
            font-size:13px;font-weight:700;padding:11px 26px;border-radius:7px;
            text-decoration:none;letter-spacing:0.02em;">
-          Переглянути та роздрукувати рахунок →
+          💳 Сплатити онлайн або роздрукувати рахунок →
         </a>
       </div>`
     : '';

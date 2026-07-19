@@ -1,8 +1,8 @@
 'use client';
 
 import { hryvniaInWords } from "../../../lib/number-to-words";
-import { useState, useRef } from 'react';
-import { Printer, FileSpreadsheet, Mail, FileDown, Copy, Check } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Printer, FileSpreadsheet, Mail, FileDown, Copy, Check, CreditCard } from 'lucide-react';
 import InvoiceMessengerButtons, { copyText } from '../../components/InvoiceMessengerButtons';
 
 function formatIban(raw: string) {
@@ -27,6 +27,8 @@ type Order = {
   channel_code?: string | null;
   prom_order_id?: string | number | null;
   rozetka_order_id?: string | number | null;
+  status?: string;
+  amount_paid?: number | null;
 };
 
 export default function InvoicePrint({
@@ -46,6 +48,34 @@ export default function InvoicePrint({
   const [sendResult, setSendResult]       = useState<'ok' | 'err' | null>(null);
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [copiedKey, setCopiedKey]         = useState<string | null>(null);
+
+  // ── Онлайн-оплата карткою (Monobank) ──
+  const amountDue = Math.max(0, Number(order.total_price) - Number(order.amount_paid ?? 0));
+  const canPayOnline = amountDue > 0.009 && order.status !== 'cancelled';
+  const [paying, setPaying]       = useState(false);
+  const [justPaid, setJustPaid]   = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('paid') === '1') {
+      setJustPaid(true);
+    }
+  }, []);
+
+  async function payOnline() {
+    setPaying(true);
+    try {
+      const res = await fetch(`/api/invoice/${order.id}/pay`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.pageUrl) {
+        window.location.href = data.pageUrl;
+        return;
+      }
+      alert(data.error ?? 'Не вдалось ініціювати оплату');
+    } catch {
+      alert('Помилка мережі. Спробуйте ще раз.');
+    }
+    setPaying(false);
+  }
 
   async function copyValue(key: string, value: string) {
     await copyText(value);
@@ -244,6 +274,13 @@ export default function InvoicePrint({
           </div>
         )}
         <div className="inv-toolbar-row" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {canPayOnline && !justPaid && (
+            <button onClick={payOnline} disabled={paying}
+              title={`До сплати: ${amountDue.toFixed(2)} грн`}
+              style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 20px', borderRadius: '10px', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: paying ? 'wait' : 'pointer', boxShadow: '0 3px 12px rgba(21,128,61,0.35)', opacity: paying ? 0.7 : 1 }}>
+              <CreditCard size={15} /> {paying ? 'Перехід до оплати…' : `Сплатити ${amountDue.toFixed(2)} ₴`}
+            </button>
+          )}
           {isStaff && (
             <>
               <InvoiceMessengerButtons variant="toolbar"
@@ -272,6 +309,15 @@ export default function InvoicePrint({
 
       {/* ── Document ── */}
       <div className="print-page-bg" style={{ background: '#E8ECF0', minHeight: '100vh', padding: '28px 16px' }}>
+        {justPaid && (
+          <div className="no-print" style={{ maxWidth: '210mm', margin: '0 auto 16px', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: '12px', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Check size={18} color="#15803D" />
+            <div style={{ fontSize: '14px', color: '#166534' }}>
+              <strong>Дякуємо! Оплату отримано.</strong> Банк підтверджує платіж — статус замовлення
+              оновиться протягом кількох хвилин, менеджер отримає сповіщення автоматично.
+            </div>
+          </div>
+        )}
         <div className="doc-wrap" style={{
           maxWidth: '210mm', margin: '0 auto', background: '#fff',
           boxShadow: '0 2px 20px rgba(0,0,0,0.13)', borderRadius: '3px',
