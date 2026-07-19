@@ -2,7 +2,7 @@
 
 import { hryvniaInWords } from "../../../lib/number-to-words";
 import { useState, useRef } from 'react';
-import { Printer, Mail } from 'lucide-react';
+import { Printer, Mail, FileDown } from 'lucide-react';
 import InvoiceMessengerButtons from '../../components/InvoiceMessengerButtons';
 
 function formatIban(raw: string) {
@@ -16,7 +16,7 @@ export default function VidatkovaNakladna({
   docId, docNumber, docDate, lines, total,
   sellerName, sellerEdrpou, sellerAddress, sellerBank, sellerIban,
   buyerName, buyerPhone, orderNumber, signatoryName,
-  defaultEmail,
+  defaultEmail, isStaff = false,
 }: {
   docId: string;
   docNumber: string;
@@ -33,6 +33,7 @@ export default function VidatkovaNakladna({
   orderNumber?: number | null;
   signatoryName?: string;
   defaultEmail?: string | null;
+  isStaff?: boolean;
 }) {
   const [emailInput, setEmailInput]       = useState(defaultEmail ?? '');
   const [sending, setSending]             = useState(false);
@@ -105,7 +106,7 @@ export default function VidatkovaNakladna({
 
       {/* Floating toolbar */}
       <div className="no-print" style={{ position: 'fixed', bottom: '28px', right: '24px', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-        {showEmailForm && (
+        {isStaff && showEmailForm && (
           <div style={{ background: '#fff', borderRadius: '10px', padding: '12px 14px', boxShadow: '0 4px 24px rgba(0,0,0,0.15)', width: '320px' }}>
             {/* Customer search */}
             <div style={{ position: 'relative', marginBottom: '8px' }}>
@@ -150,31 +151,47 @@ export default function VidatkovaNakladna({
           </div>
         )}
         <div style={{ display: 'flex', gap: '8px' }}>
-          <InvoiceMessengerButtons
-            variant="toolbar"
-            phone={buyerPhone ?? ''}
-            contact={buyerName}
-            total={total}
-            message={messengerMessage}
-          />
-          <button
-            onClick={() => { setShowEmailForm(v => !v); setSendResult(null); }}
-            style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 18px', borderRadius: '10px', background: '#5B21B6', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 3px 12px rgba(91,33,182,0.3)' }}
+          {/* Staff-only send controls */}
+          {isStaff && (
+            <>
+              <InvoiceMessengerButtons
+                variant="toolbar"
+                phone={buyerPhone ?? ''}
+                contact={buyerName}
+                total={total}
+                message={messengerMessage}
+              />
+              <button
+                onClick={() => { setShowEmailForm(v => !v); setSendResult(null); }}
+                style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 18px', borderRadius: '10px', background: '#5B21B6', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 3px 12px rgba(91,33,182,0.3)' }}
+              >
+                <Mail size={15} /> Email
+              </button>
+            </>
+          )}
+
+          {/* Available to everyone (incl. clients opening the link): download PDF */}
+          <a
+            href={`/api/vidatkova/${docId}/pdf`}
+            style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 20px', borderRadius: '10px', background: '#B91C1C', color: '#fff', fontSize: '13px', fontWeight: 700, textDecoration: 'none', boxShadow: '0 3px 12px rgba(185,28,28,0.3)' }}
           >
-            <Mail size={15} /> Email
-          </button>
-          <button
-            onClick={() => window.print()}
-            style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 20px', borderRadius: '10px', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 3px 12px rgba(30,58,95,0.3)' }}
-          >
-            <Printer size={15} /> Друк
-          </button>
+            <FileDown size={15} /> Завантажити PDF
+          </a>
+
+          {isStaff && (
+            <button
+              onClick={() => window.print()}
+              style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 20px', borderRadius: '10px', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 3px 12px rgba(30,58,95,0.3)' }}
+            >
+              <Printer size={15} /> Друк
+            </button>
+          )}
         </div>
       </div>
 
       {/* Document */}
       <div className="print-page-bg" style={{ background: '#E8ECF0', minHeight: '100vh', padding: '28px 16px' }}>
-        <div className="doc-wrap" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto', background: '#fff', boxShadow: '0 2px 20px rgba(0,0,0,0.13)', borderRadius: '3px', padding: '22px 30px 30px', boxSizing: 'border-box' }}>
+        <div className="doc-wrap" style={{ maxWidth: '210mm', width: '100%', margin: '0 auto', background: '#fff', boxShadow: '0 2px 20px rgba(0,0,0,0.13)', borderRadius: '3px', padding: '22px 30px 30px', boxSizing: 'border-box' }}>
 
           {/* Title */}
           <div style={{ fontSize: '17px', fontWeight: 700, color: '#111', marginBottom: '4px' }}>

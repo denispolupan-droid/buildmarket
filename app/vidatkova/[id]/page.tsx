@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import { createSupabaseServer } from '../../../lib/supabase-server';
 import { SELLER } from '../../../lib/company';
 import VidatkovaNakladna from './VidatkovaNakladna';
 
@@ -15,6 +16,12 @@ const db = createClient(
 
 export default async function VidatkovaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+
+  // Only staff get the send/print toolbar; clients (opening the shared link) get
+  // a clean download-only view — same model as the invoice page.
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  const isStaff = ['admin', 'manager'].includes(user?.app_metadata?.role ?? '');
 
   const [{ data: doc }, { data: lines }] = await Promise.all([
     db.from('acc_documents').select('*').eq('id', id).single(),
@@ -73,6 +80,7 @@ export default async function VidatkovaPage({ params }: { params: Promise<{ id: 
       orderNumber={order?.order_number ?? null}
       signatoryName={SELLER.signatory}
       defaultEmail={order?.email ?? null}
+      isStaff={isStaff}
     />
   );
 }
