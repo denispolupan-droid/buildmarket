@@ -2,7 +2,7 @@
 
 import { hryvniaInWords } from "../../../lib/number-to-words";
 import { useState, useRef } from 'react';
-import { Printer, FileSpreadsheet, Mail } from 'lucide-react';
+import { Printer, FileSpreadsheet, Mail, FileDown } from 'lucide-react';
 import InvoiceMessengerButtons from '../../components/InvoiceMessengerButtons';
 
 function formatIban(raw: string) {
@@ -27,7 +27,7 @@ type Order = {
 };
 
 export default function InvoicePrint({
-  order, bankRecipient, bankIban, bankName, bankEdrpou, bankAddress = '', signatoryName = '',
+  order, bankRecipient, bankIban, bankName, bankEdrpou, bankAddress = '', signatoryName = '', isStaff = false,
 }: {
   order: Order;
   bankRecipient: string;
@@ -36,6 +36,7 @@ export default function InvoicePrint({
   bankEdrpou: string;
   bankAddress?: string;
   signatoryName?: string;
+  isStaff?: boolean;
 }) {
   const [emailInput, setEmailInput]       = useState(order.email ?? '');
   const [sending, setSending]             = useState(false);
@@ -202,19 +203,28 @@ export default function InvoicePrint({
           </div>
         )}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <InvoiceMessengerButtons variant="toolbar"
-            phone={order.phone} contact={order.contact}
-            orderNumber={order.order_number} orderId={order.id}
-            total={total} />
-          <button onClick={exportExcel} style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 18px', borderRadius: '10px', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 3px 12px rgba(21,128,61,0.3)' }}>
-            <FileSpreadsheet size={15} /> Excel
-          </button>
-          <button onClick={() => { setShowEmailForm(v => !v); setSendResult(null); }} style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 18px', borderRadius: '10px', background: '#5B21B6', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 3px 12px rgba(91,33,182,0.3)' }}>
-            <Mail size={15} /> Email
-          </button>
-          <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 20px', borderRadius: '10px', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 3px 12px rgba(30,58,95,0.3)' }}>
-            <Printer size={15} /> Друк
-          </button>
+          {isStaff && (
+            <>
+              <InvoiceMessengerButtons variant="toolbar"
+                phone={order.phone} contact={order.contact}
+                orderNumber={order.order_number} orderId={order.id}
+                total={total} />
+              <button onClick={exportExcel} style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 18px', borderRadius: '10px', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 3px 12px rgba(21,128,61,0.3)' }}>
+                <FileSpreadsheet size={15} /> Excel
+              </button>
+              <button onClick={() => { setShowEmailForm(v => !v); setSendResult(null); }} style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 18px', borderRadius: '10px', background: '#5B21B6', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 3px 12px rgba(91,33,182,0.3)' }}>
+                <Mail size={15} /> Email
+              </button>
+            </>
+          )}
+          <a href={`/api/invoice/${order.id}/pdf`} style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 20px', borderRadius: '10px', background: '#B91C1C', color: '#fff', fontSize: '13px', fontWeight: 700, textDecoration: 'none', boxShadow: '0 3px 12px rgba(185,28,28,0.3)' }}>
+            <FileDown size={15} /> Завантажити PDF
+          </a>
+          {isStaff && (
+            <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 20px', borderRadius: '10px', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 3px 12px rgba(30,58,95,0.3)' }}>
+              <Printer size={15} /> Друк
+            </button>
+          )}
         </div>
       </div>
 

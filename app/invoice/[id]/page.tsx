@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { SELLER } from '../../../lib/company';
+import { createSupabaseServer } from '../../../lib/supabase-server';
 import InvoicePrint from './InvoicePrint';
 
 export const metadata: Metadata = {
@@ -24,9 +25,16 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
 
   if (!order) redirect('/');
 
+  // Сторінка публічна (UUID = секрет у посиланні), але робочі кнопки
+  // (Email/Excel/месенджери/друк) бачить лише персонал — клієнту лишаємо PDF.
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  const isStaff = ['admin', 'manager'].includes(user?.app_metadata?.role ?? '');
+
   // UUID is unguessable — anyone with the link can view the invoice
   return (
     <InvoicePrint
+      isStaff={isStaff}
       order={order}
       bankRecipient={SELLER.name}
       bankIban={SELLER.iban}
