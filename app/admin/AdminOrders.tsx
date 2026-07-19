@@ -119,6 +119,7 @@ interface AdminOrdersProps {
   sortDir?: string;
   promCommissionPct?: number;
   initialSaleDocs?: Record<string, { id: string; number: string }[]>;
+  initialReturnDocs?: Record<string, { id: string; number: string }[]>;
   initialShippedQty?: Record<string, Record<string, number>>;
 }
 
@@ -128,7 +129,7 @@ export default function AdminOrders({
   statusCounts = {}, currentStatus = '',
   sortBy = 'created_at', sortDir = 'desc',
   promCommissionPct = 3,
-  initialSaleDocs = {}, initialShippedQty = {},
+  initialSaleDocs = {}, initialReturnDocs = {}, initialShippedQty = {},
 }: AdminOrdersProps) {
   const isAdmin = userRole === 'admin';
   const router = useRouter();
@@ -2387,18 +2388,10 @@ export default function AdminOrders({
                                   );
                                 })()}
                                 {order.status === 'shipped' && (
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    <button onClick={() => changeStatus(order.id, 'delivered')} disabled={!!loading}
-                                      style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
-                                      <Check size={13} /> Доставлено
-                                    </button>
-                                    {(saleDocMap[order.id] ?? []).map(doc => (
-                                      <a key={doc.id} href={`/vidatkova/${doc.id}`} target="_blank"
-                                        style={{ fontSize: '11px', color: '#1E3A5F', fontWeight: 600, textDecoration: 'none', textAlign: 'center', padding: '2px 0' }}>
-                                        📄 {doc.number}
-                                      </a>
-                                    ))}
-                                  </div>
+                                  <button onClick={() => changeStatus(order.id, 'delivered')} disabled={!!loading}
+                                    style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
+                                    <Check size={13} /> Доставлено
+                                  </button>
                                 )}
                                 {isAdmin && ['shipped', 'delivered'].includes(order.status) && (
                                   <button onClick={() => setReturnFor({ id: order.id, number: order.order_number })}
@@ -2421,6 +2414,35 @@ export default function AdminOrders({
                                   <ShoppingCart size={13} />
                                   {creatingPo === order.id ? 'Завантаження...' : 'Створити ЗП'}
                                 </button>
+
+                                {/* Документи замовлення: РН (друкована видаткова) + повернення.
+                                    Видимі в будь-якому статусі — РН є кінцевим документом замовлення. */}
+                                {(() => {
+                                  const rnDocs  = saleDocMap[order.id] ?? [];
+                                  const retDocs = initialReturnDocs[order.id] ?? [];
+                                  if (!rnDocs.length && !retDocs.length) return null;
+                                  return (
+                                    <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '3px', borderTop: '1px dashed var(--border)', paddingTop: '6px' }}>
+                                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                        Документи
+                                      </div>
+                                      {rnDocs.map(doc => (
+                                        <a key={doc.id} href={`/vidatkova/${doc.id}`} target="_blank" rel="noopener noreferrer"
+                                          title="Видаткова накладна — відкрити та роздрукувати"
+                                          style={{ fontSize: '11.5px', color: '#1E3A5F', fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                          <Printer size={11} /> {doc.number}
+                                        </a>
+                                      ))}
+                                      {retDocs.map(doc => (
+                                        <a key={doc.id} href={`/admin/accounting/documents/${doc.id}`} target="_blank" rel="noopener noreferrer"
+                                          title="Документ повернення від покупця"
+                                          style={{ fontSize: '11.5px', color: '#B45309', fontWeight: 700, textDecoration: 'none' }}>
+                                          ↩ {doc.number}
+                                        </a>
+                                      ))}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             );
                           })()}

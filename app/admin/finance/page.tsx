@@ -282,6 +282,8 @@ export default async function FinancePage() {
           { href: '/admin/finance/expenses',    label: 'Витрати',        icon: TrendingDown,  color: '#B45309', bg: '#FEF3C7' },
           { href: '/admin/finance/reports',     label: 'Звіти',          icon: BarChart2,     color: '#15803D', bg: '#F0FDF4' },
           { href: '/admin/finance/marketplace-balance', label: 'Баланс маркетплейсів', icon: Scale, color: '#6366F1', bg: '#EEF2FF' },
+          { href: '/admin/finance/trial-balance', label: 'ОСВ', icon: BarChart2, color: '#0E7490', bg: '#ECFEFF' },
+          { href: '/admin/finance/periods', label: 'Періоди', icon: Clock, color: '#334155', bg: '#F1F5F9' },
         ].map(link => {
           const Icon = link.icon;
           return (

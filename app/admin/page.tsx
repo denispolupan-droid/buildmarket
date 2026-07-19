@@ -86,14 +86,17 @@ export default async function AdminPage({
 
   // Load confirmed sale docs + shipped quantities for orders on this page
   const orderIds = (orders ?? []).map(o => o.id);
-  const { data: saleDocsRaw } = orderIds.length
+  const { data: allDocsRaw } = orderIds.length
     ? await serviceClient
         .from('acc_documents')
-        .select('id, order_id, doc_number')
+        .select('id, order_id, doc_number, doc_type, reversal_of')
         .in('order_id', orderIds)
-        .eq('doc_type', 'sale')
+        .in('doc_type', ['sale', 'return_in'])
         .eq('status', 'confirmed')
-    : { data: [] as { id: string; order_id: string; doc_number: string }[] };
+    : { data: [] as { id: string; order_id: string; doc_number: string; doc_type: string; reversal_of: string | null }[] };
+
+  const saleDocsRaw = (allDocsRaw ?? []).filter(d => d.doc_type === 'sale');
+  const returnDocsRaw = (allDocsRaw ?? []).filter(d => d.doc_type === 'return_in' && !d.reversal_of);
 
   const saleDocIds = (saleDocsRaw ?? []).map(d => d.id);
   const { data: saleLines } = saleDocIds.length
@@ -107,6 +110,12 @@ export default async function AdminPage({
   for (const doc of saleDocsRaw ?? []) {
     if (!initialSaleDocs[doc.order_id]) initialSaleDocs[doc.order_id] = [];
     initialSaleDocs[doc.order_id].push({ id: doc.id, number: doc.doc_number });
+  }
+
+  const initialReturnDocs: Record<string, { id: string; number: string }[]> = {};
+  for (const doc of returnDocsRaw) {
+    if (!initialReturnDocs[doc.order_id]) initialReturnDocs[doc.order_id] = [];
+    initialReturnDocs[doc.order_id].push({ id: doc.id, number: doc.doc_number });
   }
 
   const docToOrder = new Map((saleDocsRaw ?? []).map(d => [d.id, d.order_id]));
@@ -232,7 +241,7 @@ export default async function AdminPage({
         {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
       </p>
 
-      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} initialSaleDocs={initialSaleDocs} initialShippedQty={initialShippedQty} />
+      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} initialSaleDocs={initialSaleDocs} initialReturnDocs={initialReturnDocs} initialShippedQty={initialShippedQty} />
     </div>
   );
 }
