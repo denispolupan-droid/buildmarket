@@ -71,6 +71,26 @@ export default async function FinancePage() {
 
   const hasAccData = (accDocs?.length ?? 0) > 0;
 
+  // ── Фактичний облік за поточний місяць — з леджера money_entries ──────────
+  // Дашборд нижче — оперативна оцінка по замовленнях (вкл. невідвантажені).
+  // Ця смужка — точні цифри з проведених документів, ті самі, що у «Звітах».
+  const monthStartDate = monthStart.slice(0, 10);
+  const { data: ledgerRows } = await db
+    .from('money_entries')
+    .select('account_type, amount')
+    .in('account_type', ['revenue', 'cogs', 'marketplace_fee'])
+    .gte('business_date', monthStartDate);
+
+  const ledgerSum = (type: string) =>
+    (ledgerRows ?? []).filter(r => r.account_type === type)
+      .reduce((s, r) => s + Number(r.amount), 0);
+  const ledger = {
+    revenue:    -ledgerSum('revenue'),        // кредитовий рахунок → знак мінус
+    cogs:        ledgerSum('cogs'),
+    commission:  ledgerSum('marketplace_fee'),
+  };
+  const ledgerGross = ledger.revenue - ledger.cogs - ledger.commission;
+
   // order_id → реальна собівартість з підтвердженої РН
   const accCostByOrder = new Map(
     (accDocs ?? []).map(d => [d.order_id as string, Number(d.total_cost ?? 0)])
@@ -246,7 +266,7 @@ export default async function FinancePage() {
           Фінанси
         </h1>
         <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-          {curMonthLabel} · {hasAccData ? 'Собівартість за підтвердженими РН (FIFO)' : 'Собівартість за поточними закупівельними цінами (РН не підтверджені)'}
+          {curMonthLabel} · Оперативна оцінка по замовленнях (вкл. невідвантажені) · {hasAccData ? 'собівартість за підтвердженими РН (FIFO)' : 'собівартість за закупівельними цінами'}
         </p>
         </div>
         <FinanceActions contracts={contractsForDrawer} />
@@ -321,6 +341,28 @@ export default async function FinancePage() {
             </div>
           );
         })}
+      </div>
+
+      {/* Фактичний облік (леджер) за поточний місяць */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '12px', padding: '12px 20px', marginBottom: '24px' }}>
+        <span style={{ fontSize: '11px', fontWeight: 700, color: '#15803D', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Фактичний облік · {curMonthLabel}
+        </span>
+        <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+          Виручка (проведені РН): <strong style={{ color: 'var(--text-primary)' }}>{fmt(ledger.revenue)} ₴</strong>
+        </span>
+        <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+          Собівартість (FIFO): <strong style={{ color: 'var(--text-primary)' }}>{fmt(ledger.cogs)} ₴</strong>
+        </span>
+        <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+          Комісії МП: <strong style={{ color: 'var(--text-primary)' }}>{fmt(ledger.commission)} ₴</strong>
+        </span>
+        <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+          Валовий прибуток: <strong style={{ color: ledgerGross >= 0 ? '#15803D' : '#DC2626' }}>{fmt(ledgerGross)} ₴</strong>
+        </span>
+        <Link href="/admin/finance/reports" style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: 700, color: '#15803D', textDecoration: 'none' }}>
+          Повний P&L →
+        </Link>
       </div>
 
       {/* Monthly chart */}

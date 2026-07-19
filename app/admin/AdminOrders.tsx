@@ -21,6 +21,7 @@ import { showConfirm } from '../../lib/confirm';
 import { showToast } from '../../lib/toast';
 import SmartDateInput from '../components/SmartDateInput';
 import InvoiceMessengerButtons from '../components/InvoiceMessengerButtons';
+import ReturnOrderModal from '../components/admin/ReturnOrderModal';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number; is_bonus?: boolean; supplier_sku?: string };
 
@@ -144,6 +145,9 @@ export default function AdminOrders({
         setSuppliersList(Array.isArray(rows) ? rows.map(s => ({ id: s.id, name: s.name })) : []))
       .catch(() => setSuppliersList([]));
   }, []);
+
+  // Модал повернення від покупця
+  const [returnFor, setReturnFor] = useState<{ id: string; number: number } | null>(null);
 
   async function setShippingSupplier(orderId: string, supplierId: number | null) {
     const res = await fetch(`/api/admin/orders/${orderId}`, {
@@ -2396,6 +2400,12 @@ export default function AdminOrders({
                                     ))}
                                   </div>
                                 )}
+                                {isAdmin && ['shipped', 'delivered'].includes(order.status) && (
+                                  <button onClick={() => setReturnFor({ id: order.id, number: order.order_number })}
+                                    style={{ ...btnMuted, color: '#B45309' }}>
+                                    ↩ Повернення
+                                  </button>
+                                )}
                                 <a href={`/invoice/${order.id}`} target="_blank" rel="noopener noreferrer"
                                   style={btnMuted}>
                                   <Printer size={13} /> Друк / Рахунок
@@ -2710,6 +2720,15 @@ export default function AdminOrders({
           </div>
         );
       })()}
+
+      {returnFor && (
+        <ReturnOrderModal
+          orderId={returnFor.id}
+          orderNumber={returnFor.number}
+          onClose={() => setReturnFor(null)}
+          onDone={() => router.refresh()}
+        />
+      )}
 
       {ttnModalOrder && (
         <CreateTTNModal

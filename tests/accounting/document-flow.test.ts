@@ -591,3 +591,88 @@ describe('Supplier payment', () => {
     await assertInvariants();
   });
 });
+
+// ── Клієнтське повернення (return_in) — новий грошовий потік ──────────────────
+// Потік: прихід +10 → продаж −6 → повернення +2.
+// Очікування: склад +2 новою FIFO-партією; гроші: DR revenue / CR customer
+// (сторно виручки) та DR inventory_asset / CR cogs (повернення собівартості).
+describe('Customer return (return_in)', () => {
+  let retReceiptId: string;
+  let retSaleId:    string;
+  let returnDocId:  string;
+
+  it('receipt +10 and sale -6 as fixtures', async () => {
+    const receipt = await createDocument({
+      doc_type:     'receipt',
+      warehouse_id: warehouseId,
+      supplier_id:  supplierId,
+      notes:        '[TEST] Receipt for return flow',
+      meta:         { test: true },
+      lines: [{ sku: testSku, qty: 10, price: 100, cost_price: 100 }],
+    });
+    retReceiptId = receipt.id;
+    await confirmDocument(retReceiptId, 'test-user');
+
+    const sale = await createDocument({
+      doc_type:     'sale',
+      warehouse_id: warehouseId,
+      customer_id:  customerId || undefined,
+      notes:        '[TEST] Sale for return flow',
+      meta:         { test: true },
+      lines: [{ sku: testSku, qty: 6, price: 200, cost_price: 100 }],
+    });
+    retSaleId = sale.id;
+    await confirmDocument(retSaleId, 'test-user');
+
+    await assertInvariants();
+  });
+
+  it('return_in +2: restock + revenue storno + COGS reversal', async () => {
+    const balanceBefore = await getStockBalance(testSku, warehouseId);
+    const qtyBefore = balanceBefore?.qty_total ?? 0;
+
+    const ret = await createDocument({
+      doc_type:     'return_in',
+      warehouse_id: warehouseId,
+      customer_id:  customerId || undefined,
+      notes:        '[TEST] Customer return',
+      meta:         { test: true },
+      lines: [{ sku: testSku, qty: 2, price: 200, cost_price: 100 }],
+    });
+    returnDocId = ret.id;
+    await confirmDocument(returnDocId, 'test-user');
+
+    // Склад +2
+    const balanceAfter = await getStockBalance(testSku, warehouseId);
+    expect(balanceAfter?.qty_total).toBe(qtyBefore + 2);
+
+    // Нова FIFO-партія на 2 шт
+    const { data: batches } = await db
+      .from('stock_batches')
+      .select('initial_qty, remaining_qty')
+      .eq('document_id', returnDocId);
+    expect(batches).toHaveLength(1);
+    expect(Number(batches![0].initial_qty)).toBe(2);
+
+    // Гроші: сторно виручки (DR revenue +400) + собівартість на склад (DR inventory +200 / CR cogs −200)
+    const entries = await getMoneyEntries(returnDocId);
+    const revenueDebit   = entries.find(e => e.account_type === 'revenue' && Number(e.amount) > 0);
+    const inventoryDebit = entries.find(e => e.account_type === 'inventory_asset' && Number(e.amount) > 0);
+    const cogsCredit     = entries.find(e => e.account_type === 'cogs' && Number(e.amount) < 0);
+    expect(revenueDebit,   'revenue debit (storno виручки) missing').toBeTruthy();
+    expect(Number(revenueDebit!.amount)).toBe(400);   // 2 * 200
+    expect(inventoryDebit, 'inventory_asset debit missing').toBeTruthy();
+    expect(Number(inventoryDebit!.amount)).toBe(200); // 2 * 100
+    expect(cogsCredit,     'cogs credit missing').toBeTruthy();
+    expect(Number(cogsCredit!.amount)).toBe(-200);
+
+    await assertInvariants();
+  });
+
+  it('cleanup: cancel return, sale, receipt', async () => {
+    await cancelDocument(returnDocId,  'test-user', 'Тест: прибирання');
+    await cancelDocument(retSaleId,    'test-user', 'Тест: прибирання');
+    await cancelDocument(retReceiptId, 'test-user', 'Тест: прибирання');
+    await assertInvariants();
+  });
+});

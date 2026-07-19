@@ -293,29 +293,82 @@ export async function confirmDocument(
       }
     }
 
-  } else if (doc.doc_type === 'return_out') {
-    if (doc.customer_id && totalAmount > 0) {
-      await recordReturn({
-        customerId:     doc.customer_id,
-        orderId:        doc.order_id ?? undefined,
-        docId:          documentId,
-        amount:         totalAmount,
-        businessDate:   bizDate,
-        createdBy:      confirmedBy,
-        idempotencyKey: `return:${documentId}`,
-      });
+  } else if (doc.doc_type === 'return_in') {
+    // Повернення від покупця: склад приходує товар (нова FIFO-партія у buildMovements,
+    // dropship-рядки пропускаються), гроші — сторно виручки + повернення собівартості:
+    //   DR revenue / CR customer(дебітор каналу)  — реверс recordShipment
+    //   DR inventory_asset / CR cogs              — реверс recordCOGS
+    const returnParty = totalAmount > 0 ? await resolveSaleDebitParty(db, doc) : null;
+    if (isReversal) {
+      if (returnParty && totalAmount > 0) {
+        await recordShipment({
+          customerId:     returnParty,
+          orderId:        doc.order_id ?? undefined,
+          docId:          documentId,
+          amount:         totalAmount,
+          businessDate:   bizDate,
+          createdBy:      confirmedBy,
+          idempotencyKey: `storno-return:${documentId}`,
+        });
+      }
+      if (totalCost > 0) {
+        await recordTxn({
+          debitAccount: 'cogs', creditAccount: 'inventory_asset',
+          amount: totalCost, businessDate: bizDate, docId: documentId,
+          docType: 'return_in', orderId: doc.order_id ?? undefined,
+          description: 'Сторно повернення: собівартість',
+          idempotencyKey: `storno-return-cogs:${documentId}`, createdBy: confirmedBy,
+        });
+      }
+    } else {
+      if (returnParty && totalAmount > 0) {
+        await recordReturn({
+          customerId:     returnParty,
+          orderId:        doc.order_id ?? undefined,
+          docId:          documentId,
+          amount:         totalAmount,
+          businessDate:   bizDate,
+          createdBy:      confirmedBy,
+          idempotencyKey: `return:${documentId}`,
+        });
+      }
+      if (totalCost > 0) {
+        await recordTxn({
+          debitAccount: 'inventory_asset', creditAccount: 'cogs',
+          amount: totalCost, businessDate: bizDate, docId: documentId,
+          docType: 'return_in', orderId: doc.order_id ?? undefined,
+          description: 'Повернення від покупця: собівартість на склад',
+          idempotencyKey: `return-cogs:${documentId}`, createdBy: confirmedBy,
+        });
+      }
     }
 
-  } else if (doc.doc_type === 'supplier_return') {
+  } else if (doc.doc_type === 'return_out' || doc.doc_type === 'supplier_return') {
+    // Повернення постачальнику (два синоніми типу). Раніше return_out помилково
+    // сторнував ВИРУЧКУ КЛІЄНТА (семантика клієнтського повернення) при тому, що
+    // склад він СПИСУЄ — тепер обидва типи проводяться як повернення постачальнику.
+    // Сторно такого документа — зворотна проводка (раніше сторно supplier_return
+    // постило повернення ще раз у той самий бік).
     if (doc.supplier_id && totalCost > 0) {
-      await recordSupplierReturn({
-        supplierId:     String(doc.supplier_id),
-        docId:          documentId,
-        amount:         totalCost,
-        businessDate:   bizDate,
-        createdBy:      confirmedBy,
-        idempotencyKey: `sup-return:${documentId}`,
-      });
+      if (isReversal) {
+        await recordPurchase({
+          supplierId:     String(doc.supplier_id),
+          docId:          documentId,
+          amount:         totalCost,
+          businessDate:   bizDate,
+          createdBy:      confirmedBy,
+          idempotencyKey: `storno-sup-return:${documentId}`,
+        });
+      } else {
+        await recordSupplierReturn({
+          supplierId:     String(doc.supplier_id),
+          docId:          documentId,
+          amount:         totalCost,
+          businessDate:   bizDate,
+          createdBy:      confirmedBy,
+          idempotencyKey: `sup-return:${documentId}`,
+        });
+      }
     }
   }
 }
@@ -330,7 +383,7 @@ export const SALE_DEBTOR = {
   guest:   'guest',
 } as const;
 
-async function resolveSaleDebitParty(
+export async function resolveSaleDebitParty(
   db: ReturnType<typeof createServiceClient>,
   doc: { customer_id?: string | null; order_id?: string | null },
 ): Promise<string> {
