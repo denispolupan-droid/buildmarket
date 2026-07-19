@@ -102,6 +102,19 @@ export default function VidatkovaNakladna({
         }
         body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #111; }
         table { border-collapse: collapse; width: 100%; }
+        @media screen and (max-width: 640px) {
+          .print-page-bg { padding: 12px 8px 110px !important; }
+          .doc-wrap { padding: 18px 14px 24px !important; }
+          /* Реквізити: мітка над значенням на всю ширину, а не вузька колонка */
+          .vd-parties td { display: block; width: auto !important; padding: 1px 0 !important; }
+          .vd-parties td:first-child { padding-top: 8px !important; }
+          /* Таблиця товарів: горизонтальний скрол у натуральну ширину */
+          .vd-items-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -14px; padding: 0 14px; }
+          .vd-items { min-width: 540px; }
+          /* Підписи: два блоки в стовпчик, а не в ряд (щоб "Отримав" не вилазив) */
+          .vd-sigs { flex-direction: column; gap: 22px !important; }
+          .vd-sigs > div { width: 100%; }
+        }
       `}</style>
 
       {/* Floating toolbar */}
@@ -205,7 +218,7 @@ export default function VidatkovaNakladna({
           <hr style={{ border: 'none', borderTop: '2px solid #1E3A5F', marginBottom: '14px' }} />
 
           {/* Parties */}
-          <table style={{ marginBottom: '10px', fontSize: '12px', border: 'none' }}>
+          <table className="vd-parties" style={{ marginBottom: '10px', fontSize: '12px', border: 'none' }}>
             <tbody>
               <tr>
                 <td style={{ padding: '3px 0', width: '130px', fontWeight: 700, verticalAlign: 'top', border: 'none' }}>Постачальник:</td>
@@ -229,7 +242,8 @@ export default function VidatkovaNakladna({
           </table>
 
           {/* Items table */}
-          <table style={{ marginBottom: '6px', fontSize: '11px', border: '1px solid #999' }}>
+          <div className="vd-items-wrap">
+          <table className="vd-items" style={{ marginBottom: '6px', fontSize: '11px', border: '1px solid #999' }}>
             <thead>
               <tr style={{ background: '#1E3A5F' }}>
                 <th style={{ border: '1px solid #4B6B8F', padding: '6px 6px', color: '#fff', width: '28px', textAlign: 'center' }}>№</th>
@@ -255,6 +269,7 @@ export default function VidatkovaNakladna({
               ))}
             </tbody>
           </table>
+          </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '11px', color: '#555', padding: '5px 0', marginBottom: '2px' }}>
             <span>Всього без ПДВ:</span>
             <strong style={{ color: '#111', display: 'inline-block', width: '73px', textAlign: 'right', paddingRight: '8px', boxSizing: 'border-box' }}>{total.toFixed(2)}</strong>
@@ -269,7 +284,7 @@ export default function VidatkovaNakladna({
           </div>
 
           {/* Signatures */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#111', gap: '32px' }}>
+          <div className="vd-sigs" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#111', gap: '32px' }}>
             <div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'baseline' }}>
                 <span style={{ whiteSpace: 'nowrap' }}>Відпустив(ла):</span>
