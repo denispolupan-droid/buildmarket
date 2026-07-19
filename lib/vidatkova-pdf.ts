@@ -124,8 +124,8 @@ export async function buildVidatkovaPdf(params: {
     const C = [
       { x: ML,      w: 22,  label: '№',               al: 'center' as const },
       { x: ML+22,   w: 68,  label: 'Код',              al: 'center' as const },
-      { x: ML+90,   w: 233, label: 'Найменування',     al: 'left'   as const },
-      { x: ML+323,  w: 52,  label: 'Кількість',        al: 'center' as const },
+      { x: ML+90,   w: 233, label: 'Найменування товару', al: 'left'   as const },
+      { x: ML+323,  w: 52,  label: 'Кіл-сть',           al: 'center' as const },
       { x: ML+375,  w: 28,  label: 'Од.',              al: 'center' as const },
       { x: ML+403,  w: 68,  label: 'Ціна',             al: 'right'  as const },
       { x: ML+471,  w: 68,  label: 'Сума',             al: 'right'  as const },
@@ -178,36 +178,31 @@ export async function buildVidatkovaPdf(params: {
     doc.font('R').fontSize(8.5).fillColor('#555').text(hryvniaInWords(total), ML, y, { width: CW, lineBreak: false });
     y += 20;
 
-    // ── 5. Signature table ──────────────────────────────────────────────────
-    // Two rows: Відпустив / Отримав, 4 cols: label | посада | підпис | ПІБ
-    const sigRows = ['Відпустив:', 'Отримав:'];
-    const sigCols = [
-      { x: ML,       w: 76  },
-      { x: ML+76,    w: 140, label: '(посада)' },
-      { x: ML+216,   w: 100, label: '(підпис)' },
-      { x: ML+316,   w: CW-316, label: "(прізвище, ім'я)" },
-    ];
-    const SIG_ROW_H = 22;
-    for (let ri = 0; ri < sigRows.length; ri++) {
-      const ry = y + ri * SIG_ROW_H;
-      fillRect(ML, ry, CW, SIG_ROW_H, '#ffffff');
-      strokeRect(ML, ry, CW, SIG_ROW_H, '#cccccc', 0.3);
-      for (const col of sigCols) {
-        vline(col.x, ry, ry + SIG_ROW_H, '#cccccc', 0.3);
-        if (col.label) {
-          const isSignatoryCell = ri === 0 && col === sigCols[1] && signatoryName;
-          doc.font('R').fontSize(7.5)
-             .fillColor(isSignatoryCell ? '#111111' : '#9CA3AF')
-             .text(isSignatoryCell ? signatoryName : col.label, col.x + 4, ry + 7, { width: col.w - 8, align: 'center', lineBreak: false });
-        }
-      }
-      doc.font('B').fontSize(8.5).fillColor('#111111').text(sigRows[ri], ML + 4, ry + 7, { width: sigCols[0].w - 8, lineBreak: false });
-    }
-    y += sigRows.length * SIG_ROW_H + 6;
+    // ── 5. Signatures ────────────────────────────────────────────────────────
+    // Inline, matching the online view: "Відпустив(ла): ____" on the left and
+    // "Отримав(ла): ____" on the right, each with a caption beneath — NOT a table.
+    y += 8;
+    const SIG_BLOCK_W = 250;
+    const leftX  = ML;
+    const rightX = ML + CW - SIG_BLOCK_W;
 
-    // M.P. labels
-    doc.font('R').fontSize(7.5).fillColor('#9CA3AF').text('М.П.', ML + 4, y, { lineBreak: false });
-    doc.font('R').fontSize(7.5).fillColor('#9CA3AF').text('М.П.', ML + 316, y, { lineBreak: false });
+    function drawSignature(bx: number, label: string, name: string) {
+      doc.font('R').fontSize(9).fillColor('#111111');
+      const labelW = doc.widthOfString(label);
+      doc.text(label, bx, y, { lineBreak: false });
+      const lineX1 = bx + labelW + 8;
+      const lineX2 = bx + SIG_BLOCK_W;
+      if (name) {
+        doc.font('R').fontSize(9).fillColor('#111111')
+           .text(name, lineX1, y, { width: lineX2 - lineX1, align: 'center', lineBreak: false });
+      }
+      hline(lineX1, y + 12, lineX2, '#000000', 0.7);
+      doc.font('R').fontSize(7.5).fillColor('#9CA3AF')
+         .text('(посада, підпис, прізвище)', bx, y + 15, { width: SIG_BLOCK_W, align: 'right', lineBreak: false });
+    }
+
+    drawSignature(leftX,  'Відпустив(ла):', signatoryName);
+    drawSignature(rightX, 'Отримав(ла):',   '');
 
     doc.end();
   });
