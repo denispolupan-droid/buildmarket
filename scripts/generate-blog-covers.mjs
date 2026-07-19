@@ -39,6 +39,9 @@ const ARTICLES = [
   { slug: 'plastyfikator-dlya-betonu',              title: 'Пластифікатор для бетону: навіщо потрібен і який вибрати',         category: 'Поради', color1: '#1e2926', color2: '#1a3530', accent: '#34D399' },
   { slug: 'ms-polymer-vs-poliuretan',               title: 'МС-полімерний vs поліуретановий герметик — у чому різниця',        category: 'Поради', color1: '#1E293B', color2: '#1e3a5f', accent: '#818CF8' },
   { slug: 'malyarna-strichka-yak-vybrat',           title: 'Малярна стрічка: як вибрати і правильно використовувати',          category: 'Поради', color1: '#2d2416', color2: '#243F6B', accent: '#FCD34D' },
+  { slug: 'hermetyk-dlya-vannoyi-yakyi-ne-chorniye', title: 'Герметик для ванної: який не чорніє і як зробити шов надовго',    category: 'Поради', color1: '#0f2744', color2: '#1a3a6b', accent: '#5EEAD4' },
+  { slug: 'chym-prykleity-dzerkalo-plintus-paneli',  title: 'Чим приклеїти дзеркало, плінтус і ПВХ-панелі',                    category: 'Поради', color1: '#1E293B', color2: '#2d3748', accent: '#60A5FA' },
+  { slug: 'hermetyzatsiya-vikon-pislya-montazhu',    title: 'Герметизація вікон після монтажу: шов, відкоси, підвіконня',      category: 'Поради', color1: '#1E293B', color2: '#1e3a5f', accent: '#38BDF8' },
 ];
 
 for (const a of ARTICLES) {
