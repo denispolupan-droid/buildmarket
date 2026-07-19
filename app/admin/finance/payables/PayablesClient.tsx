@@ -2,7 +2,9 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { ChevronDown, ChevronRight, TrendingDown, TrendingUp, CheckCircle, Search, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ChevronDown, ChevronRight, TrendingDown, TrendingUp, CheckCircle, Search, X, Banknote } from 'lucide-react';
+import { showToast } from '../../../../lib/toast';
 
 export type SupplierTransaction = {
   doc_type:      string;
@@ -33,7 +35,8 @@ function docLink(txn: SupplierTransaction): { href: string; label: string } | nu
     return { href: `/admin/procurement/receipts/${txn.doc_id}`, label: txn.doc_number ?? 'Прихід' };
   }
   if (txn.doc_type === 'supplier_payment') {
-    return { href: `/admin/procurement/${txn.doc_id}`, label: txn.doc_number ?? 'Оплата' };
+    // Ваучер оплати — окремої сторінки не має, показуємо номер без посилання
+    return { href: '#', label: txn.doc_number ?? 'Оплата' };
   }
   return txn.doc_number ? { href: '#', label: txn.doc_number } : null;
 }
@@ -55,11 +58,55 @@ export default function PayablesClient({ balances: allBalances }: Props) {
   const today      = new Date().toISOString().slice(0, 10);
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
 
+  const router = useRouter();
   const [filterSupplierId, setFilterSupplierId] = useState<number | ''>('');
   const [dateFrom,         setDateFrom]         = useState(monthStart);
   const [dateTo,           setDateTo]           = useState(today);
   const [dateApplied,      setDateApplied]      = useState(false);
   const [expanded,         setExpanded]         = useState<Set<number>>(new Set());
+
+  // ── Фіксація оплати постачальнику ──
+  const [payFor,    setPayFor]    = useState<number | null>(null);
+  const [payAmount, setPayAmount] = useState('');
+  const [payMode,   setPayMode]   = useState<'transfer' | 'cash'>('transfer');
+  const [payDate,   setPayDate]   = useState(today);
+  const [payNote,   setPayNote]   = useState('');
+  const [paySaving, setPaySaving] = useState(false);
+
+  function openPay(b: SupplierBalance) {
+    setPayFor(b.supplier_id);
+    setPayAmount(b.balance < 0 ? Math.abs(b.balance).toFixed(2) : '');
+    setPayMode('transfer');
+    setPayDate(today);
+    setPayNote('');
+  }
+
+  async function submitPay() {
+    const amount = parseFloat(payAmount.replace(',', '.'));
+    if (!payFor || !Number.isFinite(amount) || amount <= 0) {
+      showToast('Вкажіть коректну суму', 'error');
+      return;
+    }
+    setPaySaving(true);
+    try {
+      const res = await fetch('/api/admin/finance/supplier-payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ supplier_id: payFor, amount, payment_mode: payMode, payment_date: payDate, note: payNote }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showToast(`Оплату зафіксовано (${data.doc_number ?? ''})`, 'success');
+        setPayFor(null);
+        router.refresh();
+      } else {
+        showToast(data.error ?? 'Помилка збереження оплати', 'error');
+      }
+    } catch {
+      showToast('Помилка збереження оплати', 'error');
+    }
+    setPaySaving(false);
+  }
 
   function toggle(id: number) {
     setExpanded(prev => {
@@ -293,6 +340,11 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                         style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', textDecoration: 'none', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '5px', padding: '1px 7px' }}>
                         Акт звірки ↗
                       </Link>
+                      <button
+                        onClick={e => { e.stopPropagation(); payFor === b.supplier_id ? setPayFor(null) : openPay(b); }}
+                        style={{ fontSize: '11px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '5px', padding: '1px 7px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <Banknote size={11} /> Оплатити
+                      </button>
                     </div>
                   </div>
 
@@ -319,6 +371,41 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                     {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                   </span>
                 </div>
+
+                {/* Payment form */}
+                {payFor === b.supplier_id && (
+                  <div style={{ borderTop: '1px solid var(--border)', background: '#F0FDF4', padding: '14px 20px', display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                    <div>
+                      <label style={{ ...thStyle, display: 'block', marginBottom: '4px' }}>Сума, ₴</label>
+                      <input value={payAmount} onChange={e => setPayAmount(e.target.value)} inputMode="decimal" placeholder="0.00"
+                        style={{ ...inp, width: '120px', fontWeight: 700 }} />
+                    </div>
+                    <div>
+                      <label style={{ ...thStyle, display: 'block', marginBottom: '4px' }}>Спосіб</label>
+                      <select value={payMode} onChange={e => setPayMode(e.target.value as 'transfer' | 'cash')} style={{ ...inp, cursor: 'pointer' }}>
+                        <option value="transfer">🏦 Безготівковий</option>
+                        <option value="cash">💵 Готівка</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ ...thStyle, display: 'block', marginBottom: '4px' }}>Дата</label>
+                      <input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} style={inp} />
+                    </div>
+                    <div style={{ flex: '1 1 180px' }}>
+                      <label style={{ ...thStyle, display: 'block', marginBottom: '4px' }}>Коментар</label>
+                      <input value={payNote} onChange={e => setPayNote(e.target.value)} placeholder="напр., оплата за тиждень"
+                        style={{ ...inp, width: '100%', boxSizing: 'border-box' }} />
+                    </div>
+                    <button onClick={submitPay} disabled={paySaving}
+                      style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: paySaving ? 'wait' : 'pointer', opacity: paySaving ? 0.6 : 1 }}>
+                      {paySaving ? 'Зберігаємо…' : 'Зафіксувати оплату'}
+                    </button>
+                    <button onClick={() => setPayFor(null)}
+                      style={{ height: '36px', padding: '0 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', cursor: 'pointer' }}>
+                      Скасувати
+                    </button>
+                  </div>
+                )}
 
                 {/* Transactions */}
                 {isOpen && (
