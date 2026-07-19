@@ -105,6 +105,14 @@ function parseDate(raw: string): string | null {
 
 // ── Auto-matching logic ───────────────────────────────────────────────────────
 
+// Спец-дебітори без договору: виплати НП (наложені платежі) та маркетплейсів.
+// Значення в селекті кодуються як `sp:<counterparty>`, API отримує specialCounterparty.
+const SPECIAL_OPTS: { value: string; cp: 'np:cod' | 'mp:prom' | 'mp:rozetka'; label: string }[] = [
+  { value: 'sp:np:cod',      cp: 'np:cod',      label: '📦 Виплата НП (наложені платежі)' },
+  { value: 'sp:mp:rozetka',  cp: 'mp:rozetka',  label: '🟢 Виплата Rozetka' },
+  { value: 'sp:mp:prom',     cp: 'mp:prom',     label: '🟠 Виплата Prom.ua' },
+];
+
 const CONTRACT_RE = /[Дд][Гг]-?\d{4}-[A-Za-z0-9]{6,}/g;
 
 function autoMatch(
@@ -134,6 +142,17 @@ function autoMatch(
     if (c.balance && Math.abs(c.balance - txn.amount) < 0.01) {
       return { contractId: c.id, confidence: 'suggested', matchReason: `Сума збігається з боргом: ${fmt(c.balance)} ₴` };
     }
+  }
+
+  // 4. Виплати спец-дебіторів: НП (COD) та маркетплейси
+  if (/нова\s*пошта|novaposhta|nova\s*poshta/.test(haystack)) {
+    return { contractId: 'sp:np:cod', confidence: 'suggested', matchReason: 'Схоже на виплату НП (наложені платежі)' };
+  }
+  if (/rozetka|розетка/.test(haystack)) {
+    return { contractId: 'sp:mp:rozetka', confidence: 'suggested', matchReason: 'Схоже на виплату Rozetka' };
+  }
+  if (/prom\.ua|пром\.юа|тов[\s"«]*уапром/.test(haystack)) {
+    return { contractId: 'sp:mp:prom', confidence: 'suggested', matchReason: 'Схоже на виплату Prom.ua' };
   }
 
   return { contractId: '', confidence: 'none', matchReason: '' };
@@ -186,17 +205,24 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
 
   async function saveOne(txn: ParsedTxn) {
     if (!txn.contractId || txn.saved) return;
-    const contract = contracts.find(c => c.id === txn.contractId);
-    if (!contract) return;
+    const special = SPECIAL_OPTS.find(o => o.value === txn.contractId);
+    const contract = special ? null : contracts.find(c => c.id === txn.contractId);
+    if (!special && !contract) return;
 
     setTxnField(txn.id, { saving: true, error: undefined });
     try {
       const res = await fetch('/api/admin/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: JSON.stringify(special ? {
+          specialCounterparty: special.cp,
+          amount:        txn.amount,
+          paymentMethod: 'bank',
+          businessDate:  txn.date,
+          description:   txn.description || special.label,
+        } : {
           contractId:    txn.contractId,
-          customerId:    contract.customer_id,
+          customerId:    contract!.customer_id,
           amount:        txn.amount,
           paymentMethod: 'bank',
           businessDate:  txn.date,
@@ -356,7 +382,7 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
                   {/* Contract selector */}
                   {txn.saved ? (
                     <div style={{ fontSize: '12px', color: '#15803D', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <Check size={14} /> {selectedContract?.contract_number ?? '—'}
+                      <Check size={14} /> {SPECIAL_OPTS.find(o => o.value === txn.contractId)?.label ?? selectedContract?.contract_number ?? '—'}
                     </div>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -368,11 +394,18 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
                         onChange={e => setTxnField(txn.id, { contractId: e.target.value, confidence: e.target.value ? 'suggested' : 'none' })}
                         style={{ ...inp, width: '200px', cursor: 'pointer', fontSize: '12px' }}>
                         <option value="">— Договір —</option>
-                        {contracts.map(c => (
-                          <option key={c.id} value={c.id}>
-                            {c.contract_number} · {c.customer_name || c.customer_id}
-                          </option>
-                        ))}
+                        <optgroup label="Виплати без договору">
+                          {SPECIAL_OPTS.map(o => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Договори клієнтів">
+                          {contracts.map(c => (
+                            <option key={c.id} value={c.id}>
+                              {c.contract_number} · {c.customer_name || c.customer_id}
+                            </option>
+                          ))}
+                        </optgroup>
                       </select>
                     </div>
                   )}

@@ -7,12 +7,11 @@ import { cancelDocument } from '../../../../../lib/accounting/documents';
 import { releaseReservation } from '../../../../../lib/accounting/reservations';
 import { notifyAdminStatusChange, notifyCustomerStatus } from '../../../../../lib/telegram';
 import { buildCustomerStatusEmail } from '../../../../../lib/invoice-email';
-import { recordCustomerPayment, recordMarketplaceCommission, recordShipment } from '../../../../../lib/accounting/money';
+import { recordCustomerPayment, recordShipment } from '../../../../../lib/accounting/money';
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/prom-api';
-import { computePromCommission } from '../../../../../lib/prom-commission';
-import { computeRozetkaCommission } from '../../../../../lib/rozetka-commission';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../lib/rozetka-api';
 import { alertAdmin } from '../../../../../lib/alert';
+import { applyDeliveredEffects } from '../../../../../lib/accounting/delivered-effects';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -345,101 +344,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  // delivered + дропшип партнер → нараховуємо COD на баланс
+  // delivered → облікові ефекти (комісія маркетплейсу, COD партнеру) — спільна
+  // ідемпотентна функція, та сама що викликається кроном sync-delivery-status
   if (status === 'delivered') {
-    try {
-      const { data: order } = await db
-        .from('orders')
-        .select('id, order_number, total_price, payment_type, channel_code, partner_code')
-        .eq('id', id)
-        .single();
-
-      // Prom.ua commission — точний розрахунок по SKU при доставці
-      if (order?.channel_code === 'prom') {
-        try {
-          const [{ data: planRow }, { data: fallbackRow }, { data: fullOrder }] = await Promise.all([
-            db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
-            db.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle(),
-            db.from('orders').select('items, total_price').eq('id', id).single(),
-          ]);
-
-          const plan        = (planRow?.value ?? 'single') as 'single' | 'econom';
-          const fallbackPct = parseFloat(fallbackRow?.value ?? '3');
-          const items       = (fullOrder?.items ?? []) as { sku: string; qty: number; price: number }[];
-
-          if (items.length > 0) {
-            const result = await computePromCommission(items, { plan, fallbackPct });
-            if (result.total_commission > 0) {
-              const avgPct = Number(fullOrder?.total_price) > 0
-                ? Math.round(result.total_commission / Number(fullOrder?.total_price) * 10000) / 100
-                : fallbackPct;
-              await recordMarketplaceCommission({
-                orderId:       id,
-                amount:        result.total_commission,
-                marketplace:   'prom',
-                commissionPct: avgPct,
-                businessDate:  new Date().toISOString().slice(0, 10),
-                createdBy:     user.email ?? 'admin',
-              });
-            }
-          }
-        } catch (err) {
-          console.error('[prom] commission record failed:', err);
-        }
-      }
-
-      // Rozetka commission — той самий принцип: точний розрахунок по SKU/категорії при доставці
-      if (order?.channel_code === 'rozetka') {
-        try {
-          const [{ data: fallbackRow }, { data: fullOrder }] = await Promise.all([
-            db.from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle(),
-            db.from('orders').select('items, total_price').eq('id', id).single(),
-          ]);
-
-          const fallbackPct = parseFloat(fallbackRow?.value ?? '15');
-          const items        = (fullOrder?.items ?? []) as { sku: string; qty: number; price: number }[];
-
-          if (items.length > 0) {
-            const result = await computeRozetkaCommission(items, { fallbackPct });
-            if (result.total_commission > 0) {
-              const avgPct = Number(fullOrder?.total_price) > 0
-                ? Math.round(result.total_commission / Number(fullOrder?.total_price) * 10000) / 100
-                : fallbackPct;
-              await recordMarketplaceCommission({
-                orderId:       id,
-                amount:        result.total_commission,
-                marketplace:   'rozetka',
-                commissionPct: avgPct,
-                businessDate:  new Date().toISOString().slice(0, 10),
-                createdBy:     user.email ?? 'admin',
-              });
-            }
-          }
-        } catch (err) {
-          console.error('[rozetka] commission record failed:', err);
-        }
-      }
-
-      if (order?.channel_code === 'dropship' && order.partner_code && order.payment_type === 'cod') {
-        const { data: customer } = await db
-          .from('customers')
-          .select('id')
-          .eq('id', order.partner_code)
-          .single();
-
-        if (customer) {
-          const { error: creditErr } = await db.rpc('credit_cod_to_partner', {
-            p_customer_id: customer.id,
-            p_cod_amount:  order.total_price,
-            p_order_id:    order.id,
-            p_np_fee_pct:  2,
-          });
-          if (creditErr) console.error('[balance] credit_cod_to_partner failed:', creditErr);
-        }
-      }
-    } catch (err) {
-      console.error('[balance] COD credit failed:', err);
-    }
+    await applyDeliveredEffects(id, user.email ?? 'admin');
   }
 
   // Telegram notifications (fire-and-forget)

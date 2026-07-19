@@ -17,17 +17,49 @@ export async function POST(req: NextRequest) {
     businessDate,
     description,
     isAdvance,
+    specialCounterparty,
   } = await req.json() as {
-    contractId:    string;
-    customerId:    string;
+    contractId?:   string;
+    customerId?:   string;
     amount:        number;
     paymentMethod: 'bank' | 'cash' | 'acquiring';
     businessDate:  string;
     description?:  string;
     isAdvance?:    boolean;
+    /** Виплата від спец-дебітора без договору: НП (COD) або маркетплейс */
+    specialCounterparty?: 'np:cod' | 'mp:prom' | 'mp:rozetka';
   };
 
-  if (!contractId || !customerId || !amount || amount <= 0) {
+  const SPECIAL = { 'np:cod': 'Виплата НП (наложені платежі)', 'mp:prom': 'Виплата Prom.ua', 'mp:rozetka': 'Виплата Rozetka' } as const;
+
+  if (!amount || amount <= 0) {
+    return NextResponse.json({ error: 'Невірні параметри' }, { status: 400 });
+  }
+  if (specialCounterparty && !(specialCounterparty in SPECIAL)) {
+    return NextResponse.json({ error: 'Невірний контрагент' }, { status: 400 });
+  }
+
+  // Виплата від спец-дебітора: закриває дебіторку np:cod / mp:* (створену
+  // виручкою продажів без customer_id) — DR bank / CR customer(спец-контрагент).
+  if (specialCounterparty) {
+    try {
+      const txnId = await recordCustomerPayment({
+        customerId:     specialCounterparty,
+        amount,
+        paymentMethod,
+        businessDate,
+        description:    description || SPECIAL[specialCounterparty],
+        createdBy:      user.email,
+        idempotencyKey: `special-payment:${specialCounterparty}:${businessDate}:${amount}:${Date.now()}`,
+      });
+      return NextResponse.json({ ok: true, txnId });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Помилка запису оплати';
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  }
+
+  if (!contractId || !customerId) {
     return NextResponse.json({ error: 'Невірні параметри' }, { status: 400 });
   }
 

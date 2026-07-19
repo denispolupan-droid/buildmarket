@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { notifyCustomerStatus } from '../../../../lib/telegram';
 import { setRozetkaOrderStatus } from '../../../../lib/rozetka-api';
+import { applyDeliveredEffects } from '../../../../lib/accounting/delivered-effects';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -90,6 +91,13 @@ export async function GET(req: NextRequest) {
         .update({ status: 'delivered', delivered_at: new Date().toISOString() })
         .in('id', deliveredIds);
       updated += deliveredIds.length;
+
+      // Облікові ефекти доставки (комісія маркетплейсу, COD партнеру) — та сама
+      // ідемпотентна функція, що й у ручному PATCH-обробнику. Раніше крон писав
+      // статус напряму і ці нарахування губились.
+      for (const orderId of deliveredIds) {
+        await applyDeliveredEffects(orderId, 'cron:sync-delivery-status');
+      }
 
       // Notify customers via Telegram
       const { data: tgOrders } = await serviceClient

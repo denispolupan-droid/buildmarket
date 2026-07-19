@@ -237,11 +237,15 @@ export async function confirmDocument(
     }
 
   } else if (doc.doc_type === 'sale') {
+    // Дебет-сторона виручки: клієнт, а без customer_id — все одно дебіторка
+    // (маркетплейс / НП по наложці / гість), інакше виручка просто губиться
+    // і P&L занижується (K1 з аудиту docs/ACCOUNTING-AUDIT.md).
+    const revenueParty = totalAmount > 0 ? await resolveSaleDebitParty(db, doc) : null;
     if (isReversal) {
       // Сторно продажу: сторно виручки + сторно COGS
-      if (doc.customer_id && totalAmount > 0) {
+      if (revenueParty && totalAmount > 0) {
         await recordReturn({
-          customerId:     doc.customer_id,
+          customerId:     revenueParty,
           orderId:        doc.order_id ?? undefined,
           docId:          documentId,
           amount:         totalAmount,
@@ -265,9 +269,9 @@ export async function confirmDocument(
         });
       }
     } else {
-      if (doc.customer_id && totalAmount > 0) {
+      if (revenueParty && totalAmount > 0) {
         await recordShipment({
-          customerId:     doc.customer_id,
+          customerId:     revenueParty,
           contractId:     (doc as { contract_id?: string | null }).contract_id ?? undefined,
           orderId:        doc.order_id ?? undefined,
           docId:          documentId,
@@ -314,6 +318,34 @@ export async function confirmDocument(
       });
     }
   }
+}
+
+// Спеціальні контрагенти дебіторки для продажів без customer_id.
+// Кошти за такі продажі нам винен не «ніхто», а конкретна сторона:
+// НП (наложений платіж у дорозі), маркетплейс (виплата з кабінету) або гість.
+export const SALE_DEBTOR = {
+  npCod:   'np:cod',
+  prom:    'mp:prom',
+  rozetka: 'mp:rozetka',
+  guest:   'guest',
+} as const;
+
+async function resolveSaleDebitParty(
+  db: ReturnType<typeof createServiceClient>,
+  doc: { customer_id?: string | null; order_id?: string | null },
+): Promise<string> {
+  if (doc.customer_id) return doc.customer_id;
+  if (doc.order_id) {
+    const { data: order } = await db
+      .from('orders')
+      .select('payment_type, channel_code')
+      .eq('id', doc.order_id)
+      .maybeSingle();
+    if (order?.payment_type === 'cod')      return SALE_DEBTOR.npCod;
+    if (order?.channel_code === 'prom')     return SALE_DEBTOR.prom;
+    if (order?.channel_code === 'rozetka')  return SALE_DEBTOR.rozetka;
+  }
+  return SALE_DEBTOR.guest;
 }
 
 // ── Перевірка залежностей перед скасуванням ───────────────────────────────────
