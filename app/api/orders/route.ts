@@ -5,6 +5,7 @@ import { buildAdminNotificationHtml, buildCustomerOrderEmail } from '../../../li
 import { notifyAdminNewOrder, notifyCustomerNewOrder } from '../../../lib/telegram';
 import { rateLimit, getClientIp } from '../../../lib/rate-limit';
 import { WHOLESALE_MIN } from '../../../lib/site';
+import { alertAdmin } from '../../../lib/alert';
 import { repriceItems, applyPromoCode, type RepriceItem, type PriceRow, type PromoCodeRow } from '../../../lib/pricing';
 import type { CartItem } from '../../../types';
 
@@ -165,7 +166,7 @@ export async function POST(req: NextRequest) {
       email,
     });
     if (pendingErr) {
-      console.error('[pending_card_orders] insert failed:', pendingErr);
+      alertAdmin('Checkout: не збереглось pending_card_orders (картка)', { email, reference, error: pendingErr.message });
       return NextResponse.json({ error: 'Помилка збереження замовлення. Спробуйте ще раз.' }, { status: 500 });
     }
 
@@ -209,7 +210,7 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) {
-    console.error('[orders]', error);
+    alertAdmin('Checkout: не збереглось замовлення (безготівка)', { email, contact, total: finalTotal, error: error.message });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

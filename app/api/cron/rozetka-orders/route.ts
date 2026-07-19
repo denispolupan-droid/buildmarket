@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncRozetkaOrders } from '../../../../lib/rozetka-sync';
+import { alertAdmin } from '../../../../lib/alert';
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(result);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error('[rozetka-orders cron]', msg);
+    alertAdmin('Cron: синк замовлень Rozetka впав', msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

@@ -1,0 +1,38 @@
+name: Accounting invariants (prod)
+
+# Щоденна перевірка інваріантів обліку на бойовій базі. Дьоргає захищений роут
+# /api/cron/check-invariants (він крутиться на проді з service-role і сам алертить у
+# Telegram при порушенні). Тут додатково: звіт у Step Summary + падіння джоба (→ лист
+# власнику), якщо роут повернув не 200.
+
+on:
+  schedule:
+    - cron: '0 5 * * *'   # щодня 05:00 UTC
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check DB invariants on prod
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          RESP=$(curl -s -w $'\n%{http_code}' --max-time 60 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://fixline.com.ua/api/cron/check-invariants)
+          CODE=$(printf '%s' "$RESP" | tail -n1)
+          BODY=$(printf '%s' "$RESP" | sed '$d')
+          echo "HTTP $CODE"
+          {
+            echo "## Облік — інваріанти БД (prod)"
+            echo ""
+            echo "HTTP: **$CODE**"
+            echo '```json'
+            echo "$BODY"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$CODE" != "200" ]; then
+            echo "::error::Порушено інваріанти обліку (HTTP $CODE) — див. Telegram-алерт і тіло відповіді."
+            exit 1
+          fi

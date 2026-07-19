@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { syncSupplier } from '../../../../lib/supplier-sync';
+import { alertAdmin } from '../../../../lib/alert';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -39,6 +40,7 @@ export async function GET(req: NextRequest) {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'error';
       results.push({ id: s.id, name: s.name, status: `error: ${message}` });
+      alertAdmin(`Cron: синк постачальника "${s.name}" впав`, message);
     }
   }
 

@@ -5,6 +5,7 @@ import { buildCustomerOrderEmail, buildAdminNotificationHtml } from '../../../..
 import { notifyAdminNewOrder } from '../../../../lib/telegram';
 import { recordCustomerPayment } from '../../../../lib/accounting/money';
 import { verifyMonoSignature } from '../../../../lib/mono-signature';
+import { alertAdmin } from '../../../../lib/alert';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -81,7 +82,9 @@ export async function POST(req: NextRequest) {
           external_ref: extRef,
         }, { onConflict: 'external_ref', ignoreDuplicates: true });
       if (topupErr) {
-        console.error('[monobank webhook] top-up insert failed:', topupErr);
+        alertAdmin('Monobank: не зараховано поповнення балансу партнера', {
+          customerId, amount: amountUah, reference, error: topupErr.message,
+        });
         return NextResponse.json({ error: 'top-up failed' }, { status: 500 });
       }
     }
