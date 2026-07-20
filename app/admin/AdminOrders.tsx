@@ -61,6 +61,8 @@ type Order = {
   channel_code:       string | null;
   prom_order_id:      string | number | null;
   rozetka_order_id:   string | number | null;
+  customer_id:        string | null;
+  price_type:         string | null;
   shipping_supplier_id: number | null;
   fulfillment_mode:   string | null;
   confirmed_at:       string | null;
@@ -149,6 +151,33 @@ export default function AdminOrders({
 
   // Модал повернення від покупця
   const [returnFor, setReturnFor] = useState<{ id: string; number: number } | null>(null);
+
+  const PRICE_TYPE_LABELS: Record<string, string> = { retail: 'Роздріб', wholesale: 'Опт', drop: 'Дроп' };
+
+  async function changePriceType(orderId: string, priceType: string) {
+    const ok = await showConfirm(
+      `Перерахувати всі позиції за тарифом «${PRICE_TYPE_LABELS[priceType] ?? priceType}»? Ціни та суму замовлення буде змінено.`,
+    );
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/reprice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ price_type: priceType }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setOrders(prev => prev.map(o => o.id === orderId
+          ? { ...o, price_type: priceType, items: data.items ?? o.items, total_price: data.total_price ?? o.total_price }
+          : o));
+        showToast(`Тип цін: ${PRICE_TYPE_LABELS[priceType]} · нова сума ${Number(data.total_price).toFixed(2)} ₴`, 'success');
+      } else {
+        showToast(data.error ?? 'Помилка перерахунку', 'error');
+      }
+    } catch {
+      showToast('Мережева помилка', 'error');
+    }
+  }
 
   async function setShippingSupplier(orderId: string, supplierId: number | null) {
     const res = await fetch(`/api/admin/orders/${orderId}`, {
@@ -1585,7 +1614,8 @@ export default function AdminOrders({
                                       : undefined;
                                     return (
                                       <tr key={item.sku} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                                        <td style={{ padding: '5px 0', color: 'var(--text-primary)', maxWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {/* Назва повністю, з переносами — товар треба бачити цілком */}
+                                        <td style={{ padding: '5px 0', color: 'var(--text-primary)', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.4 }}>
                                           <span style={{ color: 'var(--text-muted)', marginRight: '2px', fontSize: '11px' }}>{item.sku}</span>
                                           <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
                                             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px 0 0', color: copiedSku === item.sku ? '#15803D' : 'var(--text-muted)', lineHeight: 1, fontSize: '11px' }}>
@@ -1767,12 +1797,36 @@ export default function AdminOrders({
                     <div style={{ padding: '14px 16px', borderRight: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {/* Contact info */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', paddingBottom: '8px', borderBottom: '1px solid var(--border-light)' }}>
+                        {/* Номер замовлення на маркетплейсі — покупець називає саме його */}
+                        {(order.channel_code === 'rozetka' && order.rozetka_order_id) && (
+                          <div style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 700, color: '#15803D', background: '#DCFCE7', borderRadius: '6px', padding: '2px 8px', cursor: 'pointer' }}
+                            title="Натисніть, щоб скопіювати номер замовлення Rozetka"
+                            onClick={() => { navigator.clipboard.writeText(String(order.rozetka_order_id)); showToast('Номер Rozetka скопійовано'); }}>
+                            Rozetka №{order.rozetka_order_id} ⎘
+                          </div>
+                        )}
+                        {(order.channel_code === 'prom' && order.prom_order_id) && (
+                          <div style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 700, color: '#C2410C', background: '#FFF7ED', borderRadius: '6px', padding: '2px 8px', cursor: 'pointer' }}
+                            title="Натисніть, щоб скопіювати номер замовлення Prom"
+                            onClick={() => { navigator.clipboard.writeText(String(order.prom_order_id)); showToast('Номер Prom скопійовано'); }}>
+                            Prom №{order.prom_order_id} ⎘
+                          </div>
+                        )}
                         {order.company && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 }}>
                             <Building2 size={12} color="#64748B" />{order.company}
                           </div>
                         )}
-                        <div style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{order.contact}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-primary)' }}>
+                          {order.contact}
+                          {order.customer_id && (
+                            <a href={`/admin/partners?open=${order.customer_id}`} target="_blank" rel="noopener noreferrer"
+                              title="Відкрити картку контрагента"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: '#1D4ED8', textDecoration: 'none', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '5px', padding: '1px 6px' }}>
+                              Картка ↗
+                            </a>
+                          )}
+                        </div>
                         <a href={`tel:${order.phone}`} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--brand-blue)', fontWeight: 600, textDecoration: 'none' }}>
                           <Phone size={12} />{order.phone}
                         </a>
@@ -2272,6 +2326,41 @@ export default function AdminOrders({
                           </div>
 
                           {/* Фактичний постачальник відвантаження (дроп/змішані замовлення) */}
+                          {/* Тип цін замовлення */}
+                          {(() => {
+                            const editable = ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
+                              && !['prom', 'rozetka', 'dropship'].includes(order.channel_code ?? '');
+                            const pt = order.price_type ?? 'retail';
+                            return (
+                              <div>
+                                <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
+                                  title="Тариф, за яким пораховані позиції. Зміна перерахує всі ціни за відповідним прайсом.">
+                                  Тип цін
+                                </div>
+                                {editable ? (
+                                  <select
+                                    value={pt}
+                                    onChange={e => { if (e.target.value !== pt) changePriceType(order.id, e.target.value); }}
+                                    style={{
+                                      width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)',
+                                      borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer',
+                                      color: 'var(--text-primary)', fontWeight: 600,
+                                    }}
+                                  >
+                                    <option value="retail">Роздріб</option>
+                                    <option value="wholesale">Опт</option>
+                                    <option value="drop">Дроп</option>
+                                  </select>
+                                ) : (
+                                  <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-subtle)' }}
+                                    title={['prom', 'rozetka'].includes(order.channel_code ?? '') ? 'Ціни зафіксовані маркетплейсом' : 'Ціни зафіксовані у проведеній накладній'}>
+                                    {PRICE_TYPE_LABELS[pt] ?? pt}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+
                           {fMode !== 'own' && suppliersList.length > 0 && (
                             <div>
                               <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}

@@ -146,6 +146,7 @@ export async function POST(req: NextRequest) {
     const payload = {
       user_id:               user?.id ?? null,
       customer_id:           customerId,
+      price_type:            isWholesaleUser ? 'wholesale' : 'retail',
       company:               company ?? null,
       contact,
       phone,
@@ -196,6 +197,7 @@ export async function POST(req: NextRequest) {
     .insert({
       user_id: user?.id ?? null,
       customer_id: customerId,
+      price_type: isWholesaleUser ? 'wholesale' : 'retail',
       company,
       contact,
       phone,

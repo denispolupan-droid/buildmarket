@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
     .insert({
       status:           'new',
       channel_code:     'dropship',
+      price_type:       'drop',
       partner_code:     customer.id,
       contact:          `${recipient.last_name} ${recipient.first_name} ${recipient.mid_name ?? ''}`.trim(),
       phone:            recipient.phone,

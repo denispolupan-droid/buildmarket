@@ -70,6 +70,7 @@ export async function syncRozetkaOrders() {
       delivery_city_name: mapped.delivery_city_name,
       delivery_subtype:   mapped.delivery_subtype,
       payment_type:     mapped.payment_type,
+      price_type:       'retail',
       comment:          mapped.comment,
       items:            mapped.items,
       total_price:      mapped.total_price,

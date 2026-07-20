@@ -87,6 +87,7 @@ export async function syncPromOrders() {
       delivery_type:    mapped.delivery_type,
       delivery_address: mapped.delivery_address,
       payment_type:     mapped.payment_type,
+      price_type:       'retail',
       comment:          mapped.comment,
       items:            mapped.items,
       total_price:      mapped.total_price,
