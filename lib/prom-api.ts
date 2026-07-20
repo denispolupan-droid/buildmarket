@@ -66,6 +66,7 @@ export interface PromOrder {
   number: string | null;
   ttn: string | null;
   products: PromProduct[];
+  delivery_address: string | null;        // готовий людський рядок адреси доставки
   delivery_option: {
     name: string;
     delivery_type: string;
@@ -73,6 +74,25 @@ export interface PromOrder {
     receive_type: string | null;
     warehouse: string | null;
     address: string | null;
+  } | null;
+  // Саме тут лежать Ref-и Нової Пошти, потрібні для ТТН (delivery_option їх НЕ має)
+  delivery_provider_data: {
+    provider: string | null;              // 'nova_poshta' | 'ukrposhta' | ...
+    type: string | null;                  // 'W2W' (склад-склад) | 'W2D' (адресна) | ...
+    recipient_address: {
+      city_id: string | null;
+      city_name: string | null;
+      warehouse_id: string | null;
+      recipient_warehouse_id: string | null;
+      building_number: string | null;
+      apartment_number: string | null;
+    } | null;
+  } | null;
+  delivery_recipient: {
+    phone: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    second_name: string | null;
   } | null;
   payment_option: {
     name: string;
@@ -185,24 +205,40 @@ export function parsePromNumber(s: string | null | undefined): number {
 }
 
 export function promOrderToOurFormat(order: PromOrder) {
-  const firstName  = order.client_first_name ?? '';
-  const lastName   = order.client_last_name  ?? '';
+  // Отримувач: delivery_recipient точніший за client_* (той може бути порожній)
+  const rcp        = order.delivery_recipient;
+  const firstName  = rcp?.first_name ?? order.client_first_name ?? '';
+  const lastName   = rcp?.last_name  ?? order.client_last_name  ?? '';
   const contact    = [firstName, lastName].filter(Boolean).join(' ').trim() || 'Клієнт Prom';
 
-  const del = order.delivery_option;
-  let deliveryType    = 'nova_poshta';
-  let deliveryAddress = '';
+  // Реквізити доставки для ТТН лежать у delivery_provider_data (Ref-и НП),
+  // а delivery_option містить лише назву служби. Людський рядок адреси —
+  // у top-level delivery_address.
+  const prov = order.delivery_provider_data;
+  const ra   = prov?.recipient_address;
 
-  if (del) {
-    if (del.delivery_type === 'nova_poshta')    deliveryType = 'nova_poshta';
-    else if (del.delivery_type === 'ukrposhta') deliveryType = 'ukrposhta';
-    else if (del.delivery_type === 'courier')   deliveryType = 'courier';
-    else if (del.delivery_type === 'pickup')    deliveryType = 'pickup';
-    else                                         deliveryType = 'nova_poshta';
+  let deliveryType         = 'nova_poshta';
+  if (prov?.provider === 'ukrposhta')    deliveryType = 'ukrposhta';
+  else if (prov?.provider === 'nova_poshta') deliveryType = 'nova_poshta';
+  else if (order.delivery_option?.delivery_type) deliveryType = order.delivery_option.delivery_type;
 
-    const parts = [del.city, del.warehouse ?? del.address].filter(Boolean);
-    deliveryAddress = parts.join(', ');
+  let deliveryCityRef: string | null      = null;
+  let deliveryWarehouseRef: string | null = null;
+  let deliveryCityName: string | null     = null;
+  let deliverySubtype: string | null      = null;
+  if (prov?.provider === 'nova_poshta' && ra) {
+    deliveryCityRef      = ra.city_id ?? null;
+    deliveryWarehouseRef = ra.recipient_warehouse_id ?? ra.warehouse_id ?? null;
+    deliveryCityName     = ra.city_name ?? null;
+    // building_number заповнений тільки для адресної доставки (двері), інакше склад
+    deliverySubtype      = ra.building_number ? 'address' : 'warehouse';
   }
+
+  const del = order.delivery_option;
+  const deliveryAddress =
+    order.delivery_address ||
+    (del ? [del.city, del.warehouse ?? del.address].filter(Boolean).join(', ') : '') ||
+    '';
 
   const pay = order.payment_option;
   let paymentType = 'cod';
@@ -224,10 +260,14 @@ export function promOrderToOurFormat(order: PromOrder) {
 
   return {
     contact,
-    phone:            order.phone ?? order.client_phone ?? '',
+    phone:            rcp?.phone ?? order.phone ?? order.client_phone ?? '',
     email:            order.email ?? order.client_email ?? '',
     delivery_type:    deliveryType,
+    delivery_subtype: deliverySubtype,
     delivery_address: deliveryAddress,
+    delivery_city_ref:      deliveryCityRef,
+    delivery_city_name:     deliveryCityName,
+    delivery_warehouse_ref: deliveryWarehouseRef,
     payment_type:     paymentType,
     comment:          order.comment ?? null,
     items,

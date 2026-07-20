@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { promDateParam, parsePromNumber } from '../lib/prom-api';
+import { promDateParam, parsePromNumber, promOrderToOurFormat } from '../lib/prom-api';
+import type { PromOrder } from '../lib/prom-api';
 
 describe('promDateParam — нормалізація date_from для Prom /orders/list', () => {
   it('прибирає мілісекунди і Z (Date.toISOString) — інакше Prom повертає 0 замовлень', () => {
@@ -39,5 +40,55 @@ describe('parsePromNumber — грошові поля Prom ("1 713 грн")', ()
     expect(parsePromNumber('')).toBe(0);
     expect(parsePromNumber(null)).toBe(0);
     expect(parsePromNumber(undefined)).toBe(0);
+  });
+});
+
+describe('promOrderToOurFormat — реквізити доставки для ТТН', () => {
+  // Фікстура за реальним замовленням #416867122 (склад-склад НП)
+  const order = {
+    id: 416867122,
+    client_first_name: 'Микола', client_last_name: 'Грибенюк',
+    client_phone: null, phone: '+380974957178', client_email: null, email: null,
+    full_price: '1 713 грн',
+    delivery_address: 'с. Сокільники (Львівська обл.), №1: вул. Шептицького, 19а',
+    delivery_option: { name: 'Нова Пошта', delivery_type: '', city: null, receive_type: null, warehouse: null, address: null },
+    delivery_provider_data: {
+      provider: 'nova_poshta', type: 'W2W',
+      recipient_address: {
+        city_id: 'ecd353bd-9fdf-11e5-a023-005056887b8d',
+        city_name: 'с. Сокільники (Львівська обл.)',
+        warehouse_id: 'ecd353d1-9fdf-11e5-a023-005056887b8d',
+        recipient_warehouse_id: 'ecd353d1-9fdf-11e5-a023-005056887b8d',
+        building_number: null, apartment_number: null,
+      },
+    },
+    delivery_recipient: { phone: '+380974957178', first_name: 'Микола', last_name: 'Грибенюк', second_name: '' },
+    payment_option: { name: 'Накладений платіж', payment_type: 'cash_on_delivery' },
+    products: [{ id: 1, external_id: 'SKU1', sku: 'SKU1', name: 'Товар', quantity: 3, price: '571 грн', total_price: '1 713 грн', measure_unit: 'шт' }],
+    comment: null,
+  } as unknown as PromOrder;
+
+  it('витягує НП Ref-и зі складу-складу (delivery_provider_data)', () => {
+    const m = promOrderToOurFormat(order);
+    expect(m.delivery_city_ref).toBe('ecd353bd-9fdf-11e5-a023-005056887b8d');
+    expect(m.delivery_warehouse_ref).toBe('ecd353d1-9fdf-11e5-a023-005056887b8d');
+    expect(m.delivery_city_name).toBe('с. Сокільники (Львівська обл.)');
+    expect(m.delivery_subtype).toBe('warehouse');
+    expect(m.delivery_type).toBe('nova_poshta');
+  });
+
+  it('телефон, отримувач і сума розпарсені', () => {
+    const m = promOrderToOurFormat(order);
+    expect(m.phone).toBe('+380974957178');
+    expect(m.contact).toBe('Микола Грибенюк');
+    expect(m.total_price).toBe(1713);
+  });
+
+  it('адресна доставка (building_number) → subtype address', () => {
+    const addr = JSON.parse(JSON.stringify(order));
+    addr.delivery_provider_data.type = 'W2D';
+    addr.delivery_provider_data.recipient_address.building_number = '19а';
+    const m = promOrderToOurFormat(addr as PromOrder);
+    expect(m.delivery_subtype).toBe('address');
   });
 });
