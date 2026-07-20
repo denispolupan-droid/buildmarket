@@ -25,13 +25,14 @@ export async function buildVidatkovaPdf(params: {
   buyerName: string;
   buyerPhone?: string | null;
   buyerEdrpou?: string | null;
+  buyerAddress?: string | null;
   orderNumber?: number | null;
   signatoryName?: string;
 }): Promise<Buffer> {
   const {
     docNumber, docDate, lines, total,
     sellerName, sellerEdrpou, sellerAddress, sellerBank, sellerIban,
-    buyerName, buyerPhone, buyerEdrpou, orderNumber, signatoryName = '',
+    buyerName, buyerPhone, buyerEdrpou, buyerAddress, orderNumber, signatoryName = '',
   } = params;
 
   const ibanDisplay = formatIban(sellerIban);
@@ -115,6 +116,7 @@ export async function buildVidatkovaPdf(params: {
     const buyerRows = [
       { text: buyerName, bold: true },
       ...(buyerEdrpou ? [{ text: `ЄДРПОУ/ДРФО: ${buyerEdrpou}`, color: '#555555' }] : []),
+      ...(buyerAddress ? [{ text: `Адреса: ${buyerAddress}`, color: '#555555' }] : []),
       ...(buyerPhone  ? [{ text: `Тел.: ${buyerPhone}`,           color: '#555555' }] : []),
     ];
     y += drawParty('Покупець:', buyerRows, y) + 6;

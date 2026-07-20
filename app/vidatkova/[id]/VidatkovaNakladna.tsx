@@ -15,7 +15,7 @@ type PrintLine = { sku: string; name: string; qty: number; price: number };
 export default function VidatkovaNakladna({
   docId, docNumber, docDate, lines, total,
   sellerName, sellerEdrpou, sellerAddress, sellerBank, sellerIban,
-  buyerName, buyerPhone, orderNumber, signatoryName,
+  buyerName, buyerPhone, buyerEdrpou, buyerAddress, orderNumber, signatoryName,
   defaultEmail, isStaff = false,
 }: {
   docId: string;
@@ -30,6 +30,8 @@ export default function VidatkovaNakladna({
   sellerIban: string;
   buyerName: string;
   buyerPhone?: string | null;
+  buyerEdrpou?: string | null;
+  buyerAddress?: string | null;
   orderNumber?: number | null;
   signatoryName?: string;
   defaultEmail?: string | null;
@@ -248,7 +250,9 @@ export default function VidatkovaNakladna({
               <tr>
                 <td style={{ padding: '3px 0', fontWeight: 700, verticalAlign: 'top', border: 'none' }}>Покупець:</td>
                 <td style={{ padding: '3px 0', verticalAlign: 'top', border: 'none', lineHeight: '1.75' }}>
-                  {buyerName}
+                  <strong>{buyerName}</strong>
+                  {buyerEdrpou && <><br /><span style={{ color: '#555' }}>ЄДРПОУ/ДРФО: {buyerEdrpou}</span></>}
+                  {buyerAddress && <><br /><span style={{ color: '#555' }}>Адреса: {buyerAddress}</span></>}
                   {buyerPhone && <><br /><span style={{ color: '#555' }}>Тел.: {buyerPhone}</span></>}
                 </td>
               </tr>

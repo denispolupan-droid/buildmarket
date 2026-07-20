@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { buildVidatkovaPdf } from '../../../../../lib/vidatkova-pdf';
 import { SELLER } from '../../../../../lib/company';
+import { resolveVidatkovaBuyer } from '../../../../../lib/vidatkova-buyer';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,15 +34,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     : { data: [] };
   const nameMap = new Map((products ?? []).map(p => [p.sku, `${p.brand} ${p.name}`.trim()]));
 
-  let order: { company: string | null; contact: string; phone: string; order_number: number } | null = null;
-  if (doc.order_id) {
-    const { data: o } = await db
-      .from('orders')
-      .select('company, contact, phone, order_number')
-      .eq('id', doc.order_id)
-      .single();
-    order = o;
-  }
+  const buyer = await resolveVidatkovaBuyer(db, doc);
 
   const printLines = (lines ?? []).map((l: { sku: string; qty: number; price: number }) => ({
     sku: l.sku,
@@ -50,7 +43,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     price: Number(l.price ?? 0),
   }));
   const total = printLines.reduce((s, l) => s + l.qty * l.price, 0);
-  const buyerName = order ? (order.company || order.contact) : (doc.counterparty ?? '—');
 
   const pdf = await buildVidatkovaPdf({
     docNumber:    doc.doc_number,
@@ -62,9 +54,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     sellerAddress: SELLER.address,
     sellerBank:   SELLER.bank,
     sellerIban:   SELLER.iban,
-    buyerName,
-    buyerPhone:   order?.phone ?? null,
-    orderNumber:  order?.order_number ?? null,
+    buyerName:    buyer.name,
+    buyerPhone:   buyer.phone,
+    buyerEdrpou:  buyer.edrpou,
+    buyerAddress: buyer.address,
+    orderNumber:  buyer.orderNumber,
     signatoryName: SELLER.signatory,
   });
 

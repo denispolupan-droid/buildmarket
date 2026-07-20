@@ -5,6 +5,7 @@ import { Resend } from 'resend';
 import { buildVidatkovaHtml } from '../../../../../../../lib/vidatkova-html';
 import { buildVidatkovaPdf } from '../../../../../../../lib/vidatkova-pdf';
 import { SELLER } from '../../../../../../../lib/company';
+import { resolveVidatkovaBuyer } from '../../../../../../../lib/vidatkova-buyer';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -32,17 +33,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     : { data: [] };
   const nameMap = new Map((products ?? []).map(p => [p.sku, `${p.brand} ${p.name}`.trim()]));
 
-  let order: { company: string | null; contact: string; phone: string; email: string; order_number: number } | null = null;
-  if (doc.order_id) {
-    const { data: o, error: oErr } = await db
-      .from('orders')
-      .select('company, contact, phone, email, order_number')
-      .eq('id', doc.order_id)
-      .single();
-    if (!oErr) order = o;
-  }
+  const buyer = await resolveVidatkovaBuyer(db, doc);
 
-  const toEmail = body.email?.trim() || order?.email;
+  const toEmail = body.email?.trim() || buyer.email;
   if (!toEmail) return NextResponse.json({ error: 'Email не вказано' }, { status: 400 });
 
   const printLines = (lines ?? []).map((l: { sku: string; qty: number; price: number }) => ({
@@ -53,7 +46,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }));
 
   const total = printLines.reduce((s, l) => s + l.qty * l.price, 0);
-  const buyerName = order ? (order.company || order.contact) : (doc.counterparty ?? '—');
 
   const buildParams = {
     docNumber: doc.doc_number,
@@ -65,9 +57,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     sellerAddress: SELLER.address,
     sellerBank:    SELLER.bank,
     sellerIban:    SELLER.iban,
-    buyerName,
-    buyerPhone:    order?.phone ?? null,
-    orderNumber:   order?.order_number ?? null,
+    buyerName:     buyer.name,
+    buyerPhone:    buyer.phone,
+    buyerEdrpou:   buyer.edrpou,
+    buyerAddress:  buyer.address,
+    orderNumber:   buyer.orderNumber,
     signatoryName: SELLER.signatory,
     printUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/vidatkova/${id}`,
   };

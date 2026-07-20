@@ -19,6 +19,7 @@ export function buildVidatkovaHtml(params: {
   buyerName: string;
   buyerPhone?: string | null;
   buyerEdrpou?: string | null;
+  buyerAddress?: string | null;
   orderNumber?: number | null;
   signatoryName?: string;
   printUrl?: string;
@@ -26,7 +27,7 @@ export function buildVidatkovaHtml(params: {
   const {
     docNumber, docDate, lines, total,
     sellerName, sellerEdrpou, sellerAddress, sellerBank, sellerIban,
-    buyerName, buyerPhone, buyerEdrpou, orderNumber, signatoryName = '', printUrl,
+    buyerName, buyerPhone, buyerEdrpou, buyerAddress, orderNumber, signatoryName = '', printUrl,
   } = params;
 
   const date = new Date(docDate).toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -74,8 +75,9 @@ export function buildVidatkovaHtml(params: {
     <tr>
       <td style="padding:3px 0;font-weight:700;vertical-align:top;border:none">Покупець:</td>
       <td style="padding:3px 0;vertical-align:top;border:none">
-        ${buyerName}
+        <strong>${buyerName}</strong>
         ${buyerEdrpou ? `<br><span style="color:#555">ЄДРПОУ/ДРФО: ${buyerEdrpou}</span>` : ''}
+        ${buyerAddress ? `<br><span style="color:#555">Адреса: ${buyerAddress}</span>` : ''}
         ${buyerPhone ? `<br><span style="color:#555">Тел.: ${buyerPhone}</span>` : ''}
       </td>
     </tr>
