@@ -84,6 +84,14 @@ interface OrdersListResponse {
 
 /* ── Order queries ──────────────────────────────────────────────────────── */
 
+// Prom API /orders/list мовчки повертає ПОРОЖНІЙ список, якщо date_from заданий
+// у форматі з мілісекундами та Z (напр. "2026-07-20T18:10:44.174Z", саме такий
+// дає Date.toISOString()). Приймається лише ISO без мілісекунд/зони. Через це
+// синк роками тягнув 0 замовлень. Нормалізуємо будь-яку дату тут, на межі API.
+export function promDateParam(s: string): string {
+  return s.replace(/\.\d+/, '').replace(/Z$/, '');
+}
+
 export async function getPromOrders(opts: {
   dateFrom?: string;
   dateTo?: string;
@@ -92,8 +100,8 @@ export async function getPromOrders(opts: {
   lastId?: number;
 }): Promise<PromOrder[]> {
   const params = new URLSearchParams();
-  if (opts.dateFrom) params.set('date_from', opts.dateFrom);
-  if (opts.dateTo)   params.set('date_to', opts.dateTo);
+  if (opts.dateFrom) params.set('date_from', promDateParam(opts.dateFrom));
+  if (opts.dateTo)   params.set('date_to', promDateParam(opts.dateTo));
   if (opts.status)   params.set('status', opts.status);
   if (opts.limit)    params.set('limit', String(opts.limit));
   if (opts.lastId)   params.set('last_id', String(opts.lastId));
