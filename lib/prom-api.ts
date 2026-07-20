@@ -215,9 +215,12 @@ export function promOrderToOurFormat(order: PromOrder) {
   const lastName   = rcp?.last_name  ?? order.client_last_name  ?? '';
   const contact    = [firstName, lastName].filter(Boolean).join(' ').trim() || 'Клієнт Prom';
 
-  // Реквізити доставки для ТТН лежать у delivery_provider_data (Ref-и НП),
-  // а delivery_option містить лише назву служби. Людський рядок адреси —
-  // у top-level delivery_address.
+  // Реквізити доставки. ⚠ Prom кладе у delivery_provider_data.recipient_address
+  // СВОЇ city_id/warehouse_id — це НЕ Ref-и Нової Пошти: getWarehouses(city_id)
+  // повертає 0 (перевірено live). Тому Ref-и НЕ зберігаємо (лишаємо null) — модалка
+  // ТТН по відсутньому ref іде фолбеком: шукає місто за назвою (з областю в дужках
+  // однозначно матчить потрібне село) і підставляє відділення за номером «№N» з
+  // адреси. Зберігаємо лише назву міста + людський рядок адреси + тип.
   const prov = order.delivery_provider_data;
   const ra   = prov?.recipient_address;
 
@@ -226,16 +229,14 @@ export function promOrderToOurFormat(order: PromOrder) {
   else if (prov?.provider === 'nova_poshta') deliveryType = 'nova_poshta';
   else if (order.delivery_option?.delivery_type) deliveryType = order.delivery_option.delivery_type;
 
-  let deliveryCityRef: string | null      = null;
-  let deliveryWarehouseRef: string | null = null;
-  let deliveryCityName: string | null     = null;
-  let deliverySubtype: string | null      = null;
+  const deliveryCityRef: string | null      = null;   // навмисно null: Prom-ref не резолвиться в НП
+  const deliveryWarehouseRef: string | null = null;
+  let deliveryCityName: string | null       = null;
+  let deliverySubtype: string | null        = null;
   if (prov?.provider === 'nova_poshta' && ra) {
-    deliveryCityRef      = ra.city_id ?? null;
-    deliveryWarehouseRef = ra.recipient_warehouse_id ?? ra.warehouse_id ?? null;
-    deliveryCityName     = ra.city_name ?? null;
+    deliveryCityName = ra.city_name ?? null;
     // building_number заповнений тільки для адресної доставки (двері), інакше склад
-    deliverySubtype      = ra.building_number ? 'address' : 'warehouse';
+    deliverySubtype  = ra.building_number ? 'address' : 'warehouse';
   }
 
   const del = order.delivery_option;

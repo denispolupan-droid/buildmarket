@@ -68,11 +68,12 @@ describe('promOrderToOurFormat — реквізити доставки для Т
     comment: null,
   } as unknown as PromOrder;
 
-  it('витягує НП Ref-и зі складу-складу (delivery_provider_data)', () => {
+  it('НЕ зберігає Prom-ref як НП-ref (не резолвиться), лишає назву+тип для фолбека', () => {
     const m = promOrderToOurFormat(order);
-    expect(m.delivery_city_ref).toBe('ecd353bd-9fdf-11e5-a023-005056887b8d');
-    expect(m.delivery_warehouse_ref).toBe('ecd353d1-9fdf-11e5-a023-005056887b8d');
-    expect(m.delivery_city_name).toBe('с. Сокільники (Львівська обл.)');
+    expect(m.delivery_city_ref).toBeNull();       // Prom city_id != НП SettlementRef
+    expect(m.delivery_warehouse_ref).toBeNull();
+    expect(m.delivery_city_name).toBe('с. Сокільники (Львівська обл.)');  // з областю → однозначний пошук
+    expect(m.delivery_address).toContain('№1');   // модалка підставить відділення за номером
     expect(m.delivery_subtype).toBe('warehouse');
     expect(m.delivery_type).toBe('nova_poshta');
   });
