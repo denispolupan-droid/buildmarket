@@ -96,10 +96,11 @@ export async function POST(req: NextRequest) {
   // null не блокує оформлення — замовлення важливіше за довідник.
   const customerId = await findOrCreateCustomerForOrder({
     contact,
-    company:    company ?? null,
+    company:     company ?? null,
     phone,
     email,
-    authUserId: user?.id ?? null,
+    authUserId:  user?.id ?? null,
+    accountType: (user?.app_metadata?.account_type as string | undefined) ?? null,
   });
   const FROM    = 'FIXLINE <noreply@fixline.com.ua>';
   const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'orders@fixline.com.ua';
