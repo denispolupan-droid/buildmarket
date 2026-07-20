@@ -54,8 +54,10 @@ export interface PromOrder {
   client_first_name: string;
   client_last_name: string;
   client_second_name: string | null;
-  client_phone: string;
+  client_phone: string | null;
+  phone: string | null;          // фактичний телефон замовлення (client_phone часто null)
   client_email: string | null;
+  email: string | null;
   status: string;
   status_name: string;
   full_price: string;
@@ -172,6 +174,16 @@ export async function updatePromProducts(products: {
 
 /* ── Mapping helpers ────────────────────────────────────────────────────── */
 
+// Prom віддає грошові поля рядком у людському форматі: "1 713 грн" (пробіл або
+// nbsp як розділювач тисяч, кома як десятковий, суфікс валюти). parseFloat на
+// такому дає 1 замість 1713 — тому чистимо все, крім цифр/десяткового знака.
+export function parsePromNumber(s: string | null | undefined): number {
+  if (s == null) return 0;
+  const cleaned = String(s).replace(/[^\d,.-]/g, '').replace(',', '.');
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function promOrderToOurFormat(order: PromOrder) {
   const firstName  = order.client_first_name ?? '';
   const lastName   = order.client_last_name  ?? '';
@@ -205,15 +217,15 @@ export function promOrderToOurFormat(order: PromOrder) {
     name:  p.name,
     brand: '',
     qty:   p.quantity,
-    price: parseFloat(p.price) || 0,
+    price: parsePromNumber(p.price),
   }));
 
-  const totalPrice = parseFloat(order.full_price) || items.reduce((s, i) => s + i.qty * i.price, 0);
+  const totalPrice = parsePromNumber(order.full_price) || items.reduce((s, i) => s + i.qty * i.price, 0);
 
   return {
     contact,
-    phone:            order.client_phone  ?? '',
-    email:            order.client_email  ?? '',
+    phone:            order.phone ?? order.client_phone ?? '',
+    email:            order.email ?? order.client_email ?? '',
     delivery_type:    deliveryType,
     delivery_address: deliveryAddress,
     payment_type:     paymentType,
