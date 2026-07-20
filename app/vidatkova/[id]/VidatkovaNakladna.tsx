@@ -89,6 +89,20 @@ export default function VidatkovaNakladna({
     `Переглянути онлайн: ${typeof window !== 'undefined' ? window.location.origin : 'https://fixline.com.ua'}/vidatkova/${docId}`,
   ].join('\n');
 
+  // Print the generated PDF (guaranteed A4 portrait — identical to the download),
+  // instead of window.print() on the HTML which the browser can render landscape.
+  function printPdf() {
+    const src = `/api/vidatkova/${docId}/pdf?inline=1`;
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+    iframe.onload = () => {
+      try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); }
+      catch { window.open(src, '_blank'); }
+    };
+    iframe.src = src;
+    document.body.appendChild(iframe);
+  }
+
   return (
     <>
       <style>{`
@@ -193,7 +207,7 @@ export default function VidatkovaNakladna({
 
           {isStaff && (
             <button
-              onClick={() => window.print()}
+              onClick={printPdf}
               style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 20px', borderRadius: '10px', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 3px 12px rgba(30,58,95,0.3)' }}
             >
               <Printer size={15} /> Друк
