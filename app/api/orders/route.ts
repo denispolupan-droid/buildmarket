@@ -6,6 +6,7 @@ import { notifyAdminNewOrder, notifyCustomerNewOrder } from '../../../lib/telegr
 import { rateLimit, getClientIp } from '../../../lib/rate-limit';
 import { WHOLESALE_MIN } from '../../../lib/site';
 import { alertAdmin } from '../../../lib/alert';
+import { findOrCreateCustomerForOrder } from '../../../lib/customers';
 import { repriceItems, applyPromoCode, type RepriceItem, type PriceRow, type PromoCodeRow } from '../../../lib/pricing';
 import type { CartItem } from '../../../types';
 
@@ -90,6 +91,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Мінімальна сума оптового замовлення — 3 000 ₴' }, { status: 400 });
   }
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;
+
+  // Контрагент для довідника: матч/створення за акаунтом → email → телефоном.
+  // null не блокує оформлення — замовлення важливіше за довідник.
+  const customerId = await findOrCreateCustomerForOrder({
+    contact,
+    company:    company ?? null,
+    phone,
+    email,
+    authUserId: user?.id ?? null,
+  });
   const FROM    = 'FIXLINE <noreply@fixline.com.ua>';
   const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'orders@fixline.com.ua';
 
@@ -133,6 +144,7 @@ export async function POST(req: NextRequest) {
     // Save pending draft — order only materialises after webhook confirms payment
     const payload = {
       user_id:               user?.id ?? null,
+      customer_id:           customerId,
       company:               company ?? null,
       contact,
       phone,
@@ -182,6 +194,7 @@ export async function POST(req: NextRequest) {
     .from('orders')
     .insert({
       user_id: user?.id ?? null,
+      customer_id: customerId,
       company,
       contact,
       phone,
