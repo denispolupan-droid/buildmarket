@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import NpSenderSettings from './NpSenderSettings';
 import EmailSettings from './EmailSettings';
 import ReservationSettings from './ReservationSettings';
+import MarketplaceSyncSettings from './MarketplaceSyncSettings';
 import UsersSettings from './UsersSettings';
 
 const serviceClient = createClient(
@@ -45,6 +46,9 @@ export default async function SettingsPage() {
       />
       <ReservationSettings
         initialTtlDays={parseInt(cfg.reservation_ttl_days ?? '7', 10)}
+      />
+      <MarketplaceSyncSettings
+        initialMinutes={parseInt(cfg.marketplace_sync_interval_min ?? '15', 10)}
       />
       <div style={{ marginTop: '24px' }}>
         <UsersSettings />
