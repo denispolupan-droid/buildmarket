@@ -96,7 +96,11 @@ export interface PromOrder {
   } | null;
   payment_option: {
     name: string;
-    payment_type: string;
+    payment_type?: string;                // Prom часто НЕ віддає це поле (лише id+name)
+  } | null;
+  payment_data: {
+    type: string | null;                  // 'evopay' (Пром-оплата) тощо
+    status: string | null;                // 'paid' → передплата вже надійшла на Prom
   } | null;
 }
 
@@ -240,13 +244,20 @@ export function promOrderToOurFormat(order: PromOrder) {
     (del ? [del.city, del.warehouse ?? del.address].filter(Boolean).join(', ') : '') ||
     '';
 
-  const pay = order.payment_option;
-  let paymentType = 'cod';
-  if (pay) {
-    if (pay.payment_type === 'cash_on_delivery') paymentType = 'cod';
-    else if (pay.payment_type === 'cash')         paymentType = 'cash';
-    else                                           paymentType = 'invoice';
-  }
+  // Спосіб оплати. Prom часто НЕ віддає payment_option.payment_type — лише name,
+  // тому класифікуємо по name + payment_data. «Пром-оплата» (evopay, status=paid)
+  // — це передоплата, яка ВЖЕ надійшла на Prom (не безнал-рахунок до сплати).
+  const payName    = (order.payment_option?.name ?? '').toLowerCase();
+  const payType    = order.payment_option?.payment_type ?? '';
+  const isPrepaid  = order.payment_data?.status === 'paid';   // гроші вже на Prom
+  let paymentType: string;
+  if (payType === 'cash_on_delivery' || /наклад/.test(payName)) paymentType = 'cod';
+  else if (isPrepaid)                                            paymentType = 'prepaid';
+  else if (payType === 'cash' || /готів/.test(payName))         paymentType = 'cash';
+  else                                                          paymentType = 'invoice';
+  // Передоплата на Prom = замовлення вже оплачене з боку покупця (Prom розрахується
+  // з нами при виплаті). Позначаємо оплаченим, щоб адмінка не вимагала оплату.
+  const paid = isPrepaid;
 
   const items = order.products.map(p => ({
     sku:   p.external_id ?? p.sku ?? '',
@@ -269,6 +280,7 @@ export function promOrderToOurFormat(order: PromOrder) {
     delivery_city_name:     deliveryCityName,
     delivery_warehouse_ref: deliveryWarehouseRef,
     payment_type:     paymentType,
+    paid,
     comment:          order.comment ?? null,
     items,
     total_price:      totalPrice,

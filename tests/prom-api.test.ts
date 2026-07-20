@@ -92,3 +92,41 @@ describe('promOrderToOurFormat — реквізити доставки для Т
     expect(m.delivery_subtype).toBe('address');
   });
 });
+
+describe('promOrderToOurFormat — спосіб оплати', () => {
+  const base = {
+    id: 1, client_first_name: 'І', client_last_name: 'П', phone: '+380000000000',
+    full_price: '100', products: [], delivery_option: null, delivery_provider_data: null,
+    delivery_recipient: null,
+  };
+
+  it('Пром-оплата (evopay, paid) → prepaid і позначено оплаченим', () => {
+    const m = promOrderToOurFormat({
+      ...base,
+      payment_option: { name: 'Пром-оплата' },
+      payment_data: { type: 'evopay', status: 'paid' },
+    } as unknown as PromOrder);
+    expect(m.payment_type).toBe('prepaid');
+    expect(m.paid).toBe(true);
+  });
+
+  it('Накладений платіж → cod і НЕ оплачено', () => {
+    const m = promOrderToOurFormat({
+      ...base,
+      payment_option: { name: 'Накладений платіж' },
+      payment_data: null,
+    } as unknown as PromOrder);
+    expect(m.payment_type).toBe('cod');
+    expect(m.paid).toBe(false);
+  });
+
+  it('невідомий спосіб без оплати → invoice, не оплачено', () => {
+    const m = promOrderToOurFormat({
+      ...base,
+      payment_option: { name: 'Оплата за реквізитами' },
+      payment_data: null,
+    } as unknown as PromOrder);
+    expect(m.payment_type).toBe('invoice');
+    expect(m.paid).toBe(false);
+  });
+});
