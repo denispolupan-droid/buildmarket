@@ -1473,9 +1473,21 @@ export default function AdminOrders({
 
                   {/* Оплата */}
                   <div className="oc-hide-m" style={{ width: '46px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-                    <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '20px', background: 'var(--border-light)', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center' }}>
-                      {order.payment_type === 'cod' ? 'НП' : order.payment_type === 'card' ? '💳' : order.payment_type === 'cash' ? 'Гот.' : order.payment_type === 'deferred' ? 'Відст.' : 'Рах.'}
-                    </span>
+                    {(() => {
+                      const label = order.payment_type === 'cod' ? 'НП'
+                        : order.payment_type === 'card' ? '💳'
+                        : order.payment_type === 'prepaid' ? 'Пре.'
+                        : order.payment_type === 'cash' ? 'Гот.'
+                        : order.payment_type === 'deferred' ? 'Відст.'
+                        : 'Рах.';
+                      // Зелений = оплата підтверджена (передоплата/безнал/картка). НП платить при отриманні.
+                      const paid = order.payment_confirmed && order.payment_type !== 'cod';
+                      return (
+                        <span title={paid ? 'Оплачено' : undefined} style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '20px', background: paid ? '#DCFCE7' : 'var(--border-light)', color: paid ? '#15803D' : 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center' }}>
+                          {label}
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   {/* Дзвінок */}
