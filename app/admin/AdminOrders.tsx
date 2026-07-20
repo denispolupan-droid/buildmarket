@@ -63,6 +63,8 @@ type Order = {
   rozetka_order_id:   string | number | null;
   customer_id:        string | null;
   price_type:         string | null;
+  discount_pct:       number | null;
+  discount_amount:    number | null;
   shipping_supplier_id: number | null;
   fulfillment_mode:   string | null;
   confirmed_at:       string | null;
@@ -179,6 +181,41 @@ export default function AdminOrders({
     }
   }
 
+  // Ручна знижка по замовленню — зашивається в построчну ціну (Варіант A).
+  // mode 'pct' — відсоток, 'amount' — сума грн (сервер переведе у %). 0 знімає знижку.
+  async function applyDiscount(orderId: string, mode: 'pct' | 'amount', value: number) {
+    const clean = Number(value);
+    if (Number.isNaN(clean) || clean < 0) { showToast('Некоректне значення знижки', 'error'); return; }
+    const label = mode === 'pct' ? `${clean}%` : `${clean.toFixed(2)} ₴`;
+    const ok = clean === 0
+      ? await showConfirm('Прибрати знижку і повернути повні ціни?')
+      : await showConfirm(`Застосувати знижку ${label}? Ціни всіх позицій буде знижено.`);
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/discount`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mode === 'pct' ? { pct: clean } : { amount: clean }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setOrders(prev => prev.map(o => o.id === orderId
+          ? { ...o, items: data.items ?? o.items, total_price: data.total_price ?? o.total_price, discount_pct: data.discount_pct ?? 0, discount_amount: data.discount_amount ?? 0 }
+          : o));
+        showToast(
+          data.discount_pct > 0
+            ? `Знижка ${data.discount_pct}% (−${Number(data.discount_amount).toFixed(2)} ₴) · сума ${Number(data.total_price).toFixed(2)} ₴`
+            : 'Знижку прибрано',
+          'success',
+        );
+      } else {
+        showToast(data.error ?? 'Помилка знижки', 'error');
+      }
+    } catch {
+      showToast('Мережева помилка', 'error');
+    }
+  }
+
   async function setShippingSupplier(orderId: string, supplierId: number | null) {
     const res = await fetch(`/api/admin/orders/${orderId}`, {
       method: 'PATCH',
@@ -256,6 +293,8 @@ export default function AdminOrders({
   const [payFormMode,      setPayFormMode]      = useState<Record<string, string>>({});
   const [payFormDate,      setPayFormDate]      = useState<Record<string, string>>({});
   const [payFormNote,      setPayFormNote]      = useState<Record<string, string>>({});
+  const [discInput,        setDiscInput]        = useState<Record<string, string>>({});
+  const [discMode,         setDiscMode]         = useState<Record<string, 'pct' | 'amount'>>({});
   const [payFormSaving,    setPayFormSaving]    = useState<Record<string, boolean>>({});
   const [payRemoving,      setPayRemoving]      = useState<string | null>(null);
 
@@ -2356,6 +2395,62 @@ export default function AdminOrders({
                                     title={['prom', 'rozetka'].includes(order.channel_code ?? '') ? 'Ціни зафіксовані маркетплейсом' : 'Ціни зафіксовані у проведеній накладній'}>
                                     {PRICE_TYPE_LABELS[pt] ?? pt}
                                   </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Ручна знижка по замовленню */}
+                          {(() => {
+                            const editable = ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
+                              && !['prom', 'rozetka', 'dropship'].includes(order.channel_code ?? '');
+                            const activePct = Number(order.discount_pct ?? 0);
+                            if (!editable) {
+                              if (activePct > 0) {
+                                return (
+                                  <div>
+                                    <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>Знижка</div>
+                                    <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: '#B45309', background: '#FFFBEB' }}>
+                                      −{activePct}% (−{Number(order.discount_amount ?? 0).toFixed(2)} ₴)
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }
+                            const mode = discMode[order.id] ?? 'pct';
+                            return (
+                              <div>
+                                <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
+                                  title="Ручна знижка. Знижує ціни всіх позицій; сума замовлення перераховується.">
+                                  Знижка{activePct > 0 ? ` · зараз −${activePct}%` : ''}
+                                </div>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                  <select
+                                    value={mode}
+                                    onChange={e => setDiscMode(p => ({ ...p, [order.id]: e.target.value as 'pct' | 'amount' }))}
+                                    style={{ height: '30px', padding: '0 4px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer' }}
+                                  >
+                                    <option value="pct">%</option>
+                                    <option value="amount">₴</option>
+                                  </select>
+                                  <input
+                                    type="number" min="0" step="any"
+                                    value={discInput[order.id] ?? ''}
+                                    placeholder={mode === 'pct' ? 'напр. 10' : 'напр. 200'}
+                                    onChange={e => setDiscInput(p => ({ ...p, [order.id]: e.target.value }))}
+                                    style={{ width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)' }}
+                                  />
+                                  <button
+                                    onClick={() => applyDiscount(order.id, mode, parseFloat(discInput[order.id] ?? ''))}
+                                    style={{ height: '30px', padding: '0 10px', border: '1px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                  >OK</button>
+                                </div>
+                                {activePct > 0 && (
+                                  <button
+                                    onClick={() => applyDiscount(order.id, 'pct', 0)}
+                                    style={{ marginTop: '4px', fontSize: '11px', color: '#B91C1C', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                                  >Прибрати знижку −{activePct}%</button>
                                 )}
                               </div>
                             );

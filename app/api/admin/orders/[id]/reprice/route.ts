@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const db = createServiceClient();
   const { data: order } = await db
     .from('orders')
-    .select('id, order_number, status, channel_code, items, price_type, promo_discount')
+    .select('id, order_number, status, channel_code, items, price_type, promo_discount, discount_pct')
     .eq('id', id)
     .single();
   if (!order) return NextResponse.json({ error: 'Замовлення не знайдено' }, { status: 404 });
@@ -39,7 +39,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ ok: true, unchanged: true });
   }
 
-  type Item = { sku: string; qty: number; price: number; is_bonus?: boolean; [k: string]: unknown };
+  // Ручна знижка (Варіант A) — множник поверх базової ціни тарифу.
+  const discountPct = Math.max(0, Math.min(100, Number(order.discount_pct ?? 0)));
+  const discountFactor = 1 - discountPct / 100;
+
+  type Item = { sku: string; qty: number; price: number; price_base?: number; is_bonus?: boolean; [k: string]: unknown };
   const items = (order.items ?? []) as Item[];
   const skus = items.map(i => i.sku);
 
@@ -73,16 +77,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!(unit > 0)) {
       return NextResponse.json({ error: `${item.sku}: не встановлена ціна для тарифу «${priceType}»` }, { status: 409 });
     }
-    newItems.push({ ...item, price: unit });
+    // Зберігаємо базову ціну тарифу як price_base і переприкладаємо ручну знижку
+    // (якщо була), щоб зміна типу цін не «з'їдала» знижку. discount у зашитій моделі
+    // — множник поверх базової ціни.
+    newItems.push({ ...item, price_base: unit, price: Math.round(unit * discountFactor * 100) / 100 });
   }
 
-  const newTotal = Math.round(newItems.reduce((s, i) => s + (i.is_bonus ? 0 : Number(i.price) * Number(i.qty)), 0) * 100) / 100;
+  const baseTotal = Math.round(newItems.reduce((s, i) => s + (i.is_bonus ? 0 : Number(i.price_base ?? i.price) * Number(i.qty)), 0) * 100) / 100;
+  const newTotal  = Math.round(newItems.reduce((s, i) => s + (i.is_bonus ? 0 : Number(i.price) * Number(i.qty)), 0) * 100) / 100;
+  const discountAmount = Math.round((baseTotal - newTotal) * 100) / 100;
 
   const { error: updErr } = await db
     .from('orders')
-    .update({ items: newItems, total_price: newTotal, price_type: priceType })
+    .update({ items: newItems, total_price: newTotal, price_type: priceType, discount_amount: discountAmount })
     .eq('id', id);
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, price_type: priceType, total_price: newTotal, items: newItems });
+  return NextResponse.json({ ok: true, price_type: priceType, total_price: newTotal, discount_amount: discountAmount, items: newItems });
 }

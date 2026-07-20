@@ -64,6 +64,51 @@ export function repriceItems(
   return { ok: true, serverTotal, serverEligibleTotal, serverItems };
 }
 
+// ── Ручна знижка по замовленню (Варіант A) ─────────────────────────────────
+// Знижка «зашивається» у построчну ціну items[].price, тому вся облікова гілка
+// (РН, виручка, дебіторка, рахунок), яка читає items[].price / total_price,
+// лишається консистентною без змін у ядрі. База знижки — снапшот price_base у
+// позиції (а якщо його немає — поточна price), тому повторне застосування
+// рахує від бази (не компаундить), а pct=0 повертає повні ціни.
+export type DiscountItem = { qty: number; price: number; price_base?: number; is_bonus?: boolean; [k: string]: unknown };
+
+export type DiscountResult =
+  | { ok: true; items: DiscountItem[]; total: number; discountPct: number; discountAmount: number }
+  | { ok: false; error: string };
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+// input: { pct } — відсоток, або { amount } — сума грн (переводимо у % від бази).
+export function applyOrderDiscount(
+  items: DiscountItem[],
+  input: { pct?: number; amount?: number },
+): DiscountResult {
+  const baseOf = (it: DiscountItem) => Number(it.price_base ?? it.price ?? 0);
+  const baseSubtotal = r2(items.reduce((s, it) => s + (it.is_bonus ? 0 : baseOf(it) * Number(it.qty)), 0));
+
+  let pct: number;
+  if (typeof input.amount === 'number' && !Number.isNaN(input.amount)) {
+    if (baseSubtotal <= 0) return { ok: false, error: 'Нульова сума замовлення' };
+    pct = (input.amount / baseSubtotal) * 100;
+  } else if (typeof input.pct === 'number' && !Number.isNaN(input.pct)) {
+    pct = input.pct;
+  } else {
+    return { ok: false, error: 'Вкажіть відсоток або суму знижки' };
+  }
+  pct = Math.max(0, Math.min(100, r2(pct)));
+
+  const factor = 1 - pct / 100;
+  const newItems = items.map(it => {
+    if (it.is_bonus) return it;                         // бонусні позиції не чіпаємо
+    const base = baseOf(it);
+    return { ...it, price_base: base, price: r2(base * factor) };
+  });
+
+  const total = r2(newItems.reduce((s, it) => s + (it.is_bonus ? 0 : Number(it.price) * Number(it.qty)), 0));
+  const discountAmount = r2(baseSubtotal - total);
+  return { ok: true, items: newItems, total, discountPct: pct, discountAmount };
+}
+
 export type PromoCodeRow = {
   code: string;
   discount_type: 'percent' | 'fixed' | string;

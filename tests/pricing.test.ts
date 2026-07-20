@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { repriceItems, applyPromoCode, type PriceRow, type PromoCodeRow } from '../lib/pricing';
+import { repriceItems, applyPromoCode, applyOrderDiscount, type PriceRow, type PromoCodeRow } from '../lib/pricing';
 
 function priceMap(rows: PriceRow[]): Map<string, PriceRow> {
   return new Map(rows.map(r => [r.sku, r]));
@@ -141,5 +141,72 @@ describe('applyPromoCode — валідація і знижка', () => {
   it('перевіряє мінімальну суму замовлення', () => {
     const r = applyPromoCode(base({ min_order_amount: 2000 }), 1000, 1000, now);
     expect(r).toEqual({ ok: false, error: 'Мінімальна сума для цього промокоду — 2000 ₴' });
+  });
+});
+
+describe('applyOrderDiscount — ручна знижка по замовленню', () => {
+  it('відсоткова знижка знижує кожну ціну і перераховує суму', () => {
+    const r = applyOrderDiscount([{ sku: 'A', qty: 2, price: 100 }, { sku: 'B', qty: 1, price: 50 }], { pct: 10 });
+    if (!r.ok) throw new Error(r.error);
+    expect(r.items[0]).toMatchObject({ price: 90, price_base: 100 });
+    expect(r.items[1]).toMatchObject({ price: 45, price_base: 50 });
+    expect(r.total).toBe(225);            // 90×2 + 45
+    expect(r.discountPct).toBe(10);
+    expect(r.discountAmount).toBe(25);    // 250 − 225
+  });
+
+  it('знижка сумою грн переводиться у % від бази', () => {
+    // база 250, знижка 25 грн → 10%
+    const r = applyOrderDiscount([{ sku: 'A', qty: 2, price: 100 }, { sku: 'B', qty: 1, price: 50 }], { amount: 25 });
+    if (!r.ok) throw new Error(r.error);
+    expect(r.discountPct).toBe(10);
+    expect(r.total).toBe(225);
+  });
+
+  it('ідемпотентність: повторне застосування рахує від price_base, не компаундить', () => {
+    const first = applyOrderDiscount([{ sku: 'A', qty: 1, price: 100 }], { pct: 10 });
+    if (!first.ok) throw new Error(first.error);
+    // застосовуємо 20% до вже здешевлених позицій — має бути 80, а не 72
+    const second = applyOrderDiscount(first.items, { pct: 20 });
+    if (!second.ok) throw new Error(second.error);
+    expect(second.items[0]).toMatchObject({ price: 80, price_base: 100 });
+    expect(second.total).toBe(80);
+    expect(second.discountAmount).toBe(20);
+  });
+
+  it('pct=0 повертає повні ціни (знімає знижку)', () => {
+    const discounted = applyOrderDiscount([{ sku: 'A', qty: 1, price: 100 }], { pct: 15 });
+    if (!discounted.ok) throw new Error(discounted.error);
+    const restored = applyOrderDiscount(discounted.items, { pct: 0 });
+    if (!restored.ok) throw new Error(restored.error);
+    expect(restored.items[0].price).toBe(100);
+    expect(restored.total).toBe(100);
+    expect(restored.discountAmount).toBe(0);
+  });
+
+  it('бонусні позиції не чіпаються', () => {
+    const r = applyOrderDiscount([{ sku: 'A', qty: 1, price: 100 }, { sku: 'GIFT', qty: 1, price: 0, is_bonus: true }], { pct: 50 });
+    if (!r.ok) throw new Error(r.error);
+    expect(r.items[0].price).toBe(50);
+    expect(r.items[1]).toMatchObject({ price: 0, is_bonus: true });
+    expect(r.items[1].price_base).toBeUndefined();   // бонус не отримує price_base
+    expect(r.total).toBe(50);
+  });
+
+  it('знижка обмежена 0..100%', () => {
+    const over = applyOrderDiscount([{ sku: 'A', qty: 1, price: 100 }], { pct: 150 });
+    if (!over.ok) throw new Error(over.error);
+    expect(over.discountPct).toBe(100);
+    expect(over.total).toBe(0);
+  });
+
+  it('без pct/amount — помилка', () => {
+    const r = applyOrderDiscount([{ sku: 'A', qty: 1, price: 100 }], {});
+    expect(r).toEqual({ ok: false, error: 'Вкажіть відсоток або суму знижки' });
+  });
+
+  it('сума грн при нульовому замовленні — помилка', () => {
+    const r = applyOrderDiscount([], { amount: 50 });
+    expect(r).toEqual({ ok: false, error: 'Нульова сума замовлення' });
   });
 });
