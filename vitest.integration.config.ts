@@ -9,8 +9,11 @@ export default defineConfig({
     setupFiles: ['./tests/accounting/setup.ts'],
     testTimeout: 30_000,
     hookTimeout: 30_000,
-    // Тести залежать від стану БД — виконуємо послідовно
+    // Тести залежать від СПІЛЬНОГО стану БД — виконуємо послідовно і в межах файлу
+    // (sequence.concurrent), і між файлами (fileParallelism). Інакше два файли в
+    // паралельних воркерах гонятимуться за той самий тестовий SKU/склад.
     sequence: { concurrent: false },
+    fileParallelism: false,
   },
   resolve: {
     alias: { '@': path.resolve(__dirname, './') },

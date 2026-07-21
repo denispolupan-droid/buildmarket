@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Scale, X } from 'lucide-react';
-import type { LedgerRow } from './page';
+import type { LedgerRow, InTransit } from './page';
 
-type MarketplaceData = { rows: LedgerRow[]; balance: number };
+type MarketplaceData = { rows: LedgerRow[]; balance: number; inTransit: InTransit };
 
 const MARKETPLACE_LABEL: Record<string, { label: string; color: string; bg: string }> = {
   prom:    { label: 'Prom.ua',  color: '#8B5CF6', bg: '#F5F3FF' },
@@ -43,6 +43,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
 
   const [topupOpen, setTopupOpen]         = useState(false);
   const [reconcileOpen, setReconcileOpen] = useState(false);
+  const [showTransit, setShowTransit]     = useState(false);
   const [saving, setSaving]               = useState(false);
   const [error, setError]                 = useState('');
 
@@ -115,6 +116,42 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
           </button>
         </div>
       </div>
+
+      {/* Комісії в дорозі — очікуване списання по відвантажених, ще не доставлених посилках */}
+      {data.inTransit.total > 0 && (
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', background: '#FFFBEB' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <span style={lbl}>Комісії в дорозі (ще не проведені)</span>
+              <div style={{ fontSize: '17px', fontWeight: 800, color: '#B45309' }}>
+                −{fmt(data.inTransit.total)} ₴
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginLeft: '8px' }}>{data.inTransit.items.length} посилок</span>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span style={lbl}>Прогноз балансу після доставки</span>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>{fmt(data.balance - data.inTransit.total)} ₴</div>
+            </div>
+            <button onClick={() => setShowTransit(v => !v)}
+              style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid #FDBA74', background: 'var(--bg-card)', color: '#B45309', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+              {showTransit ? 'Сховати' : 'Показати'} посилки
+            </button>
+          </div>
+          {showTransit && (
+            <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {data.inTransit.items.map(it => (
+                <div key={it.docId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', padding: '5px 8px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Замовлення №{it.orderNumber ?? '—'} · ТТН {it.ttn ?? '—'}</span>
+                  <span style={{ fontWeight: 700, color: '#B45309' }}>−{fmt(it.commission)} ₴</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '10px', lineHeight: 1.4 }}>
+            Очікувана комісія по посилках, що вже відвантажені, але ще не доставлені — площадка спише її при доставці. Порівняйте «прогноз балансу» з балансом у кабінеті Prom/Rozetka.
+          </div>
+        </div>
+      )}
 
       {/* Top-up form */}
       {topupOpen && (

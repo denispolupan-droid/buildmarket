@@ -93,8 +93,7 @@ export default function BankDrawerButton({ contracts }: { contracts: Contract[] 
 
       {/* Drawer */}
       {open && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex' }}
-          onClick={e => { if (e.target === e.currentTarget) setOpen(false); }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex' }}>
           {/* Backdrop */}
           <div style={{ flex: 1, background: 'rgba(15,23,42,0.4)' }} onClick={() => setOpen(false)} />
 

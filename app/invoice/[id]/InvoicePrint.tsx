@@ -1,6 +1,7 @@
 'use client';
 
 import { hryvniaInWords } from "../../../lib/number-to-words";
+import { resolveInvoiceBuyer, type InvoiceBuyer } from '../../../lib/invoice-buyer';
 import { useState, useRef, useEffect } from 'react';
 import { Printer, FileSpreadsheet, Mail, FileDown, Copy, Check, CreditCard } from 'lucide-react';
 import InvoiceMessengerButtons, { copyText } from '../../components/InvoiceMessengerButtons';
@@ -32,7 +33,7 @@ type Order = {
 };
 
 export default function InvoicePrint({
-  order, bankRecipient, bankIban, bankName, bankEdrpou, bankAddress = '', signatoryName = '', isStaff = false,
+  order, bankRecipient, bankIban, bankName, bankEdrpou, bankAddress = '', signatoryName = '', isStaff = false, buyer, showDelivery = true, showTerms = true,
 }: {
   order: Order;
   bankRecipient: string;
@@ -42,6 +43,9 @@ export default function InvoicePrint({
   bankAddress?: string;
   signatoryName?: string;
   isStaff?: boolean;
+  buyer?: InvoiceBuyer;
+  showDelivery?: boolean;
+  showTerms?: boolean;
 }) {
   const [emailInput, setEmailInput]       = useState(order.email ?? '');
   const [sending, setSending]             = useState(false);
@@ -155,7 +159,7 @@ export default function InvoicePrint({
 
   const date = new Date(order.created_at).toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' });
   const ibanDisplay  = formatIban(bankIban);
-  const buyerName    = order.company || order.contact;
+  const b            = buyer ?? resolveInvoiceBuyer(order, null);
   const total        = Number(order.total_price);
   const dueDateStr   = order.payment_due_date
     ? new Date(order.payment_due_date).toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' })
@@ -404,21 +408,23 @@ export default function InvoicePrint({
               <tr>
                 <td style={{ padding: '3px 0', fontWeight: 700, verticalAlign: 'top', border: 'none' }}>Покупець:</td>
                 <td style={{ padding: '3px 0', verticalAlign: 'top', border: 'none' }}>
-                  {buyerName}
-                  {order.company && order.contact !== order.company && <><br />{order.contact}</>}
-                  {order.phone && <><br /><span style={{ color: '#555' }}>Тел.: {order.phone}</span></>}
+                  {b.name}
+                  {b.edrpou && <><br /><span style={{ color: '#555' }}>ЄДРПОУ/ІПН: {b.edrpou}</span></>}
+                  {b.address && <><br /><span style={{ color: '#555' }}>Адреса: {b.address}</span></>}
+                  {b.contactPerson && <><br />{b.contactPerson}</>}
+                  {b.phone && <><br /><span style={{ color: '#555' }}>Тел.: {b.phone}</span></>}
                 </td>
               </tr>
-              {(dueDateStr || deliveryAddr) && (
+              {((showTerms && dueDateStr) || (showDelivery && deliveryAddr)) && (
                 <tr><td colSpan={2} style={{ border: 'none', padding: '2px 0' }}><hr style={{ border: 'none', borderTop: '1px dashed #ccc' }} /></td></tr>
               )}
-              {dueDateStr && (
+              {showTerms && dueDateStr && (
                 <tr>
                   <td style={{ padding: '3px 0', fontWeight: 700, border: 'none' }}>Строк оплати:</td>
                   <td style={{ padding: '3px 0', border: 'none' }}>до {dueDateStr}</td>
                 </tr>
               )}
-              {deliveryAddr && (
+              {showDelivery && deliveryAddr && (
                 <tr>
                   <td style={{ padding: '3px 0', fontWeight: 700, border: 'none' }}>Адреса доставки:</td>
                   <td style={{ padding: '3px 0', border: 'none', color: '#333' }}>{deliveryAddr}</td>

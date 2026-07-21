@@ -12,12 +12,12 @@ import { applyOrderDiscount, type DiscountItem } from '../../../../../../lib/pri
 // працює і для ручних позицій, ідемпотентно (повтор рахує від бази, не компаундить)
 // і оборотно (pct=0 повертає повну ціну).
 //
-// Дозволено лише ДО відгрузки (після — ціни зафіксовані в проведеній РН) і лише
-// для власних каналів (у маркетплейс ціна зафіксована площадкою, у дропшипі
-// баланс партнера вже списаний за собівартістю).
+// Дозволено лише ДО відгрузки (після — ціни зафіксовані в проведеній РН). Для
+// маркетплейсів (Prom/Rozetka) знижку дозволено; у дропшипі — ні (баланс партнера
+// вже списаний за собівартістю).
 
 const DISCOUNTABLE_STATUSES = ['new', 'confirmed', 'awaiting_stock', 'picking'];
-const LOCKED_CHANNELS = ['prom', 'rozetka', 'dropship'];
+const LOCKED_CHANNELS = ['dropship'];
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');

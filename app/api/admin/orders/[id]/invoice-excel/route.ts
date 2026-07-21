@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import ExcelJS from 'exceljs';
 import { checkAdmin } from '../../../../../../lib/check-admin';
 import { SELLER } from '../../../../../../lib/company';
+import { loadInvoiceView } from '../../../../../../lib/invoice-buyer';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,6 +26,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { data: order, error } = await db.from('orders').select('*').eq('id', id).single();
   if (error || !order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+  const { buyer, showDelivery, showTerms } = await loadInvoiceView(db, order);
+
   const bankRecipient = SELLER.name;
   const bankIban      = SELLER.iban;
   const bankName      = SELLER.bank;
@@ -35,7 +38,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const date      = new Date(order.created_at).toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' });
   const dateShort = new Date(order.created_at).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const buyerName = order.company || order.contact;
   const total     = Number(order.total_price);
   const items     = (order.items ?? []) as Item[];
   const dueDateStr = order.payment_due_date
@@ -237,10 +239,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   ws.mergeCells(r, 1, r, 7);
   ws.getRow(r).height = 4;
 
-  infoRow('Покупець:', buyerName);
-  if (order.company && order.contact !== order.company) infoRow('', order.contact);
-  if (order.phone)   infoRow('Тел.:', order.phone);
-  if (dueDateStr) {
+  infoRow('Покупець:', buyer.name);
+  if (buyer.edrpou)        infoRow('ЄДРПОУ/ІПН:', buyer.edrpou);
+  if (buyer.address)       infoRow('Адреса:', buyer.address);
+  if (buyer.contactPerson) infoRow('', buyer.contactPerson);
+  if (buyer.phone)         infoRow('Тел.:', buyer.phone);
+  if (showTerms && dueDateStr) {
     r++;
     ws.mergeCells(r, 1, r, 2);
     ws.mergeCells(r, 3, r, 7);
@@ -248,7 +252,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const vc = ws.getCell(r, 3); vc.value = `до ${dueDateStr}`; vc.font = font({ bold: true, size: 10, color: { argb: C.amber } }); vc.alignment = { horizontal: 'left', vertical: 'top' };
     ws.getRow(r).height = 15;
   }
-  if (deliveryAddr) infoRow('Адреса доставки:', deliveryAddr);
+  if (showDelivery && deliveryAddr) infoRow('Адреса доставки:', deliveryAddr);
 
   r++; // spacer before table
   ws.getRow(r).height = 6;

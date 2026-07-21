@@ -190,9 +190,40 @@ export async function recordMarketplaceCommission(params: {
     docType:        'commission',
     orderId:        params.orderId,
     description:    `Комісія ${params.marketplace} ${params.commissionPct}%`,
-    idempotencyKey: `commission:${params.marketplace}:${params.orderId}`,
+    idempotencyKey: `commission:${params.marketplace}:${params.docId ?? params.orderId}`,
     createdBy:      params.createdBy,
     meta:           { marketplace: params.marketplace, pct: params.commissionPct, auto: true },
+  });
+}
+
+/**
+ * Сторно комісії маркетплейсу при поверненні: дзеркально до recordMarketplaceCommission —
+ * дебет marketplace_balance / кредит marketplace_fee (площадка повертає комісію за
+ * повернений товар). Ідемпотентно за idempotencyKey (per-return-doc).
+ */
+export async function reverseMarketplaceCommission(params: {
+  orderId:        string;
+  docId?:         string;
+  amount:         number;
+  marketplace:    string;
+  businessDate?:  string;
+  createdBy?:     string;
+  idempotencyKey: string;
+}): Promise<string> {
+  return recordTxn({
+    debitAccount:   'marketplace_balance',
+    debitParty:     params.marketplace,
+    creditAccount:  'marketplace_fee',
+    creditParty:    params.marketplace,
+    amount:         params.amount,
+    businessDate:   params.businessDate,
+    docId:          params.docId,
+    docType:        'commission_return',
+    orderId:        params.orderId,
+    description:    `Сторно комісії ${params.marketplace} (повернення)`,
+    idempotencyKey: params.idempotencyKey,
+    createdBy:      params.createdBy,
+    meta:           { marketplace: params.marketplace, reversal: true },
   });
 }
 

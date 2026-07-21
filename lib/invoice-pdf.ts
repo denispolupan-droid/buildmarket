@@ -1,5 +1,6 @@
 import { hryvniaInWords } from "./number-to-words";
 import PDFDocument from 'pdfkit';
+import { resolveInvoiceBuyer, type InvoiceBuyer } from './invoice-buyer';
 import path from 'path';
 
 type Item = { sku: string; name: string; brand?: string | null; qty: number; price: number };
@@ -32,14 +33,17 @@ export async function buildInvoicePdf(params: {
   bankEdrpou: string;
   bankAddress?: string;
   signatoryName?: string;
+  buyer?: InvoiceBuyer;
+  showDelivery?: boolean;
+  showTerms?: boolean;
 }): Promise<Buffer> {
-  const { order, bankRecipient, bankIban, bankName, bankEdrpou, bankAddress = '', signatoryName = '' } = params;
+  const { order, bankRecipient, bankIban, bankName, bankEdrpou, bankAddress = '', signatoryName = '', buyer, showDelivery = true, showTerms = true } = params;
 
   const ibanDisplay = formatIban(bankIban);
   const date = new Date(order.created_at).toLocaleDateString('uk-UA', {
     day: '2-digit', month: 'long', year: 'numeric',
   });
-  const buyerName   = order.company || order.contact;
+  const b           = buyer ?? resolveInvoiceBuyer(order, null);
   const total       = Number(order.total_price);
   const items       = order.items as Item[];
   const dueDateStr  = order.payment_due_date
@@ -172,15 +176,19 @@ export async function buildInvoicePdf(params: {
     y += 4;
 
     const buyerLines = [
-      { text: buyerName, bold: true },
-      ...(order.company && order.contact !== order.company ? [{ text: order.contact }] : []),
-      ...(order.phone ? [{ text: `Тел.: ${order.phone}`, color: '#555555' }] : []),
+      { text: b.name, bold: true },
+      ...(b.edrpou ? [{ text: `ЄДРПОУ/ІПН: ${b.edrpou}`, color: '#555555' }] : []),
+      ...(b.address ? [{ text: `Адреса: ${b.address}`, color: '#555555' }] : []),
+      ...(b.contactPerson ? [{ text: b.contactPerson, color: '#555555' }] : []),
+      ...(b.phone ? [{ text: `Тел.: ${b.phone}`, color: '#555555' }] : []),
     ];
     y += drawParty('Покупець:', buyerLines, y) + 2;
 
-    if (dueDateStr || deliveryAddr) { hline(ML, y, ML + CW, '#cccccc'); y += 4; }
-    if (dueDateStr) { drawParty('Строк оплати:', [{ text: `до ${dueDateStr}`, color: '#B45309', bold: true }], y); y += 16; }
-    if (deliveryAddr) { drawParty('Адреса доставки:', [{ text: deliveryAddr }], y); y += 16; }
+    const showDue = showTerms && !!dueDateStr;
+    const showDel = showDelivery && !!deliveryAddr;
+    if (showDue || showDel) { hline(ML, y, ML + CW, '#cccccc'); y += 4; }
+    if (showDue) { drawParty('Строк оплати:', [{ text: `до ${dueDateStr}`, color: '#B45309', bold: true }], y); y += 16; }
+    if (showDel) { drawParty('Адреса доставки:', [{ text: deliveryAddr }], y); y += 16; }
     y += 6;
 
     // ── 5. Items table ──────────────────────────────────────────────────────

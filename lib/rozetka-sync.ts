@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { getRozetkaOrders, rozetkaOrderToOurFormat } from './rozetka-api';
+import { computeRozetkaCommission } from './rozetka-commission';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,6 +16,11 @@ export async function syncRozetkaOrders() {
 
   if (!orders.length) return { ok: true, created: 0, skipped: 0 };
 
+  // Read the Rozetka commission fallback once for the whole batch (per-category rate wins;
+  // this covers SKUs without a category rate). Mirrors the Prom sync.
+  const { data: fallbackRow } = await db.from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle();
+  const fallbackPct = parseFloat(fallbackRow?.value ?? '15');
+
   let created = 0;
   let skipped = 0;
 
@@ -28,6 +34,10 @@ export async function syncRozetkaOrders() {
     if (existing) { skipped++; continue; }
 
     const mapped = rozetkaOrderToOurFormat(rzOrder);
+
+    // Compute per-item commission breakdown and store with the order (parity with Prom)
+    const commissionResult = await computeRozetkaCommission(mapped.items, { fallbackPct });
+    const enrichedRozetkaData = { ...mapped.rozetka_data, _commission: commissionResult };
 
     let customerId: string | null = null;
     if (mapped.phone) {
@@ -79,7 +89,7 @@ export async function syncRozetkaOrders() {
       status:           'new',
       channel_code:     'rozetka',
       rozetka_order_id: mapped.rozetka_order_id,
-      rozetka_data:     mapped.rozetka_data,
+      rozetka_data:     enrichedRozetkaData,
     });
 
     if (error) {

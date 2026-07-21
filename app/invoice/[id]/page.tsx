@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { SELLER } from '../../../lib/company';
+import { loadInvoiceView } from '../../../lib/invoice-buyer';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import InvoicePrint from './InvoicePrint';
 
@@ -25,6 +26,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
 
   if (!order) redirect('/');
 
+  const { buyer, showDelivery, showTerms } = await loadInvoiceView(serviceClient, order);
+
   // Сторінка публічна (UUID = секрет у посиланні), але робочі кнопки
   // (Email/Excel/месенджери/друк) бачить лише персонал — клієнту лишаємо PDF.
   const supabase = await createSupabaseServer();
@@ -36,6 +39,9 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
     <InvoicePrint
       isStaff={isStaff}
       order={order}
+      buyer={buyer}
+      showDelivery={showDelivery}
+      showTerms={showTerms}
       bankRecipient={SELLER.name}
       bankIban={SELLER.iban}
       bankName={SELLER.bank}

@@ -6,6 +6,7 @@ import { createReservation, getReservationTtlDays, computeExpiresAt } from '../.
 import { createDocument } from '../../../../../../lib/accounting/documents';
 import { notifyAdminStatusChange } from '../../../../../../lib/telegram';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../../lib/rozetka-api';
+import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../../lib/prom-api';
 
 export async function POST(
   req: NextRequest,
@@ -28,7 +29,7 @@ export async function POST(
 
   const { data: order, error: orderError } = await db
     .from('orders')
-    .select('id, order_number, status, items, channel_code, tracking_number, contact, phone, rozetka_order_id')
+    .select('id, order_number, status, items, channel_code, tracking_number, contact, phone, rozetka_order_id, prom_order_id')
     .eq('id', id)
     .single();
 
@@ -192,6 +193,17 @@ export async function POST(
     if (rozStatus) {
       setRozetkaOrderStatus(rozetkaOrderId, rozStatus).catch(err =>
         console.error('[rozetka] setRozetkaOrderStatus failed:', err),
+      );
+    }
+  }
+
+  // Push status to Prom.ua (fire-and-forget) if this is a Prom order
+  const promOrderId = order.prom_order_id as number | null;
+  if (promOrderId) {
+    const promStatus = ourStatusToPromStatus(newStatus);
+    if (promStatus) {
+      setPromOrderStatus(Number(promOrderId), promStatus).catch(err =>
+        console.error('[prom] setPromOrderStatus failed:', err),
       );
     }
   }
