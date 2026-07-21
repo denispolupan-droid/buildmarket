@@ -903,8 +903,8 @@ export default function AdminOrders({
       if (order?.fulfillment_mode === 'supplier' && ttnValues[id]) {
         await autoShipDropship(id);
       }
-      // If Prom order already shipped — push TTN to Prom automatically
-      if (order?.channel_code === 'prom' && order.status === 'shipped' && ttnValues[id]) {
+      // If Prom order is confirmed or beyond — push TTN to Prom automatically
+      if (order?.channel_code === 'prom' && order.status !== 'new' && ttnValues[id]) {
         fetch(`/api/admin/orders/${id}/push-prom-ttn`, { method: 'POST' })
           .then(r => r.json())
           .then(d => {
@@ -2974,7 +2974,7 @@ export default function AdminOrders({
             setTtnModalOrder(null);
             if (isSupplier) await autoShipDropship(orderId);
             // If Prom/Rozetka order already shipped — push the new TTN automatically
-            if (ttnModalOrder.channel_code === 'prom' && ttnModalOrder.status === 'shipped') {
+            if (ttnModalOrder.channel_code === 'prom' && ttnModalOrder.status !== 'new') {
               fetch(`/api/admin/orders/${orderId}/push-prom-ttn`, { method: 'POST' })
                 .then(r => r.json())
                 .then(d => {
