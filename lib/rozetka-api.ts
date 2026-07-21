@@ -128,7 +128,12 @@ export interface RozetkaOrder {
     email: string | null;
     city?: { city_name: string; title: string } | null;
   } | null;
-  payment?: { payment_type: string; payment_method_name: string } | null;
+  payment?: {
+    payment_type: string;
+    payment_method_name: string;
+    // Rozetka віддає окремий блок статусу оплати: name 'paid' → гроші вже надійшли
+    payment_status?: { name: string; title: string; value: number } | null;
+  } | null;
 }
 
 interface OrderSearchResponse {
@@ -231,7 +236,16 @@ export function rozetkaOrderToOurFormat(order: RozetkaOrder) {
   ].filter(Boolean);
   const deliveryAddress = [cityName, ...addressParts].filter(Boolean).join(', ');
 
-  const paymentType = order.payment?.payment_type === 'cash' ? 'cod' : 'invoice';
+  // Спосіб оплати. Rozetka: payment_type 'cash' — накладений платіж (сплата при
+  // отриманні), інше (card тощо) — передоплата, ЯКЩО payment_status.name='paid'
+  // (гроші вже надійшли, Rozetka розрахується з нами при виплаті). Без ознаки
+  // оплати картковий заказ лишається invoice/до сплати.
+  const isPaid = order.payment?.payment_status?.name === 'paid';
+  let paymentType: string;
+  if (order.payment?.payment_type === 'cash') paymentType = 'cod';
+  else if (isPaid)                            paymentType = 'prepaid';
+  else                                        paymentType = 'invoice';
+  const paid = isPaid;
 
   const items = (order.purchases ?? []).map(p => ({
     sku:   p.item?.article ?? '',
@@ -256,6 +270,7 @@ export function rozetkaOrderToOurFormat(order: RozetkaOrder) {
     delivery_city_name: cityName || null,
     delivery_subtype:   deliveryType === 'nova_poshta' ? (isPostomat ? 'postomat' as const : 'warehouse' as const) : null,
     payment_type:     paymentType,
+    paid,
     comment:          order.comment,
     items,
     total_price:      totalPrice,
