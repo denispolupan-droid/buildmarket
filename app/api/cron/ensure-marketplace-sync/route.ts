@@ -39,3 +39,6 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ ok: true, ...health });
 }
+
+// Vercel cron шле GET; лишаємо POST теж, на випадок виклику через pg_net.
+export const POST = GET;

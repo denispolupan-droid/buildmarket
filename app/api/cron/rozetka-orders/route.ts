@@ -28,3 +28,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// pg_cron дзвонить через net.http_post (POST). Без цього POST давав би 405 і синк
+// не виконувався (як і в sync-suppliers). Vercel cron шле GET — обидва методи ок.
+export const POST = GET;
