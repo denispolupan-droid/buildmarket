@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../lib/supabase';
 import { ingestMonoTxn } from '../../../../lib/mono-ingest';
+import { getMonoToken, getMonoFopAccount } from '../../../../lib/mono-config';
 import { alertAdmin } from '../../../../lib/alert';
 
 // Крон-реконсиляція виписки ФОП Monobank — страховка на випадок пропущеного/
@@ -15,12 +16,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const token = process.env.MONOBANK_PERSONAL_TOKEN;
-  if (!token) return NextResponse.json({ error: 'MONOBANK_PERSONAL_TOKEN не налаштований' }, { status: 503 });
-
   const db = createServiceClient();
-  const { data: acctRow } = await db.from('app_settings').select('value').eq('key', 'mono_fop_account_id').maybeSingle();
-  const account = acctRow?.value;
+  const token = await getMonoToken(db);
+  if (!token) return NextResponse.json({ error: 'Токен Monobank не налаштований (app_settings.mono_personal_token)' }, { status: 503 });
+
+  const account = await getMonoFopAccount(db);
   if (!account) return NextResponse.json({ error: 'mono_fop_account_id не налаштований у app_settings' }, { status: 503 });
 
   const to   = Math.floor(Date.now() / 1000);
