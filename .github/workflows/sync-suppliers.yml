@@ -1,8 +1,10 @@
 name: Sync suppliers
 
 on:
-  schedule:
-    - cron: '0 */2 * * *'   # кожні 2 години
+  # schedule ВИМКНЕНО: синк постачальників тепер через Supabase pg_cron
+  # (задання sync-suppliers-every-2h). Дублювання подвоювало egress Supabase.
+  # schedule:
+  #   - cron: '0 */2 * * *'
   workflow_dispatch:          # можна запустити вручну з GitHub
 
 jobs:

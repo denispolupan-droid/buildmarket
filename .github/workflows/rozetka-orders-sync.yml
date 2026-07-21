@@ -1,11 +1,13 @@
-# Синхронізація замовлень Rozetka кожні 30 хвилин.
-# Vercel Hobby дозволяє тільки добові crons — тому частий тригер живе тут:
-# GitHub Actions смикає захищений cron-роут із секретом CRON_SECRET.
+# Синхронізація замовлень Rozetka.
+# Розклад ВИМКНЕНО: частий синк тепер через Supabase pg_cron (задання
+# rozetka-orders-sync). Раніше тут був обхід добового ліміту Vercel Hobby, але
+# pg_cron робить те саме — два тригери подвоювали роботу й egress Supabase.
+# Ручний запуск лишаємо (workflow_dispatch).
 name: Rozetka orders sync
 
 on:
-  schedule:
-    - cron: '*/30 * * * *'
+  # schedule:
+  #   - cron: '*/30 * * * *'
   workflow_dispatch: {}
 
 jobs:
