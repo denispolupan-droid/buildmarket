@@ -117,6 +117,69 @@ export async function settleOrderCOD(orderId: string, createdBy = 'system'): Pro
 }
 
 /**
+ * Транзитний хелпер: замовлення, відвантажені СТАРИМ потоком (проведена РН вже є,
+ * чернетки немає), при доставці після переходу на Варіант 3 не отримають комісію
+ * через новий per-doc шлях. Тут донараховуємо комісію order-level (як старий
+ * applyDeliveredEffects) — ЛИШЕ якщо комісії по замовленню ще не було. Для нових
+ * (per-doc) замовлень пропускаємо (комісія вже є) → без задвоєння.
+ */
+export async function settleLegacyCommission(orderId: string, createdBy = 'system'): Promise<void> {
+  const db = createServiceClient();
+  const { data: order } = await db
+    .from('orders')
+    .select('order_number, channel_code, total_price, items')
+    .eq('id', orderId)
+    .single();
+  if (!order) return;
+  const mp = order.channel_code;
+  if (mp !== 'prom' && mp !== 'rozetka') return;
+
+  // Вже є комісія по цьому замовленню (новий per-doc шлях або вже донараховано)? — стоп.
+  const { count: commCount } = await db
+    .from('money_entries')
+    .select('id', { count: 'exact', head: true })
+    .eq('order_id', orderId)
+    .eq('account_type', 'marketplace_fee');
+  if ((commCount ?? 0) > 0) return;
+
+  // Є проведена РН? (інакше продаж ще не зафіксовано)
+  const { count: confCount } = await db
+    .from('acc_documents')
+    .select('id', { count: 'exact', head: true })
+    .eq('order_id', orderId)
+    .eq('doc_type', 'sale')
+    .eq('status', 'confirmed');
+  if ((confCount ?? 0) === 0) return;
+
+  const items = ((order.items ?? []) as { sku: string; qty: number; price: number }[])
+    .map(i => ({ sku: i.sku, qty: Number(i.qty), price: Number(i.price) }));
+  if (!items.length) return;
+
+  try {
+    let commission = 0;
+    if (mp === 'prom') {
+      const [{ data: planRow }, { data: fbRow }] = await Promise.all([
+        db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
+        db.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle(),
+      ]);
+      commission = (await computePromCommission(items, {
+        plan: (planRow?.value ?? 'single') as 'single' | 'econom',
+        fallbackPct: parseFloat(fbRow?.value ?? '3'),
+      })).total_commission;
+    } else {
+      const { data: fbRow } = await db.from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle();
+      commission = (await computeRozetkaCommission(items, { fallbackPct: parseFloat(fbRow?.value ?? '15') })).total_commission;
+    }
+    if (commission > 0) {
+      const avgPct = Number(order.total_price) > 0 ? Math.round((commission / Number(order.total_price)) * 10000) / 100 : 0;
+      await recordMarketplaceCommission({ orderId, amount: commission, marketplace: mp, commissionPct: avgPct, createdBy });
+    }
+  } catch (err) {
+    alertAdmin(`Legacy-комісія ${mp} не записалась (замовлення #${order.order_number})`, err);
+  }
+}
+
+/**
  * Провести ВСІ чернетки-РН замовлення (повна доставка / ручне «Виконано» / самовивіз),
  * потім (якщо все проведено) — COD партнеру. Повертає кількість проведених накладних.
  */
@@ -133,6 +196,8 @@ export async function completeOrderDelivery(orderId: string, createdBy = 'system
     await applyCompletionEffects(d.id, createdBy);
     posted++;
   }
+  // Legacy-замовлення (старий потік, без чернеток): донараховуємо комісію order-level.
+  await settleLegacyCommission(orderId, createdBy);
   if (await allOrderSalesPosted(orderId)) await settleOrderCOD(orderId, createdBy);
   return posted;
 }

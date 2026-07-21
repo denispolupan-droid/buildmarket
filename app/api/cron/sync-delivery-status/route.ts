@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { notifyCustomerStatus } from '../../../../lib/telegram';
 import { setRozetkaOrderStatus } from '../../../../lib/rozetka-api';
-import { completeShipmentByTtn, allOrderSalesPosted } from '../../../../lib/accounting/completion';
+import { completeShipmentByTtn, allOrderSalesPosted, settleLegacyCommission } from '../../../../lib/accounting/completion';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -95,6 +95,8 @@ export async function GET(req: NextRequest) {
         if (!ttn) continue;
         try {
           await completeShipmentByTtn(ttn, 'cron:sync-delivery-status');
+          // Legacy-замовлення (старий потік): донарахувати комісію, якщо чернетки не було.
+          await settleLegacyCommission(orderId, 'cron:sync-delivery-status');
         } catch (err) {
           console.error('[sync-delivery-status] completeShipmentByTtn failed:', orderId, err);
           continue;
