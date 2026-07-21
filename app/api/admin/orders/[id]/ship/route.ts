@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
-import { recordDropshipSale } from '../../../../../../lib/accounting/dropship';
-import { releaseReservation } from '../../../../../../lib/accounting/reservations';
+import { createSaleDraft } from '../../../../../../lib/accounting/dropship';
+import { completeOrderDelivery } from '../../../../../../lib/accounting/completion';
 import { checkOrderCredit } from '../../../../../../lib/accounting/credit-guard';
 import { setPromTTN } from '../../../../../../lib/prom-api';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../../lib/rozetka-api';
@@ -87,90 +87,43 @@ export async function POST(
     await db.from('orders').update({ tracking_number: bodyTtn }).eq('id', id);
   }
 
-  // Release reservation BEFORE resolveOrderFulfillment so qty_available reflects actual stock.
-  try {
-    await releaseReservation(id, 'shipped');
-  } catch (err) {
-    console.warn('[ship] releaseReservation:', err);
-  }
+  // ── Варіант 3: при відгрузці створюємо РН-ЧЕРНЕТКУ (НЕ проводимо), резерв ТРИМАЄМО.
+  // Проводка (виручка/COGS/склад/комісія + зняття резерву) — при доставці посилки
+  // (крон НП / ручне «Виконано»). Пікап = передано клієнту одразу → проводимо тут.
 
-  // Idempotency: cancel any stale draft for this order, then create fresh.
-  const { data: existingSale } = await db
-    .from('acc_documents')
-    .select('id, doc_number, status')
-    .eq('order_id', id)
-    .eq('doc_type', 'sale')
-    .neq('status', 'cancelled')
-    .maybeSingle();
-
-  if (existingSale) {
-    if (existingSale.status === 'draft') {
-      await db
-        .from('acc_documents')
-        .update({
-          status:        'cancelled',
-          cancelled_at:  new Date().toISOString(),
-          cancelled_by:  user.email ?? 'admin',
-          cancel_reason: 'Повторне відвантаження: чернетка скасована автоматично',
-        })
-        .eq('id', existingSale.id);
-      // Fall through to create fresh document
-    } else {
-      // Already confirmed — idempotent return.
-      await db.from('orders').update({
-        status:     'shipped',
-        shipped_at: new Date().toISOString(),
-      }).eq('id', id);
-      return NextResponse.json({
-        ok:             true,
-        sale_doc_id:    existingSale.id,
-        sale_doc_number: existingSale.doc_number,
-        fully_shipped:  true,
-        shipped_items:  itemsToShip.map(i => ({ sku: i.sku, qty: i.qty })),
-        status: 'shipped',
-      });
-    }
-  }
-
-  const saleDocId = await recordDropshipSale({
-    order_id:      order.id,
-    order_number:  order.order_number,
-    order_items:   itemsToShip,
-    channel_code:  order.channel_code ?? 'website',
-    confirmed_by:  user.email ?? 'admin',
-    customer_id:   order.customer_id ?? undefined,
-    business_date: new Date().toISOString().split('T')[0],
-    shipping_supplier_id: (order as { shipping_supplier_id?: number | null }).shipping_supplier_id ?? null,
-  });
-
-  // Check if all order items are now fully shipped
-  const { data: confirmedSaleDocs } = await db
+  // Скільки кожного SKU вже включено в не-скасовані РН цього замовлення (щоб не задвоїти
+  // при частковій відгрузці та ретраях).
+  const { data: existingDocs } = await db
     .from('acc_documents')
     .select('id')
     .eq('order_id', id)
     .eq('doc_type', 'sale')
-    .eq('status', 'confirmed');
-
-  const confirmedSaleDocIds = (confirmedSaleDocs ?? []).map(d => d.id);
-
-  const confirmedLines = confirmedSaleDocIds.length > 0
-    ? (await db
-        .from('acc_document_lines')
-        .select('sku, qty, document_id')
-        .in('document_id', confirmedSaleDocIds)
-      ).data ?? []
-    : [];
-
-  const shippedBySkuSum: Record<string, number> = {};
-  for (const l of confirmedLines ?? []) {
-    shippedBySkuSum[l.sku] = (shippedBySkuSum[l.sku] ?? 0) + Number(l.qty);
+    .neq('status', 'cancelled');
+  const existingDocIds = (existingDocs ?? []).map(d => d.id);
+  const draftedBySku: Record<string, number> = {};
+  if (existingDocIds.length) {
+    const { data: dl } = await db
+      .from('acc_document_lines')
+      .select('sku, qty')
+      .in('document_id', existingDocIds);
+    for (const l of dl ?? []) draftedBySku[l.sku] = (draftedBySku[l.sku] ?? 0) + Number(l.qty);
   }
-  const fullyShipped = allOrderItems.every(i => (shippedBySkuSum[i.sku] ?? 0) >= i.qty);
 
-  const isPickup = (order as { delivery_type?: string }).delivery_type === 'pickup';
-  const finalStatus = fullyShipped ? (isPickup ? 'delivered' : 'shipped') : order.status;
+  // Позиції цієї посилки: запитані (partial) або всі; обрізаємо по залишку замовлення.
+  const shipItems = itemsToShip
+    .map(i => {
+      const orderQty = allOrderItems.find(o => o.sku === i.sku)?.qty ?? i.qty;
+      const already  = draftedBySku[i.sku] ?? 0;
+      const want     = partialItems ? i.qty : orderQty;
+      return { ...i, qty: Math.max(0, Math.min(want, orderQty - already)) };
+    })
+    .filter(i => i.qty > 0);
 
-  // Підставляємо contract_id в orders якщо ще не проставлено
+  if (shipItems.length === 0) {
+    return NextResponse.json({ error: 'Всі позиції замовлення вже відвантажені' }, { status: 409 });
+  }
+
+  // contract_id для orders (якщо ще не проставлено)
   let orderContractId: string | null = null;
   if (order.customer_id) {
     const { data: ctr } = await db
@@ -184,17 +137,40 @@ export async function POST(
     orderContractId = ctr?.id ?? null;
   }
 
-  if (fullyShipped) {
-    const now = new Date().toISOString();
-    await db.from('orders').update({
-      status:       finalStatus,
-      shipped_at:   now,
-      ...(isPickup ? { delivered_at: now } : {}),
-      ...(orderContractId ? { contract_id: orderContractId } : {}),
-    }).eq('id', id);
-  } else if (orderContractId) {
-    await db.from('orders').update({ contract_id: orderContractId }).eq('id', id);
+  const effectiveTtn = bodyTtn ?? (order.tracking_number as string | null) ?? null;
+
+  const saleDocId = await createSaleDraft({
+    order_id:             order.id,
+    order_number:         order.order_number,
+    order_items:          shipItems,
+    channel_code:         order.channel_code ?? 'website',
+    confirmed_by:         user.email ?? 'admin',
+    customer_id:          order.customer_id ?? undefined,
+    business_date:        new Date().toISOString().split('T')[0],
+    shipping_supplier_id: (order as { shipping_supplier_id?: number | null }).shipping_supplier_id ?? null,
+    tracking_number:      effectiveTtn,
+  });
+
+  // Чи все замовлення тепер включене в РН (повна відгрузка)?
+  const newDrafted = { ...draftedBySku };
+  for (const i of shipItems) newDrafted[i.sku] = (newDrafted[i.sku] ?? 0) + i.qty;
+  const fullyShipped = allOrderItems.every(i => (newDrafted[i.sku] ?? 0) >= i.qty);
+
+  const isPickup = (order as { delivery_type?: string }).delivery_type === 'pickup';
+
+  // Пікап — товар передано клієнту одразу: проводимо РН(и) замовлення і delivered.
+  if (fullyShipped && isPickup) {
+    await completeOrderDelivery(order.id, user.email ?? 'admin');
   }
+
+  const now = new Date().toISOString();
+  const finalStatus = fullyShipped ? (isPickup ? 'delivered' : 'shipped') : order.status;
+  await db.from('orders').update({
+    status: finalStatus,
+    ...(fullyShipped ? { shipped_at: now } : {}),
+    ...(fullyShipped && isPickup ? { delivered_at: now } : {}),
+    ...(orderContractId ? { contract_id: orderContractId } : {}),
+  }).eq('id', id);
 
   const { data: saleDoc } = await db
     .from('acc_documents')
@@ -204,7 +180,6 @@ export async function POST(
 
   // Push TTN to Prom.ua after successful shipment (fire-and-forget — don't fail the response)
   let ttnPushed = false;
-  const effectiveTtn = bodyTtn ?? (order.tracking_number as string | null);
   const promOrderId = order.prom_order_id as number | null;
   if (promOrderId && effectiveTtn) {
     const deliveryType = (order.delivery_type as string | null) ?? 'nova_poshta';

@@ -61,7 +61,7 @@ export default async function AdminPage({
 
   // Status counts + amounts — with same date filter as the main list.
   // Пагінація: без range() лічильники вкладок і суми по статусах мовчки обрізалися б на 1000.
-  const [{ data: orders, count }, statusRows, { count: recentReceiptCount }, allAmountRows, { data: promSetting }] = await Promise.all([
+  const [{ data: orders, count }, statusRows, { count: recentReceiptCount }, allAmountRows, { data: promSetting }, { data: rozetkaSetting }] = await Promise.all([
     query,
     fetchAllRows<{ status: string }>((f, t) => {
       let q = serviceClient.from('orders').select('status');
@@ -81,8 +81,10 @@ export default async function AdminPage({
       return q.range(f, t);
     }),
     serviceClient.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle(),
+    serviceClient.from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle(),
   ]);
   const promCommissionPct = parseFloat(promSetting?.value ?? '3');
+  const rozetkaCommissionPct = parseFloat(rozetkaSetting?.value ?? '15');
 
   // Load confirmed sale docs + shipped quantities for orders on this page
   const orderIds = (orders ?? []).map(o => o.id);
@@ -155,8 +157,8 @@ export default async function AdminPage({
         <NewOrderButton />
       </div>
 
-      {/* Status tabs + Відправлення */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+      {/* Status tabs + Відправлення — закріплені зверху для швидкого переходу між типами при прокрутці */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', position: 'sticky', top: 0, zIndex: 60, background: 'var(--bg-page)', padding: '20px 0 12px', marginBottom: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', flexWrap: 'wrap' }}>
           {STATUS_TABS.map(tab => {
             const isActive = curStatus === tab.value;
@@ -168,8 +170,8 @@ export default async function AdminPage({
                 href={`/admin?status=${tab.value}${dateFrom ? `&dateFrom=${dateFrom}` : ''}${dateTo ? `&dateTo=${dateTo}` : ''}`}
                 style={{
                   display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start',
-                  gap: '3px', padding: '7px 14px', borderRadius: '10px',
-                  textDecoration: 'none',
+                  justifyContent: 'center', gap: '3px', padding: '7px 14px', borderRadius: '10px',
+                  textDecoration: 'none', minHeight: '48px', boxSizing: 'border-box',
                   background: isActive ? '#1E3A5F' : 'var(--bg-card)',
                   color: isActive ? '#fff' : 'var(--text-secondary)',
                   border: `1px solid ${isActive ? '#1E3A5F' : 'var(--border)'}`,
@@ -241,7 +243,7 @@ export default async function AdminPage({
         {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
       </p>
 
-      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} initialSaleDocs={initialSaleDocs} initialReturnDocs={initialReturnDocs} initialShippedQty={initialShippedQty} />
+      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} rozetkaCommissionPct={rozetkaCommissionPct} initialSaleDocs={initialSaleDocs} initialReturnDocs={initialReturnDocs} initialShippedQty={initialShippedQty} />
     </div>
   );
 }

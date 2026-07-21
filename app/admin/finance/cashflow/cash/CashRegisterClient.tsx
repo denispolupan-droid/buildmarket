@@ -275,7 +275,7 @@ export default function CashRegisterClient({ entries, openingBalance, currentBal
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-        }} onClick={e => { if (e.target === e.currentTarget) setModal(false); }}>
+        }}>
           <div style={{
             background: 'var(--bg-card)', borderRadius: '16px', padding: '28px',
             width: '420px', boxShadow: '0 24px 80px rgba(0,0,0,0.3)',

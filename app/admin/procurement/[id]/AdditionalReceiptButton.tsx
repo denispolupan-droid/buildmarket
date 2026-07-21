@@ -107,8 +107,7 @@ export default function AdditionalReceiptButton({ poId, supplierName }: { poId: 
       </button>
 
       {open && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-          onClick={e => { if (e.target === e.currentTarget) setOpen(false); }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '900px', maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.22)' }}>
 
             {/* Header */}

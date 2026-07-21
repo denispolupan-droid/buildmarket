@@ -4,11 +4,12 @@ import { createServiceClient } from '../../../../../../lib/supabase';
 
 // Зміна типу цін замовлення (роздріб / опт / дроп) з перерахунком позицій
 // за відповідним прайсом із product_stock. Дозволено лише ДО відгрузки
-// (після — ціни зафіксовані в проведеній РН) і лише для власних каналів
-// (у маркетплейс-замовлень ціна продажу зафіксована маркетплейсом).
+// (після — ціни зафіксовані в проведеній РН). Тип цін дозволено міняти для всіх
+// каналів, включно з маркетплейсами (напр., щоб виставити рахунок опт/дроп на
+// підприємство за замовленням з Rozetka/Prom).
 
 const PRICEABLE_STATUSES = ['new', 'confirmed', 'awaiting_stock', 'picking'];
-const LOCKED_CHANNELS = ['prom', 'rozetka'];
+const LOCKED_CHANNELS: string[] = [];
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');

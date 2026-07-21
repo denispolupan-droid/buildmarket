@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
-import { recordDropshipSale, reverseDropshipLedgerExtras } from '../../../../../lib/accounting/dropship';
+import { reverseDropshipLedgerExtras } from '../../../../../lib/accounting/dropship';
 import { cancelDocument } from '../../../../../lib/accounting/documents';
 import { releaseReservation } from '../../../../../lib/accounting/reservations';
 import { notifyAdminStatusChange, notifyCustomerStatus } from '../../../../../lib/telegram';
@@ -11,7 +11,7 @@ import { recordCustomerPayment, recordShipment } from '../../../../../lib/accoun
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/prom-api';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../lib/rozetka-api';
 import { alertAdmin } from '../../../../../lib/alert';
-import { applyDeliveredEffects } from '../../../../../lib/accounting/delivered-effects';
+import { completeOrderDelivery } from '../../../../../lib/accounting/completion';
 import { checkOrderCredit } from '../../../../../lib/accounting/credit-guard';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -19,63 +19,6 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // РН — кінцевий фінансовий документ виконаного замовлення. Ідемпотентно фіксує
 // продаж (документ + виручка + COGS + борг постачальнику), якщо підтвердженої
 // РН по замовленню ще немає. Викликається і на shipped, і на delivered.
-async function ensureSaleRecorded(
-  db: ReturnType<typeof createServiceClient>,
-  orderId: string,
-  byEmail: string,
-): Promise<void> {
-  try {
-    const { data: order } = await db
-      .from('orders')
-      .select('id, order_number, items, channel_code, partner_code, customer_id, payment_type, created_at, shipping_supplier_id')
-      .eq('id', orderId)
-      .single();
-
-    // Idempotency guard (H2): якщо підтверджена РН вже існує (відгружено через
-    // /ship, статус перевибрано, запит повторено) — не фіксуємо продаж повторно.
-    const { data: existingSale } = await db
-      .from('acc_documents')
-      .select('id')
-      .eq('order_id', orderId)
-      .eq('doc_type', 'sale')
-      .eq('status', 'confirmed')
-      .maybeSingle();
-
-    if (!existingSale && order?.items?.length && order.channel_code !== 'dropship') {
-      const bizDate = order.created_at
-        ? new Date(order.created_at).toISOString().slice(0, 10)
-        : new Date().toISOString().slice(0, 10);
-
-      let saleContractId: string | undefined;
-      if (order.customer_id) {
-        const { data: ctr } = await db
-          .from('customer_contracts')
-          .select('id')
-          .eq('customer_id', order.customer_id)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        saleContractId = ctr?.id ?? undefined;
-      }
-
-      await recordDropshipSale({
-        order_id:      order.id,
-        order_number:  order.order_number,
-        order_items:   order.items,
-        channel_code:  order.channel_code ?? 'website',
-        confirmed_by:  byEmail,
-        customer_id:   order.customer_id ?? undefined,
-        contract_id:   saleContractId,
-        business_date: bizDate,
-        shipping_supplier_id: order.shipping_supplier_id ?? null,
-      });
-    }
-  } catch (err) {
-    alertAdmin(`РН не зафіксувалась при зміні статусу (order ${orderId})`, err);
-  }
-}
-
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -90,6 +33,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const {
     status, tracking_number, tracking_ref,
     payment_confirmed, callback_done, supplier_confirmed,
+    invoice_as_company, invoice_options,
     items: bodyItems, total_price: bodyTotalPrice,
     delivery_type, delivery_subtype, delivery_city_name, delivery_address,
     payment_type, payment_due_date, shipping_supplier_id,
@@ -154,6 +98,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (tracking_ref    !== undefined) update.tracking_ref    = tracking_ref;
   if (payment_confirmed  !== undefined) update.payment_confirmed  = payment_confirmed;
   if (callback_done      !== undefined) update.callback_done      = callback_done;
+  if (invoice_as_company !== undefined) update.invoice_as_company = invoice_as_company;
+  if (invoice_options    !== undefined) update.invoice_options    = invoice_options;
   if (supplier_confirmed !== undefined) update.supplier_confirmed = supplier_confirmed;
   if (bodyItems !== undefined)          update.items              = bodyItems;
   if (bodyTotalPrice !== undefined)     update.total_price         = bodyTotalPrice;
@@ -349,25 +295,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  // shipped → знімаємо резерв спочатку, потім фіксуємо продаж в обліку
-  // Порядок важливий: якщо спочатку списати FIFO а потім не зняти резерв —
-  // qty_available стане штучно заниженим (qty_total↓, qty_reserved залишається).
-  if (status === 'shipped') {
-    try {
-      await releaseReservation(id, 'shipped');
-    } catch (err) {
-      console.error('[reservation] release on ship failed:', err);
-    }
+  // shipped → косметичний статус (Варіант 3): проводок немає, резерв тримаємо до
+  // доставки. РН-чернетки створює /ship; проводяться вони при доставці посилки.
 
-    await ensureSaleRecorded(db, id, user.email ?? 'admin');
-  }
-
-  // delivered → гарантія РН (якщо статус стрибнув повз shipped — РН все одно
-  // створюється, інакше виконане замовлення лишилось би без накладної, виручки
-  // та списання складу; інваріант I7 це ловить) + облікові ефекти доставки
+  // delivered → проводимо всі РН-чернетки замовлення (виручка/COGS/склад + комісія
+  // маркетплейсу по позиціях кожної РН); резерв знімається при проведенні. Ручний
+  // перехід у delivered трактуємо як повну доставку.
   if (status === 'delivered') {
-    await ensureSaleRecorded(db, id, user.email ?? 'admin');
-    await applyDeliveredEffects(id, user.email ?? 'admin');
+    await completeOrderDelivery(id, user.email ?? 'admin');
   }
 
   // Telegram notifications (fire-and-forget)

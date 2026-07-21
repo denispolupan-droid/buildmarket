@@ -315,6 +315,152 @@ export async function recordDropshipSale(
   return doc.id;
 }
 
+// ── Варіант 3: розділення «створити РН-чернетку» (відгрузка) / «провести» (доставка) ──
+// createSaleDraft — при відгрузці посилки: створює РН у статусі draft із ТТН цієї
+// посилки, БЕЗ жодних проводок (резерв тримається). Проводка — postSaleDoc, коли
+// посилку доставили. recordDropshipSale вище лишається старим шляхом (не чіпаємо).
+
+export async function createSaleDraft(
+  input: RecordDropshipSaleInput & { tracking_number?: string | null },
+): Promise<string> {
+  const db = createServiceClient();
+  const skus = input.order_items.map(i => i.sku);
+
+  const [{ data: warehouse }, { data: stockRows }] = await Promise.all([
+    db.from('warehouses').select('id').eq('is_default', true).single(),
+    db.from('product_stock').select('sku, price_cost').in('sku', skus),
+  ]);
+  if (!warehouse) throw new Error('Default warehouse not found');
+  const costMap = new Map((stockRows ?? []).map(r => [r.sku, r.price_cost ?? 0]));
+
+  let contractId: string | undefined;
+  if (input.customer_id) {
+    const { data: ctr } = await db
+      .from('customer_contracts')
+      .select('id')
+      .eq('customer_id', input.customer_id)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    contractId = ctr?.id ?? undefined;
+  }
+
+  const plan = await resolveOrderFulfillment(
+    input.order_items.map(i => ({ sku: i.sku, qty: i.qty })),
+    { channel_code: input.channel_code ?? 'website' },
+  );
+
+  const doc = await createDocument({
+    doc_type:        'sale',
+    warehouse_id:    warehouse.id,
+    order_id:        input.order_id,
+    customer_id:     input.customer_id ?? undefined,
+    contract_id:     contractId,
+    channel_code:    input.channel_code ?? 'website',
+    tracking_number: input.tracking_number ?? undefined,
+    notes:           `Заказ #${input.order_number}`,
+    created_by:      input.confirmed_by ?? 'system',
+    doc_date:        input.business_date ? new Date(input.business_date).toISOString() : undefined,
+    lines: input.order_items.map(item => {
+      const source = plan.items.find(s => s.sku === item.sku);
+      return {
+        sku:              item.sku,
+        qty:              item.qty,
+        price:            item.price,
+        cost_price:       costMap.get(item.sku) ?? 0,
+        fulfillment_type: source?.fulfillment_type ?? 'dropship',
+        warehouse_id:     source?.warehouse_id,
+        supplier_id:      source?.supplier_id ?? undefined,
+      };
+    }),
+  });
+
+  return doc.id;
+}
+
+// postSaleDoc — проводить конкретну РН (draft → confirmed): виручка + FIFO/COGS по
+// власних рядках + зняття резерву (все всередині confirmDocument) + дропшип-COGS та
+// борг перед постачальником по dropship-рядках. Працює лише за docId (читає рядки
+// самої накладної), бо при доставці ми маємо саме документ. Ідемпотентно: якщо РН
+// вже проведена — тихо виходить; ключі проводок per-doc (щоб мультипосилки не злипались).
+export async function postSaleDoc(
+  docId: string,
+  opts: { confirmed_by?: string; business_date?: string; shipping_supplier_id?: number | null } = {},
+): Promise<void> {
+  const db = createServiceClient();
+
+  const { data: doc } = await db
+    .from('acc_documents')
+    .select('id, order_id, status')
+    .eq('id', docId)
+    .single();
+  if (!doc) throw new Error(`postSaleDoc: документ ${docId} не знайдено`);
+  if (doc.status !== 'draft') return; // вже проведено — ідемпотентний вихід
+
+  const by = opts.confirmed_by ?? 'system';
+  await confirmDocument(docId, by);
+
+  const { data: lines } = await db
+    .from('acc_document_lines')
+    .select('sku, qty, cost_price, fulfillment_type, supplier_id')
+    .eq('document_id', docId);
+  const dropLines = (lines ?? []).filter(l => l.fulfillment_type === 'dropship');
+
+  const dropshipCOGS = dropLines.reduce(
+    (s, l) => s + Number(l.qty) * Number(l.cost_price ?? 0), 0,
+  );
+  if (dropshipCOGS > 0) {
+    await recordCOGS({
+      amount:         dropshipCOGS,
+      docId,
+      orderId:        doc.order_id ?? undefined,
+      businessDate:   opts.business_date,
+      createdBy:      by,
+      idempotencyKey: `cogs:${doc.order_id}:${docId}`,
+    });
+  }
+
+  // Борг перед постачальниками по dropship-рядках: shipping_supplier_id override →
+  // line.supplier_id → мапінг SKU. Ключ per-doc — мультипосилки не злипаються.
+  let supplierMap: Map<string, number | null> | null = null;
+  const needSkuMap = dropLines.some(l => !opts.shipping_supplier_id && !l.supplier_id);
+  if (needSkuMap) {
+    const { data: m } = await db
+      .from('supplier_sku_map')
+      .select('our_sku, supplier_id')
+      .in('our_sku', dropLines.map(l => l.sku));
+    supplierMap = new Map((m ?? []).map(r => [r.our_sku, r.supplier_id]));
+  }
+
+  const groups = new Map<string, number>();
+  for (const l of dropLines) {
+    const supplierId = String(opts.shipping_supplier_id ?? l.supplier_id ?? supplierMap?.get(l.sku) ?? '');
+    if (!supplierId || supplierId === 'null' || supplierId === 'undefined') continue;
+    const cost = Number(l.cost_price ?? 0) * Number(l.qty);
+    if (cost <= 0) continue;
+    groups.set(supplierId, (groups.get(supplierId) ?? 0) + cost);
+  }
+
+  await Promise.all(
+    [...groups.entries()].map(([supplierId, amount]) =>
+      recordTxn({
+        debitAccount:   'inventory_asset',
+        creditAccount:  'supplier',
+        creditParty:    supplierId,
+        amount,
+        businessDate:   opts.business_date,
+        docId,
+        docType:        'sale',
+        orderId:        doc.order_id ?? undefined,
+        description:    'Дропшип: борг перед постачальником',
+        idempotencyKey: `dropship-payable:${docId}:${supplierId}`,
+        createdBy:      by,
+      }),
+    ),
+  );
+}
+
 // ── Сторно dropship-специфічних проводок при скасуванні замовлення ───────────
 //
 // recordDropshipSale() записує COGS і борг перед постачальником окремими

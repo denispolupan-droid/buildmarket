@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { buildInvoicePdf } from '../../../../../lib/invoice-pdf';
+import { loadInvoiceView } from '../../../../../lib/invoice-buyer';
 import { SELLER } from '../../../../../lib/company';
 
 const db = createClient(
@@ -20,8 +21,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { data: order, error } = await db.from('orders').select('*').eq('id', id).single();
   if (error || !order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+  const { buyer, showDelivery, showTerms } = await loadInvoiceView(db, order);
+
   const pdf = await buildInvoicePdf({
     order,
+    buyer,
+    showDelivery,
+    showTerms,
     bankRecipient: SELLER.name,
     bankIban:      SELLER.iban,
     bankName:      SELLER.bank,

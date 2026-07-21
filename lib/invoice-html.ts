@@ -1,4 +1,5 @@
 import { hryvniaInWords } from "./number-to-words";
+import { resolveInvoiceBuyer, type InvoiceBuyer } from './invoice-buyer';
 type Item = { sku: string; name: string; brand?: string | null; qty: number; price: number };
 
 type Order = {
@@ -51,15 +52,19 @@ export function buildInvoiceHtml(params: {
   invoiceUrl?: string;
   /** Якщо передано — лист отримує сопровідний блок (подяка) зверху та промо-блок (акції/каталог/контакти) знизу. */
   siteUrl?: string;
+  buyer?: InvoiceBuyer;
+  showDelivery?: boolean;
+  showTerms?: boolean;
 }): string {
   const { order, bankRecipient, bankIban, bankName, bankEdrpou,
-          bankAddress = '', signatoryName = '', invoiceUrl, siteUrl } = params;
+          bankAddress = '', signatoryName = '', invoiceUrl, siteUrl, buyer, showDelivery = true, showTerms = true } = params;
 
   const date = new Date(order.created_at).toLocaleDateString('uk-UA', {
     day: '2-digit', month: 'long', year: 'numeric',
   });
   const ibanDisplay = formatIban(bankIban);
-  const buyerName   = order.company || order.contact;
+  const b           = buyer ?? resolveInvoiceBuyer(order, null);
+  const buyerName   = b.name;
   const total       = Number(order.total_price);
   const items       = order.items as Item[];
 
@@ -248,18 +253,20 @@ ${coverBlock}
     <tr>
       <td style="padding:3px 0;font-weight:700;vertical-align:top;">Покупець:</td>
       <td style="padding:3px 0;vertical-align:top;">
-        ${esc(buyerName)}
-        ${order.company && order.contact !== order.company ? `<br/>${esc(order.contact)}` : ''}
-        ${order.phone ? `<br/><span style="color:#555;font-size:11px;">Тел.: ${esc(order.phone)}</span>` : ''}
+        ${esc(b.name)}
+        ${b.edrpou ? `<br/><span style="color:#555;">ЄДРПОУ/ІПН: ${esc(b.edrpou)}</span>` : ''}
+        ${b.address ? `<br/><span style="color:#555;">Адреса: ${esc(b.address)}</span>` : ''}
+        ${b.contactPerson ? `<br/>${esc(b.contactPerson)}` : ''}
+        ${b.phone ? `<br/><span style="color:#555;font-size:11px;">Тел.: ${esc(b.phone)}</span>` : ''}
       </td>
     </tr>
-    ${dueDateStr ? `
+    ${showTerms && dueDateStr ? `
     <tr><td colspan="2" style="padding:3px 0;"><hr style="border:none;border-top:1px dashed #ccc;"/></td></tr>
     <tr>
       <td style="padding:3px 0;font-weight:700;">Строк оплати:</td>
       <td style="padding:3px 0;color:#B45309;font-weight:600;">до ${dueDateStr}</td>
     </tr>` : ''}
-    ${deliveryAddr ? `
+    ${showDelivery && deliveryAddr ? `
     <tr><td colspan="2" style="padding:3px 0;"><hr style="border:none;border-top:1px dashed #ccc;"/></td></tr>
     <tr>
       <td style="padding:3px 0;font-weight:700;">Адреса доставки:</td>

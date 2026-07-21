@@ -333,7 +333,6 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   return (
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '540px', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.4)', border: '1px solid var(--border)' }}>
 

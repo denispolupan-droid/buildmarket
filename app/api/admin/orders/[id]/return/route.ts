@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { createDocument, confirmDocument, resolveSaleDebitParty } from '../../../../../../lib/accounting/documents';
-import { recordTxn } from '../../../../../../lib/accounting/money';
+import { recordTxn, reverseMarketplaceCommission } from '../../../../../../lib/accounting/money';
+import { computePromCommission } from '../../../../../../lib/prom-commission';
+import { computeRozetkaCommission } from '../../../../../../lib/rozetka-commission';
+import { alertAdmin } from '../../../../../../lib/alert';
 
 // Повернення від покупця по замовленню: частковий вибір позицій.
 // Створює документ return_in → confirmDocument (restock own-рядків новою FIFO-партією,
@@ -169,6 +172,38 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       idempotencyKey: `dropship-return:${doc.id}:${supplierId}`,
       createdBy,
     });
+  }
+
+  // Сторно комісії маркетплейсу по повернених позиціях (площадка повертає комісію
+  // за повернений товар). Рахуємо по тих самих позиціях, дзеркально до нарахування.
+  if (order.channel_code === 'prom' || order.channel_code === 'rozetka') {
+    try {
+      const returnedForComm = reqItems.map(i => ({ sku: i.sku, qty: i.qty, price: state.get(i.sku)!.price }));
+      let commission = 0;
+      if (order.channel_code === 'prom') {
+        const { data: settings } = await db.from('app_settings').select('key, value').in('key', ['prom_plan', 'prom_commission_pct']);
+        const sMap = new Map((settings ?? []).map(s => [s.key, s.value]));
+        commission = (await computePromCommission(returnedForComm, {
+          plan: (sMap.get('prom_plan') ?? 'single') as 'single' | 'econom',
+          fallbackPct: parseFloat(sMap.get('prom_commission_pct') ?? '3'),
+        })).total_commission;
+      } else {
+        const { data: fb } = await db.from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle();
+        commission = (await computeRozetkaCommission(returnedForComm, { fallbackPct: parseFloat(fb?.value ?? '15') })).total_commission;
+      }
+      if (commission > 0) {
+        await reverseMarketplaceCommission({
+          orderId:        order.id,
+          docId:          doc.id,
+          amount:         commission,
+          marketplace:    order.channel_code,
+          createdBy,
+          idempotencyKey: `commission-return:${doc.id}:${order.channel_code}`,
+        });
+      }
+    } catch (err) {
+      alertAdmin(`Сторно комісії при поверненні не пройшло (замовлення #${order.order_number})`, err);
+    }
   }
 
   // Повернення коштів покупцю (опційно): DR customer(дебітор) / CR bank|cash

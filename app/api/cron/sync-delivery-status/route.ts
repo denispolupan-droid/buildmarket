@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { notifyCustomerStatus } from '../../../../lib/telegram';
 import { setRozetkaOrderStatus } from '../../../../lib/rozetka-api';
-import { applyDeliveredEffects } from '../../../../lib/accounting/delivered-effects';
+import { completeShipmentByTtn, allOrderSalesPosted } from '../../../../lib/accounting/completion';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -86,24 +86,37 @@ export async function GET(req: NextRequest) {
     if (statusTextUpdates.length) await Promise.all(statusTextUpdates);
 
     if (deliveredIds.length) {
-      await serviceClient
-        .from('orders')
-        .update({ status: 'delivered', delivered_at: new Date().toISOString() })
-        .in('id', deliveredIds);
-      updated += deliveredIds.length;
-
-      // Облікові ефекти доставки (комісія маркетплейсу, COD партнеру) — та сама
-      // ідемпотентна функція, що й у ручному PATCH-обробнику. Раніше крон писав
-      // статус напряму і ці нарахування губились.
+      // Варіант 3: спершу ПРОВОДИМО РН-чернетку доставленої посилки за її ТТН
+      // (виручка/COGS/склад + комісія по позиціях; резерв знімається). Ідемпотентно;
+      // помилка по одному замовленню не зриває весь батч.
+      const trulyDelivered: string[] = [];
       for (const orderId of deliveredIds) {
-        await applyDeliveredEffects(orderId, 'cron:sync-delivery-status');
+        const ttn = chunk.find(o => o.id === orderId)?.tracking_number;
+        if (!ttn) continue;
+        try {
+          await completeShipmentByTtn(ttn, 'cron:sync-delivery-status');
+        } catch (err) {
+          console.error('[sync-delivery-status] completeShipmentByTtn failed:', orderId, err);
+          continue;
+        }
+        // delivered ставимо ЛИШЕ коли ВСІ РН замовлення проведені — захист від
+        // передчасного delivered при відгрузці кількома посилками.
+        if (await allOrderSalesPosted(orderId)) trulyDelivered.push(orderId);
+      }
+
+      if (trulyDelivered.length) {
+        await serviceClient
+          .from('orders')
+          .update({ status: 'delivered', delivered_at: new Date().toISOString() })
+          .in('id', trulyDelivered);
+        updated += trulyDelivered.length;
       }
 
       // Notify customers via Telegram
       const { data: tgOrders } = await serviceClient
         .from('orders')
         .select('order_number, telegram_chat_id')
-        .in('id', deliveredIds)
+        .in('id', trulyDelivered)
         .not('telegram_chat_id', 'is', null);
 
       for (const o of tgOrders ?? []) {

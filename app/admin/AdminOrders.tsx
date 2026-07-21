@@ -21,6 +21,7 @@ import { showConfirm } from '../../lib/confirm';
 import { showToast } from '../../lib/toast';
 import SmartDateInput from '../components/SmartDateInput';
 import InvoiceMessengerButtons from '../components/InvoiceMessengerButtons';
+import InvoiceOptionsModal from '../components/admin/InvoiceOptionsModal';
 import ReturnOrderModal from '../components/admin/ReturnOrderModal';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number; is_bonus?: boolean; supplier_sku?: string };
@@ -30,6 +31,13 @@ type PromCommissionItem = {
 };
 type PromCommissionData = {
   total_commission: number; net_revenue: number; plan: string; items: PromCommissionItem[];
+};
+
+type RozetkaCommissionItem = {
+  sku: string; item_total: number; commission_pct: number; commission_amt: number; category_slug: string | null;
+};
+type RozetkaCommissionData = {
+  total_commission: number; net_revenue: number; items: RozetkaCommissionItem[];
 };
 
 type Order = {
@@ -57,6 +65,8 @@ type Order = {
   payment_confirmed:  boolean;
   amount_paid:        number;
   callback_done:      boolean;
+  invoice_as_company: boolean | null;
+  invoice_options:    Record<string, boolean> | null;
   supplier_sent_at:   string | null;
   channel_code:       string | null;
   prom_order_id:      string | number | null;
@@ -75,6 +85,7 @@ type Order = {
   payment_due_date:   string | null;
   items: OrderItem[];
   prom_data:          ({ _commission?: PromCommissionData } & Record<string, unknown>) | null;
+  rozetka_data:       ({ _commission?: RozetkaCommissionData } & Record<string, unknown>) | null;
 };
 
 const CHANNEL_LABEL: Record<string, { label: string; color: string; bg: string }> = {
@@ -98,7 +109,15 @@ const STATUSES = [
 ];
 
 const DELIVERY_LABEL: Record<string, string> = {
-  nova: 'Нова Пошта', kharkiv: 'Харків і область', pickup: 'Самовивіз',
+  nova: 'Нова Пошта', nova_poshta: 'Нова Пошта', kharkiv: 'Харків і область', pickup: 'Самовивіз',
+};
+
+// Візуальний бейдж перевізника — фірмовий колір + фон. Прибирає «сирий» код на кшталт nova_poshta.
+const CARRIER_META: Record<string, { color: string; bg: string }> = {
+  nova:        { color: '#DA291C', bg: '#FDECEA' },
+  nova_poshta: { color: '#DA291C', bg: '#FDECEA' },
+  pickup:      { color: '#0F766E', bg: '#ECFEFF' },
+  kharkiv:     { color: 'var(--brand-blue)', bg: '#EAF1F8' },
 };
 const PAYMENT_LABEL: Record<string, string> = {
   invoice: 'Безготівковий', cod: 'Оплата при отриманні', card: '💳 Картка онлайн',
@@ -122,6 +141,7 @@ interface AdminOrdersProps {
   sortBy?: string;
   sortDir?: string;
   promCommissionPct?: number;
+  rozetkaCommissionPct?: number;
   initialSaleDocs?: Record<string, { id: string; number: string }[]>;
   initialReturnDocs?: Record<string, { id: string; number: string }[]>;
   initialShippedQty?: Record<string, Record<string, number>>;
@@ -133,6 +153,7 @@ export default function AdminOrders({
   statusCounts = {}, currentStatus = '',
   sortBy = 'created_at', sortDir = 'desc',
   promCommissionPct = 3,
+  rozetkaCommissionPct = 15,
   initialSaleDocs = {}, initialReturnDocs = {}, initialShippedQty = {},
 }: AdminOrdersProps) {
   const isAdmin = userRole === 'admin';
@@ -240,6 +261,7 @@ export default function AdminOrders({
   const [ttnDeleting,    setTtnDeleting]    = useState<string | null>(null);
   const [registryAdding, setRegistryAdding] = useState<string | null>(null);
   const [registryAdded,  setRegistryAdded]  = useState<Set<string>>(new Set());
+  const [invoiceCfg,     setInvoiceCfg]     = useState<Order | null>(null);
   type ContactEntry = { name: string; email: string; note?: string };
   type SupplierQItem = { orderId: string; orderNumber: number; supplierName: string; supplierId: number | null; email: string; contacts: ContactEntry[]; comment: string };
   const [supplierQueue,        setSupplierQueue]        = useState<SupplierQItem[] | null>(null);
@@ -881,7 +903,7 @@ export default function AdminOrders({
     });
   }
 
-  async function toggleFlag(id: string, field: 'payment_confirmed' | 'callback_done', value: boolean) {
+  async function toggleFlag(id: string, field: 'payment_confirmed' | 'callback_done' | 'invoice_as_company', value: boolean) {
     await fetch(`/api/admin/orders/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -983,7 +1005,7 @@ export default function AdminOrders({
       {/* Merge bar */}
       {selectedIds.size >= 1 && (
         <div style={{
-          position: 'sticky', top: '52px', zIndex: 50,
+          position: 'sticky', top: '80px', zIndex: 50,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '12px 20px', marginBottom: '16px',
           background: 'linear-gradient(135deg, #0F1729 0%, #1A3456 100%)', borderRadius: '12px',
@@ -1336,10 +1358,16 @@ export default function AdminOrders({
           })()}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {filtered.map(order => {
             const isExpanded = expandedId === order.id;
-            const status = STATUSES.find(s => s.value === order.status) ?? STATUSES[0];
+            let status = STATUSES.find(s => s.value === order.status) ?? STATUSES[0];
+            // Косметика Варіанту 3: shipped без приймання НП = «Готово до відправки»
+            // (ТТН створена, товар ще на складі); після приймання перевізником —
+            // «Відправлено». На облік не впливає — лише мітка статусу.
+            if (order.status === 'shipped' && !order.carrier_accepted_at) {
+              status = { ...status, label: 'Готово до відправки', color: '#B45309', bg: '#FEF3C7' };
+            }
             const date = new Date(order.created_at).toLocaleString('uk-UA', {
               day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
             });
@@ -1367,9 +1395,9 @@ export default function AdminOrders({
             return (
               <div key={order.id} id={`order-${order.id}`} style={{
                 background: isFlashing ? '#F0FDF4' : isUnpaidInvoice ? '#FFFBF0' : 'var(--bg-card)',
-                border: `1px solid ${isFlashing ? '#86EFAC' : isExpanded ? 'var(--brand-blue)' : isUnpaidInvoice ? '#FCD34D' : 'var(--border)'}`,
-                borderRadius: '10px', overflow: 'hidden',
-                boxShadow: isExpanded ? '0 4px 16px rgba(0,0,0,0.10)' : isFlashing ? '0 0 0 3px #BBF7D0' : 'none',
+                border: `1px solid ${isFlashing ? '#86EFAC' : isExpanded ? 'var(--brand-blue)' : isUnpaidInvoice ? '#FCD34D' : 'var(--border-light)'}`,
+                borderRadius: '14px', overflow: 'hidden',
+                boxShadow: isExpanded ? '0 6px 20px rgba(16,24,40,0.12)' : isFlashing ? '0 0 0 3px #BBF7D0' : '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06)',
                 opacity: expandedId && !isExpanded ? 0.35 : 1,
                 transition: 'box-shadow 0.3s, border-color 0.3s, opacity 0.15s, background 0.3s',
               }}>
@@ -1380,7 +1408,7 @@ export default function AdminOrders({
                   onClick={() => { const next = isExpanded ? null : order.id; setExpandedId(next); if (next) { loadFulfillment(next); loadLinkedPOs(next); loadPayments(next); } }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '10px',
-                    padding: '9px 14px', cursor: 'pointer',
+                    padding: '12px 16px', cursor: 'pointer',
                     background: isExpanded
                       ? (isUnpaidInvoice ? '#FEF9EC' : 'var(--bg-soft)')
                       : (isUnpaidInvoice ? '#FFFBF0' : 'var(--bg-card)'),
@@ -1445,6 +1473,16 @@ export default function AdminOrders({
                         {order.carrier_accepted_at ? '✓' : '⏳'}
                       </span>
                     )}
+                    {order.status === 'shipped' && order.shipped_at && (() => {
+                      const days = Math.floor((Date.now() - new Date(order.shipped_at).getTime()) / 86400000);
+                      if (days < 7) return null;
+                      return (
+                        <span title={`Відправлено ${days} дн тому — довго висить. Перевірте доставку та завершіть замовлення («Доставлено»), інакше продаж не проведеться.`}
+                          style={{ fontSize: '10px', fontWeight: 700, flexShrink: 0, padding: '1px 5px', borderRadius: '10px', color: '#B91C1C', background: '#FEF2F2', border: '1px solid #FCA5A5', whiteSpace: 'nowrap' }}>
+                          ⚠ {days}д
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   {/* Канал */}
@@ -1459,9 +1497,9 @@ export default function AdminOrders({
                     {order.fulfillment_mode && (
                       <span
                         title={order.fulfillment_mode === 'own' ? 'Відправка зі складу' : order.fulfillment_mode === 'supplier' ? 'Відправка через постачальника' : 'Змішана відправка'}
-                        style={{ fontSize: '10px', fontWeight: 700, padding: '1px 5px', borderRadius: '6px',
-                          color:      order.fulfillment_mode === 'own' ? '#15803D' : order.fulfillment_mode === 'supplier' ? '#1D4ED8' : '#7C3AED',
-                          background: order.fulfillment_mode === 'own' ? '#DCFCE7' : order.fulfillment_mode === 'supplier' ? '#DBEAFE' : '#EDE9FE' }}>
+                        style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px',
+                          color:      order.fulfillment_mode === 'own' ? '#15803D' : order.fulfillment_mode === 'supplier' ? 'var(--brand-blue)' : '#7C3AED',
+                          background: order.fulfillment_mode === 'own' ? '#DCFCE7' : order.fulfillment_mode === 'supplier' ? '#EAF1F8' : '#EDE9FE' }}>
                         {order.fulfillment_mode === 'own' ? 'Склад' : order.fulfillment_mode === 'mixed' ? 'Mix' : 'Пост.'}
                       </span>
                     )}
@@ -1475,7 +1513,7 @@ export default function AdminOrders({
                   <div className="oc-hide-m" style={{ width: '46px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
                     {(() => {
                       const label = order.payment_type === 'cod' ? 'НП'
-                        : order.payment_type === 'card' ? '💳'
+                        : order.payment_type === 'card' ? 'Кар.'
                         : order.payment_type === 'prepaid' ? 'Пре.'
                         : order.payment_type === 'cash' ? 'Гот.'
                         : order.payment_type === 'deferred' ? 'Відст.'
@@ -1511,9 +1549,9 @@ export default function AdminOrders({
                   }
                 </div>
 
-                {/* ── Status progress bar ── */}
-                {!isCancelled && (
-                  <div style={{ display: 'flex', alignItems: 'center', padding: '5px 14px 6px', gap: 0, borderTop: isExpanded ? '1px solid var(--border-light)' : 'none', background: isExpanded ? 'var(--bg-soft)' : 'transparent' }}>
+                {/* ── Status progress bar — лише у розкритому замовленні (у списку достатньо status-pill) ── */}
+                {!isCancelled && isExpanded && (
+                  <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px 10px', gap: 0, borderTop: '1px solid var(--border-light)', background: 'var(--bg-soft)' }}>
                     {STATUS_STEPS.map((step, i) => {
                       const done    = i < stepIdx;
                       const active  = i === stepIdx;
@@ -1522,18 +1560,18 @@ export default function AdminOrders({
                         <div key={step.value} style={{ display: 'flex', alignItems: 'center', flex: i < STATUS_STEPS.length - 1 ? 1 : 'none' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                             <div style={{
-                              width: active ? '10px' : '7px', height: active ? '10px' : '7px',
+                              width: active ? '9px' : '6px', height: active ? '9px' : '6px',
                               borderRadius: '50%', flexShrink: 0,
-                              background: done ? '#22C55E' : active ? (isFlashing ? '#22C55E' : 'var(--brand-blue)') : '#CBD5E1',
-                              boxShadow: active ? `0 0 0 2px ${isFlashing ? '#BBF7D0' : '#BFDBFE'}` : 'none',
+                              background: done ? '#A9D7B9' : active ? (isFlashing ? '#22C55E' : 'var(--brand-teal)') : '#D5DCE5',
+                              boxShadow: active ? `0 0 0 2px ${isFlashing ? '#BBF7D0' : 'rgba(61,191,184,0.22)'}` : 'none',
                               transition: 'all 0.3s',
                             }} />
-                            <span style={{ fontSize: '9px', fontWeight: active ? 700 : 500, color: done ? '#16A34A' : active ? (isFlashing ? '#16A34A' : 'var(--brand-blue)') : '#94A3B8', whiteSpace: 'nowrap' }}>
+                            <span style={{ fontSize: '9px', fontWeight: active ? 600 : 500, color: done ? 'var(--text-muted)' : active ? (isFlashing ? '#16A34A' : '#0F766E') : '#9AA6B8', whiteSpace: 'nowrap' }}>
                               {step.label}
                             </span>
                           </div>
                           {i < STATUS_STEPS.length - 1 && (
-                            <div style={{ flex: 1, height: '2px', margin: '0 3px 10px', background: done ? '#22C55E' : '#E2E8F0', borderRadius: '1px', transition: 'background 0.3s' }} />
+                            <div style={{ flex: 1, height: '2px', margin: '0 3px 10px', background: done ? '#CBE7D5' : '#E8ECF1', borderRadius: '1px', transition: 'background 0.3s' }} />
                           )}
                         </div>
                       );
@@ -1544,13 +1582,13 @@ export default function AdminOrders({
                 {/* ── Expanded panel ── */}
                 {isExpanded && (
                   <>
-                  <div className="order-expand-grid" style={{ borderTop: '1px solid var(--border-light)', display: 'grid', gridTemplateColumns: 'calc(50% - 14px) 1fr 200px' }}>
+                  <div className="order-expand-grid" style={{ borderTop: '1px solid var(--border-light)', display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr) 224px', gap: '14px', padding: '14px', background: 'var(--bg-soft)' }}>
 
                     {/* Col 1: Items */}
-                    <div style={{ padding: '14px 16px', borderRight: '1px solid var(--border-light)' }}>
+                    <div className="order-col-card" style={{ padding: '16px' }}>
                       <div style={{ paddingTop: '0' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Товари</span>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Товари · {order.items.length}</span>
                           <button
                             onClick={() => editingId === order.id ? setEditingId(null) : startEdit(order)}
                             style={{
@@ -1636,8 +1674,8 @@ export default function AdminOrders({
                             {/* Items table */}
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                               <thead>
-                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                  <th style={{ textAlign: 'left', padding: '4px 0', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Назва</th>
+                                <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
+                                  <th style={{ textAlign: 'left', padding: '4px 0 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Назва</th>
                                   <th style={{ textAlign: 'center', padding: '4px 6px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '40px', whiteSpace: 'nowrap' }}>К-сть</th>
                                   <th style={{ textAlign: 'right', padding: '4px 6px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '60px', whiteSpace: 'nowrap' }}>Ціна</th>
                                   <th style={{ textAlign: 'right', padding: '4px 0', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '64px' }}>Сума</th>
@@ -1714,6 +1752,129 @@ export default function AdminOrders({
                                 })()}
                               </tbody>
                             </table>
+
+                            {/* Тип цін + ручна знижка — впливають на ціни позицій і підсумок, тому поряд із товарами */}
+                            {(() => {
+                              const editable = ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
+                                && order.channel_code !== 'dropship';
+                              const pt = order.price_type ?? 'retail';
+                              return (
+                                <div style={{ marginTop: '12px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                  <div style={{ flex: '1 1 120px', minWidth: 0 }}>
+                                    <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
+                                      title="Тариф, за яким пораховані позиції. Зміна перерахує всі ціни за відповідним прайсом.">
+                                      Тип цін
+                                    </div>
+                                    {editable ? (
+                                      <select
+                                        value={pt}
+                                        onChange={e => { if (e.target.value !== pt) changePriceType(order.id, e.target.value); }}
+                                        style={{
+                                          width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)',
+                                          borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer',
+                                          color: 'var(--text-primary)', fontWeight: 600,
+                                        }}
+                                      >
+                                        <option value="retail">Роздріб</option>
+                                        <option value="wholesale">Опт</option>
+                                        <option value="drop">Дроп</option>
+                                      </select>
+                                    ) : (
+                                      <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-subtle)' }}
+                                        title={['prom', 'rozetka'].includes(order.channel_code ?? '') ? 'Ціни зафіксовані маркетплейсом' : 'Ціни зафіксовані у проведеній накладній'}>
+                                        {PRICE_TYPE_LABELS[pt] ?? pt}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {(() => {
+                                    const activePct = Number(order.discount_pct ?? 0);
+                                    if (!editable) {
+                                      if (activePct > 0) {
+                                        return (
+                                          <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                                            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>Знижка</div>
+                                            <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: '#B45309', background: '#FFFBEB' }}>
+                                              −{activePct}% (−{Number(order.discount_amount ?? 0).toFixed(2)} ₴)
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    }
+                                    const mode = discMode[order.id] ?? 'pct';
+                                    return (
+                                      <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+                                        <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
+                                          title="Ручна знижка. Знижує ціни всіх позицій; сума замовлення перераховується.">
+                                          Знижка{activePct > 0 ? ` · зараз −${activePct}%` : ''}
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '4px' }}>
+                                          <select
+                                            value={mode}
+                                            onChange={e => setDiscMode(p => ({ ...p, [order.id]: e.target.value as 'pct' | 'amount' }))}
+                                            style={{ height: '30px', padding: '0 4px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer' }}
+                                          >
+                                            <option value="pct">%</option>
+                                            <option value="amount">₴</option>
+                                          </select>
+                                          <input
+                                            type="number" min="0" step="any"
+                                            value={discInput[order.id] ?? ''}
+                                            placeholder={mode === 'pct' ? 'напр. 10' : 'напр. 200'}
+                                            onChange={e => setDiscInput(p => ({ ...p, [order.id]: e.target.value }))}
+                                            style={{ width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)' }}
+                                          />
+                                          <button
+                                            onClick={() => applyDiscount(order.id, mode, parseFloat(discInput[order.id] ?? ''))}
+                                            style={{ height: '30px', padding: '0 10px', border: '1px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                          >OK</button>
+                                        </div>
+                                        {activePct > 0 && (
+                                          <button
+                                            onClick={() => applyDiscount(order.id, 'pct', 0)}
+                                            style={{ marginTop: '4px', fontSize: '11px', color: '#B91C1C', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                                          >Прибрати знижку −{activePct}%</button>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              );
+                            })()}
+
+                            {/* Економіка замовлення — виручка / собівартість / комісія / маржа завжди на очах */}
+                            {(() => {
+                              const fi = fulfillmentData[order.id];
+                              const revenue = order.total_price;
+                              let commission = 0;
+                              if (order.channel_code === 'prom') {
+                                const cd = order.prom_data?._commission;
+                                commission = cd ? cd.total_commission : Math.round(order.total_price * promCommissionPct) / 100;
+                              } else if (order.channel_code === 'rozetka') {
+                                const cd = order.rozetka_data?._commission;
+                                commission = cd ? cd.total_commission : Math.round(order.total_price * rozetkaCommissionPct) / 100;
+                              }
+                              const cost = fi?.total_cost;
+                              const gross = fi?.total_margin;
+                              const grossPct = fi?.margin_pct;
+                              const net = gross != null ? gross - commission : undefined;
+                              const netPct = net != null && revenue > 0 ? Math.round((net / revenue) * 1000) / 10 : undefined;
+                              const cell = (label: string, value: string, opts: { strong?: boolean; color?: string } = {}) => (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                                  <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{label}</span>
+                                  <span style={{ fontSize: '13px', fontWeight: opts.strong ? 700 : 600, color: opts.color ?? 'var(--text-primary)', whiteSpace: 'nowrap' }}>{value}</span>
+                                </div>
+                              );
+                              return (
+                                <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border-light)', background: 'var(--bg-soft)', display: 'flex', flexWrap: 'wrap', gap: '18px', alignItems: 'flex-end' }}>
+                                  {cell('Виручка', `${revenue.toFixed(0)} ₴`)}
+                                  {cell('Собівартість', cost != null ? `${cost.toFixed(0)} ₴` : '…', { color: 'var(--text-secondary)' })}
+                                  {commission > 0 && cell('Комісія', `−${commission.toFixed(0)} ₴`, { color: '#C2410C' })}
+                                  {cell('Маржа', gross != null ? `${gross.toFixed(0)} ₴${grossPct != null ? ` · ${grossPct}%` : ''}` : '…', { strong: true, color: (gross ?? 0) >= 0 ? '#15803D' : '#DC2626' })}
+                                  {commission > 0 && cell('Чистий', net != null ? `${net.toFixed(0)} ₴${netPct != null ? ` · ${netPct}%` : ''}` : '…', { strong: true, color: (net ?? 0) >= 0 ? '#15803D' : '#DC2626' })}
+                                </div>
+                              );
+                            })()}
 
                             {/* Прогрес отримання — показується якщо є хоча б один прихід */}
                             {(() => {
@@ -1801,6 +1962,13 @@ export default function AdminOrders({
                             </button>
                             {fulfillmentOpen.has(order.id) && fulfillmentData[order.id] && (() => {
                               const fi = fulfillmentData[order.id];
+                              // Per-SKU marketplace commission (Prom/Rozetka) для показу в розбивці по позиціях
+                              const commItems = order.channel_code === 'prom' ? order.prom_data?._commission?.items
+                                              : order.channel_code === 'rozetka' ? order.rozetka_data?._commission?.items
+                                              : undefined;
+                              const commBySku = new Map<string, { amt: number; pct: number }>();
+                              (commItems ?? []).forEach(c => commBySku.set(c.sku, { amt: c.commission_amt, pct: c.commission_pct }));
+                              const hasComm = commBySku.size > 0;
                               const marginColor = fi.total_margin >= 0 ? 'var(--color-success, #15803D)' : 'var(--color-danger, #DC2626)';
                               const marginBg = fi.total_margin >= 0 ? 'var(--bg-success, #F0FDF4)' : 'var(--bg-danger, #FEF2F2)';
                               const activeReservations = (fi.reservations ?? []).filter(r => r.reservation_status === 'active');
@@ -1825,15 +1993,23 @@ export default function AdminOrders({
                                         <span>📦 {group.supplier_name ?? 'Невідомий поставщик'}</span>
                                         <span style={{ color: 'var(--text-muted)' }}>+{group.total_margin.toFixed(0)} грн</span>
                                       </div>
-                                      {group.items.map((item, ii) => (
-                                        <div key={ii} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto auto', gap: '8px', padding: '5px 12px', alignItems: 'center', borderTop: '1px solid var(--border-light)' }}>
-                                          <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: '11px' }}>{item.supplier_sku ?? item.sku}</span>
-                                          <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
-                                          <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.qty} шт</span>
-                                          <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.cost_price.toFixed(0)} → {item.sale_price.toFixed(0)} грн</span>
-                                          <span style={{ whiteSpace: 'nowrap', fontWeight: 600, color: item.margin >= 0 ? '#15803D' : '#DC2626' }}>+{item.margin.toFixed(0)} грн</span>
-                                        </div>
-                                      ))}
+                                      {group.items.map((item, ii) => {
+                                        const c = commBySku.get(item.sku);
+                                        return (
+                                          <div key={ii} style={{ display: 'grid', gridTemplateColumns: hasComm ? 'auto 1fr auto auto auto auto' : 'auto 1fr auto auto auto', gap: '8px', padding: '5px 12px', alignItems: 'center', borderTop: '1px solid var(--border-light)' }}>
+                                            <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: '11px' }}>{item.supplier_sku ?? item.sku}</span>
+                                            <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                                            <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.qty} шт</span>
+                                            <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.cost_price.toFixed(0)} → {item.sale_price.toFixed(0)} грн</span>
+                                            <span style={{ whiteSpace: 'nowrap', fontWeight: 600, color: item.margin >= 0 ? '#15803D' : '#DC2626' }}>+{item.margin.toFixed(0)} грн</span>
+                                            {hasComm && (
+                                              <span style={{ whiteSpace: 'nowrap', fontWeight: 600, color: '#C2410C', fontSize: '11px' }} title="Комісія маркетплейсу за позицію">
+                                                {c ? `−${c.amt.toFixed(0)} ₴${c.pct ? ` (${c.pct}%)` : ''}` : '—'}
+                                              </span>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
                                     </div>
                                   ))}
                                 </div>
@@ -1845,7 +2021,8 @@ export default function AdminOrders({
                     </div>
 
                     {/* Col 2: Contact + Delivery + payment + callback + TTN */}
-                    <div style={{ padding: '14px 16px', borderRight: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Контакт і доставка</span>
                       {/* Contact info */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', paddingBottom: '8px', borderBottom: '1px solid var(--border-light)' }}>
                         {/* Номер замовлення на маркетплейсі — покупець називає саме його */}
@@ -1873,16 +2050,36 @@ export default function AdminOrders({
                           {order.customer_id && (
                             <a href={`/admin/partners?open=${order.customer_id}`} target="_blank" rel="noopener noreferrer"
                               title="Відкрити картку контрагента"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: '#1D4ED8', textDecoration: 'none', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '5px', padding: '1px 6px' }}>
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: 'var(--brand-blue)', textDecoration: 'none', background: '#EAF1F8', border: '1px solid #D6E3F0', borderRadius: '5px', padding: '1px 6px' }}>
                               Картка ↗
                             </a>
                           )}
                         </div>
-                        <a href={`tel:${order.phone}`} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--brand-blue)', fontWeight: 600, textDecoration: 'none' }}>
-                          <Phone size={12} />{order.phone}
-                        </a>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <a href={`tel:${order.phone}`} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--brand-blue)', fontWeight: 600, textDecoration: 'none' }}>
+                            <Phone size={12} />{order.phone}
+                          </a>
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(order.phone); showToast('Телефон скопійовано'); }}
+                            title="Копіювати номер"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1, fontSize: '13px' }}>
+                            ⎘
+                          </button>
+                          {!isDropship && (noCallback ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', whiteSpace: 'nowrap' }}>
+                              ✓ Без дзвінка
+                            </span>
+                          ) : (
+                            <button onClick={() => toggleFlag(order.id, 'callback_done', !callbackDone)}
+                              title={callbackDone ? 'Натисніть, щоб зняти позначку «зателефонували»' : 'Натисніть, коли зателефонували клієнту'}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', background: callbackDone ? '#DCFCE7' : '#FEF3C7', color: callbackDone ? '#15803D' : '#B45309', border: `1px solid ${callbackDone ? '#86EFAC' : '#FCD34D'}` }}>
+                              {callbackDone ? '✓ Зателефонували' : '☎ Потрібен дзвінок'}
+                            </button>
+                          ))}
+                        </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
                       </div>
+
 
                       {editDeliveryId === order.id ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
@@ -1937,9 +2134,16 @@ export default function AdminOrders({
                           </div>
                         </div>
                       ) : (
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px', fontSize: '13px', color: 'var(--text-primary)' }}>
-                          <MapPin size={13} color="#64748B" style={{ flexShrink: 0, marginTop: '2px' }} />
-                          <span>{delivery}{subtype}{order.delivery_city_name && <strong> · {order.delivery_city_name}</strong>}{order.delivery_address && ` · ${order.delivery_address}`}</span>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', flexWrap: 'wrap', fontSize: '13px', color: 'var(--text-primary)' }}>
+                          {(() => {
+                            const cm = CARRIER_META[order.delivery_type] ?? { color: 'var(--text-secondary)', bg: 'var(--bg-soft)' };
+                            return (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '999px', background: cm.bg, color: cm.color, fontWeight: 700, fontSize: '11px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                <Truck size={12} /> {delivery}
+                              </span>
+                            );
+                          })()}
+                          <span style={{ color: 'var(--text-secondary)', marginTop: '1px' }}>{subtype.replace(/^ — /, '')}{order.delivery_city_name && <strong style={{ color: 'var(--text-primary)' }}>{subtype ? ' · ' : ''}{order.delivery_city_name}</strong>}{order.delivery_address && ` · ${order.delivery_address}`}</span>
                           <button
                             onClick={() => openEditDelivery(order)}
                             title="Змінити доставку"
@@ -2009,7 +2213,7 @@ export default function AdminOrders({
                         return (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             {/* Badge */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
                                 background: paymentConfirmed ? '#DCFCE7' : isPartial ? '#FFF7ED' : order.payment_type === 'cash' ? '#F0FDF4' : '#FEF3C7',
                                 color:      paymentConfirmed ? '#15803D'  : isPartial ? '#C2410C' : order.payment_type === 'cash' ? '#166534' : '#B45309',
@@ -2029,6 +2233,19 @@ export default function AdminOrders({
                               <button onClick={() => { setEditPaymentTypeId(order.id); setEditPaymentTypeValue(['cash','invoice','deferred'].includes(order.payment_type) ? order.payment_type : 'cash'); }} title="Змінити спосіб оплати" style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1 }}>
                                 <Pencil size={11} />
                               </button>
+                              {!paymentConfirmed && !isFormOpen && (
+                                <button
+                                  onClick={() => {
+                                    setPayFormOpen(prev  => ({ ...prev,  [order.id]: true }));
+                                    setPayFormMode(prev  => ({ ...prev,  [order.id]: defaultMode }));
+                                    setPayFormAmount(prev => ({ ...prev, [order.id]: defaultRemaining }));
+                                    setPayFormDate(prev  => ({ ...prev,  [order.id]: new Date().toISOString().slice(0, 10) }));
+                                  }}
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '6px', border: '1.5px solid #D6E3F0', background: '#EAF1F8', color: 'var(--brand-blue)', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                  <Plus size={11} /> Додати оплату
+                                </button>
+                              )}
                             </div>
 
                             {/* Залишок */}
@@ -2038,20 +2255,7 @@ export default function AdminOrders({
                               </div>
                             )}
 
-                            {/* Кнопка + форма */}
-                            {!paymentConfirmed && !isFormOpen && (
-                              <button
-                                onClick={() => {
-                                  setPayFormOpen(prev  => ({ ...prev,  [order.id]: true }));
-                                  setPayFormMode(prev  => ({ ...prev,  [order.id]: defaultMode }));
-                                  setPayFormAmount(prev => ({ ...prev, [order.id]: defaultRemaining }));
-                                  setPayFormDate(prev  => ({ ...prev,  [order.id]: new Date().toISOString().slice(0, 10) }));
-                                }}
-                                style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '6px', border: '1.5px solid #BFDBFE', background: '#EFF6FF', color: '#1D4ED8', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
-                              >
-                                <Plus size={11} /> Додати оплату
-                              </button>
-                            )}
+                            {/* Форма додавання оплати */}
 
                             {isFormOpen && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', borderRadius: '8px', border: '1.5px solid #BFDBFE', background: '#F0F9FF' }}>
@@ -2090,7 +2294,7 @@ export default function AdminOrders({
                                   <button
                                     onClick={() => addPayment(order)}
                                     disabled={isSaving}
-                                    style={{ padding: '5px 14px', borderRadius: '6px', border: 'none', background: '#1D4ED8', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.6 : 1 }}
+                                    style={{ padding: '5px 14px', borderRadius: '6px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.6 : 1 }}
                                   >
                                     {isSaving ? 'Збереження...' : 'Зберегти'}
                                   </button>
@@ -2133,71 +2337,16 @@ export default function AdminOrders({
                         );
                       })()}
 
-                      {!isDropship && (noCallback ? (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
-                          ✓ Без дзвінка
-                        </div>
-                      ) : (
-                        <div>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: callbackDone ? '#DCFCE7' : '#FEF3C7', color: callbackDone ? '#15803D' : '#B45309', border: `1px solid ${callbackDone ? '#86EFAC' : '#FCD34D'}` }}>
-                            {callbackDone ? '✓ Зателефонували' : '☎ Потрібен дзвінок'}
-                          </div>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '6px', cursor: 'pointer' }} onClick={() => toggleFlag(order.id, 'callback_done', !callbackDone)}>
-                            <div style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, border: `2px solid ${callbackDone ? '#15803D' : '#D97706'}`, background: callbackDone ? '#15803D' : 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              {callbackDone && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                            </div>
-                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Зателефонували</span>
-                          </label>
-                        </div>
-                      ))}
 
 
                       {(() => {
                         const displayComment = order.comment?.split('\n').filter(line => !line.includes('Не передзвонювати')).join('\n').trim();
                         return displayComment ? (
-                          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>«{displayComment}»</div>
-                        ) : null;
-                      })()}
-
-                      {/* Prom.ua commission block */}
-                      {order.channel_code === 'prom' && (() => {
-                        const cd = order.prom_data?._commission;
-                        if (cd) {
-                          return (
-                            <div style={{ padding: '8px 10px', borderRadius: '8px', background: '#FFF7ED', border: '1px solid #FED7AA', fontSize: '12px' }}>
-                              <div style={{ fontWeight: 700, color: '#92400E', marginBottom: '5px', display: 'flex', justifyContent: 'space-between' }}>
-                                <span>Комісія Prom.ua ({cd.plan === 'econom' ? 'Економ' : 'Єдина'})</span>
-                                <span>−{cd.total_commission.toFixed(0)} ₴</span>
-                              </div>
-                              {cd.items.map(ci => (
-                                <div key={ci.sku} style={{ display: 'flex', justifyContent: 'space-between', color: '#92400E', opacity: 0.75, marginBottom: '2px' }}>
-                                  <span>{ci.sku} · {ci.commission_pct}%</span>
-                                  <span>−{ci.commission_amt.toFixed(0)} ₴</span>
-                                </div>
-                              ))}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#15803D', fontWeight: 700, marginTop: '5px', paddingTop: '5px', borderTop: '1px solid #FED7AA' }}>
-                                <span>Чистий дохід</span>
-                                <span>{cd.net_revenue.toFixed(0)} ₴</span>
-                              </div>
-                            </div>
-                          );
-                        }
-                        // Fallback: flat rate estimate
-                        const pct        = promCommissionPct;
-                        const commission = Math.round(order.total_price * pct) / 100;
-                        const net        = order.total_price - commission;
-                        return (
-                          <div style={{ padding: '8px 10px', borderRadius: '8px', background: '#FFF7ED', border: '1px solid #FED7AA', fontSize: '12px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#92400E', marginBottom: '3px' }}>
-                              <span>Комісія Prom.ua ~{pct}%</span>
-                              <span style={{ fontWeight: 700 }}>−{commission.toFixed(0)} ₴</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#15803D', fontWeight: 700 }}>
-                              <span>Чистий дохід</span>
-                              <span>{net.toFixed(0)} ₴</span>
-                            </div>
+                          <div>
+                            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Коментар</div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>«{displayComment}»</div>
                           </div>
-                        );
+                        ) : null;
                       })()}
 
                       {(order.delivery_type === 'nova' || order.delivery_type === 'nova_poshta') && (
@@ -2259,85 +2408,17 @@ export default function AdminOrders({
                                 {ttnDeleting === order.id ? '…' : '🗑'}
                               </button>
                             )}
-                            {order.channel_code === 'prom' && order.tracking_number && (
-                              <button
-                                onClick={() =>
-                                  fetch(`/api/admin/orders/${order.id}/push-prom-ttn`, { method: 'POST' })
-                                    .then(r => r.json())
-                                    .then(d => d.ok ? showToast('ТТН надіслано на Prom ✓', 'success') : showToast(`Prom: ${d.error ?? 'помилка'}`, 'error'))
-                                    .catch(() => showToast('Помилка мережі', 'error'))
-                                }
-                                title="Надіслати ТТН на Prom"
-                                style={{ height: '32px', padding: '0 10px', borderRadius: '7px', flexShrink: 0, background: '#FFF7ED', color: '#C2410C', border: '1.5px solid #FED7AA', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                                → Prom
-                              </button>
-                            )}
                           </div>
                         </div>
                       )}
 
-                      {/* Confirm button — under Nova Poshta block, only for new orders */}
-                      {order.status === 'new' && (() => {
-                        const mode = selectedMode[order.id] ?? 'supplier';
-                        const isSupplier = mode === 'supplier';
-                        const busy = confirming === order.id;
-                        const confirmErr = confirmErrors[order.id];
-                        return (
-                          <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <button
-                              onClick={() => confirmOrder(order.id)}
-                              disabled={busy}
-                              style={{ width: '100%', height: '34px', borderRadius: '8px', border: 'none',
-                                background: busy ? '#94A3B8' : '#15803D', color: '#fff',
-                                fontSize: '12px', fontWeight: 700, cursor: busy ? 'wait' : 'pointer' }}>
-                              {busy ? '⏳ Обробка...' : '✅ Підтвердити замовлення'}
-                            </button>
-                            {isSupplier && (
-                              <button
-                                onClick={() => startSupplierSend([order.id])}
-                                disabled={supplierQueueLoading}
-                                style={{ width: '100%', height: '34px', borderRadius: '8px',
-                                  border: '1.5px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F',
-                                  fontSize: '12px', fontWeight: 700, cursor: supplierQueueLoading ? 'wait' : 'pointer',
-                                  opacity: supplierQueueLoading ? 0.6 : 1 }}>
-                                📤 Відправити постачальнику
-                              </button>
-                            )}
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                              {mode === 'own' ? 'Зарезервує товар з власного складу' : mode === 'mixed' ? 'Резерв + замовлення у постачальника' : 'Підтвердить замовлення клієнту'}
-                            </div>
-
-                            {/* Inline error: generic or insufficient stock */}
-                            {confirmErr && (
-                              <div style={{ marginTop: '8px', padding: '8px 10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px' }}>
-                                <div style={{ fontSize: '12px', fontWeight: 600, color: '#DC2626', marginBottom: confirmErr.insufficient?.length ? '6px' : 0 }}>
-                                  ⚠ {confirmErr.error}
-                                </div>
-                                {confirmErr.insufficient?.map(item => {
-                                  const name = order.items.find(i => i.sku === item.sku)?.name;
-                                  return (
-                                    <div key={item.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '2px 0', borderTop: '1px solid #FECACA' }}>
-                                      <span style={{ color: '#7F1D1D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>
-                                        {name ?? item.sku}
-                                      </span>
-                                      <span style={{ color: '#DC2626', fontWeight: 700, flexShrink: 0 }}>
-                                        {item.available} / {item.requested} шт
-                                      </span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
                     </div>
 
                     {/* Col 3: Status dropdown + context actions */}
                     {(() => {
                       const fMode = order.fulfillment_mode ?? 'supplier';
                       return (
-                        <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px', alignSelf: 'start' }}>
+                        <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', alignSelf: 'start' }}>
                           {/* Current status badge */}
                           <div style={{ fontSize: '13px', fontWeight: 700, padding: '6px 10px', borderRadius: '8px', color: status.color, background: status.bg, textAlign: 'center' }}>
                             {status.label}
@@ -2377,97 +2458,6 @@ export default function AdminOrders({
                           </div>
 
                           {/* Фактичний постачальник відвантаження (дроп/змішані замовлення) */}
-                          {/* Тип цін замовлення */}
-                          {(() => {
-                            const editable = ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
-                              && !['prom', 'rozetka', 'dropship'].includes(order.channel_code ?? '');
-                            const pt = order.price_type ?? 'retail';
-                            return (
-                              <div>
-                                <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
-                                  title="Тариф, за яким пораховані позиції. Зміна перерахує всі ціни за відповідним прайсом.">
-                                  Тип цін
-                                </div>
-                                {editable ? (
-                                  <select
-                                    value={pt}
-                                    onChange={e => { if (e.target.value !== pt) changePriceType(order.id, e.target.value); }}
-                                    style={{
-                                      width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)',
-                                      borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer',
-                                      color: 'var(--text-primary)', fontWeight: 600,
-                                    }}
-                                  >
-                                    <option value="retail">Роздріб</option>
-                                    <option value="wholesale">Опт</option>
-                                    <option value="drop">Дроп</option>
-                                  </select>
-                                ) : (
-                                  <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-subtle)' }}
-                                    title={['prom', 'rozetka'].includes(order.channel_code ?? '') ? 'Ціни зафіксовані маркетплейсом' : 'Ціни зафіксовані у проведеній накладній'}>
-                                    {PRICE_TYPE_LABELS[pt] ?? pt}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
-
-                          {/* Ручна знижка по замовленню */}
-                          {(() => {
-                            const editable = ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
-                              && !['prom', 'rozetka', 'dropship'].includes(order.channel_code ?? '');
-                            const activePct = Number(order.discount_pct ?? 0);
-                            if (!editable) {
-                              if (activePct > 0) {
-                                return (
-                                  <div>
-                                    <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>Знижка</div>
-                                    <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: '#B45309', background: '#FFFBEB' }}>
-                                      −{activePct}% (−{Number(order.discount_amount ?? 0).toFixed(2)} ₴)
-                                    </div>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }
-                            const mode = discMode[order.id] ?? 'pct';
-                            return (
-                              <div>
-                                <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
-                                  title="Ручна знижка. Знижує ціни всіх позицій; сума замовлення перераховується.">
-                                  Знижка{activePct > 0 ? ` · зараз −${activePct}%` : ''}
-                                </div>
-                                <div style={{ display: 'flex', gap: '4px' }}>
-                                  <select
-                                    value={mode}
-                                    onChange={e => setDiscMode(p => ({ ...p, [order.id]: e.target.value as 'pct' | 'amount' }))}
-                                    style={{ height: '30px', padding: '0 4px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer' }}
-                                  >
-                                    <option value="pct">%</option>
-                                    <option value="amount">₴</option>
-                                  </select>
-                                  <input
-                                    type="number" min="0" step="any"
-                                    value={discInput[order.id] ?? ''}
-                                    placeholder={mode === 'pct' ? 'напр. 10' : 'напр. 200'}
-                                    onChange={e => setDiscInput(p => ({ ...p, [order.id]: e.target.value }))}
-                                    style={{ width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)' }}
-                                  />
-                                  <button
-                                    onClick={() => applyDiscount(order.id, mode, parseFloat(discInput[order.id] ?? ''))}
-                                    style={{ height: '30px', padding: '0 10px', border: '1px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                                  >OK</button>
-                                </div>
-                                {activePct > 0 && (
-                                  <button
-                                    onClick={() => applyDiscount(order.id, 'pct', 0)}
-                                    style={{ marginTop: '4px', fontSize: '11px', color: '#B91C1C', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
-                                  >Прибрати знижку −{activePct}%</button>
-                                )}
-                              </div>
-                            );
-                          })()}
-
                           {fMode !== 'own' && suppliersList.length > 0 && (
                             <div>
                               <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
@@ -2511,9 +2501,64 @@ export default function AdminOrders({
                               boxSizing: 'border-box' as const, justifyContent: 'flex-start' as const,
                             };
                             const btnPrimary = { ...btn, border: '1.5px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F' };
-                            const btnMuted   = { ...btn, color: 'var(--text-secondary)' };
+                            const btnMuted   = { ...btn, border: '1px solid var(--border-light)', padding: '6px 10px', fontWeight: 500, color: 'var(--text-secondary)' };
                             return (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
+                                {/* Primary CTA for new orders — confirm + optional send-to-supplier */}
+                                {order.status === 'new' && (() => {
+                                  const mode = selectedMode[order.id] ?? 'supplier';
+                                  const isSupplier = mode === 'supplier';
+                                  const busy = confirming === order.id;
+                                  const confirmErr = confirmErrors[order.id];
+                                  return (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                      <button
+                                        onClick={() => confirmOrder(order.id)}
+                                        disabled={busy}
+                                        style={{ width: '100%', height: '34px', borderRadius: '8px', border: 'none',
+                                          background: busy ? '#94A3B8' : '#15803D', color: '#fff',
+                                          fontSize: '12px', fontWeight: 700, cursor: busy ? 'wait' : 'pointer' }}>
+                                        {busy ? '⏳ Обробка...' : '✅ Підтвердити замовлення'}
+                                      </button>
+                                      {isSupplier && (
+                                        <button
+                                          onClick={() => startSupplierSend([order.id])}
+                                          disabled={supplierQueueLoading}
+                                          style={{ width: '100%', height: '34px', borderRadius: '8px',
+                                            border: '1.5px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F',
+                                            fontSize: '12px', fontWeight: 700, cursor: supplierQueueLoading ? 'wait' : 'pointer',
+                                            opacity: supplierQueueLoading ? 0.6 : 1 }}>
+                                          📤 Відправити постачальнику
+                                        </button>
+                                      )}
+                                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                                        {mode === 'own' ? 'Зарезервує товар з власного складу' : mode === 'mixed' ? 'Резерв + замовлення у постачальника' : 'Підтвердить замовлення клієнту'}
+                                      </div>
+
+                                      {/* Inline error: generic or insufficient stock */}
+                                      {confirmErr && (
+                                        <div style={{ marginTop: '8px', padding: '8px 10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px' }}>
+                                          <div style={{ fontSize: '12px', fontWeight: 600, color: '#DC2626', marginBottom: confirmErr.insufficient?.length ? '6px' : 0 }}>
+                                            ⚠ {confirmErr.error}
+                                          </div>
+                                          {confirmErr.insufficient?.map(item => {
+                                            const name = order.items.find(i => i.sku === item.sku)?.name;
+                                            return (
+                                              <div key={item.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '2px 0', borderTop: '1px solid #FECACA' }}>
+                                                <span style={{ color: '#7F1D1D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>
+                                                  {name ?? item.sku}
+                                                </span>
+                                                <span style={{ color: '#DC2626', fontWeight: 700, flexShrink: 0 }}>
+                                                  {item.available} / {item.requested} шт
+                                                </span>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                                 {order.status === 'confirmed' && (fMode === 'supplier' || fMode === 'mixed' || !!order.supplier_sent_at) && (
                                   <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
                                     style={order.supplier_sent_at
@@ -2590,16 +2635,26 @@ export default function AdminOrders({
                                     <Check size={13} /> Доставлено
                                   </button>
                                 )}
+                                {/* Другорядні інструменти — друк, месенджери, ЗП; відділені від дій зі статусом */}
+                                <div style={{ marginTop: '6px', paddingTop: '8px', borderTop: '1px dashed var(--border-light)', fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                  Інструменти
+                                </div>
                                 {isAdmin && ['shipped', 'delivered'].includes(order.status) && (
                                   <button onClick={() => setReturnFor({ id: order.id, number: order.order_number })}
                                     style={{ ...btnMuted, color: '#B45309' }}>
                                     ↩ Повернення
                                   </button>
                                 )}
-                                <a href={`/invoice/${order.id}`} target="_blank" rel="noopener noreferrer"
-                                  style={btnMuted}>
-                                  <Printer size={13} /> Друк / Рахунок
-                                </a>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                  <a href={`/invoice/${order.id}`} target="_blank" rel="noopener noreferrer"
+                                    style={{ ...btnMuted, flex: 1 }}>
+                                    <Printer size={13} /> Друк / Рахунок
+                                  </a>
+                                  <button onClick={() => setInvoiceCfg(order)} title="Налаштування рахунку — що показувати у рахунку"
+                                    style={{ ...btnMuted, width: 'auto', flexShrink: 0, justifyContent: 'center', padding: '6px 11px' }}>
+                                    <span style={{ fontSize: '15px', lineHeight: 1 }}>⚙</span>
+                                  </button>
+                                </div>
                                 <InvoiceMessengerButtons
                                   phone={order.phone} contact={order.contact}
                                   orderNumber={order.order_number} orderId={order.id}
@@ -2949,6 +3004,14 @@ export default function AdminOrders({
         />
       )}
 
+      {invoiceCfg && (
+        <InvoiceOptionsModal
+          order={{ id: invoiceCfg.id, invoice_as_company: invoiceCfg.invoice_as_company, invoice_options: invoiceCfg.invoice_options, customer_id: invoiceCfg.customer_id }}
+          onClose={() => setInvoiceCfg(null)}
+          onSaved={(v) => setOrders(prev => prev.map(o => o.id === invoiceCfg.id ? { ...o, ...v } : o))}
+        />
+      )}
+
       {ttnModalOrder && (
         <CreateTTNModal
           order={{
@@ -2973,7 +3036,7 @@ export default function AdminOrders({
             setOrders(prev => prev.map(o => o.id === orderId ? { ...o, tracking_number: ttn } : o));
             setTtnModalOrder(null);
             if (isSupplier) await autoShipDropship(orderId);
-            // If Prom/Rozetka order already shipped — push the new TTN automatically
+            // If Prom order is confirmed or beyond — push the new TTN automatically
             if (ttnModalOrder.channel_code === 'prom' && ttnModalOrder.status !== 'new') {
               fetch(`/api/admin/orders/${orderId}/push-prom-ttn`, { method: 'POST' })
                 .then(r => r.json())
@@ -3022,8 +3085,7 @@ export default function AdminOrders({
         const hasAny = shipModal.items.some(i => i.shipQty > 0);
         const isPartial = shipModal.items.some(i => i.shipQty < (i.orderQty - i.shippedQty));
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            onClick={e => { if (e.target === e.currentTarget) setShipModal(null); }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ background: '#fff', borderRadius: '16px', padding: '28px 28px 24px', width: '480px', maxWidth: '96vw', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
               <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px', color: '#1E3A5F' }}>Відвантаження</div>
               <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '20px' }}>

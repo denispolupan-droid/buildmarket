@@ -4,6 +4,7 @@ import { createServiceClient } from '../../../../../../lib/supabase';
 import { Resend } from 'resend';
 import { buildInvoiceHtml, orderMarketplace } from '../../../../../../lib/invoice-html';
 import { buildInvoicePdf } from '../../../../../../lib/invoice-pdf';
+import { loadInvoiceView } from '../../../../../../lib/invoice-buyer';
 import { SELLER } from '../../../../../../lib/company';
 import { SITE_URL } from '../../../../../../lib/site';
 
@@ -27,9 +28,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!toEmail) return NextResponse.json({ error: 'Email не вказано' }, { status: 400 });
 
   const invoiceUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/invoice/${id}`;
+  const { buyer, showDelivery, showTerms } = await loadInvoiceView(db, order);
 
   const bankParams = {
     order,
+    buyer,
+    showDelivery,
+    showTerms,
     bankRecipient: SELLER.name,
     bankIban:      SELLER.iban,
     bankName:      SELLER.bank,

@@ -604,8 +604,7 @@ export default function PartnersClient({
         const avail    = Number(vc.balance) - Number(vc.balance_held);
         const hasBalance = vc.type === 'wholesale' || vc.type === 'dropship_partner';
         return (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            onClick={e => { if (e.target === e.currentTarget) setViewingId(null); }}>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ background: 'var(--bg-card)', borderRadius: '18px', width: '640px', maxWidth: '95vw', boxShadow: '0 32px 80px rgba(0,0,0,0.45)', border: '1px solid var(--border)', overflow: 'hidden' }}>
 
               {/* Header */}
@@ -771,8 +770,7 @@ export default function PartnersClient({
 
       {/* ── New customer modal ─────────────────────────────────────────────── */}
       {showNew && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={e => { if (e.target === e.currentTarget) setShowNew(false); }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px 32px', width: '620px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', border: '1px solid var(--border)' }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexShrink: 0 }}>
