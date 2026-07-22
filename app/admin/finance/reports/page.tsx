@@ -52,10 +52,6 @@ export default async function ReportsPage({
     channelMap[ch].revenue += Number(d.total_amount ?? 0);
     channelMap[ch].cogs    += Number(d.total_cost   ?? 0);
   }
-  const by_channel = Object.entries(channelMap)
-    .map(([channel, v]) => ({ channel, ...v }))
-    .sort((a, b) => b.revenue - a.revenue);
-
   // 2. Landed costs за приходами в цьому ж периоді
   //    Пагінація: landed_cost_lines накопичується безмежно.
   const lcLines = await fetchAllRows((f, t) => db
@@ -91,6 +87,27 @@ export default async function ReportsPage({
     .gte('business_date', dateFrom)
     .lte('business_date', dateTo);
 
+  // 5. Комісія маркетплейсів (Prom/Rozetka) — окремий витратний рахунок у леджері,
+  //    НЕ в таблиці expenses. Нетто за період (повернення комісій = від'ємні записи).
+  const commEntries = await fetchAllRows<{ amount: number; counterparty_id: string | null }>((f, t) => db
+    .from('money_entries')
+    .select('amount, counterparty_id')
+    .eq('account_type', 'marketplace_fee')
+    .gte('business_date', dateFrom)
+    .lte('business_date', dateTo)
+    .range(f, t));
+  const marketplace_commission = (commEntries ?? []).reduce((s, e) => s + Number(e.amount), 0);
+  // Комісія по маркетплейсу (counterparty = 'prom'/'rozetka') — для маржі по каналах.
+  const commByChannel: Record<string, number> = {};
+  for (const e of (commEntries ?? [])) {
+    const mp = e.counterparty_id ?? '';
+    if (mp) commByChannel[mp] = (commByChannel[mp] ?? 0) + Number(e.amount);
+  }
+
+  const by_channel = Object.entries(channelMap)
+    .map(([channel, v]) => ({ channel, ...v, commission: commByChannel[channel] ?? 0 }))
+    .sort((a, b) => b.revenue - a.revenue);
+
   const expensesTotal   = (expenses ?? []).reduce((s, e) => s + Number(e.amount), 0);
   const cashExpTotal    = (cashExpenses ?? []).reduce((s, e) => s + Math.abs(Number(e.amount)), 0);
   const op_expenses     = expensesTotal + cashExpTotal;
@@ -101,16 +118,19 @@ export default async function ReportsPage({
     expTypeMap[e.expense_type] = (expTypeMap[e.expense_type] ?? 0) + Number(e.amount);
   }
   if (cashExpTotal > 0) expTypeMap['other'] = (expTypeMap['other'] ?? 0) + cashExpTotal;
+  if (marketplace_commission !== 0) expTypeMap['marketplace_fee'] = (expTypeMap['marketplace_fee'] ?? 0) + marketplace_commission;
   const by_expense = Object.entries(expTypeMap)
     .map(([type, amount]) => ({ type, amount }))
     .sort((a, b) => b.amount - a.amount);
 
   const gross_profit   = revenue - cogs;
   const gross_after_lc = gross_profit - landed_costs;
-  const op_profit      = gross_after_lc - op_expenses;
+  // Комісія маркетплейсів — така сама операційна витрата, вычитается из операционной прибыли.
+  const op_profit      = gross_after_lc - op_expenses - marketplace_commission;
 
   const pl: PLData = {
-    revenue, cogs, gross_profit, landed_costs, gross_after_lc, op_expenses, op_profit,
+    revenue, cogs, gross_profit, landed_costs, gross_after_lc,
+    op_expenses, marketplace_commission, op_profit,
     by_channel, by_expense,
   };
 

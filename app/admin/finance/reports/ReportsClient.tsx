@@ -10,8 +10,9 @@ export type PLData = {
   landed_costs:   number;
   gross_after_lc: number;
   op_expenses:    number;
+  marketplace_commission: number;
   op_profit:      number;
-  by_channel:     { channel: string; revenue: number; cogs: number }[];
+  by_channel:     { channel: string; revenue: number; cogs: number; commission: number }[];
   by_expense:     { type: string; amount: number }[];
 };
 
@@ -112,6 +113,7 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
     { label: 'Landed Costs (доп. витрати)', value: -pl.landed_costs,  bold: false, color: '#7C3AED',             pctOf: pl.revenue },
     { label: 'Прибуток після LC',           value: pl.gross_after_lc, bold: true,  color: pl.gross_after_lc >= 0 ? '#15803D' : '#DC2626', pctOf: pl.revenue, sep: true },
     { label: 'Операційні витрати',          value: -pl.op_expenses,   bold: false, color: '#B45309',             pctOf: pl.revenue },
+    { label: 'Комісія маркетплейсів',       value: -pl.marketplace_commission, bold: false, color: '#B45309',    pctOf: pl.revenue },
     { label: 'Операційний прибуток',        value: pl.op_profit,      bold: true,  color: pl.op_profit >= 0 ? '#15803D' : '#DC2626', pctOf: pl.revenue, sep: true, big: true },
   ];
 
@@ -203,7 +205,7 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
                   По каналах
                 </div>
                 {pl.by_channel.map(ch => {
-                  const margin = ch.revenue - ch.cogs;
+                  const margin = ch.revenue - ch.cogs - ch.commission;
                   const pctVal = pl.revenue > 0 ? Math.round(ch.revenue / pl.revenue * 100) : 0;
                   return (
                     <div key={ch.channel} style={{ padding: '9px 16px', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
