@@ -19,7 +19,7 @@ const STATUS_TABS = [
   { value: 'pending_payment', label: 'Очікує оплати' },
   { value: 'confirmed',       label: 'Підтверджено' },
   { value: 'awaiting_stock',  label: 'Очікуємо товар' },
-  { value: 'ready_to_ship',   label: 'Готово до відправки' },
+  { value: 'ready_to_ship',   label: 'До відправки' },
   { value: 'shipped',         label: 'Відправлено' },
   { value: 'delivered',       label: 'Доставлено' },
   { value: 'cancelled',       label: 'Скасовано' },
@@ -75,8 +75,8 @@ export default async function AdminPage({
       .in('doc_type', ['receipt', 'stock_in'])
       .eq('status', 'confirmed')
       .gte('confirmed_at', oneDayAgo),
-    fetchAllRows<{ status: string; total_price: number | null }>((f, t) => {
-      let q = serviceClient.from('orders').select('status, total_price').neq('status', 'cancelled');
+    fetchAllRows<{ status: string; total_price: number | null; carrier_accepted_at: string | null }>((f, t) => {
+      let q = serviceClient.from('orders').select('status, total_price, carrier_accepted_at').neq('status', 'cancelled');
       if (dateFrom) q = q.gte('created_at', `${dateFrom}T00:00:00`);
       if (dateTo)   q = q.lte('created_at', `${dateTo}T23:59:59`);
       return q.range(f, t);
@@ -133,9 +133,12 @@ export default async function AdminPage({
   // Sum per status
   const statusAmounts = (allAmountRows ?? []).reduce<Record<string, number>>((acc, row) => {
     if (row.status) acc[row.status] = (acc[row.status] ?? 0) + Number(row.total_price ?? 0);
+    // Віртуальний зріз «Готово до відправки» — та сама сума, окремим ключем.
+    if (row.status === 'shipped' && !row.carrier_accepted_at) acc['ready_to_ship'] = (acc['ready_to_ship'] ?? 0) + Number(row.total_price ?? 0);
     return acc;
   }, {});
-  const totalAmount = Object.values(statusAmounts).reduce((s, n) => s + n, 0);
+  // Загальна сума — напряму з рядків (ready_to_ship дублює shipped, тому не через Object.values).
+  const totalAmount = (allAmountRows ?? []).reduce((s, r) => s + Number(r.total_price ?? 0), 0);
 
   // Count orders per status
   const statusCounts = (statusRows ?? []).reduce<Record<string, number>>((acc, row) => {
@@ -162,7 +165,7 @@ export default async function AdminPage({
 
       {/* Status tabs + Відправлення — закріплені зверху для швидкого переходу між типами при прокрутці */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', position: 'sticky', top: 0, zIndex: 60, background: 'var(--bg-page)', padding: '20px 0 12px', marginBottom: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: '8px', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
           {STATUS_TABS.map(tab => {
             const isActive = curStatus === tab.value;
             const cnt = tab.value === '' ? totalCount : (statusCounts[tab.value] ?? 0);
@@ -173,39 +176,41 @@ export default async function AdminPage({
                 href={`/admin?status=${tab.value}${dateFrom ? `&dateFrom=${dateFrom}` : ''}${dateTo ? `&dateTo=${dateTo}` : ''}`}
                 style={{
                   display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
-                  justifyContent: 'center', gap: '2px', padding: '6px 8px', borderRadius: '10px',
-                  textDecoration: 'none', width: '118px', height: '54px', boxSizing: 'border-box',
+                  justifyContent: 'flex-start', gap: '5px', padding: '9px 12px', borderRadius: '12px',
+                  textDecoration: 'none', flex: '1 1 0', minWidth: '112px', height: '62px', boxSizing: 'border-box',
                   background: isActive ? '#1E3A5F' : 'var(--bg-card)',
-                  color: isActive ? '#fff' : 'var(--text-secondary)',
-                  border: `1px solid ${isActive ? '#1E3A5F' : 'var(--border)'}`,
+                  border: isActive ? '1px solid #1E3A5F' : '1px solid var(--border-light)',
+                  boxShadow: isActive ? '0 3px 10px rgba(30,58,95,0.28)' : '0 1px 2px rgba(15,23,42,0.05)',
                   transition: 'all 0.15s', textAlign: 'center',
                 }}
               >
-                <span style={{ fontSize: '13px', fontWeight: isActive ? 700 : 500, lineHeight: 1.15 }}>{tab.label}</span>
+                {/* Рядок 1: назва + лічильник (виділений кольоровим чипом) у фікс-блоці на 2 рядки. */}
+                <div style={{ height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                  <span style={{
+                    fontSize: '12px', fontWeight: 600, lineHeight: 1.15, letterSpacing: '0.1px',
+                    color: isActive ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)',
+                  }}>{tab.label}</span>
+                  {cnt > 0 && (
+                    <span style={{
+                      fontSize: '10.5px', fontWeight: 700, lineHeight: '16px',
+                      padding: '0 6px', borderRadius: '7px',
+                      background: isActive ? 'rgba(255,255,255,0.22)' : isNew ? '#EF4444' : '#E0ECF8',
+                      color: isActive ? '#fff' : isNew ? '#fff' : '#3B6EA5',
+                    }}>{cnt}</span>
+                  )}
+                </div>
+                {/* Рядок 2: сума — головний акцент. */}
                 {(() => {
                   const amount = tab.value === '' ? totalAmount : (statusAmounts[tab.value] ?? 0);
-                  if (cnt <= 0 && amount <= 0) return null;
-                  // Кількість + сума — одним рядком під назвою, щоб бейдж не «висів» окремо.
+                  if (amount <= 0) return null;
                   return (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-                      {cnt > 0 && (
-                        <span style={{
-                          background: isActive ? 'rgba(255,255,255,0.22)' : isNew ? '#EF4444' : '#E2E8F0',
-                          color: isActive ? '#fff' : isNew ? '#fff' : '#475569',
-                          fontSize: '10px', fontWeight: 700,
-                          borderRadius: '5px', padding: '0 5px', lineHeight: '16px',
-                        }}>{cnt}</span>
-                      )}
-                      {amount > 0 && (
-                        <span style={{
-                          fontSize: '11.5px', fontWeight: 800,
-                          color: isActive ? '#93C5FD' : '#15803D',
-                          whiteSpace: 'nowrap', letterSpacing: '-0.3px',
-                        }}>
-                          {amount.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
-                        </span>
-                      )}
-                    </div>
+                    <span style={{
+                      fontSize: '15px', fontWeight: 800, lineHeight: 1,
+                      color: isActive ? '#93C5FD' : '#15803D',
+                      whiteSpace: 'nowrap', letterSpacing: '-0.2px',
+                    }}>
+                      {amount.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
+                    </span>
                   );
                 })()}
               </Link>

@@ -262,6 +262,7 @@ export default function AdminOrders({
   const [ttnDeleting,    setTtnDeleting]    = useState<string | null>(null);
   const [registryAdding, setRegistryAdding] = useState<string | null>(null);
   const [registryAdded,  setRegistryAdded]  = useState<Set<string>>(new Set());
+  const [registryBulkLoading, setRegistryBulkLoading] = useState(false);
   const [invoiceCfg,     setInvoiceCfg]     = useState<Order | null>(null);
   type ContactEntry = { name: string; email: string; note?: string };
   type SupplierQItem = { orderId: string; orderNumber: number; supplierName: string; supplierId: number | null; email: string; contacts: ContactEntry[]; comment: string };
@@ -969,6 +970,41 @@ export default function AdminOrders({
     finally { setRegistryAdding(null); }
   }
 
+  // Групове додавання виділених замовлень у реєстр НП (по їх ТТН, які ще не в реєстрі).
+  // Створюємо ОКРЕМИЙ НОВИЙ реєстр під цю партію: перший POST з registerRef:null створює
+  // реєстр і повертає ref, який протягуємо на решту (інакше кожен POST плодив би свій реєстр).
+  // НЕ переused існуючий sheets[0] — він може бути вже роздрукований/закритий, і НП відхилить
+  // вставку («Реєстр вже роздруковано»).
+  async function bulkAddToRegistry() {
+    const sel = orders.filter(o => selectedIds.has(o.id) && o.tracking_number && !registryAdded.has(o.tracking_number));
+    if (sel.length === 0) return;
+    setRegistryBulkLoading(true);
+
+    let ref: string | null = null;
+    const added: string[] = [];
+    const errors: string[] = [];
+    for (const o of sel) {
+      try {
+        const res = await fetch('/api/admin/registers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ttnNumber: o.tracking_number, registerRef: ref }),
+        });
+        const data: { ref?: string; error?: string } = await res.json().catch(() => ({}));
+        if (res.ok) {
+          added.push(o.tracking_number!);
+          if (!ref && data.ref) ref = data.ref; // перший успішний створив реєстр — решту в нього
+        } else {
+          errors.push(`#${o.order_number}: ${data.error ?? res.status}`);
+        }
+      } catch { errors.push(`#${o.order_number}: мережа`); }
+    }
+    if (added.length) setRegistryAdded(prev => new Set([...prev, ...added]));
+    setRegistryBulkLoading(false);
+    if (errors.length) alert(`Додано в реєстр: ${added.length}. Не вдалося: ${errors.length}\n${errors.join('\n')}`);
+    else showToast(`Додано в реєстр: ${added.length}`);
+  }
+
   async function deleteTTN(id: string) {
     if (!confirm('Видалити ТТН з бази та з кабінету Нової Пошти?')) return;
     setTtnDeleting(id);
@@ -1060,6 +1096,21 @@ export default function AdminOrders({
             }}>
               <Truck size={14} /> Об&apos;єднати в ТТН
             </button>
+            {(() => {
+              const addable = orders.filter(o => selectedIds.has(o.id) && o.tracking_number && !registryAdded.has(o.tracking_number));
+              const selCount = orders.filter(o => selectedIds.has(o.id)).length;
+              if (addable.length === 0) return null;
+              return (
+                <button onClick={bulkAddToRegistry} disabled={registryBulkLoading} style={{
+                  height: '34px', padding: '0 16px', borderRadius: '8px',
+                  border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)',
+                  color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '6px', opacity: registryBulkLoading ? 0.6 : 1,
+                }}>
+                  <Send size={14} /> {registryBulkLoading ? 'Додаю…' : `Додати в реєстр${addable.length !== selCount ? ` (${addable.length})` : ''}`}
+                </button>
+              );
+            })()}
             {/* Скасувати — в кінці, виділено червоним */}
             <button onClick={() => setSelectedIds(new Set())} style={{
               height: '34px', padding: '0 16px', borderRadius: '8px',
@@ -1348,7 +1399,7 @@ export default function AdminOrders({
           <Package size={36} strokeWidth={1} style={{ marginBottom: '10px', opacity: 0.4 }} />
           <p style={{ marginBottom: '16px', fontSize: '14px' }}>
             {currentStatus
-              ? `Немає замовлень зі статусом «${currentStatus === 'ready_to_ship' ? 'Готово до відправки' : (STATUSES.find(s => s.value === currentStatus)?.label ?? currentStatus)}»`
+              ? `Немає замовлень зі статусом «${currentStatus === 'ready_to_ship' ? 'До відправки' : (STATUSES.find(s => s.value === currentStatus)?.label ?? currentStatus)}»`
               : 'Замовлень немає'}
           </p>
           {/* Банер з підказкою про інші статуси */}
@@ -1377,7 +1428,7 @@ export default function AdminOrders({
             // (ТТН створена, товар ще на складі); після приймання перевізником —
             // «Відправлено». На облік не впливає — лише мітка статусу.
             if (order.status === 'shipped' && !order.carrier_accepted_at) {
-              status = { ...status, label: 'Готово до відправки', color: '#B45309', bg: '#FEF3C7' };
+              status = { ...status, label: 'До відправки', color: '#B45309', bg: '#FEF3C7' };
             }
             const date = new Date(order.created_at).toLocaleString('uk-UA', {
               day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',

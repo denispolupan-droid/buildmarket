@@ -25,40 +25,42 @@ async function npCall(apiKey: string, modelName: string, calledMethod: string, m
   return res.json();
 }
 
+const fmtDate = (d: Date) =>
+  `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+
+// getDocumentList у НП НЕСТАБІЛЬНИЙ: той самий запит то повертає повний список, то
+// порожній (success:true, data:[]). Тому ретраїмо, поки не отримаємо непорожній список.
+// GetFullList:'1' — повний перелік (пагінований '0' пропускав документи). Повертає
+// список документів за період або [] якщо НП уперто віддає порожнечу.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function npDocListWithRetry(apiKey: string, from: string, to: string, tries = 5): Promise<any[]> {
+  for (let i = 0; i < tries; i++) {
+    const res = await npCall(apiKey, 'InternetDocument', 'getDocumentList', {
+      DateTimeFrom: from, DateTimeTo: to, GetFullList: '1', Page: '1',
+    });
+    const list = res.data ?? [];
+    if (Array.isArray(list) && list.length > 0) return list;
+    await new Promise(r => setTimeout(r, 350 * (i + 1)));
+  }
+  return [];
+}
+
 // Resolve TTN number → Document UUID
 async function resolveTtnRef(apiKey: string, ttnNumber: string): Promise<string | null> {
-  // Method 1: TrackingDocument
+  // Method 1: TrackingDocument (швидкий шлях — але Ref віддає лише для «своїх» контрактів)
   const trackRes = await npCall(apiKey, 'TrackingDocument', 'getStatusDocuments', {
     Documents: [{ DocumentNumber: ttnNumber }],
   });
   const trackRef = trackRes.data?.[0]?.Ref;
   if (trackRef) return trackRef;
 
-  // Method 2: InternetDocument.getDocumentList (searches by TTN number)
+  // Method 2: пошук у списку документів за 7 днів (з ретраями проти нестабільності НП)
   const today = new Date();
-  const dateStr = `${String(today.getDate()).padStart(2,'0')}.${String(today.getMonth()+1).padStart(2,'0')}.${today.getFullYear()}`;
-  const docRes = await npCall(apiKey, 'InternetDocument', 'getDocumentList', {
-    DateTimeFrom: dateStr,
-    DateTimeTo:   dateStr,
-    GetFullList:  '0',
-    Page:         '1',
-  });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const found = (docRes.data ?? []).find((d: any) => d.IntDocNumber === ttnNumber);
-  if (found?.Ref) return found.Ref;
-
-  // Method 3: search last 7 days
   const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const fromStr = `${String(weekAgo.getDate()).padStart(2,'0')}.${String(weekAgo.getMonth()+1).padStart(2,'0')}.${weekAgo.getFullYear()}`;
-  const wideRes = await npCall(apiKey, 'InternetDocument', 'getDocumentList', {
-    DateTimeFrom: fromStr,
-    DateTimeTo:   dateStr,
-    GetFullList:  '0',
-    Page:         '1',
-  });
+  const list = await npDocListWithRetry(apiKey, fmtDate(weekAgo), fmtDate(today));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const foundWide = (wideRes.data ?? []).find((d: any) => d.IntDocNumber === ttnNumber);
-  return foundWide?.Ref ?? null;
+  const found = list.find((d: any) => d.IntDocNumber === ttnNumber);
+  return found?.Ref ?? null;
 }
 
 // GET — list of scan sheets, or details of a specific one
@@ -207,6 +209,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: res.errors?.join('; ') ?? 'Помилка НП' }, { status: 400 });
   }
 
+  // УВАГА: НП повертає success:true на рівні виклику, але РЕАЛЬНИЙ поштучний результат —
+  // у sheet.Data.{Success|Warnings|Errors}, а НЕ у sheet.Success (там завжди []).
+  //  - Data.Success  — документ реально доданий у новий/вказаний реєстр (sheet.Ref/Number заповнені);
+  //  - Data.Warnings — документ ВЖЕ в іншому реєстрі (ScanSheetNumber), sheet.Ref/Number порожні;
+  //  - Data.Errors   — справжня відмова.
   const sheet = res.data?.[0];
-  return NextResponse.json({ ref: sheet?.Ref, number: sheet?.Number });
+  const inner = sheet?.Data ?? {};
+  const innerErrors   = Array.isArray(inner.Errors)   ? inner.Errors   : [];
+  const innerWarnings = Array.isArray(inner.Warnings) ? inner.Warnings : [];
+  const innerSuccess  = Array.isArray(inner.Success)  ? inner.Success  : [];
+
+  if (innerErrors.length > 0) {
+    const msg = innerErrors
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((e: any) => (typeof e === 'string' ? e : (e?.Error ?? e?.Warning ?? JSON.stringify(e))))
+      .join('; ');
+    return NextResponse.json({ error: msg }, { status: 400 });
+  }
+
+  // Вже в іншому реєстрі — це не помилка додавання, а стан «документ зайнятий».
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const already = innerWarnings.find((w: any) => w?.Ref === docRef || /вже|уже/i.test(String(w?.Warning ?? '')));
+  if (already && innerSuccess.length === 0) {
+    return NextResponse.json({
+      already: true,
+      sheetNumber: already.ScanSheetNumber ?? null,
+      error: `ТТН ${ttnNumber}: вже в реєстрі ${already.ScanSheetNumber ?? ''}`.trim(),
+    }, { status: 409 });
+  }
+
+  return NextResponse.json({ ref: sheet?.Ref || null, number: sheet?.Number || null });
 }
