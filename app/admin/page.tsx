@@ -4,7 +4,6 @@ import { createSupabaseServer } from '../../lib/supabase-server';
 import { fetchAllRows } from '../../lib/db-paginate';
 import AdminOrders from './AdminOrders';
 import Link from 'next/link';
-import { Send } from 'lucide-react';
 import NewOrderButton from './orders/NewOrderButton';
 
 const serviceClient = createClient(
@@ -20,7 +19,7 @@ const STATUS_TABS = [
   { value: 'pending_payment', label: 'Очікує оплати' },
   { value: 'confirmed',       label: 'Підтверджено' },
   { value: 'awaiting_stock',  label: 'Очікуємо товар' },
-  { value: 'picking',         label: 'Збирається' },
+  { value: 'ready_to_ship',   label: 'Готово до відправки' },
   { value: 'shipped',         label: 'Відправлено' },
   { value: 'delivered',       label: 'Доставлено' },
   { value: 'cancelled',       label: 'Скасовано' },
@@ -53,7 +52,9 @@ export default async function AdminPage({
     .order(sortBy, { ascending: sortAsc })
     .range(from, to);
 
-  if (status)   query = query.eq('status', status);
+  // «Готово до відправки» — віртуальний зріз: відвантажені, яких НП ще не прийняла.
+  if (status === 'ready_to_ship') query = query.eq('status', 'shipped').is('carrier_accepted_at', null);
+  else if (status) query = query.eq('status', status);
   if (dateFrom) query = query.gte('created_at', `${dateFrom}T00:00:00`);
   if (dateTo)   query = query.lte('created_at', `${dateTo}T23:59:59`);
 
@@ -63,8 +64,8 @@ export default async function AdminPage({
   // Пагінація: без range() лічильники вкладок і суми по статусах мовчки обрізалися б на 1000.
   const [{ data: orders, count }, statusRows, { count: recentReceiptCount }, allAmountRows, { data: promSetting }, { data: rozetkaSetting }] = await Promise.all([
     query,
-    fetchAllRows<{ status: string }>((f, t) => {
-      let q = serviceClient.from('orders').select('status');
+    fetchAllRows<{ status: string; carrier_accepted_at: string | null }>((f, t) => {
+      let q = serviceClient.from('orders').select('status, carrier_accepted_at');
       if (dateFrom) q = q.gte('created_at', `${dateFrom}T00:00:00`);
       if (dateTo)   q = q.lte('created_at', `${dateTo}T23:59:59`);
       return q.range(f, t);
@@ -139,6 +140,8 @@ export default async function AdminPage({
   // Count orders per status
   const statusCounts = (statusRows ?? []).reduce<Record<string, number>>((acc, row) => {
     if (row.status) acc[row.status] = (acc[row.status] ?? 0) + 1;
+    // Віртуальний зріз «Готово до відправки» = shipped, який НП ще не прийняла.
+    if (row.status === 'shipped' && !row.carrier_accepted_at) acc['ready_to_ship'] = (acc['ready_to_ship'] ?? 0) + 1;
     return acc;
   }, {});
   const totalCount = statusRows?.length ?? 0;
@@ -169,71 +172,45 @@ export default async function AdminPage({
                 key={tab.value}
                 href={`/admin?status=${tab.value}${dateFrom ? `&dateFrom=${dateFrom}` : ''}${dateTo ? `&dateTo=${dateTo}` : ''}`}
                 style={{
-                  display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start',
-                  justifyContent: 'center', gap: '3px', padding: '7px 14px', borderRadius: '10px',
-                  textDecoration: 'none', minHeight: '48px', boxSizing: 'border-box',
+                  display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
+                  justifyContent: 'center', gap: '2px', padding: '6px 8px', borderRadius: '10px',
+                  textDecoration: 'none', width: '118px', height: '54px', boxSizing: 'border-box',
                   background: isActive ? '#1E3A5F' : 'var(--bg-card)',
                   color: isActive ? '#fff' : 'var(--text-secondary)',
                   border: `1px solid ${isActive ? '#1E3A5F' : 'var(--border)'}`,
-                  transition: 'all 0.15s', minWidth: '80px',
+                  transition: 'all 0.15s', textAlign: 'center',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: isActive ? 700 : 500 }}>{tab.label}</span>
-                  {cnt > 0 && (
-                    <span style={{
-                      background: isActive ? 'rgba(255,255,255,0.22)' : isNew ? '#EF4444' : '#E2E8F0',
-                      color: isActive ? '#fff' : isNew ? '#fff' : '#475569',
-                      fontSize: '10px', fontWeight: 700,
-                      borderRadius: '5px', padding: '0 5px', lineHeight: '16px',
-                    }}>{cnt}</span>
-                  )}
-                </div>
+                <span style={{ fontSize: '13px', fontWeight: isActive ? 700 : 500, lineHeight: 1.15 }}>{tab.label}</span>
                 {(() => {
                   const amount = tab.value === '' ? totalAmount : (statusAmounts[tab.value] ?? 0);
-                  // Only reserve the second row for tabs that actually have an amount to
-                  // show — a status with zero orders can't have a nonzero total anyway.
-                  // Previously this rendered with visibility:hidden for every empty tab,
-                  // leaving a uniform blank strip under nearly the whole row.
-                  if (amount <= 0) return null;
+                  if (cnt <= 0 && amount <= 0) return null;
+                  // Кількість + сума — одним рядком під назвою, щоб бейдж не «висів» окремо.
                   return (
-                    <span style={{
-                      fontSize: '13px', fontWeight: 800,
-                      color: isActive ? '#93C5FD' : '#15803D',
-                      whiteSpace: 'nowrap', letterSpacing: '-0.3px',
-                    }}>
-                      {amount.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                      {cnt > 0 && (
+                        <span style={{
+                          background: isActive ? 'rgba(255,255,255,0.22)' : isNew ? '#EF4444' : '#E2E8F0',
+                          color: isActive ? '#fff' : isNew ? '#fff' : '#475569',
+                          fontSize: '10px', fontWeight: 700,
+                          borderRadius: '5px', padding: '0 5px', lineHeight: '16px',
+                        }}>{cnt}</span>
+                      )}
+                      {amount > 0 && (
+                        <span style={{
+                          fontSize: '11.5px', fontWeight: 800,
+                          color: isActive ? '#93C5FD' : '#15803D',
+                          whiteSpace: 'nowrap', letterSpacing: '-0.3px',
+                        }}>
+                          {amount.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
+                        </span>
+                      )}
+                    </div>
                   );
                 })()}
               </Link>
             );
           })}
-        </div>
-
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          {/* Експорт Excel */}
-          {(() => {
-            const p = new URLSearchParams();
-            if (curStatus) p.set('status', curStatus);
-            if (dateFrom)  p.set('dateFrom', dateFrom);
-            if (dateTo)    p.set('dateTo', dateTo);
-            return (
-              <a href={`/api/admin/orders/export?${p.toString()}`} download
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 500, background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0' }}>
-                ↓ Excel
-              </a>
-            );
-          })()}
-          {/* Реєстр НП */}
-          <Link href="/admin/dispatch" style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            height: '32px', padding: '0 14px', borderRadius: '8px',
-            textDecoration: 'none', fontSize: '13px', fontWeight: 500,
-            background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE',
-          }}>
-            <Send size={13} /> Реєстр НП
-          </Link>
         </div>
       </div>
 

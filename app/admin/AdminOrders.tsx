@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail } from 'lucide-react';
+import Link from 'next/link';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -1110,6 +1111,16 @@ export default function AdminOrders({
             })}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+            <a
+              href={`/api/admin/orders/export?${(() => { const p = new URLSearchParams(); if (currentStatus) p.set('status', currentStatus); if (dateFrom) p.set('dateFrom', dateFrom); if (dateTo) p.set('dateTo', dateTo); return p.toString(); })()}`}
+              download
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 500, background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0' }}
+            >
+              ↓ Excel
+            </a>
+            <Link href="/admin/dispatch" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 500, background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}>
+              <Send size={13} /> Реєстр НП
+            </Link>
             {syncResult && (
               <span style={{ fontSize: '12px', color: (syncResult.updated > 0 || (syncResult.accepted ?? 0) > 0) ? '#15803D' : 'var(--text-secondary)' }}>
                 {syncResult.updated > 0 || (syncResult.accepted ?? 0) > 0
@@ -1337,7 +1348,7 @@ export default function AdminOrders({
           <Package size={36} strokeWidth={1} style={{ marginBottom: '10px', opacity: 0.4 }} />
           <p style={{ marginBottom: '16px', fontSize: '14px' }}>
             {currentStatus
-              ? `Немає замовлень зі статусом «${STATUSES.find(s => s.value === currentStatus)?.label ?? currentStatus}»`
+              ? `Немає замовлень зі статусом «${currentStatus === 'ready_to_ship' ? 'Готово до відправки' : (STATUSES.find(s => s.value === currentStatus)?.label ?? currentStatus)}»`
               : 'Замовлень немає'}
           </p>
           {/* Банер з підказкою про інші статуси */}
