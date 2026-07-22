@@ -30,13 +30,17 @@ export default async function ReportsPage({
 
   // ══ P&L DATA ════════════════════════════════════════════════════════════════
 
-  // 1. Підтверджені продажі за період
+  // 1. Підтверджені продажі за період.
+  //    reversal_of IS NULL — виключаємо документи-сторно: вони скасовують оригінал
+  //    (який стає 'cancelled' і вже виключений статусом), а їх власний total_amount у
+  //    шапці зберігається додатнім → без фільтра сторно рахувалося б як фантомна виручка.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client
   const sales = await fetchAllRows<any>((f, t) => db
     .from('acc_documents')
     .select('total_amount, total_cost, channel_code')
     .eq('doc_type', 'sale')
     .eq('status', 'confirmed')
+    .is('reversal_of', null)
     .gte('doc_date', dateFrom)
     .lte('doc_date', dateTo)
     .range(f, t));
