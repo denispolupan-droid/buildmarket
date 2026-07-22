@@ -18,9 +18,8 @@ interface Category {
 
 type RefEntry     = { rz_id: string; name: string; commission_pct: number | null };
 type TreeEntry    = { rz_id: string; name: string; commission_rz_id: string | null };
-type ImportChange   = { slug: string; name: string; rz_id: string; old_pct: number | null; new_pct: number; new_label?: string | null; new_category_name?: string | null };
-type ImportUnmatched = { slug: string; name: string; rz_id: string; current_pct: number | null };
-type ImportResult   = { pdfCategories: number; changes: ImportChange[]; unchangedCount: number; unmatched: ImportUnmatched[]; applied: boolean } | null;
+type TariffChange   = { rz_id: string; category_name: string | null; price_from: number; old_pct: number | null; new_pct: number };
+type TariffResult   = { applied: boolean; categories?: number; brackets?: number; added?: number; changed?: number; removed?: number; unchanged?: number; sampleChanges?: TariffChange[]; totalInTable?: number } | null;
 type CatRefEntry    = { rz_id: string; rz_name: string; commission_rz_id: string | null; commission_name: string | null; commission_pct: number | null; our_categories: string[] };
 
 export default function RozetkaCommissionsClient({ categories }: { categories: Category[] }) {
@@ -115,57 +114,41 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
   const [saving, setSaving] = useState<string | null>(null);
   const [saved,  setSaved]  = useState<Record<string, boolean>>({});
 
-  // PDF import state
-  const fileRef      = useRef<HTMLInputElement>(null);
-  const [importing,  setImporting]  = useState(false);
-  const [importRes,  setImportRes]  = useState<ImportResult>(null);
-  const [importErr,  setImportErr]  = useState<string | null>(null);
-  const [applying,   setApplying]   = useState(false);
+  // Tariff (price-bracket) import state
+  const tariffRef        = useRef<HTMLInputElement>(null);
+  const tariffFileRef    = useRef<File | null>(null);
+  const [tImporting, setTImporting] = useState(false);
+  const [tRes,       setTRes]       = useState<TariffResult>(null);
+  const [tErr,       setTErr]       = useState<string | null>(null);
+  const [tApplying,  setTApplying]  = useState(false);
 
-  async function uploadPdf(file: File) {
-    setImporting(true);
-    setImportErr(null);
-    setImportRes(null);
+  async function uploadTariff(file: File) {
+    setTImporting(true); setTErr(null); setTRes(null);
+    tariffFileRef.current = file;
     const form = new FormData();
-    form.append('pdf', file);
-    form.append('apply', 'false');
+    form.append('xlsx', file); form.append('apply', 'false');
     try {
-      const res = await fetch('/api/admin/rozetka/import-commissions', { method: 'POST', body: form });
+      const res = await fetch('/api/admin/rozetka/import-tariff', { method: 'POST', body: form });
       const json = await res.json();
-      if (!res.ok) { setImportErr(json.error ?? 'Помилка'); return; }
-      setImportRes(json);
-    } catch {
-      setImportErr('Мережева помилка');
-    } finally {
-      setImporting(false);
-    }
+      if (!res.ok) { setTErr(json.error ?? 'Помилка'); return; }
+      setTRes(json);
+    } catch { setTErr('Мережева помилка'); }
+    finally { setTImporting(false); }
   }
 
-  async function applyImport() {
-    if (!importRes || importRes.changes.length === 0) return;
-    setApplying(true);
-    const res = await fetch('/api/admin/rozetka/import-commissions', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ changes: importRes.changes.map(c => ({ slug: c.slug, new_pct: c.new_pct, new_label: c.new_label, new_category_name: c.new_category_name })) }),
-    });
-    const json = await res.json();
-    setApplying(false);
-    if (json.applied) {
-      setVals(prev => {
-        const next = { ...prev };
-        for (const c of importRes.changes) {
-          if (next[c.slug]) next[c.slug] = {
-            ...next[c.slug],
-            commission: String(c.new_pct),
-            ...(c.new_label ? { commission_label: c.new_label } : {}),
-            ...(c.new_category_name ? { rz_name: c.new_category_name } : {}),
-          };
-        }
-        return next;
-      });
-      setImportRes({ ...importRes, applied: true, changes: [] });
-    }
+  async function applyTariff() {
+    const file = tariffFileRef.current;
+    if (!file) return;
+    setTApplying(true);
+    const form = new FormData();
+    form.append('xlsx', file); form.append('apply', 'true');
+    try {
+      const res = await fetch('/api/admin/rozetka/import-tariff', { method: 'POST', body: form });
+      const json = await res.json();
+      if (!res.ok) { setTErr(json.error ?? 'Помилка'); return; }
+      setTRes({ ...json, applied: true });
+    } catch { setTErr('Мережева помилка'); }
+    finally { setTApplying(false); }
   }
 
   async function save(slug: string) {
@@ -381,105 +364,74 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
             </>
           )}
           {view === 'commissions' && (
-            <button onClick={() => fileRef.current?.click()} disabled={importing} style={{
+            <button onClick={() => tariffRef.current?.click()} disabled={tImporting} style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px',
-              background: '#8B5CF6', color: '#fff', border: 'none', borderRadius: 8,
-              fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: importing ? 0.7 : 1,
+              background: '#0EA5E9', color: '#fff', border: 'none', borderRadius: 8,
+              fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: tImporting ? 0.7 : 1,
             }}>
               <Upload size={14} />
-              {importing ? 'Читаємо PDF…' : 'Оновити з PDF'}
+              {tImporting ? 'Читаємо тариф…' : 'Оновити тариф (пороги)'}
             </button>
           )}
         </div>
         <input
-          ref={fileRef} type="file" accept=".pdf" style={{ display: 'none' }}
-          onChange={e => { const f = e.target.files?.[0]; if (f) uploadPdf(f); e.target.value = ''; }}
+          ref={tariffRef} type="file" accept=".xlsx" style={{ display: 'none' }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) uploadTariff(f); e.target.value = ''; }}
         />
       </div>
 
       {view === 'commissions' && (<>
-      {/* Import error */}
-      {importErr && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px',
-          background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, marginBottom: 16,
-          fontSize: 13, color: '#DC2626',
-        }}>
-          <AlertTriangle size={14} />
-          {importErr}
-          <button onClick={() => setImportErr(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }}>
-            <X size={14} />
-          </button>
+      {/* Tariff import error */}
+      {tErr && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, marginBottom: 16, fontSize: 13, color: '#DC2626' }}>
+          <AlertTriangle size={14} /> {tErr}
+          <button onClick={() => setTErr(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }}><X size={14} /></button>
         </div>
       )}
 
-      {/* Import result panel */}
-      {importRes && (
-        <div style={{
-          background: '#fff', border: '1px solid #E2E8F0', borderRadius: 10,
-          marginBottom: 16, overflow: 'hidden',
-        }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px',
-            background: importRes.applied ? '#ECFDF5' : '#F8FAFC', borderBottom: '1px solid #E2E8F0',
-          }}>
-            {importRes.applied
-              ? <><CheckCircle size={15} color="#059669" /><span style={{ fontSize: 13, fontWeight: 600, color: '#059669' }}>Комісії оновлено успішно</span></>
+      {/* Tariff import preview panel */}
+      {tRes && (
+        <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 10, marginBottom: 16, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: tRes.applied ? '#ECFDF5' : '#F0F9FF', borderBottom: '1px solid #E2E8F0' }}>
+            {tRes.applied
+              ? <><CheckCircle size={15} color="#059669" /><span style={{ fontSize: 13, fontWeight: 600, color: '#059669' }}>Тариф оновлено: {tRes.categories} категорій, {tRes.brackets} порогів{tRes.totalInTable != null ? ` · у таблиці ${tRes.totalInTable}` : ''}</span></>
               : <>
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#1E293B' }}>
-                    PDF: {importRes.pdfCategories} категорій знайдено
-                    {importRes.changes.length > 0 && ` · ${importRes.changes.length} змін`}
-                    {importRes.unchangedCount > 0 && ` · ${importRes.unchangedCount} без змін`}
-                    {importRes.unmatched.length > 0 && ` · ${importRes.unmatched.length} не знайдено в PDF`}
+                    Тариф: {tRes.categories} категорій · {tRes.brackets} порогів
+                    {(tRes.added ?? 0) > 0 && ` · +${tRes.added} нових`}
+                    {(tRes.changed ?? 0) > 0 && ` · ${tRes.changed} змін`}
+                    {(tRes.removed ?? 0) > 0 && ` · −${tRes.removed} зникло`}
+                    {(tRes.unchanged ?? 0) > 0 && ` · ${tRes.unchanged} без змін`}
                   </span>
-                  {importRes.changes.length > 0 && (
-                    <button
-                      onClick={applyImport}
-                      disabled={applying}
-                      style={{
-                        marginLeft: 'auto', padding: '5px 14px', background: '#8B5CF6', color: '#fff',
-                        border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                      }}
-                    >
-                      {applying ? 'Зберігаємо…' : `Застосувати ${importRes.changes.length} змін`}
+                  {((tRes.added ?? 0) + (tRes.changed ?? 0) + (tRes.removed ?? 0)) > 0 ? (
+                    <button onClick={applyTariff} disabled={tApplying} style={{ marginLeft: 'auto', padding: '5px 14px', background: '#0EA5E9', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      {tApplying ? 'Застосовуємо…' : 'Застосувати тариф'}
                     </button>
+                  ) : (
+                    <span style={{ marginLeft: 'auto', fontSize: 12, color: '#059669' }}>Все актуально, змін немає</span>
                   )}
                 </>
             }
-            <button onClick={() => setImportRes(null)} style={{ marginLeft: importRes.applied || importRes.changes.length === 0 ? 'auto' : 8, background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}>
-              <X size={14} />
-            </button>
+            <button onClick={() => setTRes(null)} style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}><X size={14} /></button>
           </div>
 
-          {importRes.changes.length > 0 && (
-            <div style={{ padding: '10px 16px', maxHeight: 200, overflowY: 'auto' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 6 }}>Зміни</div>
-              {importRes.changes.map(c => (
-                <div key={c.slug} style={{ display: 'flex', gap: 10, fontSize: 12, padding: '3px 0', borderBottom: '1px solid #F8FAFC' }}>
-                  <span style={{ flex: 1, color: '#475569' }}>{c.name}</span>
-                  <span style={{ color: '#94A3B8', fontFamily: 'monospace' }}>[{c.rz_id}]</span>
-                  <span style={{ color: '#DC2626', textDecoration: 'line-through' }}>{c.old_pct ?? '—'}%</span>
+          {!tRes.applied && (tRes.sampleChanges?.length ?? 0) > 0 && (
+            <div style={{ padding: '10px 16px', maxHeight: 220, overflowY: 'auto' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 6 }}>
+                Зміни (перші {tRes.sampleChanges!.length})
+              </div>
+              {tRes.sampleChanges!.map((c, i) => (
+                <div key={`${c.rz_id}-${c.price_from}-${i}`} style={{ display: 'flex', gap: 10, fontSize: 12, padding: '3px 0', borderBottom: '1px solid #F8FAFC' }}>
+                  <span style={{ flex: 1, color: '#475569' }}>{c.category_name ?? c.rz_id}</span>
+                  <span style={{ color: '#94A3B8', fontFamily: 'monospace' }}>[{c.rz_id}] від {c.price_from}₴</span>
+                  <span style={{ color: '#DC2626', textDecoration: c.old_pct != null ? 'line-through' : 'none' }}>{c.old_pct != null ? `${c.old_pct}%` : 'нове'}</span>
                   <span style={{ color: '#059669', fontWeight: 600 }}>→ {c.new_pct}%</span>
                 </div>
               ))}
             </div>
           )}
-
-          {importRes.unmatched.length > 0 && (
-            <div style={{ padding: '10px 16px', background: '#FFFBEB', borderTop: '1px solid #FDE68A' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#92400E', textTransform: 'uppercase', marginBottom: 4 }}>
-                Не знайдено в PDF — поточна комісія залишається
-              </div>
-              {importRes.unmatched.map(c => (
-                <span key={c.slug} style={{ fontSize: 11, color: '#92400E', marginRight: 10 }}>
-                  {c.name} [{c.rz_id}] ({c.current_pct ?? '—'}%)
-                </span>
-              ))}
-            </div>
-          )}
         </div>
       )}
-
 
       {/* Datalist for commission source refs */}
       <datalist id="commission-refs-list">
