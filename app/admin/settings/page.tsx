@@ -43,6 +43,7 @@ export default async function SettingsPage() {
         initialAdminEmail={cfg.admin_email            ?? ''}
         initialContactName={cfg.company_contact_name  ?? ''}
         initialContactPhone={cfg.company_contact_phone ?? ''}
+        initialExtraSenders={(() => { try { const p = JSON.parse(cfg.extra_senders ?? '[]'); return Array.isArray(p) ? p : []; } catch { return []; } })()}
       />
       <ReservationSettings
         initialTtlDays={parseInt(cfg.reservation_ttl_days ?? '7', 10)}

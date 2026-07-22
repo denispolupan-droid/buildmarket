@@ -138,6 +138,14 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
   const [showSendModal,        setShowSendModal]        = useState(false);
   const [sendEmail,            setSendEmail]            = useState(po.supplier_email ?? '');
   const [sendingMail,          setSendingMail]          = useState(false);
+  const [senders,              setSenders]              = useState<{ name: string; email: string }[]>([]);
+  const [chosenSender,         setChosenSender]         = useState('');
+  useEffect(() => {
+    fetch('/api/admin/procurement/senders')
+      .then(r => r.json())
+      .then(d => { const list = d.senders ?? []; setSenders(list); if (list[0]) setChosenSender(list[0].email); })
+      .catch(() => {});
+  }, []);
   const [sendContacts,         setSendContacts]         = useState<ContactEntry[]>([]);
   const [sendContactsLoading,  setSendContactsLoading]  = useState(false);
 
@@ -170,7 +178,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
     try {
       const res = await fetch('/api/admin/procurement/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: [po.id], overrideEmail: sendEmail }),
+        body: JSON.stringify({ ids: [po.id], overrideEmail: sendEmail, senderEmail: chosenSender || undefined }),
       });
       const data = await res.json();
       if (!res.ok) { showToast(data.error ?? 'Помилка відправки', 'error'); return; }
@@ -1324,6 +1332,19 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
               Замовлення: <strong>{po.doc_number}</strong>
               {po.total_cost && <span style={{ color: 'var(--text-muted)', marginLeft: '8px' }}>{fmt(Number(po.total_cost))} ₴</span>}
             </div>
+
+            {/* Відправник */}
+            {senders.length > 1 && (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Відправник</div>
+                <select value={chosenSender} onChange={e => setChosenSender(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid var(--border)', fontSize: '14px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', outline: 'none', cursor: 'pointer' }}>
+                  {senders.map(s => (
+                    <option key={s.email} value={s.email}>{s.name ? `${s.name} <${s.email}>` : s.email}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Контакти постачальника */}
             {sendContacts.length > 0 && (

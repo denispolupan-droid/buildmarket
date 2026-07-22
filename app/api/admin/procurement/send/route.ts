@@ -13,16 +13,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { ids, comment, overrideEmail } = await req.json() as { ids: string[]; comment?: string; overrideEmail?: string };
+  const { ids, comment, overrideEmail, senderEmail } = await req.json() as
+    { ids: string[]; comment?: string; overrideEmail?: string; senderEmail?: string };
   if (!ids?.length) return NextResponse.json({ error: 'ids required' }, { status: 400 });
 
   // Налаштування відправника
   const { data: settingsRows } = await db.from('app_settings').select('key, value')
-    .in('key', ['orders_from_email', 'orders_from_name', 'company_contact_name', 'company_contact_phone']);
+    .in('key', ['orders_from_email', 'orders_from_name', 'company_contact_name', 'company_contact_phone', 'extra_senders']);
   const cfg: Record<string, string> = {};
   (settingsRows ?? []).forEach(r => { cfg[r.key] = r.value; });
-  const fromEmail   = cfg.orders_from_email    || 'orders@fixline.com.ua';
-  const fromName    = cfg.orders_from_name     || 'FIXLINE';
+
+  // Дозволені відправники: основний + додаткові зі списку (extra_senders — JSON
+  // [{email,name}]). Вибір з фронту валідуємо по цьому списку — не даємо слати з
+  // довільного «from» (Resend і так пропустить лише верифіковані домени).
+  const primary = { email: cfg.orders_from_email || 'orders@fixline.com.ua', name: cfg.orders_from_name || 'FIXLINE' };
+  let extraSenders: { email: string; name: string }[] = [];
+  try { const p = JSON.parse(cfg.extra_senders || '[]'); if (Array.isArray(p)) extraSenders = p; } catch { /* ignore */ }
+  const allowed = [primary, ...extraSenders].filter(s => s?.email?.includes('@'));
+
+  const chosen = (senderEmail && allowed.find(s => s.email.toLowerCase() === senderEmail.toLowerCase())) || primary;
+  const fromEmail   = chosen.email;
+  const fromName    = chosen.name || primary.name;
   const contactName = cfg.company_contact_name || '';
   const contactPhone= cfg.company_contact_phone|| '';
 

@@ -1,8 +1,10 @@
 ﻿'use client';
 
 import { useState } from 'react';
-import { Check, Loader2, Mail } from 'lucide-react';
+import { Check, Loader2, Mail, Plus, X } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
+
+export type Sender = { name: string; email: string };
 
 type Props = {
   initialFromEmail:    string;
@@ -10,6 +12,7 @@ type Props = {
   initialAdminEmail:   string;
   initialContactName:  string;
   initialContactPhone: string;
+  initialExtraSenders: Sender[];
 };
 
 const inp: React.CSSProperties = {
@@ -22,16 +25,22 @@ const lbl: React.CSSProperties = {
   display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em',
 };
 
-export default function EmailSettings({ initialFromEmail, initialFromName, initialAdminEmail, initialContactName, initialContactPhone }: Props) {
+export default function EmailSettings({ initialFromEmail, initialFromName, initialAdminEmail, initialContactName, initialContactPhone, initialExtraSenders }: Props) {
   const [fromEmail,     setFromEmail]     = useState(initialFromEmail);
   const [fromName,      setFromName]      = useState(initialFromName);
   const [adminEmail,    setAdminEmail]    = useState(initialAdminEmail);
   const [contactName,   setContactName]   = useState(initialContactName);
   const [contactPhone,  setContactPhone]  = useState(initialContactPhone);
+  const [extraSenders,  setExtraSenders]  = useState<Sender[]>(initialExtraSenders ?? []);
   const [saving,      setSaving]      = useState(false);
   const [saved,       setSaved]       = useState(false);
 
   async function handleSave() {
+    // Валідація додаткових відправників: email обов'язковий і коректний
+    const cleaned = extraSenders
+      .map(s => ({ name: s.name.trim(), email: s.email.trim() }))
+      .filter(s => s.email);
+    if (cleaned.some(s => !s.email.includes('@'))) { showToast('Некоректний email у списку відправників', 'error'); return; }
     setSaving(true); setSaved(false);
     try {
       const res = await fetch('/api/admin/settings', {
@@ -43,6 +52,7 @@ export default function EmailSettings({ initialFromEmail, initialFromName, initi
           admin_email:          adminEmail.trim(),
           company_contact_name:  contactName.trim(),
           company_contact_phone: contactPhone.trim(),
+          extra_senders:         JSON.stringify(cleaned),
         }),
       });
       const data = await res.json();
@@ -78,6 +88,41 @@ export default function EmailSettings({ initialFromEmail, initialFromName, initi
               Використовується як FROM при відправці замовлень постачальникам
             </div>
           </div>
+        </div>
+
+        {/* Додаткові відправники — можна обрати при відправці постачальнику */}
+        <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Додаткові відправники</div>
+            <button type="button"
+              onClick={() => setExtraSenders(prev => [...prev, { name: '', email: '' }])}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '30px', padding: '0 10px', borderRadius: '7px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+              <Plus size={13} /> Додати
+            </button>
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '10px', lineHeight: 1.5 }}>
+            Ці адреси можна обрати як відправника при надсиланні замовлень постачальникам.
+            Домен адреси має бути верифікований у Resend — інакше лист не піде.
+          </div>
+          {extraSenders.length === 0 ? (
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>Немає додаткових адрес</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {extraSenders.map((s, i) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr 34px', gap: '8px', alignItems: 'center' }}>
+                  <input style={{ ...inp, height: '36px' }} value={s.name} placeholder="Ім'я (напр. Закупівлі)"
+                    onChange={e => setExtraSenders(prev => prev.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
+                  <input style={{ ...inp, height: '36px' }} type="email" value={s.email} placeholder="zakupki@your-domain.com"
+                    onChange={e => setExtraSenders(prev => prev.map((x, j) => j === i ? { ...x, email: e.target.value } : x))} />
+                  <button type="button" title="Видалити"
+                    onClick={() => setExtraSenders(prev => prev.filter((_, j) => j !== i))}
+                    style={{ height: '36px', width: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '7px', border: '1.5px solid #FECACA', background: '#FEF2F2', color: '#DC2626', cursor: 'pointer' }}>
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, ChevronDown, ChevronUp, Send, Loader2, X, Mail, Trash2, Copy } from 'lucide-react';
@@ -85,6 +85,16 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
   const [sendingCurrent,  setSendingCurrent]  = useState(false);
   const [loadingContacts, setLoadingContacts] = useState(false);
 
+  // Відправники (основний + додаткові з налаштувань) — для вибору «від кого» слати
+  const [senders,      setSenders]      = useState<{ name: string; email: string }[]>([]);
+  const [chosenSender, setChosenSender] = useState('');
+  useEffect(() => {
+    fetch('/api/admin/procurement/senders')
+      .then(r => r.json())
+      .then(d => { const list = d.senders ?? []; setSenders(list); if (list[0]) setChosenSender(list[0].email); })
+      .catch(() => {});
+  }, []);
+
   async function startSendQueue(ids: string[]) {
     const selected   = orders.filter(po => ids.includes(po.id));
     const sendable   = selected.filter(po => po.procurement_status !== 'draft');
@@ -136,7 +146,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
       // Всі замовлення цього постачальника — одним викликом → один лист
       await fetch('/api/admin/procurement/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: item.pos.map(po => po.id), overrideEmail: item.email }),
+        body: JSON.stringify({ ids: item.pos.map(po => po.id), overrideEmail: item.email, senderEmail: chosenSender || undefined }),
       });
       const remaining = sendQueue.slice(1);
       setSendQueue(remaining);
@@ -560,6 +570,22 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {senders.length > 1 && (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ marginBottom: '6px', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '5px', textTransform: 'uppercase' }}>
+                  <Send size={12} /> Відправник
+                </div>
+                <select
+                  value={chosenSender}
+                  onChange={e => setChosenSender(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid var(--border)', fontSize: '14px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', outline: 'none', cursor: 'pointer' }}>
+                  {senders.map(s => (
+                    <option key={s.email} value={s.email}>{s.name ? `${s.name} <${s.email}>` : s.email}</option>
+                  ))}
+                </select>
               </div>
             )}
 
