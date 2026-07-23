@@ -140,80 +140,90 @@ export default async function ReportsPage({
 
   // ══ CASH FLOW DATA ══════════════════════════════════════════════════════════
 
-  // Відкриваючий залишок (всі рахунки каса+банк+еквайринг ДО dateFrom)
-  //    Пагінація критична: вся історія до періоду майже завжди > 1000.
-  const prevCash = await fetchAllRows((f, t) => db
+  // Усі грошові рахунки: каса, банк, еквайринг, НоваПей (COD від «Контроль оплати»).
+  const CASH_ACCOUNTS = ['cash', 'bank', 'acquiring', 'novapay'];
+
+  // Відкриваючий залишок (все до dateFrom). Пагінація критична.
+  const prevCash = await fetchAllRows<{ amount: number }>((f, t) => db
     .from('money_entries')
     .select('amount')
-    .in('account_type', ['cash', 'bank', 'acquiring'])
+    .in('account_type', CASH_ACCOUNTS)
     .lt('business_date', dateFrom)
     .range(f, t));
   const opening = prevCash.reduce((s, e) => s + Number(e.amount), 0);
 
   // Всі рухи за період
-  const cfEntries = await fetchAllRows((f, t) => db
+  const cfEntries = await fetchAllRows<{ account_type: string; amount: number; doc_type: string | null }>((f, t) => db
     .from('money_entries')
-    .select('account_type, amount, doc_type, counterparty_id, txn_id')
-    .in('account_type', ['cash', 'bank', 'acquiring'])
+    .select('account_type, amount, doc_type')
+    .in('account_type', CASH_ACCOUNTS)
     .gte('business_date', dateFrom)
     .lte('business_date', dateTo)
     .range(f, t));
 
-  // Рухи по рахунках
+  // Детальні статті — за doc_type / рахунком.
+  const inflowKey = (acc: string, dt: string | null): string => {
+    if (acc === 'novapay') return 'cod';                        // накладені платежі, зібрані НоваПей
+    if (dt === 'payment' || dt === 'customer_payment') return 'customers';
+    if (dt === 'cash_in') return 'cash_in';
+    return 'other_in';
+  };
+  const outflowKey = (dt: string | null): string => {
+    if (dt === 'supplier_payment') return 'suppliers';
+    if (dt === 'marketplace_topup') return 'mp_topup';          // поповнення балансу маркетплейсів
+    if (dt === 'novapay_payout')    return 'np_payout';         // виплата НоваПей → банк (Фаза 2)
+    if (dt === 'cash_out')          return 'expenses';
+    return 'other_out';
+  };
+
   const accountMap: Record<string, { in: number; out: number }> = {};
-  let in_customers = 0, in_other = 0, out_suppliers = 0, out_expenses_cf = 0, out_other = 0;
-
-  // Знаходимо supplier-пов'язані txn_id (щоб визначити чи це оплата постачальнику)
-  const cfTxnIds = [...new Set((cfEntries ?? []).map((e: Record<string, unknown>) => (e as {txn_id?: string}).txn_id).filter(Boolean))];
-
-  // Партнерні записи для визначення типу контрагента
-  const { data: partnerEntries } = cfTxnIds.length
-    ? await db.from('money_entries').select('txn_id, account_type')
-        .in('txn_id', cfTxnIds)
-        .in('account_type', ['customer', 'supplier', 'advance', 'correction'])
-    : { data: [] };
-
-  // txn_id → тип (customer payment / supplier payment / expense / other)
-  type TxnType = 'customer' | 'supplier' | 'expense' | 'other';
-  const txnTypeMap = new Map<string, TxnType>();
-  for (const pe of (partnerEntries ?? []) as Array<{ txn_id: string; account_type: string }>) {
-    if (pe.account_type === 'customer' || pe.account_type === 'advance') txnTypeMap.set(pe.txn_id, 'customer');
-    else if (pe.account_type === 'supplier') txnTypeMap.set(pe.txn_id, 'supplier');
-    else if (pe.account_type === 'correction') txnTypeMap.set(pe.txn_id, 'expense');
-    else if (!txnTypeMap.has(pe.txn_id)) txnTypeMap.set(pe.txn_id, 'other');
-  }
-
-  for (const e of (cfEntries ?? []) as Array<{ account_type: string; amount: number; txn_id?: string }>) {
+  const inflowMap:  Record<string, number> = {};
+  const outflowMap: Record<string, number> = {};
+  for (const e of cfEntries ?? []) {
     const amt = Number(e.amount);
     const acc = e.account_type;
     if (!accountMap[acc]) accountMap[acc] = { in: 0, out: 0 };
-    if (amt > 0) accountMap[acc].in  += amt;
-    else         accountMap[acc].out += Math.abs(amt);
-
-    const ttype = e.txn_id ? (txnTypeMap.get(e.txn_id) ?? 'other') : 'other';
     if (amt > 0) {
-      if (ttype === 'customer') in_customers += amt;
-      else                      in_other     += amt;
+      accountMap[acc].in += amt;
+      const k = inflowKey(acc, e.doc_type);
+      inflowMap[k] = (inflowMap[k] ?? 0) + amt;
     } else {
-      if (ttype === 'supplier') out_suppliers  += Math.abs(amt);
-      else if (ttype === 'expense') out_expenses_cf += Math.abs(amt);
-      else                      out_other      += Math.abs(amt);
+      accountMap[acc].out += Math.abs(amt);
+      const k = outflowKey(e.doc_type);
+      outflowMap[k] = (outflowMap[k] ?? 0) + Math.abs(amt);
     }
   }
+  // Показуємо всі платіжні рахунки, навіть з нульовим рухом.
+  for (const a of CASH_ACCOUNTS) if (!accountMap[a]) accountMap[a] = { in: 0, out: 0 };
 
-  const netCF  = (cfEntries ?? []).reduce((s, e) => s + Number((e as {amount: number}).amount), 0);
+  const netCF   = (cfEntries ?? []).reduce((s, e) => s + Number(e.amount), 0);
   const closing = opening + netCF;
 
-  const by_account = Object.entries(accountMap)
-    .map(([account, v]) => ({ account, ...v }))
-    .sort((a, b) => (b.in + b.out) - (a.in + a.out));
+  // Монобанк = bank + acquiring (один рахунок у банку — переказ/картка на сайті). Далі НоваПей, Каса.
+  const mono = { in: accountMap['bank'].in + accountMap['acquiring'].in, out: accountMap['bank'].out + accountMap['acquiring'].out };
+  const by_account = [
+    { account: 'monobank', ...mono },
+    { account: 'novapay',  ...accountMap['novapay'] },
+    { account: 'cash',     ...accountMap['cash'] },
+  ];
+  const inflows  = Object.entries(inflowMap).map(([key, amount]) => ({ key, amount })).sort((a, b) => b.amount - a.amount);
+  const outflows = Object.entries(outflowMap).map(([key, amount]) => ({ key, amount })).sort((a, b) => b.amount - a.amount);
 
-  const cf: CFData = {
-    opening, closing,
-    in_customers, in_other,
-    out_suppliers, out_expenses: out_expenses_cf, out_other,
-    by_account,
-  };
+  // Поточні залишки рахунків (усього, без фільтра періоду) — «Стан рахунків».
+  const allBal = await fetchAllRows<{ account_type: string; amount: number }>((f, t) => db
+    .from('money_entries')
+    .select('account_type, amount')
+    .in('account_type', ['bank', 'acquiring', 'novapay', 'cash'])
+    .range(f, t));
+  const balances = { monobank: 0, novapay: 0, cash: 0 };
+  for (const r of allBal) {
+    const v = Number(r.amount);
+    if (r.account_type === 'bank' || r.account_type === 'acquiring') balances.monobank += v;
+    else if (r.account_type === 'novapay') balances.novapay += v;
+    else if (r.account_type === 'cash') balances.cash += v;
+  }
+
+  const cf: CFData = { opening, closing, inflows, outflows, by_account, balances };
 
   const periodLabel = `${new Date(dateFrom).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' })} — ${new Date(dateTo).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
 

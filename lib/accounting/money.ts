@@ -31,7 +31,7 @@ import { createServiceClient } from '../supabase';
 
 export type AccountType =
   | 'customer' | 'supplier' | 'partner'
-  | 'cash' | 'bank' | 'acquiring' | 'advance'
+  | 'cash' | 'bank' | 'acquiring' | 'novapay' | 'advance'
   | 'inventory_asset'
   | 'revenue' | 'cogs' | 'variance' | 'rounding' | 'correction'
   | 'marketplace_balance' | 'marketplace_fee'
@@ -141,7 +141,8 @@ export async function recordCustomerPayment(params: {
   customerId:    string;
   contractId?:   string;
   amount:        number;
-  paymentMethod: 'bank' | 'cash' | 'acquiring';
+  paymentMethod: 'bank' | 'cash' | 'acquiring' | 'novapay';
+  orderId?:      string;
   docId?:        string;
   businessDate?: string;
   createdBy?:    string;
@@ -155,6 +156,7 @@ export async function recordCustomerPayment(params: {
     creditParty:   params.customerId,
     amount:        params.amount,
     businessDate:  params.businessDate,
+    orderId:       params.orderId,
     docId:         params.docId,
     docType:       'payment',
     contractId:    params.contractId,

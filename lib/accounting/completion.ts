@@ -15,7 +15,8 @@
  */
 import { createServiceClient } from '../supabase';
 import { postSaleDoc } from './dropship';
-import { recordMarketplaceCommission } from './money';
+import { recordMarketplaceCommission, recordCustomerPayment } from './money';
+import { SALE_DEBTOR } from './documents';
 import { computePromCommission } from '../prom-commission';
 import { computeRozetkaCommission } from '../rozetka-commission';
 import { alertAdmin } from '../alert';
@@ -117,6 +118,39 @@ export async function settleOrderCOD(orderId: string, createdBy = 'system'): Pro
 }
 
 /**
+ * Свій (не дропшип) накладений платіж: при доставці COD-замовлення НоваПей збирає гроші
+ * з клієнта і тримає їх у себе («Контроль оплати»). Визнаємо їх на рахунку novapay:
+ * DR novapay / CR customer[np:cod] — тобто закриваємо борг np:cod і бачимо гроші як
+ * зібрані НоваПей. Виплата НоваПей → банк (з комісією НП) — окремо (Фаза 2).
+ * Ідемпотентно за ключем cod-collect:{orderId}. Дропшип-COD сюди не входить (credit_cod_to_partner).
+ */
+export async function settleOwnCod(orderId: string, createdBy = 'system'): Promise<void> {
+  const db = createServiceClient();
+  const { data: order } = await db
+    .from('orders')
+    .select('order_number, channel_code, payment_type, total_price')
+    .eq('id', orderId)
+    .single();
+  if (!order) return;
+  if (order.payment_type !== 'cod' || order.channel_code === 'dropship') return;
+  const amount = Number(order.total_price);
+  if (!(amount > 0)) return;
+  try {
+    await recordCustomerPayment({
+      customerId:     SALE_DEBTOR.npCod,      // борг на np:cod, який гасимо
+      amount,
+      paymentMethod:  'novapay',
+      orderId,
+      idempotencyKey: `cod-collect:${orderId}`,
+      description:    `COD зібрано НоваПей (замовлення #${order.order_number})`,
+      createdBy,
+    });
+  } catch (err) {
+    alertAdmin(`COD не визнано на novapay (замовлення #${order.order_number})`, err);
+  }
+}
+
+/**
  * Транзитний хелпер: замовлення, відвантажені СТАРИМ потоком (проведена РН вже є,
  * чернетки немає), при доставці після переходу на Варіант 3 не отримають комісію
  * через новий per-doc шлях. Тут донараховуємо комісію order-level (як старий
@@ -200,7 +234,10 @@ export async function completeOrderDelivery(orderId: string, createdBy = 'system
   }
   // Legacy-замовлення (старий потік, без чернеток): донараховуємо комісію order-level.
   await settleLegacyCommission(orderId, createdBy);
-  if (await allOrderSalesPosted(orderId)) await settleOrderCOD(orderId, createdBy);
+  if (await allOrderSalesPosted(orderId)) {
+    await settleOrderCOD(orderId, createdBy);   // дропшип-COD партнеру
+    await settleOwnCod(orderId, createdBy);      // свій COD → novapay
+  }
   return posted;
 }
 
@@ -221,6 +258,7 @@ export async function completeShipmentByTtn(trackingNumber: string, createdBy = 
   await applyCompletionEffects(doc.id, createdBy);
   if (doc.order_id && await allOrderSalesPosted(doc.order_id)) {
     await settleOrderCOD(doc.order_id, createdBy);
+    await settleOwnCod(doc.order_id, createdBy);   // свій COD → novapay
   }
   return doc.order_id;
 }

@@ -17,14 +17,22 @@ export type PLData = {
 };
 
 export type CFData = {
-  opening:         number;
-  in_customers:    number;
-  in_other:        number;
-  out_suppliers:   number;
-  out_expenses:    number;
-  out_other:       number;
-  closing:         number;
-  by_account:      { account: string; in: number; out: number }[];
+  opening:   number;
+  closing:   number;
+  inflows:   { key: string; amount: number }[];
+  outflows:  { key: string; amount: number }[];
+  by_account: { account: string; in: number; out: number }[];
+  balances:  { monobank: number; novapay: number; cash: number };
+};
+
+const CF_INFLOW_LABELS: Record<string, string> = {
+  customers: 'Оплати клієнтів', cod: 'Накладені платежі (НоваПей)',
+  cash_in: 'Внесення готівки', other_in: 'Інші надходження',
+};
+const CF_OUTFLOW_LABELS: Record<string, string> = {
+  suppliers: 'Оплата постачальникам', mp_topup: 'Поповнення маркетплейсів',
+  np_payout: 'Виплата НоваПей → банк', expenses: 'Операційні витрати',
+  other_out: 'Інші видатки',
 };
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -41,7 +49,8 @@ const EXPENSE_LABELS: Record<string, string> = {
 };
 
 const ACCOUNT_LABELS: Record<string, string> = {
-  cash: 'Каса', bank: 'Банк', acquiring: 'Еквайринг',
+  monobank: 'Монобанк', novapay: 'НоваПей (COD)', cash: 'Каса',
+  bank: 'Банк', acquiring: 'Еквайринг',
 };
 
 function fmt(n: number, digits = 0) {
@@ -245,6 +254,24 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
 
       {/* ══ Cash Flow ═══════════════════════════════════════════════════════════ */}
       {tab === 'cf' && (
+        <>
+        {/* Стан рахунків — поточні залишки (усього, не за період) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
+          {([
+            { key: 'monobank', label: 'Монобанк',      hint: 'сайт-картка + рахунок', value: cf.balances.monobank },
+            { key: 'novapay',  label: 'НоваПей (COD)', hint: 'наложені платежі',      value: cf.balances.novapay },
+            { key: 'cash',     label: 'Каса',          hint: 'готівка',               value: cf.balances.cash },
+          ]).map(a => (
+            <div key={a.key} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 18px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.03em' }}>{a.label}</div>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: a.value >= 0 ? '#15803D' : '#DC2626', marginTop: '4px', fontVariantNumeric: 'tabular-nums' }}>
+                {fmt(a.value, 2)} ₴
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{a.hint}</div>
+            </div>
+          ))}
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px' }}>
 
           {/* Main CF statement */}
@@ -253,13 +280,10 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
               Рух грошових коштів
             </div>
             {[
-              { label: 'Залишок на початок',            value:  cf.opening,       bold: true,  color: '#1E3A5F', indent: false, sep: false },
-              { label: '+ Надходження від клієнтів',    value:  cf.in_customers,  bold: false, color: '#15803D', indent: true,  sep: false },
-              { label: '+ Інші надходження',            value:  cf.in_other,      bold: false, color: '#15803D', indent: true,  sep: false },
-              { label: '− Оплата постачальникам',       value:  cf.out_suppliers, bold: false, color: '#DC2626', indent: true,  sep: false },
-              { label: '− Операційні витрати',          value:  cf.out_expenses,  bold: false, color: '#DC2626', indent: true,  sep: false },
-              { label: '− Інші видатки',                value:  cf.out_other,     bold: false, color: '#DC2626', indent: true,  sep: false },
-              { label: 'Залишок на кінець',             value:  cf.closing,       bold: true,  color: cf.closing >= 0 ? '#15803D' : '#DC2626', indent: false, sep: true, big: true },
+              { label: 'Залишок на початок', value: cf.opening, bold: true, color: '#1E3A5F', indent: false, sep: false, big: false },
+              ...cf.inflows.map(f  => ({ label: `+ ${CF_INFLOW_LABELS[f.key]  ?? f.key}`, value: f.amount, bold: false, color: '#15803D', indent: true, sep: false, big: false })),
+              ...cf.outflows.map(f => ({ label: `− ${CF_OUTFLOW_LABELS[f.key] ?? f.key}`, value: f.amount, bold: false, color: '#DC2626', indent: true, sep: false, big: false })),
+              { label: 'Залишок на кінець', value: cf.closing, bold: true, color: cf.closing >= 0 ? '#15803D' : '#DC2626', indent: false, sep: true, big: true },
             ].map((row, i) => (
               <div key={i} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -312,6 +336,7 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
             ))}
           </div>
         </div>
+        </>
       )}
     </div>
   );
