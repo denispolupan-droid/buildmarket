@@ -2069,6 +2069,55 @@ export default function AdminOrders({
                                       ℹ️ Власний склад недоступний — всі товари у постачальника
                                     </div>
                                   )}
+                                  {/* Підтвердження — поряд із вибором способу виконання */}
+                                  {(() => {
+                                    const mode = selectedMode[order.id] ?? 'supplier';
+                                    const isSupplier = mode === 'supplier';
+                                    const busy = confirming === order.id;
+                                    const confirmErr = confirmErrors[order.id];
+                                    return (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--border-light)' }}>
+                                        <button
+                                          onClick={() => confirmOrder(order.id)}
+                                          disabled={busy}
+                                          style={{ width: '100%', height: '36px', borderRadius: '8px', border: 'none',
+                                            background: busy ? '#94A3B8' : '#15803D', color: '#fff',
+                                            fontSize: '13px', fontWeight: 700, cursor: busy ? 'wait' : 'pointer' }}>
+                                          {busy ? '⏳ Обробка...' : '✅ Підтвердити замовлення'}
+                                        </button>
+                                        {isSupplier && (
+                                          <button
+                                            onClick={() => startSupplierSend([order.id])}
+                                            disabled={supplierQueueLoading}
+                                            style={{ width: '100%', height: '34px', borderRadius: '8px',
+                                              border: '1.5px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F',
+                                              fontSize: '12px', fontWeight: 700, cursor: supplierQueueLoading ? 'wait' : 'pointer',
+                                              opacity: supplierQueueLoading ? 0.6 : 1 }}>
+                                            📤 Відправити постачальнику
+                                          </button>
+                                        )}
+                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                                          {mode === 'own' ? 'Зарезервує товар з власного складу' : mode === 'mixed' ? 'Резерв + замовлення у постачальника' : 'Підтвердить замовлення клієнту'}
+                                        </div>
+                                        {confirmErr && (
+                                          <div style={{ marginTop: '4px', padding: '8px 10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px' }}>
+                                            <div style={{ fontSize: '12px', fontWeight: 600, color: '#DC2626', marginBottom: confirmErr.insufficient?.length ? '6px' : 0 }}>
+                                              ⚠ {confirmErr.error}
+                                            </div>
+                                            {confirmErr.insufficient?.map(item => {
+                                              const name = order.items.find(i => i.sku === item.sku)?.name;
+                                              return (
+                                                <div key={item.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '2px 0', borderTop: '1px solid #FECACA' }}>
+                                                  <span style={{ color: '#7F1D1D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>{name ?? item.sku}</span>
+                                                  <span style={{ color: '#DC2626', fontWeight: 700, flexShrink: 0 }}>{item.available} / {item.requested} шт</span>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               );
                             })()}
@@ -2621,60 +2670,7 @@ export default function AdminOrders({
                             return (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
                                 {/* Primary CTA for new orders — confirm + optional send-to-supplier */}
-                                {order.status === 'new' && (() => {
-                                  const mode = selectedMode[order.id] ?? 'supplier';
-                                  const isSupplier = mode === 'supplier';
-                                  const busy = confirming === order.id;
-                                  const confirmErr = confirmErrors[order.id];
-                                  return (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                      <button
-                                        onClick={() => confirmOrder(order.id)}
-                                        disabled={busy}
-                                        style={{ width: '100%', height: '34px', borderRadius: '8px', border: 'none',
-                                          background: busy ? '#94A3B8' : '#15803D', color: '#fff',
-                                          fontSize: '12px', fontWeight: 700, cursor: busy ? 'wait' : 'pointer' }}>
-                                        {busy ? '⏳ Обробка...' : '✅ Підтвердити замовлення'}
-                                      </button>
-                                      {isSupplier && (
-                                        <button
-                                          onClick={() => startSupplierSend([order.id])}
-                                          disabled={supplierQueueLoading}
-                                          style={{ width: '100%', height: '34px', borderRadius: '8px',
-                                            border: '1.5px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F',
-                                            fontSize: '12px', fontWeight: 700, cursor: supplierQueueLoading ? 'wait' : 'pointer',
-                                            opacity: supplierQueueLoading ? 0.6 : 1 }}>
-                                          📤 Відправити постачальнику
-                                        </button>
-                                      )}
-                                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                                        {mode === 'own' ? 'Зарезервує товар з власного складу' : mode === 'mixed' ? 'Резерв + замовлення у постачальника' : 'Підтвердить замовлення клієнту'}
-                                      </div>
-
-                                      {/* Inline error: generic or insufficient stock */}
-                                      {confirmErr && (
-                                        <div style={{ marginTop: '8px', padding: '8px 10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px' }}>
-                                          <div style={{ fontSize: '12px', fontWeight: 600, color: '#DC2626', marginBottom: confirmErr.insufficient?.length ? '6px' : 0 }}>
-                                            ⚠ {confirmErr.error}
-                                          </div>
-                                          {confirmErr.insufficient?.map(item => {
-                                            const name = order.items.find(i => i.sku === item.sku)?.name;
-                                            return (
-                                              <div key={item.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '2px 0', borderTop: '1px solid #FECACA' }}>
-                                                <span style={{ color: '#7F1D1D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>
-                                                  {name ?? item.sku}
-                                                </span>
-                                                <span style={{ color: '#DC2626', fontWeight: 700, flexShrink: 0 }}>
-                                                  {item.available} / {item.requested} шт
-                                                </span>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
+                                {/* Кнопка «Підтвердити замовлення» перенесена в блок «Спосіб виконання» (ліва колонка) */}
                                 {order.status === 'confirmed' && (fMode === 'supplier' || fMode === 'mixed' || !!order.supplier_sent_at) && (
                                   <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
                                     style={order.supplier_sent_at
