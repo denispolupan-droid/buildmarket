@@ -2037,8 +2037,8 @@ export default function AdminOrders({
                               );
                             })()}
 
-                            {/* Спосіб виконання + Відвантажує пост. — в один рядок */}
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px', alignItems: 'flex-start' }}>
+                            {/* Спосіб виконання + Відвантажує пост. — в один рядок, однакова висота */}
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px', alignItems: 'stretch' }}>
                             {order.status === 'new' && (() => {
                               const plan = fulfillmentData[order.id]?.plan;
                               const hasOwn = plan ? plan.has_own : true;
@@ -2065,11 +2065,6 @@ export default function AdminOrders({
                                       );
                                     })}
                                   </div>
-                                  {!hasOwn && plan && (
-                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
-                                      ℹ️ Власний склад недоступний — всі товари у постачальника
-                                    </div>
-                                  )}
                                 </div>
                               );
                             })()}
@@ -2093,6 +2088,12 @@ export default function AdminOrders({
                               </div>
                             )}
                             </div>
+                            {/* Власний склад недоступний — під блоками, на всю ширину */}
+                            {order.status === 'new' && fulfillmentData[order.id]?.plan?.has_own === false && (
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                                ℹ️ Власний склад недоступний — всі товари у постачальника
+                              </div>
+                            )}
                             {/* Підтвердити замовлення — на всю ширину під блоками */}
                             {order.status === 'new' && (() => {
                               const mode = selectedMode[order.id] ?? 'supplier';
