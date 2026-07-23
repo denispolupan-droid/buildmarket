@@ -2045,7 +2045,7 @@ export default function AdminOrders({
                               return (
                                 <div style={{ flex: '1 1 200px', minWidth: 0, padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                                   <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Спосіб виконання</div>
-                                  <div style={{ display: 'flex', gap: '5px' }}>
+                                  <div style={{ display: 'flex', gap: '4px' }}>
                                     {(['supplier', 'own', 'mixed'] as const).map(mode => {
                                       const label = mode === 'supplier' ? 'Постачальник' : mode === 'own' ? 'Наш склад' : 'Змішаний';
                                       const active = (selectedMode[order.id] ?? 'supplier') === mode;
@@ -2054,7 +2054,7 @@ export default function AdminOrders({
                                         <button key={mode}
                                           onClick={() => !disabled && setSelectedMode(prev => ({ ...prev, [order.id]: mode }))}
                                           title={disabled ? 'Немає товару на власному складі' : undefined}
-                                          style={{ flex: '1 1 auto', padding: '7px 6px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap', textAlign: 'center',
+                                          style={{ flex: '1 1 auto', padding: '7px 3px', borderRadius: '6px', fontSize: '10px', fontWeight: 600, whiteSpace: 'nowrap', textAlign: 'center',
                                             cursor: disabled ? 'not-allowed' : 'pointer',
                                             border: `1.5px solid ${active ? '#1E3A5F' : 'var(--border)'}`,
                                             background: disabled ? 'var(--bg-soft)' : active ? '#1E3A5F' : 'var(--bg-card)',
