@@ -2077,8 +2077,8 @@ export default function AdminOrders({
                               <TrendingUp size={12} />
                               {fulfillmentLoading.has(order.id) ? 'Завантаження...'
                                 : fulfillmentOpen.has(order.id)
-                                  ? <><ChevronUp size={12} /> Сховати поставщика</>
-                                  : <><ChevronDown size={12} /> Поставщик та маржа</>}
+                                  ? <><ChevronUp size={12} /> Згорнути розбивку</>
+                                  : <><ChevronDown size={12} /> Розбивка по поставщику</>}
                             </button>
                             {fulfillmentOpen.has(order.id) && fulfillmentData[order.id] && (() => {
                               const fi = fulfillmentData[order.id];
@@ -2089,22 +2089,18 @@ export default function AdminOrders({
                               const commBySku = new Map<string, { amt: number; pct: number }>();
                               (commItems ?? []).forEach(c => commBySku.set(c.sku, { amt: c.commission_amt, pct: c.commission_pct }));
                               const hasComm = commBySku.size > 0;
-                              const marginColor = fi.total_margin >= 0 ? 'var(--color-success, #15803D)' : 'var(--color-danger, #DC2626)';
-                              const marginBg = fi.total_margin >= 0 ? 'var(--bg-success, #F0FDF4)' : 'var(--bg-danger, #FEF2F2)';
                               const activeReservations = (fi.reservations ?? []).filter(r => r.reservation_status === 'active');
                               return (
                                 <div style={{ marginTop: '8px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--border)', fontSize: '12px' }}>
-                                  {/* Margin summary */}
-                                  <div style={{ display: 'flex', gap: '12px', padding: '8px 12px', background: marginBg, borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
-                                    <span style={{ fontWeight: 700, color: marginColor }}>Маржа: {fi.total_margin.toFixed(0)} грн ({fi.margin_pct}%)</span>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Виручка: {fi.total_revenue.toFixed(0)} грн</span>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Собів.: {fi.total_cost.toFixed(0)} грн</span>
-                                    {activeReservations.length > 0 && (
-                                      <span style={{ marginLeft: 'auto', background: '#DCFCE7', color: '#15803D', padding: '1px 8px', borderRadius: '20px', fontWeight: 700 }}>
+                                  {/* Підсумки (виручка/собів/маржа/комісія) — у блоці «Економіка» вище, тут лише
+                                      деталізація по поставщику. Показуємо тільки резерв (його немає вгорі). */}
+                                  {activeReservations.length > 0 && (
+                                    <div style={{ display: 'flex', padding: '7px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg-soft)' }}>
+                                      <span style={{ background: '#DCFCE7', color: '#15803D', padding: '1px 8px', borderRadius: '20px', fontWeight: 700 }}>
                                         ✓ Зарезервовано: {activeReservations.length} поз.
                                       </span>
-                                    )}
-                                  </div>
+                                    </div>
+                                  )}
 
                                   {/* Per-supplier margin breakdown */}
                                   {fi.by_supplier.map((group, gi) => (
