@@ -2568,7 +2568,8 @@ export default function AdminOrders({
                         );
                       })()}
 
-                      {/* ТТН Нової Пошти — на місці «Доставки» */}
+                      {/* ТТН Нової Пошти — прижато до нижньої межі картки */}
+                      <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ТТН Нової Пошти</div>
                       {(order.delivery_type === 'nova' || order.delivery_type === 'nova_poshta') ? (
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -2645,6 +2646,7 @@ export default function AdminOrders({
                           </div>
                         </button>
                       )}
+                      </div>
 
                       {(() => {
                         const displayComment = order.comment?.split('\n').filter(line => !line.includes('Не передзвонювати')).join('\n').trim();
