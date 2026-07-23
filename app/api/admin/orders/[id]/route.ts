@@ -43,7 +43,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const update: Record<string, unknown> = {};
 
   if (status !== undefined) {
-    const VALID = ['new', 'confirmed', 'awaiting_stock', 'picking', 'shipped', 'delivered', 'cancelled'];
+    const VALID = ['new', 'pending_payment', 'confirmed', 'awaiting_stock', 'picking', 'shipped', 'delivered', 'cancelled'];
     if (!VALID.includes(status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }

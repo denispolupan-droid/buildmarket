@@ -101,6 +101,7 @@ const CHANNEL_LABEL: Record<string, { label: string; color: string; bg: string }
 
 const STATUSES = [
   { value: 'new',            label: 'Нове',            color: 'var(--brand-blue)', bg: '#EFF4FF' },
+  { value: 'pending_payment',label: 'Очікує оплату',   color: '#64748B', bg: '#F1F5F9' },
   { value: 'confirmed',      label: 'Підтверджено',    color: '#15803D', bg: '#DCFCE7' },
   { value: 'awaiting_stock', label: 'Очікуємо товар',  color: '#7C3AED', bg: '#F5F3FF' },
   { value: 'picking',        label: 'Збирається',      color: '#0E7490', bg: '#ECFEFF' },
