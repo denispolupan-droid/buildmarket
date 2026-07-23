@@ -322,7 +322,6 @@ export default function AdminOrders({
   const [discInput,        setDiscInput]        = useState<Record<string, string>>({});
   const [discMode,         setDiscMode]         = useState<Record<string, 'pct' | 'amount'>>({});
   const [priceBlockOpen,   setPriceBlockOpen]   = useState<Record<string, boolean>>({});
-  const [econBlockOpen,    setEconBlockOpen]    = useState<Record<string, boolean>>({});
   const [itemImages,       setItemImages]       = useState<Record<string, Record<string, string | null>>>({});
   const [payFormSaving,    setPayFormSaving]    = useState<Record<string, boolean>>({});
   const [payRemoving,      setPayRemoving]      = useState<string | null>(null);
@@ -1940,42 +1939,21 @@ export default function AdminOrders({
                               const grossPct = fi?.margin_pct;
                               const net = gross != null ? gross - commission : undefined;
                               const netPct = net != null && revenue > 0 ? Math.round((net / revenue) * 1000) / 10 : undefined;
-                              const cell = (label: string, value: string, opts: { strong?: boolean; color?: string } = {}) => (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '78px' }}>
-                                  <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{label}</span>
-                                  <span style={{ fontSize: '13px', fontWeight: opts.strong ? 700 : 600, color: opts.color ?? 'var(--text-primary)', whiteSpace: 'nowrap' }}>{value}</span>
+                              const finalColor = (v: number | undefined) => (v ?? 0) >= 0 ? '#15803D' : '#DC2626';
+                              const row = (label: string, value: string, opts: { color?: string; strong?: boolean; total?: boolean } = {}) => (
+                                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px',
+                                  ...(opts.total ? { marginTop: '3px', paddingTop: '9px', borderTop: '1px solid var(--border-light)' } : {}) }}>
+                                  <span style={{ fontSize: '12.5px', color: opts.total ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: opts.total ? 700 : 400 }}>{label}</span>
+                                  <span style={{ fontSize: '13px', fontWeight: (opts.strong || opts.total) ? 700 : 600, color: opts.color ?? 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{value}</span>
                                 </div>
                               );
-                              // Підсумковий рядок (маржа + чистий) показуємо завжди — навіть згорнутим
-                              const finalColor = (v: number | undefined) => (v ?? 0) >= 0 ? '#15803D' : '#DC2626';
-                              const headline = commission > 0 ? net : gross;
-                              const headlinePct = commission > 0 ? netPct : grossPct;
-                              const eopen = econBlockOpen[order.id] ?? true;
                               return (
-                                <div style={{ overflow: 'hidden' }}>
-                                  <button type="button"
-                                    onClick={() => setEconBlockOpen(p => ({ ...p, [order.id]: !eopen }))}
-                                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '9px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: 'var(--text-primary)' }}>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                      <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Економіка</span>
-                                      <span style={{ fontSize: '13px', fontWeight: 700, color: finalColor(headline) }}>
-                                        {commission > 0 ? 'Чистий' : 'Маржа'} {headline != null ? `${headline.toFixed(0)} ₴` : '…'}{headlinePct != null ? ` · ${headlinePct}%` : ''}
-                                      </span>
-                                    </span>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-muted)', fontSize: '11px', flexShrink: 0 }}>
-                                      {eopen ? 'згорнути' : 'деталі'}
-                                      {eopen ? <ChevronUp size={14} color="#94A3B8" /> : <ChevronDown size={14} color="#94A3B8" />}
-                                    </span>
-                                  </button>
-                                  {eopen && (
-                                    <div style={{ padding: '0 12px 12px', display: 'flex', flexWrap: 'wrap', gap: '18px', alignItems: 'flex-end', borderTop: '1px solid var(--border-light)', paddingTop: '12px' }}>
-                                      {cell('Виручка', `${revenue.toFixed(0)} ₴`)}
-                                      {cell('Собівартість', cost != null ? `${cost.toFixed(0)} ₴` : '…', { color: 'var(--text-secondary)' })}
-                                      {commission > 0 && cell('Комісія', `−${commission.toFixed(0)} ₴`, { color: '#C2410C' })}
-                                      {cell('Маржа', gross != null ? `${gross.toFixed(0)} ₴${grossPct != null ? ` · ${grossPct}%` : ''}` : '…', { strong: true, color: finalColor(gross) })}
-                                      {commission > 0 && cell('Чистий', net != null ? `${net.toFixed(0)} ₴${netPct != null ? ` · ${netPct}%` : ''}` : '…', { strong: true, color: finalColor(net) })}
-                                    </div>
-                                  )}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+                                  {row('Виручка', `${revenue.toFixed(0)} ₴`)}
+                                  {row('Собівартість', cost != null ? `${cost.toFixed(0)} ₴` : '…', { color: 'var(--text-secondary)' })}
+                                  {commission > 0 && row('Комісія', `−${commission.toFixed(0)} ₴`, { color: '#C2410C' })}
+                                  {row('Маржа', gross != null ? `${gross.toFixed(0)} ₴${grossPct != null ? ` · ${grossPct}%` : ''}` : '…', { color: finalColor(gross), strong: true })}
+                                  {commission > 0 && row('Чистий дохід', net != null ? `${net.toFixed(0)} ₴${netPct != null ? ` · ${netPct}%` : ''}` : '…', { color: finalColor(net), total: true })}
                                 </div>
                               );
                             })()}
