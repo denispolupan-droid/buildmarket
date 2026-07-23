@@ -2254,10 +2254,12 @@ export default function AdminOrders({
                     </div>
 
                     {/* Col 2: Contact + Delivery + payment + callback + TTN */}
+                    <div style={{ order: -1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', alignItems: 'start' }}>
+                    {/* Клієнт card */}
                     <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Контакт і доставка</span>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Клієнт</span>
                       {/* Contact info */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', paddingBottom: '8px', borderBottom: '1px solid var(--border-light)' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         {order.company && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 }}>
                             <Building2 size={12} color="#64748B" />{order.company}
@@ -2297,7 +2299,9 @@ export default function AdminOrders({
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
                       </div>
-
+                    </div>
+                    {/* Доставка / Оплата card */}
+                    <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Оплата</div>
                       {editPaymentTypeId === order.id ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
@@ -2644,6 +2648,8 @@ export default function AdminOrders({
                         </button>
                       )}
 
+                    </div>
+                    {/* /Доставка card + /grid Клієнт|Доставка */}
                     </div>
                     {/* /MAIN column */}
                     </div>
