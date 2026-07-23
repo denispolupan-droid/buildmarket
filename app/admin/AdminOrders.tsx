@@ -1694,7 +1694,7 @@ export default function AdminOrders({
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
                           <button onClick={() => confirmOrder(order.id)} disabled={busy}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '44px', padding: '0 22px', borderRadius: '12px', border: 'none', background: busy ? '#94A3B8' : '#2563EB', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer', boxShadow: '0 1px 2px rgba(37,99,235,0.35)', whiteSpace: 'nowrap' }}>
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '44px', padding: '0 22px', borderRadius: '12px', border: 'none', background: busy ? '#94A3B8' : '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer', boxShadow: '0 1px 2px rgba(30,58,95,0.35)', whiteSpace: 'nowrap' }}>
                             {busy ? 'Обробка…' : <><Check size={17} /> Підтвердити замовлення</>}
                           </button>
                           {confirmErr && (
