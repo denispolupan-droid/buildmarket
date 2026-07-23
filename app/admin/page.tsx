@@ -185,17 +185,17 @@ export default async function AdminPage({
                 }}
               >
                 {/* Рядок 1: назва + лічильник інлайн (чип завжди в одному рядку з назвою). */}
-                <div style={{ height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                <div style={{ height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', overflow: 'hidden' }}>
                   <span style={{
-                    fontSize: '12px', fontWeight: 600, lineHeight: 1.15, letterSpacing: '0.1px',
+                    fontSize: '11.5px', fontWeight: 600, lineHeight: 1.15, letterSpacing: '0px', whiteSpace: 'nowrap',
                     color: isActive ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)',
                   }}>
                     {tab.label}
                     {cnt > 0 && (
                       <span style={{
-                        display: 'inline-block', verticalAlign: 'middle', marginLeft: '5px',
-                        fontSize: '10.5px', fontWeight: 700, lineHeight: '16px',
-                        padding: '0 6px', borderRadius: '7px',
+                        display: 'inline-block', verticalAlign: 'middle', marginLeft: '4px',
+                        fontSize: '10px', fontWeight: 700, lineHeight: '15px',
+                        padding: '0 5px', borderRadius: '7px',
                         background: isActive ? 'rgba(255,255,255,0.22)' : isNew ? '#EF4444' : '#E0ECF8',
                         color: isActive ? '#fff' : isNew ? '#fff' : '#3B6EA5',
                       }}>{cnt}</span>
