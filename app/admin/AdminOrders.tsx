@@ -2131,7 +2131,7 @@ export default function AdminOrders({
                               );
                             })()}
                             {/* Спосіб виконання + Відвантажує пост. — в один рядок, однакова висота */}
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '4px', alignItems: 'stretch' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
                             {order.status === 'new' && (() => {
                               const plan = fulfillmentData[order.id]?.plan;
                               const hasOwn = plan ? plan.has_own : true;
