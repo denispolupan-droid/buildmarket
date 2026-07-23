@@ -1745,7 +1745,7 @@ export default function AdminOrders({
                         ) : (
                           <div>
                             {/* Items table — виділено брендовою панеллю */}
-                            <div style={{ background: '#EBF2FB', border: '1px solid #D3E1F1', borderRadius: '10px', padding: '4px 12px 6px' }}>
+                            <div style={{ background: '#E3EDF9', border: '1px solid #CADCEF', borderRadius: '10px', padding: '4px 12px 6px' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                               <thead>
                                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
