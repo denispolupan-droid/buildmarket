@@ -1744,7 +1744,8 @@ export default function AdminOrders({
                           </div>
                         ) : (
                           <div>
-                            {/* Items table */}
+                            {/* Items table — виділено м'якою панеллю */}
+                            <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border-light)', borderRadius: '10px', padding: '4px 12px 6px' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                               <thead>
                                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -1788,7 +1789,7 @@ export default function AdminOrders({
                                           </div>
                                         </td>
                                         <td style={{ padding: '10px 6px', color: 'var(--text-primary)', textAlign: 'right', fontSize: '13.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{item.qty}</td>
-                                        <td style={{ padding: '10px 6px', textAlign: 'right', color: 'var(--text-secondary)', fontSize: '13px', fontVariantNumeric: 'tabular-nums' }}>
+                                        <td style={{ padding: '10px 6px', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                                           {item.is_bonus ? '' : `${item.price.toFixed(0)} ₴`}
                                         </td>
                                         <td style={{ padding: '10px 0', textAlign: 'right' }}>
@@ -1828,6 +1829,7 @@ export default function AdminOrders({
                                 })()}
                               </tbody>
                             </table>
+                            </div>
 
                             {/* Тип цін + ручна знижка — впливають на ціни позицій і підсумок, тому поряд із товарами */}
                             {(() => {
