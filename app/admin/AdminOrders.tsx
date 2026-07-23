@@ -1823,14 +1823,21 @@ export default function AdminOrders({
                                             {(() => {
                                               const img = itemImages[order.id]?.[item.sku];
                                               return (
-                                                <div style={{ width: '40px', height: '40px', borderRadius: '8px', flexShrink: 0, border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                <a href={`/admin/products/${encodeURIComponent(item.sku)}`} target="_blank" rel="noopener noreferrer"
+                                                  onClick={e => e.stopPropagation()} title="Відкрити картку товару"
+                                                  style={{ width: '40px', height: '40px', borderRadius: '8px', flexShrink: 0, border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                   background: img ? `#fff url("${img}") center/cover no-repeat` : '#fff' }}>
                                                   {!img && <Package size={16} color="var(--text-muted)" />}
-                                                </div>
+                                                </a>
                                               );
                                             })()}
                                             <div style={{ minWidth: 0 }}>
-                                              <span style={{ color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, lineHeight: 1.35, letterSpacing: '-0.006em' }}>{item.name}</span>
+                                              <a href={`/admin/products/${encodeURIComponent(item.sku)}`} target="_blank" rel="noopener noreferrer"
+                                                onClick={e => e.stopPropagation()}
+                                                title="Відкрити картку товару"
+                                                style={{ color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, lineHeight: 1.35, letterSpacing: '-0.006em', textDecoration: 'none' }}
+                                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--brand-blue)'; e.currentTarget.style.textDecoration = 'underline'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.textDecoration = 'none'; }}>{item.name}</a>
                                               <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
                                                 <span style={{ color: 'var(--text-muted)', fontSize: '10.5px', fontFamily: 'monospace' }}>{item.sku}</span>
                                                 <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
