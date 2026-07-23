@@ -103,8 +103,10 @@ export async function POST(
   const overrideComment: string | undefined = body.comment       || undefined;
   const senderEmail: string | undefined     = body.senderEmail   || undefined;
 
-  // Відправник (основний / вибраний) + Resend-клієнт із ключем для домену
-  const { from: FROM, resend } = await resolveSender(db, senderEmail);
+  // Відправник (основний / вибраний) + Resend-клієнт із ключем для домену.
+  // fromName/fromEmail йдуть у тему й тіло листа — щоб при відправці від budmag
+  // ніде не згадувався fixline.
+  const { from: FROM, fromName, fromEmail, resend } = await resolveSender(db, senderEmail);
 
   const orderItems = (order.items ?? []) as { sku: string; name: string; brand: string; qty: number }[];
   const skus = orderItems.map(i => i.sku);
@@ -153,8 +155,10 @@ export async function POST(
         await resend.emails.send({
           from: FROM,
           to:   toEmail,
-          subject: `Замовлення від FIXLINE — #${order.order_number}`,
+          subject: `Замовлення від ${fromName} — #${order.order_number}`,
           html: buildSupplierEmailHtml({
+            senderName:     fromName,
+            senderEmail:    fromEmail,
             orderNumber:    order.order_number,
             contact:        order.contact,
             phone:          order.phone,
@@ -197,6 +201,8 @@ function extractEmail(text: string): string | null {
 }
 
 function buildSupplierEmailHtml(data: {
+  senderName: string;
+  senderEmail: string;
   orderNumber: number;
   contact: string;
   phone: string;
@@ -222,7 +228,7 @@ function buildSupplierEmailHtml(data: {
 
   return `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
-      <h2 style="color:#1E3A5F">Замовлення від FIXLINE #${data.orderNumber}</h2>
+      <h2 style="color:#1E3A5F">Замовлення від ${data.senderName} #${data.orderNumber}</h2>
       <p style="color:#555">Отримувач: <strong>${data.contact}</strong> · ${data.phone}${data.deliveryCity ? ` · ${data.deliveryCity}` : ''}</p>
       ${ttnBlock}
       <table style="width:100%;border-collapse:collapse;margin-top:16px">
@@ -236,6 +242,6 @@ function buildSupplierEmailHtml(data: {
         <tbody>${rows}</tbody>
       </table>
       ${commentBlock}
-      <p style="color:#94A3B8;font-size:12px;margin-top:24px">FIXLINE — orders@fixline.com.ua</p>
+      <p style="color:#94A3B8;font-size:12px;margin-top:24px">${data.senderName} — ${data.senderEmail}</p>
     </div>`;
 }
