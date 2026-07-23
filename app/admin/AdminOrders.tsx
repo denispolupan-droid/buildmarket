@@ -328,6 +328,7 @@ export default function AdminOrders({
   const [payFormNote,      setPayFormNote]      = useState<Record<string, string>>({});
   const [discInput,        setDiscInput]        = useState<Record<string, string>>({});
   const [discMode,         setDiscMode]         = useState<Record<string, 'pct' | 'amount'>>({});
+  const [priceBlockOpen,   setPriceBlockOpen]   = useState<Record<string, boolean>>({});
   const [payFormSaving,    setPayFormSaving]    = useState<Record<string, boolean>>({});
   const [payRemoving,      setPayRemoving]      = useState<string | null>(null);
 
@@ -1829,8 +1830,19 @@ export default function AdminOrders({
                               const editable = ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
                                 && order.channel_code !== 'dropship';
                               const pt = order.price_type ?? 'retail';
+                              const activePct = Number(order.discount_pct ?? 0);
+                              const open = priceBlockOpen[order.id] ?? false;
                               return (
-                                <div style={{ marginTop: '12px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                <div style={{ marginTop: '12px' }}>
+                                  {/* Згорнута зведення: поточний тип цін + знижка. Клік — розгортає керування */}
+                                  <button type="button"
+                                    onClick={() => setPriceBlockOpen(p => ({ ...p, [order.id]: !open }))}
+                                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', height: '32px', padding: '0 10px', border: '1px solid var(--border)', borderRadius: '7px', background: 'var(--bg-soft)', cursor: 'pointer', fontSize: '12px', color: 'var(--text-primary)' }}>
+                                    <span>Тип цін: <strong>{PRICE_TYPE_LABELS[pt] ?? pt}</strong>{activePct > 0 ? <> · Знижка <strong style={{ color: '#B45309' }}>−{activePct}%</strong></> : ''}</span>
+                                    {open ? <ChevronUp size={14} color="#94A3B8" /> : <ChevronDown size={14} color="#94A3B8" />}
+                                  </button>
+                                  {open && (
+                                  <div style={{ marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                   <div style={{ flex: '1 1 120px', minWidth: 0 }}>
                                     <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
                                       title="Тариф, за яким пораховані позиції. Зміна перерахує всі ціни за відповідним прайсом.">
@@ -1909,6 +1921,8 @@ export default function AdminOrders({
                                       </div>
                                     );
                                   })()}
+                                  </div>
+                                  )}
                                 </div>
                               );
                             })()}
@@ -2702,8 +2716,9 @@ export default function AdminOrders({
                                 })()}
                                 {order.status === 'shipped' && (
                                   <button onClick={() => changeStatus(order.id, 'delivered')} disabled={!!loading}
+                                    title="Позначити, що клієнт отримав товар — проведе продаж і комісію, замовлення стане «Доставлено»"
                                     style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
-                                    <Check size={13} /> Доставлено
+                                    <MapPin size={13} /> Підтвердити доставку
                                   </button>
                                 )}
                                 {/* Другорядні інструменти — друк, месенджери, ЗП; відділені від дій зі статусом */}
