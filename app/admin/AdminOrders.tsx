@@ -2002,9 +2002,9 @@ export default function AdminOrders({
                             })()}
 
                             {/* Ряд Фінанси | Логістика | ТТН — під таблицею товарів (референс) */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginTop: '12px', alignItems: 'start' }}>
-                            <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>Фінанси</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginTop: '12px', alignItems: 'stretch' }}>
+                            <div className="order-col-card" style={{ minWidth: 0, padding: '14px', display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Фінанси</div>
                             {/* Економіка замовлення — виручка / собівартість / комісія / маржа завжди на очах */}
                             {(() => {
                               const fi = fulfillmentData[order.id];
@@ -2034,7 +2034,7 @@ export default function AdminOrders({
                               const headlinePct = commission > 0 ? netPct : grossPct;
                               const eopen = econBlockOpen[order.id] ?? false;
                               return (
-                                <div style={{ marginTop: '12px', borderRadius: '10px', border: '1px solid var(--border-light)', background: 'var(--bg-soft)', overflow: 'hidden' }}>
+                                <div style={{ overflow: 'hidden' }}>
                                   <button type="button"
                                     onClick={() => setEconBlockOpen(p => ({ ...p, [order.id]: !eopen }))}
                                     style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '9px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: 'var(--text-primary)' }}>
@@ -2104,7 +2104,7 @@ export default function AdminOrders({
                             })()}
 
                             </div>
-                            <div style={{ minWidth: 0 }}>
+                            <div className="order-col-card" style={{ minWidth: 0, padding: '14px', display: 'flex', flexDirection: 'column' }}>
                             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Логістика</div>
                             {/* Спосіб виконання + Відвантажує пост. — в один рядок, однакова висота */}
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px', alignItems: 'stretch' }}>
@@ -2165,7 +2165,7 @@ export default function AdminOrders({
                             )}
                             </div>
                             {/* ТТН колонка — перенесено під товари */}
-                            <div style={{ minWidth: 0 }}>
+                            <div className="order-col-card" style={{ minWidth: 0, padding: '14px', display: 'flex', flexDirection: 'column' }}>
                             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>ТТН Нової Пошти</div>
                             {(order.delivery_type === 'nova' || order.delivery_type === 'nova_poshta') ? (
                               <div>
@@ -2351,7 +2351,7 @@ export default function AdminOrders({
                     </div>
 
                     {/* Col 2: Contact + Delivery + payment + callback + TTN */}
-                    <div style={{ order: -1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', alignItems: 'start' }}>
+                    <div style={{ order: -1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', alignItems: 'stretch' }}>
                     {/* Клієнт card */}
                     <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Клієнт</span>
