@@ -184,20 +184,23 @@ export default async function AdminPage({
                   transition: 'all 0.15s', textAlign: 'center',
                 }}
               >
-                {/* Рядок 1: назва + лічильник (виділений кольоровим чипом) у фікс-блоці на 2 рядки. */}
-                <div style={{ height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                {/* Рядок 1: назва + лічильник інлайн (чип завжди в одному рядку з назвою). */}
+                <div style={{ height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
                   <span style={{
                     fontSize: '12px', fontWeight: 600, lineHeight: 1.15, letterSpacing: '0.1px',
                     color: isActive ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)',
-                  }}>{tab.label}</span>
-                  {cnt > 0 && (
-                    <span style={{
-                      fontSize: '10.5px', fontWeight: 700, lineHeight: '16px',
-                      padding: '0 6px', borderRadius: '7px',
-                      background: isActive ? 'rgba(255,255,255,0.22)' : isNew ? '#EF4444' : '#E0ECF8',
-                      color: isActive ? '#fff' : isNew ? '#fff' : '#3B6EA5',
-                    }}>{cnt}</span>
-                  )}
+                  }}>
+                    {tab.label}
+                    {cnt > 0 && (
+                      <span style={{
+                        display: 'inline-block', verticalAlign: 'middle', marginLeft: '5px',
+                        fontSize: '10.5px', fontWeight: 700, lineHeight: '16px',
+                        padding: '0 6px', borderRadius: '7px',
+                        background: isActive ? 'rgba(255,255,255,0.22)' : isNew ? '#EF4444' : '#E0ECF8',
+                        color: isActive ? '#fff' : isNew ? '#fff' : '#3B6EA5',
+                      }}>{cnt}</span>
+                    )}
+                  </span>
                 </div>
                 {/* Рядок 2: сума — головний акцент. */}
                 {(() => {
