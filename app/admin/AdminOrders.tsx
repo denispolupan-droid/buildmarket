@@ -1633,7 +1633,7 @@ export default function AdminOrders({
                   <>
                   {/* Шапка розгорнутого замовлення — новий дизайн */}
                   <div style={{ borderTop: '1px solid var(--border-light)', background: 'var(--bg-soft)', padding: '16px 18px 14px', display: 'flex', alignItems: 'flex-start', gap: '14px', flexWrap: 'wrap' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ flex: '0 1 auto', minWidth: 0 }}>
                       <div style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Замовлення #{order.order_number}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '9px', flexWrap: 'wrap' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
@@ -1692,31 +1692,31 @@ export default function AdminOrders({
                         </div>
                       );
                     })()}
-                    {/* Статус замовлення — правий верхній кут; «...» = ручна зміна */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '6px 6px 6px 12px', borderRadius: '9px', color: status.color, background: status.bg }}>
-                        <span style={{ fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap' }}>{status.label}</span>
+                    {/* Статус замовлення — правий верхній кут, шириною як панель «Дії»; «...» = ручна зміна */}
+                    <div style={{ width: '250px', flexShrink: 0, marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', borderRadius: '10px', color: status.color, background: status.bg, border: `1.5px solid ${status.color}` }}>
+                        <span style={{ fontSize: '14px', fontWeight: 700, whiteSpace: 'nowrap' }}>{status.label}</span>
                         <button onClick={() => setStatusEditOpen(p => ({ ...p, [order.id]: !p[order.id] }))}
                           title="Змінити статус вручну"
-                          style={{ background: (statusEditOpen[order.id] ?? false) ? 'rgba(0,0,0,0.08)' : 'none', border: 'none', cursor: 'pointer', color: status.color, padding: '2px', borderRadius: '5px', display: 'inline-flex' }}>
-                          <MoreHorizontal size={16} />
+                          style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: (statusEditOpen[order.id] ?? false) ? 'rgba(0,0,0,0.12)' : 'none', border: 'none', cursor: 'pointer', color: status.color, padding: '3px', borderRadius: '6px', display: 'inline-flex' }}>
+                          <MoreHorizontal size={18} />
                         </button>
                       </div>
                       {order.status === 'shipped' && order.tracking_number && (
                         <div title={order.carrier_status_synced_at ? `Оновлено: ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
-                          style={{ fontSize: '11px', fontWeight: 600, textAlign: 'right', lineHeight: 1.3, color: order.carrier_accepted_at ? '#15803D' : '#B45309', maxWidth: '220px' }}>
+                          style={{ fontSize: '11px', fontWeight: 600, textAlign: 'center', lineHeight: 1.3, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
                           {order.carrier_accepted_at ? '✓' : '⏳'} {order.carrier_status_text ?? (order.carrier_accepted_at ? 'Прийнято НП' : 'Очікує приймання НП')}
                         </div>
                       )}
                       {(statusEditOpen[order.id] ?? false) && (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                           <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                             Змінити вручну{!isAdmin && <span style={{ marginLeft: '4px', color: '#F59E0B' }}>🔒</span>}
                           </div>
                           <select
                             value={order.status}
                             onChange={e => { if (e.target.value !== order.status) changeStatus(order.id, e.target.value); }}
-                            style={{ width: '210px', height: '32px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-primary)' }}
+                            style={{ width: '100%', height: '32px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-primary)' }}
                           >
                             {STATUSES.filter(s => {
                               if (isAdmin) return true;
