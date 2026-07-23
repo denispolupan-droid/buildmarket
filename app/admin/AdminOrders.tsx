@@ -2097,8 +2097,8 @@ export default function AdminOrders({
                               return (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '10px' }}>
                                   <button onClick={() => confirmOrder(order.id)} disabled={busy}
-                                    style={{ width: '100%', height: '38px', borderRadius: '8px', border: 'none', background: busy ? '#94A3B8' : '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: busy ? 'wait' : 'pointer' }}>
-                                    {busy ? '⏳ Обробка...' : '✅ Підтвердити замовлення'}
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', width: '100%', height: '40px', borderRadius: '9px', border: 'none', background: busy ? '#94A3B8' : '#15803D', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}>
+                                    {busy ? 'Обробка…' : <><Check size={16} /> Підтвердити замовлення</>}
                                   </button>
                                   <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
                                     {mode === 'own' ? 'Зарезервує товар з власного складу' : mode === 'mixed' ? 'Резерв + замовлення у постачальника' : 'Підтвердить замовлення клієнту'}
@@ -2583,14 +2583,16 @@ export default function AdminOrders({
                       {['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
                         && (['supplier', 'mixed'].includes(order.fulfillment_mode ?? 'supplier') || !!order.supplier_sent_at) && (
                         <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
-                          style={{ display: 'flex', alignItems: order.supplier_sent_at ? 'flex-start' : 'center', gap: '6px', width: '100%', padding: '8px 10px', borderRadius: '8px', boxSizing: 'border-box', fontSize: '12px', fontWeight: 700, cursor: supplierQueueLoading ? 'wait' : 'pointer',
+                          style={{ display: 'flex', alignItems: order.supplier_sent_at ? 'flex-start' : 'center', justifyContent: order.supplier_sent_at ? 'flex-start' : 'center', gap: '7px', width: '100%', boxSizing: 'border-box', fontSize: '13px', fontWeight: 600, cursor: supplierQueueLoading ? 'wait' : 'pointer',
+                            ...(order.supplier_sent_at ? { padding: '8px 12px' } : { height: '40px', padding: '0 12px' }),
+                            borderRadius: '9px',
                             border: order.supplier_sent_at ? '1.5px solid #86EFAC' : '1.5px solid #93C5FD',
                             background: order.supplier_sent_at ? '#F0FDF4' : '#EFF6FF',
                             color: order.supplier_sent_at ? '#15803D' : '#1E3A5F',
                             opacity: supplierQueueLoading ? 0.6 : 1 }}>
-                          <Mail size={13} style={{ flexShrink: 0, marginTop: order.supplier_sent_at ? '2px' : 0 }} />
+                          <Mail size={15} style={{ flexShrink: 0, marginTop: order.supplier_sent_at ? '2px' : 0 }} />
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '1px' }}>
-                            <span>{order.supplier_sent_at ? '✅ Надіслано постачальнику' : 'Надіслати постачальнику'}</span>
+                            <span>{order.supplier_sent_at ? 'Надіслано постачальнику' : 'Надіслати постачальнику'}</span>
                             {order.supplier_sent_at && (
                               <span style={{ fontSize: '10px', opacity: 0.75 }}>{new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · натисніть щоб надіслати ще раз</span>
                             )}
