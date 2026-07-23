@@ -2628,25 +2628,28 @@ export default function AdminOrders({
                       ) : (
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Доставка не Нова Пошта</div>
                       )}
-                      {['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
-                        && (['supplier', 'mixed'].includes(order.fulfillment_mode ?? 'supplier') || !!order.supplier_sent_at) && (
-                        <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
-                          style={{ display: 'flex', alignItems: order.supplier_sent_at ? 'flex-start' : 'center', justifyContent: order.supplier_sent_at ? 'flex-start' : 'center', gap: '7px', width: '100%', boxSizing: 'border-box', fontSize: '13px', fontWeight: 600, cursor: supplierQueueLoading ? 'wait' : 'pointer',
-                            ...(order.supplier_sent_at ? { padding: '8px 12px' } : { height: '40px', padding: '0 12px' }),
-                            borderRadius: '9px',
-                            border: order.supplier_sent_at ? '1.5px solid #86EFAC' : '1.5px solid #93C5FD',
-                            background: order.supplier_sent_at ? '#F0FDF4' : '#EFF6FF',
-                            color: order.supplier_sent_at ? '#15803D' : '#1E3A5F',
-                            opacity: supplierQueueLoading ? 0.6 : 1 }}>
-                          <Mail size={15} style={{ flexShrink: 0, marginTop: order.supplier_sent_at ? '2px' : 0 }} />
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '1px' }}>
-                            <span>{order.supplier_sent_at ? 'Надіслано постачальнику' : 'Надіслати постачальнику'}</span>
-                            {order.supplier_sent_at && (
-                              <span style={{ fontSize: '10px', opacity: 0.75 }}>{new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · натисніть щоб надіслати ще раз</span>
-                            )}
-                          </div>
+                      {/* Дві однакові кнопки в один рядок: Надіслати постачальнику + Створити ЗП */}
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
+                          && (['supplier', 'mixed'].includes(order.fulfillment_mode ?? 'supplier') || !!order.supplier_sent_at) && (
+                          <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
+                            title={order.supplier_sent_at ? `Надіслано ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · натисніть щоб надіслати ще раз` : 'Надіслати замовлення постачальнику'}
+                            style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '40px', padding: '0 10px', boxSizing: 'border-box', fontSize: '12.5px', fontWeight: 600, cursor: supplierQueueLoading ? 'wait' : 'pointer', borderRadius: '9px',
+                              border: order.supplier_sent_at ? '1.5px solid #86EFAC' : '1.5px solid #93C5FD',
+                              background: order.supplier_sent_at ? '#F0FDF4' : '#EFF6FF',
+                              color: order.supplier_sent_at ? '#15803D' : '#1E3A5F',
+                              opacity: supplierQueueLoading ? 0.6 : 1 }}>
+                            <Mail size={15} style={{ flexShrink: 0 }} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.supplier_sent_at ? 'Надіслано' : 'Постачальнику'}</span>
+                          </button>
+                        )}
+                        <button onClick={() => openSupplierPO(order)} disabled={creatingPo === order.id}
+                          title="Створити замовлення постачальнику (ЗП)"
+                          style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '40px', padding: '0 10px', boxSizing: 'border-box', fontSize: '12.5px', fontWeight: 600, borderRadius: '9px', border: '1.5px solid #C7D7F5', background: 'var(--brand-blue-light)', color: 'var(--brand-blue)', cursor: creatingPo === order.id ? 'wait' : 'pointer', opacity: creatingPo === order.id ? 0.6 : 1 }}>
+                          <ShoppingCart size={15} style={{ flexShrink: 0 }} />
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{creatingPo === order.id ? '...' : 'Створити ЗП'}</span>
                         </button>
-                      )}
+                      </div>
                       </div>
 
                       {(() => {
@@ -2824,11 +2827,7 @@ export default function AdminOrders({
                                   total={order.total_price} channel={order.channel_code}
                                   promOrderId={order.prom_order_id} rozetkaOrderId={order.rozetka_order_id} />
 
-                                <button onClick={() => openSupplierPO(order)} disabled={creatingPo === order.id}
-                                  style={{ ...btnMuted, cursor: creatingPo === order.id ? 'wait' : 'pointer', opacity: creatingPo === order.id ? 0.6 : 1 }}>
-                                  <ShoppingCart size={13} />
-                                  {creatingPo === order.id ? 'Завантаження...' : 'Створити ЗП'}
-                                </button>
+                                {/* «Створити ЗП» перенесено під ТТН, у рядок із «Надіслати постачальнику» */}
 
                                 {/* Документи замовлення: РН (друкована видаткова) + повернення.
                                     Видимі в будь-якому статусі — РН є кінцевим документом замовлення. */}
