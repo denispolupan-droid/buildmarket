@@ -1950,7 +1950,7 @@ export default function AdminOrders({
                               const finalColor = (v: number | undefined) => (v ?? 0) >= 0 ? '#15803D' : '#DC2626';
                               const headline = commission > 0 ? net : gross;
                               const headlinePct = commission > 0 ? netPct : grossPct;
-                              const eopen = econBlockOpen[order.id] ?? false;
+                              const eopen = econBlockOpen[order.id] ?? true;
                               return (
                                 <div style={{ overflow: 'hidden' }}>
                                   <button type="button"
@@ -2125,7 +2125,7 @@ export default function AdminOrders({
                               );
                             })()}
                             {/* Спосіб виконання + Відвантажує пост. — в один рядок, однакова висота */}
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px', alignItems: 'stretch' }}>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '4px', alignItems: 'stretch' }}>
                             {order.status === 'new' && (() => {
                               const plan = fulfillmentData[order.id]?.plan;
                               const hasOwn = plan ? plan.has_own : true;
