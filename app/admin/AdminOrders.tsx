@@ -1749,11 +1749,11 @@ export default function AdminOrders({
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                               <thead>
                                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                  <th style={{ textAlign: 'left', padding: '2px 0 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Назва</th>
-                                  <th style={{ textAlign: 'right', padding: '2px 6px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '44px', whiteSpace: 'nowrap' }}>К-сть</th>
-                                  <th style={{ textAlign: 'right', padding: '2px 6px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '62px', whiteSpace: 'nowrap' }}>Ціна</th>
-                                  <th style={{ textAlign: 'right', padding: '2px 0 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '70px' }}>Сума</th>
-                                  <th style={{ textAlign: 'right', padding: '2px 0 8px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '90px' }}>Джерело</th>
+                                  <th style={{ textAlign: 'left', padding: '2px 0 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Назва</th>
+                                  <th style={{ textAlign: 'right', padding: '2px 6px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '44px', whiteSpace: 'nowrap' }}>К-сть</th>
+                                  <th style={{ textAlign: 'right', padding: '2px 6px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '62px', whiteSpace: 'nowrap' }}>Ціна</th>
+                                  <th style={{ textAlign: 'right', padding: '2px 0 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '70px' }}>Сума</th>
+                                  <th style={{ textAlign: 'right', padding: '2px 0 8px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '90px' }}>Джерело</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -1779,23 +1779,23 @@ export default function AdminOrders({
                                       <tr key={item.sku} style={{ borderBottom: '1px solid var(--border-light)' }}>
                                         {/* Назва — на очах: назва зверху жирнішим, код нижче */}
                                         <td style={{ padding: '10px 0', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3, verticalAlign: 'top' }}>
-                                          <span style={{ color: 'var(--text-primary)', fontSize: '13.5px', fontWeight: 600, lineHeight: 1.35, letterSpacing: '-0.006em' }}>{item.name}</span>
+                                          <span style={{ color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, lineHeight: 1.35, letterSpacing: '-0.006em' }}>{item.name}</span>
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontFamily: 'monospace' }}>{item.sku}</span>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '10.5px', fontFamily: 'monospace' }}>{item.sku}</span>
                                             <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
                                               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: copiedSku === item.sku ? '#15803D' : 'var(--text-muted)', lineHeight: 1, fontSize: '11px' }}>
                                               {copiedSku === item.sku ? '✓' : '⎘'}
                                             </button>
                                           </div>
                                         </td>
-                                        <td style={{ padding: '10px 6px', color: 'var(--text-primary)', textAlign: 'right', fontSize: '13.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'top' }}>{item.qty}</td>
-                                        <td style={{ padding: '10px 6px', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'top' }}>
+                                        <td style={{ padding: '10px 6px', color: 'var(--text-primary)', textAlign: 'right', fontSize: '12.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'top' }}>{item.qty}</td>
+                                        <td style={{ padding: '10px 6px', textAlign: 'right', color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'top' }}>
                                           {item.is_bonus ? '' : `${item.price.toFixed(0)} ₴`}
                                         </td>
                                         <td style={{ padding: '10px 0', textAlign: 'right', verticalAlign: 'top' }}>
                                           {item.is_bonus
                                             ? <span style={{ color: '#15803D', fontSize: '11px', fontWeight: 700, background: '#F0FDF4', padding: '1px 6px', borderRadius: '4px' }}>🎁 Бонус</span>
-                                            : <span style={{ color: 'var(--text-primary)', fontSize: '13.5px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{(item.price * item.qty).toFixed(0)} ₴</span>
+                                            : <span style={{ color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{(item.price * item.qty).toFixed(0)} ₴</span>
                                           }
                                         </td>
                                         <td style={{ padding: '10px 0 10px 8px', textAlign: 'right', verticalAlign: 'top', background: srcBg, borderLeft: srcBorder, borderRadius: isMixed ? '6px' : undefined }}>
