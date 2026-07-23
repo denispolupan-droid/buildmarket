@@ -322,6 +322,7 @@ export default function AdminOrders({
   const [discInput,        setDiscInput]        = useState<Record<string, string>>({});
   const [discMode,         setDiscMode]         = useState<Record<string, 'pct' | 'amount'>>({});
   const [priceBlockOpen,   setPriceBlockOpen]   = useState<Record<string, boolean>>({});
+  const [finLogOpen,       setFinLogOpen]       = useState<Record<string, boolean>>({});
   const [itemImages,       setItemImages]       = useState<Record<string, Record<string, string | null>>>({});
   const [payFormSaving,    setPayFormSaving]    = useState<Record<string, boolean>>({});
   const [payRemoving,      setPayRemoving]      = useState<string | null>(null);
@@ -1936,8 +1937,14 @@ export default function AdminOrders({
 
                             {/* «Тип цін + знижка» перенесено в картку «Логістика» нижче */}
 
-                            {/* Ряд Фінанси | Логістика | ТТН — під таблицею товарів (референс) */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: '12px', alignItems: 'stretch' }}>
+                            {/* Ряд Фінанси | Логістика — під таблицею, згортається (за замовчуванням згорнуто) */}
+                            <button type="button" onClick={() => setFinLogOpen(p => ({ ...p, [order.id]: !(p[order.id] ?? false) }))}
+                              style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '11px', fontWeight: 700, color: (finLogOpen[order.id] ?? false) ? 'var(--brand-blue)' : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              {(finLogOpen[order.id] ?? false) ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                              Фінанси та логістика
+                            </button>
+                            {(finLogOpen[order.id] ?? false) && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: '10px', alignItems: 'stretch' }}>
                             <div className="order-col-card" style={{ minWidth: 0, padding: '14px', display: 'flex', flexDirection: 'column' }}>
                             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Фінанси</div>
                             {/* Економіка замовлення — виручка / собівартість / комісія / маржа завжди на очах */}
@@ -2182,15 +2189,12 @@ export default function AdminOrders({
                             )}
                             </div>
                             </div>
-                            <button onClick={() => toggleFulfillment(order.id)}
-                              style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontSize: '12px', fontWeight: 600, color: fulfillmentOpen.has(order.id) ? 'var(--brand-blue)' : 'var(--text-secondary)' }}>
-                              <TrendingUp size={12} />
-                              {fulfillmentLoading.has(order.id) ? 'Завантаження...'
-                                : fulfillmentOpen.has(order.id)
-                                  ? <><ChevronUp size={12} /> Згорнути розбивку</>
-                                  : <><ChevronDown size={12} /> Розбивка по поставщику</>}
-                            </button>
-                            {fulfillmentOpen.has(order.id) && fulfillmentData[order.id] && (() => {
+                            )}
+                            {/* Маржа по постачальниках — завжди на листі (без згортання) */}
+                            <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              <TrendingUp size={12} /> Маржа по постачальниках
+                            </div>
+                            {fulfillmentData[order.id] && (() => {
                               const fi = fulfillmentData[order.id];
                               // Per-SKU marketplace commission (Prom/Rozetka) для показу в розбивці по позиціях
                               const commItems = order.channel_code === 'prom' ? order.prom_data?._commission?.items
