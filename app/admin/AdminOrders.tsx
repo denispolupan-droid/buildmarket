@@ -323,7 +323,7 @@ export default function AdminOrders({
   const [discMode,         setDiscMode]         = useState<Record<string, 'pct' | 'amount'>>({});
   const [priceBlockOpen,   setPriceBlockOpen]   = useState<Record<string, boolean>>({});
   const [econBlockOpen,    setEconBlockOpen]    = useState<Record<string, boolean>>({});
-  const [itemsBlockOpen,   setItemsBlockOpen]   = useState<Record<string, boolean>>({});
+  const [itemImages,       setItemImages]       = useState<Record<string, Record<string, string | null>>>({});
   const [payFormSaving,    setPayFormSaving]    = useState<Record<string, boolean>>({});
   const [payRemoving,      setPayRemoving]      = useState<string | null>(null);
 
@@ -553,6 +553,22 @@ export default function AdminOrders({
   // Auto-load fulfillment data when order is expanded
   useEffect(() => {
     if (expandedId) loadFulfillment(expandedId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedId]);
+
+  // Мініатюри фото товарів — підвантажуємо шляхи з products по SKU при розкритті
+  useEffect(() => {
+    if (!expandedId || itemImages[expandedId]) return;
+    const ord = orders.find(o => o.id === expandedId);
+    const skus = ((ord?.items ?? []) as OrderItem[]).map(i => i.sku).filter(Boolean);
+    if (skus.length === 0) return;
+    (async () => {
+      const sb = getSupabaseBrowser();
+      const { data } = await sb.from('products').select('sku, image').in('sku', skus);
+      const map: Record<string, string | null> = {};
+      (data ?? []).forEach((p: { sku: string; image: string | null }) => { map[p.sku] = p.image; });
+      setItemImages(prev => ({ ...prev, [expandedId]: map }));
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedId]);
 
@@ -1683,12 +1699,9 @@ export default function AdminOrders({
                     <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column' }}>
                       <div style={{ paddingTop: '0', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <button
-                            onClick={() => setItemsBlockOpen(p => ({ ...p, [order.id]: !(p[order.id] ?? false) }))}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            {(itemsBlockOpen[order.id] ?? false) ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             Товари · {order.items.length}
-                          </button>
+                          </span>
                           <button
                             onClick={() => editingId === order.id ? setEditingId(null) : startEdit(order)}
                             style={{
@@ -1771,8 +1784,7 @@ export default function AdminOrders({
                           </div>
                         ) : (
                           <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                            {/* Items table — виділено брендовою панеллю, згортається/розгортається */}
-                            {(itemsBlockOpen[order.id] ?? false) ? (
+                            {/* Items table — виділено брендовою панеллю */}
                             <div style={{ background: '#E3EDF9', border: '1px solid #CADCEF', borderRadius: '10px', padding: '4px 12px 6px' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                               <thead>
@@ -1805,15 +1817,28 @@ export default function AdminOrders({
                                       : undefined;
                                     return (
                                       <tr key={item.sku} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                                        {/* Назва — на очах: назва зверху жирнішим, код нижче */}
+                                        {/* Назва — мініатюра + назва зверху жирнішим, код нижче */}
                                         <td style={{ padding: '10px 0', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3, verticalAlign: 'top' }}>
-                                          <span style={{ color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, lineHeight: 1.35, letterSpacing: '-0.006em' }}>{item.name}</span>
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '10.5px', fontFamily: 'monospace' }}>{item.sku}</span>
-                                            <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
-                                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: copiedSku === item.sku ? '#15803D' : 'var(--text-muted)', lineHeight: 1, fontSize: '11px' }}>
-                                              {copiedSku === item.sku ? '✓' : '⎘'}
-                                            </button>
+                                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', minWidth: 0 }}>
+                                            {(() => {
+                                              const img = itemImages[order.id]?.[item.sku];
+                                              return (
+                                                <div style={{ width: '40px', height: '40px', borderRadius: '8px', flexShrink: 0, border: '1px solid #CADCEF', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                  background: img ? `#fff url("${img}") center/cover no-repeat` : '#fff' }}>
+                                                  {!img && <Package size={16} color="var(--text-muted)" />}
+                                                </div>
+                                              );
+                                            })()}
+                                            <div style={{ minWidth: 0 }}>
+                                              <span style={{ color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, lineHeight: 1.35, letterSpacing: '-0.006em' }}>{item.name}</span>
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
+                                                <span style={{ color: 'var(--text-muted)', fontSize: '10.5px', fontFamily: 'monospace' }}>{item.sku}</span>
+                                                <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
+                                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: copiedSku === item.sku ? '#15803D' : 'var(--text-muted)', lineHeight: 1, fontSize: '11px' }}>
+                                                  {copiedSku === item.sku ? '✓' : '⎘'}
+                                                </button>
+                                              </div>
+                                            </div>
                                           </div>
                                         </td>
                                         <td style={{ padding: '10px 6px', color: 'var(--text-primary)', textAlign: 'right', fontSize: '12.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'top' }}>{item.qty}</td>
@@ -1858,34 +1883,6 @@ export default function AdminOrders({
                               </tbody>
                             </table>
                             </div>
-                            ) : (() => {
-                              const first = order.items[0];
-                              const more  = order.items.length - 1;
-                              if (!first) return null;
-                              return (
-                                <div onClick={() => setItemsBlockOpen(p => ({ ...p, [order.id]: true }))}
-                                  title="Показати всі товари"
-                                  style={{ background: '#E3EDF9', border: '1px solid #CADCEF', borderRadius: '10px', padding: '10px 12px', cursor: 'pointer' }}>
-                                  {/* Перший товар */}
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'flex-start' }}>
-                                    <div style={{ minWidth: 0 }}>
-                                      <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{first.name}</div>
-                                      <div style={{ fontSize: '10.5px', fontFamily: 'monospace', color: 'var(--text-muted)', marginTop: '2px' }}>{first.sku}</div>
-                                    </div>
-                                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                      <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{first.is_bonus ? 'Бонус' : `${(first.price * first.qty).toFixed(0)} ₴`}</div>
-                                      {!first.is_bonus && <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', marginTop: '2px' }}>{first.qty} × {first.price.toFixed(0)} ₴</div>}
-                                    </div>
-                                  </div>
-                                  {/* Є ще товари — натяк, що список розгортається */}
-                                  {more > 0 && (
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #CADCEF', fontSize: '12px', fontWeight: 600, color: 'var(--brand-blue)' }}>
-                                      Показати ще {more} {more === 1 ? 'товар' : more < 5 ? 'товари' : 'товарів'} <ChevronDown size={13} />
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })()}
 
                             {/* Тип цін + ручна знижка — впливають на ціни позицій і підсумок, тому поряд із товарами */}
                             {(() => {
