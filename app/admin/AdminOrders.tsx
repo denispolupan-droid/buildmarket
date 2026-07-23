@@ -327,6 +327,7 @@ export default function AdminOrders({
   const [priceBlockOpen,   setPriceBlockOpen]   = useState<Record<string, boolean>>({});
   const [finLogOpen,       setFinLogOpen]       = useState<Record<string, boolean>>({});
   const [statusEditOpen,   setStatusEditOpen]   = useState<Record<string, boolean>>({});
+  const [itemsExpanded,    setItemsExpanded]    = useState<Record<string, boolean>>({});
   const [itemImages,       setItemImages]       = useState<Record<string, Record<string, string | null>>>({});
   const [payFormSaving,    setPayFormSaving]    = useState<Record<string, boolean>>({});
   const [payRemoving,      setPayRemoving]      = useState<string | null>(null);
@@ -1900,8 +1901,10 @@ export default function AdminOrders({
                                     return sourceOverrides[order.id]?.[item.sku] ?? planSrc?.fulfillment_type;
                                   }).filter(Boolean);
                                   const isMixed = new Set(sources).size > 1;
+                                  const expanded = itemsExpanded[order.id] ?? false;
+                                  const shown = expanded ? order.items : order.items.slice(0, 1);
 
-                                  return order.items.map(item => {
+                                  const rows = shown.map(item => {
                                     const planSrc = planItems.find(s => s.sku === item.sku);
                                     const effectiveSrc = sourceOverrides[order.id]?.[item.sku] ?? planSrc?.fulfillment_type;
                                     const supplierName = fulfillmentData[order.id]?.by_supplier?.flatMap(g => g.items).find(i => i.sku === item.sku)?.supplier_name;
@@ -1985,6 +1988,21 @@ export default function AdminOrders({
                                       </tr>
                                     );
                                   });
+                                  if (order.items.length > 1) {
+                                    rows.push(
+                                      <tr key="__more">
+                                        <td colSpan={6} style={{ padding: '8px 0 2px' }}>
+                                          <button type="button" onClick={() => setItemsExpanded(p => ({ ...p, [order.id]: !expanded }))}
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '12px', fontWeight: 600, color: 'var(--brand-blue)' }}>
+                                            {expanded
+                                              ? <><ChevronUp size={14} /> Згорнути список</>
+                                              : <><ChevronDown size={14} /> Показати ще {order.items.length - 1} {order.items.length - 1 === 1 ? 'товар' : order.items.length - 1 < 5 ? 'товари' : 'товарів'}</>}
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    );
+                                  }
+                                  return rows;
                                 })()}
                               </tbody>
                             </table>
