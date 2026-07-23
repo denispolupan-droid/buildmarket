@@ -1467,13 +1467,6 @@ export default function AdminOrders({
               && !['delivered', 'cancelled'].includes(order.status);
             const isFlashing = flashId === order.id;
 
-            const STATUS_STEPS = [
-              { value: 'new',           label: 'Новий' },
-              { value: 'confirmed',     label: 'Підтверджено' },
-              { value: 'shipped',       label: 'Відправлено' },
-              { value: 'delivered',     label: 'Доставлено' },
-            ];
-            const stepIdx = STATUS_STEPS.findIndex(s => s.value === order.status);
             const isCancelled = order.status === 'cancelled';
 
             return (
@@ -1633,35 +1626,7 @@ export default function AdminOrders({
                   }
                 </div>
 
-                {/* ── Status progress bar — лише у розкритому замовленні (у списку достатньо status-pill) ── */}
-                {!isCancelled && isExpanded && (
-                  <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px 10px', gap: 0, borderTop: '1px solid var(--border-light)', background: 'var(--bg-soft)' }}>
-                    {STATUS_STEPS.map((step, i) => {
-                      const done    = i < stepIdx;
-                      const active  = i === stepIdx;
-                      const future  = i > stepIdx;
-                      return (
-                        <div key={step.value} style={{ display: 'flex', alignItems: 'center', flex: i < STATUS_STEPS.length - 1 ? 1 : 'none' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                            <div style={{
-                              width: active ? '9px' : '6px', height: active ? '9px' : '6px',
-                              borderRadius: '50%', flexShrink: 0,
-                              background: done ? '#A9D7B9' : active ? (isFlashing ? '#22C55E' : 'var(--brand-teal)') : '#D5DCE5',
-                              boxShadow: active ? `0 0 0 2px ${isFlashing ? '#BBF7D0' : 'rgba(61,191,184,0.22)'}` : 'none',
-                              transition: 'all 0.3s',
-                            }} />
-                            <span style={{ fontSize: '9px', fontWeight: active ? 600 : 500, color: done ? 'var(--text-muted)' : active ? (isFlashing ? '#16A34A' : '#0F766E') : '#9AA6B8', whiteSpace: 'nowrap' }}>
-                              {step.label}
-                            </span>
-                          </div>
-                          {i < STATUS_STEPS.length - 1 && (
-                            <div style={{ flex: 1, height: '2px', margin: '0 3px 10px', background: done ? '#CBE7D5' : '#E8ECF1', borderRadius: '1px', transition: 'background 0.3s' }} />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                {/* Верхній прогрес-бар статусів прибрано — унизу є таймлайн «Історія замовлення» */}
 
                 {/* ── Expanded panel ── */}
                 {isExpanded && (
