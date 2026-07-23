@@ -2288,74 +2288,6 @@ export default function AdminOrders({
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
                       </div>
 
-                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Доставка</div>
-                      {editDeliveryId === order.id ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                          <select
-                            value={editDeliveryForm.type}
-                            onChange={e => setEditDeliveryForm(p => ({ ...p, type: e.target.value, cityName: '', address: '' }))}
-                            style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 6px' }}>
-                            <option value="nova">Нова Пошта</option>
-                            <option value="pickup">Самовивіз</option>
-                            <option value="kharkiv">Харків і область</option>
-                          </select>
-                          {editDeliveryForm.type === 'nova' && (
-                            <>
-                              <select
-                                value={editDeliveryForm.subtype}
-                                onChange={e => setEditDeliveryForm(p => ({ ...p, subtype: e.target.value }))}
-                                style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 6px' }}>
-                                <option value="warehouse">Відділення</option>
-                                <option value="courier">Кур'єр</option>
-                              </select>
-                              <input
-                                value={editDeliveryForm.cityName}
-                                onChange={e => setEditDeliveryForm(p => ({ ...p, cityName: e.target.value }))}
-                                placeholder="Місто"
-                                style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 8px' }} />
-                              <input
-                                value={editDeliveryForm.address}
-                                onChange={e => setEditDeliveryForm(p => ({ ...p, address: e.target.value }))}
-                                placeholder="Відділення або адреса"
-                                style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 8px' }} />
-                            </>
-                          )}
-                          {editDeliveryForm.type === 'kharkiv' && (
-                            <input
-                              value={editDeliveryForm.address}
-                              onChange={e => setEditDeliveryForm(p => ({ ...p, address: e.target.value }))}
-                              placeholder="Адреса доставки"
-                              style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 8px' }} />
-                          )}
-                          <div style={{ display: 'flex', gap: '6px' }}>
-                            <button
-                              onClick={() => saveDelivery(order.id)}
-                              disabled={savingDelivery}
-                              style={{ height: '28px', padding: '0 12px', borderRadius: '6px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
-                              {savingDelivery ? '...' : 'Зберегти'}
-                            </button>
-                            <button
-                              onClick={() => setEditDeliveryId(null)}
-                              style={{ height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', fontSize: '12px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                              Скасувати
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', flexWrap: 'wrap', fontSize: '13px', color: 'var(--text-primary)' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                            <Truck size={13} color="#64748B" /> {delivery}
-                          </span>
-                          <span style={{ color: 'var(--text-secondary)', marginTop: '1px' }}>{subtype.replace(/^ — /, '')}{order.delivery_city_name && <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{subtype ? ' · ' : ''}{order.delivery_city_name}</strong>}{order.delivery_address && ` · ${order.delivery_address}`}</span>
-                          <button
-                            onClick={() => openEditDelivery(order)}
-                            title="Змінити доставку"
-                            style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1 }}>
-                            <Pencil size={11} />
-                          </button>
-                        </div>
-                      )}
-
                       <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Оплата</div>
                       {editPaymentTypeId === order.id ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
@@ -2541,7 +2473,73 @@ export default function AdminOrders({
                         );
                       })()}
 
-
+                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Доставка</div>
+                      {editDeliveryId === order.id ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                          <select
+                            value={editDeliveryForm.type}
+                            onChange={e => setEditDeliveryForm(p => ({ ...p, type: e.target.value, cityName: '', address: '' }))}
+                            style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 6px' }}>
+                            <option value="nova">Нова Пошта</option>
+                            <option value="pickup">Самовивіз</option>
+                            <option value="kharkiv">Харків і область</option>
+                          </select>
+                          {editDeliveryForm.type === 'nova' && (
+                            <>
+                              <select
+                                value={editDeliveryForm.subtype}
+                                onChange={e => setEditDeliveryForm(p => ({ ...p, subtype: e.target.value }))}
+                                style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 6px' }}>
+                                <option value="warehouse">Відділення</option>
+                                <option value="courier">Кур'єр</option>
+                              </select>
+                              <input
+                                value={editDeliveryForm.cityName}
+                                onChange={e => setEditDeliveryForm(p => ({ ...p, cityName: e.target.value }))}
+                                placeholder="Місто"
+                                style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 8px' }} />
+                              <input
+                                value={editDeliveryForm.address}
+                                onChange={e => setEditDeliveryForm(p => ({ ...p, address: e.target.value }))}
+                                placeholder="Відділення або адреса"
+                                style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 8px' }} />
+                            </>
+                          )}
+                          {editDeliveryForm.type === 'kharkiv' && (
+                            <input
+                              value={editDeliveryForm.address}
+                              onChange={e => setEditDeliveryForm(p => ({ ...p, address: e.target.value }))}
+                              placeholder="Адреса доставки"
+                              style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 8px' }} />
+                          )}
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button
+                              onClick={() => saveDelivery(order.id)}
+                              disabled={savingDelivery}
+                              style={{ height: '28px', padding: '0 12px', borderRadius: '6px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                              {savingDelivery ? '...' : 'Зберегти'}
+                            </button>
+                            <button
+                              onClick={() => setEditDeliveryId(null)}
+                              style={{ height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', fontSize: '12px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                              Скасувати
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', flexWrap: 'wrap', fontSize: '13px', color: 'var(--text-primary)' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            <Truck size={13} color="#64748B" /> {delivery}
+                          </span>
+                          <span style={{ color: 'var(--text-secondary)', marginTop: '1px' }}>{subtype.replace(/^ — /, '')}{order.delivery_city_name && <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{subtype ? ' · ' : ''}{order.delivery_city_name}</strong>}{order.delivery_address && ` · ${order.delivery_address}`}</span>
+                          <button
+                            onClick={() => openEditDelivery(order)}
+                            title="Змінити доставку"
+                            style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1 }}>
+                            <Pencil size={11} />
+                          </button>
+                        </div>
+                      )}
 
                       {(() => {
                         const displayComment = order.comment?.split('\n').filter(line => !line.includes('Не передзвонювати')).join('\n').trim();
