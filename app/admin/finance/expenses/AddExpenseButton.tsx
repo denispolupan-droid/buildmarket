@@ -23,7 +23,7 @@ export default function AddExpenseButton() {
   const [amount, setAmount] = useState('');
   const [desc, setDesc] = useState('');
   const [cp, setCp] = useState('');
-  const [method, setMethod] = useState<'bank' | 'cash'>('bank');
+  const [method, setMethod] = useState<'bank' | 'cash' | 'novapay'>('bank');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
 
@@ -88,8 +88,9 @@ export default function AddExpenseButton() {
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#92400E', textTransform: 'uppercase', marginBottom: '4px' }}>Оплата</label>
-            <select value={method} onChange={e => setMethod(e.target.value as 'bank' | 'cash')} style={{ ...inp, cursor: 'pointer' }}>
-              <option value="bank">🏦 Банк</option>
+            <select value={method} onChange={e => setMethod(e.target.value as 'bank' | 'cash' | 'novapay')} style={{ ...inp, cursor: 'pointer' }}>
+              <option value="bank">🏦 Монобанк</option>
+              <option value="novapay">💜 НоваПей</option>
               <option value="cash">💵 Готівка (РКО)</option>
             </select>
           </div>

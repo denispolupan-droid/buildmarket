@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import AddExpenseButton from './AddExpenseButton';
+import AddTransferButton from './AddTransferButton';
 
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
@@ -104,7 +105,10 @@ export default async function ExpensesPage({
             </p>
           </div>
         </div>
-        <AddExpenseButton />
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <AddTransferButton />
+          <AddExpenseButton />
+        </div>
       </div>
 
       {/* Date filter */}
