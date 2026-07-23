@@ -3,8 +3,7 @@ import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const db     = createServiceClient();
+const db = createServiceClient();
 
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer();
@@ -19,7 +18,7 @@ export async function POST(req: NextRequest) {
 
   // Налаштування відправника
   const { data: settingsRows } = await db.from('app_settings').select('key, value')
-    .in('key', ['orders_from_email', 'orders_from_name', 'company_contact_name', 'company_contact_phone', 'extra_senders']);
+    .in('key', ['orders_from_email', 'orders_from_name', 'company_contact_name', 'company_contact_phone', 'extra_senders', 'resend_keys']);
   const cfg: Record<string, string> = {};
   (settingsRows ?? []).forEach(r => { cfg[r.key] = r.value; });
 
@@ -36,6 +35,16 @@ export async function POST(req: NextRequest) {
   const fromName    = chosen.name || primary.name;
   const contactName = cfg.company_contact_name || '';
   const contactPhone= cfg.company_contact_phone|| '';
+
+  // Ключ Resend по домену відправника. Бо на безкоштовному Resend лише 1 домен —
+  // інші домени (напр. budmag.biz.ua) обслуговує окремий безкоштовний акаунт зі
+  // своїм ключем. resend_keys — JSON { "budmag.biz.ua": "re_..." }. Фолбек —
+  // основний ключ з env (домен fixline).
+  const senderDomain = fromEmail.split('@')[1]?.toLowerCase() ?? '';
+  let resendKeys: Record<string, string> = {};
+  try { const p = JSON.parse(cfg.resend_keys || '{}'); if (p && typeof p === 'object') resendKeys = p; } catch { /* ignore */ }
+  const resendKey = resendKeys[senderDomain] || process.env.RESEND_API_KEY;
+  const resend = new Resend(resendKey);
 
   // Отримуємо документи + рядки + постачальника
   const { data: docs } = await db
