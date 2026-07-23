@@ -1667,8 +1667,8 @@ export default function AdminOrders({
                     </div>
                     {/* Права половина: сума (ліворуч, по межі блоку «Оплата») + «Підтвердити» поруч */}
                     <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                    <div style={{ flexShrink: 0 }}>
-                      <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{Number(order.total_price).toFixed(0)} ₴</div>
+                    <div style={{ flexShrink: 0, minWidth: '120px' }}>
+                      <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{Number(order.total_price).toFixed(0)} ₴</div>
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Сума замовлення</div>
                     </div>
                     <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
@@ -1676,7 +1676,7 @@ export default function AdminOrders({
                       const busy = confirming === order.id;
                       const confirmErr = confirmErrors[order.id];
                       return (
-                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '6px' }}>
+                        <div style={{ flex: 1, minWidth: 0, maxWidth: '320px', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '6px' }}>
                           <button onClick={() => confirmOrder(order.id)} disabled={busy}
                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', height: '44px', padding: '0 22px', borderRadius: '12px', border: 'none', background: busy ? '#94A3B8' : '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer', boxShadow: '0 1px 2px rgba(30,58,95,0.35)', whiteSpace: 'nowrap' }}>
                             {busy ? 'Обробка…' : <><Check size={17} /> Підтвердити замовлення</>}
