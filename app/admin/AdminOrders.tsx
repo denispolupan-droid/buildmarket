@@ -2001,6 +2001,10 @@ export default function AdminOrders({
                               );
                             })()}
 
+                            {/* Ряд Фінанси | Логістика | ТТН — під таблицею товарів (референс) */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginTop: '12px', alignItems: 'start' }}>
+                            <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>Фінанси</div>
                             {/* Економіка замовлення — виручка / собівартість / комісія / маржа завжди на очах */}
                             {(() => {
                               const fi = fulfillmentData[order.id];
@@ -2099,6 +2103,9 @@ export default function AdminOrders({
                               );
                             })()}
 
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Логістика</div>
                             {/* Спосіб виконання + Відвантажує пост. — в один рядок, однакова висота */}
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px', alignItems: 'stretch' }}>
                             {order.status === 'new' && (() => {
@@ -2156,6 +2163,89 @@ export default function AdminOrders({
                                 ℹ️ Власний склад недоступний — всі товари у постачальника
                               </div>
                             )}
+                            </div>
+                            {/* ТТН колонка — перенесено під товари */}
+                            <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>ТТН Нової Пошти</div>
+                            {(order.delivery_type === 'nova' || order.delivery_type === 'nova_poshta') ? (
+                              <div>
+                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                  <div style={{ position: 'relative', flex: '1 1 140px', minWidth: 0 }}>
+                                    <Hash size={12} color="#94A3B8" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }} />
+                                    <input type="text" value={ttnValues[order.id] ?? ''} onChange={e => setTtnValues(prev => ({ ...prev, [order.id]: e.target.value }))}
+                                      placeholder="59000000000000"
+                                      style={{ width: '100%', height: '32px', paddingLeft: '26px', paddingRight: '8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                                  </div>
+                                  <button onClick={() => saveTTN(order.id)} disabled={ttnSaving === order.id || !!order.tracking_number}
+                                    style={{ height: '32px', padding: '0 12px', borderRadius: '7px', background: '#1E3A5F', color: '#fff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: (ttnSaving === order.id || !!order.tracking_number) ? 'default' : 'pointer', opacity: (ttnSaving === order.id || !!order.tracking_number) ? 0.4 : 1 }}>
+                                    {ttnSaving === order.id ? '...' : 'Зберегти'}
+                                  </button>
+                                  {(() => {
+                                    const hasTtn = !!order.tracking_number;
+                                    return (
+                                      <button
+                                        onClick={() => !hasTtn && setTtnModalOrder(order)}
+                                        disabled={hasTtn}
+                                        title={hasTtn ? 'ТТН вже створена' : 'Створити ТТН через API Нової Пошти'}
+                                        style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
+                                          background: hasTtn ? 'var(--border-light)' : 'var(--brand-blue-light)',
+                                          color: hasTtn ? 'var(--text-muted)' : 'var(--brand-blue)',
+                                          border: `1.5px solid ${hasTtn ? 'var(--border)' : '#C7D7F5'}`,
+                                          cursor: hasTtn ? 'default' : 'pointer',
+                                          display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Truck size={14} />
+                                      </button>
+                                    );
+                                  })()}
+                                  {order.tracking_number && (() => {
+                                    const inReg = registryAdded.has(order.tracking_number);
+                                    const isAddingReg = registryAdding === order.id;
+                                    return (
+                                      <button
+                                        onClick={() => !inReg && addToRegistry(order.id, order.tracking_number!)}
+                                        disabled={inReg || isAddingReg}
+                                        title={inReg ? 'Вже в реєстрі НП' : 'Додати в реєстр НП'}
+                                        style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
+                                          background: inReg ? '#DCFCE7' : '#F0FDF4', color: '#15803D',
+                                          border: '1.5px solid #86EFAC', cursor: inReg ? 'default' : 'pointer',
+                                          display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {isAddingReg ? '…' : inReg ? <Check size={14} /> : <ClipboardList size={14} />}
+                                      </button>
+                                    );
+                                  })()}
+                                  {order.tracking_number && (
+                                    <button onClick={() => deleteTTN(order.id)} disabled={ttnDeleting === order.id}
+                                      title="Видалити ТТН з бази та з НП"
+                                      style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0, background: '#FEF2F2', color: '#DC2626', border: '1.5px solid #FECACA', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: ttnDeleting === order.id ? 0.5 : 1 }}>
+                                      {ttnDeleting === order.id ? '…' : <Trash2 size={14} />}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Доставка не Нова Пошта</div>
+                            )}
+                            {['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
+                              && (['supplier', 'mixed'].includes(order.fulfillment_mode ?? 'supplier') || !!order.supplier_sent_at) && (
+                              <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
+                                style={{ display: 'flex', alignItems: order.supplier_sent_at ? 'flex-start' : 'center', justifyContent: order.supplier_sent_at ? 'flex-start' : 'center', gap: '7px', width: '100%', marginTop: '8px', boxSizing: 'border-box', fontSize: '13px', fontWeight: 600, cursor: supplierQueueLoading ? 'wait' : 'pointer',
+                                  ...(order.supplier_sent_at ? { padding: '8px 12px' } : { height: '40px', padding: '0 12px' }),
+                                  borderRadius: '9px',
+                                  border: order.supplier_sent_at ? '1.5px solid #86EFAC' : '1.5px solid #93C5FD',
+                                  background: order.supplier_sent_at ? '#F0FDF4' : '#EFF6FF',
+                                  color: order.supplier_sent_at ? '#15803D' : '#1E3A5F',
+                                  opacity: supplierQueueLoading ? 0.6 : 1 }}>
+                                <Mail size={15} style={{ flexShrink: 0, marginTop: order.supplier_sent_at ? '2px' : 0 }} />
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '1px' }}>
+                                  <span>{order.supplier_sent_at ? 'Надіслано постачальнику' : 'Надіслати постачальнику'}</span>
+                                  {order.supplier_sent_at && (
+                                    <span style={{ fontSize: '10px', opacity: 0.75 }}>{new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · натисніть щоб надіслати ще раз</span>
+                                  )}
+                                </div>
+                              </button>
+                            )}
+                            </div>
+                            </div>
                             <button onClick={() => toggleFulfillment(order.id)}
                               style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontSize: '12px', fontWeight: 600, color: fulfillmentOpen.has(order.id) ? 'var(--brand-blue)' : 'var(--text-secondary)' }}>
                               <TrendingUp size={12} />
@@ -2577,88 +2667,7 @@ export default function AdminOrders({
                         ) : null;
                       })()}
 
-                      {(order.delivery_type === 'nova' || order.delivery_type === 'nova_poshta') && (
-                        <div>
-                          <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ТТН Нової Пошти</div>
-                          <div style={{ display: 'flex', gap: '6px' }}>
-                            <div style={{ position: 'relative', flex: 1 }}>
-                              <Hash size={12} color="#94A3B8" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }} />
-                              <input type="text" value={ttnValues[order.id] ?? ''} onChange={e => setTtnValues(prev => ({ ...prev, [order.id]: e.target.value }))}
-                                placeholder="59000000000000"
-                                style={{ width: '100%', height: '32px', paddingLeft: '26px', paddingRight: '8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
-                            </div>
-                            <button onClick={() => saveTTN(order.id)} disabled={ttnSaving === order.id || !!order.tracking_number}
-                              style={{ height: '32px', padding: '0 12px', borderRadius: '7px', background: '#1E3A5F', color: '#fff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: (ttnSaving === order.id || !!order.tracking_number) ? 'default' : 'pointer', opacity: (ttnSaving === order.id || !!order.tracking_number) ? 0.4 : 1 }}>
-                              {ttnSaving === order.id ? '...' : 'Зберегти'}
-                            </button>
-                            {(order.delivery_type === 'nova' || order.delivery_type === 'nova_poshta') && (() => {
-                              const hasTtn = !!order.tracking_number;
-                              return (
-                                <button
-                                  onClick={() => !hasTtn && setTtnModalOrder(order)}
-                                  disabled={hasTtn}
-                                  title={hasTtn ? 'ТТН вже створена' : 'Створити ТТН через API Нової Пошти'}
-                                  style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
-                                    background: hasTtn ? 'var(--border-light)' : 'var(--brand-blue-light)',
-                                    color: hasTtn ? 'var(--text-muted)' : 'var(--brand-blue)',
-                                    border: `1.5px solid ${hasTtn ? 'var(--border)' : '#C7D7F5'}`,
-                                    cursor: hasTtn ? 'default' : 'pointer',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  <Truck size={14} />
-                                </button>
-                              );
-                            })()}
-                            {order.tracking_number && (() => {
-                              const inReg = registryAdded.has(order.tracking_number);
-                              const isAddingReg = registryAdding === order.id;
-                              return (
-                                <button
-                                  onClick={() => !inReg && addToRegistry(order.id, order.tracking_number!)}
-                                  disabled={inReg || isAddingReg}
-                                  title={inReg ? 'Вже в реєстрі НП' : 'Додати в реєстр НП'}
-                                  style={{
-                                    height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
-                                    background: inReg ? '#DCFCE7' : '#F0FDF4',
-                                    color: inReg ? '#15803D' : '#15803D',
-                                    border: `1.5px solid ${inReg ? '#86EFAC' : '#86EFAC'}`,
-                                    cursor: inReg ? 'default' : 'pointer',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  }}>
-                                  {isAddingReg ? '…' : inReg ? <Check size={14} /> : <ClipboardList size={14} />}
-                                </button>
-                              );
-                            })()}
-                            {order.tracking_number && (
-                              <button onClick={() => deleteTTN(order.id)} disabled={ttnDeleting === order.id}
-                                title="Видалити ТТН з бази та з НП"
-                                style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0, background: '#FEF2F2', color: '#DC2626', border: '1.5px solid #FECACA', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: ttnDeleting === order.id ? 0.5 : 1 }}>
-                                {ttnDeleting === order.id ? '…' : <Trash2 size={14} />}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Надіслати постачальнику — під ТТН, у розділі доставки */}
-                      {['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
-                        && (['supplier', 'mixed'].includes(order.fulfillment_mode ?? 'supplier') || !!order.supplier_sent_at) && (
-                        <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
-                          style={{ display: 'flex', alignItems: order.supplier_sent_at ? 'flex-start' : 'center', justifyContent: order.supplier_sent_at ? 'flex-start' : 'center', gap: '7px', width: '100%', marginTop: 'auto', boxSizing: 'border-box', fontSize: '13px', fontWeight: 600, cursor: supplierQueueLoading ? 'wait' : 'pointer',
-                            ...(order.supplier_sent_at ? { padding: '8px 12px' } : { height: '40px', padding: '0 12px' }),
-                            borderRadius: '9px',
-                            border: order.supplier_sent_at ? '1.5px solid #86EFAC' : '1.5px solid #93C5FD',
-                            background: order.supplier_sent_at ? '#F0FDF4' : '#EFF6FF',
-                            color: order.supplier_sent_at ? '#15803D' : '#1E3A5F',
-                            opacity: supplierQueueLoading ? 0.6 : 1 }}>
-                          <Mail size={15} style={{ flexShrink: 0, marginTop: order.supplier_sent_at ? '2px' : 0 }} />
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '1px' }}>
-                            <span>{order.supplier_sent_at ? 'Надіслано постачальнику' : 'Надіслати постачальнику'}</span>
-                            {order.supplier_sent_at && (
-                              <span style={{ fontSize: '10px', opacity: 0.75 }}>{new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · натисніть щоб надіслати ще раз</span>
-                            )}
-                          </div>
-                        </button>
-                      )}
+                      {/* ТТН і «Надіслати постачальнику» перенесено під таблицю товарів (колонка ТТН) */}
 
                     </div>
                     {/* /Доставка card + /grid Клієнт|Доставка */}
