@@ -1633,7 +1633,9 @@ export default function AdminOrders({
                 {isExpanded && (
                   <>
                   {/* Шапка розгорнутого замовлення — новий дизайн */}
-                  <div style={{ borderTop: '1px solid var(--border-light)', background: 'var(--bg-soft)', padding: '16px 18px 14px', display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                  <div style={{ borderTop: '1px solid var(--border-light)', background: 'var(--bg-soft)', padding: '16px 14px 14px', display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                    {/* main-part — дзеркалить основну область сітки (Клієнт | Оплата) */}
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Замовлення #{order.order_number}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '9px', flexWrap: 'wrap' }}>
@@ -1696,7 +1698,10 @@ export default function AdminOrders({
                         </div>
                       );
                     })()}
-                    {/* Статус замовлення — правий верхній кут, шириною як панель «Дії»; «...» = ручна зміна */}
+                    </div>{/* /кнопка Підтвердити */}
+                    </div>{/* /Оплата-part */}
+                    </div>{/* /main-part */}
+                    {/* Статус — над правою панеллю (250px), «...» = ручна зміна */}
                     <div style={{ width: '250px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', borderRadius: '10px', color: status.color, background: status.bg, border: `1.5px solid ${status.color}` }}>
                         <span style={{ fontSize: '14px', fontWeight: 700, whiteSpace: 'nowrap' }}>{status.label}</span>
@@ -1735,8 +1740,6 @@ export default function AdminOrders({
                         </div>
                       )}
                     </div>
-                    </div>{/* /кнопки */}
-                    </div>{/* /права половина */}
                   </div>
                   <div className="order-expand-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 250px', gap: '14px', padding: '14px', background: 'var(--bg-soft)', alignItems: 'start' }}>
 
