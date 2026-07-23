@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
-import { Resend } from 'resend';
+import { resolveSender } from '../../../../../lib/email-sender';
 
 const db = createServiceClient();
 
@@ -16,35 +16,16 @@ export async function POST(req: NextRequest) {
     { ids: string[]; comment?: string; overrideEmail?: string; senderEmail?: string };
   if (!ids?.length) return NextResponse.json({ error: 'ids required' }, { status: 400 });
 
-  // Налаштування відправника
-  const { data: settingsRows } = await db.from('app_settings').select('key, value')
-    .in('key', ['orders_from_email', 'orders_from_name', 'company_contact_name', 'company_contact_phone', 'extra_senders', 'resend_keys']);
+  // Відправник (основний / вибраний) + Resend-клієнт з ключем для домену — спільна логіка
+  const { fromEmail, fromName, resend } = await resolveSender(db, senderEmail);
+
+  // Контактні дані компанії для тіла листа
+  const { data: contactRows } = await db.from('app_settings').select('key, value')
+    .in('key', ['company_contact_name', 'company_contact_phone']);
   const cfg: Record<string, string> = {};
-  (settingsRows ?? []).forEach(r => { cfg[r.key] = r.value; });
-
-  // Дозволені відправники: основний + додаткові зі списку (extra_senders — JSON
-  // [{email,name}]). Вибір з фронту валідуємо по цьому списку — не даємо слати з
-  // довільного «from» (Resend і так пропустить лише верифіковані домени).
-  const primary = { email: cfg.orders_from_email || 'orders@fixline.com.ua', name: cfg.orders_from_name || 'FIXLINE' };
-  let extraSenders: { email: string; name: string }[] = [];
-  try { const p = JSON.parse(cfg.extra_senders || '[]'); if (Array.isArray(p)) extraSenders = p; } catch { /* ignore */ }
-  const allowed = [primary, ...extraSenders].filter(s => s?.email?.includes('@'));
-
-  const chosen = (senderEmail && allowed.find(s => s.email.toLowerCase() === senderEmail.toLowerCase())) || primary;
-  const fromEmail   = chosen.email;
-  const fromName    = chosen.name || primary.name;
+  (contactRows ?? []).forEach(r => { cfg[r.key] = r.value; });
   const contactName = cfg.company_contact_name || '';
   const contactPhone= cfg.company_contact_phone|| '';
-
-  // Ключ Resend по домену відправника. Бо на безкоштовному Resend лише 1 домен —
-  // інші домени (напр. budmag.biz.ua) обслуговує окремий безкоштовний акаунт зі
-  // своїм ключем. resend_keys — JSON { "budmag.biz.ua": "re_..." }. Фолбек —
-  // основний ключ з env (домен fixline).
-  const senderDomain = fromEmail.split('@')[1]?.toLowerCase() ?? '';
-  let resendKeys: Record<string, string> = {};
-  try { const p = JSON.parse(cfg.resend_keys || '{}'); if (p && typeof p === 'object') resendKeys = p; } catch { /* ignore */ }
-  const resendKey = resendKeys[senderDomain] || process.env.RESEND_API_KEY;
-  const resend = new Resend(resendKey);
 
   // Отримуємо документи + рядки + постачальника
   const { data: docs } = await db

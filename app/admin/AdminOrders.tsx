@@ -271,6 +271,15 @@ export default function AdminOrders({
   const [supplierQueueLoading, setSupplierQueueLoading] = useState(false);
   const [supplierQueueSending, setSupplierQueueSending] = useState(false);
   const [supplierQueueDone,    setSupplierQueueDone]    = useState(false);
+  // Відправники (основний + додаткові) — вибір «від кого» слати постачальнику
+  const [senders,      setSenders]      = useState<{ name: string; email: string }[]>([]);
+  const [chosenSender, setChosenSender] = useState('');
+  useEffect(() => {
+    fetch('/api/admin/procurement/senders')
+      .then(r => r.json())
+      .then(d => { const list = d.senders ?? []; setSenders(list); if (list[0]) setChosenSender(list[0].email); })
+      .catch(() => {});
+  }, []);
   const [ttnModalOrder,  setTtnModalOrder]  = useState<Order | null>(null);
   const [syncing,        setSyncing]        = useState(false);
   const [syncResult,     setSyncResult]     = useState<{ updated: number; accepted?: number; checked: number } | null>(null);
@@ -496,7 +505,7 @@ export default function AdminOrders({
       await fetch(`/api/admin/orders/${item.orderId}/supplier-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ overrideEmail: item.email || undefined, comment: item.comment || undefined }),
+        body: JSON.stringify({ overrideEmail: item.email || undefined, comment: item.comment || undefined, senderEmail: chosenSender || undefined }),
       });
       const sentAt = new Date().toISOString();
       setOrders(prev => prev.map(o => o.id === item.orderId ? { ...o, supplier_sent_at: sentAt } : o));
@@ -2968,6 +2977,21 @@ export default function AdminOrders({
                 </div>
               ) : item ? (
                 <div style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {/* Відправник — від кого слати постачальнику */}
+                  {senders.length > 1 && (
+                    <div>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <Mail size={11} /> Відправник
+                      </div>
+                      <select value={chosenSender} onChange={e => setChosenSender(e.target.value)}
+                        style={{ width: '100%', height: '38px', padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: 'var(--bg-soft)', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                        {senders.map(s => (
+                          <option key={s.email} value={s.email}>{s.name ? `${s.name} <${s.email}>` : s.email}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   {/* Contacts — radio buttons like ProcurementDetail */}
                   {item.contacts.length > 0 && (
                     <div>

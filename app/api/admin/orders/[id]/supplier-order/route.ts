@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
-import { Resend } from 'resend';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = 'FIXLINE <orders@fixline.com.ua>';
+import { resolveSender } from '../../../../../../lib/email-sender';
 
 type SkuMapping = { our_sku: string; supplier_id: number; supplier_sku: string };
 
@@ -104,6 +101,10 @@ export async function POST(
   const body = await _req.json().catch(() => ({}));
   const overrideEmail: string | undefined   = body.overrideEmail || undefined;
   const overrideComment: string | undefined = body.comment       || undefined;
+  const senderEmail: string | undefined     = body.senderEmail   || undefined;
+
+  // Відправник (основний / вибраний) + Resend-клієнт із ключем для домену
+  const { from: FROM, resend } = await resolveSender(db, senderEmail);
 
   const orderItems = (order.items ?? []) as { sku: string; name: string; brand: string; qty: number }[];
   const skus = orderItems.map(i => i.sku);
