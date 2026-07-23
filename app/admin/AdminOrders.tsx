@@ -1940,11 +1940,14 @@ export default function AdminOrders({
                               const net = gross != null ? gross - commission : undefined;
                               const netPct = net != null && revenue > 0 ? Math.round((net / revenue) * 1000) / 10 : undefined;
                               const finalColor = (v: number | undefined) => (v ?? 0) >= 0 ? '#15803D' : '#DC2626';
-                              const row = (label: string, value: string, opts: { color?: string; strong?: boolean; total?: boolean } = {}) => (
-                                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px',
+                              const row = (label: string, value: string, opts: { color?: string; strong?: boolean; total?: boolean; sub?: string } = {}) => (
+                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px',
                                   ...(opts.total ? { marginTop: '3px', paddingTop: '9px', borderTop: '1px solid var(--border-light)' } : {}) }}>
                                   <span style={{ fontSize: '12.5px', color: opts.total ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: opts.total ? 700 : 400 }}>{label}</span>
-                                  <span style={{ fontSize: '13px', fontWeight: (opts.strong || opts.total) ? 700 : 600, color: opts.color ?? 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{value}</span>
+                                  <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: 0 }}>
+                                    <span style={{ fontSize: '13px', fontWeight: (opts.strong || opts.total) ? 700 : 600, color: opts.color ?? 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{value}</span>
+                                    {opts.sub && <span style={{ fontSize: '11px', fontWeight: 600, color: opts.color ?? 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', marginTop: '1px' }}>{opts.sub}</span>}
+                                  </span>
                                 </div>
                               );
                               return (
@@ -1952,8 +1955,8 @@ export default function AdminOrders({
                                   {row('Виручка', `${revenue.toFixed(0)} ₴`)}
                                   {row('Собівартість', cost != null ? `${cost.toFixed(0)} ₴` : '…', { color: 'var(--text-secondary)' })}
                                   {commission > 0 && row('Комісія', `−${commission.toFixed(0)} ₴`, { color: '#C2410C' })}
-                                  {row('Маржа', gross != null ? `${gross.toFixed(0)} ₴${grossPct != null ? ` · ${grossPct}%` : ''}` : '…', { color: finalColor(gross), strong: true })}
-                                  {commission > 0 && row('Чистий дохід', net != null ? `${net.toFixed(0)} ₴${netPct != null ? ` · ${netPct}%` : ''}` : '…', { color: finalColor(net), total: true })}
+                                  {row('Маржа', gross != null ? `${gross.toFixed(0)} ₴` : '…', { color: finalColor(gross), strong: true, sub: grossPct != null ? `${grossPct}%` : undefined })}
+                                  {commission > 0 && row('Чистий дохід', net != null ? `${net.toFixed(0)} ₴` : '…', { color: finalColor(net), total: true, sub: netPct != null ? `${netPct}%` : undefined })}
                                 </div>
                               );
                             })()}
