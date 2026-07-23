@@ -1679,6 +1679,20 @@ export default function AdminOrders({
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, color: channel.color, background: channel.bg, whiteSpace: 'nowrap' }}>
                           <ShoppingCart size={12} />{channel.label}
                         </span>
+                        {(order.channel_code === 'rozetka' && order.rozetka_order_id) && (
+                          <button onClick={() => { navigator.clipboard.writeText(String(order.rozetka_order_id)); showToast('Номер Rozetka скопійовано'); }}
+                            title="Скопіювати номер замовлення Rozetka"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-card)', border: '1px solid var(--border-light)', whiteSpace: 'nowrap', cursor: 'pointer', fontVariantNumeric: 'tabular-nums' }}>
+                            №{order.rozetka_order_id} <Copy size={12} />
+                          </button>
+                        )}
+                        {(order.channel_code === 'prom' && order.prom_order_id) && (
+                          <button onClick={() => { navigator.clipboard.writeText(String(order.prom_order_id)); showToast('Номер Prom скопійовано'); }}
+                            title="Скопіювати номер замовлення Prom"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-card)', border: '1px solid var(--border-light)', whiteSpace: 'nowrap', cursor: 'pointer', fontVariantNumeric: 'tabular-nums' }}>
+                            №{order.prom_order_id} <Copy size={12} />
+                          </button>
+                        )}
                         <span style={{ display: 'inline-flex', alignItems: 'center', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-card)', border: '1px solid var(--border-light)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
                           {date}
                         </span>
@@ -2652,27 +2666,7 @@ export default function AdminOrders({
                       return (
                         <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', alignSelf: 'start' }}>
                           <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>Управління замовленням</div>
-                          {/* Джерело замовлення — явно, вгорі-праворуч */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                            <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Джерело</span>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '32px', borderRadius: '8px', color: channel.color, background: channel.bg, fontSize: '13px', fontWeight: 700 }}>
-                              <ShoppingCart size={14} /> {channel.label}
-                            </div>
-                            {(order.channel_code === 'rozetka' && order.rozetka_order_id) && (
-                              <button onClick={() => { navigator.clipboard.writeText(String(order.rozetka_order_id)); showToast('Номер Rozetka скопійовано'); }}
-                                title="Скопіювати номер замовлення Rozetka"
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', width: '100%', height: '28px', padding: '0 8px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontVariantNumeric: 'tabular-nums' }}>
-                                №{order.rozetka_order_id} <Copy size={12} />
-                              </button>
-                            )}
-                            {(order.channel_code === 'prom' && order.prom_order_id) && (
-                              <button onClick={() => { navigator.clipboard.writeText(String(order.prom_order_id)); showToast('Номер Prom скопійовано'); }}
-                                title="Скопіювати номер замовлення Prom"
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', width: '100%', height: '28px', padding: '0 8px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontVariantNumeric: 'tabular-nums' }}>
-                                №{order.prom_order_id} <Copy size={12} />
-                              </button>
-                            )}
-                          </div>
+                          {/* «Джерело» (канал + № замовлення) винесено у чипи шапки — тут не дублюємо */}
                           {/* Current status badge */}
                           <div style={{ fontSize: '13px', fontWeight: 700, padding: '6px 10px', borderRadius: '8px', color: status.color, background: status.bg, textAlign: 'center' }}>
                             {status.label}
