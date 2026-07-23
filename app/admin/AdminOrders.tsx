@@ -329,6 +329,7 @@ export default function AdminOrders({
   const [discInput,        setDiscInput]        = useState<Record<string, string>>({});
   const [discMode,         setDiscMode]         = useState<Record<string, 'pct' | 'amount'>>({});
   const [priceBlockOpen,   setPriceBlockOpen]   = useState<Record<string, boolean>>({});
+  const [econBlockOpen,    setEconBlockOpen]    = useState<Record<string, boolean>>({});
   const [payFormSaving,    setPayFormSaving]    = useState<Record<string, boolean>>({});
   const [payRemoving,      setPayRemoving]      = useState<string | null>(null);
 
@@ -1746,12 +1747,12 @@ export default function AdminOrders({
                             {/* Items table */}
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                               <thead>
-                                <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
-                                  <th style={{ textAlign: 'left', padding: '4px 0 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Назва</th>
-                                  <th style={{ textAlign: 'center', padding: '4px 6px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '40px', whiteSpace: 'nowrap' }}>К-сть</th>
-                                  <th style={{ textAlign: 'right', padding: '4px 6px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '60px', whiteSpace: 'nowrap' }}>Ціна</th>
-                                  <th style={{ textAlign: 'right', padding: '4px 0', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '64px' }}>Сума</th>
-                                  <th style={{ textAlign: 'right', padding: '4px 0 4px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '90px' }}>Джерело</th>
+                                <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                                  <th style={{ textAlign: 'left', padding: '4px 0 8px', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Назва</th>
+                                  <th style={{ textAlign: 'center', padding: '4px 6px', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', width: '44px', whiteSpace: 'nowrap' }}>К-сть</th>
+                                  <th style={{ textAlign: 'right', padding: '4px 6px', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', width: '62px', whiteSpace: 'nowrap' }}>Ціна</th>
+                                  <th style={{ textAlign: 'right', padding: '4px 0', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', width: '70px' }}>Сума</th>
+                                  <th style={{ textAlign: 'right', padding: '4px 0 4px 8px', color: 'var(--text-muted)', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', width: '90px' }}>Джерело</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -1775,22 +1776,25 @@ export default function AdminOrders({
                                       : undefined;
                                     return (
                                       <tr key={item.sku} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                                        {/* Назва повністю, з переносами — товар треба бачити цілком */}
-                                        <td style={{ padding: '5px 0', color: 'var(--text-primary)', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.4 }}>
-                                          <span style={{ color: 'var(--text-muted)', marginRight: '2px', fontSize: '11px' }}>{item.sku}</span>
-                                          <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
-                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px 0 0', color: copiedSku === item.sku ? '#15803D' : 'var(--text-muted)', lineHeight: 1, fontSize: '11px' }}>
-                                            {copiedSku === item.sku ? '✓' : '⎘'}
-                                          </button>{item.name}
+                                        {/* Назва — на очах: код зверху, назва нижче жирнішим */}
+                                        <td style={{ padding: '9px 0', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3 }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '2px' }}>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontFamily: 'monospace' }}>{item.sku}</span>
+                                            <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
+                                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: copiedSku === item.sku ? '#15803D' : 'var(--text-muted)', lineHeight: 1, fontSize: '11px' }}>
+                                              {copiedSku === item.sku ? '✓' : '⎘'}
+                                            </button>
+                                          </div>
+                                          <span style={{ color: 'var(--text-primary)', fontSize: '13.5px', fontWeight: 600 }}>{item.name}</span>
                                         </td>
-                                        <td style={{ padding: '5px 6px', color: 'var(--text-secondary)', textAlign: 'center' }}>{item.qty}</td>
-                                        <td style={{ padding: '5px 6px', textAlign: 'right', color: 'var(--text-muted)', fontSize: '11px' }}>
+                                        <td style={{ padding: '9px 6px', color: 'var(--text-primary)', textAlign: 'center', fontSize: '15px', fontWeight: 700 }}>{item.qty}</td>
+                                        <td style={{ padding: '9px 6px', textAlign: 'right', color: 'var(--text-secondary)', fontSize: '13px' }}>
                                           {item.is_bonus ? '' : `${item.price.toFixed(0)} ₴`}
                                         </td>
-                                        <td style={{ padding: '5px 0', textAlign: 'right', fontWeight: 500 }}>
+                                        <td style={{ padding: '9px 0', textAlign: 'right' }}>
                                           {item.is_bonus
                                             ? <span style={{ color: '#15803D', fontSize: '11px', fontWeight: 700, background: '#F0FDF4', padding: '1px 6px', borderRadius: '4px' }}>🎁 Бонус</span>
-                                            : <span style={{ color: 'var(--text-primary)' }}>{(item.price * item.qty).toFixed(0)} ₴</span>
+                                            : <span style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: 700 }}>{(item.price * item.qty).toFixed(0)} ₴</span>
                                           }
                                         </td>
                                         <td style={{ padding: '5px 0 5px 8px', textAlign: 'right', background: srcBg, borderLeft: srcBorder, borderRadius: isMixed ? '4px' : undefined }}>
@@ -1838,8 +1842,16 @@ export default function AdminOrders({
                                   <button type="button"
                                     onClick={() => setPriceBlockOpen(p => ({ ...p, [order.id]: !open }))}
                                     style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', height: '32px', padding: '0 10px', border: '1px solid var(--border)', borderRadius: '7px', background: 'var(--bg-soft)', cursor: 'pointer', fontSize: '12px', color: 'var(--text-primary)' }}>
-                                    <span>Тип цін: <strong>{PRICE_TYPE_LABELS[pt] ?? pt}</strong>{activePct > 0 ? <> · Знижка <strong style={{ color: '#B45309' }}>−{activePct}%</strong></> : ''}</span>
-                                    {open ? <ChevronUp size={14} color="#94A3B8" /> : <ChevronDown size={14} color="#94A3B8" />}
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                      <span>Тип цін: <strong>{PRICE_TYPE_LABELS[pt] ?? pt}</strong></span>
+                                      {activePct > 0
+                                        ? <span style={{ fontSize: '11px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', borderRadius: '5px', padding: '1px 7px' }}>Знижка −{activePct}%</span>
+                                        : <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>+ знижка</span>}
+                                    </span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-muted)', fontSize: '11px', flexShrink: 0 }}>
+                                      {editable ? (open ? 'згорнути' : 'змінити') : ''}
+                                      {open ? <ChevronUp size={14} color="#94A3B8" /> : <ChevronDown size={14} color="#94A3B8" />}
+                                    </span>
                                   </button>
                                   {open && (
                                   <div style={{ marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -1945,18 +1957,41 @@ export default function AdminOrders({
                               const net = gross != null ? gross - commission : undefined;
                               const netPct = net != null && revenue > 0 ? Math.round((net / revenue) * 1000) / 10 : undefined;
                               const cell = (label: string, value: string, opts: { strong?: boolean; color?: string } = {}) => (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                                  <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{label}</span>
-                                  <span style={{ fontSize: '13px', fontWeight: opts.strong ? 700 : 600, color: opts.color ?? 'var(--text-primary)', whiteSpace: 'nowrap' }}>{value}</span>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '78px' }}>
+                                  <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{label}</span>
+                                  <span style={{ fontSize: '15px', fontWeight: opts.strong ? 800 : 700, color: opts.color ?? 'var(--text-primary)', whiteSpace: 'nowrap' }}>{value}</span>
                                 </div>
                               );
+                              // Підсумковий рядок (маржа + чистий) показуємо завжди — навіть згорнутим
+                              const finalColor = (v: number | undefined) => (v ?? 0) >= 0 ? '#15803D' : '#DC2626';
+                              const headline = commission > 0 ? net : gross;
+                              const headlinePct = commission > 0 ? netPct : grossPct;
+                              const eopen = econBlockOpen[order.id] ?? false;
                               return (
-                                <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border-light)', background: 'var(--bg-soft)', display: 'flex', flexWrap: 'wrap', gap: '18px', alignItems: 'flex-end' }}>
-                                  {cell('Виручка', `${revenue.toFixed(0)} ₴`)}
-                                  {cell('Собівартість', cost != null ? `${cost.toFixed(0)} ₴` : '…', { color: 'var(--text-secondary)' })}
-                                  {commission > 0 && cell('Комісія', `−${commission.toFixed(0)} ₴`, { color: '#C2410C' })}
-                                  {cell('Маржа', gross != null ? `${gross.toFixed(0)} ₴${grossPct != null ? ` · ${grossPct}%` : ''}` : '…', { strong: true, color: (gross ?? 0) >= 0 ? '#15803D' : '#DC2626' })}
-                                  {commission > 0 && cell('Чистий', net != null ? `${net.toFixed(0)} ₴${netPct != null ? ` · ${netPct}%` : ''}` : '…', { strong: true, color: (net ?? 0) >= 0 ? '#15803D' : '#DC2626' })}
+                                <div style={{ marginTop: '12px', borderRadius: '10px', border: '1px solid var(--border-light)', background: 'var(--bg-soft)', overflow: 'hidden' }}>
+                                  <button type="button"
+                                    onClick={() => setEconBlockOpen(p => ({ ...p, [order.id]: !eopen }))}
+                                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '9px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: 'var(--text-primary)' }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                      <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Економіка</span>
+                                      <span style={{ fontSize: '14px', fontWeight: 800, color: finalColor(headline) }}>
+                                        {commission > 0 ? 'Чистий' : 'Маржа'} {headline != null ? `${headline.toFixed(0)} ₴` : '…'}{headlinePct != null ? ` · ${headlinePct}%` : ''}
+                                      </span>
+                                    </span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-muted)', fontSize: '11px', flexShrink: 0 }}>
+                                      {eopen ? 'згорнути' : 'деталі'}
+                                      {eopen ? <ChevronUp size={14} color="#94A3B8" /> : <ChevronDown size={14} color="#94A3B8" />}
+                                    </span>
+                                  </button>
+                                  {eopen && (
+                                    <div style={{ padding: '0 12px 12px', display: 'flex', flexWrap: 'wrap', gap: '18px', alignItems: 'flex-end', borderTop: '1px solid var(--border-light)', paddingTop: '12px' }}>
+                                      {cell('Виручка', `${revenue.toFixed(0)} ₴`)}
+                                      {cell('Собівартість', cost != null ? `${cost.toFixed(0)} ₴` : '…', { color: 'var(--text-secondary)' })}
+                                      {commission > 0 && cell('Комісія', `−${commission.toFixed(0)} ₴`, { color: '#C2410C' })}
+                                      {cell('Маржа', gross != null ? `${gross.toFixed(0)} ₴${grossPct != null ? ` · ${grossPct}%` : ''}` : '…', { strong: true, color: finalColor(gross) })}
+                                      {commission > 0 && cell('Чистий', net != null ? `${net.toFixed(0)} ₴${netPct != null ? ` · ${netPct}%` : ''}` : '…', { strong: true, color: finalColor(net) })}
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })()}
