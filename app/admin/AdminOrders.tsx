@@ -1747,12 +1747,12 @@ export default function AdminOrders({
                             {/* Items table */}
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                               <thead>
-                                <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                                  <th style={{ textAlign: 'left', padding: '4px 0 8px', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Назва</th>
-                                  <th style={{ textAlign: 'center', padding: '4px 6px', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', width: '44px', whiteSpace: 'nowrap' }}>К-сть</th>
-                                  <th style={{ textAlign: 'right', padding: '4px 6px', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', width: '62px', whiteSpace: 'nowrap' }}>Ціна</th>
-                                  <th style={{ textAlign: 'right', padding: '4px 0', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', width: '70px' }}>Сума</th>
-                                  <th style={{ textAlign: 'right', padding: '4px 0 4px 8px', color: 'var(--text-muted)', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', width: '90px' }}>Джерело</th>
+                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                  <th style={{ textAlign: 'left', padding: '2px 0 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Назва</th>
+                                  <th style={{ textAlign: 'right', padding: '2px 6px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '44px', whiteSpace: 'nowrap' }}>К-сть</th>
+                                  <th style={{ textAlign: 'right', padding: '2px 6px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '62px', whiteSpace: 'nowrap' }}>Ціна</th>
+                                  <th style={{ textAlign: 'right', padding: '2px 0 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '70px' }}>Сума</th>
+                                  <th style={{ textAlign: 'right', padding: '2px 0 8px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '90px' }}>Джерело</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -1776,30 +1776,30 @@ export default function AdminOrders({
                                       : undefined;
                                     return (
                                       <tr key={item.sku} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                                        {/* Назва — на очах: код зверху, назва нижче жирнішим */}
-                                        <td style={{ padding: '8px 0', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3 }}>
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '2px' }}>
+                                        {/* Назва — на очах: назва зверху жирнішим, код нижче */}
+                                        <td style={{ padding: '10px 0', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3 }}>
+                                          <span style={{ color: 'var(--text-primary)', fontSize: '13.5px', fontWeight: 600, lineHeight: 1.35, letterSpacing: '-0.006em' }}>{item.name}</span>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
                                             <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontFamily: 'monospace' }}>{item.sku}</span>
                                             <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
                                               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: copiedSku === item.sku ? '#15803D' : 'var(--text-muted)', lineHeight: 1, fontSize: '11px' }}>
                                               {copiedSku === item.sku ? '✓' : '⎘'}
                                             </button>
                                           </div>
-                                          <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, lineHeight: 1.35 }}>{item.name}</span>
                                         </td>
-                                        <td style={{ padding: '8px 6px', color: 'var(--text-primary)', textAlign: 'center', fontSize: '13px', fontWeight: 700 }}>{item.qty}</td>
-                                        <td style={{ padding: '8px 6px', textAlign: 'right', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                                        <td style={{ padding: '10px 6px', color: 'var(--text-primary)', textAlign: 'right', fontSize: '13.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{item.qty}</td>
+                                        <td style={{ padding: '10px 6px', textAlign: 'right', color: 'var(--text-secondary)', fontSize: '13px', fontVariantNumeric: 'tabular-nums' }}>
                                           {item.is_bonus ? '' : `${item.price.toFixed(0)} ₴`}
                                         </td>
-                                        <td style={{ padding: '8px 0', textAlign: 'right' }}>
+                                        <td style={{ padding: '10px 0', textAlign: 'right' }}>
                                           {item.is_bonus
                                             ? <span style={{ color: '#15803D', fontSize: '11px', fontWeight: 700, background: '#F0FDF4', padding: '1px 6px', borderRadius: '4px' }}>🎁 Бонус</span>
-                                            : <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 700 }}>{(item.price * item.qty).toFixed(0)} ₴</span>
+                                            : <span style={{ color: 'var(--text-primary)', fontSize: '13.5px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{(item.price * item.qty).toFixed(0)} ₴</span>
                                           }
                                         </td>
-                                        <td style={{ padding: '5px 0 5px 8px', textAlign: 'right', background: srcBg, borderLeft: srcBorder, borderRadius: isMixed ? '4px' : undefined }}>
+                                        <td style={{ padding: '10px 0 10px 8px', textAlign: 'right', background: srcBg, borderLeft: srcBorder, borderRadius: isMixed ? '6px' : undefined }}>
                                           {fulfillmentLoading.has(order.id) ? (
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>...</span>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>…</span>
                                           ) : planSrc ? (
                                             <select
                                               value={effectiveSrc ?? planSrc.fulfillment_type}
@@ -1808,10 +1808,10 @@ export default function AdminOrders({
                                                 ...prev,
                                                 [order.id]: { ...(prev[order.id] ?? {}), [item.sku]: e.target.value as 'own' | 'dropship' },
                                               }))}
-                                              style={{ fontSize: '10px', border: '1px solid var(--border)', borderRadius: '4px', padding: '1px 3px', background: 'transparent',
+                                              style={{ fontSize: '11px', fontWeight: 600, border: '1px solid var(--border)', borderRadius: '6px', padding: '3px 6px', background: 'var(--bg-soft)',
                                                 cursor: order.fulfillment_mode !== null || order.status !== 'new' ? 'default' : 'pointer',
-                                                maxWidth: '86px', opacity: order.fulfillment_mode !== null || order.status !== 'new' ? 0.6 : 1,
-                                                color: effectiveSrc === 'own' ? '#15803D' : 'var(--brand-blue)', fontWeight: isMixed ? 700 : 400 }}
+                                                maxWidth: '90px', opacity: order.fulfillment_mode !== null || order.status !== 'new' ? 0.7 : 1,
+                                                color: effectiveSrc === 'own' ? '#15803D' : 'var(--brand-blue)' }}
                                             >
                                               <option value="dropship">{supplierName ?? 'Постач.'}</option>
                                               {(planSrc.available_own ?? 0) >= item.qty && (
@@ -1819,7 +1819,7 @@ export default function AdminOrders({
                                               )}
                                             </select>
                                           ) : (
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>—</span>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>—</span>
                                           )}
                                         </td>
                                       </tr>
