@@ -1943,7 +1943,7 @@ export default function AdminOrders({
                               {(finLogOpen[order.id] ?? false) ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                               Фінанси та логістика
                             </button>
-                            {(finLogOpen[order.id] ?? false) && (
+                            {(finLogOpen[order.id] ?? false) && (<>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: '10px', alignItems: 'stretch' }}>
                             <div className="order-col-card" style={{ minWidth: 0, padding: '14px', display: 'flex', flexDirection: 'column' }}>
                             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Фінанси</div>
@@ -2189,8 +2189,7 @@ export default function AdminOrders({
                             )}
                             </div>
                             </div>
-                            )}
-                            {/* Маржа по постачальниках — завжди на листі (без згортання) */}
+                            {/* Маржа по постачальниках — усередині згортання Фінанси+Логістика */}
                             <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                               <TrendingUp size={12} /> Маржа по постачальниках
                             </div>
@@ -2253,6 +2252,7 @@ export default function AdminOrders({
                                 </div>
                               );
                             })()}
+                            </>)}
 
                           </div>
                         )}
