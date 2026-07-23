@@ -2310,8 +2310,8 @@ export default function AdminOrders({
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
                         </div>
                       </div>
-                      {/* Доставка — під даними клієнта */}
-                      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {/* Доставка — прижато до нижньої межі, щоб розділювач збігався з правою карткою */}
+                      <div style={{ marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Доставка</div>
                         {editDeliveryId === order.id ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
