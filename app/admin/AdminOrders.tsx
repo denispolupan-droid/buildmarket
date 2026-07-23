@@ -2311,8 +2311,8 @@ export default function AdminOrders({
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
                         </div>
                       </div>
-                      {/* Доставка — прижато до нижньої межі, щоб розділювач збігався з правою карткою */}
-                      <div style={{ marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {/* Доставка — прижато до нижньої межі, однакова висота з блоком ТТН → розділювачі збігаються */}
+                      <div style={{ marginTop: 'auto', minHeight: '118px', paddingTop: '12px', borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Доставка</div>
                         {editDeliveryId === order.id ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
@@ -2569,8 +2569,8 @@ export default function AdminOrders({
                         );
                       })()}
 
-                      {/* ТТН Нової Пошти — прижато до нижньої межі картки, з розділювачем від «Оплати» */}
-                      <div style={{ marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {/* ТТН Нової Пошти — прижато до нижньої межі картки, однакова висота з «Доставкою» */}
+                      <div style={{ marginTop: 'auto', minHeight: '118px', paddingTop: '12px', borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ТТН Нової Пошти</div>
                       {(order.delivery_type === 'nova' || order.delivery_type === 'nova_poshta') ? (
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
