@@ -2037,12 +2037,13 @@ export default function AdminOrders({
                               );
                             })()}
 
-                            {/* Fulfillment mode selector — only for new orders */}
+                            {/* Спосіб виконання + Відвантажує пост. — в один рядок */}
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px', alignItems: 'flex-start' }}>
                             {order.status === 'new' && (() => {
                               const plan = fulfillmentData[order.id]?.plan;
                               const hasOwn = plan ? plan.has_own : true;
                               return (
-                                <div style={{ marginTop: '12px', padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                <div style={{ flex: '2 1 240px', minWidth: 0, padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                                   <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Спосіб виконання</div>
                                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                     {(['supplier', 'own', 'mixed'] as const).map(mode => {
@@ -2112,7 +2113,7 @@ export default function AdminOrders({
                             })()}
                             {/* Хто фактично відвантажив — поряд зі способом виконання */}
                             {(order.fulfillment_mode ?? 'supplier') !== 'own' && suppliersList.length > 0 && (
-                              <div style={{ marginTop: '10px', padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                              <div style={{ flex: '1 1 160px', minWidth: 0, padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                                 <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.03em' }}
                                   title="Хто фактично відвантажив товар. Борг перед постачальником при відправці буде віднесено саме на нього.">
                                   Відвантажує пост.
@@ -2129,6 +2130,7 @@ export default function AdminOrders({
                                 )}
                               </div>
                             )}
+                            </div>
                             <button onClick={() => toggleFulfillment(order.id)}
                               style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontSize: '12px', fontWeight: 600, color: fulfillmentOpen.has(order.id) ? 'var(--brand-blue)' : 'var(--text-secondary)' }}>
                               <TrendingUp size={12} />
