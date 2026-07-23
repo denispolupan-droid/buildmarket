@@ -25,13 +25,15 @@ export async function POST(req: NextRequest) {
     amount?:         number;
     description?:    string;
     counterparty?:   string;
-    payment_method?: 'bank' | 'cash';
+    payment_method?: 'bank' | 'cash' | 'acquiring' | 'novapay';
     business_date?:  string;
   };
 
   const expenseType = body.expense_type as AccountType;
   const amount = Number(body.amount);
-  const method = body.payment_method === 'cash' ? 'cash' : 'bank';
+  const PAY_ACCOUNTS = ['bank', 'cash', 'acquiring', 'novapay'] as const;
+  const method: 'bank' | 'cash' | 'acquiring' | 'novapay' =
+    PAY_ACCOUNTS.includes(body.payment_method as typeof PAY_ACCOUNTS[number]) ? body.payment_method! : 'bank';
 
   if (!EXPENSE_ACCOUNTS.includes(expenseType)) {
     return NextResponse.json({ error: 'Невірний тип витрати' }, { status: 400 });

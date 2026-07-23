@@ -183,12 +183,15 @@ export default async function ReportsPage({
     const amt = Number(e.amount);
     const acc = e.account_type;
     if (!accountMap[acc]) accountMap[acc] = { in: 0, out: 0 };
+    if (amt > 0) accountMap[acc].in += amt;
+    else         accountMap[acc].out += Math.abs(amt);
+    // Внутрішній переказ між рахунками — у «По рахунках» видно, але у статтях руху НЕ показуємо
+    // (інакше та сама сума висіла б і в приходах, і у видатках).
+    if (e.doc_type === 'transfer') continue;
     if (amt > 0) {
-      accountMap[acc].in += amt;
       const k = inflowKey(acc, e.doc_type);
       inflowMap[k] = (inflowMap[k] ?? 0) + amt;
     } else {
-      accountMap[acc].out += Math.abs(amt);
       const k = outflowKey(e.doc_type);
       outflowMap[k] = (outflowMap[k] ?? 0) + Math.abs(amt);
     }
