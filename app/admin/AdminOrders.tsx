@@ -2054,7 +2054,7 @@ export default function AdminOrders({
                                         <button key={mode}
                                           onClick={() => !disabled && setSelectedMode(prev => ({ ...prev, [order.id]: mode }))}
                                           title={disabled ? 'Немає товару на власному складі' : undefined}
-                                          style={{ flex: 1, minWidth: 0, padding: '7px 4px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap', textAlign: 'center',
+                                          style={{ flex: '1 1 auto', padding: '7px 6px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap', textAlign: 'center',
                                             cursor: disabled ? 'not-allowed' : 'pointer',
                                             border: `1.5px solid ${active ? '#1E3A5F' : 'var(--border)'}`,
                                             background: disabled ? 'var(--bg-soft)' : active ? '#1E3A5F' : 'var(--bg-card)',
