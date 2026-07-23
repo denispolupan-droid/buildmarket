@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -113,15 +113,8 @@ const DELIVERY_LABEL: Record<string, string> = {
   nova: 'Нова Пошта', nova_poshta: 'Нова Пошта', kharkiv: 'Харків і область', pickup: 'Самовивіз',
 };
 
-// Візуальний бейдж перевізника — фірмовий колір + фон. Прибирає «сирий» код на кшталт nova_poshta.
-const CARRIER_META: Record<string, { color: string; bg: string }> = {
-  nova:        { color: '#DA291C', bg: '#FDECEA' },
-  nova_poshta: { color: '#DA291C', bg: '#FDECEA' },
-  pickup:      { color: '#0F766E', bg: '#ECFEFF' },
-  kharkiv:     { color: 'var(--brand-blue)', bg: '#EAF1F8' },
-};
 const PAYMENT_LABEL: Record<string, string> = {
-  invoice: 'Безготівковий', cod: 'Оплата при отриманні', card: '💳 Картка онлайн',
+  invoice: 'Безготівковий', cod: 'Оплата при отриманні', card: 'Картка онлайн',
 };
 
 const STATUS_RANK: Record<string, number> = {
@@ -2209,14 +2202,14 @@ export default function AdminOrders({
                           <div style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 700, color: '#15803D', background: '#DCFCE7', borderRadius: '6px', padding: '2px 8px', cursor: 'pointer' }}
                             title="Натисніть, щоб скопіювати номер замовлення Rozetka"
                             onClick={() => { navigator.clipboard.writeText(String(order.rozetka_order_id)); showToast('Номер Rozetka скопійовано'); }}>
-                            Rozetka №{order.rozetka_order_id} ⎘
+                            Rozetka №{order.rozetka_order_id} <Copy size={11} />
                           </div>
                         )}
                         {(order.channel_code === 'prom' && order.prom_order_id) && (
                           <div style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 700, color: '#C2410C', background: '#FFF7ED', borderRadius: '6px', padding: '2px 8px', cursor: 'pointer' }}
                             title="Натисніть, щоб скопіювати номер замовлення Prom"
                             onClick={() => { navigator.clipboard.writeText(String(order.prom_order_id)); showToast('Номер Prom скопійовано'); }}>
-                            Prom №{order.prom_order_id} ⎘
+                            Prom №{order.prom_order_id} <Copy size={11} />
                           </div>
                         )}
                         {order.company && (
@@ -2224,7 +2217,7 @@ export default function AdminOrders({
                             <Building2 size={12} color="#64748B" />{order.company}
                           </div>
                         )}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-primary)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
                           {order.contact}
                           {order.customer_id && (
                             <a href={`/admin/partners?open=${order.customer_id}`} target="_blank" rel="noopener noreferrer"
@@ -2241,25 +2234,25 @@ export default function AdminOrders({
                           <button
                             onClick={() => { navigator.clipboard.writeText(order.phone); showToast('Телефон скопійовано'); }}
                             title="Копіювати номер"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1, fontSize: '13px' }}>
-                            ⎘
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1, display: 'inline-flex' }}>
+                            <Copy size={13} />
                           </button>
                           {!isDropship && (noCallback ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', whiteSpace: 'nowrap' }}>
-                              ✓ Без дзвінка
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', whiteSpace: 'nowrap' }}>
+                              <Check size={11} /> Без дзвінка
                             </span>
                           ) : (
                             <button onClick={() => toggleFlag(order.id, 'callback_done', !callbackDone)}
                               title={callbackDone ? 'Натисніть, щоб зняти позначку «зателефонували»' : 'Натисніть, коли зателефонували клієнту'}
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', background: callbackDone ? '#DCFCE7' : '#FEF3C7', color: callbackDone ? '#15803D' : '#B45309', border: `1px solid ${callbackDone ? '#86EFAC' : '#FCD34D'}` }}>
-                              {callbackDone ? '✓ Зателефонували' : '☎ Потрібен дзвінок'}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', background: callbackDone ? '#DCFCE7' : '#FEF3C7', color: callbackDone ? '#15803D' : '#B45309', border: `1px solid ${callbackDone ? '#86EFAC' : '#FCD34D'}` }}>
+                              {callbackDone ? <><Check size={11} /> Зателефонували</> : <><Phone size={11} /> Потрібен дзвінок</>}
                             </button>
                           ))}
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
                       </div>
 
-
+                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Доставка</div>
                       {editDeliveryId === order.id ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                           <select
@@ -2314,15 +2307,10 @@ export default function AdminOrders({
                         </div>
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', flexWrap: 'wrap', fontSize: '13px', color: 'var(--text-primary)' }}>
-                          {(() => {
-                            const cm = CARRIER_META[order.delivery_type] ?? { color: 'var(--text-secondary)', bg: 'var(--bg-soft)' };
-                            return (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '999px', background: cm.bg, color: cm.color, fontWeight: 700, fontSize: '11px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                <Truck size={12} /> {delivery}
-                              </span>
-                            );
-                          })()}
-                          <span style={{ color: 'var(--text-secondary)', marginTop: '1px' }}>{subtype.replace(/^ — /, '')}{order.delivery_city_name && <strong style={{ color: 'var(--text-primary)' }}>{subtype ? ' · ' : ''}{order.delivery_city_name}</strong>}{order.delivery_address && ` · ${order.delivery_address}`}</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            <Truck size={13} color="#64748B" /> {delivery}
+                          </span>
+                          <span style={{ color: 'var(--text-secondary)', marginTop: '1px' }}>{subtype.replace(/^ — /, '')}{order.delivery_city_name && <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{subtype ? ' · ' : ''}{order.delivery_city_name}</strong>}{order.delivery_address && ` · ${order.delivery_address}`}</span>
                           <button
                             onClick={() => openEditDelivery(order)}
                             title="Змінити доставку"
@@ -2332,6 +2320,7 @@ export default function AdminOrders({
                         </div>
                       )}
 
+                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Оплата</div>
                       {editPaymentTypeId === order.id ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                           <select
@@ -2339,9 +2328,9 @@ export default function AdminOrders({
                             onChange={e => setEditPaymentTypeValue(e.target.value)}
                             style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 6px' }}
                           >
-                            <option value="cash">💵 Готівка</option>
-                            <option value="invoice">🏦 Безготівковий (рахунок)</option>
-                            <option value="deferred">⏳ Відстрочка</option>
+                            <option value="cash">Готівка</option>
+                            <option value="invoice">Безготівковий (рахунок)</option>
+                            <option value="deferred">Відстрочка</option>
                           </select>
                           <div style={{ display: 'flex', gap: '6px' }}>
                             <button
@@ -2371,7 +2360,7 @@ export default function AdminOrders({
                       ) : order.payment_type === 'card' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: order.status === 'confirmed' ? '#DCFCE7' : '#EFF6FF', color: order.status === 'confirmed' ? '#15803D' : 'var(--brand-blue)', border: `1px solid ${order.status === 'confirmed' ? '#86EFAC' : '#BFDBFE'}` }}>
-                            <CreditCard size={12} />{order.status === 'confirmed' ? '💳 Оплата карткою — підтверджено' : '💳 Картка онлайн'}
+                            <CreditCard size={12} />{order.status === 'confirmed' ? 'Оплата карткою — підтверджено' : 'Картка онлайн'}
                           </div>
                           <button onClick={() => { setEditPaymentTypeId(order.id); setEditPaymentTypeValue(['cash','invoice','deferred'].includes(order.payment_type) ? order.payment_type : 'cash'); }} title="Змінити спосіб оплати" style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1 }}>
                             <Pencil size={11} />
@@ -2403,11 +2392,11 @@ export default function AdminOrders({
                                   ? `✓ Оплачено ${amountPaid.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴`
                                   : isPartial
                                     ? `${amountPaid.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} / ${total.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴`
-                                    : order.payment_type === 'cash' ? '💵 Оплата готівкою'
-                                    : order.payment_type === 'invoice' ? '🏦 Безготівковий'
+                                    : order.payment_type === 'cash' ? 'Оплата готівкою'
+                                    : order.payment_type === 'invoice' ? 'Безготівковий'
                                     : order.payment_type === 'deferred'
-                                      ? `⏳ Відстрочка${order.payment_due_date ? ` · до ${new Date(order.payment_due_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' })}` : ''}`
-                                    : '⏳ Очікуємо оплату'}
+                                      ? `Відстрочка${order.payment_due_date ? ` · до ${new Date(order.payment_due_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' })}` : ''}`
+                                    : 'Очікуємо оплату'}
                               </div>
                               <button onClick={() => { setEditPaymentTypeId(order.id); setEditPaymentTypeValue(['cash','invoice','deferred'].includes(order.payment_type) ? order.payment_type : 'cash'); }} title="Змінити спосіб оплати" style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1 }}>
                                 <Pencil size={11} />
@@ -2530,7 +2519,7 @@ export default function AdminOrders({
 
                       {(order.delivery_type === 'nova' || order.delivery_type === 'nova_poshta') && (
                         <div>
-                          <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ТТН Нової Пошти</div>
+                          <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ТТН Нової Пошти</div>
                           <div style={{ display: 'flex', gap: '6px' }}>
                             <div style={{ position: 'relative', flex: 1 }}>
                               <Hash size={12} color="#94A3B8" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }} />
@@ -2574,17 +2563,16 @@ export default function AdminOrders({
                                     border: `1.5px solid ${inReg ? '#86EFAC' : '#86EFAC'}`,
                                     cursor: inReg ? 'default' : 'pointer',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: '14px',
                                   }}>
-                                  {isAddingReg ? '…' : inReg ? <Check size={14} /> : '📋'}
+                                  {isAddingReg ? '…' : inReg ? <Check size={14} /> : <ClipboardList size={14} />}
                                 </button>
                               );
                             })()}
                             {order.tracking_number && (
                               <button onClick={() => deleteTTN(order.id)} disabled={ttnDeleting === order.id}
                                 title="Видалити ТТН з бази та з НП"
-                                style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0, background: '#FEF2F2', color: '#DC2626', border: '1.5px solid #FECACA', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', opacity: ttnDeleting === order.id ? 0.5 : 1 }}>
-                                {ttnDeleting === order.id ? '…' : '🗑'}
+                                style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0, background: '#FEF2F2', color: '#DC2626', border: '1.5px solid #FECACA', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: ttnDeleting === order.id ? 0.5 : 1 }}>
+                                {ttnDeleting === order.id ? '…' : <Trash2 size={14} />}
                               </button>
                             )}
                           </div>
