@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -323,6 +323,7 @@ export default function AdminOrders({
   const [discMode,         setDiscMode]         = useState<Record<string, 'pct' | 'amount'>>({});
   const [priceBlockOpen,   setPriceBlockOpen]   = useState<Record<string, boolean>>({});
   const [finLogOpen,       setFinLogOpen]       = useState<Record<string, boolean>>({});
+  const [statusEditOpen,   setStatusEditOpen]   = useState<Record<string, boolean>>({});
   const [itemImages,       setItemImages]       = useState<Record<string, Record<string, string | null>>>({});
   const [payFormSaving,    setPayFormSaving]    = useState<Record<string, boolean>>({});
   const [payRemoving,      setPayRemoving]      = useState<string | null>(null);
@@ -2672,9 +2673,14 @@ export default function AdminOrders({
                         <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', alignSelf: 'start' }}>
                           <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>Управління замовленням</div>
                           {/* «Джерело» (канал + № замовлення) винесено у чипи шапки — тут не дублюємо */}
-                          {/* Current status badge */}
-                          <div style={{ fontSize: '13px', fontWeight: 700, padding: '6px 10px', borderRadius: '8px', color: status.color, background: status.bg, textAlign: 'center' }}>
-                            {status.label}
+                          {/* Current status badge + «...» для ручної зміни статусу */}
+                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', padding: '6px 10px', borderRadius: '8px', color: status.color, background: status.bg }}>
+                            <span style={{ flex: 1, textAlign: 'center', fontSize: '13px', fontWeight: 700 }}>{status.label}</span>
+                            <button onClick={() => setStatusEditOpen(p => ({ ...p, [order.id]: !p[order.id] }))}
+                              title="Змінити статус вручну"
+                              style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', background: (statusEditOpen[order.id] ?? false) ? 'rgba(0,0,0,0.08)' : 'none', border: 'none', cursor: 'pointer', color: status.color, padding: '2px', borderRadius: '5px', display: 'inline-flex', opacity: 0.8 }}>
+                              <MoreHorizontal size={16} />
+                            </button>
                           </div>
                           {order.status === 'shipped' && order.tracking_number && (
                             <div title={order.carrier_status_synced_at ? `Оновлено: ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
@@ -2683,7 +2689,8 @@ export default function AdminOrders({
                             </div>
                           )}
 
-                          {/* Manual status dropdown */}
+                          {/* Manual status dropdown — прихований під «...» на бейджі статусу */}
+                          {(statusEditOpen[order.id] ?? false) && (
                           <div>
                             <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
                               Змінити вручну{!isAdmin && <span style={{ marginLeft: '4px', color: '#F59E0B' }}>🔒</span>}
@@ -2709,6 +2716,7 @@ export default function AdminOrders({
                               ))}
                             </select>
                           </div>
+                          )}
 
                           {/* «Відвантажує пост.» перенесено до блоку способу виконання (ліва колонка) */}
 
