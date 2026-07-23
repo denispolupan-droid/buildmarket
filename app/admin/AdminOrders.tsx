@@ -1689,6 +1689,32 @@ export default function AdminOrders({
                       <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{Number(order.total_price).toFixed(0)} ₴</div>
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Сума замовлення</div>
                     </div>
+                    {order.status === 'new' && (() => {
+                      const busy = confirming === order.id;
+                      const confirmErr = confirmErrors[order.id];
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                          <button onClick={() => confirmOrder(order.id)} disabled={busy}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '44px', padding: '0 22px', borderRadius: '12px', border: 'none', background: busy ? '#94A3B8' : '#2563EB', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer', boxShadow: '0 1px 2px rgba(37,99,235,0.35)', whiteSpace: 'nowrap' }}>
+                            {busy ? 'Обробка…' : <><Check size={17} /> Підтвердити замовлення</>}
+                          </button>
+                          {confirmErr && (
+                            <div style={{ maxWidth: '300px', padding: '8px 10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', textAlign: 'left' }}>
+                              <div style={{ fontSize: '12px', fontWeight: 600, color: '#DC2626', marginBottom: confirmErr.insufficient?.length ? '6px' : 0 }}>⚠ {confirmErr.error}</div>
+                              {confirmErr.insufficient?.map(item => {
+                                const name = order.items.find(i => i.sku === item.sku)?.name;
+                                return (
+                                  <div key={item.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '2px 0', borderTop: '1px solid #FECACA' }}>
+                                    <span style={{ color: '#7F1D1D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>{name ?? item.sku}</span>
+                                    <span style={{ color: '#DC2626', fontWeight: 700, flexShrink: 0 }}>{item.available} / {item.requested} шт</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="order-expand-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 250px', gap: '14px', padding: '14px', background: 'var(--bg-soft)', alignItems: 'start' }}>
 
@@ -1891,115 +1917,7 @@ export default function AdminOrders({
                             </table>
                             </div>
 
-                            {/* Тип цін + ручна знижка — впливають на ціни позицій і підсумок, тому поряд із товарами */}
-                            {(() => {
-                              const editable = ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
-                                && order.channel_code !== 'dropship';
-                              const pt = order.price_type ?? 'retail';
-                              const activePct = Number(order.discount_pct ?? 0);
-                              const open = priceBlockOpen[order.id] ?? false;
-                              return (
-                                <div style={{ marginTop: '12px' }}>
-                                  {/* Згорнута зведення: поточний тип цін + знижка. Клік — розгортає керування */}
-                                  <button type="button"
-                                    onClick={() => setPriceBlockOpen(p => ({ ...p, [order.id]: !open }))}
-                                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', height: '32px', padding: '0 10px', border: '1px solid var(--border)', borderRadius: '7px', background: 'var(--bg-soft)', cursor: 'pointer', fontSize: '12px', color: 'var(--text-primary)' }}>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                      <span>Тип цін: <strong>{PRICE_TYPE_LABELS[pt] ?? pt}</strong></span>
-                                      {activePct > 0
-                                        ? <span style={{ fontSize: '11px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', borderRadius: '5px', padding: '1px 7px' }}>Знижка −{activePct}%</span>
-                                        : <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>+ знижка</span>}
-                                    </span>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-muted)', fontSize: '11px', flexShrink: 0 }}>
-                                      {editable ? (open ? 'згорнути' : 'змінити') : ''}
-                                      {open ? <ChevronUp size={14} color="#94A3B8" /> : <ChevronDown size={14} color="#94A3B8" />}
-                                    </span>
-                                  </button>
-                                  {open && (
-                                  <div style={{ marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                  <div style={{ flex: '1 1 120px', minWidth: 0 }}>
-                                    <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
-                                      title="Тариф, за яким пораховані позиції. Зміна перерахує всі ціни за відповідним прайсом.">
-                                      Тип цін
-                                    </div>
-                                    {editable ? (
-                                      <select
-                                        value={pt}
-                                        onChange={e => { if (e.target.value !== pt) changePriceType(order.id, e.target.value); }}
-                                        style={{
-                                          width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)',
-                                          borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer',
-                                          color: 'var(--text-primary)', fontWeight: 600,
-                                        }}
-                                      >
-                                        <option value="retail">Роздріб</option>
-                                        <option value="wholesale">Опт</option>
-                                        <option value="drop">Дроп</option>
-                                      </select>
-                                    ) : (
-                                      <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-subtle)' }}
-                                        title={order.channel_code === 'dropship' ? 'Дропшип — ціна за собівартістю' : 'Ціни зафіксовані у проведеній накладній (відвантажено)'}>
-                                        {PRICE_TYPE_LABELS[pt] ?? pt}
-                                      </div>
-                                    )}
-                                  </div>
-                                  {(() => {
-                                    const activePct = Number(order.discount_pct ?? 0);
-                                    if (!editable) {
-                                      if (activePct > 0) {
-                                        return (
-                                          <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                                            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>Знижка</div>
-                                            <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: '#B45309', background: '#FFFBEB' }}>
-                                              −{activePct}% (−{Number(order.discount_amount ?? 0).toFixed(2)} ₴)
-                                            </div>
-                                          </div>
-                                        );
-                                      }
-                                      return null;
-                                    }
-                                    const mode = discMode[order.id] ?? 'pct';
-                                    return (
-                                      <div style={{ flex: '1 1 160px', minWidth: 0 }}>
-                                        <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
-                                          title="Ручна знижка. Знижує ціни всіх позицій; сума замовлення перераховується.">
-                                          Знижка{activePct > 0 ? ` · зараз −${activePct}%` : ''}
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '4px' }}>
-                                          <select
-                                            value={mode}
-                                            onChange={e => setDiscMode(p => ({ ...p, [order.id]: e.target.value as 'pct' | 'amount' }))}
-                                            style={{ height: '30px', padding: '0 4px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer' }}
-                                          >
-                                            <option value="pct">%</option>
-                                            <option value="amount">₴</option>
-                                          </select>
-                                          <input
-                                            type="number" min="0" step="any"
-                                            value={discInput[order.id] ?? ''}
-                                            placeholder={mode === 'pct' ? 'напр. 10' : 'напр. 200'}
-                                            onChange={e => setDiscInput(p => ({ ...p, [order.id]: e.target.value }))}
-                                            style={{ width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)' }}
-                                          />
-                                          <button
-                                            onClick={() => applyDiscount(order.id, mode, parseFloat(discInput[order.id] ?? ''))}
-                                            style={{ height: '30px', padding: '0 10px', border: '1px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                                          >OK</button>
-                                        </div>
-                                        {activePct > 0 && (
-                                          <button
-                                            onClick={() => applyDiscount(order.id, 'pct', 0)}
-                                            style={{ marginTop: '4px', fontSize: '11px', color: '#B91C1C', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
-                                          >Прибрати знижку −{activePct}%</button>
-                                        )}
-                                      </div>
-                                    );
-                                  })()}
-                                  </div>
-                                  )}
-                                </div>
-                              );
-                            })()}
+                            {/* «Тип цін + знижка» перенесено в картку «Логістика» нижче */}
 
                             {/* Ряд Фінанси | Логістика | ТТН — під таблицею товарів (референс) */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginTop: '12px', alignItems: 'stretch' }}>
@@ -2106,6 +2024,106 @@ export default function AdminOrders({
                             </div>
                             <div className="order-col-card" style={{ minWidth: 0, padding: '14px', display: 'flex', flexDirection: 'column' }}>
                             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Логістика</div>
+                            {/* Тип цін + ручна знижка */}
+                            {(() => {
+                              const editable = ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
+                                && order.channel_code !== 'dropship';
+                              const pt = order.price_type ?? 'retail';
+                              const activePct = Number(order.discount_pct ?? 0);
+                              const open = priceBlockOpen[order.id] ?? false;
+                              return (
+                                <div style={{ marginBottom: '10px' }}>
+                                  <button type="button"
+                                    onClick={() => setPriceBlockOpen(p => ({ ...p, [order.id]: !open }))}
+                                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', minHeight: '32px', padding: '5px 10px', border: '1px solid var(--border)', borderRadius: '7px', background: 'var(--bg-soft)', cursor: 'pointer', fontSize: '12px', color: 'var(--text-primary)' }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                      <span>Тип цін: <strong>{PRICE_TYPE_LABELS[pt] ?? pt}</strong></span>
+                                      {activePct > 0
+                                        ? <span style={{ fontSize: '11px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', borderRadius: '5px', padding: '1px 7px' }}>−{activePct}%</span>
+                                        : <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>+ знижка</span>}
+                                    </span>
+                                    <span style={{ flexShrink: 0, color: 'var(--text-muted)' }}>
+                                      {open ? <ChevronUp size={14} color="#94A3B8" /> : <ChevronDown size={14} color="#94A3B8" />}
+                                    </span>
+                                  </button>
+                                  {open && (
+                                  <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
+                                      title="Тариф, за яким пораховані позиції. Зміна перерахує всі ціни за відповідним прайсом.">
+                                      Тип цін
+                                    </div>
+                                    {editable ? (
+                                      <select
+                                        value={pt}
+                                        onChange={e => { if (e.target.value !== pt) changePriceType(order.id, e.target.value); }}
+                                        style={{ width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-primary)', fontWeight: 600 }}>
+                                        <option value="retail">Роздріб</option>
+                                        <option value="wholesale">Опт</option>
+                                        <option value="drop">Дроп</option>
+                                      </select>
+                                    ) : (
+                                      <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-subtle)' }}
+                                        title={order.channel_code === 'dropship' ? 'Дропшип — ціна за собівартістю' : 'Ціни зафіксовані у проведеній накладній (відвантажено)'}>
+                                        {PRICE_TYPE_LABELS[pt] ?? pt}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {(() => {
+                                    if (!editable) {
+                                      if (activePct > 0) {
+                                        return (
+                                          <div style={{ minWidth: 0 }}>
+                                            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>Знижка</div>
+                                            <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: '#B45309', background: '#FFFBEB' }}>
+                                              −{activePct}% (−{Number(order.discount_amount ?? 0).toFixed(2)} ₴)
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    }
+                                    const mode = discMode[order.id] ?? 'pct';
+                                    return (
+                                      <div style={{ minWidth: 0 }}>
+                                        <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
+                                          title="Ручна знижка. Знижує ціни всіх позицій; сума замовлення перераховується.">
+                                          Знижка{activePct > 0 ? ` · зараз −${activePct}%` : ''}
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '4px' }}>
+                                          <select
+                                            value={mode}
+                                            onChange={e => setDiscMode(p => ({ ...p, [order.id]: e.target.value as 'pct' | 'amount' }))}
+                                            style={{ height: '30px', padding: '0 4px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer' }}>
+                                            <option value="pct">%</option>
+                                            <option value="amount">₴</option>
+                                          </select>
+                                          <input
+                                            type="number" min="0" step="any"
+                                            value={discInput[order.id] ?? ''}
+                                            placeholder={mode === 'pct' ? 'напр. 10' : 'напр. 200'}
+                                            onChange={e => setDiscInput(p => ({ ...p, [order.id]: e.target.value }))}
+                                            style={{ width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)' }}
+                                          />
+                                          <button
+                                            onClick={() => applyDiscount(order.id, mode, parseFloat(discInput[order.id] ?? ''))}
+                                            style={{ height: '30px', padding: '0 10px', border: '1px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                          >OK</button>
+                                        </div>
+                                        {activePct > 0 && (
+                                          <button
+                                            onClick={() => applyDiscount(order.id, 'pct', 0)}
+                                            style={{ marginTop: '4px', fontSize: '11px', color: '#B91C1C', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                                          >Прибрати знижку −{activePct}%</button>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                  </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                             {/* Спосіб виконання + Відвантажує пост. — в один рядок, однакова висота */}
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px', alignItems: 'stretch' }}>
                             {order.status === 'new' && (() => {
@@ -2314,37 +2332,6 @@ export default function AdminOrders({
                               );
                             })()}
 
-                            {/* Підтвердити замовлення — прижато до низу колонки, щоб бути на одній лінії з «Надіслати постачальнику» */}
-                            {order.status === 'new' && (() => {
-                              const mode = selectedMode[order.id] ?? 'supplier';
-                              const busy = confirming === order.id;
-                              const confirmErr = confirmErrors[order.id];
-                              return (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: 'auto', paddingTop: '14px' }}>
-                                  {confirmErr && (
-                                    <div style={{ marginBottom: '2px', padding: '8px 10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px' }}>
-                                      <div style={{ fontSize: '12px', fontWeight: 600, color: '#DC2626', marginBottom: confirmErr.insufficient?.length ? '6px' : 0 }}>⚠ {confirmErr.error}</div>
-                                      {confirmErr.insufficient?.map(item => {
-                                        const name = order.items.find(i => i.sku === item.sku)?.name;
-                                        return (
-                                          <div key={item.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '2px 0', borderTop: '1px solid #FECACA' }}>
-                                            <span style={{ color: '#7F1D1D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>{name ?? item.sku}</span>
-                                            <span style={{ color: '#DC2626', fontWeight: 700, flexShrink: 0 }}>{item.available} / {item.requested} шт</span>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                                    {mode === 'own' ? 'Зарезервує товар з власного складу' : mode === 'mixed' ? 'Резерв + замовлення у постачальника' : 'Підтвердить замовлення клієнту'}
-                                  </div>
-                                  <button onClick={() => confirmOrder(order.id)} disabled={busy}
-                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', width: '100%', height: '40px', borderRadius: '9px', border: 'none', background: busy ? '#94A3B8' : '#15803D', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}>
-                                    {busy ? 'Обробка…' : <><Check size={16} /> Підтвердити замовлення</>}
-                                  </button>
-                                </div>
-                              );
-                            })()}
                           </div>
                         )}
                       </div>
