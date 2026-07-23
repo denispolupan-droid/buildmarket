@@ -2658,6 +2658,7 @@ export default function AdminOrders({
                     {(() => {
                       return (
                         <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', alignSelf: 'start' }}>
+                          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>Управління замовленням</div>
                           {/* Джерело замовлення — явно, вгорі-праворуч */}
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                             <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Джерело</span>
@@ -2720,6 +2721,7 @@ export default function AdminOrders({
                           {/* «Відвантажує пост.» перенесено до блоку способу виконання (ліва колонка) */}
 
                           {/* Context action buttons */}
+                          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px', paddingTop: '10px', borderTop: '1px solid var(--border-light)' }}>Дії</div>
                           {(() => {
                             // Unified button styles
                             const btn = {
