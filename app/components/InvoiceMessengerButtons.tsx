@@ -6,7 +6,7 @@
 // за його номером у месенджері менеджера — залишається вставити (Ctrl+V) і надіслати.
 
 import { useState } from 'react';
-import { Send, Phone, Copy, Check } from 'lucide-react';
+import { Send, Phone, Copy, Check, MessageCircle } from 'lucide-react';
 
 function normalizePhone(raw: string): string | null {
   const d = (raw || '').replace(/\D/g, '');
@@ -47,7 +47,7 @@ export default function InvoiceMessengerButtons({
   orderNumber?: number;
   orderId?: string;
   total?: number;
-  variant?: 'admin' | 'toolbar';
+  variant?: 'admin' | 'toolbar' | 'stacked';
   channel?: string | null;
   promOrderId?: string | number | null;
   rozetkaOrderId?: string | number | null;
@@ -70,6 +70,9 @@ export default function InvoiceMessengerButtons({
     `Рахунок на оплату: ${typeof window !== 'undefined' ? window.location.origin : 'https://fixline.com.ua'}/invoice/${orderId}`,
     `Після оплати повідомте нас, будь ласка, — замовлення, оплачені до 14:00, відправляємо того ж дня 🚚`,
   ].join('\n');
+
+  // WhatsApp вміє передзаповнити текст через URL (на відміну від Telegram/Viber).
+  const waHref = normPhone ? `https://wa.me/${normPhone}?text=${encodeURIComponent(message)}` : null;
 
   function flash(kind: 'tg' | 'viber' | 'copy') {
     setDone(kind);
@@ -110,6 +113,41 @@ export default function InvoiceMessengerButtons({
           <Phone size={15} /> {done === 'viber' ? '✓ Скопійовано' : 'Viber'}
         </button>
       </>
+    );
+  }
+
+  if (variant === 'stacked') {
+    const row = {
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%',
+      height: '38px', borderRadius: '9px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+      border: 'none', color: '#fff', textDecoration: 'none', boxSizing: 'border-box' as const,
+    };
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <button onClick={openTelegram} title={normPhone ? `Скопіювати текст і відкрити чат +${normPhone} у Telegram` : 'Номер не розпізнано — текст буде скопійовано'}
+          style={{ ...row, background: '#2AABEE' }}>
+          {done === 'tg' ? <Check size={15} /> : <Send size={15} />} {done === 'tg' ? 'Скопійовано' : 'Telegram'}
+        </button>
+        <button onClick={openViber} title={normPhone ? `Скопіювати текст і відкрити чат +${normPhone} у Viber` : 'Номер не розпізнано — текст буде скопійовано'}
+          style={{ ...row, background: '#7360F2' }}>
+          {done === 'viber' ? <Check size={15} /> : <Phone size={15} />} {done === 'viber' ? 'Скопійовано' : 'Viber'}
+        </button>
+        {waHref && (
+          <a href={waHref} target="_blank" rel="noopener noreferrer" title={`Відкрити чат +${normPhone} у WhatsApp з готовим текстом`}
+            style={{ ...row, background: '#25D366' }}>
+            <MessageCircle size={15} /> WhatsApp
+          </a>
+        )}
+        <button onClick={copyOnly} title="Скопіювати текст із посиланням на рахунок"
+          style={{ ...row, background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1.5px solid #CBD5E1' }}>
+          {done === 'copy' ? <Check size={14} color="#15803D" /> : <Copy size={14} />} Скопіювати текст
+        </button>
+        {done && (
+          <div style={{ fontSize: '10.5px', color: '#15803D', fontWeight: 600, textAlign: 'center', marginTop: '1px' }}>
+            Текст скопійовано — вставте в чат (Ctrl+V)
+          </div>
+        )}
+      </div>
     );
   }
 

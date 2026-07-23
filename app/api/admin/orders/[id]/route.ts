@@ -37,13 +37,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     items: bodyItems, total_price: bodyTotalPrice,
     delivery_type, delivery_subtype, delivery_city_name, delivery_address,
     payment_type, payment_due_date, shipping_supplier_id,
+    internal_note, flags,
   } = body;
 
   const db = createServiceClient();
   const update: Record<string, unknown> = {};
 
   if (status !== undefined) {
-    const VALID = ['new', 'confirmed', 'awaiting_stock', 'picking', 'shipped', 'delivered', 'cancelled'];
+    const VALID = ['new', 'pending_payment', 'confirmed', 'awaiting_stock', 'picking', 'shipped', 'delivered', 'cancelled'];
     if (!VALID.includes(status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
@@ -98,6 +99,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (tracking_ref    !== undefined) update.tracking_ref    = tracking_ref;
   if (payment_confirmed  !== undefined) update.payment_confirmed  = payment_confirmed;
   if (callback_done      !== undefined) update.callback_done      = callback_done;
+  if (internal_note      !== undefined) update.internal_note      = internal_note === '' ? null : internal_note;
+  if (flags              !== undefined && Array.isArray(flags))
+    update.flags = flags.filter((f: unknown): f is string => typeof f === 'string').slice(0, 20);
   if (invoice_as_company !== undefined) update.invoice_as_company = invoice_as_company;
   if (invoice_options    !== undefined) update.invoice_options    = invoice_options;
   if (supplier_confirmed !== undefined) update.supplier_confirmed = supplier_confirmed;

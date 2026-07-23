@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -46,6 +46,8 @@ type Order = {
   order_number: number;
   created_at: string;
   status: string;
+  internal_note?: string | null;
+  flags?: string[] | null;
   total_price: number;
   company: string | null;
   contact: string;
@@ -101,6 +103,7 @@ const CHANNEL_LABEL: Record<string, { label: string; color: string; bg: string }
 
 const STATUSES = [
   { value: 'new',            label: 'Нове',            color: 'var(--brand-blue)', bg: '#EFF4FF' },
+  { value: 'pending_payment',label: 'Очікує оплату',   color: '#64748B', bg: '#F1F5F9' },
   { value: 'confirmed',      label: 'Підтверджено',    color: '#15803D', bg: '#DCFCE7' },
   { value: 'awaiting_stock', label: 'Очікуємо товар',  color: '#7C3AED', bg: '#F5F3FF' },
   { value: 'picking',        label: 'Збирається',      color: '#0E7490', bg: '#ECFEFF' },
@@ -113,15 +116,8 @@ const DELIVERY_LABEL: Record<string, string> = {
   nova: 'Нова Пошта', nova_poshta: 'Нова Пошта', kharkiv: 'Харків і область', pickup: 'Самовивіз',
 };
 
-// Візуальний бейдж перевізника — фірмовий колір + фон. Прибирає «сирий» код на кшталт nova_poshta.
-const CARRIER_META: Record<string, { color: string; bg: string }> = {
-  nova:        { color: '#DA291C', bg: '#FDECEA' },
-  nova_poshta: { color: '#DA291C', bg: '#FDECEA' },
-  pickup:      { color: '#0F766E', bg: '#ECFEFF' },
-  kharkiv:     { color: 'var(--brand-blue)', bg: '#EAF1F8' },
-};
 const PAYMENT_LABEL: Record<string, string> = {
-  invoice: 'Безготівковий', cod: 'Оплата при отриманні', card: '💳 Картка онлайн',
+  invoice: 'Безготівковий', cod: 'Оплата при отриманні', card: 'Картка онлайн',
 };
 
 const STATUS_RANK: Record<string, number> = {
@@ -329,6 +325,10 @@ export default function AdminOrders({
   const [discInput,        setDiscInput]        = useState<Record<string, string>>({});
   const [discMode,         setDiscMode]         = useState<Record<string, 'pct' | 'amount'>>({});
   const [priceBlockOpen,   setPriceBlockOpen]   = useState<Record<string, boolean>>({});
+  const [finLogOpen,       setFinLogOpen]       = useState<Record<string, boolean>>({});
+  const [statusEditOpen,   setStatusEditOpen]   = useState<Record<string, boolean>>({});
+  const [itemsExpanded,    setItemsExpanded]    = useState<Record<string, boolean>>({});
+  const [itemImages,       setItemImages]       = useState<Record<string, Record<string, string | null>>>({});
   const [payFormSaving,    setPayFormSaving]    = useState<Record<string, boolean>>({});
   const [payRemoving,      setPayRemoving]      = useState<string | null>(null);
 
@@ -558,6 +558,35 @@ export default function AdminOrders({
   // Auto-load fulfillment data when order is expanded
   useEffect(() => {
     if (expandedId) loadFulfillment(expandedId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedId]);
+
+  // Статистика клієнта (скільки замовлень + сума) — при розкритті
+  const [custStats, setCustStats] = useState<Record<string, { count: number; total: number }>>({});
+  useEffect(() => {
+    if (!expandedId || custStats[expandedId]) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/orders/${expandedId}/customer-orders`);
+        if (res.ok) { const d = await res.json(); setCustStats(prev => ({ ...prev, [expandedId]: { count: d.count ?? 0, total: d.total ?? 0 } })); }
+      } catch { /* ignore */ }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedId]);
+
+  // Мініатюри фото товарів — підвантажуємо шляхи з products по SKU при розкритті
+  useEffect(() => {
+    if (!expandedId || itemImages[expandedId]) return;
+    const ord = orders.find(o => o.id === expandedId);
+    const skus = ((ord?.items ?? []) as OrderItem[]).map(i => i.sku).filter(Boolean);
+    if (skus.length === 0) return;
+    (async () => {
+      const sb = getSupabaseBrowser();
+      const { data } = await sb.from('products').select('sku, image').in('sku', skus);
+      const map: Record<string, string | null> = {};
+      (data ?? []).forEach((p: { sku: string; image: string | null }) => { map[p.sku] = p.image; });
+      setItemImages(prev => ({ ...prev, [expandedId]: map }));
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedId]);
 
@@ -922,6 +951,29 @@ export default function AdminOrders({
       body: JSON.stringify({ [field]: value }),
     });
     setOrders(prev => prev.map(o => o.id === id ? { ...o, [field]: value } : o));
+  }
+
+  // Швидкі прапорці замовлення (Терміново / Проблемний) — зберігаються в orders.flags
+  async function toggleOrderFlag(id: string, flag: string) {
+    const cur = orders.find(o => o.id === id)?.flags ?? [];
+    const next = cur.includes(flag) ? cur.filter(f => f !== flag) : [...cur, flag];
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, flags: next } : o));
+    await fetch(`/api/admin/orders/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ flags: next }),
+    });
+  }
+
+  // Внутрішня нотатка менеджера — зберігаємо по blur
+  const [noteSaving, setNoteSaving] = useState<string | null>(null);
+  async function saveInternalNote(id: string, note: string) {
+    setNoteSaving(id);
+    await fetch(`/api/admin/orders/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ internal_note: note }),
+    });
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, internal_note: note || null } : o));
+    setNoteSaving(null);
   }
 
   async function saveTTN(id: string) {
@@ -1455,13 +1507,6 @@ export default function AdminOrders({
               && !['delivered', 'cancelled'].includes(order.status);
             const isFlashing = flashId === order.id;
 
-            const STATUS_STEPS = [
-              { value: 'new',           label: 'Новий' },
-              { value: 'confirmed',     label: 'Підтверджено' },
-              { value: 'shipped',       label: 'Відправлено' },
-              { value: 'delivered',     label: 'Доставлено' },
-            ];
-            const stepIdx = STATUS_STEPS.findIndex(s => s.value === order.status);
             const isCancelled = order.status === 'cancelled';
 
             return (
@@ -1507,6 +1552,12 @@ export default function AdminOrders({
                   {/* Клієнт / Товар */}
                   <div style={{ flex: '0 1 calc(50% - 230px)', minWidth: 0, overflow: 'hidden' }}>
                     <div style={{ fontSize: '13px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {(order.flags ?? []).includes('urgent') && (
+                        <span title="Терміново" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>⚡</span>
+                      )}
+                      {(order.flags ?? []).includes('problem') && (
+                        <span title="Проблемний" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>⚠</span>
+                      )}
                       {order.company
                         ? <><span style={{ fontWeight: 600 }}>{order.company}</span><span style={{ color: 'var(--text-muted)' }}> · {order.contact}</span></>
                         : <span style={{ fontWeight: 600 }}>{order.contact}</span>}
@@ -1621,46 +1672,132 @@ export default function AdminOrders({
                   }
                 </div>
 
-                {/* ── Status progress bar — лише у розкритому замовленні (у списку достатньо status-pill) ── */}
-                {!isCancelled && isExpanded && (
-                  <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px 10px', gap: 0, borderTop: '1px solid var(--border-light)', background: 'var(--bg-soft)' }}>
-                    {STATUS_STEPS.map((step, i) => {
-                      const done    = i < stepIdx;
-                      const active  = i === stepIdx;
-                      const future  = i > stepIdx;
-                      return (
-                        <div key={step.value} style={{ display: 'flex', alignItems: 'center', flex: i < STATUS_STEPS.length - 1 ? 1 : 'none' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                            <div style={{
-                              width: active ? '9px' : '6px', height: active ? '9px' : '6px',
-                              borderRadius: '50%', flexShrink: 0,
-                              background: done ? '#A9D7B9' : active ? (isFlashing ? '#22C55E' : 'var(--brand-teal)') : '#D5DCE5',
-                              boxShadow: active ? `0 0 0 2px ${isFlashing ? '#BBF7D0' : 'rgba(61,191,184,0.22)'}` : 'none',
-                              transition: 'all 0.3s',
-                            }} />
-                            <span style={{ fontSize: '9px', fontWeight: active ? 600 : 500, color: done ? 'var(--text-muted)' : active ? (isFlashing ? '#16A34A' : '#0F766E') : '#9AA6B8', whiteSpace: 'nowrap' }}>
-                              {step.label}
-                            </span>
-                          </div>
-                          {i < STATUS_STEPS.length - 1 && (
-                            <div style={{ flex: 1, height: '2px', margin: '0 3px 10px', background: done ? '#CBE7D5' : '#E8ECF1', borderRadius: '1px', transition: 'background 0.3s' }} />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                {/* Верхній прогрес-бар статусів прибрано — унизу є таймлайн «Історія замовлення» */}
 
                 {/* ── Expanded panel ── */}
                 {isExpanded && (
                   <>
-                  <div className="order-expand-grid" style={{ borderTop: '1px solid var(--border-light)', display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr) 224px', gap: '14px', padding: '14px', background: 'var(--bg-soft)' }}>
+                  {/* Шапка розгорнутого замовлення — новий дизайн */}
+                  <div style={{ borderTop: '1px solid var(--border-light)', background: 'var(--bg-soft)', padding: '16px 14px 14px', display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                    {/* main-part — дзеркалить основну область сітки (Клієнт | Оплата) */}
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Замовлення #{order.order_number}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '9px', flexWrap: 'wrap' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
+                          color: paymentConfirmed ? '#15803D' : '#B45309', background: paymentConfirmed ? '#DCFCE7' : '#FEF3C7' }}>
+                          <CreditCard size={12} />{paymentConfirmed ? 'Оплачено' : isCod ? 'Накладений платіж' : 'Очікує оплату'}
+                        </span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, color: channel.color, background: channel.bg, whiteSpace: 'nowrap' }}>
+                          <ShoppingCart size={12} />{channel.label}
+                        </span>
+                        {(order.channel_code === 'rozetka' && order.rozetka_order_id) && (
+                          <button onClick={() => { navigator.clipboard.writeText(String(order.rozetka_order_id)); showToast('Номер Rozetka скопійовано'); }}
+                            title="Скопіювати номер замовлення Rozetka"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-card)', border: '1px solid var(--border-light)', whiteSpace: 'nowrap', cursor: 'pointer', fontVariantNumeric: 'tabular-nums' }}>
+                            №{order.rozetka_order_id} <Copy size={12} />
+                          </button>
+                        )}
+                        {(order.channel_code === 'prom' && order.prom_order_id) && (
+                          <button onClick={() => { navigator.clipboard.writeText(String(order.prom_order_id)); showToast('Номер Prom скопійовано'); }}
+                            title="Скопіювати номер замовлення Prom"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-card)', border: '1px solid var(--border-light)', whiteSpace: 'nowrap', cursor: 'pointer', fontVariantNumeric: 'tabular-nums' }}>
+                            №{order.prom_order_id} <Copy size={12} />
+                          </button>
+                        )}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-card)', border: '1px solid var(--border-light)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                          {date}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Права половина: сума (ліворуч, по межі блоку «Оплата») + «Підтвердити» поруч */}
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                    <div style={{ flexShrink: 0, minWidth: '120px' }}>
+                      <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{Number(order.total_price).toFixed(0)} ₴</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Сума замовлення</div>
+                    </div>
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    {order.status === 'new' && (() => {
+                      const busy = confirming === order.id;
+                      const confirmErr = confirmErrors[order.id];
+                      return (
+                        <div style={{ width: '250px', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '6px' }}>
+                          <button onClick={() => confirmOrder(order.id)} disabled={busy}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', height: '44px', padding: '0 22px', borderRadius: '12px', border: 'none', background: busy ? '#94A3B8' : '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer', boxShadow: '0 1px 2px rgba(30,58,95,0.35)', whiteSpace: 'nowrap' }}>
+                            {busy ? 'Обробка…' : <><Check size={17} /> Підтвердити замовлення</>}
+                          </button>
+                          {confirmErr && (
+                            <div style={{ maxWidth: '300px', padding: '8px 10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', textAlign: 'left' }}>
+                              <div style={{ fontSize: '12px', fontWeight: 600, color: '#DC2626', marginBottom: confirmErr.insufficient?.length ? '6px' : 0 }}>⚠ {confirmErr.error}</div>
+                              {confirmErr.insufficient?.map(item => {
+                                const name = order.items.find(i => i.sku === item.sku)?.name;
+                                return (
+                                  <div key={item.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '2px 0', borderTop: '1px solid #FECACA' }}>
+                                    <span style={{ color: '#7F1D1D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>{name ?? item.sku}</span>
+                                    <span style={{ color: '#DC2626', fontWeight: 700, flexShrink: 0 }}>{item.available} / {item.requested} шт</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                    </div>{/* /кнопка Підтвердити */}
+                    </div>{/* /Оплата-part */}
+                    </div>{/* /main-part */}
+                    {/* Статус — над правою панеллю (250px), «...» = ручна зміна */}
+                    <div style={{ width: '250px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', borderRadius: '10px', color: status.color, background: status.bg, border: `1.5px solid ${status.color}` }}>
+                        <span style={{ fontSize: '14px', fontWeight: 700, whiteSpace: 'nowrap' }}>{status.label}</span>
+                        <button onClick={() => setStatusEditOpen(p => ({ ...p, [order.id]: !p[order.id] }))}
+                          title="Змінити статус вручну"
+                          style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: (statusEditOpen[order.id] ?? false) ? 'rgba(0,0,0,0.12)' : 'none', border: 'none', cursor: 'pointer', color: status.color, padding: '3px', borderRadius: '6px', display: 'inline-flex' }}>
+                          <MoreHorizontal size={18} />
+                        </button>
+                      </div>
+                      {order.status === 'shipped' && order.tracking_number && (
+                        <div title={order.carrier_status_synced_at ? `Оновлено: ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
+                          style={{ fontSize: '11px', fontWeight: 600, textAlign: 'center', lineHeight: 1.3, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
+                          {order.carrier_accepted_at ? '✓' : '⏳'} {order.carrier_status_text ?? (order.carrier_accepted_at ? 'Прийнято НП' : 'Очікує приймання НП')}
+                        </div>
+                      )}
+                      {(statusEditOpen[order.id] ?? false) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Змінити вручну{!isAdmin && <span style={{ marginLeft: '4px', color: '#F59E0B' }}>🔒</span>}
+                          </div>
+                          <select
+                            value={order.status}
+                            onChange={e => { if (e.target.value !== order.status) changeStatus(order.id, e.target.value); }}
+                            style={{ width: '100%', height: '32px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-primary)' }}
+                          >
+                            {STATUSES.filter(s => {
+                              if (isAdmin) return true;
+                              if (s.value === 'cancelled') return order.status === 'new';
+                              return (STATUS_RANK[s.value] ?? -1) >= (STATUS_RANK[order.status] ?? 0);
+                            }).map(s => (
+                              <option key={s.value} value={s.value} style={s.value === 'cancelled' ? { color: '#DC2626', fontWeight: 700 } : undefined}>
+                                {s.value === 'cancelled' ? '⚠ ' + s.label : s.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="order-expand-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 250px', gap: '14px', padding: '14px', background: 'var(--bg-soft)', alignItems: 'stretch' }}>
+
+                    {/* MAIN column (Товари + Контакт/Доставка) */}
+                    <div className="order-main-col" style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
 
                     {/* Col 1: Items */}
-                    <div className="order-col-card" style={{ padding: '16px' }}>
-                      <div style={{ paddingTop: '0' }}>
+                    <div className="order-col-card" style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ paddingTop: '0', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Товари · {order.items.length}</span>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Товари · {order.items.length}
+                          </span>
                           <button
                             onClick={() => editingId === order.id ? setEditingId(null) : startEdit(order)}
                             style={{
@@ -1742,16 +1879,18 @@ export default function AdminOrders({
                             </div>
                           </div>
                         ) : (
-                          <div>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
                             {/* Items table */}
+                            <div style={{ padding: '2px 0 0' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                               <thead>
-                                <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
-                                  <th style={{ textAlign: 'left', padding: '4px 0 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Назва</th>
-                                  <th style={{ textAlign: 'center', padding: '4px 6px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '40px', whiteSpace: 'nowrap' }}>К-сть</th>
-                                  <th style={{ textAlign: 'right', padding: '4px 6px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '60px', whiteSpace: 'nowrap' }}>Ціна</th>
-                                  <th style={{ textAlign: 'right', padding: '4px 0', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '64px' }}>Сума</th>
-                                  <th style={{ textAlign: 'right', padding: '4px 0 4px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', width: '90px' }}>Джерело</th>
+                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                  <th style={{ textAlign: 'left', padding: '2px 0 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Назва</th>
+                                  <th style={{ textAlign: 'left', padding: '2px 6px 8px 12px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '104px', whiteSpace: 'nowrap' }}>Артикул</th>
+                                  <th style={{ textAlign: 'right', padding: '2px 6px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '44px', whiteSpace: 'nowrap' }}>К-сть</th>
+                                  <th style={{ textAlign: 'right', padding: '2px 6px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '62px', whiteSpace: 'nowrap' }}>Ціна</th>
+                                  <th style={{ textAlign: 'right', padding: '2px 0 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '70px' }}>Сума</th>
+                                  <th style={{ textAlign: 'right', padding: '2px 0 8px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '90px' }}>Джерело</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -1762,8 +1901,10 @@ export default function AdminOrders({
                                     return sourceOverrides[order.id]?.[item.sku] ?? planSrc?.fulfillment_type;
                                   }).filter(Boolean);
                                   const isMixed = new Set(sources).size > 1;
+                                  const expanded = itemsExpanded[order.id] ?? false;
+                                  const shown = expanded ? order.items : order.items.slice(0, 1);
 
-                                  return order.items.map(item => {
+                                  const rows = shown.map(item => {
                                     const planSrc = planItems.find(s => s.sku === item.sku);
                                     const effectiveSrc = sourceOverrides[order.id]?.[item.sku] ?? planSrc?.fulfillment_type;
                                     const supplierName = fulfillmentData[order.id]?.by_supplier?.flatMap(g => g.items).find(i => i.sku === item.sku)?.supplier_name;
@@ -1775,27 +1916,53 @@ export default function AdminOrders({
                                       : undefined;
                                     return (
                                       <tr key={item.sku} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                                        {/* Назва повністю, з переносами — товар треба бачити цілком */}
-                                        <td style={{ padding: '5px 0', color: 'var(--text-primary)', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.4 }}>
-                                          <span style={{ color: 'var(--text-muted)', marginRight: '2px', fontSize: '11px' }}>{item.sku}</span>
-                                          <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
-                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px 0 0', color: copiedSku === item.sku ? '#15803D' : 'var(--text-muted)', lineHeight: 1, fontSize: '11px' }}>
-                                            {copiedSku === item.sku ? '✓' : '⎘'}
-                                          </button>{item.name}
+                                        {/* Назва — мініатюра + назва зверху жирнішим, код нижче */}
+                                        <td style={{ padding: '10px 0', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3, verticalAlign: 'top' }}>
+                                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', minWidth: 0 }}>
+                                            {(() => {
+                                              const img = itemImages[order.id]?.[item.sku];
+                                              return (
+                                                <a href={`/admin/products/${encodeURIComponent(item.sku)}`} target="_blank" rel="noopener noreferrer"
+                                                  onClick={e => e.stopPropagation()} title="Відкрити картку товару"
+                                                  style={{ width: '40px', height: '40px', borderRadius: '8px', flexShrink: 0, border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                  background: img ? `#fff url("${img}") center/cover no-repeat` : '#fff' }}>
+                                                  {!img && <Package size={16} color="var(--text-muted)" />}
+                                                </a>
+                                              );
+                                            })()}
+                                            <div style={{ minWidth: 0 }}>
+                                              <a href={`/admin/products/${encodeURIComponent(item.sku)}`} target="_blank" rel="noopener noreferrer"
+                                                onClick={e => e.stopPropagation()}
+                                                title="Відкрити картку товару"
+                                                style={{ color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, lineHeight: 1.35, letterSpacing: '-0.006em', textDecoration: 'none' }}
+                                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--brand-blue)'; e.currentTarget.style.textDecoration = 'underline'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.textDecoration = 'none'; }}>{item.name}</a>
+                                            </div>
+                                          </div>
                                         </td>
-                                        <td style={{ padding: '5px 6px', color: 'var(--text-secondary)', textAlign: 'center' }}>{item.qty}</td>
-                                        <td style={{ padding: '5px 6px', textAlign: 'right', color: 'var(--text-muted)', fontSize: '11px' }}>
+                                        {/* Артикул — окремий стовпець */}
+                                        <td style={{ padding: '10px 6px 10px 12px', verticalAlign: 'top' }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <span style={{ color: 'var(--text-secondary)', fontSize: '11.5px', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{item.sku}</span>
+                                            <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
+                                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: copiedSku === item.sku ? '#15803D' : 'var(--text-muted)', lineHeight: 1, display: 'inline-flex' }}>
+                                              {copiedSku === item.sku ? <Check size={12} /> : <Copy size={12} />}
+                                            </button>
+                                          </div>
+                                        </td>
+                                        <td style={{ padding: '10px 6px', color: 'var(--text-primary)', textAlign: 'right', fontSize: '12.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'top' }}>{item.qty}</td>
+                                        <td style={{ padding: '10px 6px', textAlign: 'right', color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'top' }}>
                                           {item.is_bonus ? '' : `${item.price.toFixed(0)} ₴`}
                                         </td>
-                                        <td style={{ padding: '5px 0', textAlign: 'right', fontWeight: 500 }}>
+                                        <td style={{ padding: '10px 0', textAlign: 'right', verticalAlign: 'top' }}>
                                           {item.is_bonus
                                             ? <span style={{ color: '#15803D', fontSize: '11px', fontWeight: 700, background: '#F0FDF4', padding: '1px 6px', borderRadius: '4px' }}>🎁 Бонус</span>
-                                            : <span style={{ color: 'var(--text-primary)' }}>{(item.price * item.qty).toFixed(0)} ₴</span>
+                                            : <span style={{ color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{(item.price * item.qty).toFixed(0)} ₴</span>
                                           }
                                         </td>
-                                        <td style={{ padding: '5px 0 5px 8px', textAlign: 'right', background: srcBg, borderLeft: srcBorder, borderRadius: isMixed ? '4px' : undefined }}>
+                                        <td style={{ padding: '10px 0 10px 8px', textAlign: 'right', verticalAlign: 'top', background: srcBg, borderLeft: srcBorder, borderRadius: isMixed ? '6px' : undefined }}>
                                           {fulfillmentLoading.has(order.id) ? (
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>...</span>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>…</span>
                                           ) : planSrc ? (
                                             <select
                                               value={effectiveSrc ?? planSrc.fulfillment_type}
@@ -1804,10 +1971,10 @@ export default function AdminOrders({
                                                 ...prev,
                                                 [order.id]: { ...(prev[order.id] ?? {}), [item.sku]: e.target.value as 'own' | 'dropship' },
                                               }))}
-                                              style={{ fontSize: '10px', border: '1px solid var(--border)', borderRadius: '4px', padding: '1px 3px', background: 'transparent',
+                                              style={{ fontSize: '11px', fontWeight: 600, border: '1px solid var(--border)', borderRadius: '6px', padding: '3px 6px', background: 'var(--bg-soft)',
                                                 cursor: order.fulfillment_mode !== null || order.status !== 'new' ? 'default' : 'pointer',
-                                                maxWidth: '86px', opacity: order.fulfillment_mode !== null || order.status !== 'new' ? 0.6 : 1,
-                                                color: effectiveSrc === 'own' ? '#15803D' : 'var(--brand-blue)', fontWeight: isMixed ? 700 : 400 }}
+                                                maxWidth: '90px', opacity: order.fulfillment_mode !== null || order.status !== 'new' ? 0.7 : 1,
+                                                color: effectiveSrc === 'own' ? '#15803D' : 'var(--brand-blue)' }}
                                             >
                                               <option value="dropship">{supplierName ?? 'Постач.'}</option>
                                               {(planSrc.available_own ?? 0) >= item.qty && (
@@ -1815,118 +1982,44 @@ export default function AdminOrders({
                                               )}
                                             </select>
                                           ) : (
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>—</span>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>—</span>
                                           )}
                                         </td>
                                       </tr>
                                     );
                                   });
+                                  if (order.items.length > 1) {
+                                    rows.push(
+                                      <tr key="__more">
+                                        <td colSpan={6} style={{ padding: '8px 0 2px' }}>
+                                          <button type="button" onClick={() => setItemsExpanded(p => ({ ...p, [order.id]: !expanded }))}
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '12px', fontWeight: 600, color: 'var(--brand-blue)' }}>
+                                            {expanded
+                                              ? <><ChevronUp size={14} /> Згорнути список</>
+                                              : <><ChevronDown size={14} /> Показати ще {order.items.length - 1} {order.items.length - 1 === 1 ? 'товар' : order.items.length - 1 < 5 ? 'товари' : 'товарів'}</>}
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    );
+                                  }
+                                  return rows;
                                 })()}
                               </tbody>
                             </table>
+                            </div>
 
-                            {/* Тип цін + ручна знижка — впливають на ціни позицій і підсумок, тому поряд із товарами */}
-                            {(() => {
-                              const editable = ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
-                                && order.channel_code !== 'dropship';
-                              const pt = order.price_type ?? 'retail';
-                              const activePct = Number(order.discount_pct ?? 0);
-                              const open = priceBlockOpen[order.id] ?? false;
-                              return (
-                                <div style={{ marginTop: '12px' }}>
-                                  {/* Згорнута зведення: поточний тип цін + знижка. Клік — розгортає керування */}
-                                  <button type="button"
-                                    onClick={() => setPriceBlockOpen(p => ({ ...p, [order.id]: !open }))}
-                                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', height: '32px', padding: '0 10px', border: '1px solid var(--border)', borderRadius: '7px', background: 'var(--bg-soft)', cursor: 'pointer', fontSize: '12px', color: 'var(--text-primary)' }}>
-                                    <span>Тип цін: <strong>{PRICE_TYPE_LABELS[pt] ?? pt}</strong>{activePct > 0 ? <> · Знижка <strong style={{ color: '#B45309' }}>−{activePct}%</strong></> : ''}</span>
-                                    {open ? <ChevronUp size={14} color="#94A3B8" /> : <ChevronDown size={14} color="#94A3B8" />}
-                                  </button>
-                                  {open && (
-                                  <div style={{ marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                  <div style={{ flex: '1 1 120px', minWidth: 0 }}>
-                                    <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
-                                      title="Тариф, за яким пораховані позиції. Зміна перерахує всі ціни за відповідним прайсом.">
-                                      Тип цін
-                                    </div>
-                                    {editable ? (
-                                      <select
-                                        value={pt}
-                                        onChange={e => { if (e.target.value !== pt) changePriceType(order.id, e.target.value); }}
-                                        style={{
-                                          width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)',
-                                          borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer',
-                                          color: 'var(--text-primary)', fontWeight: 600,
-                                        }}
-                                      >
-                                        <option value="retail">Роздріб</option>
-                                        <option value="wholesale">Опт</option>
-                                        <option value="drop">Дроп</option>
-                                      </select>
-                                    ) : (
-                                      <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-subtle)' }}
-                                        title={order.channel_code === 'dropship' ? 'Дропшип — ціна за собівартістю' : 'Ціни зафіксовані у проведеній накладній (відвантажено)'}>
-                                        {PRICE_TYPE_LABELS[pt] ?? pt}
-                                      </div>
-                                    )}
-                                  </div>
-                                  {(() => {
-                                    const activePct = Number(order.discount_pct ?? 0);
-                                    if (!editable) {
-                                      if (activePct > 0) {
-                                        return (
-                                          <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                                            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>Знижка</div>
-                                            <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: '#B45309', background: '#FFFBEB' }}>
-                                              −{activePct}% (−{Number(order.discount_amount ?? 0).toFixed(2)} ₴)
-                                            </div>
-                                          </div>
-                                        );
-                                      }
-                                      return null;
-                                    }
-                                    const mode = discMode[order.id] ?? 'pct';
-                                    return (
-                                      <div style={{ flex: '1 1 160px', minWidth: 0 }}>
-                                        <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
-                                          title="Ручна знижка. Знижує ціни всіх позицій; сума замовлення перераховується.">
-                                          Знижка{activePct > 0 ? ` · зараз −${activePct}%` : ''}
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '4px' }}>
-                                          <select
-                                            value={mode}
-                                            onChange={e => setDiscMode(p => ({ ...p, [order.id]: e.target.value as 'pct' | 'amount' }))}
-                                            style={{ height: '30px', padding: '0 4px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer' }}
-                                          >
-                                            <option value="pct">%</option>
-                                            <option value="amount">₴</option>
-                                          </select>
-                                          <input
-                                            type="number" min="0" step="any"
-                                            value={discInput[order.id] ?? ''}
-                                            placeholder={mode === 'pct' ? 'напр. 10' : 'напр. 200'}
-                                            onChange={e => setDiscInput(p => ({ ...p, [order.id]: e.target.value }))}
-                                            style={{ width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)' }}
-                                          />
-                                          <button
-                                            onClick={() => applyDiscount(order.id, mode, parseFloat(discInput[order.id] ?? ''))}
-                                            style={{ height: '30px', padding: '0 10px', border: '1px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                                          >OK</button>
-                                        </div>
-                                        {activePct > 0 && (
-                                          <button
-                                            onClick={() => applyDiscount(order.id, 'pct', 0)}
-                                            style={{ marginTop: '4px', fontSize: '11px', color: '#B91C1C', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
-                                          >Прибрати знижку −{activePct}%</button>
-                                        )}
-                                      </div>
-                                    );
-                                  })()}
-                                  </div>
-                                  )}
-                                </div>
-                              );
-                            })()}
+                            {/* «Тип цін + знижка» перенесено в картку «Логістика» нижче */}
 
+                            {/* Ряд Фінанси | Логістика — під таблицею, згортається (за замовчуванням згорнуто) */}
+                            <button type="button" onClick={() => setFinLogOpen(p => ({ ...p, [order.id]: !(p[order.id] ?? false) }))}
+                              style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '11px', fontWeight: 700, color: (finLogOpen[order.id] ?? false) ? 'var(--brand-blue)' : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              {(finLogOpen[order.id] ?? false) ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                              Фінанси та логістика
+                            </button>
+                            {(finLogOpen[order.id] ?? false) && (<>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: '10px', alignItems: 'stretch' }}>
+                            <div className="order-col-card" style={{ minWidth: 0, padding: '14px', display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Фінанси</div>
                             {/* Економіка замовлення — виручка / собівартість / комісія / маржа завжди на очах */}
                             {(() => {
                               const fi = fulfillmentData[order.id];
@@ -1944,19 +2037,24 @@ export default function AdminOrders({
                               const grossPct = fi?.margin_pct;
                               const net = gross != null ? gross - commission : undefined;
                               const netPct = net != null && revenue > 0 ? Math.round((net / revenue) * 1000) / 10 : undefined;
-                              const cell = (label: string, value: string, opts: { strong?: boolean; color?: string } = {}) => (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                                  <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{label}</span>
-                                  <span style={{ fontSize: '13px', fontWeight: opts.strong ? 700 : 600, color: opts.color ?? 'var(--text-primary)', whiteSpace: 'nowrap' }}>{value}</span>
+                              const finalColor = (v: number | undefined) => (v ?? 0) >= 0 ? '#15803D' : '#DC2626';
+                              const row = (label: string, value: string, opts: { color?: string; strong?: boolean; total?: boolean; sub?: string } = {}) => (
+                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px',
+                                  ...(opts.total ? { marginTop: '3px', paddingTop: '9px', borderTop: '1px solid var(--border-light)' } : {}) }}>
+                                  <span style={{ fontSize: '12.5px', color: opts.total ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: opts.total ? 700 : 400 }}>{label}</span>
+                                  <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: 0 }}>
+                                    <span style={{ fontSize: '13px', fontWeight: (opts.strong || opts.total) ? 700 : 600, color: opts.color ?? 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{value}</span>
+                                    {opts.sub && <span style={{ fontSize: '11px', fontWeight: 600, color: opts.color ?? 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', marginTop: '1px' }}>{opts.sub}</span>}
+                                  </span>
                                 </div>
                               );
                               return (
-                                <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border-light)', background: 'var(--bg-soft)', display: 'flex', flexWrap: 'wrap', gap: '18px', alignItems: 'flex-end' }}>
-                                  {cell('Виручка', `${revenue.toFixed(0)} ₴`)}
-                                  {cell('Собівартість', cost != null ? `${cost.toFixed(0)} ₴` : '…', { color: 'var(--text-secondary)' })}
-                                  {commission > 0 && cell('Комісія', `−${commission.toFixed(0)} ₴`, { color: '#C2410C' })}
-                                  {cell('Маржа', gross != null ? `${gross.toFixed(0)} ₴${grossPct != null ? ` · ${grossPct}%` : ''}` : '…', { strong: true, color: (gross ?? 0) >= 0 ? '#15803D' : '#DC2626' })}
-                                  {commission > 0 && cell('Чистий', net != null ? `${net.toFixed(0)} ₴${netPct != null ? ` · ${netPct}%` : ''}` : '…', { strong: true, color: (net ?? 0) >= 0 ? '#15803D' : '#DC2626' })}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+                                  {row('Виручка', `${revenue.toFixed(0)} ₴`)}
+                                  {row('Собівартість', cost != null ? `${cost.toFixed(0)} ₴` : '…', { color: 'var(--text-secondary)' })}
+                                  {commission > 0 && row('Комісія', `−${commission.toFixed(0)} ₴`, { color: '#C2410C' })}
+                                  {row('Маржа', gross != null ? `${gross.toFixed(0)} ₴` : '…', { color: finalColor(gross), strong: true, sub: grossPct != null ? `${grossPct}%` : undefined })}
+                                  {commission > 0 && row('Чистий дохід', net != null ? `${net.toFixed(0)} ₴` : '…', { color: finalColor(net), total: true, sub: netPct != null ? `${netPct}%` : undefined })}
                                 </div>
                               );
                             })()}
@@ -2002,23 +2100,127 @@ export default function AdminOrders({
                               );
                             })()}
 
-                            {/* Fulfillment mode selector — only for new orders */}
+                            </div>
+                            <div className="order-col-card" style={{ minWidth: 0, padding: '14px', display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Логістика</div>
+                            {/* Тип цін + ручна знижка */}
+                            {(() => {
+                              const editable = ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
+                                && order.channel_code !== 'dropship';
+                              const pt = order.price_type ?? 'retail';
+                              const activePct = Number(order.discount_pct ?? 0);
+                              const open = priceBlockOpen[order.id] ?? false;
+                              return (
+                                <div style={{ marginBottom: '10px' }}>
+                                  <button type="button"
+                                    onClick={() => setPriceBlockOpen(p => ({ ...p, [order.id]: !open }))}
+                                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', minHeight: '32px', padding: '5px 10px', border: '1px solid var(--border)', borderRadius: '7px', background: 'var(--bg-soft)', cursor: 'pointer', fontSize: '12px', color: 'var(--text-primary)' }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                      <span>Тип цін: <strong>{PRICE_TYPE_LABELS[pt] ?? pt}</strong></span>
+                                      {activePct > 0
+                                        ? <span style={{ fontSize: '11px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', borderRadius: '5px', padding: '1px 7px' }}>−{activePct}%</span>
+                                        : <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>+ знижка</span>}
+                                    </span>
+                                    <span style={{ flexShrink: 0, color: 'var(--text-muted)' }}>
+                                      {open ? <ChevronUp size={14} color="#94A3B8" /> : <ChevronDown size={14} color="#94A3B8" />}
+                                    </span>
+                                  </button>
+                                  {open && (
+                                  <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
+                                      title="Тариф, за яким пораховані позиції. Зміна перерахує всі ціни за відповідним прайсом.">
+                                      Тип цін
+                                    </div>
+                                    {editable ? (
+                                      <select
+                                        value={pt}
+                                        onChange={e => { if (e.target.value !== pt) changePriceType(order.id, e.target.value); }}
+                                        style={{ width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-primary)', fontWeight: 600 }}>
+                                        <option value="retail">Роздріб</option>
+                                        <option value="wholesale">Опт</option>
+                                        <option value="drop">Дроп</option>
+                                      </select>
+                                    ) : (
+                                      <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-subtle)' }}
+                                        title={order.channel_code === 'dropship' ? 'Дропшип — ціна за собівартістю' : 'Ціни зафіксовані у проведеній накладній (відвантажено)'}>
+                                        {PRICE_TYPE_LABELS[pt] ?? pt}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {(() => {
+                                    if (!editable) {
+                                      if (activePct > 0) {
+                                        return (
+                                          <div style={{ minWidth: 0 }}>
+                                            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>Знижка</div>
+                                            <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: '#B45309', background: '#FFFBEB' }}>
+                                              −{activePct}% (−{Number(order.discount_amount ?? 0).toFixed(2)} ₴)
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    }
+                                    const mode = discMode[order.id] ?? 'pct';
+                                    return (
+                                      <div style={{ minWidth: 0 }}>
+                                        <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
+                                          title="Ручна знижка. Знижує ціни всіх позицій; сума замовлення перераховується.">
+                                          Знижка{activePct > 0 ? ` · зараз −${activePct}%` : ''}
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '4px' }}>
+                                          <select
+                                            value={mode}
+                                            onChange={e => setDiscMode(p => ({ ...p, [order.id]: e.target.value as 'pct' | 'amount' }))}
+                                            style={{ height: '30px', padding: '0 4px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer' }}>
+                                            <option value="pct">%</option>
+                                            <option value="amount">₴</option>
+                                          </select>
+                                          <input
+                                            type="number" min="0" step="any"
+                                            value={discInput[order.id] ?? ''}
+                                            placeholder={mode === 'pct' ? 'напр. 10' : 'напр. 200'}
+                                            onChange={e => setDiscInput(p => ({ ...p, [order.id]: e.target.value }))}
+                                            style={{ width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)' }}
+                                          />
+                                          <button
+                                            onClick={() => applyDiscount(order.id, mode, parseFloat(discInput[order.id] ?? ''))}
+                                            style={{ height: '30px', padding: '0 10px', border: '1px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                          >OK</button>
+                                        </div>
+                                        {activePct > 0 && (
+                                          <button
+                                            onClick={() => applyDiscount(order.id, 'pct', 0)}
+                                            style={{ marginTop: '4px', fontSize: '11px', color: '#B91C1C', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                                          >Прибрати знижку −{activePct}%</button>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                  </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                            {/* Спосіб виконання + Відвантажує пост. — в один рядок, однакова висота */}
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '4px', alignItems: 'stretch' }}>
                             {order.status === 'new' && (() => {
                               const plan = fulfillmentData[order.id]?.plan;
                               const hasOwn = plan ? plan.has_own : true;
                               return (
-                                <div style={{ marginTop: '12px', padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                                  <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Спосіб виконання</div>
-                                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                <div style={{ flex: '1 1 200px', minWidth: 0, padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                  <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Спосіб виконання</div>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                     {(['supplier', 'own', 'mixed'] as const).map(mode => {
-                                      const label = mode === 'supplier' ? '📦 Постачальник' : mode === 'own' ? '🏪 Наш склад' : '🔀 Змішаний';
+                                      const label = mode === 'supplier' ? 'Постачальник' : mode === 'own' ? 'Наш склад' : 'Змішаний';
                                       const active = (selectedMode[order.id] ?? 'supplier') === mode;
                                       const disabled = !hasOwn && (mode === 'own' || mode === 'mixed');
                                       return (
                                         <button key={mode}
                                           onClick={() => !disabled && setSelectedMode(prev => ({ ...prev, [order.id]: mode }))}
                                           title={disabled ? 'Немає товару на власному складі' : undefined}
-                                          style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
+                                          style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap', textAlign: 'center',
                                             cursor: disabled ? 'not-allowed' : 'pointer',
                                             border: `1.5px solid ${active ? '#1E3A5F' : 'var(--border)'}`,
                                             background: disabled ? 'var(--bg-soft)' : active ? '#1E3A5F' : 'var(--bg-card)',
@@ -2029,23 +2231,42 @@ export default function AdminOrders({
                                       );
                                     })}
                                   </div>
-                                  {!hasOwn && plan && (
-                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
-                                      ℹ️ Власний склад недоступний — всі товари у постачальника
-                                    </div>
-                                  )}
                                 </div>
                               );
                             })()}
-                            <button onClick={() => toggleFulfillment(order.id)}
-                              style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontSize: '12px', fontWeight: 600, color: fulfillmentOpen.has(order.id) ? 'var(--brand-blue)' : 'var(--text-secondary)' }}>
-                              <TrendingUp size={12} />
-                              {fulfillmentLoading.has(order.id) ? 'Завантаження...'
-                                : fulfillmentOpen.has(order.id)
-                                  ? <><ChevronUp size={12} /> Сховати поставщика</>
-                                  : <><ChevronDown size={12} /> Поставщик та маржа</>}
-                            </button>
-                            {fulfillmentOpen.has(order.id) && fulfillmentData[order.id] && (() => {
+                            {/* Хто фактично відвантажив — поряд зі способом виконання */}
+                            {(order.fulfillment_mode ?? 'supplier') !== 'own' && suppliersList.length > 0 && (
+                              <div style={{ flex: '1 1 200px', minWidth: 0, padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.03em' }}
+                                  title="Хто фактично відвантажив товар. Борг перед постачальником при відправці буде віднесено саме на нього.">
+                                  Відвантажує пост.
+                                </div>
+                                <select
+                                  value={order.shipping_supplier_id ?? ''}
+                                  onChange={e => { const v = e.target.value === '' ? null : parseInt(e.target.value); if (v !== (order.shipping_supplier_id ?? null)) setShippingSupplier(order.id, v); }}
+                                  style={{ width: '100%', height: '32px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer', color: order.shipping_supplier_id ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: order.shipping_supplier_id ? 600 : 400 }}>
+                                  <option value="">— за мапінгом SKU —</option>
+                                  {suppliersList.map(s => (<option key={s.id} value={s.id}>{s.name}</option>))}
+                                </select>
+                                {order.status === 'shipped' && !order.shipping_supplier_id && (
+                                  <div style={{ fontSize: '10px', color: '#B45309', marginTop: '4px', lineHeight: 1.3 }}>⚠ Постачальника не підтверджено — борг віднесено за мапінгом</div>
+                                )}
+                              </div>
+                            )}
+                            </div>
+                            {/* Власний склад недоступний — під блоками, на всю ширину */}
+                            {order.status === 'new' && fulfillmentData[order.id]?.plan?.has_own === false && (
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                                ℹ️ Власний склад недоступний — всі товари у постачальника
+                              </div>
+                            )}
+                            </div>
+                            </div>
+                            {/* Маржа по постачальниках — усередині згортання Фінанси+Логістика */}
+                            <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              <TrendingUp size={12} /> Маржа по постачальниках
+                            </div>
+                            {fulfillmentData[order.id] && (() => {
                               const fi = fulfillmentData[order.id];
                               // Per-SKU marketplace commission (Prom/Rozetka) для показу в розбивці по позиціях
                               const commItems = order.channel_code === 'prom' ? order.prom_data?._commission?.items
@@ -2054,83 +2275,80 @@ export default function AdminOrders({
                               const commBySku = new Map<string, { amt: number; pct: number }>();
                               (commItems ?? []).forEach(c => commBySku.set(c.sku, { amt: c.commission_amt, pct: c.commission_pct }));
                               const hasComm = commBySku.size > 0;
-                              const marginColor = fi.total_margin >= 0 ? 'var(--color-success, #15803D)' : 'var(--color-danger, #DC2626)';
-                              const marginBg = fi.total_margin >= 0 ? 'var(--bg-success, #F0FDF4)' : 'var(--bg-danger, #FEF2F2)';
                               const activeReservations = (fi.reservations ?? []).filter(r => r.reservation_status === 'active');
                               return (
                                 <div style={{ marginTop: '8px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--border)', fontSize: '12px' }}>
-                                  {/* Margin summary */}
-                                  <div style={{ display: 'flex', gap: '12px', padding: '8px 12px', background: marginBg, borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
-                                    <span style={{ fontWeight: 700, color: marginColor }}>Маржа: {fi.total_margin.toFixed(0)} грн ({fi.margin_pct}%)</span>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Виручка: {fi.total_revenue.toFixed(0)} грн</span>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Собів.: {fi.total_cost.toFixed(0)} грн</span>
-                                    {activeReservations.length > 0 && (
-                                      <span style={{ marginLeft: 'auto', background: '#DCFCE7', color: '#15803D', padding: '1px 8px', borderRadius: '20px', fontWeight: 700 }}>
+                                  {/* Підсумки (виручка/собів/маржа/комісія) — у блоці «Економіка» вище, тут лише
+                                      деталізація по поставщику. Показуємо тільки резерв (його немає вгорі). */}
+                                  {activeReservations.length > 0 && (
+                                    <div style={{ display: 'flex', padding: '7px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg-soft)' }}>
+                                      <span style={{ background: '#DCFCE7', color: '#15803D', padding: '1px 8px', borderRadius: '20px', fontWeight: 700 }}>
                                         ✓ Зарезервовано: {activeReservations.length} поз.
                                       </span>
-                                    )}
-                                  </div>
+                                    </div>
+                                  )}
 
-                                  {/* Per-supplier margin breakdown */}
-                                  {fi.by_supplier.map((group, gi) => (
+                                  {/* Per-supplier breakdown. При маркетплейс-комісії показуємо ЧИСТУ маржу
+                                      (маржа − комісія), щоб математика сходилась із блоком «Економіка». */}
+                                  {fi.by_supplier.map((group, gi) => {
+                                    const groupComm = group.items.reduce((s, it) => s + (commBySku.get(it.sku)?.amt ?? 0), 0);
+                                    const groupNet = group.total_margin - groupComm;
+                                    return (
                                     <div key={gi} style={{ borderBottom: gi < fi.by_supplier.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
-                                      <div style={{ padding: '6px 12px', background: 'var(--bg-soft)', fontWeight: 600, color: 'var(--text-primary)', fontSize: '11px', display: 'flex', justifyContent: 'space-between' }}>
+                                      <div style={{ padding: '7px 12px', background: 'var(--bg-soft)', fontWeight: 700, color: 'var(--text-primary)', fontSize: '11px', display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
                                         <span>📦 {group.supplier_name ?? 'Невідомий поставщик'}</span>
-                                        <span style={{ color: 'var(--text-muted)' }}>+{group.total_margin.toFixed(0)} грн</span>
+                                        <span style={{ color: groupNet >= 0 ? '#15803D' : '#DC2626' }}>
+                                          {groupNet >= 0 ? '+' : ''}{groupNet.toFixed(0)} грн{hasComm ? ' чистими' : ''}
+                                        </span>
                                       </div>
                                       {group.items.map((item, ii) => {
                                         const c = commBySku.get(item.sku);
+                                        const net = item.margin - (c?.amt ?? 0);
                                         return (
-                                          <div key={ii} style={{ display: 'grid', gridTemplateColumns: hasComm ? 'auto 1fr auto auto auto auto' : 'auto 1fr auto auto auto', gap: '8px', padding: '5px 12px', alignItems: 'center', borderTop: '1px solid var(--border-light)' }}>
+                                          <div key={ii} style={{ display: 'grid', gridTemplateColumns: hasComm ? 'auto 1fr auto auto auto' : 'auto 1fr auto auto auto', gap: '8px', padding: '6px 12px', alignItems: 'center', borderTop: '1px solid var(--border-light)', fontSize: '12px' }}>
                                             <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: '11px' }}>{item.supplier_sku ?? item.sku}</span>
                                             <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
                                             <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.qty} шт</span>
-                                            <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.cost_price.toFixed(0)} → {item.sale_price.toFixed(0)} грн</span>
-                                            <span style={{ whiteSpace: 'nowrap', fontWeight: 600, color: item.margin >= 0 ? '#15803D' : '#DC2626' }}>+{item.margin.toFixed(0)} грн</span>
-                                            {hasComm && (
-                                              <span style={{ whiteSpace: 'nowrap', fontWeight: 600, color: '#C2410C', fontSize: '11px' }} title="Комісія маркетплейсу за позицію">
-                                                {c ? `−${c.amt.toFixed(0)} ₴${c.pct ? ` (${c.pct}%)` : ''}` : '—'}
-                                              </span>
-                                            )}
+                                            <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontSize: '11px' }}
+                                              title={hasComm && c ? `Маржа ${item.margin.toFixed(0)} − комісія ${c.amt.toFixed(0)}${c.pct ? ` (${c.pct}%)` : ''}` : 'Собівартість → продаж'}>
+                                              {item.cost_price.toFixed(0)}→{item.sale_price.toFixed(0)}{hasComm && c ? ` −${c.amt.toFixed(0)}к` : ''}
+                                            </span>
+                                            <span style={{ whiteSpace: 'nowrap', fontWeight: 700, color: net >= 0 ? '#15803D' : '#DC2626' }}>
+                                              {net >= 0 ? '+' : ''}{net.toFixed(0)} грн
+                                            </span>
                                           </div>
                                         );
                                       })}
                                     </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               );
                             })()}
+                            </>)}
+
                           </div>
                         )}
                       </div>
                     </div>
 
                     {/* Col 2: Contact + Delivery + payment + callback + TTN */}
+                    <div style={{ order: -1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', alignItems: 'stretch' }}>
+                    {/* Клієнт card */}
                     <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Контакт і доставка</span>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Клієнт</span>
                       {/* Contact info */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', paddingBottom: '8px', borderBottom: '1px solid var(--border-light)' }}>
-                        {/* Номер замовлення на маркетплейсі — покупець називає саме його */}
-                        {(order.channel_code === 'rozetka' && order.rozetka_order_id) && (
-                          <div style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 700, color: '#15803D', background: '#DCFCE7', borderRadius: '6px', padding: '2px 8px', cursor: 'pointer' }}
-                            title="Натисніть, щоб скопіювати номер замовлення Rozetka"
-                            onClick={() => { navigator.clipboard.writeText(String(order.rozetka_order_id)); showToast('Номер Rozetka скопійовано'); }}>
-                            Rozetka №{order.rozetka_order_id} ⎘
-                          </div>
-                        )}
-                        {(order.channel_code === 'prom' && order.prom_order_id) && (
-                          <div style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 700, color: '#C2410C', background: '#FFF7ED', borderRadius: '6px', padding: '2px 8px', cursor: 'pointer' }}
-                            title="Натисніть, щоб скопіювати номер замовлення Prom"
-                            onClick={() => { navigator.clipboard.writeText(String(order.prom_order_id)); showToast('Номер Prom скопійовано'); }}>
-                            Prom №{order.prom_order_id} ⎘
-                          </div>
-                        )}
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                        <div style={{ width: '44px', height: '44px', borderRadius: '999px', flexShrink: 0, background: '#EEF2FF', color: 'var(--brand-blue)', fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {order.contact.trim().split(/\s+/).slice(0, 2).map(w => w[0] ?? '').join('').toUpperCase() || '—'}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         {order.company && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 }}>
                             <Building2 size={12} color="#64748B" />{order.company}
                           </div>
                         )}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-primary)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
                           {order.contact}
                           {order.customer_id && (
                             <a href={`/admin/partners?open=${order.customer_id}`} target="_blank" rel="noopener noreferrer"
@@ -2147,97 +2365,123 @@ export default function AdminOrders({
                           <button
                             onClick={() => { navigator.clipboard.writeText(order.phone); showToast('Телефон скопійовано'); }}
                             title="Копіювати номер"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1, fontSize: '13px' }}>
-                            ⎘
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1, display: 'inline-flex' }}>
+                            <Copy size={13} />
                           </button>
                           {!isDropship && (noCallback ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', whiteSpace: 'nowrap' }}>
-                              ✓ Без дзвінка
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', whiteSpace: 'nowrap' }}>
+                              <Check size={11} /> Без дзвінка
                             </span>
                           ) : (
                             <button onClick={() => toggleFlag(order.id, 'callback_done', !callbackDone)}
                               title={callbackDone ? 'Натисніть, щоб зняти позначку «зателефонували»' : 'Натисніть, коли зателефонували клієнту'}
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', background: callbackDone ? '#DCFCE7' : '#FEF3C7', color: callbackDone ? '#15803D' : '#B45309', border: `1px solid ${callbackDone ? '#86EFAC' : '#FCD34D'}` }}>
-                              {callbackDone ? '✓ Зателефонували' : '☎ Потрібен дзвінок'}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', background: callbackDone ? '#DCFCE7' : '#FEF3C7', color: callbackDone ? '#15803D' : '#B45309', border: `1px solid ${callbackDone ? '#86EFAC' : '#FCD34D'}` }}>
+                              {callbackDone ? <><Check size={11} /> Зателефонували</> : <><Phone size={11} /> Потрібен дзвінок</>}
                             </button>
                           ))}
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
+                        </div>
                       </div>
-
-
-                      {editDeliveryId === order.id ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                          <select
-                            value={editDeliveryForm.type}
-                            onChange={e => setEditDeliveryForm(p => ({ ...p, type: e.target.value, cityName: '', address: '' }))}
-                            style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 6px' }}>
-                            <option value="nova">Нова Пошта</option>
-                            <option value="pickup">Самовивіз</option>
-                            <option value="kharkiv">Харків і область</option>
-                          </select>
-                          {editDeliveryForm.type === 'nova' && (
-                            <>
-                              <select
-                                value={editDeliveryForm.subtype}
-                                onChange={e => setEditDeliveryForm(p => ({ ...p, subtype: e.target.value }))}
-                                style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 6px' }}>
-                                <option value="warehouse">Відділення</option>
-                                <option value="courier">Кур'єр</option>
-                              </select>
-                              <input
-                                value={editDeliveryForm.cityName}
-                                onChange={e => setEditDeliveryForm(p => ({ ...p, cityName: e.target.value }))}
-                                placeholder="Місто"
-                                style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 8px' }} />
+                      {/* Статистика клієнта + швидкі прапорці */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {custStats[order.id] && custStats[order.id].count > 1 && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            <ShoppingCart size={13} color="#64748B" />
+                            <span>{custStats[order.id].count} замовлень · <strong style={{ color: 'var(--text-primary)' }}>{custStats[order.id].total.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴</strong></span>
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          {([
+                            { key: 'urgent',  label: 'Терміново',  onBg: '#FEE2E2', onC: '#B91C1C', onB: '#FCA5A5', icon: '⚡' },
+                            { key: 'problem', label: 'Проблемний', onBg: '#FEF3C7', onC: '#B45309', onB: '#FCD34D', icon: '⚠' },
+                          ] as const).map(f => {
+                            const active = (order.flags ?? []).includes(f.key);
+                            return (
+                              <button key={f.key} onClick={() => toggleOrderFlag(order.id, f.key)}
+                                title={active ? `Зняти прапорець «${f.label}»` : `Позначити «${f.label}»`}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+                                  background: active ? f.onBg : 'var(--bg-soft)', color: active ? f.onC : 'var(--text-muted)', border: `1px solid ${active ? f.onB : 'var(--border)'}` }}>
+                                {f.icon} {f.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      {/* Доставка — прижато до нижньої межі, однакова висота з блоком ТТН → розділювачі збігаються */}
+                      <div style={{ marginTop: 'auto', minHeight: '118px', paddingTop: '12px', borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Доставка</div>
+                        {editDeliveryId === order.id ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                            <select
+                              value={editDeliveryForm.type}
+                              onChange={e => setEditDeliveryForm(p => ({ ...p, type: e.target.value, cityName: '', address: '' }))}
+                              style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 6px' }}>
+                              <option value="nova">Нова Пошта</option>
+                              <option value="pickup">Самовивіз</option>
+                              <option value="kharkiv">Харків і область</option>
+                            </select>
+                            {editDeliveryForm.type === 'nova' && (
+                              <>
+                                <select
+                                  value={editDeliveryForm.subtype}
+                                  onChange={e => setEditDeliveryForm(p => ({ ...p, subtype: e.target.value }))}
+                                  style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 6px' }}>
+                                  <option value="warehouse">Відділення</option>
+                                  <option value="courier">Кур'єр</option>
+                                </select>
+                                <input
+                                  value={editDeliveryForm.cityName}
+                                  onChange={e => setEditDeliveryForm(p => ({ ...p, cityName: e.target.value }))}
+                                  placeholder="Місто"
+                                  style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 8px' }} />
+                                <input
+                                  value={editDeliveryForm.address}
+                                  onChange={e => setEditDeliveryForm(p => ({ ...p, address: e.target.value }))}
+                                  placeholder="Відділення або адреса"
+                                  style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 8px' }} />
+                              </>
+                            )}
+                            {editDeliveryForm.type === 'kharkiv' && (
                               <input
                                 value={editDeliveryForm.address}
                                 onChange={e => setEditDeliveryForm(p => ({ ...p, address: e.target.value }))}
-                                placeholder="Відділення або адреса"
+                                placeholder="Адреса доставки"
                                 style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 8px' }} />
-                            </>
-                          )}
-                          {editDeliveryForm.type === 'kharkiv' && (
-                            <input
-                              value={editDeliveryForm.address}
-                              onChange={e => setEditDeliveryForm(p => ({ ...p, address: e.target.value }))}
-                              placeholder="Адреса доставки"
-                              style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 8px' }} />
-                          )}
-                          <div style={{ display: 'flex', gap: '6px' }}>
+                            )}
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button
+                                onClick={() => saveDelivery(order.id)}
+                                disabled={savingDelivery}
+                                style={{ height: '28px', padding: '0 12px', borderRadius: '6px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                                {savingDelivery ? '...' : 'Зберегти'}
+                              </button>
+                              <button
+                                onClick={() => setEditDeliveryId(null)}
+                                style={{ height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', fontSize: '12px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                                Скасувати
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', flexWrap: 'wrap', fontSize: '13px', color: 'var(--text-primary)' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              <Truck size={13} color="#64748B" /> {delivery}
+                            </span>
+                            <span style={{ color: 'var(--text-secondary)', marginTop: '1px' }}>{subtype.replace(/^ — /, '')}{order.delivery_city_name && <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{subtype ? ' · ' : ''}{order.delivery_city_name}</strong>}{order.delivery_address && ` · ${order.delivery_address}`}</span>
                             <button
-                              onClick={() => saveDelivery(order.id)}
-                              disabled={savingDelivery}
-                              style={{ height: '28px', padding: '0 12px', borderRadius: '6px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
-                              {savingDelivery ? '...' : 'Зберегти'}
-                            </button>
-                            <button
-                              onClick={() => setEditDeliveryId(null)}
-                              style={{ height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', fontSize: '12px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                              Скасувати
+                              onClick={() => openEditDelivery(order)}
+                              title="Змінити доставку"
+                              style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1 }}>
+                              <Pencil size={11} />
                             </button>
                           </div>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', flexWrap: 'wrap', fontSize: '13px', color: 'var(--text-primary)' }}>
-                          {(() => {
-                            const cm = CARRIER_META[order.delivery_type] ?? { color: 'var(--text-secondary)', bg: 'var(--bg-soft)' };
-                            return (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '999px', background: cm.bg, color: cm.color, fontWeight: 700, fontSize: '11px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                <Truck size={12} /> {delivery}
-                              </span>
-                            );
-                          })()}
-                          <span style={{ color: 'var(--text-secondary)', marginTop: '1px' }}>{subtype.replace(/^ — /, '')}{order.delivery_city_name && <strong style={{ color: 'var(--text-primary)' }}>{subtype ? ' · ' : ''}{order.delivery_city_name}</strong>}{order.delivery_address && ` · ${order.delivery_address}`}</span>
-                          <button
-                            onClick={() => openEditDelivery(order)}
-                            title="Змінити доставку"
-                            style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1 }}>
-                            <Pencil size={11} />
-                          </button>
-                        </div>
-                      )}
-
+                        )}
+                      </div>
+                    </div>
+                    {/* Оплата / ТТН card */}
+                    <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Оплата</div>
                       {editPaymentTypeId === order.id ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                           <select
@@ -2245,9 +2489,9 @@ export default function AdminOrders({
                             onChange={e => setEditPaymentTypeValue(e.target.value)}
                             style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 6px' }}
                           >
-                            <option value="cash">💵 Готівка</option>
-                            <option value="invoice">🏦 Безготівковий (рахунок)</option>
-                            <option value="deferred">⏳ Відстрочка</option>
+                            <option value="cash">Готівка</option>
+                            <option value="invoice">Безготівковий (рахунок)</option>
+                            <option value="deferred">Відстрочка</option>
                           </select>
                           <div style={{ display: 'flex', gap: '6px' }}>
                             <button
@@ -2277,7 +2521,7 @@ export default function AdminOrders({
                       ) : order.payment_type === 'card' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: order.status === 'confirmed' ? '#DCFCE7' : '#EFF6FF', color: order.status === 'confirmed' ? '#15803D' : 'var(--brand-blue)', border: `1px solid ${order.status === 'confirmed' ? '#86EFAC' : '#BFDBFE'}` }}>
-                            <CreditCard size={12} />{order.status === 'confirmed' ? '💳 Оплата карткою — підтверджено' : '💳 Картка онлайн'}
+                            <CreditCard size={12} />{order.status === 'confirmed' ? 'Оплата карткою — підтверджено' : 'Картка онлайн'}
                           </div>
                           <button onClick={() => { setEditPaymentTypeId(order.id); setEditPaymentTypeValue(['cash','invoice','deferred'].includes(order.payment_type) ? order.payment_type : 'cash'); }} title="Змінити спосіб оплати" style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1 }}>
                             <Pencil size={11} />
@@ -2309,11 +2553,11 @@ export default function AdminOrders({
                                   ? `✓ Оплачено ${amountPaid.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴`
                                   : isPartial
                                     ? `${amountPaid.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} / ${total.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴`
-                                    : order.payment_type === 'cash' ? '💵 Оплата готівкою'
-                                    : order.payment_type === 'invoice' ? '🏦 Безготівковий'
+                                    : order.payment_type === 'cash' ? 'Оплата готівкою'
+                                    : order.payment_type === 'invoice' ? 'Безготівковий'
                                     : order.payment_type === 'deferred'
-                                      ? `⏳ Відстрочка${order.payment_due_date ? ` · до ${new Date(order.payment_due_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' })}` : ''}`
-                                    : '⏳ Очікуємо оплату'}
+                                      ? `Відстрочка${order.payment_due_date ? ` · до ${new Date(order.payment_due_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' })}` : ''}`
+                                    : 'Очікуємо оплату'}
                               </div>
                               <button onClick={() => { setEditPaymentTypeId(order.id); setEditPaymentTypeValue(['cash','invoice','deferred'].includes(order.payment_type) ? order.payment_type : 'cash'); }} title="Змінити спосіб оплати" style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1 }}>
                                 <Pencil size={11} />
@@ -2422,7 +2666,88 @@ export default function AdminOrders({
                         );
                       })()}
 
-
+                      {/* ТТН Нової Пошти — прижато до нижньої межі картки, однакова висота з «Доставкою» */}
+                      <div style={{ marginTop: 'auto', minHeight: '118px', paddingTop: '12px', borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ТТН Нової Пошти</div>
+                      {(order.delivery_type === 'nova' || order.delivery_type === 'nova_poshta') ? (
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          <div style={{ position: 'relative', flex: '1 1 140px', minWidth: 0 }}>
+                            <Hash size={12} color="#94A3B8" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }} />
+                            <input type="text" value={ttnValues[order.id] ?? ''} onChange={e => setTtnValues(prev => ({ ...prev, [order.id]: e.target.value }))}
+                              placeholder="59000000000000"
+                              style={{ width: '100%', height: '32px', paddingLeft: '26px', paddingRight: '8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                          </div>
+                          <button onClick={() => saveTTN(order.id)} disabled={ttnSaving === order.id || !!order.tracking_number}
+                            style={{ height: '32px', padding: '0 12px', borderRadius: '7px', background: '#1E3A5F', color: '#fff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: (ttnSaving === order.id || !!order.tracking_number) ? 'default' : 'pointer', opacity: (ttnSaving === order.id || !!order.tracking_number) ? 0.4 : 1 }}>
+                            {ttnSaving === order.id ? '...' : 'Зберегти'}
+                          </button>
+                          {(() => {
+                            const hasTtn = !!order.tracking_number;
+                            return (
+                              <button
+                                onClick={() => !hasTtn && setTtnModalOrder(order)}
+                                disabled={hasTtn}
+                                title={hasTtn ? 'ТТН вже створена' : 'Створити ТТН через API Нової Пошти'}
+                                style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
+                                  background: hasTtn ? 'var(--border-light)' : 'var(--brand-blue-light)',
+                                  color: hasTtn ? 'var(--text-muted)' : 'var(--brand-blue)',
+                                  border: `1.5px solid ${hasTtn ? 'var(--border)' : '#C7D7F5'}`,
+                                  cursor: hasTtn ? 'default' : 'pointer',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Truck size={14} />
+                              </button>
+                            );
+                          })()}
+                          {order.tracking_number && (() => {
+                            const inReg = registryAdded.has(order.tracking_number);
+                            const isAddingReg = registryAdding === order.id;
+                            return (
+                              <button
+                                onClick={() => !inReg && addToRegistry(order.id, order.tracking_number!)}
+                                disabled={inReg || isAddingReg}
+                                title={inReg ? 'Вже в реєстрі НП' : 'Додати в реєстр НП'}
+                                style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
+                                  background: inReg ? '#DCFCE7' : '#F0FDF4', color: '#15803D',
+                                  border: '1.5px solid #86EFAC', cursor: inReg ? 'default' : 'pointer',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {isAddingReg ? '…' : inReg ? <Check size={14} /> : <ClipboardList size={14} />}
+                              </button>
+                            );
+                          })()}
+                          {order.tracking_number && (
+                            <button onClick={() => deleteTTN(order.id)} disabled={ttnDeleting === order.id}
+                              title="Видалити ТТН з бази та з НП"
+                              style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0, background: '#FEF2F2', color: '#DC2626', border: '1.5px solid #FECACA', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: ttnDeleting === order.id ? 0.5 : 1 }}>
+                              {ttnDeleting === order.id ? '…' : <Trash2 size={14} />}
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Доставка не Нова Пошта</div>
+                      )}
+                      {/* Дві однакові кнопки в один рядок: Надіслати постачальнику + Створити ЗП */}
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
+                          && (['supplier', 'mixed'].includes(order.fulfillment_mode ?? 'supplier') || !!order.supplier_sent_at) && (
+                          <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
+                            title={order.supplier_sent_at ? `Надіслано ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · натисніть щоб надіслати ще раз` : 'Надіслати замовлення постачальнику'}
+                            style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '40px', padding: '0 10px', boxSizing: 'border-box', fontSize: '12.5px', fontWeight: 600, cursor: supplierQueueLoading ? 'wait' : 'pointer', borderRadius: '9px',
+                              border: order.supplier_sent_at ? '1.5px solid #86EFAC' : '1.5px solid #93C5FD',
+                              background: order.supplier_sent_at ? '#F0FDF4' : '#EFF6FF',
+                              color: order.supplier_sent_at ? '#15803D' : '#1E3A5F',
+                              opacity: supplierQueueLoading ? 0.6 : 1 }}>
+                            <Mail size={15} style={{ flexShrink: 0 }} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.supplier_sent_at ? 'Надіслано' : 'Постачальнику'}</span>
+                          </button>
+                        )}
+                        <button onClick={() => openSupplierPO(order)} disabled={creatingPo === order.id}
+                          title="Створити замовлення постачальнику (ЗП)"
+                          style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '40px', padding: '0 10px', boxSizing: 'border-box', fontSize: '12.5px', fontWeight: 600, borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: creatingPo === order.id ? 'wait' : 'pointer', opacity: creatingPo === order.id ? 0.6 : 1 }}>
+                          <ShoppingCart size={15} style={{ flexShrink: 0 }} />
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{creatingPo === order.id ? '...' : 'Створити ЗП'}</span>
+                        </button>
+                      </div>
+                      </div>
 
                       {(() => {
                         const displayComment = order.comment?.split('\n').filter(line => !line.includes('Не передзвонювати')).join('\n').trim();
@@ -2434,148 +2759,36 @@ export default function AdminOrders({
                         ) : null;
                       })()}
 
-                      {(order.delivery_type === 'nova' || order.delivery_type === 'nova_poshta') && (
-                        <div>
-                          <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ТТН Нової Пошти</div>
-                          <div style={{ display: 'flex', gap: '6px' }}>
-                            <div style={{ position: 'relative', flex: 1 }}>
-                              <Hash size={12} color="#94A3B8" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }} />
-                              <input type="text" value={ttnValues[order.id] ?? ''} onChange={e => setTtnValues(prev => ({ ...prev, [order.id]: e.target.value }))}
-                                placeholder="59000000000000"
-                                style={{ width: '100%', height: '32px', paddingLeft: '26px', paddingRight: '8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
-                            </div>
-                            <button onClick={() => saveTTN(order.id)} disabled={ttnSaving === order.id || !!order.tracking_number}
-                              style={{ height: '32px', padding: '0 12px', borderRadius: '7px', background: '#1E3A5F', color: '#fff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: (ttnSaving === order.id || !!order.tracking_number) ? 'default' : 'pointer', opacity: (ttnSaving === order.id || !!order.tracking_number) ? 0.4 : 1 }}>
-                              {ttnSaving === order.id ? '...' : 'Зберегти'}
-                            </button>
-                            {(order.delivery_type === 'nova' || order.delivery_type === 'nova_poshta') && (() => {
-                              const hasTtn = !!order.tracking_number;
-                              return (
-                                <button
-                                  onClick={() => !hasTtn && setTtnModalOrder(order)}
-                                  disabled={hasTtn}
-                                  title={hasTtn ? 'ТТН вже створена' : 'Створити ТТН через API Нової Пошти'}
-                                  style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
-                                    background: hasTtn ? 'var(--border-light)' : 'var(--brand-blue-light)',
-                                    color: hasTtn ? 'var(--text-muted)' : 'var(--brand-blue)',
-                                    border: `1.5px solid ${hasTtn ? 'var(--border)' : '#C7D7F5'}`,
-                                    cursor: hasTtn ? 'default' : 'pointer',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  <Truck size={14} />
-                                </button>
-                              );
-                            })()}
-                            {order.tracking_number && (() => {
-                              const inReg = registryAdded.has(order.tracking_number);
-                              const isAddingReg = registryAdding === order.id;
-                              return (
-                                <button
-                                  onClick={() => !inReg && addToRegistry(order.id, order.tracking_number!)}
-                                  disabled={inReg || isAddingReg}
-                                  title={inReg ? 'Вже в реєстрі НП' : 'Додати в реєстр НП'}
-                                  style={{
-                                    height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
-                                    background: inReg ? '#DCFCE7' : '#F0FDF4',
-                                    color: inReg ? '#15803D' : '#15803D',
-                                    border: `1.5px solid ${inReg ? '#86EFAC' : '#86EFAC'}`,
-                                    cursor: inReg ? 'default' : 'pointer',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: '14px',
-                                  }}>
-                                  {isAddingReg ? '…' : inReg ? <Check size={14} /> : '📋'}
-                                </button>
-                              );
-                            })()}
-                            {order.tracking_number && (
-                              <button onClick={() => deleteTTN(order.id)} disabled={ttnDeleting === order.id}
-                                title="Видалити ТТН з бази та з НП"
-                                style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0, background: '#FEF2F2', color: '#DC2626', border: '1.5px solid #FECACA', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', opacity: ttnDeleting === order.id ? 0.5 : 1 }}>
-                                {ttnDeleting === order.id ? '…' : '🗑'}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                      {/* ТТН і «Надіслати постачальнику» перенесено під таблицю товарів (колонка ТТН) */}
 
+                    </div>
+                    {/* /Доставка card + /grid Клієнт|Доставка */}
+                    </div>
+                    {/* /MAIN column */}
                     </div>
 
                     {/* Col 3: Status dropdown + context actions */}
                     {(() => {
-                      const fMode = order.fulfillment_mode ?? 'supplier';
                       return (
-                        <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', alignSelf: 'start' }}>
-                          {/* Current status badge */}
-                          <div style={{ fontSize: '13px', fontWeight: 700, padding: '6px 10px', borderRadius: '8px', color: status.color, background: status.bg, textAlign: 'center' }}>
-                            {status.label}
-                          </div>
-                          {order.status === 'shipped' && order.tracking_number && (
-                            <div title={order.carrier_status_synced_at ? `Оновлено: ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
-                              style={{ fontSize: '11px', fontWeight: 600, textAlign: 'center', lineHeight: 1.3, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
-                              {order.carrier_accepted_at ? '✓' : '⏳'} {order.carrier_status_text ?? (order.carrier_accepted_at ? 'Прийнято НП' : 'Очікує приймання НП')}
-                            </div>
-                          )}
-
-                          {/* Manual status dropdown */}
-                          <div>
-                            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
-                              Змінити вручну{!isAdmin && <span style={{ marginLeft: '4px', color: '#F59E0B' }}>🔒</span>}
-                            </div>
-                            <select
-                              value={order.status}
-                              onChange={e => { if (e.target.value !== order.status) changeStatus(order.id, e.target.value); }}
-                              style={{ width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-primary)' }}
-                            >
-                              {STATUSES.filter(s => {
-                                if (isAdmin) return true;
-                                // managers: no backward moves; cancel only from 'new'
-                                if (s.value === 'cancelled') return order.status === 'new';
-                                return (STATUS_RANK[s.value] ?? -1) >= (STATUS_RANK[order.status] ?? 0);
-                              }).map(s => (
-                                <option
-                                  key={s.value}
-                                  value={s.value}
-                                  style={s.value === 'cancelled' ? { color: '#DC2626', fontWeight: 700 } : undefined}
-                                >
-                                  {s.value === 'cancelled' ? '⚠ ' + s.label : s.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* Фактичний постачальник відвантаження (дроп/змішані замовлення) */}
-                          {fMode !== 'own' && suppliersList.length > 0 && (
-                            <div>
-                              <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
-                                title="Хто фактично відвантажив товар. Борг перед постачальником при відправці буде віднесено саме на нього.">
-                                Відвантажує пост.
-                              </div>
-                              <select
-                                value={order.shipping_supplier_id ?? ''}
-                                onChange={e => {
-                                  const v = e.target.value === '' ? null : parseInt(e.target.value);
-                                  if (v !== (order.shipping_supplier_id ?? null)) setShippingSupplier(order.id, v);
-                                }}
-                                style={{
-                                  width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)',
-                                  borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer',
-                                  color: order.shipping_supplier_id ? 'var(--text-primary)' : 'var(--text-muted)',
-                                  fontWeight: order.shipping_supplier_id ? 600 : 400,
-                                }}
-                              >
-                                <option value="">— за мапінгом SKU —</option>
-                                {suppliersList.map(s => (
-                                  <option key={s.id} value={s.id}>{s.name}</option>
-                                ))}
-                              </select>
-                              {order.status === 'shipped' && !order.shipping_supplier_id && (
-                                <div style={{ fontSize: '10px', color: '#B45309', marginTop: '3px', lineHeight: 1.3 }}>
-                                  ⚠ Постачальника не підтверджено — борг віднесено за мапінгом
-                                </div>
-                              )}
-                            </div>
-                          )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
+                        {/* Внутрішні нотатки — окремою карткою зверху, вирівняна з верхом колонки */}
+                        <div className="order-col-card" style={{ padding: '16px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>Внутрішні нотатки</div>
+                          <textarea
+                            key={`note-${order.id}-${order.internal_note ?? ''}`}
+                            defaultValue={order.internal_note ?? ''}
+                            onBlur={e => { const v = e.target.value.trim(); if (v !== (order.internal_note ?? '')) saveInternalNote(order.id, v); }}
+                            placeholder="Напр. клієнт думає, чекаємо оплату…"
+                            style={{ width: '100%', minHeight: '68px', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12.5px', color: 'var(--text-primary)', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', background: 'var(--bg-card)' }} />
+                          {noteSaving === order.id && <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', marginTop: '3px' }}>Збереження…</div>}
+                        </div>
+                        {/* Дії card */}
+                        <div className="order-col-card" style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {/* Статус замовлення + ручна зміна винесені у правий верхній кут шапки */}
+                          {/* «Відвантажує пост.» перенесено до блоку способу виконання (ліва колонка) */}
 
                           {/* Context action buttons */}
+                          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>Дії</div>
                           {(() => {
                             // Unified button styles
                             const btn = {
@@ -2590,76 +2803,7 @@ export default function AdminOrders({
                             return (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
                                 {/* Primary CTA for new orders — confirm + optional send-to-supplier */}
-                                {order.status === 'new' && (() => {
-                                  const mode = selectedMode[order.id] ?? 'supplier';
-                                  const isSupplier = mode === 'supplier';
-                                  const busy = confirming === order.id;
-                                  const confirmErr = confirmErrors[order.id];
-                                  return (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                      <button
-                                        onClick={() => confirmOrder(order.id)}
-                                        disabled={busy}
-                                        style={{ width: '100%', height: '34px', borderRadius: '8px', border: 'none',
-                                          background: busy ? '#94A3B8' : '#15803D', color: '#fff',
-                                          fontSize: '12px', fontWeight: 700, cursor: busy ? 'wait' : 'pointer' }}>
-                                        {busy ? '⏳ Обробка...' : '✅ Підтвердити замовлення'}
-                                      </button>
-                                      {isSupplier && (
-                                        <button
-                                          onClick={() => startSupplierSend([order.id])}
-                                          disabled={supplierQueueLoading}
-                                          style={{ width: '100%', height: '34px', borderRadius: '8px',
-                                            border: '1.5px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F',
-                                            fontSize: '12px', fontWeight: 700, cursor: supplierQueueLoading ? 'wait' : 'pointer',
-                                            opacity: supplierQueueLoading ? 0.6 : 1 }}>
-                                          📤 Відправити постачальнику
-                                        </button>
-                                      )}
-                                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                                        {mode === 'own' ? 'Зарезервує товар з власного складу' : mode === 'mixed' ? 'Резерв + замовлення у постачальника' : 'Підтвердить замовлення клієнту'}
-                                      </div>
-
-                                      {/* Inline error: generic or insufficient stock */}
-                                      {confirmErr && (
-                                        <div style={{ marginTop: '8px', padding: '8px 10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px' }}>
-                                          <div style={{ fontSize: '12px', fontWeight: 600, color: '#DC2626', marginBottom: confirmErr.insufficient?.length ? '6px' : 0 }}>
-                                            ⚠ {confirmErr.error}
-                                          </div>
-                                          {confirmErr.insufficient?.map(item => {
-                                            const name = order.items.find(i => i.sku === item.sku)?.name;
-                                            return (
-                                              <div key={item.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '2px 0', borderTop: '1px solid #FECACA' }}>
-                                                <span style={{ color: '#7F1D1D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>
-                                                  {name ?? item.sku}
-                                                </span>
-                                                <span style={{ color: '#DC2626', fontWeight: 700, flexShrink: 0 }}>
-                                                  {item.available} / {item.requested} шт
-                                                </span>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                                {order.status === 'confirmed' && (fMode === 'supplier' || fMode === 'mixed' || !!order.supplier_sent_at) && (
-                                  <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
-                                    style={order.supplier_sent_at
-                                      ? { ...btn, border: '1.5px solid #86EFAC', background: '#F0FDF4', color: '#15803D', opacity: supplierQueueLoading ? 0.6 : 1, alignItems: 'flex-start' }
-                                      : { ...btnPrimary, opacity: supplierQueueLoading ? 0.6 : 1 }}>
-                                    <Mail size={13} style={{ flexShrink: 0, marginTop: order.supplier_sent_at ? '2px' : 0 }} />
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '1px' }}>
-                                      <span>{order.supplier_sent_at ? '✅ Надіслано постачальнику' : 'Надіслати постачальнику'}</span>
-                                      {order.supplier_sent_at && (
-                                        <span style={{ fontSize: '10px', opacity: 0.75 }}>
-                                          {new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · натисніть щоб надіслати ще раз
-                                        </span>
-                                      )}
-                                    </div>
-                                  </button>
-                                )}
+                                {/* «Підтвердити» → блок способу виконання; «Надіслати постачальнику» → під ТТН */}
                                 {(order.status === 'confirmed' || order.status === 'awaiting_stock' || order.status === 'picking') && (() => {
                                   const shippedQty = shippedQtyMap[order.id] ?? {};
                                   const hasRemaining = (order.items as OrderItem[]).some(i => (shippedQty[i.sku] ?? 0) < i.qty);
@@ -2742,16 +2886,13 @@ export default function AdminOrders({
                                   </button>
                                 </div>
                                 <InvoiceMessengerButtons
+                                  variant="stacked"
                                   phone={order.phone} contact={order.contact}
                                   orderNumber={order.order_number} orderId={order.id}
                                   total={order.total_price} channel={order.channel_code}
                                   promOrderId={order.prom_order_id} rozetkaOrderId={order.rozetka_order_id} />
 
-                                <button onClick={() => openSupplierPO(order)} disabled={creatingPo === order.id}
-                                  style={{ ...btnMuted, cursor: creatingPo === order.id ? 'wait' : 'pointer', opacity: creatingPo === order.id ? 0.6 : 1 }}>
-                                  <ShoppingCart size={13} />
-                                  {creatingPo === order.id ? 'Завантаження...' : 'Створити ЗП'}
-                                </button>
+                                {/* «Створити ЗП» перенесено під ТТН, у рядок із «Надіслати постачальнику» */}
 
                                 {/* Документи замовлення: РН (друкована видаткова) + повернення.
                                     Видимі в будь-якому статусі — РН є кінцевим документом замовлення. */}
@@ -2784,6 +2925,7 @@ export default function AdminOrders({
                               </div>
                             );
                           })()}
+                        </div>
                         </div>
                       );
                     })()}
@@ -2866,53 +3008,36 @@ export default function AdminOrders({
 
                     if (evs.length <= 1) return null;
                     return (
-                      <div style={{ borderTop: '1px solid var(--border-light)', padding: '10px 16px' }}>
-                        <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
-                          Журнал подій
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: '4px' }}>
-                          {evs.map((ev, i) => (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              {i > 0 && (
-                                <span style={{ color: ev.backward ? '#F59E0B' : 'var(--text-muted)', fontSize: '12px', lineHeight: 1 }}>
-                                  {ev.backward ? '↩' : '→'}
-                                </span>
-                              )}
-                              {(() => {
-                                const card = (
-                                  <div style={{
-                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px',
-                                    background: ev.backward ? '#FFFBEB' : ev.href ? '#F0F9FF' : 'var(--bg-soft)',
-                                    border: `1px solid ${ev.backward ? '#FDE68A' : ev.href ? '#BAE6FD' : 'var(--border)'}`,
-                                    borderRadius: '8px', padding: '4px 9px', minWidth: '70px',
-                                  }}>
-                                    <div style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                      <span>{ev.icon}</span>
-                                      <span style={{ fontWeight: 600, color: ev.backward ? '#B45309' : ev.href ? '#0369A1' : 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                                        {ev.label}
-                                      </span>
-                                    </div>
-                                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                                      {new Date(ev.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                    {ev.sub && (
-                                      <span style={{ fontSize: '9px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '90px', textOverflow: 'ellipsis' }}>
-                                        {ev.sub}
-                                      </span>
-                                    )}
-                                    {ev.by && ev.by !== 'system' && (
-                                      <span style={{ fontSize: '9px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '90px', textOverflow: 'ellipsis' }}>
-                                        {ev.by.split('@')[0]}
-                                      </span>
-                                    )}
+                      <div style={{ background: 'var(--bg-soft)', padding: '0 14px 14px' }}>
+                        <div className="order-col-card" style={{ padding: '16px 18px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '18px' }}>
+                            Історія замовлення
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: '4px' }}>
+                            {evs.map((ev, i) => {
+                              const color = ev.backward ? '#B45309' : ev.href ? '#0369A1' : '#1E3A5F';
+                              const content = (
+                                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', width: '100%' }}>
+                                  {i < evs.length - 1 && (
+                                    <div style={{ position: 'absolute', top: '15px', left: '50%', width: '100%', height: '2px', background: ev.backward ? '#FDE68A' : 'var(--border)' }} />
+                                  )}
+                                  <div style={{ position: 'relative', zIndex: 1, width: '32px', height: '32px', borderRadius: '999px', background: 'var(--bg-card)', border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px' }}>
+                                    {ev.icon}
                                   </div>
-                                );
-                                return ev.href
-                                  ? <a href={ev.href} style={{ textDecoration: 'none' }} onClick={e => e.stopPropagation()}>{card}</a>
-                                  : card;
-                              })()}
-                            </div>
-                          ))}
+                                  <div style={{ marginTop: '9px', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.25, padding: '0 4px' }}>{ev.label}</div>
+                                  <div style={{ marginTop: '3px', fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                                    {new Date(ev.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                  </div>
+                                  {ev.sub && <div style={{ marginTop: '2px', fontSize: '10px', color: 'var(--text-muted)', maxWidth: '96px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.sub}</div>}
+                                  {ev.by && ev.by !== 'system' && <div style={{ marginTop: '2px', fontSize: '10px', color: 'var(--text-muted)', maxWidth: '96px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.by.split('@')[0]}</div>}
+                                </div>
+                              );
+                              const wrapStyle: React.CSSProperties = { flex: '1 0 96px', minWidth: '96px', textDecoration: 'none' };
+                              return ev.href
+                                ? <a key={i} href={ev.href} style={wrapStyle} onClick={e => e.stopPropagation()}>{content}</a>
+                                : <div key={i} style={wrapStyle}>{content}</div>;
+                            })}
+                          </div>
                         </div>
                       </div>
                     );
