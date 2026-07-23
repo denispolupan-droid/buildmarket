@@ -323,6 +323,7 @@ export default function AdminOrders({
   const [discMode,         setDiscMode]         = useState<Record<string, 'pct' | 'amount'>>({});
   const [priceBlockOpen,   setPriceBlockOpen]   = useState<Record<string, boolean>>({});
   const [econBlockOpen,    setEconBlockOpen]    = useState<Record<string, boolean>>({});
+  const [itemsBlockOpen,   setItemsBlockOpen]   = useState<Record<string, boolean>>({});
   const [payFormSaving,    setPayFormSaving]    = useState<Record<string, boolean>>({});
   const [payRemoving,      setPayRemoving]      = useState<string | null>(null);
 
@@ -1651,10 +1652,15 @@ export default function AdminOrders({
                   <div className="order-expand-grid" style={{ borderTop: '1px solid var(--border-light)', display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr) 224px', gap: '14px', padding: '14px', background: 'var(--bg-soft)' }}>
 
                     {/* Col 1: Items */}
-                    <div className="order-col-card" style={{ padding: '16px' }}>
-                      <div style={{ paddingTop: '0' }}>
+                    <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ paddingTop: '0', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Товари · {order.items.length}</span>
+                          <button
+                            onClick={() => setItemsBlockOpen(p => ({ ...p, [order.id]: !(p[order.id] ?? false) }))}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {(itemsBlockOpen[order.id] ?? false) ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                            Товари · {order.items.length}
+                          </button>
                           <button
                             onClick={() => editingId === order.id ? setEditingId(null) : startEdit(order)}
                             style={{
@@ -1736,8 +1742,9 @@ export default function AdminOrders({
                             </div>
                           </div>
                         ) : (
-                          <div>
-                            {/* Items table — виділено брендовою панеллю */}
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            {/* Items table — виділено брендовою панеллю, згортається/розгортається */}
+                            {(itemsBlockOpen[order.id] ?? false) ? (
                             <div style={{ background: '#E3EDF9', border: '1px solid #CADCEF', borderRadius: '10px', padding: '4px 12px 6px' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                               <thead>
@@ -1823,6 +1830,18 @@ export default function AdminOrders({
                               </tbody>
                             </table>
                             </div>
+                            ) : (
+                            <button onClick={() => setItemsBlockOpen(p => ({ ...p, [order.id]: true }))}
+                              title="Показати список товарів"
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', width: '100%', padding: '10px 12px', background: '#E3EDF9', border: '1px solid #CADCEF', borderRadius: '10px', cursor: 'pointer', textAlign: 'left' }}>
+                              <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {order.items.length} {order.items.length === 1 ? 'товар' : order.items.length < 5 ? 'товари' : 'товарів'} на <span style={{ fontVariantNumeric: 'tabular-nums' }}>{Number(order.total_price).toFixed(0)} ₴</span>
+                              </span>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', flexShrink: 0, fontSize: '12px', fontWeight: 600, color: 'var(--brand-blue)' }}>
+                                Показати <ChevronDown size={13} />
+                              </span>
+                            </button>
+                            )}
 
                             {/* Тип цін + ручна знижка — впливають на ціни позицій і підсумок, тому поряд із товарами */}
                             {(() => {
@@ -2089,37 +2108,6 @@ export default function AdminOrders({
                                 ℹ️ Власний склад недоступний — всі товари у постачальника
                               </div>
                             )}
-                            {/* Підтвердити замовлення — на всю ширину під блоками */}
-                            {order.status === 'new' && (() => {
-                              const mode = selectedMode[order.id] ?? 'supplier';
-                              const busy = confirming === order.id;
-                              const confirmErr = confirmErrors[order.id];
-                              return (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '10px' }}>
-                                  <button onClick={() => confirmOrder(order.id)} disabled={busy}
-                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', width: '100%', height: '40px', borderRadius: '9px', border: 'none', background: busy ? '#94A3B8' : '#15803D', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}>
-                                    {busy ? 'Обробка…' : <><Check size={16} /> Підтвердити замовлення</>}
-                                  </button>
-                                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                                    {mode === 'own' ? 'Зарезервує товар з власного складу' : mode === 'mixed' ? 'Резерв + замовлення у постачальника' : 'Підтвердить замовлення клієнту'}
-                                  </div>
-                                  {confirmErr && (
-                                    <div style={{ marginTop: '4px', padding: '8px 10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px' }}>
-                                      <div style={{ fontSize: '12px', fontWeight: 600, color: '#DC2626', marginBottom: confirmErr.insufficient?.length ? '6px' : 0 }}>⚠ {confirmErr.error}</div>
-                                      {confirmErr.insufficient?.map(item => {
-                                        const name = order.items.find(i => i.sku === item.sku)?.name;
-                                        return (
-                                          <div key={item.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '2px 0', borderTop: '1px solid #FECACA' }}>
-                                            <span style={{ color: '#7F1D1D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>{name ?? item.sku}</span>
-                                            <span style={{ color: '#DC2626', fontWeight: 700, flexShrink: 0 }}>{item.available} / {item.requested} шт</span>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })()}
                             <button onClick={() => toggleFulfillment(order.id)}
                               style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontSize: '12px', fontWeight: 600, color: fulfillmentOpen.has(order.id) ? 'var(--brand-blue)' : 'var(--text-secondary)' }}>
                               <TrendingUp size={12} />
@@ -2184,6 +2172,38 @@ export default function AdminOrders({
                                     </div>
                                     );
                                   })}
+                                </div>
+                              );
+                            })()}
+
+                            {/* Підтвердити замовлення — прижато до низу колонки, щоб бути на одній лінії з «Надіслати постачальнику» */}
+                            {order.status === 'new' && (() => {
+                              const mode = selectedMode[order.id] ?? 'supplier';
+                              const busy = confirming === order.id;
+                              const confirmErr = confirmErrors[order.id];
+                              return (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: 'auto', paddingTop: '14px' }}>
+                                  <button onClick={() => confirmOrder(order.id)} disabled={busy}
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', width: '100%', height: '40px', borderRadius: '9px', border: 'none', background: busy ? '#94A3B8' : '#15803D', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}>
+                                    {busy ? 'Обробка…' : <><Check size={16} /> Підтвердити замовлення</>}
+                                  </button>
+                                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                                    {mode === 'own' ? 'Зарезервує товар з власного складу' : mode === 'mixed' ? 'Резерв + замовлення у постачальника' : 'Підтвердить замовлення клієнту'}
+                                  </div>
+                                  {confirmErr && (
+                                    <div style={{ marginTop: '4px', padding: '8px 10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px' }}>
+                                      <div style={{ fontSize: '12px', fontWeight: 600, color: '#DC2626', marginBottom: confirmErr.insufficient?.length ? '6px' : 0 }}>⚠ {confirmErr.error}</div>
+                                      {confirmErr.insufficient?.map(item => {
+                                        const name = order.items.find(i => i.sku === item.sku)?.name;
+                                        return (
+                                          <div key={item.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '2px 0', borderTop: '1px solid #FECACA' }}>
+                                            <span style={{ color: '#7F1D1D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>{name ?? item.sku}</span>
+                                            <span style={{ color: '#DC2626', fontWeight: 700, flexShrink: 0 }}>{item.available} / {item.requested} шт</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })()}
@@ -2583,7 +2603,7 @@ export default function AdminOrders({
                       {['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
                         && (['supplier', 'mixed'].includes(order.fulfillment_mode ?? 'supplier') || !!order.supplier_sent_at) && (
                         <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
-                          style={{ display: 'flex', alignItems: order.supplier_sent_at ? 'flex-start' : 'center', justifyContent: order.supplier_sent_at ? 'flex-start' : 'center', gap: '7px', width: '100%', boxSizing: 'border-box', fontSize: '13px', fontWeight: 600, cursor: supplierQueueLoading ? 'wait' : 'pointer',
+                          style={{ display: 'flex', alignItems: order.supplier_sent_at ? 'flex-start' : 'center', justifyContent: order.supplier_sent_at ? 'flex-start' : 'center', gap: '7px', width: '100%', marginTop: 'auto', boxSizing: 'border-box', fontSize: '13px', fontWeight: 600, cursor: supplierQueueLoading ? 'wait' : 'pointer',
                             ...(order.supplier_sent_at ? { padding: '8px 12px' } : { height: '40px', padding: '0 12px' }),
                             borderRadius: '9px',
                             border: order.supplier_sent_at ? '1.5px solid #86EFAC' : '1.5px solid #93C5FD',
