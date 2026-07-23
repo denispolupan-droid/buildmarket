@@ -1864,7 +1864,7 @@ export default function AdminOrders({
                                       </select>
                                     ) : (
                                       <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-subtle)' }}
-                                        title={['prom', 'rozetka'].includes(order.channel_code ?? '') ? 'Ціни зафіксовані маркетплейсом' : 'Ціни зафіксовані у проведеній накладній'}>
+                                        title={order.channel_code === 'dropship' ? 'Дропшип — ціна за собівартістю' : 'Ціни зафіксовані у проведеній накладній (відвантажено)'}>
                                         {PRICE_TYPE_LABELS[pt] ?? pt}
                                       </div>
                                     )}
