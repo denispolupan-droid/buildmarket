@@ -1793,7 +1793,7 @@ export default function AdminOrders({
 
                     {/* Col 1: Items */}
                     <div className="order-col-card" style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column' }}>
-                      <div style={{ paddingTop: '0', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                      <div style={{ paddingTop: '0', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                           <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             Товари · {order.items.length}
@@ -1879,7 +1879,7 @@ export default function AdminOrders({
                             </div>
                           </div>
                         ) : (
-                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
                             {/* Items table */}
                             <div style={{ padding: '2px 0 0' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
