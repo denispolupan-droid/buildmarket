@@ -2948,53 +2948,36 @@ export default function AdminOrders({
 
                     if (evs.length <= 1) return null;
                     return (
-                      <div style={{ borderTop: '1px solid var(--border-light)', padding: '10px 16px' }}>
-                        <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
-                          Журнал подій
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: '4px' }}>
-                          {evs.map((ev, i) => (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              {i > 0 && (
-                                <span style={{ color: ev.backward ? '#F59E0B' : 'var(--text-muted)', fontSize: '12px', lineHeight: 1 }}>
-                                  {ev.backward ? '↩' : '→'}
-                                </span>
-                              )}
-                              {(() => {
-                                const card = (
-                                  <div style={{
-                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px',
-                                    background: ev.backward ? '#FFFBEB' : ev.href ? '#F0F9FF' : 'var(--bg-soft)',
-                                    border: `1px solid ${ev.backward ? '#FDE68A' : ev.href ? '#BAE6FD' : 'var(--border)'}`,
-                                    borderRadius: '8px', padding: '4px 9px', minWidth: '70px',
-                                  }}>
-                                    <div style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                      <span>{ev.icon}</span>
-                                      <span style={{ fontWeight: 600, color: ev.backward ? '#B45309' : ev.href ? '#0369A1' : 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                                        {ev.label}
-                                      </span>
-                                    </div>
-                                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                                      {new Date(ev.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                    {ev.sub && (
-                                      <span style={{ fontSize: '9px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '90px', textOverflow: 'ellipsis' }}>
-                                        {ev.sub}
-                                      </span>
-                                    )}
-                                    {ev.by && ev.by !== 'system' && (
-                                      <span style={{ fontSize: '9px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '90px', textOverflow: 'ellipsis' }}>
-                                        {ev.by.split('@')[0]}
-                                      </span>
-                                    )}
+                      <div style={{ background: 'var(--bg-soft)', padding: '0 14px 14px' }}>
+                        <div className="order-col-card" style={{ padding: '16px 18px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '18px' }}>
+                            Історія замовлення
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: '4px' }}>
+                            {evs.map((ev, i) => {
+                              const color = ev.backward ? '#B45309' : ev.href ? '#0369A1' : '#1E3A5F';
+                              const content = (
+                                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', width: '100%' }}>
+                                  {i < evs.length - 1 && (
+                                    <div style={{ position: 'absolute', top: '15px', left: '50%', width: '100%', height: '2px', background: ev.backward ? '#FDE68A' : 'var(--border)' }} />
+                                  )}
+                                  <div style={{ position: 'relative', zIndex: 1, width: '32px', height: '32px', borderRadius: '999px', background: 'var(--bg-card)', border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px' }}>
+                                    {ev.icon}
                                   </div>
-                                );
-                                return ev.href
-                                  ? <a href={ev.href} style={{ textDecoration: 'none' }} onClick={e => e.stopPropagation()}>{card}</a>
-                                  : card;
-                              })()}
-                            </div>
-                          ))}
+                                  <div style={{ marginTop: '9px', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.25, padding: '0 4px' }}>{ev.label}</div>
+                                  <div style={{ marginTop: '3px', fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                                    {new Date(ev.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                  </div>
+                                  {ev.sub && <div style={{ marginTop: '2px', fontSize: '10px', color: 'var(--text-muted)', maxWidth: '96px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.sub}</div>}
+                                  {ev.by && ev.by !== 'system' && <div style={{ marginTop: '2px', fontSize: '10px', color: 'var(--text-muted)', maxWidth: '96px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.by.split('@')[0]}</div>}
+                                </div>
+                              );
+                              const wrapStyle: React.CSSProperties = { flex: '1 0 96px', minWidth: '96px', textDecoration: 'none' };
+                              return ev.href
+                                ? <a key={i} href={ev.href} style={wrapStyle} onClick={e => e.stopPropagation()}>{content}</a>
+                                : <div key={i} style={wrapStyle}>{content}</div>;
+                            })}
+                          </div>
                         </div>
                       </div>
                     );
