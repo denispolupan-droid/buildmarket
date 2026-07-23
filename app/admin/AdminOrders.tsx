@@ -1786,13 +1786,13 @@ export default function AdminOrders({
                       )}
                     </div>
                   </div>
-                  <div className="order-expand-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 250px', gap: '14px', padding: '14px', background: 'var(--bg-soft)', alignItems: 'start' }}>
+                  <div className="order-expand-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 250px', gap: '14px', padding: '14px', background: 'var(--bg-soft)', alignItems: 'stretch' }}>
 
                     {/* MAIN column (Товари + Контакт/Доставка) */}
                     <div className="order-main-col" style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
 
                     {/* Col 1: Items */}
-                    <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column' }}>
+                    <div className="order-col-card" style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column' }}>
                       <div style={{ paddingTop: '0', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                           <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -2770,7 +2770,7 @@ export default function AdminOrders({
                     {/* Col 3: Status dropdown + context actions */}
                     {(() => {
                       return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', alignSelf: 'start', minWidth: 0 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
                         {/* Внутрішні нотатки — окремою карткою зверху, вирівняна з верхом колонки */}
                         <div className="order-col-card" style={{ padding: '16px' }}>
                           <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>Внутрішні нотатки</div>
@@ -2783,7 +2783,7 @@ export default function AdminOrders({
                           {noteSaving === order.id && <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', marginTop: '3px' }}>Збереження…</div>}
                         </div>
                         {/* Дії card */}
-                        <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div className="order-col-card" style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                           {/* Статус замовлення + ручна зміна винесені у правий верхній кут шапки */}
                           {/* «Відвантажує пост.» перенесено до блоку способу виконання (ліва колонка) */}
 
