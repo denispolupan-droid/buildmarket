@@ -1784,8 +1784,8 @@ export default function AdminOrders({
                           </div>
                         ) : (
                           <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                            {/* Items table — виділено брендовою панеллю */}
-                            <div style={{ background: '#E3EDF9', border: '1px solid #CADCEF', borderRadius: '10px', padding: '4px 12px 6px' }}>
+                            {/* Items table */}
+                            <div style={{ padding: '2px 0 0' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                               <thead>
                                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -1823,7 +1823,7 @@ export default function AdminOrders({
                                             {(() => {
                                               const img = itemImages[order.id]?.[item.sku];
                                               return (
-                                                <div style={{ width: '40px', height: '40px', borderRadius: '8px', flexShrink: 0, border: '1px solid #CADCEF', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                <div style={{ width: '40px', height: '40px', borderRadius: '8px', flexShrink: 0, border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                   background: img ? `#fff url("${img}") center/cover no-repeat` : '#fff' }}>
                                                   {!img && <Package size={16} color="var(--text-muted)" />}
                                                 </div>
