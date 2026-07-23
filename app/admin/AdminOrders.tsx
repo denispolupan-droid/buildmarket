@@ -1632,8 +1632,8 @@ export default function AdminOrders({
                 {isExpanded && (
                   <>
                   {/* Шапка розгорнутого замовлення — новий дизайн */}
-                  <div style={{ borderTop: '1px solid var(--border-light)', background: 'var(--bg-soft)', padding: '16px 18px 14px', display: 'flex', alignItems: 'flex-start', gap: '14px', flexWrap: 'wrap' }}>
-                    <div style={{ flex: '0 1 auto', minWidth: 0 }}>
+                  <div style={{ borderTop: '1px solid var(--border-light)', background: 'var(--bg-soft)', padding: '16px 18px 14px', display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Замовлення #{order.order_number}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '9px', flexWrap: 'wrap' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
@@ -1662,10 +1662,13 @@ export default function AdminOrders({
                         </span>
                       </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
+                    {/* Права половина: сума (ліворуч, по межі блоку «Оплата») + кнопки праворуч */}
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <div style={{ flexShrink: 0 }}>
                       <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{Number(order.total_price).toFixed(0)} ₴</div>
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Сума замовлення</div>
                     </div>
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                     {order.status === 'new' && (() => {
                       const busy = confirming === order.id;
                       const confirmErr = confirmErrors[order.id];
@@ -1693,7 +1696,7 @@ export default function AdminOrders({
                       );
                     })()}
                     {/* Статус замовлення — правий верхній кут, шириною як панель «Дії»; «...» = ручна зміна */}
-                    <div style={{ width: '250px', flexShrink: 0, marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ width: '250px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', borderRadius: '10px', color: status.color, background: status.bg, border: `1.5px solid ${status.color}` }}>
                         <span style={{ fontSize: '14px', fontWeight: 700, whiteSpace: 'nowrap' }}>{status.label}</span>
                         <button onClick={() => setStatusEditOpen(p => ({ ...p, [order.id]: !p[order.id] }))}
@@ -1731,6 +1734,8 @@ export default function AdminOrders({
                         </div>
                       )}
                     </div>
+                    </div>{/* /кнопки */}
+                    </div>{/* /права половина */}
                   </div>
                   <div className="order-expand-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 250px', gap: '14px', padding: '14px', background: 'var(--bg-soft)', alignItems: 'start' }}>
 
