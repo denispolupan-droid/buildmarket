@@ -1674,7 +1674,10 @@ export default function AdminOrders({
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Сума замовлення</div>
                     </div>
                   </div>
-                  <div className="order-expand-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr) 224px', gap: '14px', padding: '14px', background: 'var(--bg-soft)' }}>
+                  <div className="order-expand-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 250px', gap: '14px', padding: '14px', background: 'var(--bg-soft)', alignItems: 'start' }}>
+
+                    {/* MAIN column (Товари + Контакт/Доставка) */}
+                    <div className="order-main-col" style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
 
                     {/* Col 1: Items */}
                     <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column' }}>
@@ -2644,6 +2647,8 @@ export default function AdminOrders({
                         </button>
                       )}
 
+                    </div>
+                    {/* /MAIN column */}
                     </div>
 
                     {/* Col 3: Status dropdown + context actions */}
