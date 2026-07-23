@@ -1744,8 +1744,8 @@ export default function AdminOrders({
                           </div>
                         ) : (
                           <div>
-                            {/* Items table — виділено м'якою панеллю */}
-                            <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border-light)', borderRadius: '10px', padding: '4px 12px 6px' }}>
+                            {/* Items table — виділено брендовою панеллю */}
+                            <div style={{ background: '#E8F1FB', border: '1px solid #CBDDF1', borderRadius: '10px', padding: '4px 12px 6px' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                               <thead>
                                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -1778,7 +1778,7 @@ export default function AdminOrders({
                                     return (
                                       <tr key={item.sku} style={{ borderBottom: '1px solid var(--border-light)' }}>
                                         {/* Назва — на очах: назва зверху жирнішим, код нижче */}
-                                        <td style={{ padding: '10px 0', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3 }}>
+                                        <td style={{ padding: '10px 0', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3, verticalAlign: 'top' }}>
                                           <span style={{ color: 'var(--text-primary)', fontSize: '13.5px', fontWeight: 600, lineHeight: 1.35, letterSpacing: '-0.006em' }}>{item.name}</span>
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
                                             <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontFamily: 'monospace' }}>{item.sku}</span>
@@ -1788,17 +1788,17 @@ export default function AdminOrders({
                                             </button>
                                           </div>
                                         </td>
-                                        <td style={{ padding: '10px 6px', color: 'var(--text-primary)', textAlign: 'right', fontSize: '13.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{item.qty}</td>
-                                        <td style={{ padding: '10px 6px', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                                        <td style={{ padding: '10px 6px', color: 'var(--text-primary)', textAlign: 'right', fontSize: '13.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'top' }}>{item.qty}</td>
+                                        <td style={{ padding: '10px 6px', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'top' }}>
                                           {item.is_bonus ? '' : `${item.price.toFixed(0)} ₴`}
                                         </td>
-                                        <td style={{ padding: '10px 0', textAlign: 'right' }}>
+                                        <td style={{ padding: '10px 0', textAlign: 'right', verticalAlign: 'top' }}>
                                           {item.is_bonus
                                             ? <span style={{ color: '#15803D', fontSize: '11px', fontWeight: 700, background: '#F0FDF4', padding: '1px 6px', borderRadius: '4px' }}>🎁 Бонус</span>
                                             : <span style={{ color: 'var(--text-primary)', fontSize: '13.5px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{(item.price * item.qty).toFixed(0)} ₴</span>
                                           }
                                         </td>
-                                        <td style={{ padding: '10px 0 10px 8px', textAlign: 'right', background: srcBg, borderLeft: srcBorder, borderRadius: isMixed ? '6px' : undefined }}>
+                                        <td style={{ padding: '10px 0 10px 8px', textAlign: 'right', verticalAlign: 'top', background: srcBg, borderLeft: srcBorder, borderRadius: isMixed ? '6px' : undefined }}>
                                           {fulfillmentLoading.has(order.id) ? (
                                             <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>…</span>
                                           ) : planSrc ? (
