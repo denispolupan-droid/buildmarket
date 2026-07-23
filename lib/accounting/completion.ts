@@ -142,13 +142,15 @@ export async function settleLegacyCommission(orderId: string, createdBy = 'syste
     .eq('account_type', 'marketplace_fee');
   if ((commCount ?? 0) > 0) return;
 
-  // Є проведена РН? (інакше продаж ще не зафіксовано)
+  // Є проведена РН? (інакше продаж ще не зафіксовано). Сторно (reversal_of != null)
+  // не рахуємо — інакше скасоване замовлення виглядало б як зафіксований продаж.
   const { count: confCount } = await db
     .from('acc_documents')
     .select('id', { count: 'exact', head: true })
     .eq('order_id', orderId)
     .eq('doc_type', 'sale')
-    .eq('status', 'confirmed');
+    .eq('status', 'confirmed')
+    .is('reversal_of', null);
   if ((confCount ?? 0) === 0) return;
 
   const items = ((order.items ?? []) as { sku: string; qty: number; price: number }[])

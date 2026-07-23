@@ -65,6 +65,7 @@ export default async function FinancePage() {
     .select('id, order_id, doc_date, total_amount, total_cost, channel_code')
     .eq('doc_type', 'sale')
     .eq('status', 'confirmed')
+    .is('reversal_of', null)   // без сторно-документів (їх оригінал 'cancelled' і вже виключений)
     .not('order_id', 'is', null)
     .gte('doc_date', sixAgo.toISOString())
     .range(f, t));
