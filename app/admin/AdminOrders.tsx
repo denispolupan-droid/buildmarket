@@ -2047,13 +2047,13 @@ export default function AdminOrders({
                                   <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Спосіб виконання</div>
                                   <div style={{ display: 'flex', gap: '4px', flexWrap: 'nowrap' }}>
                                     {(['supplier', 'own', 'mixed'] as const).map(mode => {
-                                      const label = mode === 'supplier' ? '📦 Постач.' : mode === 'own' ? '🏪 Наш склад' : '🔀 Змішаний';
+                                      const label = mode === 'supplier' ? 'Постачальник' : mode === 'own' ? 'Наш склад' : 'Змішаний';
                                       const active = (selectedMode[order.id] ?? 'supplier') === mode;
                                       const disabled = !hasOwn && (mode === 'own' || mode === 'mixed');
                                       return (
                                         <button key={mode}
                                           onClick={() => !disabled && setSelectedMode(prev => ({ ...prev, [order.id]: mode }))}
-                                          title={disabled ? 'Немає товару на власному складі' : (mode === 'supplier' ? 'Постачальник' : undefined)}
+                                          title={disabled ? 'Немає товару на власному складі' : undefined}
                                           style={{ flex: '1 1 0', minWidth: 0, padding: '6px 4px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
                                             whiteSpace: 'nowrap', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis',
                                             cursor: disabled ? 'not-allowed' : 'pointer',
