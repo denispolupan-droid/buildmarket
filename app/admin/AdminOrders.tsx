@@ -2786,6 +2786,7 @@ export default function AdminOrders({
                                   </button>
                                 </div>
                                 <InvoiceMessengerButtons
+                                  variant="stacked"
                                   phone={order.phone} contact={order.contact}
                                   orderNumber={order.order_number} orderId={order.id}
                                   total={order.total_price} channel={order.channel_code}
