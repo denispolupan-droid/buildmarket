@@ -12,6 +12,7 @@ export type ResolvedSender = {
   fromName:  string;
   from:      string;              // "Name <email>"
   resend:    Resend;              // клієнт із правильним ключем для домену
+  anonymize: boolean;             // приховувати дані клієнта в листі постачальнику
 };
 
 export async function resolveSender(
@@ -23,19 +24,20 @@ export async function resolveSender(
   const cfg: Record<string, string> = {};
   (rows ?? []).forEach(r => { cfg[r.key] = r.value; });
 
-  const primary = { email: cfg.orders_from_email || 'orders@fixline.com.ua', name: cfg.orders_from_name || 'FIXLINE' };
-  let extra: { email: string; name: string }[] = [];
+  const primary = { email: cfg.orders_from_email || 'orders@fixline.com.ua', name: cfg.orders_from_name || 'FIXLINE', anonymize: false };
+  let extra: { email: string; name: string; anonymize?: boolean }[] = [];
   try { const p = JSON.parse(cfg.extra_senders || '[]'); if (Array.isArray(p)) extra = p; } catch { /* ignore */ }
   const allowed = [primary, ...extra].filter(s => s?.email?.includes('@'));
 
   const chosen = (senderEmail && allowed.find(s => s.email.toLowerCase() === senderEmail.toLowerCase())) || primary;
   const fromEmail = chosen.email;
   const fromName  = chosen.name || primary.name;
+  const anonymize = chosen.anonymize === true;
 
   const domain = fromEmail.split('@')[1]?.toLowerCase() ?? '';
   let keys: Record<string, string> = {};
   try { const p = JSON.parse(cfg.resend_keys || '{}'); if (p && typeof p === 'object') keys = p; } catch { /* ignore */ }
   const resend = new Resend(keys[domain] || process.env.RESEND_API_KEY);
 
-  return { fromEmail, fromName, from: `${fromName} <${fromEmail}>`, resend };
+  return { fromEmail, fromName, from: `${fromName} <${fromEmail}>`, resend, anonymize };
 }

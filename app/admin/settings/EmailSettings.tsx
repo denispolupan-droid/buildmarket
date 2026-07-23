@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Check, Loader2, Mail, Plus, X } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
 
-export type Sender = { name: string; email: string };
+export type Sender = { name: string; email: string; anonymize?: boolean };
 
 type Props = {
   initialFromEmail:    string;
@@ -38,7 +38,7 @@ export default function EmailSettings({ initialFromEmail, initialFromName, initi
   async function handleSave() {
     // Валідація додаткових відправників: email обов'язковий і коректний
     const cleaned = extraSenders
-      .map(s => ({ name: s.name.trim(), email: s.email.trim() }))
+      .map(s => ({ name: s.name.trim(), email: s.email.trim(), anonymize: !!s.anonymize }))
       .filter(s => s.email);
     if (cleaned.some(s => !s.email.includes('@'))) { showToast('Некоректний email у списку відправників', 'error'); return; }
     setSaving(true); setSaved(false);
@@ -109,16 +109,23 @@ export default function EmailSettings({ initialFromEmail, initialFromName, initi
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {extraSenders.map((s, i) => (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr 34px', gap: '8px', alignItems: 'center' }}>
-                  <input style={{ ...inp, height: '36px' }} value={s.name} placeholder="Ім'я (напр. Закупівлі)"
-                    onChange={e => setExtraSenders(prev => prev.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
-                  <input style={{ ...inp, height: '36px' }} type="email" value={s.email} placeholder="zakupki@your-domain.com"
-                    onChange={e => setExtraSenders(prev => prev.map((x, j) => j === i ? { ...x, email: e.target.value } : x))} />
-                  <button type="button" title="Видалити"
-                    onClick={() => setExtraSenders(prev => prev.filter((_, j) => j !== i))}
-                    style={{ height: '36px', width: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '7px', border: '1.5px solid #FECACA', background: '#FEF2F2', color: '#DC2626', cursor: 'pointer' }}>
-                    <X size={14} />
-                  </button>
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '5px', padding: '10px', border: '1px solid var(--border-light)', borderRadius: '8px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr 34px', gap: '8px', alignItems: 'center' }}>
+                    <input style={{ ...inp, height: '36px' }} value={s.name} placeholder="Ім'я (напр. Закупівлі)"
+                      onChange={e => setExtraSenders(prev => prev.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
+                    <input style={{ ...inp, height: '36px' }} type="email" value={s.email} placeholder="zakupki@your-domain.com"
+                      onChange={e => setExtraSenders(prev => prev.map((x, j) => j === i ? { ...x, email: e.target.value } : x))} />
+                    <button type="button" title="Видалити"
+                      onClick={() => setExtraSenders(prev => prev.filter((_, j) => j !== i))}
+                      style={{ height: '36px', width: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '7px', border: '1.5px solid #FECACA', background: '#FEF2F2', color: '#DC2626', cursor: 'pointer' }}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={!!s.anonymize}
+                      onChange={e => setExtraSenders(prev => prev.map((x, j) => j === i ? { ...x, anonymize: e.target.checked } : x))} />
+                    Приховувати дані клієнта в листі постачальнику (лише останні 4 цифри ТТН)
+                  </label>
                 </div>
               ))}
             </div>

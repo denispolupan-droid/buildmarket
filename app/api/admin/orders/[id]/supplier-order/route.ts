@@ -106,7 +106,7 @@ export async function POST(
   // Відправник (основний / вибраний) + Resend-клієнт із ключем для домену.
   // fromName/fromEmail йдуть у тему й тіло листа — щоб при відправці від budmag
   // ніде не згадувався fixline.
-  const { from: FROM, fromName, fromEmail, resend } = await resolveSender(db, senderEmail);
+  const { from: FROM, fromName, fromEmail, resend, anonymize } = await resolveSender(db, senderEmail);
 
   const orderItems = (order.items ?? []) as { sku: string; name: string; brand: string; qty: number }[];
   const skus = orderItems.map(i => i.sku);
@@ -159,6 +159,7 @@ export async function POST(
           html: buildSupplierEmailHtml({
             senderName:     fromName,
             senderEmail:    fromEmail,
+            anonymize,
             orderNumber:    order.order_number,
             contact:        order.contact,
             phone:          order.phone,
@@ -203,6 +204,7 @@ function extractEmail(text: string): string | null {
 function buildSupplierEmailHtml(data: {
   senderName: string;
   senderEmail: string;
+  anonymize: boolean;
   orderNumber: number;
   contact: string;
   phone: string;
@@ -218,9 +220,17 @@ function buildSupplierEmailHtml(data: {
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;font-weight:700">${i.qty} шт</td>
     </tr>`).join('');
 
+  // Анонімний режим (напр. BudMag): дані клієнта не показуємо, ТТН — лише останні 4 цифри.
+  const ttnDigits = data.trackingNumber ? data.trackingNumber.replace(/\D/g, '') : '';
   const ttnBlock = data.trackingNumber
-    ? `<p style="margin-top:12px;color:#1E3A5F;font-size:14px">ТТН Нова Пошта: <strong style="font-family:monospace;font-size:15px;letter-spacing:0.5px">${data.trackingNumber}</strong></p>`
+    ? (data.anonymize
+        ? `<p style="margin-top:12px;color:#1E3A5F;font-size:14px">ТТН (останні 4 цифри): <strong style="font-family:monospace;font-size:15px;letter-spacing:0.5px">••••&nbsp;${ttnDigits.slice(-4)}</strong></p>`
+        : `<p style="margin-top:12px;color:#1E3A5F;font-size:14px">ТТН Нова Пошта: <strong style="font-family:monospace;font-size:15px;letter-spacing:0.5px">${data.trackingNumber}</strong></p>`)
     : '';
+
+  const recipientBlock = data.anonymize
+    ? ''
+    : `<p style="color:#555">Отримувач: <strong>${data.contact}</strong> · ${data.phone}${data.deliveryCity ? ` · ${data.deliveryCity}` : ''}</p>`;
 
   const commentBlock = data.comment?.trim()
     ? `<div style="margin-top:16px;padding:12px;background:#FEF3C7;border-radius:8px;font-size:13px;color:#92400E"><strong>Коментар:</strong> ${data.comment}</div>`
@@ -229,7 +239,7 @@ function buildSupplierEmailHtml(data: {
   return `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
       <h2 style="color:#1E3A5F">Замовлення від ${data.senderName} #${data.orderNumber}</h2>
-      <p style="color:#555">Отримувач: <strong>${data.contact}</strong> · ${data.phone}${data.deliveryCity ? ` · ${data.deliveryCity}` : ''}</p>
+      ${recipientBlock}
       ${ttnBlock}
       <table style="width:100%;border-collapse:collapse;margin-top:16px">
         <thead>
