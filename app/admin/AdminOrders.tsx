@@ -2770,7 +2770,20 @@ export default function AdminOrders({
                     {/* Col 3: Status dropdown + context actions */}
                     {(() => {
                       return (
-                        <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', alignSelf: 'start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', alignSelf: 'start', minWidth: 0 }}>
+                        {/* Внутрішні нотатки — окремою карткою зверху, вирівняна з верхом колонки */}
+                        <div className="order-col-card" style={{ padding: '16px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>Внутрішні нотатки</div>
+                          <textarea
+                            key={`note-${order.id}-${order.internal_note ?? ''}`}
+                            defaultValue={order.internal_note ?? ''}
+                            onBlur={e => { const v = e.target.value.trim(); if (v !== (order.internal_note ?? '')) saveInternalNote(order.id, v); }}
+                            placeholder="Напр. клієнт думає, чекаємо оплату…"
+                            style={{ width: '100%', minHeight: '68px', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12.5px', color: 'var(--text-primary)', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', background: 'var(--bg-card)' }} />
+                          {noteSaving === order.id && <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', marginTop: '3px' }}>Збереження…</div>}
+                        </div>
+                        {/* Дії card */}
+                        <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                           {/* Статус замовлення + ручна зміна винесені у правий верхній кут шапки */}
                           {/* «Відвантажує пост.» перенесено до блоку способу виконання (ліва колонка) */}
 
@@ -2912,17 +2925,7 @@ export default function AdminOrders({
                               </div>
                             );
                           })()}
-                          {/* Внутрішні нотатки менеджера — orders.internal_note */}
-                          <div style={{ marginTop: '4px', paddingTop: '10px', borderTop: '1px solid var(--border-light)' }}>
-                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>Внутрішні нотатки</div>
-                            <textarea
-                              key={`note-${order.id}-${order.internal_note ?? ''}`}
-                              defaultValue={order.internal_note ?? ''}
-                              onBlur={e => { const v = e.target.value.trim(); if (v !== (order.internal_note ?? '')) saveInternalNote(order.id, v); }}
-                              placeholder="Напр. клієнт думає, чекаємо оплату…"
-                              style={{ width: '100%', minHeight: '68px', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12.5px', color: 'var(--text-primary)', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', background: 'var(--bg-card)' }} />
-                            {noteSaving === order.id && <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', marginTop: '3px' }}>Збереження…</div>}
-                          </div>
+                        </div>
                         </div>
                       );
                     })()}
