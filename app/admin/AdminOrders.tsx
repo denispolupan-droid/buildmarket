@@ -1665,13 +1665,13 @@ export default function AdminOrders({
                         </span>
                       </div>
                     </div>
-                    {/* Права половина: сума (ліворуч, по межі блоку «Оплата») + кнопки праворуч */}
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    {/* Права половина: сума (ліворуч, по межі блоку «Оплата») + «Підтвердити» поруч */}
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
                     <div style={{ flexShrink: 0 }}>
                       <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{Number(order.total_price).toFixed(0)} ₴</div>
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Сума замовлення</div>
                     </div>
-                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                     {order.status === 'new' && (() => {
                       const busy = confirming === order.id;
                       const confirmErr = confirmErrors[order.id];
