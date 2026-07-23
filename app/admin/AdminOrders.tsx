@@ -46,6 +46,8 @@ type Order = {
   order_number: number;
   created_at: string;
   status: string;
+  internal_note?: string | null;
+  flags?: string[] | null;
   total_price: number;
   company: string | null;
   contact: string;
@@ -558,6 +560,19 @@ export default function AdminOrders({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedId]);
 
+  // Статистика клієнта (скільки замовлень + сума) — при розкритті
+  const [custStats, setCustStats] = useState<Record<string, { count: number; total: number }>>({});
+  useEffect(() => {
+    if (!expandedId || custStats[expandedId]) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/orders/${expandedId}/customer-orders`);
+        if (res.ok) { const d = await res.json(); setCustStats(prev => ({ ...prev, [expandedId]: { count: d.count ?? 0, total: d.total ?? 0 } })); }
+      } catch { /* ignore */ }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedId]);
+
   // Мініатюри фото товарів — підвантажуємо шляхи з products по SKU при розкритті
   useEffect(() => {
     if (!expandedId || itemImages[expandedId]) return;
@@ -935,6 +950,29 @@ export default function AdminOrders({
       body: JSON.stringify({ [field]: value }),
     });
     setOrders(prev => prev.map(o => o.id === id ? { ...o, [field]: value } : o));
+  }
+
+  // Швидкі прапорці замовлення (Терміново / Проблемний) — зберігаються в orders.flags
+  async function toggleOrderFlag(id: string, flag: string) {
+    const cur = orders.find(o => o.id === id)?.flags ?? [];
+    const next = cur.includes(flag) ? cur.filter(f => f !== flag) : [...cur, flag];
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, flags: next } : o));
+    await fetch(`/api/admin/orders/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ flags: next }),
+    });
+  }
+
+  // Внутрішня нотатка менеджера — зберігаємо по blur
+  const [noteSaving, setNoteSaving] = useState<string | null>(null);
+  async function saveInternalNote(id: string, note: string) {
+    setNoteSaving(id);
+    await fetch(`/api/admin/orders/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ internal_note: note }),
+    });
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, internal_note: note || null } : o));
+    setNoteSaving(null);
   }
 
   async function saveTTN(id: string) {
@@ -2321,6 +2359,31 @@ export default function AdminOrders({
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
                         </div>
                       </div>
+                      {/* Статистика клієнта + швидкі прапорці */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {custStats[order.id] && custStats[order.id].count > 1 && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            <ShoppingCart size={13} color="#64748B" />
+                            <span>{custStats[order.id].count} замовлень · <strong style={{ color: 'var(--text-primary)' }}>{custStats[order.id].total.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴</strong></span>
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          {([
+                            { key: 'urgent',  label: 'Терміново',  onBg: '#FEE2E2', onC: '#B91C1C', onB: '#FCA5A5', icon: '⚡' },
+                            { key: 'problem', label: 'Проблемний', onBg: '#FEF3C7', onC: '#B45309', onB: '#FCD34D', icon: '⚠' },
+                          ] as const).map(f => {
+                            const active = (order.flags ?? []).includes(f.key);
+                            return (
+                              <button key={f.key} onClick={() => toggleOrderFlag(order.id, f.key)}
+                                title={active ? `Зняти прапорець «${f.label}»` : `Позначити «${f.label}»`}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+                                  background: active ? f.onBg : 'var(--bg-soft)', color: active ? f.onC : 'var(--text-muted)', border: `1px solid ${active ? f.onB : 'var(--border)'}` }}>
+                                {f.icon} {f.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                       {/* Доставка — прижато до нижньої межі, однакова висота з блоком ТТН → розділювачі збігаються */}
                       <div style={{ marginTop: 'auto', minHeight: '118px', paddingTop: '12px', borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Доставка</div>
@@ -2825,6 +2888,17 @@ export default function AdminOrders({
                               </div>
                             );
                           })()}
+                          {/* Внутрішні нотатки менеджера — orders.internal_note */}
+                          <div style={{ marginTop: '4px', paddingTop: '10px', borderTop: '1px solid var(--border-light)' }}>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>Внутрішні нотатки</div>
+                            <textarea
+                              key={`note-${order.id}-${order.internal_note ?? ''}`}
+                              defaultValue={order.internal_note ?? ''}
+                              onBlur={e => { const v = e.target.value.trim(); if (v !== (order.internal_note ?? '')) saveInternalNote(order.id, v); }}
+                              placeholder="Напр. клієнт думає, чекаємо оплату…"
+                              style={{ width: '100%', minHeight: '68px', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12.5px', color: 'var(--text-primary)', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', background: 'var(--bg-card)' }} />
+                            {noteSaving === order.id && <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', marginTop: '3px' }}>Збереження…</div>}
+                          </div>
                         </div>
                       );
                     })()}
