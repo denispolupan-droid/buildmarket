@@ -1649,7 +1649,32 @@ export default function AdminOrders({
                 {/* ── Expanded panel ── */}
                 {isExpanded && (
                   <>
-                  <div className="order-expand-grid" style={{ borderTop: '1px solid var(--border-light)', display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr) 224px', gap: '14px', padding: '14px', background: 'var(--bg-soft)' }}>
+                  {/* Шапка розгорнутого замовлення — новий дизайн */}
+                  <div style={{ borderTop: '1px solid var(--border-light)', background: 'var(--bg-soft)', padding: '16px 18px 14px', display: 'flex', alignItems: 'flex-start', gap: '14px', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Замовлення #{order.order_number}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '9px', flexWrap: 'wrap' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, color: status.color, background: status.bg, whiteSpace: 'nowrap' }}>
+                          <span style={{ width: '6px', height: '6px', borderRadius: '999px', background: 'currentColor' }} />{status.label}
+                        </span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
+                          color: paymentConfirmed ? '#15803D' : '#B45309', background: paymentConfirmed ? '#DCFCE7' : '#FEF3C7' }}>
+                          <CreditCard size={12} />{paymentConfirmed ? 'Оплачено' : isCod ? 'Накладений платіж' : 'Очікує оплату'}
+                        </span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, color: channel.color, background: channel.bg, whiteSpace: 'nowrap' }}>
+                          <ShoppingCart size={12} />{channel.label}
+                        </span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-card)', border: '1px solid var(--border-light)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                          {date}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{Number(order.total_price).toFixed(0)} ₴</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Сума замовлення</div>
+                    </div>
+                  </div>
+                  <div className="order-expand-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr) 224px', gap: '14px', padding: '14px', background: 'var(--bg-soft)' }}>
 
                     {/* Col 1: Items */}
                     <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column' }}>
