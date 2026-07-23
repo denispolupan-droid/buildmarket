@@ -1777,7 +1777,7 @@ export default function AdminOrders({
                                     return (
                                       <tr key={item.sku} style={{ borderBottom: '1px solid var(--border-light)' }}>
                                         {/* Назва — на очах: код зверху, назва нижче жирнішим */}
-                                        <td style={{ padding: '9px 0', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3 }}>
+                                        <td style={{ padding: '8px 0', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3 }}>
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '2px' }}>
                                             <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontFamily: 'monospace' }}>{item.sku}</span>
                                             <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
@@ -1785,16 +1785,16 @@ export default function AdminOrders({
                                               {copiedSku === item.sku ? '✓' : '⎘'}
                                             </button>
                                           </div>
-                                          <span style={{ color: 'var(--text-primary)', fontSize: '13.5px', fontWeight: 600 }}>{item.name}</span>
+                                          <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, lineHeight: 1.35 }}>{item.name}</span>
                                         </td>
-                                        <td style={{ padding: '9px 6px', color: 'var(--text-primary)', textAlign: 'center', fontSize: '15px', fontWeight: 700 }}>{item.qty}</td>
-                                        <td style={{ padding: '9px 6px', textAlign: 'right', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                                        <td style={{ padding: '8px 6px', color: 'var(--text-primary)', textAlign: 'center', fontSize: '13px', fontWeight: 700 }}>{item.qty}</td>
+                                        <td style={{ padding: '8px 6px', textAlign: 'right', color: 'var(--text-secondary)', fontSize: '13px' }}>
                                           {item.is_bonus ? '' : `${item.price.toFixed(0)} ₴`}
                                         </td>
-                                        <td style={{ padding: '9px 0', textAlign: 'right' }}>
+                                        <td style={{ padding: '8px 0', textAlign: 'right' }}>
                                           {item.is_bonus
                                             ? <span style={{ color: '#15803D', fontSize: '11px', fontWeight: 700, background: '#F0FDF4', padding: '1px 6px', borderRadius: '4px' }}>🎁 Бонус</span>
-                                            : <span style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: 700 }}>{(item.price * item.qty).toFixed(0)} ₴</span>
+                                            : <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 700 }}>{(item.price * item.qty).toFixed(0)} ₴</span>
                                           }
                                         </td>
                                         <td style={{ padding: '5px 0 5px 8px', textAlign: 'right', background: srcBg, borderLeft: srcBorder, borderRadius: isMixed ? '4px' : undefined }}>
@@ -1959,7 +1959,7 @@ export default function AdminOrders({
                               const cell = (label: string, value: string, opts: { strong?: boolean; color?: string } = {}) => (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '78px' }}>
                                   <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{label}</span>
-                                  <span style={{ fontSize: '15px', fontWeight: opts.strong ? 800 : 700, color: opts.color ?? 'var(--text-primary)', whiteSpace: 'nowrap' }}>{value}</span>
+                                  <span style={{ fontSize: '13px', fontWeight: opts.strong ? 700 : 600, color: opts.color ?? 'var(--text-primary)', whiteSpace: 'nowrap' }}>{value}</span>
                                 </div>
                               );
                               // Підсумковий рядок (маржа + чистий) показуємо завжди — навіть згорнутим
@@ -1974,7 +1974,7 @@ export default function AdminOrders({
                                     style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '9px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: 'var(--text-primary)' }}>
                                     <span style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                                       <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Економіка</span>
-                                      <span style={{ fontSize: '14px', fontWeight: 800, color: finalColor(headline) }}>
+                                      <span style={{ fontSize: '13px', fontWeight: 700, color: finalColor(headline) }}>
                                         {commission > 0 ? 'Чистий' : 'Маржа'} {headline != null ? `${headline.toFixed(0)} ₴` : '…'}{headlinePct != null ? ` · ${headlinePct}%` : ''}
                                       </span>
                                     </span>
@@ -2072,7 +2072,6 @@ export default function AdminOrders({
                                   {/* Підтвердження — поряд із вибором способу виконання */}
                                   {(() => {
                                     const mode = selectedMode[order.id] ?? 'supplier';
-                                    const isSupplier = mode === 'supplier';
                                     const busy = confirming === order.id;
                                     const confirmErr = confirmErrors[order.id];
                                     return (
@@ -2085,17 +2084,7 @@ export default function AdminOrders({
                                             fontSize: '13px', fontWeight: 700, cursor: busy ? 'wait' : 'pointer' }}>
                                           {busy ? '⏳ Обробка...' : '✅ Підтвердити замовлення'}
                                         </button>
-                                        {isSupplier && (
-                                          <button
-                                            onClick={() => startSupplierSend([order.id])}
-                                            disabled={supplierQueueLoading}
-                                            style={{ width: '100%', height: '34px', borderRadius: '8px',
-                                              border: '1.5px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F',
-                                              fontSize: '12px', fontWeight: 700, cursor: supplierQueueLoading ? 'wait' : 'pointer',
-                                              opacity: supplierQueueLoading ? 0.6 : 1 }}>
-                                            📤 Відправити постачальнику
-                                          </button>
-                                        )}
+                                        {/* «Надіслати постачальнику» перенесено під ТТН (розділ доставки) */}
                                         <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
                                           {mode === 'own' ? 'Зарезервує товар з власного складу' : mode === 'mixed' ? 'Резерв + замовлення у постачальника' : 'Підтвердить замовлення клієнту'}
                                         </div>
@@ -2121,6 +2110,25 @@ export default function AdminOrders({
                                 </div>
                               );
                             })()}
+                            {/* Хто фактично відвантажив — поряд зі способом виконання */}
+                            {(order.fulfillment_mode ?? 'supplier') !== 'own' && suppliersList.length > 0 && (
+                              <div style={{ marginTop: '10px', padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.03em' }}
+                                  title="Хто фактично відвантажив товар. Борг перед постачальником при відправці буде віднесено саме на нього.">
+                                  Відвантажує пост.
+                                </div>
+                                <select
+                                  value={order.shipping_supplier_id ?? ''}
+                                  onChange={e => { const v = e.target.value === '' ? null : parseInt(e.target.value); if (v !== (order.shipping_supplier_id ?? null)) setShippingSupplier(order.id, v); }}
+                                  style={{ width: '100%', height: '32px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer', color: order.shipping_supplier_id ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: order.shipping_supplier_id ? 600 : 400 }}>
+                                  <option value="">— за мапінгом SKU —</option>
+                                  {suppliersList.map(s => (<option key={s.id} value={s.id}>{s.name}</option>))}
+                                </select>
+                                {order.status === 'shipped' && !order.shipping_supplier_id && (
+                                  <div style={{ fontSize: '10px', color: '#B45309', marginTop: '4px', lineHeight: 1.3 }}>⚠ Постачальника не підтверджено — борг віднесено за мапінгом</div>
+                                )}
+                              </div>
+                            )}
                             <button onClick={() => toggleFulfillment(order.id)}
                               style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontSize: '12px', fontWeight: 600, color: fulfillmentOpen.has(order.id) ? 'var(--brand-blue)' : 'var(--text-secondary)' }}>
                               <TrendingUp size={12} />
@@ -2151,32 +2159,40 @@ export default function AdminOrders({
                                     </div>
                                   )}
 
-                                  {/* Per-supplier margin breakdown */}
-                                  {fi.by_supplier.map((group, gi) => (
+                                  {/* Per-supplier breakdown. При маркетплейс-комісії показуємо ЧИСТУ маржу
+                                      (маржа − комісія), щоб математика сходилась із блоком «Економіка». */}
+                                  {fi.by_supplier.map((group, gi) => {
+                                    const groupComm = group.items.reduce((s, it) => s + (commBySku.get(it.sku)?.amt ?? 0), 0);
+                                    const groupNet = group.total_margin - groupComm;
+                                    return (
                                     <div key={gi} style={{ borderBottom: gi < fi.by_supplier.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
-                                      <div style={{ padding: '6px 12px', background: 'var(--bg-soft)', fontWeight: 600, color: 'var(--text-primary)', fontSize: '11px', display: 'flex', justifyContent: 'space-between' }}>
+                                      <div style={{ padding: '7px 12px', background: 'var(--bg-soft)', fontWeight: 700, color: 'var(--text-primary)', fontSize: '11px', display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
                                         <span>📦 {group.supplier_name ?? 'Невідомий поставщик'}</span>
-                                        <span style={{ color: 'var(--text-muted)' }}>+{group.total_margin.toFixed(0)} грн</span>
+                                        <span style={{ color: groupNet >= 0 ? '#15803D' : '#DC2626' }}>
+                                          {groupNet >= 0 ? '+' : ''}{groupNet.toFixed(0)} грн{hasComm ? ' чистими' : ''}
+                                        </span>
                                       </div>
                                       {group.items.map((item, ii) => {
                                         const c = commBySku.get(item.sku);
+                                        const net = item.margin - (c?.amt ?? 0);
                                         return (
-                                          <div key={ii} style={{ display: 'grid', gridTemplateColumns: hasComm ? 'auto 1fr auto auto auto auto' : 'auto 1fr auto auto auto', gap: '8px', padding: '5px 12px', alignItems: 'center', borderTop: '1px solid var(--border-light)' }}>
+                                          <div key={ii} style={{ display: 'grid', gridTemplateColumns: hasComm ? 'auto 1fr auto auto auto' : 'auto 1fr auto auto auto', gap: '8px', padding: '6px 12px', alignItems: 'center', borderTop: '1px solid var(--border-light)', fontSize: '12px' }}>
                                             <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: '11px' }}>{item.supplier_sku ?? item.sku}</span>
                                             <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
                                             <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.qty} шт</span>
-                                            <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.cost_price.toFixed(0)} → {item.sale_price.toFixed(0)} грн</span>
-                                            <span style={{ whiteSpace: 'nowrap', fontWeight: 600, color: item.margin >= 0 ? '#15803D' : '#DC2626' }}>+{item.margin.toFixed(0)} грн</span>
-                                            {hasComm && (
-                                              <span style={{ whiteSpace: 'nowrap', fontWeight: 600, color: '#C2410C', fontSize: '11px' }} title="Комісія маркетплейсу за позицію">
-                                                {c ? `−${c.amt.toFixed(0)} ₴${c.pct ? ` (${c.pct}%)` : ''}` : '—'}
-                                              </span>
-                                            )}
+                                            <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontSize: '11px' }}
+                                              title={hasComm && c ? `Маржа ${item.margin.toFixed(0)} − комісія ${c.amt.toFixed(0)}${c.pct ? ` (${c.pct}%)` : ''}` : 'Собівартість → продаж'}>
+                                              {item.cost_price.toFixed(0)}→{item.sale_price.toFixed(0)}{hasComm && c ? ` −${c.amt.toFixed(0)}к` : ''}
+                                            </span>
+                                            <span style={{ whiteSpace: 'nowrap', fontWeight: 700, color: net >= 0 ? '#15803D' : '#DC2626' }}>
+                                              {net >= 0 ? '+' : ''}{net.toFixed(0)} грн
+                                            </span>
                                           </div>
                                         );
                                       })}
                                     </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               );
                             })()}
@@ -2577,11 +2593,29 @@ export default function AdminOrders({
                         </div>
                       )}
 
+                      {/* Надіслати постачальнику — під ТТН, у розділі доставки */}
+                      {['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
+                        && (['supplier', 'mixed'].includes(order.fulfillment_mode ?? 'supplier') || !!order.supplier_sent_at) && (
+                        <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
+                          style={{ display: 'flex', alignItems: order.supplier_sent_at ? 'flex-start' : 'center', gap: '6px', width: '100%', padding: '8px 10px', borderRadius: '8px', boxSizing: 'border-box', fontSize: '12px', fontWeight: 700, cursor: supplierQueueLoading ? 'wait' : 'pointer',
+                            border: order.supplier_sent_at ? '1.5px solid #86EFAC' : '1.5px solid #93C5FD',
+                            background: order.supplier_sent_at ? '#F0FDF4' : '#EFF6FF',
+                            color: order.supplier_sent_at ? '#15803D' : '#1E3A5F',
+                            opacity: supplierQueueLoading ? 0.6 : 1 }}>
+                          <Mail size={13} style={{ flexShrink: 0, marginTop: order.supplier_sent_at ? '2px' : 0 }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '1px' }}>
+                            <span>{order.supplier_sent_at ? '✅ Надіслано постачальнику' : 'Надіслати постачальнику'}</span>
+                            {order.supplier_sent_at && (
+                              <span style={{ fontSize: '10px', opacity: 0.75 }}>{new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · натисніть щоб надіслати ще раз</span>
+                            )}
+                          </div>
+                        </button>
+                      )}
+
                     </div>
 
                     {/* Col 3: Status dropdown + context actions */}
                     {(() => {
-                      const fMode = order.fulfillment_mode ?? 'supplier';
                       return (
                         <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', alignSelf: 'start' }}>
                           {/* Current status badge */}
@@ -2622,38 +2656,7 @@ export default function AdminOrders({
                             </select>
                           </div>
 
-                          {/* Фактичний постачальник відвантаження (дроп/змішані замовлення) */}
-                          {fMode !== 'own' && suppliersList.length > 0 && (
-                            <div>
-                              <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}
-                                title="Хто фактично відвантажив товар. Борг перед постачальником при відправці буде віднесено саме на нього.">
-                                Відвантажує пост.
-                              </div>
-                              <select
-                                value={order.shipping_supplier_id ?? ''}
-                                onChange={e => {
-                                  const v = e.target.value === '' ? null : parseInt(e.target.value);
-                                  if (v !== (order.shipping_supplier_id ?? null)) setShippingSupplier(order.id, v);
-                                }}
-                                style={{
-                                  width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)',
-                                  borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer',
-                                  color: order.shipping_supplier_id ? 'var(--text-primary)' : 'var(--text-muted)',
-                                  fontWeight: order.shipping_supplier_id ? 600 : 400,
-                                }}
-                              >
-                                <option value="">— за мапінгом SKU —</option>
-                                {suppliersList.map(s => (
-                                  <option key={s.id} value={s.id}>{s.name}</option>
-                                ))}
-                              </select>
-                              {order.status === 'shipped' && !order.shipping_supplier_id && (
-                                <div style={{ fontSize: '10px', color: '#B45309', marginTop: '3px', lineHeight: 1.3 }}>
-                                  ⚠ Постачальника не підтверджено — борг віднесено за мапінгом
-                                </div>
-                              )}
-                            </div>
-                          )}
+                          {/* «Відвантажує пост.» перенесено до блоку способу виконання (ліва колонка) */}
 
                           {/* Context action buttons */}
                           {(() => {
@@ -2670,23 +2673,7 @@ export default function AdminOrders({
                             return (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
                                 {/* Primary CTA for new orders — confirm + optional send-to-supplier */}
-                                {/* Кнопка «Підтвердити замовлення» перенесена в блок «Спосіб виконання» (ліва колонка) */}
-                                {order.status === 'confirmed' && (fMode === 'supplier' || fMode === 'mixed' || !!order.supplier_sent_at) && (
-                                  <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
-                                    style={order.supplier_sent_at
-                                      ? { ...btn, border: '1.5px solid #86EFAC', background: '#F0FDF4', color: '#15803D', opacity: supplierQueueLoading ? 0.6 : 1, alignItems: 'flex-start' }
-                                      : { ...btnPrimary, opacity: supplierQueueLoading ? 0.6 : 1 }}>
-                                    <Mail size={13} style={{ flexShrink: 0, marginTop: order.supplier_sent_at ? '2px' : 0 }} />
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '1px' }}>
-                                      <span>{order.supplier_sent_at ? '✅ Надіслано постачальнику' : 'Надіслати постачальнику'}</span>
-                                      {order.supplier_sent_at && (
-                                        <span style={{ fontSize: '10px', opacity: 0.75 }}>
-                                          {new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · натисніть щоб надіслати ще раз
-                                        </span>
-                                      )}
-                                    </div>
-                                  </button>
-                                )}
+                                {/* «Підтвердити» → блок способу виконання; «Надіслати постачальнику» → під ТТН */}
                                 {(order.status === 'confirmed' || order.status === 'awaiting_stock' || order.status === 'picking') && (() => {
                                   const shippedQty = shippedQtyMap[order.id] ?? {};
                                   const hasRemaining = (order.items as OrderItem[]).some(i => (shippedQty[i.sku] ?? 0) < i.qty);
