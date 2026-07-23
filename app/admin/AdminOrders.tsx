@@ -2045,14 +2045,26 @@ export default function AdminOrders({
                               return (
                                 <div style={{ flex: '1 1 200px', minWidth: 0, padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                                   <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Спосіб виконання</div>
-                                  <select
-                                    value={selectedMode[order.id] ?? 'supplier'}
-                                    onChange={e => setSelectedMode(prev => ({ ...prev, [order.id]: e.target.value as 'supplier' | 'own' | 'mixed' }))}
-                                    style={{ width: '100%', height: '32px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-primary)', fontWeight: 600 }}>
-                                    <option value="supplier">📦 Постачальник</option>
-                                    {hasOwn && <option value="own">🏪 Наш склад</option>}
-                                    {hasOwn && <option value="mixed">🔀 Змішаний</option>}
-                                  </select>
+                                  <div style={{ display: 'flex', gap: '5px' }}>
+                                    {(['supplier', 'own', 'mixed'] as const).map(mode => {
+                                      const label = mode === 'supplier' ? 'Постачальник' : mode === 'own' ? 'Наш склад' : 'Змішаний';
+                                      const active = (selectedMode[order.id] ?? 'supplier') === mode;
+                                      const disabled = !hasOwn && (mode === 'own' || mode === 'mixed');
+                                      return (
+                                        <button key={mode}
+                                          onClick={() => !disabled && setSelectedMode(prev => ({ ...prev, [order.id]: mode }))}
+                                          title={disabled ? 'Немає товару на власному складі' : undefined}
+                                          style={{ flex: 1, minWidth: 0, padding: '7px 4px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap', textAlign: 'center',
+                                            cursor: disabled ? 'not-allowed' : 'pointer',
+                                            border: `1.5px solid ${active ? '#1E3A5F' : 'var(--border)'}`,
+                                            background: disabled ? 'var(--bg-soft)' : active ? '#1E3A5F' : 'var(--bg-card)',
+                                            color: disabled ? 'var(--text-muted)' : active ? '#fff' : 'var(--text-secondary)',
+                                            opacity: disabled ? 0.5 : 1 }}>
+                                          {label}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
                                   {!hasOwn && plan && (
                                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
                                       ℹ️ Власний склад недоступний — всі товари у постачальника
