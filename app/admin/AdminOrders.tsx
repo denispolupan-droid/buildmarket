@@ -1551,6 +1551,12 @@ export default function AdminOrders({
                   {/* Клієнт / Товар */}
                   <div style={{ flex: '0 1 calc(50% - 230px)', minWidth: 0, overflow: 'hidden' }}>
                     <div style={{ fontSize: '13px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {(order.flags ?? []).includes('urgent') && (
+                        <span title="Терміново" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>⚡</span>
+                      )}
+                      {(order.flags ?? []).includes('problem') && (
+                        <span title="Проблемний" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>⚠</span>
+                      )}
                       {order.company
                         ? <><span style={{ fontWeight: 600 }}>{order.company}</span><span style={{ color: 'var(--text-muted)' }}> · {order.contact}</span></>
                         : <span style={{ fontWeight: 600 }}>{order.contact}</span>}
