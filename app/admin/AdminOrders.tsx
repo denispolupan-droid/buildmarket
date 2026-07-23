@@ -1636,9 +1636,6 @@ export default function AdminOrders({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Замовлення #{order.order_number}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '9px', flexWrap: 'wrap' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, color: status.color, background: status.bg, whiteSpace: 'nowrap' }}>
-                          <span style={{ width: '6px', height: '6px', borderRadius: '999px', background: 'currentColor' }} />{status.label}
-                        </span>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
                           color: paymentConfirmed ? '#15803D' : '#B45309', background: paymentConfirmed ? '#DCFCE7' : '#FEF3C7' }}>
                           <CreditCard size={12} />{paymentConfirmed ? 'Оплачено' : isCod ? 'Накладений платіж' : 'Очікує оплату'}
@@ -1695,6 +1692,45 @@ export default function AdminOrders({
                         </div>
                       );
                     })()}
+                    {/* Статус замовлення — правий верхній кут; «...» = ручна зміна */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '6px 6px 6px 12px', borderRadius: '9px', color: status.color, background: status.bg }}>
+                        <span style={{ fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap' }}>{status.label}</span>
+                        <button onClick={() => setStatusEditOpen(p => ({ ...p, [order.id]: !p[order.id] }))}
+                          title="Змінити статус вручну"
+                          style={{ background: (statusEditOpen[order.id] ?? false) ? 'rgba(0,0,0,0.08)' : 'none', border: 'none', cursor: 'pointer', color: status.color, padding: '2px', borderRadius: '5px', display: 'inline-flex' }}>
+                          <MoreHorizontal size={16} />
+                        </button>
+                      </div>
+                      {order.status === 'shipped' && order.tracking_number && (
+                        <div title={order.carrier_status_synced_at ? `Оновлено: ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
+                          style={{ fontSize: '11px', fontWeight: 600, textAlign: 'right', lineHeight: 1.3, color: order.carrier_accepted_at ? '#15803D' : '#B45309', maxWidth: '220px' }}>
+                          {order.carrier_accepted_at ? '✓' : '⏳'} {order.carrier_status_text ?? (order.carrier_accepted_at ? 'Прийнято НП' : 'Очікує приймання НП')}
+                        </div>
+                      )}
+                      {(statusEditOpen[order.id] ?? false) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
+                          <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Змінити вручну{!isAdmin && <span style={{ marginLeft: '4px', color: '#F59E0B' }}>🔒</span>}
+                          </div>
+                          <select
+                            value={order.status}
+                            onChange={e => { if (e.target.value !== order.status) changeStatus(order.id, e.target.value); }}
+                            style={{ width: '210px', height: '32px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-primary)' }}
+                          >
+                            {STATUSES.filter(s => {
+                              if (isAdmin) return true;
+                              if (s.value === 'cancelled') return order.status === 'new';
+                              return (STATUS_RANK[s.value] ?? -1) >= (STATUS_RANK[order.status] ?? 0);
+                            }).map(s => (
+                              <option key={s.value} value={s.value} style={s.value === 'cancelled' ? { color: '#DC2626', fontWeight: 700 } : undefined}>
+                                {s.value === 'cancelled' ? '⚠ ' + s.label : s.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="order-expand-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 250px', gap: '14px', padding: '14px', background: 'var(--bg-soft)', alignItems: 'start' }}>
 
@@ -2639,57 +2675,11 @@ export default function AdminOrders({
                     {(() => {
                       return (
                         <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', alignSelf: 'start' }}>
-                          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>Управління замовленням</div>
-                          {/* «Джерело» (канал + № замовлення) винесено у чипи шапки — тут не дублюємо */}
-                          {/* Current status badge + «...» для ручної зміни статусу */}
-                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', padding: '6px 10px', borderRadius: '8px', color: status.color, background: status.bg }}>
-                            <span style={{ flex: 1, textAlign: 'center', fontSize: '13px', fontWeight: 700 }}>{status.label}</span>
-                            <button onClick={() => setStatusEditOpen(p => ({ ...p, [order.id]: !p[order.id] }))}
-                              title="Змінити статус вручну"
-                              style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', background: (statusEditOpen[order.id] ?? false) ? 'rgba(0,0,0,0.08)' : 'none', border: 'none', cursor: 'pointer', color: status.color, padding: '2px', borderRadius: '5px', display: 'inline-flex', opacity: 0.8 }}>
-                              <MoreHorizontal size={16} />
-                            </button>
-                          </div>
-                          {order.status === 'shipped' && order.tracking_number && (
-                            <div title={order.carrier_status_synced_at ? `Оновлено: ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
-                              style={{ fontSize: '11px', fontWeight: 600, textAlign: 'center', lineHeight: 1.3, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
-                              {order.carrier_accepted_at ? '✓' : '⏳'} {order.carrier_status_text ?? (order.carrier_accepted_at ? 'Прийнято НП' : 'Очікує приймання НП')}
-                            </div>
-                          )}
-
-                          {/* Manual status dropdown — прихований під «...» на бейджі статусу */}
-                          {(statusEditOpen[order.id] ?? false) && (
-                          <div>
-                            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
-                              Змінити вручну{!isAdmin && <span style={{ marginLeft: '4px', color: '#F59E0B' }}>🔒</span>}
-                            </div>
-                            <select
-                              value={order.status}
-                              onChange={e => { if (e.target.value !== order.status) changeStatus(order.id, e.target.value); }}
-                              style={{ width: '100%', height: '30px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-primary)' }}
-                            >
-                              {STATUSES.filter(s => {
-                                if (isAdmin) return true;
-                                // managers: no backward moves; cancel only from 'new'
-                                if (s.value === 'cancelled') return order.status === 'new';
-                                return (STATUS_RANK[s.value] ?? -1) >= (STATUS_RANK[order.status] ?? 0);
-                              }).map(s => (
-                                <option
-                                  key={s.value}
-                                  value={s.value}
-                                  style={s.value === 'cancelled' ? { color: '#DC2626', fontWeight: 700 } : undefined}
-                                >
-                                  {s.value === 'cancelled' ? '⚠ ' + s.label : s.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          )}
-
+                          {/* Статус замовлення + ручна зміна винесені у правий верхній кут шапки */}
                           {/* «Відвантажує пост.» перенесено до блоку способу виконання (ліва колонка) */}
 
                           {/* Context action buttons */}
-                          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px', paddingTop: '10px', borderTop: '1px solid var(--border-light)' }}>Дії</div>
+                          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>Дії</div>
                           {(() => {
                             // Unified button styles
                             const btn = {
