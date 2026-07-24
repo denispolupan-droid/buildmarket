@@ -119,10 +119,12 @@ export async function POST(req: NextRequest) {
     if (!finalCityRecipient || finalCityRecipient === cityRecipientRef) {
       return NextResponse.json({ error: 'Не вдалося визначити місто НП для адресної доставки. Оберіть місто зі списку НП у полі «Місто».' }, { status: 400 });
     }
-    const stRes = await npCall(apiKey, 'Address', 'searchSettlementStreets', { SettlementRef: cityRecipientRef, StreetName: street, Limit: 1 });
-    settlementStreetRef = stRes?.data?.[0]?.Addresses?.[0]?.SettlementStreetRef ?? '';
+    // Address.save очікує StreetRef із city-based getStreet (не SettlementStreetRef із
+    // searchSettlementStreets — той дає "Street doesn't exists"). CityRef уже зарезолвили.
+    const stRes = await npCall(apiKey, 'Address', 'getStreet', { CityRef: finalCityRecipient, FindByString: street, Limit: 1 });
+    settlementStreetRef = stRes?.data?.[0]?.Ref ?? '';
     if (!settlementStreetRef) {
-      return NextResponse.json({ error: `Вулицю «${street}» не знайдено в Новій Пошті для цього міста. Перевірте назву вулиці.` }, { status: 400 });
+      return NextResponse.json({ error: `Вулицю «${street}» не знайдено в Новій Пошті для цього міста. Перевірте назву вулиці (напр. без «вул.», лише «Калинова»).` }, { status: 400 });
     }
   }
 
