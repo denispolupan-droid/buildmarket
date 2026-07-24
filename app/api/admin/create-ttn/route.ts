@@ -30,6 +30,21 @@ function todayStr(): string {
   return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
 }
 
+// Розбираємо вільний рядок адреси "вул. Калинова, 104, кв. 5" → { street, house, flat }
+function parseAddress(raw: string): { street: string; house: string; flat: string } {
+  let s = (raw || '').trim();
+  const flatM = s.match(/(?:кв\.?|квартира|apt\.?)\s*([0-9]+[а-яіїєґa-z]?)/i);
+  const flat = flatM?.[1] ?? '';
+  if (flatM?.index != null) s = s.slice(0, flatM.index).replace(/[,\s]+$/, '');
+  const houseM = s.match(/(\d+[а-яіїєґa-z]?(?:\s*\/\s*\d+[а-яіїєґa-z]?)?)\s*$/i);
+  const house = houseM?.[1]?.replace(/\s+/g, '') ?? '';
+  if (houseM?.index != null) s = s.slice(0, houseM.index).replace(/[,\s]+$/, '');
+  const street = s
+    .replace(/^(вул\.?|вулиця|просп\.?|проспект|пров\.?|провулок|бул\.?|бульвар|пл\.?|площа|наб\.?|набережна|ш\.?|шосе)\s+/i, '')
+    .replace(/[,\s]+$/, '').trim();
+  return { street, house, flat };
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -42,7 +57,7 @@ export async function POST(req: NextRequest) {
     orderId,
     senderRef, senderCityRef, senderWarehouseRef, senderStreet, senderContactRef, senderPhone,
     lastName, firstName, middleName, recipientPhone,
-    cityRecipientRef, recipientAddressRef,
+    cityRecipientRef, recipientAddressRef, recipientAddress,
     weight, seatsAmount, cost, description,
     serviceType, payerType, paymentMethod,
     codEnabled, codAmount,
@@ -95,6 +110,32 @@ export async function POST(req: NextRequest) {
   const recipientRef = cRes.data[0].Ref;
   const contactRecipientRef = cRes.data[0].ContactPerson?.data?.[0]?.Ref ?? cRes.data[0].Ref;
 
+  // Адресна (кур'єрська) доставка одержувачу: створюємо адресу-Ref у НП (пошук вулиці → Address.save).
+  // Без цього RecipientAddress порожній і НП відхиляє ТТН.
+  let finalRecipientAddress: string = recipientAddressRef ?? '';
+  const recipientIsDoors = resolvedServiceType === 'WarehouseDoors' || resolvedServiceType === 'DoorsDoors';
+  if (recipientIsDoors && !recipientAddressRef && recipientAddress) {
+    const { street, house, flat } = parseAddress(recipientAddress);
+    if (!street || !house) {
+      return NextResponse.json({ error: 'Не вдалося розібрати адресу. Вкажіть вулицю та номер будинку (напр. «вул. Калинова, 104»).' }, { status: 400 });
+    }
+    const stRes = await npCall(apiKey, 'Address', 'searchSettlementStreets', { SettlementRef: cityRecipientRef, StreetName: street, Limit: 1 });
+    const streetRef = stRes?.data?.[0]?.Addresses?.[0]?.SettlementStreetRef;
+    if (!streetRef) {
+      return NextResponse.json({ error: `Вулицю «${street}» не знайдено в Новій Пошті для цього міста. Перевірте назву вулиці.` }, { status: 400 });
+    }
+    const aRes = await npCall(apiKey, 'Address', 'save', {
+      CounterpartyRef: recipientRef,
+      StreetRef:       streetRef,
+      BuildingNumber:  house,
+      Flat:            flat,
+    });
+    if (!aRes.success || !aRes.data?.[0]?.Ref) {
+      return NextResponse.json({ error: aRes.errors?.join('; ') ?? 'Не вдалося створити адресу одержувача у НП' }, { status: 400 });
+    }
+    finalRecipientAddress = aRes.data[0].Ref;
+  }
+
   // Step 2: Create TTN
   const ttnPayload: Record<string, unknown> = {
     PayerType: payerType,
@@ -113,7 +154,7 @@ export async function POST(req: NextRequest) {
     SendersPhone: normalizedSenderPhone,
     CityRecipient: cityRecipientRef,
     Recipient: recipientRef,
-    RecipientAddress: recipientAddressRef,
+    RecipientAddress: finalRecipientAddress,
     ContactRecipient: contactRecipientRef,
     RecipientsPhone: normalizePhone(recipientPhone),
   };
