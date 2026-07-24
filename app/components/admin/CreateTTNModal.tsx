@@ -402,6 +402,10 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
                   onClick={() => {
                     setDeliverySubtype(value);
                     setSelectedWH(null); setWhQuery('');
+                    // При переході на кур'єра підставляємо адрес зі замовлення, якщо поле ще порожнє
+                    if (value === 'courier' && !recipientAddress.trim()) {
+                      setRecipientAddress(streetFromAddress(order.delivery_address, order.delivery_city_name));
+                    }
                     if (selectedCity) {
                       setWhLoading(true);
                       npRequest('Address', 'getWarehouses', { SettlementRef: selectedCity.Ref, Limit: 500, Page: 1 })
