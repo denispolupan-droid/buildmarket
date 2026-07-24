@@ -124,6 +124,15 @@ const STATUS_RANK: Record<string, number> = {
   new: 0, confirmed: 1, awaiting_stock: 2, picking: 3, shipped: 4, delivered: 5,
 };
 
+// Читабельний формат телефону: +380 (95) 172-76-41. Для tel: використовуємо сирий номер.
+function formatPhone(raw: string): string {
+  const d = (raw || '').replace(/\D/g, '');
+  const parts = (op: string, a: string, b: string, c: string) => `+380 (${op}) ${a}-${b}-${c}`;
+  if (d.length === 12 && d.startsWith('380')) return parts(d.slice(3, 5), d.slice(5, 8), d.slice(8, 10), d.slice(10, 12));
+  if (d.length === 10 && d.startsWith('0'))   return parts(d.slice(1, 3), d.slice(3, 6), d.slice(6, 8), d.slice(8, 10));
+  return raw;
+}
+
 interface AdminOrdersProps {
   initialOrders: Order[];
   currentPage?: number;
@@ -2359,8 +2368,8 @@ export default function AdminOrders({
                           )}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <a href={`tel:${order.phone}`} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--brand-blue)', fontWeight: 600, textDecoration: 'none' }}>
-                            <Phone size={12} />{order.phone}
+                          <a href={`tel:${order.phone}`} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13.5px', color: 'var(--brand-blue)', fontWeight: 700, textDecoration: 'none', fontVariantNumeric: 'tabular-nums' }}>
+                            <Phone size={13} />{formatPhone(order.phone)}
                           </a>
                           <button
                             onClick={() => { navigator.clipboard.writeText(order.phone); showToast('Телефон скопійовано'); }}
