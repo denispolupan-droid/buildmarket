@@ -1645,8 +1645,10 @@ export default function AdminOrders({
                       </span>
                     )}
                     {order.supplier_sent_at && (
-                      <span title="Надіслано постачальнику"
-                        style={{ width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0, background: '#3B82F6', display: 'inline-block' }} />
+                      <span title={`Надіслано постачальнику ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`}
+                        style={{ display: 'inline-flex', alignItems: 'center', color: '#15803D', flexShrink: 0 }}>
+                        <Check size={13} strokeWidth={3} />
+                      </span>
                     )}
                   </div>
 
