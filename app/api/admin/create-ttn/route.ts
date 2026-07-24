@@ -121,10 +121,20 @@ export async function POST(req: NextRequest) {
     if (!street || !house) {
       return NextResponse.json({ error: 'Не вдалося розібрати адресу. Вкажіть вулицю та номер будинку (напр. «вул. Калинова, 104»).' }, { status: 400 });
     }
-    // SettlementRef → CityRef (DeliveryCity) для CityRecipient
-    const setRes = await npCall(apiKey, 'Address', 'getSettlements', { Ref: cityRecipientRef, Limit: 1 });
-    const deliveryCityRef = setRes?.data?.[0]?.DeliveryCity;
-    if (deliveryCityRef) finalCityRecipient = deliveryCityRef;
+    // SettlementRef → CityRef для CityRecipient. Найнадійніше — CityRef складу цього
+    // населеного пункту (те саме, що використовує доставка у відділення). Фолбек — DeliveryCity.
+    const whRes = await npCall(apiKey, 'Address', 'getWarehouses', { SettlementRef: cityRecipientRef, Limit: 1, Page: 1 });
+    const cityFromWh = whRes?.data?.[0]?.CityRef;
+    if (cityFromWh) {
+      finalCityRecipient = cityFromWh;
+    } else {
+      const setRes = await npCall(apiKey, 'Address', 'getSettlements', { Ref: cityRecipientRef, Limit: 1 });
+      const deliveryCityRef = setRes?.data?.[0]?.DeliveryCity;
+      if (deliveryCityRef) finalCityRecipient = deliveryCityRef;
+    }
+    if (!finalCityRecipient || finalCityRecipient === cityRecipientRef) {
+      return NextResponse.json({ error: 'Не вдалося визначити місто НП для адресної доставки. Оберіть місто зі списку НП у полі «Місто».' }, { status: 400 });
+    }
     const stRes = await npCall(apiKey, 'Address', 'searchSettlementStreets', { SettlementRef: cityRecipientRef, StreetName: street, Limit: 1 });
     const streetRef = stRes?.data?.[0]?.Addresses?.[0]?.SettlementStreetRef;
     if (!streetRef) {
