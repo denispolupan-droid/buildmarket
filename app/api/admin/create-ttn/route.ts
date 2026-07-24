@@ -113,12 +113,18 @@ export async function POST(req: NextRequest) {
   // Адресна (кур'єрська) доставка одержувачу: створюємо адресу-Ref у НП (пошук вулиці → Address.save).
   // Без цього RecipientAddress порожній і НП відхиляє ТТН.
   let finalRecipientAddress: string = recipientAddressRef ?? '';
+  // Для ТТН CityRecipient потрібен CityRef (місто доставки), а не SettlementRef — інакше НП каже "City not found".
+  let finalCityRecipient: string = cityRecipientRef;
   const recipientIsDoors = resolvedServiceType === 'WarehouseDoors' || resolvedServiceType === 'DoorsDoors';
   if (recipientIsDoors && !recipientAddressRef && recipientAddress) {
     const { street, house, flat } = parseAddress(recipientAddress);
     if (!street || !house) {
       return NextResponse.json({ error: 'Не вдалося розібрати адресу. Вкажіть вулицю та номер будинку (напр. «вул. Калинова, 104»).' }, { status: 400 });
     }
+    // SettlementRef → CityRef (DeliveryCity) для CityRecipient
+    const setRes = await npCall(apiKey, 'Address', 'getSettlements', { Ref: cityRecipientRef, Limit: 1 });
+    const deliveryCityRef = setRes?.data?.[0]?.DeliveryCity;
+    if (deliveryCityRef) finalCityRecipient = deliveryCityRef;
     const stRes = await npCall(apiKey, 'Address', 'searchSettlementStreets', { SettlementRef: cityRecipientRef, StreetName: street, Limit: 1 });
     const streetRef = stRes?.data?.[0]?.Addresses?.[0]?.SettlementStreetRef;
     if (!streetRef) {
@@ -152,7 +158,7 @@ export async function POST(req: NextRequest) {
     SenderAddress: senderWarehouseRef,
     ContactSender: senderContactRef,
     SendersPhone: normalizedSenderPhone,
-    CityRecipient: cityRecipientRef,
+    CityRecipient: finalCityRecipient,
     Recipient: recipientRef,
     RecipientAddress: finalRecipientAddress,
     ContactRecipient: contactRecipientRef,
