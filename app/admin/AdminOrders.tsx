@@ -2745,7 +2745,7 @@ export default function AdminOrders({
                       )}
                       {/* Дві однакові кнопки в один рядок: Надіслати постачальнику + Створити ЗП */}
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        {['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
+                        {['new', 'confirmed', 'awaiting_stock', 'picking', 'shipped'].includes(order.status)
                           && (['supplier', 'mixed'].includes(order.fulfillment_mode ?? 'supplier') || !!order.supplier_sent_at) && (
                           <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
                             title={order.supplier_sent_at ? `Надіслано ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · натисніть щоб надіслати ще раз` : 'Надіслати замовлення постачальнику'}

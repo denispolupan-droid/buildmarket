@@ -268,7 +268,10 @@ export function rozetkaOrderToOurFormat(order: RozetkaOrder) {
     // returns zero results) — only the human-readable city name and postomat/warehouse hint,
     // which the TTN-creation modal resolves via a live NP search instead.
     delivery_city_name: cityName || null,
-    delivery_subtype:   deliveryType === 'nova_poshta' ? (isPostomat ? 'postomat' as const : 'warehouse' as const) : null,
+    // НП: поштомат / адресна (кур'єр — є вулиця+будинок, немає номера відділення) / відділення
+    delivery_subtype:   deliveryType === 'nova_poshta'
+      ? (isPostomat ? 'postomat' as const : (!del?.place_number && del?.place_house ? 'address' as const : 'warehouse' as const))
+      : null,
     payment_type:     paymentType,
     paid,
     comment:          order.comment,

@@ -50,6 +50,21 @@ function splitContact(contact: string) {
   return { lastName: parts[0] ?? '', firstName: parts[1] ?? '', middleName: parts[2] ?? '' };
 }
 
+// Витягуємо «вулиця, будинок, квартира» з людського рядка адреси доставки для
+// авто-підстановки в поле кур'єра. Рядок зазвичай має вигляд «Місто, вул. Х, 12»
+// (або з областю в дужках) — прибираємо назву міста / беремо від маркера вулиці.
+function streetFromAddress(address: string | null | undefined, cityName: string | null | undefined): string {
+  let s = (address || '').trim();
+  if (!s) return '';
+  const marker = s.match(/(?:вул\.?|вулиця|просп\.?|проспект|пров\.?|провулок|бул\.?|бульвар|пл\.?|площа|наб\.?|набережна|ш\.?|шосе)\s+.*/i);
+  if (marker) return marker[0].trim();
+  const cn = (cityName || '').trim();
+  if (cn && s.toLowerCase().startsWith(cn.toLowerCase())) {
+    s = s.slice(cn.length).replace(/^[\s,:-]+/, '');
+  }
+  return s.trim();
+}
+
 const inp: React.CSSProperties = {
   height: '36px', padding: '0 10px',
   border: '1px solid var(--border)', borderRadius: '8px',
@@ -81,15 +96,20 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   const initial = splitContact(order.contact);
   const isCod = order.payment_type === 'cod';
 
+  // У БД адресна доставка зберігається як 'address' (Prom/Rozetka) або 'courier'/'doors' —
+  // усе це модалка трактує як кур'єрську доставку до дверей.
   const initialSubtype: 'warehouse' | 'postomat' | 'courier' =
     order.delivery_subtype === 'postomat' ? 'postomat'
-    : order.delivery_subtype === 'courier' ? 'courier'
+    : (order.delivery_subtype === 'courier' || order.delivery_subtype === 'address' || order.delivery_subtype === 'doors') ? 'courier'
     : 'warehouse';
   const [deliverySubtype, setDeliverySubtype] = useState<'warehouse' | 'postomat' | 'courier'>(initialSubtype);
   const isPostomat = deliverySubtype === 'postomat';
   const isCourier  = deliverySubtype === 'courier';
 
-  const [recipientAddress, setRecipientAddress] = useState('');
+  // При адресній доставці одразу підставляємо адрес зі замовлення — менеджеру лишається перевірити.
+  const [recipientAddress, setRecipientAddress] = useState(
+    initialSubtype === 'courier' ? streetFromAddress(order.delivery_address, order.delivery_city_name) : '',
+  );
 
   // Sender type override — null means "use whatever senderInfo says"
   const [senderTypeOverride, setSenderTypeOverride] = useState<'warehouse' | 'address' | null>(null);
