@@ -252,7 +252,8 @@ export function promOrderToOurFormat(order: PromOrder) {
   const payType    = order.payment_option?.payment_type ?? '';
   const isPrepaid  = order.payment_data?.status === 'paid';   // гроші вже на Prom
   let paymentType: string;
-  if (payType === 'cash_on_delivery' || /наклад/.test(payName)) paymentType = 'cod';
+  // COD: укр. «накладений», рос. «наложенный», «післяплата», «оплата при отриманні/получении».
+  if (payType === 'cash_on_delivery' || /(наклад|наложен|післяплат|при отрим|при получ)/.test(payName)) paymentType = 'cod';
   else if (isPrepaid)                                            paymentType = 'prepaid';
   else if (payType === 'cash' || /готів/.test(payName))         paymentType = 'cash';
   else                                                          paymentType = 'invoice';

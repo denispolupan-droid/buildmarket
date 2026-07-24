@@ -121,6 +121,16 @@ describe('promOrderToOurFormat — спосіб оплати', () => {
     expect(m.paid).toBe(false);
   });
 
+  it('рос. «Наложенный платеж» (лише name) → cod', () => {
+    const m = promOrderToOurFormat({
+      ...base,
+      payment_option: { name: 'Наложенный платеж' },
+      payment_data: null,
+    } as unknown as PromOrder);
+    expect(m.payment_type).toBe('cod');
+    expect(m.paid).toBe(false);
+  });
+
   it('невідомий спосіб без оплати → invoice, не оплачено', () => {
     const m = promOrderToOurFormat({
       ...base,
