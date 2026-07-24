@@ -1592,15 +1592,16 @@ export default function AdminOrders({
                   </span>
 
                   {/* Статус */}
-                  <div className="oc-status" style={{ width: '118px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div className="oc-status" style={{ width: '118px', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px', overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', maxWidth: '100%' }}>
                     <span
                       className={order.status === 'awaiting_stock' ? 'status-awaiting-pulse' : undefined}
                       style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '20px', color: status.color, background: status.bg, display: 'inline-flex', alignItems: 'center', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {status.label}
                     </span>
-                    {order.status === 'shipped' && order.tracking_number && (
+                    {order.status === 'shipped' && order.tracking_number && !order.carrier_status_text && (
                       <span
-                        title={order.carrier_status_text ?? (order.carrier_accepted_at ? 'Прийнято Новою Поштою' : 'Очікує приймання Новою Поштою')}
+                        title={order.carrier_accepted_at ? 'Прийнято Новою Поштою' : 'Очікує приймання Новою Поштою'}
                         style={{ fontSize: '12px', flexShrink: 0, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
                         {order.carrier_accepted_at ? '✓' : '⏳'}
                       </span>
@@ -1615,6 +1616,14 @@ export default function AdminOrders({
                         </span>
                       );
                     })()}
+                    </div>
+                    {order.status === 'shipped' && order.carrier_status_text && (
+                      <span title={order.carrier_status_synced_at ? `${order.carrier_status_text} · оновлено ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : order.carrier_status_text}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', maxWidth: '100%', fontSize: '10px', fontWeight: 500, color: order.carrier_accepted_at ? '#15803D' : '#B45309', overflow: 'hidden', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
+                        <Truck size={10} style={{ flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.carrier_status_text}</span>
+                      </span>
+                    )}
                   </div>
 
                   {/* Канал */}
