@@ -52,8 +52,10 @@ export default async function AdminPage({
     .order(sortBy, { ascending: sortAsc })
     .range(from, to);
 
-  // «Готово до відправки» — віртуальний зріз: відвантажені, яких НП ще не прийняла.
+  // «Готово до відправки» = відвантажені, яких НП ще НЕ прийняла; «Відправлено» = вже прийняті НП.
+  // Розрізняємо їх за carrier_accepted_at, щоб один заказ не потрапляв у дві вкладки одночасно.
   if (status === 'ready_to_ship') query = query.eq('status', 'shipped').is('carrier_accepted_at', null);
+  else if (status === 'shipped')  query = query.eq('status', 'shipped').not('carrier_accepted_at', 'is', null);
   else if (status) query = query.eq('status', status);
   if (dateFrom) query = query.gte('created_at', `${dateFrom}T00:00:00`);
   if (dateTo)   query = query.lte('created_at', `${dateTo}T23:59:59`);
@@ -132,9 +134,13 @@ export default async function AdminPage({
 
   // Sum per status
   const statusAmounts = (allAmountRows ?? []).reduce<Record<string, number>>((acc, row) => {
-    if (row.status) acc[row.status] = (acc[row.status] ?? 0) + Number(row.total_price ?? 0);
-    // Віртуальний зріз «Готово до відправки» — та сама сума, окремим ключем.
-    if (row.status === 'shipped' && !row.carrier_accepted_at) acc['ready_to_ship'] = (acc['ready_to_ship'] ?? 0) + Number(row.total_price ?? 0);
+    const amt = Number(row.total_price ?? 0);
+    // shipped розділяємо: не прийнятий НП → «Готово до відправки», прийнятий → «Відправлено».
+    if (row.status === 'shipped') {
+      acc[row.carrier_accepted_at ? 'shipped' : 'ready_to_ship'] = (acc[row.carrier_accepted_at ? 'shipped' : 'ready_to_ship'] ?? 0) + amt;
+    } else if (row.status) {
+      acc[row.status] = (acc[row.status] ?? 0) + amt;
+    }
     return acc;
   }, {});
   // Загальна сума — напряму з рядків (ready_to_ship дублює shipped, тому не через Object.values).
@@ -142,9 +148,13 @@ export default async function AdminPage({
 
   // Count orders per status
   const statusCounts = (statusRows ?? []).reduce<Record<string, number>>((acc, row) => {
-    if (row.status) acc[row.status] = (acc[row.status] ?? 0) + 1;
-    // Віртуальний зріз «Готово до відправки» = shipped, який НП ще не прийняла.
-    if (row.status === 'shipped' && !row.carrier_accepted_at) acc['ready_to_ship'] = (acc['ready_to_ship'] ?? 0) + 1;
+    // shipped розділяємо: не прийнятий НП → «Готово до відправки», прийнятий → «Відправлено».
+    if (row.status === 'shipped') {
+      const key = row.carrier_accepted_at ? 'shipped' : 'ready_to_ship';
+      acc[key] = (acc[key] ?? 0) + 1;
+    } else if (row.status) {
+      acc[row.status] = (acc[row.status] ?? 0) + 1;
+    }
     return acc;
   }, {});
   const totalCount = statusRows?.length ?? 0;
