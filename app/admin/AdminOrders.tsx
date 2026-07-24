@@ -1917,8 +1917,8 @@ export default function AdminOrders({
                                     return (
                                       <tr key={item.sku} style={{ borderBottom: '1px solid var(--border-light)' }}>
                                         {/* Назва — мініатюра + назва зверху жирнішим, код нижче */}
-                                        <td style={{ padding: '10px 0', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3, verticalAlign: 'top' }}>
-                                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', minWidth: 0 }}>
+                                        <td style={{ padding: '10px 0', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3, verticalAlign: 'middle' }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                                             {(() => {
                                               const img = itemImages[order.id]?.[item.sku];
                                               return (
@@ -1941,7 +1941,7 @@ export default function AdminOrders({
                                           </div>
                                         </td>
                                         {/* Артикул — окремий стовпець */}
-                                        <td style={{ padding: '10px 6px 10px 12px', verticalAlign: 'top' }}>
+                                        <td style={{ padding: '10px 6px 10px 12px', verticalAlign: 'middle' }}>
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <span style={{ color: 'var(--text-secondary)', fontSize: '11.5px', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{item.sku}</span>
                                             <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
@@ -1950,17 +1950,17 @@ export default function AdminOrders({
                                             </button>
                                           </div>
                                         </td>
-                                        <td style={{ padding: '10px 6px', color: 'var(--text-primary)', textAlign: 'right', fontSize: '12.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'top' }}>{item.qty}</td>
-                                        <td style={{ padding: '10px 6px', textAlign: 'right', color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'top' }}>
+                                        <td style={{ padding: '10px 6px', color: 'var(--text-primary)', textAlign: 'right', fontSize: '12.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'middle' }}>{item.qty}</td>
+                                        <td style={{ padding: '10px 6px', textAlign: 'right', color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'middle' }}>
                                           {item.is_bonus ? '' : `${item.price.toFixed(0)} ₴`}
                                         </td>
-                                        <td style={{ padding: '10px 0', textAlign: 'right', verticalAlign: 'top' }}>
+                                        <td style={{ padding: '10px 0', textAlign: 'right', verticalAlign: 'middle' }}>
                                           {item.is_bonus
                                             ? <span style={{ color: '#15803D', fontSize: '11px', fontWeight: 700, background: '#F0FDF4', padding: '1px 6px', borderRadius: '4px' }}>🎁 Бонус</span>
                                             : <span style={{ color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{(item.price * item.qty).toFixed(0)} ₴</span>
                                           }
                                         </td>
-                                        <td style={{ padding: '10px 0 10px 8px', textAlign: 'right', verticalAlign: 'top', background: srcBg, borderLeft: srcBorder, borderRadius: isMixed ? '6px' : undefined }}>
+                                        <td style={{ padding: '10px 0 10px 8px', textAlign: 'right', verticalAlign: 'middle', background: srcBg, borderLeft: srcBorder, borderRadius: isMixed ? '6px' : undefined }}>
                                           {fulfillmentLoading.has(order.id) ? (
                                             <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>…</span>
                                           ) : planSrc ? (
@@ -2348,7 +2348,7 @@ export default function AdminOrders({
                             <Building2 size={12} color="#64748B" />{order.company}
                           </div>
                         )}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
                           {order.contact}
                           {order.customer_id && (
                             <a href={`/admin/partners?open=${order.customer_id}`} target="_blank" rel="noopener noreferrer"
