@@ -89,40 +89,24 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Step 1: Create recipient counterparty
-  const cRes = await npCall(apiKey, 'Counterparty', 'save', {
-    FirstName: firstName,
-    LastName: lastName,
-    MiddleName: middleName ?? '',
-    Phone: normalizePhone(recipientPhone),
-    CounterpartyType: 'PrivatePerson',
-    CounterpartyProperty: 'Recipient',
-    CityRef: cityRecipientRef,
-  });
-
-  if (!cRes.success) {
-    return NextResponse.json(
-      { error: cRes.errors?.join('; ') ?? 'Помилка створення одержувача у НП' },
-      { status: 400 },
-    );
-  }
-
-  const recipientRef = cRes.data[0].Ref;
-  const contactRecipientRef = cRes.data[0].ContactPerson?.data?.[0]?.Ref ?? cRes.data[0].Ref;
-
-  // Адресна (кур'єрська) доставка одержувачу: створюємо адресу-Ref у НП (пошук вулиці → Address.save).
-  // Без цього RecipientAddress порожній і НП відхиляє ТТН.
-  let finalRecipientAddress: string = recipientAddressRef ?? '';
-  // Для ТТН CityRecipient потрібен CityRef (місто доставки), а не SettlementRef — інакше НП каже "City not found".
-  let finalCityRecipient: string = cityRecipientRef;
+  // Кур'єрська (адресна) доставка одержувачу потребує CityRef (місто), а не SettlementRef —
+  // інакше НП відхиляє і Counterparty.save (CityRef), і ТТН (CityRecipient) з "City not found".
+  // Резолвимо CityRef + вулицю ДО створення одержувача; адресу-Ref створюємо пізніше (треба CounterpartyRef).
   const recipientIsDoors = resolvedServiceType === 'WarehouseDoors' || resolvedServiceType === 'DoorsDoors';
-  if (recipientIsDoors && !recipientAddressRef && recipientAddress) {
+  const needAddress = recipientIsDoors && !recipientAddressRef && !!recipientAddress;
+  let finalCityRecipient: string = cityRecipientRef;
+  let settlementStreetRef = '';
+  let parsedHouse = '';
+  let parsedFlat = '';
+  if (needAddress) {
     const { street, house, flat } = parseAddress(recipientAddress);
     if (!street || !house) {
       return NextResponse.json({ error: 'Не вдалося розібрати адресу. Вкажіть вулицю та номер будинку (напр. «вул. Калинова, 104»).' }, { status: 400 });
     }
-    // SettlementRef → CityRef для CityRecipient. Найнадійніше — CityRef складу цього
-    // населеного пункту (те саме, що використовує доставка у відділення). Фолбек — DeliveryCity.
+    parsedHouse = house;
+    parsedFlat = flat;
+    // SettlementRef → CityRef. Найнадійніше — CityRef складу цього населеного пункту
+    // (те саме, що використовує доставка у відділення). Фолбек — DeliveryCity.
     const whRes = await npCall(apiKey, 'Address', 'getWarehouses', { SettlementRef: cityRecipientRef, Limit: 1, Page: 1 });
     const cityFromWh = whRes?.data?.[0]?.CityRef;
     if (cityFromWh) {
@@ -136,15 +120,42 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Не вдалося визначити місто НП для адресної доставки. Оберіть місто зі списку НП у полі «Місто».' }, { status: 400 });
     }
     const stRes = await npCall(apiKey, 'Address', 'searchSettlementStreets', { SettlementRef: cityRecipientRef, StreetName: street, Limit: 1 });
-    const streetRef = stRes?.data?.[0]?.Addresses?.[0]?.SettlementStreetRef;
-    if (!streetRef) {
+    settlementStreetRef = stRes?.data?.[0]?.Addresses?.[0]?.SettlementStreetRef ?? '';
+    if (!settlementStreetRef) {
       return NextResponse.json({ error: `Вулицю «${street}» не знайдено в Новій Пошті для цього міста. Перевірте назву вулиці.` }, { status: 400 });
     }
+  }
+
+  // Step 1: Create recipient counterparty
+  const cRes = await npCall(apiKey, 'Counterparty', 'save', {
+    FirstName: firstName,
+    LastName: lastName,
+    MiddleName: middleName ?? '',
+    Phone: normalizePhone(recipientPhone),
+    CounterpartyType: 'PrivatePerson',
+    CounterpartyProperty: 'Recipient',
+    CityRef: finalCityRecipient,
+  });
+
+  if (!cRes.success) {
+    return NextResponse.json(
+      { error: cRes.errors?.join('; ') ?? 'Помилка створення одержувача у НП' },
+      { status: 400 },
+    );
+  }
+
+  const recipientRef = cRes.data[0].Ref;
+  const contactRecipientRef = cRes.data[0].ContactPerson?.data?.[0]?.Ref ?? cRes.data[0].Ref;
+
+  // Адресна (кур'єрська) доставка: створюємо адресу-Ref у НП (потрібен CounterpartyRef одержувача,
+  // тому — після Step 1). CityRef та вулицю вже зарезолвили вище.
+  let finalRecipientAddress: string = recipientAddressRef ?? '';
+  if (needAddress) {
     const aRes = await npCall(apiKey, 'Address', 'save', {
       CounterpartyRef: recipientRef,
-      StreetRef:       streetRef,
-      BuildingNumber:  house,
-      Flat:            flat,
+      StreetRef:       settlementStreetRef,
+      BuildingNumber:  parsedHouse,
+      Flat:            parsedFlat,
     });
     if (!aRes.success || !aRes.data?.[0]?.Ref) {
       return NextResponse.json({ error: aRes.errors?.join('; ') ?? 'Не вдалося створити адресу одержувача у НП' }, { status: 400 });
