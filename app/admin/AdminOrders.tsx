@@ -1376,7 +1376,7 @@ export default function AdminOrders({
           const inpStyle: React.CSSProperties = { height: '32px', padding: '0 8px', border: '1.5px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none', background: 'var(--bg-card)', color: 'var(--text-primary)' };
 
           return (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <div className="oc-filter-dates" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               {/* Quick presets */}
               {[
                 { label: 'Сьогодні', from: today,      to: today },
@@ -1415,7 +1415,7 @@ export default function AdminOrders({
         })()}
 
         {/* Row 3: Search */}
-        <div style={{ position: 'relative' }}>
+        <div className="oc-filter-search" style={{ position: 'relative' }}>
           <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           <input
             placeholder="№ замовлення, ФІО, телефон, ТТН..."

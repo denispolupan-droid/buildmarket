@@ -1287,6 +1287,16 @@ input, select { font-family: inherit; }
   }
   .oc-toolbar-actions > * { flex-shrink: 1; min-width: 0; }
 
+  /* Візуальний поділ груп фільтрів на телефоні (канали → дії → дати → пошук):
+     тонка лінія зверху кожної наступної групи, щоб не зливались в одну кашу. */
+  .oc-toolbar-actions,
+  .oc-filter-dates,
+  .oc-filter-search {
+    border-top: 1px solid var(--border-light) !important;
+    padding-top: 12px !important;
+    margin-top: 2px !important;
+  }
+
   /* Жодного горизонтального скролу сторінки замовлень — широкий контент клипається */
   .admin-layout [style*="padding:28px 32px 64px"] { overflow-x: hidden !important; }
 
