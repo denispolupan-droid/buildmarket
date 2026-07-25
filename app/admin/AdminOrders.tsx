@@ -1232,7 +1232,7 @@ export default function AdminOrders({
               );
             })}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          <div className="oc-toolbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
             <a
               href={`/api/admin/orders/export?${(() => { const p = new URLSearchParams(); if (currentStatus) p.set('status', currentStatus); if (dateFrom) p.set('dateFrom', dateFrom); if (dateTo) p.set('dateTo', dateTo); return p.toString(); })()}`}
               download
@@ -1559,7 +1559,7 @@ export default function AdminOrders({
                   <span className="oc-hide-m" style={{ width: '90px', flexShrink: 0, fontSize: '11px', color: 'var(--text-muted)' }}>{date}</span>
 
                   {/* Клієнт / Товар */}
-                  <div style={{ flex: '0 1 calc(50% - 230px)', minWidth: 0, overflow: 'hidden' }}>
+                  <div className="oc-cust" style={{ flex: '0 1 calc(50% - 230px)', minWidth: 0, overflow: 'hidden' }}>
                     <div style={{ fontSize: '13px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {(order.flags ?? []).includes('urgent') && (
                         <span title="Терміново" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>⚡</span>

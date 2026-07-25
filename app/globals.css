@@ -1179,8 +1179,24 @@ input, select { font-family: inherit; }
   .oc-hide-m { display: none !important; }
   .order-compact-row { gap: 6px !important; padding: 8px 10px !important; }
   .order-compact-row .oc-num { width: auto !important; }
+  /* Клієнт/Товар: десктопний flex-basis calc(50% - 230px) на вузькому екрані ставав
+     від'ємним і колонка схлопувалась у 1 символ. На мобілці — займає доступне місце. */
+  .order-compact-row .oc-cust { flex: 1 1 auto !important; }
   .oc-status { width: auto !important; }
+
+  /* Розгорнута картка — усе в один стовпчик, нічого не тисне за екран */
   .order-expand-grid { grid-template-columns: 1fr !important; }
+  .order-expand-grid > * { min-width: 0 !important; }
+  /* Внутрішні дво-колонкові підсітки → у стовпчик (React серіалізує без пробілу після :) */
+  .order-expand-grid [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+  /* Таблиця товарів (назва | к-ть | ціна | сума): назві вистачає місця */
+  .order-expand-grid [style*="grid-template-columns:1fr 50px 70px auto"] { grid-template-columns: 1fr auto !important; column-gap: 8px !important; }
+
+  /* Тулбар дій (Excel/Реєстр/Синхронізація) — переноситься, не тисне за екран */
+  .oc-toolbar-actions { flex-wrap: wrap !important; }
+
+  /* Жодного горизонтального скролу сторінки замовлень — широкий контент клипається */
+  .admin-layout [style*="padding:28px 32px 64px"] { overflow-x: hidden !important; }
 
   /* ── Взаєморозрахунки (Payables) ── */
   .sup-row { grid-template-columns: 1fr 116px 24px !important; }
