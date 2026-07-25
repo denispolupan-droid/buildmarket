@@ -1199,12 +1199,16 @@ input, select { font-family: inherit; }
   /* «Зберегти» ТТН → компактна кнопка-дискета, щоб поле + Зберегти + «Створити ТТН»
      влізли в один рядок на телефоні. */
   .oc-ttn-save { padding: 0 !important; width: 34px !important; }
-  .order-compact-row { gap: 6px !important; padding: 8px 10px !important; }
+  .order-compact-row { gap: 6px !important; padding: 8px 10px !important; flex-wrap: wrap !important; }
   .order-compact-row .oc-num { width: auto !important; }
-  /* Клієнт/Товар: десктопний flex-basis calc(50% - 230px) на вузькому екрані ставав
-     від'ємним і колонка схлопувалась у 1 символ. На мобілці — займає доступне місце. */
-  .order-compact-row .oc-cust { flex: 1 1 auto !important; }
+  /* Клієнт/Товар: у рядку з №+статус+сума на телефоні лишалось ~40px і ФІО/товар
+     обрізались у «Де…»/«AUR…». Тепер колонка переноситься на власний рядок на всю
+     ширину картки (flex-basis:100% + order), тож видно ПІБ і товар повністю. */
+  .order-compact-row .oc-cust { flex: 1 0 100% !important; order: 20 !important; margin-left: 22px; }
   .oc-status { width: auto !important; }
+  /* Розгорнуте: «Фінанси | Логістика» на телефоні у 2 колонки давали ~140px — лейбли
+     налазили на суми («Собіварт222 ₴»), кнопки/селекти обрізались. Складаємо в стовпчик. */
+  .oc-finlog-grid { grid-template-columns: 1fr !important; }
 
   /* Розгорнута картка — усе в один стовпчик, нічого не тисне за екран */
   .order-expand-grid { grid-template-columns: 1fr !important; }
