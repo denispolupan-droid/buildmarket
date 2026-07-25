@@ -1698,9 +1698,9 @@ export default function AdminOrders({
                 {isExpanded && (
                   <>
                   {/* Шапка розгорнутого замовлення — новий дизайн */}
-                  <div style={{ borderTop: '1px solid var(--border-light)', background: 'var(--bg-soft)', padding: '16px 14px 14px', display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                  <div className="oc-expand-header" style={{ borderTop: '1px solid var(--border-light)', background: 'var(--bg-soft)', padding: '16px 14px 14px', display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
                     {/* main-part — дзеркалить основну область сітки (Клієнт | Оплата) */}
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                    <div className="oc-main-part" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Замовлення #{order.order_number}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '9px', flexWrap: 'wrap' }}>
@@ -1731,7 +1731,7 @@ export default function AdminOrders({
                       </div>
                     </div>
                     {/* Права половина: сума (ліворуч, по межі блоку «Оплата») + «Підтвердити» поруч */}
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                    <div className="oc-pay-part" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
                     <div style={{ flexShrink: 0, minWidth: '120px' }}>
                       <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{Number(order.total_price).toFixed(0)} ₴</div>
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Сума замовлення</div>
@@ -1741,7 +1741,7 @@ export default function AdminOrders({
                       const busy = confirming === order.id;
                       const confirmErr = confirmErrors[order.id];
                       return (
-                        <div style={{ width: '250px', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '6px' }}>
+                        <div className="oc-confirm-block" style={{ width: '250px', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '6px' }}>
                           <button onClick={() => confirmOrder(order.id)} disabled={busy}
                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', height: '44px', padding: '0 22px', borderRadius: '12px', border: 'none', background: busy ? '#94A3B8' : '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer', boxShadow: '0 1px 2px rgba(30,58,95,0.35)', whiteSpace: 'nowrap' }}>
                             {busy ? 'Обробка…' : <><Check size={17} /> Підтвердити замовлення</>}
@@ -1767,7 +1767,7 @@ export default function AdminOrders({
                     </div>{/* /Оплата-part */}
                     </div>{/* /main-part */}
                     {/* Статус — над правою панеллю (250px), «...» = ручна зміна */}
-                    <div style={{ width: '250px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div className="oc-status-panel" style={{ width: '250px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', borderRadius: '10px', color: status.color, background: status.bg, border: `1.5px solid ${status.color}` }}>
                         <span style={{ fontSize: '14px', fontWeight: 700, whiteSpace: 'nowrap' }}>{status.label}</span>
                         <button onClick={() => setStatusEditOpen(p => ({ ...p, [order.id]: !p[order.id] }))}
@@ -1901,7 +1901,7 @@ export default function AdminOrders({
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column' }}>
                             {/* Items table */}
-                            <div style={{ padding: '2px 0 0' }}>
+                            <div className="oc-items-scroll" style={{ padding: '2px 0 0' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                               <thead>
                                 <tr style={{ borderBottom: '1px solid var(--border)' }}>

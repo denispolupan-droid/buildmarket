@@ -1189,8 +1189,18 @@ input, select { font-family: inherit; }
   .order-expand-grid > * { min-width: 0 !important; }
   /* Внутрішні дво-колонкові підсітки → у стовпчик (React серіалізує без пробілу після :) */
   .order-expand-grid [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
-  /* Таблиця товарів (назва | к-ть | ціна | сума): назві вистачає місця */
-  .order-expand-grid [style*="grid-template-columns:1fr 50px 70px auto"] { grid-template-columns: 1fr auto !important; column-gap: 8px !important; }
+  /* Таблиця товарів (Назва|Артикул|К-сть|Ціна|Сума|Джерело) — фікс-колонки ширші за
+     екран і тиснули «Назву» у стовпчик. Тепер уся таблиця скролиться свайпом ← →,
+     а не ламається. display:table повертаємо (глобальне .admin-layout table робить block). */
+  .oc-items-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .oc-items-scroll table { display: table !important; min-width: 480px !important; max-width: none !important; }
+
+  /* Шапка розгорнутого замовлення: горизонтальний ряд з фікс-блоками (сума, кнопка 250px,
+     статус-панель 250px) не влазив і «плавав». На мобілці — у стовпчик, блоки на всю ширину. */
+  .oc-expand-header, .oc-main-part, .oc-pay-part {
+    flex-direction: column !important; gap: 10px !important; align-items: stretch !important;
+  }
+  .oc-status-panel, .oc-confirm-block { width: 100% !important; }
 
   /* Тулбар дій (Excel/Реєстр/Синхронізація) — переноситься, не тисне за екран */
   .oc-toolbar-actions { flex-wrap: wrap !important; }
