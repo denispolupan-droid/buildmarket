@@ -276,6 +276,14 @@ export default function AdminOrders({
   const [supplierQueueLoading, setSupplierQueueLoading] = useState(false);
   const [supplierQueueSending, setSupplierQueueSending] = useState(false);
   const [supplierQueueDone,    setSupplierQueueDone]    = useState(false);
+  // Масова відправка: замовлення згруповані по постачальнику → один лист на постачальника
+  type BulkGroup = { supplierId: number | null; supplierName: string; orderNumbers: number[]; email: string; contacts: ContactEntry[] };
+  type BulkResult = { supplierName: string; emailed: boolean; orderNumbers: number[] };
+  const [bulkGroups,   setBulkGroups]   = useState<BulkGroup[] | null>(null);
+  const [bulkOrderIds, setBulkOrderIds] = useState<string[]>([]);
+  const [bulkComment,  setBulkComment]  = useState('');
+  const [bulkSending,  setBulkSending]  = useState(false);
+  const [bulkResults,  setBulkResults]  = useState<BulkResult[] | null>(null);
   // Відправники (основний + додаткові) — вибір «від кого» слати постачальнику
   const [senders,      setSenders]      = useState<{ name: string; email: string }[]>([]);
   const [chosenSender, setChosenSender] = useState('');
@@ -337,6 +345,8 @@ export default function AdminOrders({
   const [finLogOpen,       setFinLogOpen]       = useState<Record<string, boolean>>({});
   const [statusEditOpen,   setStatusEditOpen]   = useState<Record<string, boolean>>({});
   const [itemsExpanded,    setItemsExpanded]    = useState<Record<string, boolean>>({});
+  // Позиція свайпу стрічки карток (Клієнт/Оплата) на мобілці — для стрілок ‹ / ›
+  const [cardSwipe,        setCardSwipe]        = useState<Record<string, 'start' | 'mid' | 'end'>>({});
   const [itemImages,       setItemImages]       = useState<Record<string, Record<string, string | null>>>({});
   const [payFormSaving,    setPayFormSaving]    = useState<Record<string, boolean>>({});
   const [payRemoving,      setPayRemoving]      = useState<string | null>(null);
@@ -468,15 +478,9 @@ export default function AdminOrders({
     }
   }
 
-  async function startSupplierSend(orderIds: string[]) {
-    const missingTtn = orderIds.some(oid => !orders.find(o => o.id === oid)?.tracking_number);
-    if (missingTtn) {
-      const ok = await showConfirm('ТТН не створена для цього замовлення. Все одно відправити постачальнику?');
-      if (!ok) return;
-    }
-    setSupplierQueueLoading(true);
-    setSupplierQueueDone(false);
-    const items: SupplierQItem[] = await Promise.all(orderIds.map(async (oid) => {
+  // Спільне: підтягуємо дані постачальника (email + контакти) для кожного замовлення.
+  async function fetchSupplierQItems(orderIds: string[]): Promise<SupplierQItem[]> {
+    return Promise.all(orderIds.map(async (oid) => {
       const order = orders.find(o => o.id === oid);
       try {
         const d = await fetch(`/api/admin/orders/${oid}/supplier-order`).then(r => r.json());
@@ -495,9 +499,77 @@ export default function AdminOrders({
         return { orderId: oid, orderNumber: order?.order_number ?? 0, supplierName: '—', supplierId: null, email: '', contacts: [], comment: '' };
       }
     }));
+  }
+
+  async function confirmMissingTtn(orderIds: string[]): Promise<boolean> {
+    const missingTtn = orderIds.some(oid => !orders.find(o => o.id === oid)?.tracking_number);
+    if (!missingTtn) return true;
+    return showConfirm('ТТН не створена для цього замовлення. Все одно відправити постачальнику?');
+  }
+
+  // Поштучна відправка — модалка веде по одному замовленню (вибір контакту, коментар).
+  async function startSupplierSend(orderIds: string[]) {
+    if (!(await confirmMissingTtn(orderIds))) return;
+    setSupplierQueueLoading(true);
+    setSupplierQueueDone(false);
+    const items = await fetchSupplierQItems(orderIds);
+    setSupplierQueueLoading(false);
     setSupplierQueue(items);
     setSupplierQueueIdx(0);
+  }
+
+  // Масова відправка — один лист на постачальника (замовлення згруповані).
+  async function startBulkSupplierSend(orderIds: string[]) {
+    if (!(await confirmMissingTtn(orderIds))) return;
+    setSupplierQueueLoading(true);
+    const items = await fetchSupplierQItems(orderIds);
     setSupplierQueueLoading(false);
+
+    const groupMap = new Map<string, BulkGroup>();
+    for (const it of items) {
+      const key = it.supplierId != null ? `s${it.supplierId}` : `n:${it.supplierName}`;
+      if (!groupMap.has(key)) {
+        groupMap.set(key, { supplierId: it.supplierId, supplierName: it.supplierName, orderNumbers: [], email: it.email, contacts: it.contacts });
+      }
+      const g = groupMap.get(key)!;
+      g.orderNumbers.push(it.orderNumber);
+      if (!g.email && it.email) g.email = it.email;
+      if (g.contacts.length === 0 && it.contacts.length > 0) g.contacts = it.contacts;
+    }
+    const groups = [...groupMap.values()].map(g => ({ ...g, orderNumbers: [...new Set(g.orderNumbers)].sort((a, b) => a - b) }));
+    setBulkGroups(groups);
+    setBulkOrderIds(orderIds);
+    setBulkComment('');
+    setBulkResults(null);
+  }
+
+  async function sendBulkSuppliers() {
+    if (!bulkGroups) return;
+    setBulkSending(true);
+    try {
+      const emailOverrides: Record<string, string> = {};
+      for (const g of bulkGroups) {
+        if (g.supplierId != null && g.email.includes('@')) emailOverrides[String(g.supplierId)] = g.email.trim();
+      }
+      const res = await fetch('/api/admin/supplier-orders/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderIds: bulkOrderIds, comment: bulkComment || undefined, senderEmail: chosenSender || undefined, emailOverrides }),
+      });
+      const data = await res.json();
+      const results: BulkResult[] = (data.results ?? []).map((r: { supplier_name: string; emailed: boolean; order_numbers: number[] }) =>
+        ({ supplierName: r.supplier_name, emailed: r.emailed, orderNumbers: r.order_numbers ?? [] }));
+      setBulkResults(results);
+      const sentIds: string[] = data.sent_order_ids ?? [];
+      if (sentIds.length) {
+        const sentAt = new Date().toISOString();
+        setOrders(prev => prev.map(o => sentIds.includes(o.id) ? { ...o, supplier_sent_at: sentAt } : o));
+      }
+    } catch {
+      setBulkResults([{ supplierName: '—', emailed: false, orderNumbers: [] }]);
+    } finally {
+      setBulkSending(false);
+    }
   }
 
   function advanceSupplierQueue() {
@@ -1150,13 +1222,25 @@ export default function AdminOrders({
               const supplierSel = sel.filter(o => o.fulfillment_mode === 'supplier' || o.fulfillment_mode === 'mixed' || (o.status === 'new' && (o.fulfillment_mode == null || o.fulfillment_mode === 'supplier')));
               if (supplierSel.length === 0) return null;
               const unsentCount = supplierSel.filter(o => !o.supplier_sent_at).length;
+              const ids = supplierSel.map(o => o.id);
               return (
-                <button
-                  onClick={() => startSupplierSend(supplierSel.map(o => o.id))}
-                  disabled={supplierQueueLoading}
-                  style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: supplierQueueLoading ? 0.6 : 1 }}>
-                  {supplierQueueLoading ? '⏳' : '📧'} Надіслати постачальнику{unsentCount > 0 ? ` (${unsentCount} нових)` : ''}
-                </button>
+                <>
+                  <button
+                    onClick={() => startSupplierSend(ids)}
+                    disabled={supplierQueueLoading}
+                    style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: supplierQueueLoading ? 0.6 : 1 }}>
+                    {supplierQueueLoading ? '⏳' : '📧'} Надіслати постачальнику{unsentCount > 0 ? ` (${unsentCount} нових)` : ''}
+                  </button>
+                  {supplierSel.length > 1 && (
+                    <button
+                      onClick={() => startBulkSupplierSend(ids)}
+                      disabled={supplierQueueLoading}
+                      title="Один лист на постачальника з усіма його замовленнями"
+                      style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #0EA5E9 0%, #2563EB 100%)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: supplierQueueLoading ? 0.6 : 1 }}>
+                      📨 Відправити всі одразу
+                    </button>
+                  )}
+                </>
               );
             })()}
             <button onClick={openMergeModal} style={{
@@ -1906,11 +1990,11 @@ export default function AdminOrders({
                               <thead>
                                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                   <th style={{ textAlign: 'left', padding: '2px 0 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Назва</th>
-                                  <th style={{ textAlign: 'left', padding: '2px 6px 8px 12px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '104px', whiteSpace: 'nowrap' }}>Артикул</th>
+                                  <th className="oc-col-sku" style={{ textAlign: 'left', padding: '2px 6px 8px 12px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '104px', whiteSpace: 'nowrap' }}>Артикул</th>
                                   <th style={{ textAlign: 'right', padding: '2px 6px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '44px', whiteSpace: 'nowrap' }}>К-сть</th>
                                   <th style={{ textAlign: 'right', padding: '2px 6px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '62px', whiteSpace: 'nowrap' }}>Ціна</th>
                                   <th style={{ textAlign: 'right', padding: '2px 0 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '70px' }}>Сума</th>
-                                  <th style={{ textAlign: 'right', padding: '2px 0 8px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '90px' }}>Джерело</th>
+                                  <th className="oc-col-src" style={{ textAlign: 'right', padding: '2px 0 8px 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', width: '90px' }}>Джерело</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -1937,7 +2021,7 @@ export default function AdminOrders({
                                     return (
                                       <tr key={item.sku} style={{ borderBottom: '1px solid var(--border-light)' }}>
                                         {/* Назва — мініатюра + назва зверху жирнішим, код нижче */}
-                                        <td style={{ padding: '10px 0', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3, verticalAlign: 'middle' }}>
+                                        <td className="oc-col-name" style={{ padding: '10px 0', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3, verticalAlign: 'middle' }}>
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                                             {(() => {
                                               const img = itemImages[order.id]?.[item.sku];
@@ -1961,7 +2045,7 @@ export default function AdminOrders({
                                           </div>
                                         </td>
                                         {/* Артикул — окремий стовпець */}
-                                        <td style={{ padding: '10px 6px 10px 12px', verticalAlign: 'middle' }}>
+                                        <td className="oc-col-sku" style={{ padding: '10px 6px 10px 12px', verticalAlign: 'middle' }}>
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <span style={{ color: 'var(--text-secondary)', fontSize: '11.5px', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{item.sku}</span>
                                             <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
@@ -1970,17 +2054,17 @@ export default function AdminOrders({
                                             </button>
                                           </div>
                                         </td>
-                                        <td style={{ padding: '10px 6px', color: 'var(--text-primary)', textAlign: 'right', fontSize: '12.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'middle' }}>{item.qty}</td>
-                                        <td style={{ padding: '10px 6px', textAlign: 'right', color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'middle' }}>
+                                        <td className="oc-col-qty" style={{ padding: '10px 6px', color: 'var(--text-primary)', textAlign: 'right', fontSize: '12.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'middle' }}>{item.qty}</td>
+                                        <td className="oc-col-price" style={{ padding: '10px 6px', textAlign: 'right', color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'middle' }}>
                                           {item.is_bonus ? '' : `${item.price.toFixed(0)} ₴`}
                                         </td>
-                                        <td style={{ padding: '10px 0', textAlign: 'right', verticalAlign: 'middle' }}>
+                                        <td className="oc-col-sum" style={{ padding: '10px 0', textAlign: 'right', verticalAlign: 'middle' }}>
                                           {item.is_bonus
                                             ? <span style={{ color: '#15803D', fontSize: '11px', fontWeight: 700, background: '#F0FDF4', padding: '1px 6px', borderRadius: '4px' }}>🎁 Бонус</span>
                                             : <span style={{ color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{(item.price * item.qty).toFixed(0)} ₴</span>
                                           }
                                         </td>
-                                        <td style={{ padding: '10px 0 10px 8px', textAlign: 'right', verticalAlign: 'middle', background: srcBg, borderLeft: srcBorder, borderRadius: isMixed ? '6px' : undefined }}>
+                                        <td className="oc-col-src" style={{ padding: '10px 0 10px 8px', textAlign: 'right', verticalAlign: 'middle', background: srcBg, borderLeft: srcBorder, borderRadius: isMixed ? '6px' : undefined }}>
                                           {fulfillmentLoading.has(order.id) ? (
                                             <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>…</span>
                                           ) : planSrc ? (
@@ -2018,6 +2102,18 @@ export default function AdminOrders({
                                               ? <><ChevronUp size={14} /> Згорнути список</>
                                               : <><ChevronDown size={14} /> Показати ще {order.items.length - 1} {order.items.length - 1 === 1 ? 'товар' : order.items.length - 1 < 5 ? 'товари' : 'товарів'}</>}
                                           </button>
+                                        </td>
+                                      </tr>
+                                    );
+                                    // Підсумок замовлення — лише на мобілці (десктоп: сума в шапці).
+                                    // display:none inline ховає на десктопі; мобільне .oc-items-scroll tr{display:flex} перебиває.
+                                    rows.push(
+                                      <tr className="oc-total-row" key="__total" style={{ display: 'none' }}>
+                                        <td colSpan={6} style={{ padding: '10px 0 0' }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
+                                            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)' }}>Разом</span>
+                                            <span style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{Number(order.total_price).toFixed(0)} ₴</span>
+                                          </div>
                                         </td>
                                       </tr>
                                     );
@@ -2353,7 +2449,16 @@ export default function AdminOrders({
                     </div>
 
                     {/* Col 2: Contact + Delivery + payment + callback + TTN */}
-                    <div style={{ order: -1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', alignItems: 'stretch' }}>
+                    <div className="oc-info-wrap" style={{ order: -1, position: 'relative' }}>
+                    <div className="oc-info-cards"
+                      onScroll={e => {
+                        const el = e.currentTarget;
+                        const atStart = el.scrollLeft <= 4;
+                        const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+                        const s = atEnd ? 'end' : atStart ? 'start' : 'mid';
+                        setCardSwipe(p => p[order.id] === s ? p : { ...p, [order.id]: s });
+                      }}
+                      style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', alignItems: 'stretch' }}>
                     {/* Клієнт card */}
                     <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Клієнт</span>
@@ -2784,6 +2889,9 @@ export default function AdminOrders({
                     </div>
                     {/* /Доставка card + /grid Клієнт|Доставка */}
                     </div>
+                    {(cardSwipe[order.id] ?? 'start') !== 'end' && <span className="oc-swipe-hint oc-swipe-right" aria-hidden="true">›</span>}
+                    {(cardSwipe[order.id] ?? 'start') !== 'start' && <span className="oc-swipe-hint oc-swipe-left" aria-hidden="true">‹</span>}
+                    </div>{/* /oc-info-wrap */}
                     {/* /MAIN column */}
                     </div>
 
@@ -3236,6 +3344,140 @@ export default function AdminOrders({
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Consolidated bulk supplier send — one email per supplier */}
+      {bulkGroups !== null && (() => {
+        const sendable = bulkGroups.filter(g => g.supplierId != null && g.email.includes('@'));
+        const totalOrders = bulkOrderIds.length;
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+            onClick={e => { if (!bulkSending && e.target === e.currentTarget) setBulkGroups(null); }}>
+            <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '520px', maxHeight: '90vh', boxShadow: '0 24px 80px rgba(0,0,0,0.22)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+
+              {/* Header */}
+              <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    📧 Надіслати постачальникам {bulkResults === null && <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-muted)' }}>({bulkGroups.length} {bulkGroups.length === 1 ? 'лист' : 'листів'})</span>}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{totalOrders} замовлень · один лист на постачальника</div>
+                </div>
+                {!bulkSending && (
+                  <button onClick={() => setBulkGroups(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={18} /></button>
+                )}
+              </div>
+
+              {bulkResults !== null ? (
+                <div style={{ padding: '18px 22px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {bulkResults.map((r, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '9px', background: r.emailed ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${r.emailed ? '#BBF7D0' : '#FECACA'}` }}>
+                      <span style={{ fontSize: '18px' }}>{r.emailed ? '✅' : '⚠️'}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: r.emailed ? '#15803D' : '#B91C1C' }}>{r.supplierName}</div>
+                        <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                          {r.emailed ? 'Відправлено' : 'Не відправлено (немає email)'} · {r.orderNumbers.map(n => `#${n}`).join(', ')}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '18px 22px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {/* Sender */}
+                  {senders.length > 1 && (
+                    <div>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <Mail size={11} /> Відправник
+                      </div>
+                      <select value={chosenSender} onChange={e => setChosenSender(e.target.value)}
+                        style={{ width: '100%', height: '38px', padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: 'var(--bg-soft)', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                        {senders.map(s => (
+                          <option key={s.email} value={s.email}>{s.name ? `${s.name} <${s.email}>` : s.email}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Supplier groups */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {bulkGroups.map((g, gi) => {
+                      const hasSupplier = g.supplierId != null;
+                      const validEmail = g.email.includes('@');
+                      return (
+                        <div key={gi} style={{ border: `1.5px solid ${hasSupplier && validEmail ? 'var(--border)' : '#FCA5A5'}`, borderRadius: '10px', padding: '12px', background: 'var(--bg-soft)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.supplierName}</div>
+                            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', flexShrink: 0 }}>{g.orderNumbers.length} зам. · {g.orderNumbers.map(n => `#${n}`).join(', ')}</div>
+                          </div>
+
+                          {g.contacts.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '8px' }}>
+                              {g.contacts.map((c, ci) => {
+                                const isSel = g.email === c.email;
+                                return (
+                                  <button key={ci} type="button"
+                                    onClick={() => setBulkGroups(prev => prev ? prev.map((x, i) => i === gi ? { ...x, email: c.email } : x) : prev)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 9px', borderRadius: '7px', cursor: 'pointer', border: `1.5px solid ${isSel ? '#1E3A5F' : 'var(--border)'}`, background: isSel ? '#EFF4FF' : 'var(--bg-card)', fontSize: '11.5px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${isSel ? '#1E3A5F' : '#CBD5E1'}`, background: isSel ? '#1E3A5F' : 'transparent' }} />
+                                    {c.name || c.email}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          <input
+                            type="email"
+                            value={g.email}
+                            onChange={e => setBulkGroups(prev => prev ? prev.map((x, i) => i === gi ? { ...x, email: e.target.value } : x) : prev)}
+                            placeholder="email@supplier.com"
+                            style={{ width: '100%', height: '34px', padding: '0 10px', border: `1.5px solid ${validEmail ? 'var(--border)' : '#FCA5A5'}`, borderRadius: '7px', fontSize: '12.5px', outline: 'none', boxSizing: 'border-box', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+                          />
+                          {!hasSupplier && (
+                            <div style={{ fontSize: '11px', color: '#B45309', marginTop: '5px' }}>⚠ Постачальника не визначено — це замовлення пропустимо, надішліть окремо</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Comment */}
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '5px' }}>Коментар для всіх (необов&apos;язково)</label>
+                    <textarea
+                      value={bulkComment}
+                      onChange={e => setBulkComment(e.target.value)}
+                      placeholder="Термінове замовлення, потрібна доставка до п'ятниці..."
+                      style={{ width: '100%', height: '60px', padding: '8px 12px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Footer */}
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', padding: '12px 22px', borderTop: '1px solid var(--border-light)' }}>
+                {bulkResults !== null ? (
+                  <button onClick={() => setBulkGroups(null)}
+                    style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                    Готово
+                  </button>
+                ) : (
+                  <>
+                    <button onClick={() => setBulkGroups(null)} disabled={bulkSending}
+                      style={{ height: '36px', padding: '0 16px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                      Скасувати
+                    </button>
+                    <button onClick={sendBulkSuppliers} disabled={bulkSending || sendable.length === 0}
+                      style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: sendable.length > 0 ? 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)' : '#94A3B8', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: (bulkSending || sendable.length === 0) ? 'default' : 'pointer', opacity: bulkSending ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {bulkSending ? '⏳ Відправлення...' : `📧 Відправити всі (${sendable.length})`}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         );
