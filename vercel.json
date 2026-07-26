@@ -1,6 +1,26 @@
 {
   "crons": [
     {
+      "path": "/api/cron/rozetka-orders",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/prom-orders",
+      "schedule": "7,22,37,52 * * * *"
+    },
+    {
+      "path": "/api/cron/sync-delivery-status",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/mono-statement",
+      "schedule": "15,45 * * * *"
+    },
+    {
+      "path": "/api/cron/sync-suppliers",
+      "schedule": "0 */2 * * *"
+    },
+    {
       "path": "/api/cron/revert-promo",
       "schedule": "0 0 * * *"
     },
@@ -9,28 +29,8 @@
       "schedule": "5 0 * * *"
     },
     {
-      "path": "/api/cron/sync-suppliers",
-      "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/sync-delivery-status",
-      "schedule": "0 19 * * *"
-    },
-    {
-      "path": "/api/cron/prom-orders",
-      "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/rozetka-orders",
-      "schedule": "30 6 * * *"
-    },
-    {
       "path": "/api/cron/review-requests",
       "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/ensure-marketplace-sync",
-      "schedule": "0 4 * * *"
     }
   ]
 }
