@@ -2772,7 +2772,7 @@ export default function AdminOrders({
                                       {Number(p.amount).toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴
                                     </span>
                                     <span style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>{modeLabel[p.payment_mode] ?? p.payment_mode}</span>
-                                    {p.note && <span title={p.note} style={{ flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>· {p.note}</span>}
+                                    {p.note && <span title={p.note} style={{ flex: '1 1 auto', minWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', color: 'var(--text-muted)' }}>· {p.note}</span>}
                                     {!p.reversed && isAdmin && (
                                       <button
                                         onClick={() => reversePayment(order, p.id)}
