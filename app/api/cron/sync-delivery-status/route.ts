@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { notifyCustomerStatus } from '../../../../lib/telegram';
 import { setRozetkaOrderStatus } from '../../../../lib/rozetka-api';
 import { completeShipmentByTtn, allOrderSalesPosted, settleLegacyCommission } from '../../../../lib/accounting/completion';
+import { recordTxn } from '../../../../lib/accounting/money';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -62,16 +63,29 @@ export async function GET(req: NextRequest) {
     const statusTextUpdates: PromiseLike<unknown>[] = [];
     const now = new Date().toISOString();
 
+    // ТТН → вартість доставки і платник (для проводки витрати при доставці)
+    const deliveryByTtn = new Map<string, { cost: number; payer: string }>();
+
     for (const doc of (data.data ?? [])) {
       const order = chunk.find(o => o.tracking_number === doc.Number);
       if (!order) continue;
       const code = String(doc.StatusCode);
 
+      // Вартість доставки НП (DocumentCost) і платник (PayerType) — довідково на замовленні;
+      // якщо платник Sender, при доставці проведемо як витрату продавця.
+      const npCost  = parseFloat(String(doc.DocumentCost ?? '')) || null;
+      const npPayer = doc.PayerType ? String(doc.PayerType) : null;
+      if (npCost != null && npPayer) deliveryByTtn.set(String(doc.Number), { cost: npCost, payer: npPayer });
+
       if (doc.Status) {
         statusTextUpdates.push(
           serviceClient
             .from('orders')
-            .update({ carrier_status_text: doc.Status, carrier_status_synced_at: now })
+            .update({
+              carrier_status_text: doc.Status, carrier_status_synced_at: now,
+              ...(npCost != null ? { np_delivery_cost: npCost } : {}),
+              ...(npPayer ? { np_delivery_payer: npPayer } : {}),
+            })
             .eq('id', order.id),
         );
       }
@@ -100,6 +114,26 @@ export async function GET(req: NextRequest) {
         } catch (err) {
           console.error('[sync-delivery-status] completeShipmentByTtn failed:', orderId, err);
           continue;
+        }
+        // Доставка за наш рахунок (PayerType=Sender): проводимо витрату продавця.
+        // Ключ по ТТН — коректно для мультипосилок; помилка не зриває батч.
+        const del = deliveryByTtn.get(ttn);
+        if (del && del.payer === 'Sender' && del.cost > 0) {
+          try {
+            await recordTxn({
+              debitAccount:  'logistics',
+              creditAccount: 'supplier',
+              creditParty:   'np:delivery',
+              amount:        del.cost,
+              docType:       'delivery_cost',
+              orderId,
+              description:   `Доставка НП за наш рахунок (ТТН ${ttn})`,
+              idempotencyKey: `np-delivery:${ttn}`,
+              createdBy:     'cron:sync-delivery-status',
+            });
+          } catch (err) {
+            console.error('[sync-delivery-status] delivery expense failed:', ttn, err);
+          }
         }
         // delivered ставимо ЛИШЕ коли ВСІ РН замовлення проведені — захист від
         // передчасного delivered при відгрузці кількома посилками.

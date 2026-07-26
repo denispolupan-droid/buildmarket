@@ -15,6 +15,10 @@ type EnrichedFulfillmentSource = FulfillmentSource & {
 type FulfillmentData = OrderFulfillmentInfo & {
   plan?: { items: EnrichedFulfillmentSource[]; has_own: boolean; has_dropship: boolean; unresolved: string[] };
   reservations?: { sku: string; qty: number; warehouse_id: number; reservation_status: string }[];
+  /** Факт з леджера (є, коли проведена ≥1 РН): виручка/COGS/комісія/доставка за проводками */
+  fact?: { revenue: number; cogs: number; commission: number; delivery: number; posted_docs: number } | null;
+  /** Серверна оцінка комісії МП (брекети Rozetka / категорійні ставки Prom) для непроведених */
+  commission_estimate?: number | null;
 };
 import CreateTTNModal from '../components/admin/CreateTTNModal';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
@@ -2136,22 +2140,31 @@ export default function AdminOrders({
                             <div className="oc-finlog-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: '10px', alignItems: 'stretch' }}>
                             <div className="order-col-card" style={{ minWidth: 0, padding: '14px', display: 'flex', flexDirection: 'column' }}>
                             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Фінанси</div>
-                            {/* Економіка замовлення — виручка / собівартість / комісія / маржа завжди на очах */}
+                            {/* Економіка замовлення. Після проведення РН показуємо ФАКТ із проводок
+                                (FIFO-собівартість, комісія з усіма зборами, сторно повернень); до того —
+                                попередню оцінку (собівартість = поточна закупівля, комісія = збережена
+                                при синку або серверний розрахунок брекетами/ставками категорій). */}
                             {(() => {
                               const fi = fulfillmentData[order.id];
-                              const revenue = order.total_price;
-                              let commission = 0;
-                              if (order.channel_code === 'prom') {
-                                const cd = order.prom_data?._commission;
-                                commission = cd ? cd.total_commission : Math.round(order.total_price * promCommissionPct) / 100;
-                              } else if (order.channel_code === 'rozetka') {
-                                const cd = order.rozetka_data?._commission;
-                                commission = cd ? cd.total_commission : Math.round(order.total_price * rozetkaCommissionPct) / 100;
+                              const fact = fi?.fact ?? null;
+                              const isFact = !!fact;
+                              const revenue = isFact ? fact.revenue : order.total_price;
+                              let commission: number | undefined;
+                              if (isFact) {
+                                commission = fact.commission;
+                              } else if (order.channel_code === 'prom' || order.channel_code === 'rozetka') {
+                                const cd = order.channel_code === 'prom' ? order.prom_data?._commission : order.rozetka_data?._commission;
+                                commission = cd?.total_commission
+                                  ?? fi?.commission_estimate
+                                  ?? Math.round(order.total_price * (order.channel_code === 'prom' ? promCommissionPct : rozetkaCommissionPct)) / 100;
+                              } else {
+                                commission = 0;
                               }
-                              const cost = fi?.total_cost;
-                              const gross = fi?.total_margin;
-                              const grossPct = fi?.margin_pct;
-                              const net = gross != null ? gross - commission : undefined;
+                              const cost = isFact ? fact.cogs : fi?.total_cost;
+                              const deliveryExp = isFact ? fact.delivery : 0;
+                              const gross = isFact ? fact.revenue - fact.cogs : fi?.total_margin;
+                              const grossPct = gross != null && revenue > 0 ? Math.round((gross / revenue) * 1000) / 10 : undefined;
+                              const net = gross != null && commission != null ? gross - commission - deliveryExp : undefined;
                               const netPct = net != null && revenue > 0 ? Math.round((net / revenue) * 1000) / 10 : undefined;
                               const finalColor = (v: number | undefined) => (v ?? 0) >= 0 ? '#15803D' : '#DC2626';
                               const row = (label: string, value: string, opts: { color?: string; strong?: boolean; total?: boolean; sub?: string } = {}) => (
@@ -2166,11 +2179,21 @@ export default function AdminOrders({
                               );
                               return (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '-2px' }}>
+                                    <span title={isFact
+                                        ? `Цифри з бухгалтерських проводок (проведено РН: ${fact.posted_docs}). Враховано FIFO-собівартість, усі збори маркетплейсу та повернення.`
+                                        : 'Попередня оцінка до проведення продажу: собівартість за поточними цінами закупівлі, комісія — розрахунок за ставками маркетплейсу.'}
+                                      style={{ fontSize: '10px', fontWeight: 700, padding: '1px 7px', borderRadius: '999px', letterSpacing: '0.03em', textTransform: 'uppercase',
+                                        color: isFact ? '#15803D' : '#B45309', background: isFact ? '#DCFCE7' : '#FEF3C7' }}>
+                                      {isFact ? 'Факт' : 'Оцінка'}
+                                    </span>
+                                  </div>
                                   {row('Виручка', `${revenue.toFixed(0)} ₴`)}
                                   {row('Собівартість', cost != null ? `${cost.toFixed(0)} ₴` : '…', { color: 'var(--text-secondary)' })}
-                                  {commission > 0 && row('Комісія', `−${commission.toFixed(0)} ₴`, { color: '#C2410C' })}
-                                  {row('Маржа', gross != null ? `${gross.toFixed(0)} ₴` : '…', { color: finalColor(gross), strong: true, sub: grossPct != null ? `${grossPct}%` : undefined })}
-                                  {commission > 0 && row('Чистий дохід', net != null ? `${net.toFixed(0)} ₴` : '…', { color: finalColor(net), total: true, sub: netPct != null ? `${netPct}%` : undefined })}
+                                  {(commission ?? 0) > 0 && row('Комісія маркетплейсу', `−${commission!.toFixed(0)} ₴`, { color: '#C2410C' })}
+                                  {deliveryExp > 0 && row('Доставка НП (наш рахунок)', `−${deliveryExp.toFixed(0)} ₴`, { color: '#C2410C' })}
+                                  {row('Валовий прибуток', gross != null ? `${gross.toFixed(0)} ₴` : '…', { color: finalColor(gross), strong: true, sub: grossPct != null ? `${grossPct}%` : undefined })}
+                                  {((commission ?? 0) > 0 || deliveryExp > 0) && row('Чистий прибуток', net != null ? `${net.toFixed(0)} ₴` : '…', { color: finalColor(net), total: true, sub: netPct != null ? `${netPct}%` : undefined })}
                                 </div>
                               );
                             })()}
@@ -2378,9 +2401,9 @@ export default function AdminOrders({
                             )}
                             </div>
                             </div>
-                            {/* Маржа по постачальниках — усередині згортання Фінанси+Логістика */}
+                            {/* Прибуток по постачальниках — усередині згортання Фінанси+Логістика */}
                             <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                              <TrendingUp size={12} /> Маржа по постачальниках
+                              <TrendingUp size={12} /> Прибуток по постачальниках
                             </div>
                             {fulfillmentData[order.id] && (() => {
                               const fi = fulfillmentData[order.id];
@@ -2426,7 +2449,7 @@ export default function AdminOrders({
                                             <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
                                             <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.qty} шт</span>
                                             <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontSize: '11px' }}
-                                              title={hasComm && c ? `Маржа ${item.margin.toFixed(0)} − комісія ${c.amt.toFixed(0)}${c.pct ? ` (${c.pct}%)` : ''}` : 'Собівартість → продаж'}>
+                                              title={hasComm && c ? `Валовий прибуток ${item.margin.toFixed(0)} − комісія ${c.amt.toFixed(0)}${c.pct ? ` (${c.pct}%)` : ''}` : 'Собівартість → продаж'}>
                                               {item.cost_price.toFixed(0)}→{item.sale_price.toFixed(0)}{hasComm && c ? ` −${c.amt.toFixed(0)}к` : ''}
                                             </span>
                                             <span style={{ whiteSpace: 'nowrap', fontWeight: 700, color: net >= 0 ? '#15803D' : '#DC2626' }}>

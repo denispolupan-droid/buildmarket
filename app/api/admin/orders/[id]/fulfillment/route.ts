@@ -4,6 +4,8 @@ import { createServiceClient } from '../../../../../../lib/supabase';
 import { getOrderFulfillmentInfo } from '../../../../../../lib/accounting/dropship';
 import { resolveOrderFulfillment } from '../../../../../../lib/accounting/fulfillment';
 import { getOrderReservations } from '../../../../../../lib/accounting/reservations';
+import { computePromCommission } from '../../../../../../lib/prom-commission';
+import { computeRozetkaCommission } from '../../../../../../lib/rozetka-commission';
 
 export async function GET(
   _req: NextRequest,
@@ -26,10 +28,10 @@ export async function GET(
 
   if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const items = (order.items ?? []) as { sku: string; qty: number }[];
+  const items = (order.items ?? []) as { sku: string; qty: number; price?: number }[];
   const skus = items.map(i => i.sku);
 
-  const [info, plan, reservations, balances, stockRows] = await Promise.all([
+  const [info, plan, reservations, balances, stockRows, ledgerRows, confirmedSales] = await Promise.all([
     getOrderFulfillmentInfo(order.items ?? []),
     resolveOrderFulfillment(
       items.map(i => ({ sku: i.sku, qty: i.qty })),
@@ -44,7 +46,72 @@ export async function GET(
     db.from('product_stock')
       .select('sku, stock_qty, stock_status')
       .in('sku', skus),
+    // ФАКТ прибутку з леджера: виручка/COGS/комісія/доставка за проводками цього замовлення
+    // (враховують FIFO, сторно, додаткові збори на кшталт «Дешева доставка Prom»)
+    db.from('money_entries')
+      .select('account_type, amount, doc_type')
+      .eq('order_id', id)
+      .in('account_type', ['revenue', 'cogs', 'marketplace_fee', 'logistics']),
+    // Кількість проведених РН — ознака, що факт існує
+    db.from('acc_documents')
+      .select('id')
+      .eq('order_id', id)
+      .eq('doc_type', 'sale')
+      .eq('status', 'confirmed')
+      .is('reversal_of', null),
   ]);
+
+  // ── Факт з проводок (тільки якщо є хоча б одна проведена РН) ──
+  let fact: { revenue: number; cogs: number; commission: number; delivery: number; posted_docs: number } | null = null;
+  const postedDocs = (confirmedSales.data ?? []).length;
+  if (postedDocs > 0) {
+    let rev = 0, cogs = 0, fee = 0, delivery = 0;
+    for (const e of ledgerRows.data ?? []) {
+      const amt = Number(e.amount);
+      if (e.account_type === 'revenue') rev -= amt;        // revenue у леджері з мінусом (кредит)
+      else if (e.account_type === 'cogs') cogs += amt;      // сторно повернень — від'ємні, нетуються
+      else if (e.account_type === 'marketplace_fee') fee += amt;
+      // logistics ділиться з landed-cost закупівель — доставку клієнту відокремлює doc_type
+      else if (e.account_type === 'logistics' && e.doc_type === 'delivery_cost') delivery += amt;
+    }
+    fact = {
+      revenue:    Math.round(rev * 100) / 100,
+      cogs:       Math.round(cogs * 100) / 100,
+      commission: Math.round(fee * 100) / 100,
+      delivery:   Math.round(delivery * 100) / 100,
+      posted_docs: postedDocs,
+    };
+  }
+
+  // ── Оцінка комісії для НЕпроведених замовлень — тими ж модулями, що рахують факт
+  // при доставці (брекети Rozetka ×1.08 / категорійні ставки Prom), а не плоским % ──
+  let commissionEstimate: number | null = null;
+  const mp = order.channel_code;
+  if (!fact && (mp === 'prom' || mp === 'rozetka')) {
+    try {
+      const calcItems = items
+        .filter(i => (i.price ?? 0) > 0)
+        .map(i => ({ sku: i.sku, qty: Number(i.qty), price: Number(i.price) }));
+      if (calcItems.length > 0) {
+        if (mp === 'prom') {
+          const [{ data: planRow }, { data: fbRow }] = await Promise.all([
+            db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
+            db.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle(),
+          ]);
+          const plan = (planRow?.value ?? 'single') as 'single' | 'econom';
+          const fallbackPct = parseFloat(fbRow?.value ?? '3');
+          commissionEstimate = (await computePromCommission(calcItems, { plan, fallbackPct })).total_commission;
+        } else {
+          const { data: fbRow } = await db
+            .from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle();
+          const fallbackPct = parseFloat(fbRow?.value ?? '15');
+          commissionEstimate = (await computeRozetkaCommission(calcItems, { fallbackPct })).total_commission;
+        }
+      }
+    } catch {
+      commissionEstimate = null;  // оцінка недоступна — фронт впаде на збережену _commission
+    }
+  }
 
   // Build per-sku availability maps
   const ownAvailMap = new Map<string, number>();
@@ -68,5 +135,5 @@ export async function GET(
     })),
   };
 
-  return NextResponse.json({ ...info, plan: enrichedPlan, reservations });
+  return NextResponse.json({ ...info, plan: enrichedPlan, reservations, fact, commission_estimate: commissionEstimate });
 }
