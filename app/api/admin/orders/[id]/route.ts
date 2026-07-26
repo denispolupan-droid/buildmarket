@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
-import { reverseDropshipLedgerExtras } from '../../../../../lib/accounting/dropship';
+import { reverseDropshipLedgerExtras, syncSaleDraftLines } from '../../../../../lib/accounting/dropship';
 import { cancelDocument } from '../../../../../lib/accounting/documents';
 import { releaseReservation } from '../../../../../lib/accounting/reservations';
 import { notifyAdminStatusChange, notifyCustomerStatus } from '../../../../../lib/telegram';
@@ -122,6 +122,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { error } = await db.from('orders').update(update).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // ── Редагування позицій → синхронізуємо рядки РН-чернетки ────────────────
+  // Комісія маркетплейсу/виручка/COGS рахуються при доставці по рядках РН, а не
+  // по orders.items. Якщо к-сть/ціну змінили після відвантаження — приводимо
+  // чернетку у відповідність, щоб при доставці все порахувалось правильно.
+  // Єдина логіка для всіх каналів (Prom/Rozetka/сайт).
+  if (Array.isArray(bodyItems)) {
+    try {
+      const lineItems = bodyItems
+        .filter((i: { sku?: string }) => i?.sku)
+        .map((i: { sku: string; qty: number; price: number }) => ({ sku: i.sku, qty: Number(i.qty), price: Number(i.price) }));
+      const res = await syncSaleDraftLines(id, lineItems, user.email ?? 'admin');
+      if (res.needsManual) {
+        alertAdmin(
+          `Правку позицій замовлення не проведено автоматично в обліку (order ${id}, причина: ${res.reason})`,
+          res.reason === 'confirmed_sale_doc'
+            ? 'РН вже проведена (доставлено) — перевірте виручку/комісію та за потреби оформіть коригування вручну.'
+            : 'Кілька РН-чернеток по замовленню (мультипосилка) — оновіть потрібну РН вручну.',
+        );
+      }
+    } catch (err) {
+      alertAdmin(`Синхронізація рядків РН після правки позицій не пройшла (order ${id})`, err);
+    }
+  }
 
   // ── Зміна payment_type → облікова фіксація ───────────────────────────────
   let computedDueDate: string | null = null;

@@ -379,6 +379,74 @@ export async function createSaleDraft(
   return doc.id;
 }
 
+// syncSaleDraftLines — коли редагують позиції замовлення (к-сть/ціна/склад товарів),
+// а РН-чернетка вже створена при відвантаженні, її рядки треба привести у
+// відповідність до нових позицій. Інакше при доставці виручка/COGS/комісія
+// маркетплейсу порахуються по СТАРІЙ кількості (комісія рахується по рядках РН,
+// а не по orders.items) — саме через це недобиралась комісія при дозамовленні.
+//
+// Логіка єдина для всіх каналів (Prom/Rozetka/сайт). Безпечні межі:
+//   - є підтверджена РН (вже доставлено, проводки зроблені) → НЕ чіпаємо, needsManual
+//     (потрібна дельта виручки/комісії — робиться окремо);
+//   - кілька чернеток (мультипосилка) → не вгадуємо, яка змінилась → needsManual;
+//   - рівно одна чернетка → пересобираємо її рядки.
+export async function syncSaleDraftLines(
+  orderId: string,
+  items: { sku: string; qty: number; price: number }[],
+  _by = 'system',
+): Promise<{ synced: number; needsManual: boolean; reason?: string }> {
+  const db = createServiceClient();
+
+  const { data: docs } = await db
+    .from('acc_documents')
+    .select('id, status')
+    .eq('order_id', orderId)
+    .eq('doc_type', 'sale');
+  const all = docs ?? [];
+  const drafts = all.filter(d => d.status === 'draft');
+  const hasConfirmed = all.some(d => d.status === 'confirmed');
+
+  if (hasConfirmed) return { synced: 0, needsManual: true, reason: 'confirmed_sale_doc' };
+  if (drafts.length === 0) return { synced: 0, needsManual: false };
+  if (drafts.length > 1)  return { synced: 0, needsManual: true, reason: 'multiple_draft_parcels' };
+
+  const docId = drafts[0].id;
+  const skus = items.map(i => i.sku);
+
+  const [{ data: warehouse }, { data: stockRows }, { data: order }] = await Promise.all([
+    db.from('warehouses').select('id').eq('is_default', true).single(),
+    db.from('product_stock').select('sku, price_cost').in('sku', skus),
+    db.from('orders').select('channel_code').eq('id', orderId).single(),
+  ]);
+  const costMap = new Map((stockRows ?? []).map(r => [r.sku, r.price_cost ?? 0]));
+
+  const plan = await resolveOrderFulfillment(
+    items.map(i => ({ sku: i.sku, qty: i.qty })),
+    { channel_code: order?.channel_code ?? 'website' },
+  );
+
+  const newLines = items.map((item, i) => {
+    const source = plan.items.find(s => s.sku === item.sku);
+    return {
+      document_id:      docId,
+      sku:              item.sku,
+      qty:              item.qty,
+      price:            item.price,
+      cost_price:       costMap.get(item.sku) ?? 0,
+      fulfillment_type: source?.fulfillment_type ?? 'dropship',
+      warehouse_id:     source?.warehouse_id ?? null,
+      supplier_id:      source?.supplier_id ?? null,
+      sort_order:       i,
+    };
+  });
+
+  await db.from('acc_document_lines').delete().eq('document_id', docId);
+  const { error } = await db.from('acc_document_lines').insert(newLines);
+  if (error) throw new Error((error as { message?: string }).message ?? String(error));
+
+  return { synced: 1, needsManual: false };
+}
+
 // postSaleDoc — проводить конкретну РН (draft → confirmed): виручка + FIFO/COGS по
 // власних рядках + зняття резерву (все всередині confirmDocument) + дропшип-COGS та
 // борг перед постачальником по dropship-рядках. Працює лише за docId (читає рядки
