@@ -258,7 +258,7 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
       </div>
 
       {/* Counter + bulk action bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', minHeight: 32 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', minHeight: 32, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
           Знайдено: {filtered.length} товарів
           {someSelected && (

@@ -464,7 +464,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       </div>
 
       {/* Період дашборда */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center' }}>
+      <div className="fin-period-row" style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Період:</span>
         {[
           { key: 'cur_month',  label: 'Цей місяць' },
@@ -600,7 +600,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 14px' }}>
             Комісії маркетплейсів по місяцях <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '12px' }}>· факт з обліку, % від фактичної виручки</span>
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${feeTrend.length}, 1fr)`, gap: '10px' }}>
+          <div className="fin-fee-trend" style={{ display: 'grid', gridTemplateColumns: `repeat(${feeTrend.length}, 1fr)`, gap: '10px' }}>
             {feeTrend.map(m => (
               <div key={m.label} style={{ textAlign: 'center', padding: '10px 6px', borderRadius: '10px', background: 'var(--bg-soft)' }}>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>{m.label}</div>
@@ -629,7 +629,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             <span style={{ fontSize: '12px', color: '#B91C1C' }}>· доставлені з чистим прибутком &lt; {THIN_PCT}% (перевірте ціну/комісію)</span>
           </div>
           {thinDeals.map(d => (
-            <Link key={d.id} href={`/admin?expand=${d.id}`} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '10px 20px', borderTop: '1px solid var(--border-light)', textDecoration: 'none' }}>
+            <Link key={d.id} href={`/admin?expand=${d.id}`} className="fin-thin-row" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '10px 20px', borderTop: '1px solid var(--border-light)', textDecoration: 'none' }}>
               <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-blue)', fontVariantNumeric: 'tabular-nums' }}>#{d.order_number}</span>
               <span style={{ fontSize: '12px', color: 'var(--text-muted)', width: '70px' }}>{CHANNEL_LABELS[d.channel_code ?? 'website'] ?? d.channel_code}</span>
               <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>виручка {fmt(d.total_price)} ₴</span>
@@ -763,7 +763,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       </div>
 
       {/* Прибуток по брендах і постачальниках — факт (доставлені за період) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '24px' }}>
+      <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '24px' }}>
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
           <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border)' }}>
             <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>

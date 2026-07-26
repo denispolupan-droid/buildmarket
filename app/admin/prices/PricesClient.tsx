@@ -753,7 +753,7 @@ async function sendEmail(){
     <div style={{ padding: '28px 32px 80px', maxWidth: 1300 }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#111' }}>Ціни</h1>
           <p style={{ margin: '4px 0 0', color: '#6B7280', fontSize: 13 }}>
@@ -793,11 +793,11 @@ async function sendEmail(){
 
       {activeTab === 'prices' && <>
       {/* Search + filters */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <input
           type="text" placeholder="Пошук по назві, SKU, бренду..."
           value={search} onChange={e => setSearch(e.target.value)}
-          style={{ flex: 1, height: 38, padding: '0 14px', borderRadius: 9, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+          style={{ flex: '1 1 200px', height: 38, padding: '0 14px', borderRadius: 9, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none' }}
         />
         <button onClick={selectAll} style={btnSecondary}>Вибрати всі</button>
         <button onClick={allCollapsed ? expandAll : collapseAll} style={btnSecondary}>
@@ -1194,7 +1194,7 @@ async function sendEmail(){
       {/* Pricelist modal — rendered via portal to escape PageTransition transform context */}
       {mounted && showPricelist && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: 32, width: 480, maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 32, width: '100%', maxWidth: 480, margin: '0 12px', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Прайс-лист для клієнта</h2>
               <button onClick={() => setShowPricelist(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}><X size={18} /></button>

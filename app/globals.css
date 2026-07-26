@@ -1189,9 +1189,38 @@ input, select { font-family: inherit; }
   /* Сітки "контент + бокова колонка" → в стовпчик */
   .admin-layout [style*="grid-template-columns:1fr 240px"] { grid-template-columns: 1fr !important; }
 
+  /* Універсально: 2-3-колонкові інлайн-сітки форм/карток адмінки → в стовпчик.
+     (Підрядок "1fr 1fr" матчить і "1fr 1fr 1fr".) */
+  .admin-layout [style*="grid-template-columns:1fr 1fr"],
+  .admin-layout [style*="grid-template-columns:1fr 2fr"],
+  .admin-layout [style*="grid-template-columns:2fr 1fr"] { grid-template-columns: 1fr !important; }
+
+  /* Шапки форм закупівлі/приходу з px-колонками ("180px 160px 200px 1fr" тощо) → стовпчик */
+  .admin-layout [style*="grid-template-columns:180px"],
+  .admin-layout [style*="grid-template-columns:200px"] { grid-template-columns: 1fr !important; }
+
+  /* Модалки з фіксованою шириною → на всю ширину екрана (клас вішається на бокс модалки) */
+  .adm-modal-box { width: calc(100vw - 24px) !important; max-width: 100% !important; }
+
+  /* Закупівля: багатоколонковий список (10 grid-колонок ≈ 1050px) — скрол пальцем,
+     а не каша; рядкам задаємо мінімальну ширину, контейнер скролиться. */
+  .proc-list-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .proc-list-scroll [style*="grid-template-columns:28px 130px"] { min-width: 1060px; }
+  .proc-list-scroll [style*="grid-template-columns:130px 155px"] { min-width: 1030px; }
+
   /* Панель статусів на мобілці НЕ липне — щоб при скролі вниз (особливо з розгорнутим
      заказом) вона їхала вгору й звільняла екран під картку заказу. */
   .admin-status-bar { position: static !important; }
+
+  /* ── Фінанси-дашборд ── */
+  /* Стрічка «Комісії по місяцях»: 6 колонок в ряд не влазять → 3×2 */
+  .fin-fee-trend { grid-template-columns: repeat(3, 1fr) !important; }
+  /* Бренди | Постачальники → у стовпчик */
+  .fin-two-col { grid-template-columns: 1fr !important; }
+  /* Рядок збиткової угоди: суми переносяться під № замовлення, фікс-ширини знімаємо */
+  .fin-thin-row { flex-wrap: wrap !important; gap: 6px 10px !important; }
+  .fin-thin-row > span { width: auto !important; }
+  .fin-thin-row > span:nth-child(3) { margin-left: 0 !important; }
 
   /* ── Замовлення (AdminOrders) ── */
   .oc-hide-m { display: none !important; }

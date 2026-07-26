@@ -438,7 +438,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
     {/* Діалог вибору ціни при імпорті Excel */}
     {rawImport && (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: zIndex + 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ background: 'var(--bg-card)', borderRadius: '14px', padding: '24px 28px', width: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+        <div className="adm-modal-box" style={{ background: 'var(--bg-card)', borderRadius: '14px', padding: '24px 28px', width: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
           <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>
             📊 Знайдено {rawImport.length} позицій
           </div>

@@ -243,7 +243,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
 
   return (
     <>
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+    <div className="proc-list-scroll" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
