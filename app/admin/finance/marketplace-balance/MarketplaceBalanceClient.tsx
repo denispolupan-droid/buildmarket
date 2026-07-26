@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Scale, X } from 'lucide-react';
+import { Plus, Scale, X, ArrowLeftRight } from 'lucide-react';
 import type { LedgerRow, InTransit } from './page';
 
 type MarketplaceData = { rows: LedgerRow[]; balance: number; inTransit: InTransit };
@@ -55,6 +55,32 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
   const [reconcileReason, setReconcileReason] = useState('');
   const [reconcileResult, setReconcileResult] = useState<{ diff: number; matched: boolean } | null>(null);
 
+  const [adjustOpen, setAdjustOpen]         = useState(false);
+  const [adjDirection, setAdjDirection]     = useState<'charge' | 'credit'>('charge');
+  const [adjAmount, setAdjAmount]           = useState('');
+  const [adjCategory, setAdjCategory]       = useState('delivery');
+  const [adjOrder, setAdjOrder]             = useState('');
+  const [adjNote, setAdjNote]               = useState('');
+  const [adjDate, setAdjDate]               = useState(new Date().toISOString().slice(0, 10));
+
+  async function submitAdjust() {
+    const amount = parseFloat(adjAmount);
+    if (!amount || amount <= 0) { setError('Вкажіть суму'); return; }
+    setSaving(true); setError('');
+    const res = await fetch('/api/admin/finance/marketplace-balance/adjust', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        marketplace, direction: adjDirection, amount, category: adjCategory,
+        orderNumber: adjOrder || null, note: adjNote, businessDate: adjDate,
+      }),
+    });
+    const d = await res.json();
+    setSaving(false);
+    if (!res.ok) { setError(d.error ?? 'Помилка'); return; }
+    setAdjustOpen(false); setAdjAmount(''); setAdjOrder(''); setAdjNote('');
+    router.refresh();
+  }
+
   async function submitTopup() {
     const amount = parseFloat(topupAmount);
     if (!amount || amount <= 0) { setError('Вкажіть суму'); return; }
@@ -89,6 +115,11 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
     }
   }
 
+  // Стрічка: показуємо лише сторону marketplace_balance (кожна операція — один рядок
+  // із правильним знаком). Контр-рядки marketplace_fee — це подвійний запис, у стрічці
+  // вони дублювали б операцію.
+  const ledgerRows = data.rows.filter(r => r.account_type === 'marketplace_balance');
+
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
 
@@ -110,7 +141,11 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             <Plus size={14} /> Поповнити
           </button>
-          <button onClick={() => { setReconcileOpen(v => !v); setTopupOpen(false); setError(''); setReconcileResult(null); }}
+          <button onClick={() => { setAdjustOpen(v => !v); setTopupOpen(false); setReconcileOpen(false); setError(''); }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+            <ArrowLeftRight size={14} /> Операція
+          </button>
+          <button onClick={() => { setReconcileOpen(v => !v); setTopupOpen(false); setAdjustOpen(false); setError(''); setReconcileResult(null); }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             <Scale size={14} /> Звірити
           </button>
@@ -182,6 +217,66 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
         </div>
       )}
 
+      {/* Manual operation form — списання збору / нарахування (компенсація) */}
+      {adjustOpen && (
+        <div style={{ padding: '16px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div style={{ width: '190px' }}>
+              <label style={lbl}>Тип операції</label>
+              <div style={{ display: 'flex', border: '1.5px solid var(--border)', borderRadius: '8px', overflow: 'hidden', height: '38px' }}>
+                {([['charge', 'Списання −'], ['credit', 'Нарахування +']] as const).map(([v, t]) => {
+                  const active = adjDirection === v;
+                  return (
+                    <button key={v} type="button" onClick={() => setAdjDirection(v)}
+                      style={{ flex: 1, border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 700,
+                        background: active ? (v === 'charge' ? '#DC2626' : '#15803D') : 'var(--bg-card)',
+                        color: active ? '#fff' : 'var(--text-secondary)' }}>
+                      {t}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div style={{ width: '120px' }}>
+              <label style={lbl}>Сума, грн</label>
+              <input style={inp} type="number" min="0" step="0.01" value={adjAmount} onChange={e => setAdjAmount(e.target.value)} placeholder="0.00" />
+            </div>
+            <div style={{ width: '150px' }}>
+              <label style={lbl}>Категорія</label>
+              <select style={inp} value={adjCategory} onChange={e => setAdjCategory(e.target.value)}>
+                <option value="delivery">Доставка</option>
+                <option value="ad">Реклама</option>
+                <option value="compensation">Компенсація</option>
+                <option value="other">Інше</option>
+              </select>
+            </div>
+            <div style={{ width: '120px' }}>
+              <label style={lbl}>№ замовлення</label>
+              <input style={inp} value={adjOrder} onChange={e => setAdjOrder(e.target.value)} placeholder="необовʼязково" />
+            </div>
+            <div style={{ width: '150px' }}>
+              <label style={lbl}>Дата</label>
+              <input style={inp} type="date" value={adjDate} onChange={e => setAdjDate(e.target.value)} />
+            </div>
+            <div style={{ flex: 1, minWidth: '160px' }}>
+              <label style={lbl}>Коментар</label>
+              <input style={inp} value={adjNote} onChange={e => setAdjNote(e.target.value)} placeholder="необовʼязково" />
+            </div>
+            <button onClick={submitAdjust} disabled={saving}
+              style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: 'none', background: adjDirection === 'charge' ? '#DC2626' : '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+              {saving ? '...' : 'Зберегти'}
+            </button>
+            <button onClick={() => setAdjustOpen(false)} style={{ height: '38px', width: '38px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X size={14} />
+            </button>
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
+            Списання зменшує баланс на площадці (збір за доставку/рекламу), нарахування — збільшує (компенсація від площадки).
+          </div>
+          {error && <div style={{ marginTop: '8px', color: '#DC2626', fontSize: '12px' }}>{error}</div>}
+        </div>
+      )}
+
       {/* Reconcile form */}
       {reconcileOpen && (
         <div style={{ padding: '16px 20px', background: '#FFFBEB', borderBottom: '1px solid var(--border)' }}>
@@ -214,7 +309,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
       )}
 
       {/* Ledger */}
-      {data.rows.length === 0 ? (
+      {ledgerRows.length === 0 ? (
         <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
           Ще немає записів
         </div>
@@ -226,12 +321,15 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
             <span>Опис</span>
             <span style={{ textAlign: 'right' }}>Сума</span>
           </div>
-          {data.rows.map((row, idx) => {
-            const isBalance = row.account_type === 'marketplace_balance';
-            const isTopup = isBalance && Number(row.amount) > 0;
+          {ledgerRows.map((row, idx) => {
+            const isBalance = true;
+            const isTopup = Number(row.amount) > 0;
             const typeLabel = row.doc_type === 'marketplace_topup' ? 'Поповнення'
               : row.doc_type === 'commission' ? 'Комісія'
-              : row.doc_type === 'marketplace_reconciliation' ? 'Коригування' : row.doc_type ?? '—';
+              : row.doc_type === 'marketplace_reconciliation' ? 'Коригування'
+              : row.doc_type === 'marketplace_manual_fee' || row.doc_type === 'delivery_fee' ? 'Списання'
+              : row.doc_type === 'marketplace_manual_credit' ? 'Нарахування'
+              : row.doc_type ?? '—';
             return (
               <div key={row.id} style={{
                 display: 'grid', gridTemplateColumns: '100px 140px 1fr 120px',

@@ -279,6 +279,39 @@ export async function recordMarketplaceCorrection(params: {
   });
 }
 
+/**
+ * Ручна операція по балансу маркетплейсу (списання збору АБО нарахування/компенсація).
+ * amount < 0 → списання (площадка утримала): дебет marketplace_fee / кредит marketplace_balance.
+ * amount > 0 → нарахування (площадка додала на баланс, напр. компенсація): дебет
+ *   marketplace_balance / кредит marketplace_fee (контр-витрата — зменшує чисту комісію).
+ * Обидві сторони мають counterparty = маркетплейс (як у комісії), щоб потрапляти на екран балансу.
+ */
+export async function recordMarketplaceManualEntry(params: {
+  marketplace:   string;
+  amount:        number;   // signed
+  category:      string;   // 'delivery' | 'ad' | 'compensation' | 'other'
+  label:         string;   // людська назва категорії для опису
+  orderId?:      string | null;
+  note?:         string;
+  businessDate?: string;
+  createdBy?:    string;
+}): Promise<string> {
+  const isCharge = params.amount < 0;
+  return recordTxn({
+    debitAccount:   isCharge ? 'marketplace_fee' : 'marketplace_balance',
+    debitParty:     params.marketplace,
+    creditAccount:  isCharge ? 'marketplace_balance' : 'marketplace_fee',
+    creditParty:    params.marketplace,
+    amount:         Math.abs(params.amount),
+    businessDate:   params.businessDate,
+    docType:        isCharge ? 'marketplace_manual_fee' : 'marketplace_manual_credit',
+    orderId:        params.orderId ?? undefined,
+    description:    `${params.label} ${params.marketplace}${params.note ? ` — ${params.note}` : ''}`,
+    createdBy:      params.createdBy,
+    meta:           { marketplace: params.marketplace, category: params.category, manual: true },
+  });
+}
+
 /** Поточний баланс на маркетплейсі (сума всіх проводок по marketplace_balance) */
 export async function getMarketplaceBalance(marketplace: string): Promise<number> {
   const db = createServiceClient();
