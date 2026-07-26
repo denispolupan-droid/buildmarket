@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { PROMO, type PromoConfig } from '../promo.config';
 
 type Props = { mode: 'shop' | 'catalog'; activeSlugs?: Set<string> | null };
@@ -11,6 +12,8 @@ const PADDING = { compact: '6px 10px', medium: '8px 12px', large: '12px 16px' };
 const FONT    = { compact: '12px',      medium: '13px',      large: '14px'      };
 
 export default function SalesBanner({ mode, activeSlugs }: Props) {
+  const pathname = usePathname();
+  const isRu = pathname.startsWith('/ru');
   const [visible, setVisible] = useState(false);
   const [cfg, setCfg]         = useState<PromoConfig>(PROMO as unknown as PromoConfig);
 
@@ -32,10 +35,15 @@ export default function SalesBanner({ mode, activeSlugs }: Props) {
 
   const href = mode === 'catalog'
     ? `/catalog?category=${banner.categorySlug}&sale=1`
-    : `/shop?category=${banner.categorySlug}&sale=1`;
+    : `${isRu ? '/ru' : ''}/shop?category=${banner.categorySlug}&sale=1`;
   const size    = banner.size ?? 'medium';
   const hasImg  = !!banner.bgImage;
   const txtColor = hasImg ? '#fff' : banner.textColor;
+  // Російська версія текстів банера (фолбек на укр)
+  const tag      = isRu && banner.tagRu      ? banner.tagRu      : banner.tag;
+  const subtitle = isRu && banner.subtitleRu ? banner.subtitleRu : banner.subtitle;
+  const ctaText  = isRu && banner.ctaTextRu  ? banner.ctaTextRu  : banner.ctaText;
+  const text     = isRu && topBar.textRu     ? topBar.textRu     : topBar.text;
 
   return (
     <div style={{
@@ -73,16 +81,16 @@ export default function SalesBanner({ mode, activeSlugs }: Props) {
             fontSize: '10px', fontWeight: 700, padding: '2px 8px',
             borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '0.02em', flexShrink: 0,
           }}>
-            {banner.tag}
+            {tag}
           </span>
           <span style={{ fontSize: FONT[size], fontWeight: 700, color: txtColor }}>
-            {topBar.discount} {topBar.text}
+            {topBar.discount} {text}
           </span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
           <p style={{ margin: 0, fontSize: '12px', color: txtColor, opacity: 0.8, lineHeight: 1.4 }}>
-            {banner.subtitle}
+            {subtitle}
           </p>
 
           <Link href={href} className="promo-banner-cta" style={{
@@ -93,7 +101,7 @@ export default function SalesBanner({ mode, activeSlugs }: Props) {
             color: '#fff', fontSize: '13px', fontWeight: 700,
             textDecoration: 'none', whiteSpace: 'nowrap',
           }}>
-            {banner.ctaText} →
+            {ctaText} →
           </Link>
         </div>
       </div>

@@ -56,7 +56,8 @@ export default async function HomeRu() {
       descriptionRu: p.description_ru ?? undefined,
       category: p.category,
       categoryRu: p.category_ru ?? undefined,
-      image: p.image as string,
+      // Обкладинка з вшитим заголовком — російський варіант, фолбек на укр
+      image: (p.image_ru ?? p.image) as string,
     }));
 
   const orgLd = {

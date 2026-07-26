@@ -48,7 +48,7 @@ export default function DeliveryMapCard() {
         // eslint-disable-next-line @next/next/no-img-element
         <img
           key={mountKey}
-          src="/images/ukraine-map-animated.svg"
+          src={lang === 'ru' ? '/images/ukraine-map-animated-ru.svg' : '/images/ukraine-map-animated.svg'}
           alt={lang === 'ru' ? 'Карта доставки по Украине' : 'Карта доставки по Україні'}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
         />

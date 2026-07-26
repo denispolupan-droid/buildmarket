@@ -27,6 +27,8 @@ export type BlogPost = {
   read_time: number;
   keywords: string[];
   image: string | null;
+  /** Обкладинка з російським заголовком (у зображення вшито текст); null → фолбек на image */
+  image_ru: string | null;
   content_html: string;
   content_html_ru: string | null;
   faq: BlogFaq[];

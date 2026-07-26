@@ -159,6 +159,29 @@ export default function PromoSettings({ initial }: { initial: PromoConfig }) {
           </div>
           <ColorField label="Колір фону" value={topBar.bgColor} onChange={v => setTop('bgColor', v)} />
         </div>
+
+        {/* Російська версія текстів (сторінки /ru) */}
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '14px', marginTop: '4px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '12px' }}>Російська версія (/ru)</div>
+          <div style={grid2}>
+            <div>
+              <label style={lbl}>Назва акції (рос.)</label>
+              <input style={inp} value={topBar.labelRu ?? ''} onChange={e => setTop('labelRu', e.target.value)} placeholder="ЛЕТНЯЯ АКЦИЯ" />
+            </div>
+            <div>
+              <label style={lbl}>Текст (рос.)</label>
+              <input style={inp} value={topBar.textRu ?? ''} onChange={e => setTop('textRu', e.target.value)} placeholder="на герметики Ceresit" />
+            </div>
+          </div>
+          <div style={grid2}>
+            <div>
+              <label style={lbl}>Деталь / термін (рос.)</label>
+              <input style={inp} value={topBar.detailRu ?? ''} onChange={e => setTop('detailRu', e.target.value)} placeholder="до конца июля" />
+            </div>
+            <div />
+          </div>
+          <p style={hint}>Порожні поля → на /ru показується український текст</p>
+        </div>
       </div>
 
       {/* ── Банер у каталозі / магазині ────────────────────────────────────── */}
@@ -213,6 +236,26 @@ export default function PromoSettings({ initial }: { initial: PromoConfig }) {
             <input style={inp} value={banner.categorySlug} onChange={e => setBanner('categorySlug', e.target.value)} />
             <p style={hint}>URL: ?category=...</p>
           </div>
+        </div>
+
+        {/* Російська версія текстів банера (сторінки /ru) */}
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '14px', marginTop: '4px', marginBottom: '14px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '12px' }}>Російська версія (/ru)</div>
+          <div style={grid2}>
+            <div>
+              <label style={lbl}>Тег (рос.)</label>
+              <input style={inp} value={banner.tagRu ?? ''} onChange={e => setBanner('tagRu', e.target.value)} placeholder="Летняя акция" />
+            </div>
+            <div>
+              <label style={lbl}>Кнопка CTA (рос.)</label>
+              <input style={inp} value={banner.ctaTextRu ?? ''} onChange={e => setBanner('ctaTextRu', e.target.value)} placeholder="Смотреть герметики" />
+            </div>
+          </div>
+          <div style={mb14}>
+            <label style={lbl}>Підзаголовок (рос.)</label>
+            <textarea style={textarea} value={banner.subtitleRu ?? ''} onChange={e => setBanner('subtitleRu', e.target.value)} placeholder="Акция действует до … · Применяется автоматически при заказе" />
+          </div>
+          <p style={hint}>Порожні поля → на /ru показується український текст</p>
         </div>
 
         {/* Background image */}

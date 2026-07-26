@@ -29,7 +29,9 @@ export default async function DbArticle({ post, lang = 'uk' }: Props) {
   const t = postText(post, lang);
   const prefix = lang === 'ru' ? '/ru' : '';
   const date = post.published_at ?? post.created_at;
-  const cover = post.image ?? DEFAULT_COVER;
+  // Обкладинка з вшитим заголовком: на /ru — російський варіант (фолбек на укр)
+  const coverImg = lang === 'ru' ? (post.image_ru ?? post.image) : post.image;
+  const cover = coverImg ?? DEFAULT_COVER;
   const L = lang === 'ru'
     ? { home: 'Главная', blog: 'Блог', min: 'мин чтения', faq: 'Частые вопросы', ctaTitle: 'Найдите нужный материал в нашем магазине', ctaText: 'Широкий выбор от проверенных производителей. От 1 единицы, доставка по всей Украине.', toShop: 'В магазин', other: 'Другие статьи', also: 'Читайте также' }
     : { home: 'Головна', blog: 'Блог', min: 'хв читання', faq: 'Часті запитання', ctaTitle: 'Знайдіть потрібний матеріал у нашому магазині', ctaText: 'Широкий вибір від перевірених виробників. Від 1 одиниці, доставка по всій Україні.', toShop: 'До магазину', other: 'Інші статті', also: 'Читайте також' };
@@ -96,9 +98,9 @@ export default async function DbArticle({ post, lang = 'uk' }: Props) {
             <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.3, margin: '0 0 12px' }}>{t.title}</h1>
             <p style={{ fontSize: '16px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 32px' }}>{t.description}</p>
 
-            {post.image && (
+            {coverImg && (
               <div style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '36px' }}>
-                <Image src={post.image} alt={t.title} width={1200} height={630} priority style={{ width: '100%', height: 'auto', display: 'block' }} />
+                <Image src={coverImg} alt={t.title} width={1200} height={630} priority style={{ width: '100%', height: 'auto', display: 'block' }} />
               </div>
             )}
 

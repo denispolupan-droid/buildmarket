@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       locale: 'ru_RU',
       type: 'article',
       publishedTime: post.published_at ?? undefined,
-      ...(post.image ? { images: [{ url: `${BASE}${post.image}`, width: 1200, height: 630, alt: t.title }] } : {}),
+      ...((post.image_ru ?? post.image) ? { images: [{ url: `${BASE}${post.image_ru ?? post.image}`, width: 1200, height: 630, alt: t.title }] } : {}),
     },
   };
 }

@@ -40,7 +40,8 @@ export default async function BlogRuPage() {
     category: p.category,
     readTime: p.read_time,
     date: (p.published_at ?? p.created_at).slice(0, 10),
-    image: p.image,
+    // Обкладинка з вшитим заголовком — російський варіант, фолбек на укр
+    image: p.image_ru ?? p.image,
   })).sort((a, b) => b.date.localeCompare(a.date));
   const blogLd = {
     '@context': 'https://schema.org',
