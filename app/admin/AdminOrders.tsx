@@ -2767,12 +2767,12 @@ export default function AdminOrders({
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '2px' }}>
                                 {payments.map(p => (
                                   <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: p.reversed ? 'var(--text-muted)' : 'var(--text-secondary)', textDecoration: p.reversed ? 'line-through' : 'none' }}>
-                                    <span>{new Date(p.payment_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' })}</span>
-                                    <span style={{ fontWeight: 700, color: p.reversed ? 'var(--text-muted)' : '#15803D' }}>
+                                    <span style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>{new Date(p.payment_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' })}</span>
+                                    <span style={{ flexShrink: 0, whiteSpace: 'nowrap', fontWeight: 700, color: p.reversed ? 'var(--text-muted)' : '#15803D' }}>
                                       {Number(p.amount).toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴
                                     </span>
-                                    <span>{modeLabel[p.payment_mode] ?? p.payment_mode}</span>
-                                    {p.note && <span style={{ color: 'var(--text-muted)' }}>· {p.note}</span>}
+                                    <span style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>{modeLabel[p.payment_mode] ?? p.payment_mode}</span>
+                                    {p.note && <span title={p.note} style={{ flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>· {p.note}</span>}
                                     {!p.reversed && isAdmin && (
                                       <button
                                         onClick={() => reversePayment(order, p.id)}
