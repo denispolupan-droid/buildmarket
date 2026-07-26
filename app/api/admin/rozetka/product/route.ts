@@ -16,13 +16,14 @@ async function checkAdmin() {
 export async function PATCH(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const { sku, on_rozetka, rozetka_markup_pct, rozetka_name } = await req.json();
+  const { sku, on_rozetka, rozetka_markup_pct, rozetka_name, rozetka_smart } = await req.json();
   if (!sku) return NextResponse.json({ error: 'sku required' }, { status: 400 });
 
   const update: Record<string, unknown> = {};
   if (on_rozetka !== undefined)         update.on_rozetka         = on_rozetka;
   if (rozetka_markup_pct !== undefined) update.rozetka_markup_pct = rozetka_markup_pct === '' ? null : Number(rozetka_markup_pct);
   if (rozetka_name !== undefined)       update.rozetka_name       = rozetka_name === '' ? null : rozetka_name;
+  if (rozetka_smart !== undefined)      update.rozetka_smart      = !!rozetka_smart;
 
   const { error } = await db.from('products').update(update).eq('sku', sku);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

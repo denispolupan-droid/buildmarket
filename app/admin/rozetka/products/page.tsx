@@ -17,7 +17,7 @@ export default async function RozetkaProductsPage() {
 
   const [{ data: products }, { data: stock }, { data: categories }] = await Promise.all([
     db.from('products')
-      .select('sku, name, rozetka_name, brand, category_slug, color, volume, on_rozetka, rozetka_markup_pct')
+      .select('sku, name, rozetka_name, brand, category_slug, color, volume, on_rozetka, rozetka_markup_pct, rozetka_smart')
       .eq('is_active', true)
       .order('category_slug', { nullsFirst: false })
       .order('name'),

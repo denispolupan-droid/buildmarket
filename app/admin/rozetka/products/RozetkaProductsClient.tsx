@@ -14,6 +14,7 @@ interface Product {
   volume:            string | null;
   on_rozetka:        boolean | null;
   rozetka_markup_pct: number | null;
+  rozetka_smart:     boolean | null;
 }
 interface Stock {
   sku:          string;
@@ -34,6 +35,22 @@ function calcRzPrice(base: number, markup: number, commission: number): number {
   const withMarkup = base * (1 + markup / 100);
   const withComm   = commission > 0 ? withMarkup / (1 - commission / 100) : withMarkup;
   return Math.ceil(withComm / 5) * 5;
+}
+
+// Rozetka Smart: та сама формула, що у фіді (app/api/rozetka/feed) — надбавка
+// покриває компенсацію доставки (12/18/30 за порогами) з урахуванням комісії
+// на саму надбавку, зі ступінчастим перескоком порога 399/699.
+const smartFee = (p: number) => (p < 400 ? 12 : p < 700 ? 18 : 30);
+function calcSmartPrice(P: number, commission: number): number {
+  const c = commission > 0 ? commission / 100 : 0.15;
+  let fee = smartFee(P);
+  let raised = P + fee / (1 - c);
+  if (smartFee(raised) !== fee) {
+    const fee2 = smartFee(raised);
+    const raised2 = P + fee2 / (1 - c);
+    if (smartFee(raised2) === fee2) { fee = fee2; raised = raised2; }
+  }
+  return Math.ceil(raised / 5) * 5;
 }
 
 function marginColor(pct: number) {
@@ -68,6 +85,11 @@ export default function RozetkaProductsClient({ products, stock, categories }: {
     Object.fromEntries(products.map(p => [p.sku, p.on_rozetka !== false]))
   );
   const [toggling, setToggling] = useState<Set<string>>(new Set());
+
+  const [smart, setSmart] = useState<Record<string, boolean>>(
+    Object.fromEntries(products.map(p => [p.sku, p.rozetka_smart === true]))
+  );
+  const [smartToggling, setSmartToggling] = useState<Set<string>>(new Set());
 
   const [markups,      setMarkups]      = useState<Record<string, string>>(
     Object.fromEntries(products.map(p => [p.sku, p.rozetka_markup_pct != null ? String(p.rozetka_markup_pct) : '']))
@@ -106,12 +128,15 @@ export default function RozetkaProductsClient({ products, stock, categories }: {
     const catMkp      = cat?.rozetka_markup_pct ?? null;
     const markup      = productMkp ?? catMkp ?? 0;
     const commission  = cat?.rozetka_commission_pct ?? 0;
-    const rzPrice     = basePrice > 0 ? calcRzPrice(basePrice, markup, commission) : null;
-    const net         = rzPrice != null && commission > 0 ? rzPrice * (1 - commission / 100) : rzPrice;
+    const baseRz      = basePrice > 0 ? calcRzPrice(basePrice, markup, commission) : null;
+    const isSmart     = smart[p.sku] === true;
+    const rzPrice     = baseRz != null && isSmart ? calcSmartPrice(baseRz, commission) : baseRz;
+    // Маржа рахується від базової ціни: Smart-надбавка йде на компенсацію доставки, не в маржу
+    const net         = baseRz != null && commission > 0 ? baseRz * (1 - commission / 100) : baseRz;
     const marginUah   = net != null && cost != null ? net - cost : null;
     const marginPct   = marginUah != null && net != null && net > 0 ? (marginUah / net) * 100 : null;
-    return { p, cat, retailPrice, cost, basePrice, productMkp, catMkp, markup, commission, rzPrice, marginPct };
-  }), [products, stockMap, catMap, markups]);
+    return { p, cat, retailPrice, cost, basePrice, productMkp, catMkp, markup, commission, rzPrice, baseRz, isSmart, marginPct };
+  }), [products, stockMap, catMap, markups, smart]);
 
   const filteredRows = useMemo(() => {
     let list = allRows;
@@ -120,10 +145,12 @@ export default function RozetkaProductsClient({ products, stock, categories }: {
       list = list.filter(r => r.p.name.toLowerCase().includes(q) || r.p.sku.toLowerCase().includes(q) || r.p.brand.toLowerCase().includes(q));
     }
     if (filterBrand)            list = list.filter(r => r.p.brand === filterBrand);
-    if (filterStatus === 'on')  list = list.filter(r => enabled[r.p.sku] !== false);
-    if (filterStatus === 'off') list = list.filter(r => enabled[r.p.sku] === false);
+    if (filterStatus === 'on')       list = list.filter(r => enabled[r.p.sku] !== false);
+    if (filterStatus === 'off')      list = list.filter(r => enabled[r.p.sku] === false);
+    if (filterStatus === 'smart')    list = list.filter(r => smart[r.p.sku] === true);
+    if (filterStatus === 'nosmart')  list = list.filter(r => smart[r.p.sku] !== true);
     return list;
-  }, [allRows, search, filterBrand, filterStatus, enabled]);
+  }, [allRows, search, filterBrand, filterStatus, enabled, smart]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, typeof filteredRows>();
@@ -148,6 +175,15 @@ export default function RozetkaProductsClient({ products, stock, categories }: {
     setToggling(prev => new Set(prev).add(sku));
     await fetch('/api/admin/rozetka/product', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sku, on_rozetka: next }) });
     setToggling(prev => { const s = new Set(prev); s.delete(sku); return s; });
+  }
+
+  async function toggleSmart(sku: string) {
+    if (smartToggling.has(sku)) return;
+    const next = !(smart[sku] === true);
+    setSmart(prev => ({ ...prev, [sku]: next }));
+    setSmartToggling(prev => new Set(prev).add(sku));
+    await fetch('/api/admin/rozetka/product', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sku, rozetka_smart: next }) });
+    setSmartToggling(prev => { const s = new Set(prev); s.delete(sku); return s; });
   }
 
   async function bulkToggle(catSlug: string, val: boolean) {
@@ -211,7 +247,10 @@ export default function RozetkaProductsClient({ products, stock, categories }: {
         </Link>
         <div>
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#111' }}>Товари Rozetka</h1>
-          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#6B7280' }}>{totalEnabled} / {products.length} увімкнено в Rozetka</p>
+          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#6B7280' }}>
+            {totalEnabled} / {products.length} увімкнено в Rozetka
+            <span style={{ marginLeft: 8, color: '#B45309', fontWeight: 600 }}>· {Object.values(smart).filter(Boolean).length} у Smart</span>
+          </p>
         </div>
       </div>
 
@@ -263,6 +302,8 @@ export default function RozetkaProductsClient({ products, stock, categories }: {
           <option value="">Всі статуси Rozetka</option>
           <option value="on">Увімкнено в Rozetka</option>
           <option value="off">Виключено з Rozetka</option>
+          <option value="smart">У програмі Smart</option>
+          <option value="nosmart">Без Smart</option>
         </select>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
           <span style={{ fontSize: 12, color: '#64748B', whiteSpace: 'nowrap' }}>Наценка на всі:</span>
@@ -322,6 +363,7 @@ export default function RozetkaProductsClient({ products, stock, categories }: {
                 </span>
                 <span style={{ fontSize: 11, color: '#94A3B8' }}>{rows.length} товарів</span>
                 {commission > 0 && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#FFF7ED', color: '#92400E' }}>комісія {commission}%</span>}
+                {rows.some(r => smart[r.p.sku]) && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#FEF3C7', color: '#B45309', fontWeight: 700 }}>Smart {rows.filter(r => smart[r.p.sku]).length}</span>}
                 {avgMarkup !== null && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#EFF6FF', color: '#1D4ED8' }}>наценка ~{avgMarkup}%</span>}
                 {!cat?.rozetka_category_id && catSlug !== '—' && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#FEF2F2', color: '#DC2626' }}>без rz_id</span>}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -363,14 +405,16 @@ export default function RozetkaProductsClient({ products, stock, categories }: {
                       <th style={{ ...TH, textAlign: 'right', width: 110 }}>Наценка</th>
                       <th style={{ ...TH, textAlign: 'right' }}>Ціна Rozetka</th>
                       <th style={{ ...TH, textAlign: 'right' }}>Маржа</th>
+                      <th style={{ ...TH, textAlign: 'center' }} title="Програма Smart: безкоштовна доставка покупцю, компенсація 12/18/30 грн включена в ціну">Smart</th>
                       <th style={{ ...TH, textAlign: 'center' }}>Rozetka</th>
                       <th style={{ ...TH, width: 36 }} />
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map(r => {
-                      const { p, cost, retailPrice, productMkp, catMkp: rCatMkp, commission: rComm, rzPrice: rPrice, marginPct } = r;
+                      const { p, cost, retailPrice, productMkp, catMkp: rCatMkp, commission: rComm, rzPrice: rPrice, baseRz, isSmart, marginPct } = r;
                       const isOn       = enabled[p.sku] !== false;
+                      const isSmartToggling = smartToggling.has(p.sku);
                       const isToggling = toggling.has(p.sku);
                       const isSelected = selected.has(p.sku);
                       const isEditing  = editSku === p.sku;
@@ -422,13 +466,25 @@ export default function RozetkaProductsClient({ products, stock, categories }: {
                               </div>
                             </div>
                           </td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#111' }}>
-                            {rPrice != null ? `${rPrice} ₴` : <span style={{ color: '#D1D5DB' }}>—</span>}
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#111', whiteSpace: 'nowrap' }}>
+                            {rPrice != null ? (
+                              <span title={isSmart && baseRz != null ? `База ${baseRz} ₴ + Smart-надбавка ${rPrice - baseRz} ₴` : undefined}>
+                                {rPrice} ₴
+                                {isSmart && <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 800, color: '#B45309', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 4, padding: '1px 4px', verticalAlign: 'middle' }}>S</span>}
+                              </span>
+                            ) : <span style={{ color: '#D1D5DB' }}>—</span>}
                           </td>
                           <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                             {marginPct != null
                               ? <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: marginPct >= 20 ? '#ECFDF5' : marginPct >= 10 ? '#FFFBEB' : '#FEF2F2', color: marginColor(marginPct) }}>{marginPct.toFixed(1)}%</span>
                               : <span style={{ color: '#D1D5DB' }}>—</span>}
+                          </td>
+                          <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                            <button onClick={() => toggleSmart(p.sku)} disabled={isSmartToggling}
+                              title={isSmart ? 'Вимкнути Smart-надбавку в ціні фіда' : 'Увімкнути Smart (ціна у фіді виросте на компенсацію доставки). Не забудьте синхронно підключити/відключити товар у кабінеті Rozetka!'}
+                              style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: isSmartToggling ? 'wait' : 'pointer', padding: 0, background: isSmart ? '#F59E0B' : '#CBD5E1', transition: 'background 0.2s', opacity: isSmartToggling ? 0.6 : 1 }}>
+                              <span style={{ position: 'absolute', top: 2, left: isSmart ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                            </button>
                           </td>
                           <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                             <button onClick={() => toggleProduct(p.sku)} disabled={isToggling}
