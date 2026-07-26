@@ -11,6 +11,7 @@ export type PLData = {
   gross_after_lc: number;
   op_expenses:    number;
   marketplace_commission: number;
+  np_delivery:    number;
   op_profit:      number;
   by_channel:     { channel: string; revenue: number; cogs: number; commission: number }[];
   by_expense:     { type: string; amount: number }[];
@@ -43,7 +44,7 @@ const CHANNEL_LABELS: Record<string, string> = {
 const EXPENSE_LABELS: Record<string, string> = {
   logistics: 'Доставка', loading: 'Навантаження', customs: 'Мито/брокер',
   packaging: 'Пакування', acquiring_fee: 'Комісія еквайрингу',
-  marketplace_fee: 'Комісія маркетплейсу', rent: 'Оренда',
+  marketplace_fee: 'Комісія маркетплейсу', np_delivery: 'Доставка НП (наш рахунок)', rent: 'Оренда',
   salary: 'Зарплата', marketing: 'Маркетинг', opex: 'Інші витрати',
   other: 'Інше (каса)',
 };
@@ -123,6 +124,7 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
     { label: 'Прибуток після LC',           value: pl.gross_after_lc, bold: true,  color: pl.gross_after_lc >= 0 ? '#15803D' : '#DC2626', pctOf: pl.revenue, sep: true },
     { label: 'Операційні витрати',          value: -pl.op_expenses,   bold: false, color: '#B45309',             pctOf: pl.revenue },
     { label: 'Комісія маркетплейсів',       value: -pl.marketplace_commission, bold: false, color: '#B45309',    pctOf: pl.revenue },
+    { label: 'Доставка НП (за наш рахунок)', value: -pl.np_delivery,  bold: false, color: '#B45309',             pctOf: pl.revenue },
     { label: 'Операційний прибуток',        value: pl.op_profit,      bold: true,  color: pl.op_profit >= 0 ? '#15803D' : '#DC2626', pctOf: pl.revenue, sep: true, big: true },
   ];
 
@@ -224,7 +226,7 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
                           <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: '6px' }}>{pctVal}%</span>
                         </div>
                         <div style={{ fontSize: '11px', color: margin >= 0 ? '#15803D' : '#DC2626', marginTop: '1px' }}>
-                          маржа: {fmt(margin, 0)} ₴
+                          прибуток: {fmt(margin, 0)} ₴
                         </div>
                       </div>
                       <span style={{ fontSize: '13px', fontWeight: 700, color: '#1E3A5F' }}>{fmt(ch.revenue, 0)} ₴</span>
