@@ -28,7 +28,10 @@ async function loadInTransitCommission(marketplace: 'prom' | 'rozetka'): Promise
     .from('orders')
     .select('id, order_number, channel_code')
     .in('id', orderIds)
-    .eq('channel_code', marketplace);
+    .eq('channel_code', marketplace)
+    // Скасовані/повернені замовлення НЕ дадуть комісії — їхня чернетка-РН могла
+    // лишитись «в дорозі» й фальшиво завищувати очікувану комісію.
+    .not('status', 'in', '(cancelled,returned)');
   const orderMap = new Map((orders ?? []).map(o => [o.id, o]));
   const mpDocs = docs.filter(d => orderMap.has(d.order_id));
   if (!mpDocs.length) return { total: 0, items: [] };

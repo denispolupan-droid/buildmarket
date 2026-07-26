@@ -16,6 +16,7 @@ import { createServiceClient } from './supabase';
 import { getRozetkaOrders } from './rozetka-api';
 import { getPromOrders } from './prom-api';
 import { releaseReservation } from './accounting/reservations';
+import { cancelDocument } from './accounting/documents';
 import { alertAdmin } from './alert';
 
 const LOOKBACK_DAYS = 45;
@@ -74,6 +75,24 @@ async function handleCancelledOrder(
   try {
     await releaseReservation(order.id, 'cancelled');
   } catch { /* резерву могло не бути */ }
+
+  // Гасимо чернетку-РН (створюється при відвантаженні, проводиться при доставці).
+  // Заказ до доставки не дійде → інакше вона висить у «комісіях в дорозі» й
+  // фальшиво завищує очікувану комісію маркетплейсу. Чернетка проводок не має,
+  // тож cancelDocument просто ставить status=cancelled без сторно.
+  const { data: draftDocs } = await db
+    .from('acc_documents')
+    .select('id')
+    .eq('order_id', order.id)
+    .eq('doc_type', 'sale')
+    .eq('status', 'draft');
+  for (const d of draftDocs ?? []) {
+    try {
+      await cancelDocument(d.id, `cron:${marketplace.toLowerCase()}-cancel-watch`, 'Замовлення скасовано покупцем на маркетплейсі');
+    } catch (e) {
+      console.error('[cancel-watch] void draft sale doc failed', d.id, e);
+    }
+  }
 
   alertAdmin(
     `${marketplace}: замовлення #${order.order_number} скасовано покупцем — автоматично скасовано і в нас`,
