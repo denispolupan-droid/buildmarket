@@ -209,6 +209,271 @@ export function ourStatusToRozetkaStatus(ourStatus: string): number | null {
   return STATUS_MAP[ourStatus] ?? null;
 }
 
+/* ── Баланс кабінету (звірка фінансів) ──────────────────────────────────────
+   /balances/total і /balances/search підтверджені живими запитами 2026-07-26.
+   Типи операцій (/balances/types): 1 резерв, 2 комісія за продаж, 3 зняття
+   резерву, 8 правка кількості, 14 повернення замовлення, 18 розподілення
+   гарантійного платежу тощо. Для комісій фактична сума — поле debit (списання)
+   або credit (повернення); поля приходять то числом, то строкою. */
+
+export interface RozetkaBalanceTxn {
+  id: number;
+  orderId: number;
+  operationType: number;
+  cost: string | number;
+  debit: string | number;
+  credit: string | number;
+  transaction_ts: string;
+}
+
+export async function getRozetkaBalanceTotal(): Promise<{ balance: number; sumInGray: number }> {
+  // Саме ці два числа кабінет показує як «Баланс» і «Сіра зона» (звірено зі скріншотом
+  // кабінету 2026-07-26). /balances/total НЕ підходить — він віддає лише частку торгової
+  // марки без платформної складової.
+  const data = await rozetkaFetch<{ balance: { balance_total: string | number; royalty_gray: string | number } }>('/balance-consolidated/balance');
+  return { balance: Number(data.balance?.balance_total) || 0, sumInGray: Number(data.balance?.royalty_gray) || 0 };
+}
+
+export async function getRozetkaBalanceTxns(opts: { dateFrom: string; dateTo?: string }): Promise<RozetkaBalanceTxn[]> {
+  const all: RozetkaBalanceTxn[] = [];
+  // Захист від нескінченного циклу: 50 сторінок × 100 = 5000 транзакцій за період — з запасом
+  for (let page = 1; page <= 50; page++) {
+    const params = new URLSearchParams({ dateFrom: opts.dateFrom, pageSize: '100', page: String(page) });
+    if (opts.dateTo) params.set('dateTo', opts.dateTo);
+    const data = await rozetkaFetch<{
+      billingLogUserBalances: RozetkaBalanceTxn[];
+      _meta: { pageCount: number; currentPage: number };
+    }>(`/balances/search?${params.toString()}`);
+    all.push(...(data.billingLogUserBalances ?? []));
+    if (!data._meta || data._meta.currentPage >= data._meta.pageCount) break;
+  }
+  return all;
+}
+
+/* ── Заявки на повернення (/order-refund) ───────────────────────────────────
+   Модуль повернень кабінету: покупець відкриває заявку, вона проходить статуси
+   (перелік — /order-refund/search-data). Поля підтверджені apiDoc; живий запит
+   2026-07-26 повернув порожній список (заявок ще не було) — формат {orderRefunds,_meta}. */
+
+export interface RozetkaRefund {
+  id: string;                 // номер заявки (рядок, напр. "123ABC")
+  order_id: number;
+  status_code: string | number | null;
+  status_title: string | null;
+  reason_title: string | null;
+  sub_reason_title?: string | null;
+  item_name: string | null;
+  item_id: number | null;
+  datetime: string | null;    // дата/час заявки
+  ttn: string | null;         // ТТН зворотної доставки
+  read: boolean | null;
+}
+
+export async function getRozetkaRefunds(opts?: { dateFrom?: string; dateTo?: string }): Promise<RozetkaRefund[]> {
+  const all: RozetkaRefund[] = [];
+  for (let page = 1; page <= 20; page++) {
+    const params = new URLSearchParams({ pageSize: '100', page: String(page) });
+    if (opts?.dateFrom) params.set('date_from', opts.dateFrom);
+    if (opts?.dateTo) params.set('date_to', opts.dateTo);
+    const data = await rozetkaFetch<{
+      orderRefunds: RozetkaRefund[];
+      _meta: { pageCount: number; currentPage: number };
+    }>(`/order-refund/search?${params.toString()}`);
+    all.push(...(data.orderRefunds ?? []));
+    if (!data._meta || data._meta.currentPage >= data._meta.pageCount) break;
+  }
+  return all;
+}
+
+/* ── Чати з покупцями (/messages) ───────────────────────────────────────────
+   Живі запити 2026-07-26: msgType приймає 'orders' (чати по замовленнях) та
+   'items' (питання про товар); без msgType — лише items. Відповідь
+   {chats, _meta}. Тред: GET /messages/{id}?expand=messages. Відповідь
+   покупцю: POST /messages/create. Прочитано: PUT /messages/{id} {read_market}. */
+
+export interface RozetkaChatMessage {
+  chat_id: number;
+  body: string;
+  created: string;
+  receiver_id: number;
+  sender: number;              // 0 — система; є seller_id → повідомлення продавця
+  seller_id: number | null;
+  files?: Array<{ id: number; name: string; typeName: string }>;
+}
+
+export interface RozetkaChat {
+  id: number;
+  created: string;
+  updated: string;
+  subject: string | null;
+  user: { id: number; contact_fio: string | null } | null;
+  user_id: number;
+  read_market: string | null;
+  order_id: number | null;
+  item_id: number | null;
+  type: number;
+  unread_messages_count?: number;
+  messages?: RozetkaChatMessage[];
+}
+
+export async function getRozetkaChats(msgType: 'orders' | 'items', page = 1): Promise<{ chats: RozetkaChat[]; pageCount: number }> {
+  const params = new URLSearchParams({
+    msgType, page: String(page), sort: '-updated',
+    expand: 'unread_messages_count',
+  });
+  const data = await rozetkaFetch<{ chats: RozetkaChat[]; _meta: { pageCount: number } }>(`/messages/search?${params.toString()}`);
+  return { chats: data.chats ?? [], pageCount: data._meta?.pageCount ?? 1 };
+}
+
+export async function getRozetkaChatThread(chatId: number): Promise<RozetkaChat> {
+  return rozetkaFetch<RozetkaChat>(`/messages/${chatId}?expand=messages,unread_messages_count`);
+}
+
+export async function replyRozetkaChat(params: { chatId: number; receiverId: number; body: string }): Promise<void> {
+  await rozetkaFetch('/messages/create', {
+    method: 'POST',
+    body: JSON.stringify({
+      chat_id:       params.chatId,
+      receiver_id:   params.receiverId,
+      body:          params.body,
+      sendEmailUser: 1,
+    }),
+  });
+}
+
+export async function markRozetkaChatRead(chatId: number): Promise<void> {
+  const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  await rozetkaFetch(`/messages/${chatId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ read_market: now }),
+  });
+}
+
+export async function getRozetkaChatCounts(): Promise<{ totalUnread: number }> {
+  const data = await rozetkaFetch<{ totalUnread?: number }>('/messages/counts');
+  return { totalUnread: Number(data.totalUnread) || 0 };
+}
+
+/* ── Відгуки (/market-reviews — про магазин, /item-comments — про товари) ────
+   Живі запити 2026-07-26: обидва search працюють ({marketReviews|itemComments,
+   _meta}), counts віддають {all, unread}. Відповідь на відгук про магазин —
+   POST /market-review-replies/reply; на коментар/питання про товар —
+   POST /item-comments/create-comment (parent_id = id материнського відгуку). */
+
+export interface RozetkaMarketReview {
+  id: number;
+  order_id: number | null;
+  user: string | null;
+  comment: string | null;
+  created_at: string | null;
+  vote?: string | null;                    // like / dislike
+  vote_convenience?: string | null;
+  vote_manager?: string | null;
+  vote_delivery?: string | null;
+  vote_payment?: string | null;
+  read?: boolean | number | null;
+  order?: {
+    current_seller_comment?: string | null;
+    seller_comment?: unknown[];
+    ttn?: string | null;
+  } | null;
+}
+
+export interface RozetkaItemComment {
+  id: number;
+  parent_id: number | null;
+  seller_id: number | null;
+  name: string | null;
+  text: string | null;
+  mark: number | null;                     // оцінка 1–5 (0 — без оцінки)
+  dignity: string | null;                  // переваги
+  shortcomings: string | null;             // недоліки
+  created: string | null;
+  is_reade: boolean | null;
+  from_buyer: number | null;
+  has_children: boolean | null;
+  children?: RozetkaItemComment[];
+  record?: { id: string | number; title: string } | null;   // товар
+  item?: { id: number; name?: string } | null;
+}
+
+export async function getRozetkaMarketReviews(page = 1): Promise<{ reviews: RozetkaMarketReview[]; pageCount: number }> {
+  const data = await rozetkaFetch<{ marketReviews: RozetkaMarketReview[]; _meta: { pageCount: number } }>(
+    `/market-reviews/search?page=${page}&pageSize=50`,
+  );
+  return { reviews: data.marketReviews ?? [], pageCount: data._meta?.pageCount ?? 1 };
+}
+
+export async function getRozetkaItemComments(page = 1): Promise<{ comments: RozetkaItemComment[]; pageCount: number }> {
+  const data = await rozetkaFetch<{ itemComments: RozetkaItemComment[]; _meta: { pageCount: number } }>(
+    `/item-comments/search?page=${page}`,
+  );
+  return { comments: data.itemComments ?? [], pageCount: data._meta?.pageCount ?? 1 };
+}
+
+export async function getRozetkaReviewCounts(): Promise<{ marketUnread: number; itemsUnread: number }> {
+  const [market, items] = await Promise.all([
+    rozetkaFetch<{ unread?: number }>('/market-reviews/counts').catch(() => ({ unread: 0 })),
+    rozetkaFetch<{ unread?: number }>('/item-comments/counts').catch(() => ({ unread: 0 })),
+  ]);
+  return { marketUnread: Number(market.unread) || 0, itemsUnread: Number(items.unread) || 0 };
+}
+
+export async function replyRozetkaMarketReview(params: { marketReviewId: number; orderId: number; comment: string }): Promise<void> {
+  await rozetkaFetch('/market-review-replies/reply', {
+    method: 'POST',
+    body: JSON.stringify({
+      market_review_id: params.marketReviewId,
+      order_id:         params.orderId,
+      comment:          params.comment,
+    }),
+  });
+}
+
+export async function replyRozetkaItemComment(params: { parentId: number; itemId?: number; text: string }): Promise<void> {
+  await rozetkaFetch('/item-comments/create-comment', {
+    method: 'POST',
+    body: JSON.stringify({
+      parent_id: params.parentId,
+      item_id:   params.itemId,
+      text:      params.text,
+      is_reade:  1,
+    }),
+  });
+}
+
+export async function markRozetkaMarketReviewRead(id: number): Promise<void> {
+  await rozetkaFetch(`/market-reviews/${id}/mark-as-read`, { method: 'POST' });
+}
+
+export async function markRozetkaItemCommentRead(id: number): Promise<void> {
+  await rozetkaFetch(`/item-comments/mark-as-read/${id}`, { method: 'PUT' });
+}
+
+/* ── Рейтинг продавця (/markets/seller-rating) ──────────────────────────────
+   Живий запит 2026-07-26: зірки, розподіл оцінок, середні по категоріях за
+   30/180 днів/весь час, середній час до дзвінка (хв) і до відправки (хв). */
+
+export interface RozetkaSellerRating {
+  stars: number;
+  mark_all_cnt: number;
+  mark_excellent_cnt: number;
+  mark_good_cnt: number;
+  mark_middle_cnt: number;
+  mark_bad_cnt: number;
+  mark_worst_cnt: number;
+  manager_avg_stars: { '30_days': number; '180_days': number; all: number };
+  convenience_avg_stars: { '30_days': number; '180_days': number; all: number };
+  delivery_avg_stars: { '30_days': number; '180_days': number; all: number };
+  user_feedback_perc: number;
+  avg_diff_order_call: number;      // хвилини до першого дзвінка по замовленню
+  avg_diff_delivery_time: number;   // хвилини до відправки
+}
+
+export async function getRozetkaSellerRating(): Promise<RozetkaSellerRating> {
+  return rozetkaFetch<RozetkaSellerRating>('/markets/seller-rating');
+}
+
 /* ── Mapping helpers ────────────────────────────────────────────────────── */
 
 export function rozetkaOrderToOurFormat(order: RozetkaOrder) {

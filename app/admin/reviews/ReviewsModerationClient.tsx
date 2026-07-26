@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Check, X, Trash2, ExternalLink } from 'lucide-react';
 
-type Review = {
+export type Review = {
   id: string;
   product_sku: string;
   author_name: string;
@@ -24,7 +24,7 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
-export default function ReviewsModerationClient({ reviews: initial }: { reviews: Review[] }) {
+export default function ReviewsModerationClient({ reviews: initial, embedded = false }: { reviews: Review[]; embedded?: boolean }) {
   const [reviews, setReviews] = useState<Review[]>(initial);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved'>('pending');
   const [loading, setLoading] = useState<string | null>(null);
@@ -63,9 +63,12 @@ export default function ReviewsModerationClient({ reviews: initial }: { reviews:
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-soft)', padding: '32px' }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+    <div style={embedded
+      ? { padding: '16px' }
+      : { minHeight: '100vh', background: 'var(--bg-soft)', padding: '32px' }}>
+      <div style={embedded ? {} : { maxWidth: '900px', margin: '0 auto' }}>
 
+        {!embedded && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
           <div>
             <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>
@@ -81,6 +84,7 @@ export default function ReviewsModerationClient({ reviews: initial }: { reviews:
             ← Адмінка
           </Link>
         </div>
+        )}
 
         {/* Filter tabs */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>

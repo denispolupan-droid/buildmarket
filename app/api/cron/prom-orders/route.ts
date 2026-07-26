@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncPromOrders } from '../../../../lib/prom-sync';
 import { watchPromCancellations } from '../../../../lib/marketplace-cancel-watch';
+import { alertPromChatNew } from '../../../../lib/marketplace-chat-alerts';
 import { alertAdmin } from '../../../../lib/alert';
 
 export async function GET(req: NextRequest) {
@@ -20,7 +21,15 @@ export async function GET(req: NextRequest) {
       console.error('[prom-cancel-watch]', err);
     }
 
-    return NextResponse.json({ ...result, cancelWatch });
+    // Нові повідомлення покупців у чаті → Telegram
+    let chatWatch: unknown = null;
+    try {
+      chatWatch = await alertPromChatNew();
+    } catch (err) {
+      console.error('[prom-chat-alert]', err);
+    }
+
+    return NextResponse.json({ ...result, cancelWatch, chatWatch });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     alertAdmin('Cron: синк замовлень Prom впав', msg);

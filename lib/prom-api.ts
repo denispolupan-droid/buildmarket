@@ -132,7 +132,10 @@ export async function getPromOrders(opts: {
   if (opts.limit)    params.set('limit', String(opts.limit));
   if (opts.lastId)   params.set('last_id', String(opts.lastId));
 
-  const data = await promFetch<OrdersListResponse>(`/orders/list?${params.toString()}`);
+  const data = await promFetch<OrdersListResponse & { error?: string }>(`/orders/list?${params.toString()}`);
+  // Prom віддає HTTP 200 з {"error": "..."} на невалідні параметри (напр., неіснуючий
+  // статус) — без цієї перевірки помилка мовчки виглядала як «нуль замовлень».
+  if (data.error) throw new Error(`Prom API /orders/list: ${data.error}`);
   return data.orders ?? [];
 }
 
@@ -291,4 +294,70 @@ export function promOrderToOurFormat(order: PromOrder) {
     prom_order_id:    order.id,
     prom_data:        order,
   };
+}
+
+/* ── Чат з покупцями (/chat) ─────────────────────────────────────────────────
+   Новий Prom Chat API (спека public-api.docs.prom.ua, розділ Chat). Кімната =
+   діалог з покупцем, ident формату {user_id}_{company_id}_buyer. Ліміт кімнат
+   на сторінку — 20 (максимум API), історія — до 100 повідомлень за запит.
+   Відповіді приходять як {status:'ok', data:{...}} — НЕ як в /orders. */
+
+export interface PromChatRoom {
+  id: number;
+  ident: string;
+  date_sent: string | null;     // дата останнього повідомлення, UTC+0
+  status: 'active' | 'archived' | 'banned';
+  last_message_id: number | null;
+  buyer_client_id: number | null;
+}
+
+export interface PromChatMessage {
+  id: number;
+  room_id: string;
+  room_ident: string;
+  body: string | null;
+  date_sent: string | null;     // UTC+0
+  type: string;                 // 'message' | 'attachment' | ...
+  status: string;               // 'new' | 'read' | ...
+  is_sender_online?: boolean;
+  context_item_id: number | string | null;
+  context_item_type: string | null;   // 'order' | 'product' | null
+  attachments?: unknown[];
+  user_name: string | null;
+  user_ident: string | null;    // id відправника; порівнюємо з user_id кімнати
+  user_phone?: string | null;
+}
+
+async function promChatFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const json = await promFetch<{ status: 'ok' | 'error'; data?: T; message?: string }>(path, init);
+  if (json.status !== 'ok') throw new Error(`Prom chat API ${path}: ${json.message ?? 'error'}`);
+  return json.data as T;
+}
+
+export async function getPromChatRooms(opts?: { limit?: number; offset?: number; dateFrom?: string }): Promise<PromChatRoom[]> {
+  const params = new URLSearchParams({ status: 'active', sort: 'desc', limit: String(opts?.limit ?? 20) });
+  if (opts?.offset) params.set('offset', String(opts.offset));
+  if (opts?.dateFrom) params.set('date_from', opts.dateFrom);
+  const data = await promChatFetch<{ rooms: PromChatRoom[] }>(`/chat/rooms?${params.toString()}`);
+  return data.rooms ?? [];
+}
+
+export async function getPromChatHistory(roomIdent: string, limit = 100): Promise<PromChatMessage[]> {
+  const params = new URLSearchParams({ room_ident: roomIdent, limit: String(limit), sort: 'asc' });
+  const data = await promChatFetch<{ messages: PromChatMessage[] }>(`/chat/messages_history?${params.toString()}`);
+  return data.messages ?? [];
+}
+
+export async function sendPromChatMessage(roomIdent: string, body: string): Promise<void> {
+  await promChatFetch('/chat/send_message', {
+    method: 'POST',
+    body: JSON.stringify({ room_ident: roomIdent, body }),
+  });
+}
+
+export async function markPromMessageRead(messageId: number): Promise<void> {
+  await promChatFetch('/chat/mark_message_read', {
+    method: 'POST',
+    body: JSON.stringify({ message_id: messageId }),
+  });
 }

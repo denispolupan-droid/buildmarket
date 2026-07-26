@@ -132,13 +132,11 @@ export async function watchPromCancellations(): Promise<{ checked: number; auto_
 
   const dateFrom = new Date(Date.now() - LOOKBACK_DAYS * 86400_000).toISOString();
   const cancelledIds = new Set<number>();
-  // Ті самі значення статусів, що фільтрує prom-sync при імпорті
-  for (const status of ['declined', 'cancelled', 'cancelled_by_client'] as const) {
-    try {
-      const batch = await getPromOrders({ dateFrom, status, limit: 100 });
-      for (const o of batch) cancelledIds.add(o.id);
-    } catch { /* один зі статусів може не підтримуватись — не валимо весь прохід */ }
-  }
+  // Єдиний валідний статус скасування у фільтра /orders/list — 'canceled' (одна «l»,
+  // перевірено живим запитом: 'cancelled'/'declined' → {"error":"Incorrect status value"},
+  // який до фіксу getPromOrders мовчки перетворювався на порожній список).
+  const batch = await getPromOrders({ dateFrom, status: 'canceled', limit: 100 });
+  for (const o of batch) cancelledIds.add(o.id);
 
   for (const order of ours) {
     if (!order.prom_order_id || !cancelledIds.has(Number(order.prom_order_id))) continue;

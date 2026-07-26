@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncRozetkaOrders } from '../../../../lib/rozetka-sync';
 import { watchRozetkaCancellations } from '../../../../lib/marketplace-cancel-watch';
+import { watchRozetkaRefunds } from '../../../../lib/marketplace-returns-watch';
+import { alertRozetkaChatUnread, alertRozetkaReviews } from '../../../../lib/marketplace-chat-alerts';
 import { alertAdmin } from '../../../../lib/alert';
 
 export async function GET(req: NextRequest) {
@@ -21,7 +23,31 @@ export async function GET(req: NextRequest) {
       console.error('[rozetka-cancel-watch]', err);
     }
 
-    return NextResponse.json({ ...result, cancelWatch });
+    // Заявки на повернення з кабінету (алерт + банер в адмінці)
+    let refundWatch: unknown = null;
+    try {
+      refundWatch = await watchRozetkaRefunds();
+    } catch (err) {
+      console.error('[rozetka-refund-watch]', err);
+    }
+
+    // Нові повідомлення покупців у чаті → Telegram
+    let chatWatch: unknown = null;
+    try {
+      chatWatch = await alertRozetkaChatUnread();
+    } catch (err) {
+      console.error('[rozetka-chat-alert]', err);
+    }
+
+    // Нові відгуки покупців → Telegram
+    let reviewWatch: unknown = null;
+    try {
+      reviewWatch = await alertRozetkaReviews();
+    } catch (err) {
+      console.error('[rozetka-review-alert]', err);
+    }
+
+    return NextResponse.json({ ...result, cancelWatch, refundWatch, chatWatch, reviewWatch });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     alertAdmin('Cron: синк замовлень Rozetka впав', msg);

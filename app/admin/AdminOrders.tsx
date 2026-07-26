@@ -83,6 +83,7 @@ type Order = {
   discount_pct:       number | null;
   discount_amount:    number | null;
   shipping_supplier_id: number | null;
+  mp_refund_status:   string | null;
   fulfillment_mode:   string | null;
   confirmed_at:       string | null;
   shipped_at:         string | null;
@@ -1655,6 +1656,9 @@ export default function AdminOrders({
                       {(order.flags ?? []).includes('problem') && (
                         <span title="Проблемний" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>⚠</span>
                       )}
+                      {order.mp_refund_status && (
+                        <span title={`Покупець відкрив повернення — ${order.mp_refund_status}`} style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>↩ повернення</span>
+                      )}
                       {order.company
                         ? <><span style={{ fontWeight: 600 }}>{order.company}</span><span style={{ color: 'var(--text-muted)' }}> · {order.contact}</span></>
                         : <span style={{ fontWeight: 600 }}>{order.contact}</span>}
@@ -1785,6 +1789,14 @@ export default function AdminOrders({
                 {/* ── Expanded panel ── */}
                 {isExpanded && (
                   <>
+                  {/* Банер відкритого повернення з маркетплейсу (orders.mp_refund_status,
+                      ставить/гасить cron-вотчер marketplace-returns-watch) */}
+                  {order.mp_refund_status && (
+                    <div style={{ borderTop: '1px solid var(--border-light)', background: '#FEF2F2', padding: '10px 16px', fontSize: '13px', color: '#B91C1C', lineHeight: 1.5 }}>
+                      <span style={{ fontWeight: 700 }}>↩ Покупець відкрив повернення на маркетплейсі — статус: {order.mp_refund_status}.</span>{' '}
+                      <span>Прийміть товар і оформіть «↩ Повернення» в цій картці — це сторнує виручку, COGS і комісію.</span>
+                    </div>
+                  )}
                   {/* Шапка розгорнутого замовлення — новий дизайн */}
                   <div className="oc-expand-header" style={{ borderTop: '1px solid var(--border-light)', background: 'var(--bg-soft)', padding: '16px 14px 14px', display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
                     {/* main-part — дзеркалить основну область сітки (Клієнт | Оплата) */}

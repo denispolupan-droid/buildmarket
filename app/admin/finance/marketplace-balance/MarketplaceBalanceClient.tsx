@@ -2,8 +2,26 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Scale, X, ArrowLeftRight } from 'lucide-react';
+import { Plus, Scale, X, ArrowLeftRight, Landmark, RefreshCw } from 'lucide-react';
 import type { LedgerRow, InTransit } from './page';
+
+type CabinetRow = {
+  rozetkaOrderId: number;
+  orderNumber: number | null;
+  orderStatus: string | null;
+  date: string;
+  theirAmount: number;
+  ourAmount: number;
+  delta: number;
+  status: 'ok' | 'diff' | 'missing_ours' | 'missing_theirs' | 'pending_delivery' | 'reserved_theirs';
+};
+type CabinetData = {
+  cabinet: { balance: number; sumInGray: number };
+  from: string; to: string;
+  rows: CabinetRow[];
+  others: Array<{ op: number; name: string; count: number; debit: number; credit: number }>;
+  totals: { their: number; ours: number; delta: number };
+};
 
 type MarketplaceData = { rows: LedgerRow[]; balance: number; inTransit: InTransit };
 
@@ -62,6 +80,39 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
   const [adjOrder, setAdjOrder]             = useState('');
   const [adjNote, setAdjNote]               = useState('');
   const [adjDate, setAdjDate]               = useState(new Date().toISOString().slice(0, 10));
+
+  // Звірка з кабінетом Rozetka (живий леджер /balances/search)
+  const [cabinetOpen, setCabinetOpen]       = useState(false);
+  const [cabinetLoading, setCabinetLoading] = useState(false);
+  const [cabinetError, setCabinetError]     = useState('');
+  const [cabinetData, setCabinetData]       = useState<CabinetData | null>(null);
+  const [cabinetFrom, setCabinetFrom]       = useState(new Date(Date.now() - 30 * 86400e3).toISOString().slice(0, 10));
+  const [cabinetTo, setCabinetTo]           = useState(new Date().toISOString().slice(0, 10));
+
+  async function loadCabinet(from = cabinetFrom, to = cabinetTo) {
+    setCabinetLoading(true); setCabinetError('');
+    try {
+      const res = await fetch(`/api/admin/finance/marketplace-balance/rozetka-reconcile?from=${from}&to=${to}`);
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? 'Помилка запиту до Rozetka');
+      setCabinetData(d);
+    } catch (e) {
+      setCabinetError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCabinetLoading(false);
+    }
+  }
+
+  // «Провести різницю» з рядка звірки → відкриває форму «Операція» з передзаповненими полями
+  function prefillAdjustFromRow(row: CabinetRow) {
+    setAdjDirection(row.delta > 0 ? 'charge' : 'credit');
+    setAdjAmount(Math.abs(row.delta).toFixed(2));
+    setAdjCategory('other');
+    setAdjOrder(row.orderNumber ? String(row.orderNumber) : '');
+    setAdjNote(`Звірка з кабінетом Rozetka: у них ${fmt(row.theirAmount)} ₴, у нас ${fmt(row.ourAmount)} ₴`);
+    setAdjDate(new Date().toISOString().slice(0, 10));
+    setAdjustOpen(true); setTopupOpen(false); setReconcileOpen(false); setError('');
+  }
 
   async function submitAdjust() {
     const amount = parseFloat(adjAmount);
@@ -149,6 +200,15 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             <Scale size={14} /> Звірити
           </button>
+          {marketplace === 'rozetka' && (
+            <button onClick={() => {
+              setCabinetOpen(v => !v);
+              if (!cabinetOpen && !cabinetData) void loadCabinet();
+            }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: cabinetOpen ? '1.5px solid #6366F1' : '1.5px solid var(--border)', background: cabinetOpen ? '#EEF2FF' : 'var(--bg-soft)', color: cabinetOpen ? '#6366F1' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+              <Landmark size={14} /> Кабінет
+            </button>
+          )}
         </div>
       </div>
 
@@ -304,6 +364,121 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
                 ? '✓ Збігається, різниці немає'
                 : `Різниця ${reconcileResult.diff > 0 ? '+' : ''}${fmt(reconcileResult.diff)} ₴ — записано як коригування`}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Звірка з кабінетом Rozetka — живі дані /balances API */}
+      {marketplace === 'rozetka' && cabinetOpen && (
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg-soft)' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
+            <div style={{ width: '150px' }}>
+              <label style={lbl}>Період з</label>
+              <input style={inp} type="date" value={cabinetFrom} onChange={e => setCabinetFrom(e.target.value)} />
+            </div>
+            <div style={{ width: '150px' }}>
+              <label style={lbl}>по</label>
+              <input style={inp} type="date" value={cabinetTo} onChange={e => setCabinetTo(e.target.value)} />
+            </div>
+            <button onClick={() => loadCabinet()} disabled={cabinetLoading}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '38px', padding: '0 16px', borderRadius: '8px', border: 'none', background: '#6366F1', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: cabinetLoading ? 'wait' : 'pointer', opacity: cabinetLoading ? 0.6 : 1 }}>
+              <RefreshCw size={14} style={cabinetLoading ? { animation: 'spin 1s linear infinite' } : undefined} />
+              {cabinetLoading ? 'Завантаження…' : 'Оновити'}
+            </button>
+            <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+            {cabinetData && (
+              <div style={{ display: 'flex', gap: '22px', marginLeft: 'auto', flexWrap: 'wrap' }}>
+                <div>
+                  <span style={lbl}>Баланс у кабінеті</span>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>{fmt(cabinetData.cabinet.balance)} ₴</div>
+                </div>
+                <div>
+                  <span style={lbl}>Сіра зона (резерви)</span>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#B45309' }}>{fmt(cabinetData.cabinet.sumInGray)} ₴</div>
+                </div>
+                <div>
+                  <span style={lbl}>Комісії за період: Rozetka / у нас</span>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: cabinetData.rows.some(r => ['diff', 'missing_ours', 'missing_theirs'].includes(r.status)) ? '#DC2626' : '#15803D' }}>
+                    {fmt(cabinetData.totals.their)} / {fmt(cabinetData.totals.ours)} ₴
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {cabinetError && <div style={{ color: '#DC2626', fontSize: '12px', marginBottom: '10px' }}>{cabinetError}</div>}
+
+          {cabinetData && (
+            <>
+              <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', background: 'var(--bg-card)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 110px 110px 90px 190px', padding: '8px 14px', background: 'var(--bg-soft)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  <span>Дата</span>
+                  <span>Замовлення</span>
+                  <span style={{ textAlign: 'right' }}>Rozetka</span>
+                  <span style={{ textAlign: 'right' }}>У нас</span>
+                  <span style={{ textAlign: 'right' }}>Різниця</span>
+                  <span style={{ textAlign: 'right' }}>Статус</span>
+                </div>
+                <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
+                  {cabinetData.rows.length === 0 && (
+                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає комісій за період</div>
+                  )}
+                  {cabinetData.rows.map((row, idx) => {
+                    const statusUi: Record<CabinetRow['status'], { text: string; color: string; action: boolean }> = {
+                      ok:               { text: '✓ Збігається',                        color: '#15803D', action: false },
+                      diff:             { text: 'Розбіжність',                        color: '#DC2626', action: true },
+                      missing_ours:     { text: 'Немає у нас',                        color: '#DC2626', action: true },
+                      missing_theirs:   { text: 'Немає у Rozetka',                    color: '#DC2626', action: true },
+                      pending_delivery: { text: 'В дорозі — спишеться при доставці',  color: '#B45309', action: false },
+                      reserved_theirs:  { text: 'У резерві Rozetka — ще не списано',  color: '#B45309', action: false },
+                    };
+                    const s = statusUi[row.status];
+                    return (
+                      <div key={`${row.rozetkaOrderId}-${idx}`} style={{
+                        display: 'grid', gridTemplateColumns: '90px 1fr 110px 110px 90px 190px',
+                        padding: '8px 14px', alignItems: 'center', fontSize: '13px',
+                        borderTop: idx > 0 ? '1px solid var(--border-light)' : 'none',
+                      }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          {row.date ? new Date(row.date).toLocaleDateString('uk-UA') : '—'}
+                        </span>
+                        <span style={{ color: 'var(--text-secondary)' }}>
+                          {row.orderNumber ? `№${row.orderNumber}` : 'не знайдено в БД'}
+                          <span style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '6px' }}>rz {row.rozetkaOrderId || '—'}</span>
+                        </span>
+                        <span style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(row.theirAmount)}</span>
+                        <span style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(row.ourAmount)}</span>
+                        <span style={{ textAlign: 'right', fontWeight: 700, color: Math.abs(row.delta) < 0.01 ? 'var(--text-muted)' : '#DC2626' }}>
+                          {Math.abs(row.delta) < 0.01 ? '—' : `${row.delta > 0 ? '+' : ''}${fmt(row.delta)}`}
+                        </span>
+                        <span style={{ textAlign: 'right', fontSize: '11px', fontWeight: 600, color: s.color }}>
+                          {s.text}
+                          {s.action && (
+                            <button onClick={() => prefillAdjustFromRow(row)}
+                              style={{ marginLeft: '8px', height: '24px', padding: '0 10px', borderRadius: '6px', border: '1px solid #DC2626', background: 'var(--bg-card)', color: '#DC2626', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                              Провести
+                            </button>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {cabinetData.others.length > 0 && (
+                <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                  <strong style={{ fontWeight: 700 }}>Інші операції кабінету за період:</strong>{' '}
+                  {cabinetData.others.map(o =>
+                    `${o.name} ×${o.count}${o.debit ? ` (−${fmt(o.debit)})` : ''}${o.credit ? ` (+${fmt(o.credit)})` : ''}`
+                  ).join(' · ')}
+                </div>
+              )}
+              <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                Порівнюємо комісії Rozetka (списання по замовленнях із живої виписки кабінету) з нашими проводками.
+                «Провести» відкриє форму «Операція» з передзаповненою різницею — перевірте та збережіть.
+              </div>
+            </>
           )}
         </div>
       )}

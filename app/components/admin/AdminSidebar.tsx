@@ -45,7 +45,7 @@ const NAV = [
   { href: '/admin/accounting/stock',     label: 'Залишки',        icon: Warehouse,      exact: false },
   { href: '/admin/mail',                 label: 'Пошта',          icon: Mail,           exact: false },
   { href: '/admin/reviews',              label: 'Відгуки',        icon: Star,           exact: false },
-  { href: '/admin/chat',                 label: 'Чат',            icon: MessageSquare,  exact: false },
+  { href: '/admin/chat',                 label: 'Чати',           icon: MessageSquare,  exact: false },
   { href: '/admin/promo',                label: 'Акції та банери', icon: Megaphone,      exact: false },
   { href: '/admin/promo-codes',          label: 'Промокоди',      icon: Tags,            exact: false },
   { href: '/admin/settings',             label: 'Налаштування',   icon: Settings,       exact: false },
@@ -71,6 +71,7 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Пан
   const [mounted,   setMounted]   = useState(false);
   const [poDraftCount, setPoDraftCount] = useState(0);
   const [mailUnread,   setMailUnread]   = useState(0);
+  const [mpChatUnread, setMpChatUnread] = useState(0);
   // Below this width the sidebar becomes an off-canvas drawer instead of
   // squeezing every admin page's content into a sliver — that's what made
   // the admin panel unusable on phones. Lazy-initialized (matching the same
@@ -104,6 +105,10 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Пан
       fetch('/api/admin/mail/unread')
         .then(r => r.json())
         .then(d => setMailUnread(d?.count ?? 0))
+        .catch(() => {});
+      fetch('/api/admin/marketplace-chats/unread')
+        .then(r => r.json())
+        .then(d => setMpChatUnread(d?.count ?? 0))
         .catch(() => {});
     }
     fetchUnread();
@@ -227,7 +232,7 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Пан
           const badgeCount =
             href === '/admin'             && newOrdersCount > 0  ? newOrdersCount  :
             href === '/admin/procurement' && poDraftCount > 0    ? poDraftCount    :
-            href === '/admin/chat'        && chatUnreadCount > 0 ? chatUnreadCount :
+            href === '/admin/chat'        && chatUnreadCount + mpChatUnread > 0 ? chatUnreadCount + mpChatUnread :
             href === '/admin/mail'        && mailUnread > 0      ? mailUnread      :
             0;
           const badgeColor = href === '/admin/procurement' ? '#F59E0B' : '#EF4444';

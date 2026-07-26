@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import RozetkaClient from './RozetkaClient';
+import SellerRatingCard from './SellerRatingCard';
+import { getRozetkaSellerRating, type RozetkaSellerRating } from '../../../lib/rozetka-api';
 
 export const metadata = { title: 'Rozetka — Адмін' };
 
@@ -41,7 +43,14 @@ export default async function RozetkaPage() {
   const catsWithId         = (catStats ?? []).filter(c => c.rozetka_category_id).length;
   const catsWithCommission = (catStats ?? []).filter(c => c.rozetka_commission_pct != null).length;
 
+  // Рейтинг продавця з кабінету — не валимо сторінку, якщо API недоступний
+  let sellerRating: RozetkaSellerRating | null = null;
+  try {
+    sellerRating = await getRozetkaSellerRating();
+  } catch { /* без токена/при збої просто не показуємо плашку */ }
+
   return (
+    <>
     <RozetkaClient
       feedUrl={`${siteUrl}/api/rozetka/feed`}
       hasApiKey={hasApiKey}
@@ -54,5 +63,7 @@ export default async function RozetkaPage() {
       catsWithCommission={catsWithCommission}
       totalCats={(catStats ?? []).length}
     />
+    <SellerRatingCard rating={sellerRating} />
+    </>
   );
 }
