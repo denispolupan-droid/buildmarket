@@ -34,6 +34,13 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ['pdfkit', 'sharp'],
+  experimental: {
+    // Під час білда БД одночасно обслуговує пре-рендер сотень сторінок і живий
+    // трафік (обхід Google) — разовий statement timeout на одному запиті ронив
+    // ВЕСЬ деплой. Повторюємо невдалу генерацію сторінки до 2 разів, перш ніж
+    // валити білд; на рантайм не впливає (тільки збірка).
+    staticGenerationRetryCount: 2,
+  },
   images: {
     unoptimized: true,
     remotePatterns: [
