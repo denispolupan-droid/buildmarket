@@ -18,9 +18,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Бренди з 5+ продуктів отримуємо з кешованого списку продуктів
   const brandCounts = new Map<string, number>();
+  const catCounts = new Map<string, number>();
   for (const p of products) {
     const b = p.brand?.trim();
     if (b) brandCounts.set(b, (brandCounts.get(b) ?? 0) + 1);
+    if (p.category_slug) catCounts.set(p.category_slug, (catCounts.get(p.category_slug) ?? 0) + 1);
   }
 
   // lastmod для категорій/брендів/перетинів — максимальний updated_at їхніх товарів
@@ -98,12 +100,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const key = `${p.category_slug}::${b}`;
     brandCategoryMap.set(key, (brandCategoryMap.get(key) ?? 0) + 1);
   }
+  // Перетин, що збігається з усією категорією або всім брендом, — копія ширшої
+  // сторінки (canonical веде туди, див. shop/[category]/[brand]) — у sitemap не кладемо.
+  const isDuplicateCombo = (categorySlug: string, brandName: string, count: number) =>
+    count === catCounts.get(categorySlug) || count === brandCounts.get(brandName);
+
   const categoryBrandRoutes: MetadataRoute.Sitemap = [];
   for (const [key, count] of brandCategoryMap) {
     if (count < 5) continue;
     const sep = key.indexOf('::');
     const categorySlug = key.slice(0, sep);
     const brandName = key.slice(sep + 2);
+    if (isDuplicateCombo(categorySlug, brandName, count)) continue;
     categoryBrandRoutes.push({
       url: `${BASE}/shop/${categorySlug}/${brandToSlug(brandName)}`,
       lastModified: catBrandUpdated.get(key) ?? SITE_UPDATED,
@@ -153,6 +161,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const sep = key.indexOf('::');
     const categorySlug = key.slice(0, sep);
     const brandName = key.slice(sep + 2);
+    if (isDuplicateCombo(categorySlug, brandName, count)) continue;
     ruCategoryBrandRoutes.push({
       url: `${BASE}/ru/shop/${categorySlug}/${brandToSlug(brandName)}`,
       lastModified: catBrandUpdated.get(key) ?? SITE_UPDATED,

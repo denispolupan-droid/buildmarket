@@ -77,7 +77,15 @@ export async function generateMetadata(
   const brandProducts = products.filter(
     p => p.category_slug === category && brandToSlug(p.brand?.trim() ?? '') === brandSlug
   );
-  return categoryBrandMeta(cat, brandName, brandSlug, listingStats(brandProducts), 'ru', { nameRu: catNameRu });
+  // Перетин, що на 100% збігається з категорією чи брендом, — копія ширшої сторінки:
+  // canonical на неї (alternatesFor сам додасть /ru-префікс для ru-версії).
+  const catTotal   = products.filter(p => p.category_slug === category).length;
+  const brandTotal = products.filter(p => brandToSlug(p.brand?.trim() ?? '') === brandSlug).length;
+  const canonicalPath =
+    brandProducts.length === catTotal   ? `/shop/${category}` :
+    brandProducts.length === brandTotal ? `/shop/brand/${brandSlug}` :
+    undefined;
+  return categoryBrandMeta(cat, brandName, brandSlug, listingStats(brandProducts), 'ru', { nameRu: catNameRu, canonicalPath });
 }
 
 export default async function ShopCategoryBrandRuPage(

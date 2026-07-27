@@ -75,7 +75,15 @@ export async function generateMetadata(
   const brandProducts = products.filter(
     p => p.category_slug === category && brandToSlug(p.brand?.trim() ?? '') === brandSlug
   );
-  return categoryBrandMeta(cat, brandName, brandSlug, listingStats(brandProducts), 'uk');
+  // Перетин, що на 100% збігається з категорією чи брендом, — не окрема сторінка,
+  // а її копія: canonical на ширший URL (GSC: «Страница является копией»).
+  const catTotal   = products.filter(p => p.category_slug === category).length;
+  const brandTotal = products.filter(p => brandToSlug(p.brand?.trim() ?? '') === brandSlug).length;
+  const canonicalPath =
+    brandProducts.length === catTotal   ? `/shop/${category}` :
+    brandProducts.length === brandTotal ? `/shop/brand/${brandSlug}` :
+    undefined;
+  return categoryBrandMeta(cat, brandName, brandSlug, listingStats(brandProducts), 'uk', { canonicalPath });
 }
 
 export default async function ShopCategoryBrandPage(

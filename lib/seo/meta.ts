@@ -290,7 +290,11 @@ export function categoryBrandMeta(
   brandSlug: string,
   stats: ListingStats,
   lang: Lang = 'uk',
-  opts?: { nameRu?: string },
+  // canonicalPath: коли перетин категорія×бренд на 100% збігається з категорією
+  // (бренд покриває всю категорію) або зі сторінкою бренду (бренд живе лише в цій
+  // категорії) — canonical вказує на ту ширшу сторінку, інакше GSC бачить «копію»
+  // (реальний кейс: /shop/grunty/polifarb ≡ /shop/grunty, 12/12 товарів).
+  opts?: { nameRu?: string; canonicalPath?: string },
 ): Metadata {
   const t = T[lang];
   const catName = (lang === 'ru' ? (opts?.nameRu ?? cat.name) : cat.name).toLowerCase();
@@ -310,6 +314,6 @@ export function categoryBrandMeta(
     keywords: [brandName, cat.name, t.buy],
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
     ...ogTwitter(title, description, url, lang, `${BASE}/opengraph-image`),
-    alternates: alternatesFor(path, lang),
+    alternates: alternatesFor(opts?.canonicalPath ?? path, lang),
   };
 }
