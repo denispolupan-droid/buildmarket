@@ -33,7 +33,7 @@ async function loginAndCacheToken(): Promise<string> {
     throw new Error('Rozetka логін/пароль не налаштовані. Встановіть їх на сторінці /admin/rozetka');
   }
 
-  const res = await fetch(`${ROZETKA_BASE}/sites`, {
+  const res = await fetchWithRetry(`${ROZETKA_BASE}/sites`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password: Buffer.from(password).toString('base64') }),
@@ -63,9 +63,25 @@ async function getValidToken(): Promise<string> {
   return loginAndCacheToken();
 }
 
+// Rozetka's API периодично рве з'єднання («fetch failed / other side closed») — через це
+// губилися fire-and-forget пуші статусів. Всі виклики йдуть через ретрай мережевих помилок;
+// HTTP-відповіді (4xx/5xx) не ретраїмо тут — ними займається rozetkaFetch.
+async function fetchWithRetry(url: string, init: RequestInit, tries = 3): Promise<Response> {
+  let lastErr: unknown;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await fetch(url, init);
+    } catch (err) {
+      lastErr = err;
+      await new Promise(r => setTimeout(r, 500 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 async function rozetkaFetch<T>(path: string, init?: RequestInit, _retried = false): Promise<T> {
   const token = await getValidToken();
-  const res = await fetch(`${ROZETKA_BASE}${path}`, {
+  const res = await fetchWithRetry(`${ROZETKA_BASE}${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -112,6 +128,9 @@ export interface RozetkaOrder {
   cost: string;
   cost_with_discount: string;
   comment: string | null;
+  // expand-поле: замовлення в програмі Smart (безкоштовна доставка за наш рахунок —
+  // Rozetka списує компенсацію 12/18/30 грн при передачі перевізникові)
+  is_smart?: boolean;
   user_phone: string | null;
   user_title?: { full_name: string | null };
   ttn: string | null;
@@ -141,7 +160,7 @@ interface OrderSearchResponse {
   _meta: { totalCount: number; pageCount: number; currentPage: number; perPage: number };
 }
 
-const EXPAND = 'user,delivery,delivery_service,purchases,payment,status_data';
+const EXPAND = 'user,delivery,delivery_service,purchases,payment,status_data,is_smart';
 
 /* ── Order queries ──────────────────────────────────────────────────────── */
 

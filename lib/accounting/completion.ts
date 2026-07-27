@@ -15,7 +15,7 @@
  */
 import { createServiceClient } from '../supabase';
 import { postSaleDoc } from './dropship';
-import { recordMarketplaceCommission, recordCustomerPayment } from './money';
+import { recordMarketplaceCommission, recordMarketplaceServiceFee, recordCustomerPayment } from './money';
 import { SALE_DEBTOR } from './documents';
 import { computePromCommission } from '../prom-commission';
 import { computeRozetkaCommission } from '../rozetka-commission';
@@ -39,7 +39,7 @@ export async function applyCompletionEffects(docId: string, createdBy = 'system'
   // 2) Комісія маркетплейсу — рахуємо по позиціях САМЕ цієї посилки.
   const { data: order } = await db
     .from('orders')
-    .select('order_number, channel_code')
+    .select('order_number, channel_code, total_price, rozetka_data')
     .eq('id', doc.order_id)
     .single();
   const mp = order?.channel_code;
@@ -84,6 +84,30 @@ export async function applyCompletionEffects(docId: string, createdBy = 'system'
     }
   } catch (err) {
     alertAdmin(`Комісія ${mp} не записалась (РН ${docId}, замовлення #${order?.order_number})`, err);
+  }
+
+  // 3) Компенсація Rozetka Smart — фіксований збір за порогами СУМИ ЗАМОВЛЕННЯ (не посилки),
+  // разово на замовлення (order-level ключ; фактично Rozetka списує його при передачі
+  // перевізникові — проводимо разом з комісією при доставці, як і решту проводок Варіанта 3).
+  const isSmart = mp === 'rozetka'
+    && Boolean((order?.rozetka_data as Record<string, unknown> | null)?.is_smart);
+  if (isSmart) {
+    const orderTotal = Number(order?.total_price) || 0;
+    const smartFee = orderTotal < 400 ? 12 : orderTotal < 700 ? 18 : 30;
+    try {
+      await recordMarketplaceServiceFee({
+        orderId:        doc.order_id,
+        amount:         smartFee,
+        marketplace:    'rozetka',
+        description:    `Rozetka Smart — компенсація доставки (замовлення #${order?.order_number})`,
+        idempotencyKey: `smart-fee:rozetka:${doc.order_id}`,
+        businessDate:   bizDate,
+        createdBy,
+        meta:           { smart: true, order_total: orderTotal },
+      });
+    } catch (err) {
+      alertAdmin(`Smart-збір Rozetka не записався (замовлення #${order?.order_number})`, err);
+    }
   }
 }
 

@@ -1,11 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
-import { getRozetkaOrders, rozetkaOrderToOurFormat } from './rozetka-api';
+import { getRozetkaOrders, rozetkaOrderToOurFormat, ourStatusToRozetkaStatus, setRozetkaOrderStatus } from './rozetka-api';
 import { computeRozetkaCommission } from './rozetka-commission';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
+
+// Самолікування пушів статусів: пуш при підтвердженні/відправці — fire-and-forget і може
+// впасти на мережевому збої (реальний кейс 2026-07-27: «other side closed», замовлення висіло
+// в кабінеті як «Нове»). Тут для кожного вже відомого замовлення звіряємо фактичний статус на
+// Rozetka з тим, який мав бути за нашим, і допушуємо, якщо Rozetka відстає.
+// Ключ — цільовий статус Rozetka, значення — статуси, з яких його можна досягти допушем.
+const REPUSH_FROM: Record<number, number[]> = {
+  26: [1],          // Обробляється менеджером ← Нове замовлення
+  61: [1, 26],      // Заплановано передачу перевізникові (потрібен ТТН)
+  6:  [1, 26, 61],  // Замовлення виконано
+  13: [1, 26],      // Скасовано адміністратором
+};
 
 export async function syncRozetkaOrders() {
   // Pull orders created in the last 48 hours — covers any gaps between cron runs, same window
@@ -14,7 +26,7 @@ export async function syncRozetkaOrders() {
   const createdFrom = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const orders = await getRozetkaOrders({ createdFrom, statusGroup: 1 });
 
-  if (!orders.length) return { ok: true, created: 0, skipped: 0 };
+  if (!orders.length) return { ok: true, created: 0, skipped: 0, repushed: 0 };
 
   // Read the Rozetka commission fallback once for the whole batch (per-category rate wins;
   // this covers SKUs without a category rate). Mirrors the Prom sync.
@@ -23,15 +35,43 @@ export async function syncRozetkaOrders() {
 
   let created = 0;
   let skipped = 0;
+  let repushed = 0;
 
   for (const rzOrder of orders) {
     const { data: existing } = await db
       .from('orders')
-      .select('id')
+      .select('id, status, tracking_number, rozetka_data')
       .eq('rozetka_order_id', rzOrder.id)
       .maybeSingle();
 
-    if (existing) { skipped++; continue; }
+    if (existing) {
+      // Актуалізуємо ознаку Smart: редагування замовлення на Rozetka знімає Smart
+      // безповоротно — якщо не оновити, при доставці проведемо збір, якого не буде.
+      const storedData = (existing.rozetka_data ?? {}) as Record<string, unknown>;
+      const storedSmart = Boolean(storedData.is_smart);
+      const liveSmart = Boolean(rzOrder.is_smart);
+      if (storedSmart !== liveSmart) {
+        await db.from('orders')
+          .update({ rozetka_data: { ...storedData, is_smart: liveSmart } })
+          .eq('id', existing.id);
+      }
+      const desired = ourStatusToRozetkaStatus(existing.status);
+      const lagging = desired != null && (REPUSH_FROM[desired] ?? []).includes(rzOrder.status);
+      if (lagging && !(desired === 61 && !existing.tracking_number)) {
+        try {
+          await setRozetkaOrderStatus(
+            rzOrder.id, desired,
+            desired === 61 ? { ttn: existing.tracking_number ?? undefined } : undefined,
+          );
+          repushed++;
+          console.log(`[rozetka-sync] re-pushed status ${desired} for order ${rzOrder.id} (was ${rzOrder.status})`);
+        } catch (err) {
+          console.error('[rozetka-sync] status re-push failed:', rzOrder.id, err);
+        }
+      }
+      skipped++;
+      continue;
+    }
 
     const mapped = rozetkaOrderToOurFormat(rzOrder);
 
@@ -99,5 +139,5 @@ export async function syncRozetkaOrders() {
     }
   }
 
-  return { ok: true, created, skipped, total: orders.length };
+  return { ok: true, created, skipped, repushed, total: orders.length };
 }

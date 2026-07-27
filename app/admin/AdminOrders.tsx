@@ -1606,6 +1606,9 @@ export default function AdminOrders({
             const isFlashing = flashId === order.id;
 
             const isCancelled = order.status === 'cancelled';
+            // Rozetka Smart: безкоштовна доставка для покупця, компенсацію (12/18/30 грн)
+            // списують з нас. Будь-яке редагування складу замовлення знімає Smart безповоротно.
+            const isSmart = order.channel_code === 'rozetka' && Boolean(order.rozetka_data?.is_smart);
 
             return (
               <div key={order.id} id={`order-${order.id}`} style={{
@@ -1658,6 +1661,9 @@ export default function AdminOrders({
                       )}
                       {order.mp_refund_status && (
                         <span title={`Покупець відкрив повернення — ${order.mp_refund_status}`} style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>↩ повернення</span>
+                      )}
+                      {isSmart && (
+                        <span title="Rozetka Smart — безкоштовна доставка для покупця, компенсація списується з нас. НЕ редагуйте склад замовлення: будь-яка зміна знімає Smart безповоротно." style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 800, color: '#713F12', background: '#FDE047', border: '1px solid #FACC15', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>SMART</span>
                       )}
                       {order.company
                         ? <><span style={{ fontWeight: 600 }}>{order.company}</span><span style={{ color: 'var(--text-muted)' }}> · {order.contact}</span></>
@@ -1795,6 +1801,13 @@ export default function AdminOrders({
                     <div style={{ borderTop: '1px solid var(--border-light)', background: '#FEF2F2', padding: '10px 16px', fontSize: '13px', color: '#B91C1C', lineHeight: 1.5 }}>
                       <span style={{ fontWeight: 700 }}>↩ Покупець відкрив повернення на маркетплейсі — статус: {order.mp_refund_status}.</span>{' '}
                       <span>Прийміть товар і оформіть «↩ Повернення» в цій картці — це сторнує виручку, COGS і комісію.</span>
+                    </div>
+                  )}
+                  {/* Попередження Rozetka Smart: редагування складу замовлення знімає Smart безповоротно */}
+                  {isSmart && !isCancelled && (
+                    <div style={{ borderTop: '1px solid var(--border-light)', background: '#FEFCE8', padding: '10px 16px', fontSize: '13px', color: '#713F12', lineHeight: 1.5 }}>
+                      <span style={{ fontWeight: 700 }}>⚡ Замовлення Rozetka Smart.</span>{' '}
+                      <span>Не змінюйте кількість і склад позицій — будь-яке редагування знімає Smart безповоротно (покупець втратить безкоштовну доставку). Компенсація доставки ({order.total_price < 400 ? 12 : order.total_price < 700 ? 18 : 30} ₴) буде проведена автоматично при доставці.</span>
                     </div>
                   )}
                   {/* Шапка розгорнутого замовлення — новий дизайн */}

@@ -41,13 +41,17 @@ export async function GET() {
       .select('id, slug, name, rozetka_category_id, rozetka_commission_pct, rozetka_markup_pct')
       .order('sort_order')
       .range(from, to)),
+    // ВАЖЛИВО: вимкнені (on_rozetka=false) товари НЕ прибираємо з фіда, а віддаємо з
+    // available="false" + залишком 0. Зникнення оффера з фіда Rozetka трактує як «немає
+    // даних» і лишає картку в останньому стані (реальний кейс: 38 карток Polifarb місяць
+    // висіли активними по застарілій ціні). Фід — єдине джерело правди для кабінету.
     fetchAllRows<Product>((from, to) => db.from('products').select(`
       sku, name, rozetka_name, brand, category_slug, image, color, volume,
       on_rozetka, rozetka_markup_pct, rozetka_smart,
       description, description_full, description_ru, description_full_ru,
       stock:product_stock(price_retail, price_cost, price_old, stock_qty, stock_status),
       characteristics:product_characteristics(label, value, sort_order)
-    `).eq('is_active', true).eq('on_rozetka', true).order('sort_order').range(from, to)),
+    `).eq('is_active', true).order('sort_order').range(from, to)),
   ]);
 
   function rzPrice(retail: number, commission: number, markup: number): number {
@@ -124,7 +128,9 @@ export async function GET() {
     // Same "in stock" rule as the storefront (ShopClient/CatalogClient) — suppliers report a
     // binary in_stock/out_of_stock status, not exact counts, so stock_qty alone is unreliable.
     const rawQty  = Math.max(0, Math.floor(Number(stock.stock_qty) || 0));
-    const inStock = stock.stock_status === 'in_stock' || rawQty >= 1;
+    // Вимкнений для Rozetka товар = «недоступний», незалежно від фактичного залишку.
+    const enabled = p.on_rozetka === true;
+    const inStock = enabled && (stock.stock_status === 'in_stock' || rawQty >= 1);
     const available = inStock ? 'true' : 'false';
     // Rozetka requires a real positive stock_quantity to actually list an offer as buyable —
     // available="true" with quantity 0 (or the tag omitted) is NOT enough, confirmed against a

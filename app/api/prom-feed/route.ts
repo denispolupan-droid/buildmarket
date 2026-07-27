@@ -291,9 +291,11 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client, preserves prior field access
     fetchAllRows<any>((f, t) => serviceClient
       .from('products')
-      .select('sku, name, name_ru, brand, category_slug, volume, description, description_full, description_ru, description_full_ru, image, keywords, keywords_ru, min_order, prom_portal_url, prom_markup_pct')
+      // ВАЖЛИВО: вимкнені (on_prom=false) товари НЕ прибираємо з фіда, а віддаємо з
+      // available="false" + залишком 0 — зникнення оффера з фіда Prom трактує як «немає
+      // даних» і лишає оголошення в останньому стані. Фід — єдине джерело правди.
+      .select('sku, name, name_ru, brand, category_slug, volume, description, description_full, description_ru, description_full_ru, image, keywords, keywords_ru, min_order, prom_portal_url, prom_markup_pct, on_prom')
       .eq('is_active', true)
-      .eq('on_prom', true)
       .order('sort_order')
       .range(f, t)),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client, preserves prior field access
@@ -400,8 +402,10 @@ export async function GET(request: NextRequest) {
       }
       const hasDiscount = promPriceOld != null && promPriceOld > price;
 
-      const available = s.stock_status === 'in_stock' ? 'true' : 'false';
-      const qty       = s.stock_qty ?? 0;
+      // Вимкнений для Prom товар = «недоступний», незалежно від фактичного залишку.
+      const enabled   = (p as { on_prom?: boolean | null }).on_prom === true;
+      const available = enabled && s.stock_status === 'in_stock' ? 'true' : 'false';
+      const qty       = enabled ? (s.stock_qty ?? 0) : 0;
       const productPortalUrl = (p as { prom_portal_url?: string | null }).prom_portal_url;
       const groupId = productPortalUrl && virtualCatMap.has(productPortalUrl)
         ? virtualCatMap.get(productPortalUrl)!

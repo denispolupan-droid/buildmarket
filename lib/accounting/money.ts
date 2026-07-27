@@ -199,6 +199,39 @@ export async function recordMarketplaceCommission(params: {
 }
 
 /**
+ * Сервісний збір маркетплейсу поверх комісії (наразі — компенсація Rozetka Smart:
+ * 12/18/30 грн з ПДВ за порогами суми замовлення, списується при передачі перевізникові).
+ * Той самий рахунок marketplace_fee, що й комісія, — у звітах це витрата площадки; окрема
+ * функція, щоб опис і ключ ідемпотентності не маскувались під відсоткову комісію.
+ * Ідемпотентно за idempotencyKey (order-level — збір разово на замовлення).
+ */
+export async function recordMarketplaceServiceFee(params: {
+  orderId:        string;
+  amount:         number;
+  marketplace:    string;
+  description:    string;
+  idempotencyKey: string;
+  businessDate?:  string;
+  createdBy?:     string;
+  meta?:          Record<string, unknown>;
+}): Promise<string> {
+  return recordTxn({
+    debitAccount:   'marketplace_fee',
+    debitParty:     params.marketplace,
+    creditAccount:  'marketplace_balance',
+    creditParty:    params.marketplace,
+    amount:         params.amount,
+    businessDate:   params.businessDate,
+    docType:        'commission',
+    orderId:        params.orderId,
+    description:    params.description,
+    idempotencyKey: params.idempotencyKey,
+    createdBy:      params.createdBy,
+    meta:           { marketplace: params.marketplace, auto: true, ...(params.meta ?? {}) },
+  });
+}
+
+/**
  * Сторно комісії маркетплейсу при поверненні: дзеркально до recordMarketplaceCommission —
  * дебет marketplace_balance / кредит marketplace_fee (площадка повертає комісію за
  * повернений товар). Ідемпотентно за idempotencyKey (per-return-doc).
