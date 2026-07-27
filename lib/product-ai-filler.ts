@@ -18,6 +18,7 @@ export type AiFillEvent =
   | { type: 'done'; done: number; errors: number };
 
 interface AiContent {
+  name_ru: string;
   description_ua: string;
   description_ru: string;
   description_full_ua: string;
@@ -78,6 +79,7 @@ function buildPrompt(
 - Поточний короткий опис: ${product.description ?? ''}
 ${labelsHint}
 ВИМОГИ:
+0. name_ru — назва товару російською мовою (природний переклад назви UA). Бренди, артикули, торгові марки та всі числа/одиниці лишай БЕЗ змін; перекладай лише загальні слова (тип товару, кольори, властивості). Без кальки.
 1. description_ua — короткий опис 150-220 символів. Конкретно, без води. Пояснює ЩО це і ДЛЯ ЧОГО.
 2. description_ru — те саме росiйською мовою.
 3. description_full_ua — розгорнутий SEO-опис товару 1400-2400 символів у фірмовому стилі магазину FIXLINE. Кілька абзаців звичайного тексту (БЕЗ маркованих списків, БЕЗ заголовків), розділених порожнім рядком. ОБОВ'ЯЗКОВА структура — саме в такому порядку:
@@ -97,6 +99,7 @@ ${labelsHint}
 
 ВІДПОВІДЬ — тільки валідний JSON без markdown, без пояснень:
 {
+  "name_ru": "...",
   "description_ua": "...",
   "description_ru": "...",
   "description_full_ua": "...",
@@ -184,6 +187,12 @@ async function fillOne(
 
   // Build product update object — only include selected fields
   const update: Record<string, string | null> = {};
+  // Рос. назва — заповнюємо ЛИШЕ якщо порожня (не чіпаємо вже перекладені/ручні).
+  // Так новий товар перестає висіти в пробілі «немає рос. назви», а існуючі
+  // назви лишаються недоторканими.
+  if (!product.name_ru?.trim() && data.name_ru?.trim()) {
+    update.name_ru = data.name_ru.trim();
+  }
   if (f.description) {
     update.description    = data.description_ua;
     update.description_ru = data.description_ru;
