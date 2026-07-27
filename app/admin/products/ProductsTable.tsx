@@ -6,6 +6,7 @@ import { Search, Edit, Package, AlertCircle, Wand2, Image as ImageIcon } from 'l
 import type { ProductFull, Category } from '../../../types';
 import AiFillModal from './AiFillModal';
 import BrandLogosModal from './BrandLogosModal';
+import BulkActionsMenu from './BulkActionsMenu';
 
 type BrandLogoEntry = { logoUrl: string; showOnHome: boolean };
 
@@ -291,6 +292,14 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
             >
               Зняти вибір
             </button>
+          )}
+          {someSelected && (
+            <BulkActionsMenu
+              skus={Array.from(selected)}
+              categories={categories}
+              brands={brands}
+              onDone={() => { setSelected(new Set()); setFieldOverrides({}); }}
+            />
           )}
           <button
             onClick={() => someSelected && setShowAiFill(true)}
