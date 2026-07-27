@@ -37,15 +37,19 @@ async function getCategoryLabels(supabase: ReturnType<typeof db>, categorySlug: 
 
   if (!data?.length) return [];
 
-  // Count label frequency and return top labels sorted by frequency
-  const counts: Record<string, number> = {};
+  // Рахуємо частоту ярликів, згортаючи варіанти апострофа ("Об'єм"/"Об`єм")
+  // в один ключ — інакше в підказку летять дублі, а AI повторює їх у товарі.
+  const canonKey = (s: string) => s.replace(/['`´ʼ']/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
+  const counts: Record<string, { n: number; label: string }> = {};
   for (const row of data) {
-    counts[row.label] = (counts[row.label] ?? 0) + 1;
+    const key = canonKey(row.label);
+    if (!counts[key]) counts[key] = { n: 0, label: row.label };
+    counts[key].n += 1;
   }
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
+  return Object.values(counts)
+    .sort((a, b) => b.n - a.n)
     .slice(0, 15)
-    .map(([label]) => label);
+    .map(c => c.label);
 }
 
 function buildPrompt(
@@ -88,7 +92,8 @@ ${labelsHint}
 4. description_full_ru — те саме російською мовою, з тією Ж структурою і тими Ж обов'язковими фінальними абзацами. Міста в блоці замовлення російською: "Киев, Харьков, Днепр, Одессу, Львов и другие города", заклик: "Оформляйте заказ в интернет-магазине FIXLINE...".
 5. keywords_ua — 12-18 пошукових фраз через кому. Включай: назву бренду, тип товару, синоніми, "купити [назва]", "[назва] ціна", "[назва] оптом", "[назва] Київ". Все малими літерами.
 6. keywords_ru — те саме росiйською: 12-18 фраз через кому з "купить", "цена", "оптом".
-7. characteristics — масив технічних характеристик товару. Від 6 до 14 рядків. Кожен рядок: label (назва параметра) і value (значення).${categoryLabels.length > 0 ? ' ОБОВ\'ЯЗКОВО використовуй стандартні ярлики з переліку вище де це доречно.' : ''} Витягни реальні технічні дані з назви товару. Порядок: спочатку специфічні параметри, останніми — Бренд та Країна виробника.
+7. characteristics — масив технічних характеристик товару. Від 6 до 14 рядків. Кожен рядок: label (назва параметра) і value (значення).${categoryLabels.length > 0 ? ' Використовуй стандартні ярлики з переліку вище де це доречно.' : ''} Витягни реальні технічні дані з назви товару. Порядок: спочатку специфічні параметри, останніми — Бренд та Країна виробника.
+   БЕЗ ДУБЛІВ: кожен параметр — РІВНО ОДИН рядок. НЕ створюй синонімічних ярликів на той самий показник (обери щось одне: або «Основа», або «Матеріал»; або «Тип», або «Область застосування»; об'єм/вагу вкажи один раз). В усіх ярликах вживай той самий звичайний апостроф (Об'єм); не використовуй зворотний апостроф-гравіс.
 
 ВІДПОВІДЬ — тільки валідний JSON без markdown, без пояснень:
 {
@@ -198,9 +203,21 @@ async function fillOne(
   }
 
   if (f.characteristics && data.characteristics?.length) {
+    // Дедуп ярликів: у каталозі намішані різні апострофи ("Об'єм"/"Об`єм") і
+    // синоніми, тож AI інколи дає два рядки на той самий параметр. Нормалізуємо
+    // ярлик (єдиний апостроф, регістр, пробіли) і лишаємо перший рядок кожного.
+    const normLabel = (s: string) => s.toLowerCase().replace(/['`´ʼ']/g, "'").replace(/\s+/g, ' ').trim();
+    const seen = new Set<string>();
+    const uniqueChars = data.characteristics.filter(c => {
+      const key = normLabel(c.label ?? '');
+      if (!key || !c.value || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
     await supabase.from('product_characteristics').delete().eq('product_sku', product.sku);
     const { error } = await supabase.from('product_characteristics').insert(
-      data.characteristics.map((c, i) => ({
+      uniqueChars.map((c, i) => ({
         product_sku: product.sku,
         label: c.label,
         value: c.value,
