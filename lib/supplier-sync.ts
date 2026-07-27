@@ -90,10 +90,18 @@ function parseSmartCsv(buffer: Buffer): ParsedRow[] {
       }
     }
 
-    // Назва товару — перша непорожня колонка ліворуч від артикулу
+    // Назва товару — перша непорожня колонка ліворуч від артикулу;
+    // якщо ліворуч нічого (формат «код, назва, ціна» — напр. Google Sheets ЗРХ) —
+    // перша ТЕКСТОВА колонка праворуч від артикулу (не ціна і не кількість).
     let sample_name: string | undefined;
     for (let i = skuIdx - 1; i >= 0; i--) {
       if (cells[i]) { sample_name = cells[i]; break; }
+    }
+    if (!sample_name) {
+      for (let i = skuIdx + 1; i < cells.length; i++) {
+        if (i === priceColIdx) continue;
+        if (cells[i] && /[a-zа-яіїєґё]/i.test(cells[i])) { sample_name = cells[i]; break; }
+      }
     }
 
     rows.push({ supplier_sku, price_in, stock_qty, sample_name });
