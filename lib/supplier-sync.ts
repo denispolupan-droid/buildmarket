@@ -551,6 +551,28 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
       .upsert(unmappedBatch, { onConflict: 'supplier_id,supplier_sku' });
   }
 
+  // 6b. Чистимо чергу немаплених від кодів, яких БІЛЬШЕ НЕМАЄ у свіжому прайсі.
+  //     Інакше черга накопичує застарілі коди з усіх минулих синків, і товар
+  //     можна помилково прив'язати до «мертвого» коду — синк потім не має звідки
+  //     взяти ціну, картка лишається порожньою. Тільки для повного файлу
+  //     (той самий 60%-guard, що й у mark_absent), щоб битий файл не вичистив чергу.
+  const isFullFile = prevRows === null || parsed.length >= prevRows * 0.6;
+  if (isFullFile) {
+    const fileCodes = new Set(parsed.map(r => r.supplier_sku));
+    const { data: queued } = await supabase
+      .from('supplier_unmapped_skus')
+      .select('supplier_sku')
+      .eq('supplier_id', supplierId);
+    const stale = (queued ?? []).map(r => r.supplier_sku).filter(s => !fileCodes.has(s));
+    for (let i = 0; i < stale.length; i += 200) {
+      await supabase
+        .from('supplier_unmapped_skus')
+        .delete()
+        .eq('supplier_id', supplierId)
+        .in('supplier_sku', stale.slice(i, i + 200));
+    }
+  }
+
   // 7. Персистуємо fallback-маппінги в supplier_sku_map (щоб не залежати від product_stock)
   if (fallbackMappings.length > 0) {
     await supabase
