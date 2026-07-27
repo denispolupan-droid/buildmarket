@@ -63,9 +63,11 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
     return counts;
   }, [withGaps]);
 
-  // Кнопка запускає генерацію опис+FAQ (укр) + переклад (рос) — для товарів з цими пробілами
+  // Кнопка запускає ЄДИНИЙ рушій, що заповнює ВЕСЬ контент (опис, keywords,
+  // характеристики, FAQ, рос. назва + переклади). Придатні — усі з будь-яким
+  // пробілом, крім фото (його завантажують вручну).
   const enrichable = useMemo(
-    () => visible.filter(i => i.gaps.thinDesc || i.gaps.noFaq || i.gaps.ruDesc),
+    () => visible.filter(i => i.gaps.thinDesc || i.gaps.noFaq || i.gaps.ruDesc || i.gaps.noRu || i.gaps.noKeywords || i.gaps.noChars),
     [visible],
   );
   const selectedEnrichable = enrichable.filter(i => selected.has(i.sku));
@@ -329,7 +331,7 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
       {/* Панель запуску */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 16px', background: 'var(--bg-card, #fff)', border: '1px solid #E2E8F0', borderRadius: 10, marginBottom: 16 }}>
         <button onClick={selectAllVisible} disabled={running} style={btnGhost}>
-          Вибрати всі з описом/FAQ ({enrichable.length})
+          Вибрати всі з пробілами ({enrichable.length})
         </button>
         <button onClick={() => setSelected(new Set())} disabled={running || !selected.size} style={btnGhost}>
           Скинути
@@ -340,7 +342,7 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
         </span>
         {!running ? (
           <button onClick={start} disabled={!selectedEnrichable.length || !faqTableReady} style={{ ...btnPrimary, opacity: selectedEnrichable.length && faqTableReady ? 1 : 0.5 }}>
-            ▶ Згенерувати опис + FAQ
+            ▶ Згенерувати повну картку
           </button>
         ) : (
           <button onClick={() => abortRef.current?.abort()} style={btnDanger}>■ Зупинити</button>
@@ -424,7 +426,7 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
       </div>
 
       <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 12 }}>
-        «Опис + FAQ» генеруються пакетно тут одразу двома мовами (укр + рос). Рос. назва, keywords і характеристики — AI-кнопкою в картці товару. Фото — вручну.
+        Тут генерується ВЕСЬ контент картки одним рушієм: опис, keywords, характеристики, FAQ і рос. назва — одразу двома мовами (укр + рос). Та сама генерація доступна кнопкою в картці товару (для одного товару). Фото — вручну.
       </p>
     </div>
   );

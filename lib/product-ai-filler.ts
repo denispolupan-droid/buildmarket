@@ -1,7 +1,15 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
+import {
+  generateUA, translateRU, applyContent, getCategoryLabels,
+  type GenProduct, type GeneratedRU,
+} from './product-content-gen';
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// Кнопка «AI заповнення» в картці товару — ДРУГИЙ вхід у той самий рушій
+// генерації (lib/product-content-gen), що й розділ SEO. Тут — паралельний пул +
+// стрім AiFillEvent. Дубля промпту немає: опис/keywords/характеристики/FAQ/name_ru
+// генеруються спільним core. Відмінність від SEO-входу: користувач явно обирає
+// поля (чекбокси) → ці поля ПЕРЕГЕНЕРОВУЮТЬСЯ (перезапис), а FAQ і name_ru
+// дозаповнюються лише якщо порожні.
 
 function db() {
   return createClient(
@@ -17,136 +25,6 @@ export type AiFillEvent =
   | { type: 'error'; sku: string; error: string }
   | { type: 'done'; done: number; errors: number };
 
-interface AiContent {
-  name_ru: string;
-  description_ua: string;
-  description_ru: string;
-  description_full_ua: string;
-  description_full_ru: string;
-  keywords_ua: string;
-  keywords_ru: string;
-  characteristics: { label: string; value: string }[];
-}
-
-async function getCategoryLabels(supabase: ReturnType<typeof db>, categorySlug: string | null): Promise<string[]> {
-  if (!categorySlug) return [];
-  const { data } = await supabase
-    .from('product_characteristics')
-    .select('label, product_sku, products!inner(category_slug)')
-    .eq('products.category_slug', categorySlug)
-    .limit(200);
-
-  if (!data?.length) return [];
-
-  // Рахуємо частоту ярликів, згортаючи варіанти апострофа ("Об'єм"/"Об`єм")
-  // в один ключ — інакше в підказку летять дублі, а AI повторює їх у товарі.
-  const canonKey = (s: string) => s.replace(/['`´ʼ']/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
-  const counts: Record<string, { n: number; label: string }> = {};
-  for (const row of data) {
-    const key = canonKey(row.label);
-    if (!counts[key]) counts[key] = { n: 0, label: row.label };
-    counts[key].n += 1;
-  }
-  return Object.values(counts)
-    .sort((a, b) => b.n - a.n)
-    .slice(0, 15)
-    .map(c => c.label);
-}
-
-function buildPrompt(
-  product: {
-    name: string;
-    name_ru: string | null;
-    brand: string;
-    category_slug: string | null;
-    description: string | null;
-    description_ru: string | null;
-  },
-  categoryLabels: string[],
-): string {
-  const labelsHint = categoryLabels.length > 0
-    ? `\nСТАНДАРТНІ ЯРЛИКИ ХАРАКТЕРИСТИК ДЛЯ ЦІЄї КАТЕГОРІЇ (використовуй САМЕ ЦІ назви, якщо підходять):\n${categoryLabels.map(l => `  • ${l}`).join('\n')}\n`
-    : '';
-
-  return `Ти досвідчений SEO-копірайтер для українського B2B магазину будівельної хімії FIXLINE.
-Твоє завдання — написати якісний контент для картки товару.
-
-ТОВАР:
-- Назва (UA): ${product.name}
-- Назва (RU): ${product.name_ru ?? ''}
-- Бренд: ${product.brand}
-- Категорія: ${product.category_slug ?? ''}
-- Поточний короткий опис: ${product.description ?? ''}
-${labelsHint}
-ВИМОГИ:
-0. name_ru — назва товару російською мовою (природний переклад назви UA). Бренди, артикули, торгові марки та всі числа/одиниці лишай БЕЗ змін; перекладай лише загальні слова (тип товару, кольори, властивості). Без кальки.
-1. description_ua — короткий опис 150-220 символів. Конкретно, без води. Пояснює ЩО це і ДЛЯ ЧОГО.
-2. description_ru — те саме росiйською мовою.
-3. description_full_ua — розгорнутий SEO-опис товару 1400-2400 символів у фірмовому стилі магазину FIXLINE. Кілька абзаців звичайного тексту (БЕЗ маркованих списків, БЕЗ заголовків), розділених порожнім рядком. ОБОВ'ЯЗКОВА структура — саме в такому порядку:
-   а) Вступ: повна назва + фасування (об'єм/вага) + що це і головна властивість/призначення.
-   б) Застосування: колір/вигляд, для яких поверхонь і робіт, де саме використовують.
-   в) Технічні характеристики прозою (основа/склад, об'єм або вага, доречні параметри — час висихання, робочі температури, тиск тощо).
-   г) Умови нанесення та експлуатації — якщо доречно для цього типу товару.
-   д) Країна виробництва + головна перевага товару, зокрема коротке порівняння зі звичайними аналогами (чим цей кращий).
-   е) ПЕРЕДОСТАННІЙ абзац — про замовлення, дослівно за шаблоном (підстав тип товару малими літерами і назву): "Замовити [тип товару] [назва] можна з доставкою Новою Поштою по всій Україні — у Київ, Харків, Дніпро, Одесу, Львів та інші міста. Доступна оплата при отриманні або передоплата на зручних для вас умовах."
-   є) ОСТАННІЙ абзац — заклик, дослівно за шаблоном: "Оформлюйте замовлення в інтернет-магазині FIXLINE і отримайте якісний [за потреби — країна-прикметник, напр. німецький] продукт швидко та без зайвих клопотів."
-   ВАЖЛИВО: використовуй лише характеристики, що випливають з назви/категорії або є загальновідомими для цього типу товару; НЕ вигадуй точних числових значень, якщо не можеш їх обґрунтувати.
-4. description_full_ru — те саме російською мовою, з тією Ж структурою і тими Ж обов'язковими фінальними абзацами. Міста в блоці замовлення російською: "Киев, Харьков, Днепр, Одессу, Львов и другие города", заклик: "Оформляйте заказ в интернет-магазине FIXLINE...".
-5. keywords_ua — 12-18 пошукових фраз через кому. Включай: назву бренду, тип товару, синоніми, "купити [назва]", "[назва] ціна", "[назва] оптом", "[назва] Київ". Все малими літерами.
-6. keywords_ru — те саме росiйською: 12-18 фраз через кому з "купить", "цена", "оптом".
-7. characteristics — масив технічних характеристик товару. Від 6 до 14 рядків. Кожен рядок: label (назва параметра) і value (значення).${categoryLabels.length > 0 ? ' Використовуй стандартні ярлики з переліку вище де це доречно.' : ''} Витягни реальні технічні дані з назви товару. Порядок: спочатку специфічні параметри, останніми — Бренд та Країна виробника.
-   БЕЗ ДУБЛІВ: кожен параметр — РІВНО ОДИН рядок. НЕ створюй синонімічних ярликів на той самий показник (обери щось одне: або «Основа», або «Матеріал»; або «Тип», або «Область застосування»; об'єм/вагу вкажи один раз). В усіх ярликах вживай той самий звичайний апостроф (Об'єм); не використовуй зворотний апостроф-гравіс.
-
-ВІДПОВІДЬ — тільки валідний JSON без markdown, без пояснень:
-{
-  "name_ru": "...",
-  "description_ua": "...",
-  "description_ru": "...",
-  "description_full_ua": "...",
-  "description_full_ru": "...",
-  "keywords_ua": "...",
-  "keywords_ru": "...",
-  "characteristics": [
-    {"label": "Тип", "value": "..."},
-    {"label": "Бренд", "value": "..."},
-    {"label": "Країна виробника", "value": "..."}
-  ]
-}`;
-}
-
-// Таймаут на один товар: якщо AI-запит завис — валимо його з помилкою,
-// щоб не тримати слот пулу і не з'їсти весь бюджет функції одним товаром.
-const ITEM_TIMEOUT_MS = 90_000;
-
-async function generateContent(
-  product: {
-    name: string;
-    name_ru: string | null;
-    brand: string;
-    category_slug: string | null;
-    description: string | null;
-    description_ru: string | null;
-  },
-  categoryLabels: string[],
-): Promise<AiContent> {
-  const msg = await anthropic.messages.create(
-    {
-      model: 'claude-sonnet-4-6',
-      // Розгорнутий опис (UA+RU по 1400-2400 симв.) + короткий + keywords +
-      // характеристики не влазять у 2500 токенів — JSON обрізався б і не парсився.
-      max_tokens: 7000,
-      messages: [{ role: 'user', content: buildPrompt(product, categoryLabels) }],
-    },
-    { timeout: ITEM_TIMEOUT_MS },
-  );
-
-  const raw = (msg.content[0] as { type: string; text: string }).text;
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('JSON не знайдено у відповіді AI');
-
-  return JSON.parse(match[0]) as AiContent;
-}
-
 export type FillFields = {
   description?: boolean;
   description_full?: boolean;
@@ -161,6 +39,10 @@ const DEFAULT_FIELDS: Required<FillFields> = {
   characteristics: true,
 };
 
+// Opus-генерація важча за Sonnet; 4 паралельно тримає невеликі пачки < бюджету
+// функції. Великі пачки краще ганяти через розділ SEO (послідовно, gap-driven).
+const CONCURRENCY = 4;
+
 type ProductRow = {
   sku: string;
   name: string;
@@ -168,73 +50,47 @@ type ProductRow = {
   brand: string;
   category_slug: string | null;
   description: string | null;
-  description_ru: string | null;
+  description_full: string | null;
+  keywords: string | null;
 };
 
-// Скільки товарів обробляємо ПАРАЛЕЛЬНО. Кожен товар — важкий AI-запит (тепер із
-// розгорнутим UA+RU описом — ~40-60с), послідовно 20+ товарів не влазять у 300с
-// бюджету функції. Пул воркерів скорочує wall-time; 6 тримає ~20 товарів < 300с.
-const CONCURRENCY = 6;
-
-// Обробка одного товару: генерація + запис у БД. Кидає — якщо AI/БД впали.
 async function fillOne(
   supabase: ReturnType<typeof db>,
   product: ProductRow,
+  categoryName: string,
   categoryLabels: string[],
   f: Required<FillFields>,
 ): Promise<void> {
-  const data = await generateContent(product, categoryLabels);
+  const gp: GenProduct = {
+    sku: product.sku, name: product.name, name_ru: product.name_ru,
+    brand: product.brand, category_slug: product.category_slug, description: product.description,
+  };
 
-  // Build product update object — only include selected fields
-  const update: Record<string, string | null> = {};
-  // Рос. назва — заповнюємо ЛИШЕ якщо порожня (не чіпаємо вже перекладені/ручні).
-  // Так новий товар перестає висіти в пробілі «немає рос. назви», а існуючі
-  // назви лишаються недоторканими.
-  if (!product.name_ru?.trim() && data.name_ru?.trim()) {
-    update.name_ru = data.name_ru.trim();
-  }
-  if (f.description) {
-    update.description    = data.description_ua;
-    update.description_ru = data.description_ru;
-  }
-  if (f.description_full) {
-    update.description_full    = data.description_full_ua;
-    update.description_full_ru = data.description_full_ru;
-  }
-  if (f.keywords) {
-    update.keywords    = data.keywords_ua;
-    update.keywords_ru = data.keywords_ru;
-  }
+  const ua = await generateUA(gp, categoryName, categoryLabels);
+  let ru: GeneratedRU | null = null;
+  try { ru = await translateRU(ua); } catch { /* лишиться пробіл «рос. версія», доб'ється в SEO */ }
 
-  if (Object.keys(update).length > 0) {
-    const { error } = await supabase.from('products').update(update).eq('sku', product.sku);
-    if (error) throw error;
-  }
+  const [{ data: chars }, { data: faq }] = await Promise.all([
+    supabase.from('product_characteristics').select('product_sku').eq('product_sku', product.sku).limit(1),
+    supabase.from('product_faq').select('product_sku').eq('product_sku', product.sku).limit(1),
+  ]);
 
-  if (f.characteristics && data.characteristics?.length) {
-    // Дедуп ярликів: у каталозі намішані різні апострофи ("Об'єм"/"Об`єм") і
-    // синоніми, тож AI інколи дає два рядки на той самий параметр. Нормалізуємо
-    // ярлик (єдиний апостроф, регістр, пробіли) і лишаємо перший рядок кожного.
-    const normLabel = (s: string) => s.toLowerCase().replace(/['`´ʼ']/g, "'").replace(/\s+/g, ' ').trim();
-    const seen = new Set<string>();
-    const uniqueChars = data.characteristics.filter(c => {
-      const key = normLabel(c.label ?? '');
-      if (!key || !c.value || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-
-    await supabase.from('product_characteristics').delete().eq('product_sku', product.sku);
-    const { error } = await supabase.from('product_characteristics').insert(
-      uniqueChars.map((c, i) => ({
-        product_sku: product.sku,
-        label: c.label,
-        value: c.value,
-        sort_order: i + 1,
-      }))
-    );
-    if (error) throw error;
-  }
+  await applyContent(supabase, gp, ua, ru, {
+    // Обрані користувачем поля — перезаписуємо (regen); faq/name_ru дозаповнюємо лише якщо порожні.
+    fields: {
+      description: f.description, description_full: f.description_full,
+      keywords: f.keywords, characteristics: f.characteristics,
+      faq: true, name_ru: true,
+    },
+    regen: {
+      description: f.description, description_full: f.description_full,
+      keywords: f.keywords, characteristics: f.characteristics,
+    },
+    currentFull: product.description_full,
+    currentKeywords: product.keywords,
+    hasChars: !!chars?.length,
+    hasFaq: !!faq?.length,
+  });
 }
 
 export async function* fillProducts(skus: string[], fields?: FillFields): AsyncGenerator<AiFillEvent> {
@@ -243,7 +99,7 @@ export async function* fillProducts(skus: string[], fields?: FillFields): AsyncG
 
   const { data: products, error } = await supabase
     .from('products')
-    .select('sku, name, name_ru, brand, category_slug, description, description_ru')
+    .select('sku, name, name_ru, brand, category_slug, description, description_full, keywords')
     .in('sku', skus)
     .order('category_slug');  // group same category together
 
@@ -256,8 +112,9 @@ export async function* fillProducts(skus: string[], fields?: FillFields): AsyncG
 
   yield { type: 'start', total: products.length };
 
-  // Ярлики характеристик рахуємо ОДИН раз на кожну унікальну категорію наперед —
-  // так знімається послідовна залежність (кеш між ітераціями) і воркери незалежні.
+  // Назви категорій + топ-ярлики характеристик рахуємо ОДИН раз на категорію наперед.
+  const { data: categories } = await supabase.from('categories').select('slug, name');
+  const catName = new Map((categories ?? []).map(c => [c.slug, c.name]));
   const distinctCats = [...new Set(products.map(p => p.category_slug))];
   const labelsByCat = new Map<string | null, string[]>();
   await Promise.all(
@@ -279,7 +136,8 @@ export async function* fillProducts(skus: string[], fields?: FillFields): AsyncG
       const product = products![idx++];
       push({ type: 'progress', sku: product.sku, name: product.name, done, total: products!.length });
       try {
-        await fillOne(supabase, product, labelsByCat.get(product.category_slug) ?? [], f);
+        const categoryName = catName.get(product.category_slug ?? '') ?? product.category_slug ?? '';
+        await fillOne(supabase, product, categoryName, labelsByCat.get(product.category_slug) ?? [], f);
         done++;
         push({ type: 'result', sku: product.sku, name: product.name });
       } catch (err) {

@@ -4,12 +4,6 @@
 // Запуск: npx tsx --env-file=.env.local scripts/supabase/translate-enriched-ru.mts [--limit N]
 import { createClient } from '@supabase/supabase-js';
 import { appendFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
-import path from 'node:path';
-
-const enricher = await import(pathToFileURL(path.resolve('lib/catalog-enricher.ts')).href) as
-  typeof import('../../lib/catalog-enricher');
-const { translateEnrichment } = enricher;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -91,6 +85,43 @@ const FAQ_ONLY_SCHEMA = {
   required: ['faq_ru'],
   additionalProperties: false,
 };
+
+const DESC_FAQ_SCHEMA = {
+  type: 'object' as const,
+  properties: {
+    description_full_ru: { type: 'string' as const },
+    faq_ru: FAQ_ONLY_SCHEMA.properties.faq_ru,
+  },
+  required: ['description_full_ru', 'faq_ru'],
+  additionalProperties: false,
+};
+
+async function translateEnrichment(
+  descriptionFull: string,
+  faq: { q: string; a: string }[],
+): Promise<{ description_full_ru: string; faq_ru: { q: string; a: string }[] }> {
+  const message = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 8000,
+    output_config: { format: { type: 'json_schema', schema: DESC_FAQ_SCHEMA } },
+    messages: [{
+      role: 'user',
+      content: `Переведи текст о товаре с украинского на русский (аудитория — русскоязычные покупатели в Украине). Бренды, артикулы и числа не меняй; сохрани абзацы (пустая строка между ними); FAQ переведи попарно, количество пар не меняй.
+
+Полное описание:
+${descriptionFull}
+
+FAQ:
+${faq.map((f, i) => `${i + 1}. Q: ${f.q}\n   A: ${f.a}`).join('\n')}`,
+    }],
+  });
+  if (message.stop_reason !== 'end_turn') throw new Error(`translate stop_reason=${message.stop_reason}`);
+  const block = message.content.find(b => b.type === 'text');
+  if (!block || block.type !== 'text') throw new Error('translate: no text block');
+  const parsed = JSON.parse(block.text) as { description_full_ru: string; faq_ru: { q: string; a: string }[] };
+  if (parsed.faq_ru.length !== faq.length) throw new Error(`faq count mismatch ${parsed.faq_ru.length} != ${faq.length}`);
+  return parsed;
+}
 
 async function translateFaqOnly(faq: { q: string; a: string }[]): Promise<{ q: string; a: string }[]> {
   const message = await anthropic.messages.create({
