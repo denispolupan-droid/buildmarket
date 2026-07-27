@@ -241,7 +241,7 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
           {!running && !finished && (
             <div style={{ fontSize: 13, color: '#64748B', marginBottom: 10 }}>
               {selected.length > 5 && (
-                <span style={{ color: '#F59E0B' }}>⏱ Орієнтовний час: ~{Math.max(1, Math.ceil(selected.length * 9 / 4 / 60))} хв. (по 4 паралельно)</span>
+                <span style={{ color: '#F59E0B' }}>⏱ Орієнтовний час: ~{Math.max(1, Math.ceil(selected.length * 50 / 6 / 60))} хв. (по 6 паралельно)</span>
               )}
             </div>
           )}
