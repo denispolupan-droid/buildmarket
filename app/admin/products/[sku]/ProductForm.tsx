@@ -157,6 +157,11 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
   const searchParams = useSearchParams();
   const [saving, setSaving] = useState(false);
 
+  // Куди повертатись після збереження/видалення: список З ТИМИ Ж фільтрами, звідки
+  // зайшли (передається у ?back=…). Фолбек — головна розділу.
+  const backParam = searchParams.get('back');
+  const backUrl = backParam ? `/admin/products${backParam}` : '/admin/products';
+
   const [sku, setSku] = useState(product?.sku ?? (isNew ? (searchParams.get('sku') ?? '') : ''));
   const [name, setName] = useState(product?.name ?? (isNew ? (searchParams.get('name') ?? '') : ''));
   const [nameRu, setNameRu] = useState(product?.name_ru ?? '');
@@ -547,7 +552,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
       setSaving(false);
 
       setTimeout(() => {
-        router.push('/admin/products');
+        router.push(backUrl);
       }, 800);
     } catch (e) {
       showToast('Помилка з\'єднання', 'error');
@@ -562,7 +567,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
     try {
       const res = await fetch(`/api/admin/products?sku=${sku}`, { method: 'DELETE' });
       if (res.ok) {
-        router.push('/admin/products');
+        router.push(backUrl);
       } else {
         showToast('Помилка видалення', 'error');
         setSaving(false);

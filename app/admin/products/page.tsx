@@ -1,4 +1,5 @@
-﻿import { createClient } from '@supabase/supabase-js';
+﻿import { Suspense } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import { fetchAllRows } from '../../../lib/db-paginate';
@@ -102,7 +103,10 @@ export default async function AdminProductsPage() {
           </Link>
         </div>
       </div>
-      <ProductsTable products={products ?? []} categories={categories ?? []} brandLogos={brandLogos} supplierSkus={[...supplierSkuSet]} />
+      {/* Suspense — бо ProductsTable читає useSearchParams (ініціалізація фільтрів з URL) */}
+      <Suspense fallback={null}>
+        <ProductsTable products={products ?? []} categories={categories ?? []} brandLogos={brandLogos} supplierSkus={[...supplierSkuSet]} />
+      </Suspense>
     </div>
   );
 }

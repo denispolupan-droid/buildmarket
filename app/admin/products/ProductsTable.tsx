@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Search, Edit, Package, AlertCircle, Wand2, Image as ImageIcon } from 'lucide-react';
 import type { ProductFull, Category } from '../../../types';
 import AiFillModal from './AiFillModal';
@@ -47,11 +48,33 @@ function SeoBadge({ p }: { p: ProductFull }) {
 }
 
 export default function ProductsTable({ products, categories, brandLogos = {}, supplierSkus = [] }: Props) {
-  const [search, setSearch]               = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
-  const [filterBrand, setFilterBrand]     = useState('');
-  const [filterStatus, setFilterStatus]   = useState('');
+  // Фільтри ініціалізуємо з URL — щоб при поверненні з картки товару
+  // (router.push назад із ?back=…) відновлювався той самий вигляд списку.
+  const initialParams = useSearchParams();
+  const [search, setSearch]               = useState(initialParams.get('q') ?? '');
+  const [filterCategory, setFilterCategory] = useState(initialParams.get('cat') ?? '');
+  const [filterBrand, setFilterBrand]     = useState(initialParams.get('brand') ?? '');
+  const [filterStatus, setFilterStatus]   = useState(initialParams.get('status') ?? '');
   const [visibleCount, setVisibleCount]   = useState(PAGE_SIZE);
+
+  // Рядок запиту, що відображає поточні фільтри. Використовується і для дзеркалення
+  // в адресний рядок, і для параметра ?back= у посиланні на картку.
+  const listQuery = useMemo(() => {
+    const p = new URLSearchParams();
+    if (search.trim())   p.set('q', search.trim());
+    if (filterCategory)  p.set('cat', filterCategory);
+    if (filterBrand)     p.set('brand', filterBrand);
+    if (filterStatus)    p.set('status', filterStatus);
+    const s = p.toString();
+    return s ? `?${s}` : '';
+  }, [search, filterCategory, filterBrand, filterStatus]);
+
+  // Дзеркалимо фільтри в адресний рядок БЕЗ навігації (сторінка — серверний
+  // компонент; router.replace смикав би повторний фетч усіх товарів на кожну
+  // літеру). history.replaceState лише оновлює URL, а список фільтрується клієнтом.
+  useEffect(() => {
+    window.history.replaceState(window.history.state, '', `/admin/products${listQuery}`);
+  }, [listQuery]);
   type BoolField = 'is_active' | 'is_hit' | 'is_new';
   const [fieldOverrides, setFieldOverrides] = useState<Record<string, Partial<Record<BoolField, boolean>>>>({});
   const [toggling, setToggling]           = useState<Set<string>>(new Set());
@@ -452,7 +475,7 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                     <Link
-                      href={`/admin/products/${p.sku}`}
+                      href={`/admin/products/${p.sku}${listQuery ? `?back=${encodeURIComponent(listQuery)}` : ''}`}
                       style={{
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                         width: '36px', height: '36px', borderRadius: '8px',
