@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
     ac?: string;
     characteristics?: string[];
     values?: string[];
+    labels?: string[];
   } = {};
 
   if (brand) {
@@ -65,6 +66,28 @@ export async function GET(req: NextRequest) {
         result.characteristics = sorted.slice(0, 15);
       }
     }
+  }
+
+  // Список існуючих ярликів характеристик (для автокомпліту «фільтра»):
+  // спершу популярні в цій категорії, далі — решта по всьому каталогу.
+  if (req.nextUrl.searchParams.get('labels')) {
+    const { data: allChars } = await serviceClient
+      .from('product_characteristics')
+      .select('label')
+      .limit(4000);
+    const counts: Record<string, number> = {};
+    (allChars ?? []).forEach((c: { label: string }) => {
+      const l = c.label?.trim();
+      if (l) counts[l] = (counts[l] || 0) + 1;
+    });
+    const globalSorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([l]) => l);
+    const merged: string[] = [];
+    const seen = new Set<string>();
+    for (const l of [...(result.characteristics ?? []), ...globalSorted]) {
+      const k = l.toLowerCase();
+      if (!seen.has(k)) { seen.add(k); merged.push(l); }
+    }
+    result.labels = merged.slice(0, 150);
   }
 
   const label = req.nextUrl.searchParams.get('label');

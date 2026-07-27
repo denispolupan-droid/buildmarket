@@ -6,6 +6,7 @@ import { Save, Trash2, Plus, X, Loader2, Wand2, Upload } from 'lucide-react';
 import { showToast } from '../../../../lib/toast';
 import type { ProductFull, Category, ProductCharacteristic } from '../../../../types';
 import CharValueInput from './CharValueInput';
+import CharLabelInput from './CharLabelInput';
 
 type Props = {
   product: ProductFull | null;
@@ -977,12 +978,11 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {chars.map((char, i) => (
               <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <input
-                  type="text"
+                <CharLabelInput
+                  categorySlug={categorySlug}
                   value={char.label}
-                  onChange={e => updateChar(i, 'label', e.target.value)}
-                  placeholder="Назва характеристики"
-                  style={{ ...inputStyle, flex: 1 }}
+                  onChange={val => updateChar(i, 'label', val)}
+                  style={inputStyle}
                 />
                 <CharValueInput
                   label={char.label}
