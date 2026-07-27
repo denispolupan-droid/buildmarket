@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { deleteProducts } from '../../../../../lib/product-delete';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,20 +44,10 @@ export async function POST(req: NextRequest) {
 
   /* ── Видалення ──────────────────────────────────────────────────────────── */
   if (body.action === 'delete') {
-    for (const part of chunked(skus)) {
-      // Спочатку залежні таблиці — інакше FK не дадуть видалити товар
-      await Promise.allSettled([
-        serviceClient.from('product_characteristics').delete().in('product_sku', part),
-        serviceClient.from('product_stock').delete().in('sku', part),
-        serviceClient.from('supplier_stock').delete().in('sku', part),
-        serviceClient.from('supplier_sku_map').delete().in('our_sku', part),
-        serviceClient.from('product_reviews').delete().in('product_sku', part),
-      ]);
-      const { error } = await serviceClient.from('products').delete().in('sku', part);
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-    revalidateTag('products', 'max');
-    return NextResponse.json({ ok: true, action: 'delete', count: skus.length });
+    // Товари з обліковою історією не видаляються — див. lib/product-delete
+    const { deleted, blocked } = await deleteProducts(skus);
+    if (deleted.length) revalidateTag('products', 'max');
+    return NextResponse.json({ ok: true, action: 'delete', deleted: deleted.length, blocked });
   }
 
   /* ── Оновлення полів ────────────────────────────────────────────────────── */

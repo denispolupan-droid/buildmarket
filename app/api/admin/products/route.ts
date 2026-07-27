@@ -3,6 +3,7 @@ import { revalidateTag, revalidatePath } from 'next/cache';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { generateProductSlug } from '../../../../lib/seo/slug';
+import { deleteProducts } from '../../../../lib/product-delete';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -242,22 +243,14 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'SKU required' }, { status: 400 });
   }
 
-  // Видаляємо всі пов'язані записи перед продуктом
-  await Promise.allSettled([
-    serviceClient.from('product_characteristics').delete().eq('product_sku', sku),
-    serviceClient.from('product_stock').delete().eq('sku', sku),
-    serviceClient.from('supplier_stock').delete().eq('sku', sku),
-    serviceClient.from('supplier_sku_map').delete().eq('our_sku', sku),
-    serviceClient.from('product_reviews').delete().eq('product_sku', sku),
-  ]);
-
-  const { error } = await serviceClient
-    .from('products')
-    .delete()
-    .eq('sku', sku);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  // Спільна логіка з масовим видаленням: чистить супутні таблиці й не дає
+  // видалити товар з обліковою історією (див. lib/product-delete)
+  const { blocked } = await deleteProducts([sku]);
+  if (blocked.length) {
+    return NextResponse.json(
+      { error: `Товар не можна видалити — ${blocked[0].reason}. Деактивуйте його замість видалення.` },
+      { status: 409 },
+    );
   }
 
   revalidateTag('products', 'max');

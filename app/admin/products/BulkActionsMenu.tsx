@@ -15,6 +15,8 @@ type Props = {
 
 type PromptKind = 'category' | 'brand' | 'prom_markup_pct' | 'rozetka_markup_pct' | 'delete';
 
+type Blocked = { sku: string; reason: string };
+
 const itemStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 10, width: '100%',
   padding: '9px 14px', border: 'none', background: 'transparent',
@@ -33,6 +35,7 @@ export default function BulkActionsMenu({ skus, categories, brands, onDone }: Pr
   const [error, setError]   = useState<string | null>(null);
   const [prompt, setPrompt] = useState<PromptKind | null>(null);
   const [value, setValue]   = useState('');
+  const [report, setReport] = useState<{ deleted: number; blocked: Blocked[] } | null>(null);
 
   const n = skus.length;
 
@@ -45,8 +48,17 @@ export default function BulkActionsMenu({ skus, categories, brands, onDone }: Pr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ skus, ...payload }),
       });
-      const json = await res.json() as { error?: string };
+      const json = await res.json() as { error?: string; deleted?: number; blocked?: Blocked[] };
       if (!res.ok) { setError(json.error ?? 'Помилка'); return; }
+
+      // Частина товарів могла не видалитись через облікову історію — не закриваємо
+      // вікно мовчки, а показуємо список із причинами.
+      if (json.blocked?.length) {
+        setReport({ deleted: json.deleted ?? 0, blocked: json.blocked });
+        router.refresh();
+        return;
+      }
+
       setPrompt(null);
       setOpen(false);
       onDone();
@@ -56,6 +68,13 @@ export default function BulkActionsMenu({ skus, categories, brands, onDone }: Pr
     } finally {
       setBusy(false);
     }
+  }
+
+  function closeReport() {
+    setReport(null);
+    setPrompt(null);
+    setOpen(false);
+    onDone();
   }
 
   const patch = (p: Record<string, unknown>) => send({ patch: p });
@@ -184,7 +203,56 @@ export default function BulkActionsMenu({ skus, categories, brands, onDone }: Pr
         </div>
       )}
 
-      {prompt && (
+      {report && (
+        <div
+          onClick={e => { if (e.target === e.currentTarget) closeReport(); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(15,23,42,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+          }}
+        >
+          <div className="adm-modal-box" style={{
+            background: 'var(--bg-card)', borderRadius: 14, width: 480, maxWidth: '100%',
+            padding: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.28)',
+          }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>
+              {report.deleted > 0 ? `Видалено ${report.deleted}, залишилось ${report.blocked.length}` : 'Жоден товар не видалено'}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>
+              Ці товари вже мають облікову історію, тож їх не можна видалити без
+              спотворення звітів. Замість видалення — <b>деактивуйте</b> їх: товар
+              зникне з сайту й фідів, а документи лишаться цілими.
+            </div>
+            <div style={{
+              maxHeight: 240, overflowY: 'auto', border: '1px solid var(--border)',
+              borderRadius: 9, padding: '4px 0',
+            }}>
+              {report.blocked.map(b => (
+                <div key={b.sku} style={{
+                  display: 'flex', justifyContent: 'space-between', gap: 12,
+                  padding: '7px 12px', fontSize: 12, borderBottom: '1px solid var(--border-light)',
+                }}>
+                  <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)' }}>{b.sku}</span>
+                  <span style={{ color: 'var(--text-muted)', textAlign: 'right' }}>{b.reason}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18 }}>
+              <button
+                onClick={closeReport}
+                style={{
+                  height: 38, padding: '0 18px', borderRadius: 9, border: 'none',
+                  background: '#1E3A5F', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Зрозуміло
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {prompt && !report && (
         <div
           onClick={e => { if (e.target === e.currentTarget && !busy) setPrompt(null); }}
           style={{
