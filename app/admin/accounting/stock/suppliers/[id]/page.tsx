@@ -97,7 +97,7 @@ export default async function SupplierStockPage({ params }: { params: Promise<{ 
           Немає даних. Натисніть «Синхронізувати зараз» для завантаження залишків.
         </div>
       ) : (
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+        <div className="adm-scroll-x" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{ ...col, padding: '8px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)',
             fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
             <span>Наш артикул</span><span>Арт. постач.</span><span>Назва</span>

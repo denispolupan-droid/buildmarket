@@ -79,7 +79,7 @@ export default function ReorderClient({ rows }: { rows: ReorderRow[] }) {
         </div>
       )}
 
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+      <div className="adm-scroll-x" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
         {/* Header */}
         <div style={{ display: 'grid', gridTemplateColumns: col, gap: '8px', padding: '8px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', alignItems: 'center' }}>
           <input type="checkbox" checked={selected.size === rows.length} onChange={toggleAll} style={{ cursor: 'pointer' }} />

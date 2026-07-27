@@ -724,7 +724,7 @@ export default function OwnStockTable({
       </div>
 
       {/* ── Table ──────────────────────────────────────────────────────── */}
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+      <div className="adm-scroll-x" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
         <div style={{ ...col, padding: '8px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', alignItems: 'center' }}>
           <span>Артикул</span>
           <span>Назва</span>

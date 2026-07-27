@@ -266,10 +266,10 @@ export default function MailClient() {
   // ── Main mail UI ───────────────────────────────────────────────────────────
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 0px)', overflow: 'hidden', background: 'var(--bg-soft)' }}>
+    <div className="mail-layout" style={{ display: 'flex', height: 'calc(100vh - 0px)', overflow: 'hidden', background: 'var(--bg-soft)' }}>
 
       {/* Folders sidebar */}
-      <div style={{ width: '220px', flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', padding: '16px 0' }}>
+      <div className="mail-folders" style={{ width: '220px', flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', padding: '16px 0' }}>
         <button
           onClick={() => { setCompose(true); setReplyData(undefined); }}
           style={{ margin: '0 12px 16px', padding: '9px 14px', borderRadius: '10px', background: '#1E3A5F', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}
@@ -307,7 +307,7 @@ export default function MailClient() {
       </div>
 
       {/* Message list */}
-      <div style={{ width: '420px', flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--bg-card)', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div className="mail-list" style={{ width: '420px', flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--bg-card)', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>
           {selFolder ? folderName(selFolder.folderName) : 'Пошта'}
         </div>
@@ -360,7 +360,7 @@ export default function MailClient() {
       </div>
 
       {/* Message content */}
-      <div style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-soft)' }}>
+      <div className="mail-content" style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-soft)' }}>
         {!selMessage && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', gap: '12px' }}>
             <Mail size={40} strokeWidth={1.5} />

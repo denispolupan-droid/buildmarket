@@ -268,7 +268,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
 
       {/* Lines table — standard docs only */}
       {doc.doc_type !== 'price_change' && (
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', marginBottom: '16px' }}>
+      <div className="adm-scroll-x" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', marginBottom: '16px' }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>Товари</span>
           {hasLandedCost && <span style={{ fontSize: '11px', fontWeight: 600, color: '#7C3AED', background: '#F5F3FF', padding: '2px 10px', borderRadius: '20px' }}>З урахуванням Landed Cost</span>}

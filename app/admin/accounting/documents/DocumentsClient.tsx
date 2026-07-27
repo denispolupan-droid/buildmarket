@@ -312,7 +312,7 @@ export default function DocumentsClient({
       </div>
 
       {/* Table */}
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
+      <div className="adm-scroll-x" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
         <div style={{
           display: 'grid', gridTemplateColumns: '140px 1fr 140px 110px 110px 110px 80px',
           padding: '10px 16px', background: 'var(--bg-soft)',

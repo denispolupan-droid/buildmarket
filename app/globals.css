@@ -1208,6 +1208,24 @@ input, select { font-family: inherit; }
   .proc-list-scroll [style*="grid-template-columns:28px 130px"] { min-width: 1060px; }
   .proc-list-scroll [style*="grid-template-columns:130px 155px"] { min-width: 1030px; }
 
+  /* Генерик для широких div-списків (Залишки, Облік, Контрагенти...): контейнер
+     свайпається, grid-рядки отримують мінімальну ширину замість стискання в кашу. */
+  .adm-scroll-x { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .adm-scroll-x [style*="display:grid"] { min-width: 880px; }
+
+  /* Пошта: 3 панелі (папки 220px | список 420px | лист) → у стовпчик.
+     Папки — горизонтальний рядок-стрічка, список обмежений по висоті. */
+  .mail-layout { flex-direction: column !important; height: auto !important; min-height: calc(100vh - 60px); }
+  .mail-folders {
+    width: 100% !important; flex-direction: row !important; align-items: center;
+    overflow-x: auto; padding: 10px 12px !important; gap: 4px;
+    border-right: none !important; border-bottom: 1px solid var(--border);
+  }
+  .mail-folders > button { width: auto !important; white-space: nowrap; flex-shrink: 0; }
+  .mail-folders > div { margin-top: 0 !important; border-top: none !important; padding: 0 8px !important; flex-shrink: 0; }
+  .mail-list { width: 100% !important; max-height: 45vh; border-right: none !important; border-bottom: 1px solid var(--border); }
+  .mail-content { min-height: 40vh; }
+
   /* Панель статусів на мобілці НЕ липне — щоб при скролі вниз (особливо з розгорнутим
      заказом) вона їхала вгору й звільняла екран під картку заказу. */
   .admin-status-bar { position: static !important; }
