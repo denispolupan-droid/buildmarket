@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
-import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../../lib/rozetka-api';
+import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../../lib/rozetka-api';
 
 export async function POST(
   _req: NextRequest,
@@ -43,7 +43,7 @@ export async function POST(
 
     const rozStatus = ourStatusToRozetkaStatus('shipped'); // see lib/rozetka-api.ts STATUS_MAP
     if (rozStatus) {
-      await setRozetkaOrderStatus(rozetkaOrderId, rozStatus, { ttn });
+      await setRozetkaOrderStatusChained(rozetkaOrderId, rozStatus, { ttn });
     }
 
     return NextResponse.json({ ok: true });

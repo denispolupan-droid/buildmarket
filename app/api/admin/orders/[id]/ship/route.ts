@@ -5,7 +5,7 @@ import { createSaleDraft } from '../../../../../../lib/accounting/dropship';
 import { completeOrderDelivery } from '../../../../../../lib/accounting/completion';
 import { checkOrderCredit } from '../../../../../../lib/accounting/credit-guard';
 import { setPromTTN } from '../../../../../../lib/prom-api';
-import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../../lib/rozetka-api';
+import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../../lib/rozetka-api';
 
 export async function POST(
   req: NextRequest,
@@ -195,7 +195,7 @@ export async function POST(
   if (fullyShipped && rozetkaOrderId) {
     const rozStatus = ourStatusToRozetkaStatus(finalStatus);
     if (rozStatus) {
-      setRozetkaOrderStatus(rozetkaOrderId, rozStatus, effectiveTtn ? { ttn: effectiveTtn } : undefined).catch(err => {
+      setRozetkaOrderStatusChained(rozetkaOrderId, rozStatus, effectiveTtn ? { ttn: effectiveTtn } : undefined).catch(err => {
         console.warn('[ship] setRozetkaOrderStatus failed:', err);
       });
     }

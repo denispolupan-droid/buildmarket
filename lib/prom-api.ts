@@ -141,15 +141,21 @@ export async function getPromOrders(opts: {
 
 /* ── Status push ────────────────────────────────────────────────────────── */
 
-export type PromStatus = 'accepted' | 'declined' | 'delivered' | 'cancelled';
+// Значення, які РЕАЛЬНО приймає POST /orders/set_status (перевірено живими запитами
+// 2026-07-27): received, delivered, canceled (вимагає cancellation_reason).
+// 'accepted' і 'declined' API відбиває — «This status value is not allowed», причому
+// з HTTP 200, тому роками пуш підтвердження був мовчазним no-op і замовлення висіли
+// в кабінеті Prom як «Нові».
+export type PromStatus = 'received' | 'delivered' | 'canceled';
 
 // Maps our internal statuses to Prom statuses
 const STATUS_MAP: Record<string, PromStatus | null> = {
-  confirmed: 'accepted',
-  cancelled: 'declined',
+  confirmed: 'received',
+  // Свого «відправлено» у Prom немає; якщо менеджер пропустив крок підтвердження,
+  // received при відправці не дає замовленню висіти «Новим»
+  shipped:   'received',
+  cancelled: 'canceled',
   delivered: 'delivered',
-  // 'shipped' has no direct Prom equivalent — we skip it
-  shipped:   null,
   new:       null,
 };
 
@@ -157,11 +163,25 @@ export function ourStatusToPromStatus(ourStatus: string): PromStatus | null {
   return STATUS_MAP[ourStatus] ?? null;
 }
 
-export async function setPromOrderStatus(promOrderId: number, status: PromStatus): Promise<void> {
-  await promFetch('/orders/set_status', {
+export async function setPromOrderStatus(
+  promOrderId: number,
+  status: PromStatus,
+  opts?: { cancellationText?: string },
+): Promise<void> {
+  const body: Record<string, unknown> = { ids: [promOrderId], status };
+  if (status === 'canceled') {
+    body.cancellation_reason = 'another';
+    body.cancellation_text   = opts?.cancellationText ?? 'Скасовано продавцем';
+  }
+  // Помилки set_status приходять з HTTP 200 у тілі ({"error": ...} або errors по id) —
+  // без цієї перевірки невдалий пуш виглядає успішним.
+  const data = await promFetch<{ processed_ids?: number[]; error?: string; errors?: Record<string, string> }>('/orders/set_status', {
     method: 'POST',
-    body: JSON.stringify({ ids: [promOrderId], status }),
+    body: JSON.stringify(body),
   });
+  const err = data.error ?? data.errors?.[String(promOrderId)];
+  if (err) throw new Error(`Prom set_status ${status} #${promOrderId}: ${err}`);
+  // Порожній processed_ids без помилки = замовлення вже в цьому/подальшому статусі — ок.
 }
 
 export async function setPromTTN(promOrderId: number, ttn: string, deliveryType = 'nova_poshta'): Promise<void> {

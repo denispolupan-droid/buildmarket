@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { getRozetkaOrders, rozetkaOrderToOurFormat, ourStatusToRozetkaStatus, setRozetkaOrderStatus } from './rozetka-api';
+import { getRozetkaOrders, rozetkaOrderToOurFormat, ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from './rozetka-api';
 import { computeRozetkaCommission } from './rozetka-commission';
 
 const db = createClient(
@@ -59,7 +59,8 @@ export async function syncRozetkaOrders() {
       const lagging = desired != null && (REPUSH_FROM[desired] ?? []).includes(rzOrder.status);
       if (lagging && !(desired === 61 && !existing.tracking_number)) {
         try {
-          await setRozetkaOrderStatus(
+          // Chained: Rozetka не дає стрибнути через статус (напр. 1→61) — драбинка 26→61
+          await setRozetkaOrderStatusChained(
             rzOrder.id, desired,
             desired === 61 ? { ttn: existing.tracking_number ?? undefined } : undefined,
           );

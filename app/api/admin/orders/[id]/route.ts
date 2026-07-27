@@ -9,7 +9,7 @@ import { notifyAdminStatusChange, notifyCustomerStatus } from '../../../../../li
 import { buildCustomerStatusEmail } from '../../../../../lib/invoice-email';
 import { recordCustomerPayment, recordShipment } from '../../../../../lib/accounting/money';
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/prom-api';
-import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../lib/rozetka-api';
+import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../lib/rozetka-api';
 import { alertAdmin } from '../../../../../lib/alert';
 import { completeOrderDelivery } from '../../../../../lib/accounting/completion';
 import { checkOrderCredit } from '../../../../../lib/accounting/credit-guard';
@@ -409,7 +409,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           // status 3 (shipped) requires ttn — include it when already known, either from this
           // same request or a previously saved tracking_number.
           const ttn = (update.tracking_number as string | undefined) ?? (rozOrder.tracking_number as string | null) ?? undefined;
-          setRozetkaOrderStatus(Number(rozOrder.rozetka_order_id), rozStatus, ttn ? { ttn } : undefined).catch(err =>
+          setRozetkaOrderStatusChained(Number(rozOrder.rozetka_order_id), rozStatus, ttn ? { ttn } : undefined).catch(err =>
             console.error('[rozetka] setRozetkaOrderStatus failed:', err),
           );
         }

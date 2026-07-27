@@ -1,11 +1,21 @@
 import { createClient } from '@supabase/supabase-js';
-import { getPromOrders, promOrderToOurFormat } from './prom-api';
+import { getPromOrders, promOrderToOurFormat, ourStatusToPromStatus, setPromOrderStatus, type PromStatus } from './prom-api';
 import { computePromCommission } from './prom-commission';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
+
+// Самолікування пушів статусів (дзеркало rozetka-sync): пуш при підтвердженні —
+// fire-and-forget, а до 2026-07-27 він ще й був мовчазним no-op (невалідне значення
+// 'accepted' + помилка в тілі HTTP 200) — замовлення висіли в кабінеті Prom «Новими».
+// Ключ — цільовий статус Prom, значення — живі статуси, з яких допушуємо.
+const REPUSH_FROM: Record<PromStatus, string[]> = {
+  received:  ['pending', 'paid'],
+  delivered: ['pending', 'paid', 'received'],
+  canceled:  ['pending', 'paid', 'received'],
+};
 
 export async function syncPromOrders() {
   if (!process.env.PROM_API_TOKEN) {
@@ -16,7 +26,7 @@ export async function syncPromOrders() {
   const dateFrom = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   const orders   = await getPromOrders({ dateFrom, limit: 100 });
 
-  if (!orders.length) return { ok: true, created: 0, skipped: 0 };
+  if (!orders.length) return { ok: true, created: 0, skipped: 0, repushed: 0 };
 
   // Read plan setting once for all orders in this batch
   const { data: planRow } = await db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle();
@@ -26,15 +36,29 @@ export async function syncPromOrders() {
 
   let created = 0;
   let skipped = 0;
+  let repushed = 0;
 
   for (const promOrder of orders) {
     const { data: existing } = await db
       .from('orders')
-      .select('id')
+      .select('id, status')
       .eq('prom_order_id', promOrder.id)
       .maybeSingle();
 
-    if (existing) { skipped++; continue; }
+    if (existing) {
+      const desired = ourStatusToPromStatus(existing.status);
+      if (desired && REPUSH_FROM[desired].includes(promOrder.status)) {
+        try {
+          await setPromOrderStatus(promOrder.id, desired);
+          repushed++;
+          console.log(`[prom-sync] re-pushed status ${desired} for order ${promOrder.id} (was ${promOrder.status})`);
+        } catch (err) {
+          console.error('[prom-sync] status re-push failed:', promOrder.id, err);
+        }
+      }
+      skipped++;
+      continue;
+    }
 
     if (['declined', 'cancelled', 'cancelled_by_client'].includes(promOrder.status)) {
       skipped++;
@@ -109,5 +133,5 @@ export async function syncPromOrders() {
     }
   }
 
-  return { ok: true, created, skipped, total: orders.length };
+  return { ok: true, created, skipped, repushed, total: orders.length };
 }

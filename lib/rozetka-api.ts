@@ -101,8 +101,20 @@ async function rozetkaFetch<T>(path: string, init?: RequestInit, _retried = fals
     const text = await res.text().catch(() => '');
     throw new Error(`Rozetka API ${path}: ${res.status} — ${text.slice(0, 300)}`);
   }
-  const json = await res.json() as { success: boolean; content: T; message?: string };
-  if (!json.success) throw new Error(`Rozetka API ${path}: ${json.message ?? 'unsuccessful response'}`);
+  const json = await res.json() as {
+    success: boolean; content: T; message?: string;
+    errors?: { message?: string; code?: number; description?: string; details?: unknown };
+  };
+  if (!json.success) {
+    // Причина відмови лежить в errors.description/details — без неї в логах було
+    // лише «unsuccessful response» і збої пушів статусів не можна було діагностувати.
+    const e = json.errors;
+    const detail = [
+      json.message ?? e?.description ?? e?.message,
+      e?.details ? JSON.stringify(e.details).slice(0, 300) : null,
+    ].filter(Boolean).join(' — ');
+    throw new Error(`Rozetka API ${path}: ${detail || 'unsuccessful response'}`);
+  }
   return json.content;
 }
 
@@ -191,6 +203,47 @@ export async function setRozetkaOrderStatus(
     method: 'PUT',
     body: JSON.stringify({ status, ttn: opts?.ttn, seller_comment: opts?.comment }),
   });
+}
+
+// Rozetka не дозволяє «перестрибувати» статуси: PUT 61 для замовлення в «Новому»
+// відбивається 1005 «Неможливо змінити статус. З 1 на 61. Наступний статус недоступний»
+// (живий кейс 2026-07-27: замовлення відправили без кроку «підтверджено», і пуш —
+// разом із самолікуванням у кроні — годинами бився об цю відмову). Якщо прямий пуш
+// падає саме помилкою переходу, проходимо драбину проміжних статусів (26 «Обробляється
+// менеджером», далі 61 «Заплановано передачу», якщо є ТТН) і повторюємо цільовий.
+function isStatusTransitionError(err: unknown): boolean {
+  return err instanceof Error && err.message.includes('Наступний статус недоступний');
+}
+
+export async function setRozetkaOrderStatusChained(
+  orderId: number,
+  status: number,
+  opts?: { ttn?: string; comment?: string },
+): Promise<void> {
+  try {
+    await setRozetkaOrderStatus(orderId, status, opts);
+    return;
+  } catch (err) {
+    if (!isStatusTransitionError(err)) throw err;
+    const ladder = [26, ...(opts?.ttn ? [61] : [])].filter(s => s !== status);
+    let lastErr: unknown = err;
+    for (const mid of ladder) {
+      try {
+        await setRozetkaOrderStatus(orderId, mid, mid === 61 ? { ttn: opts?.ttn } : undefined);
+      } catch (e) {
+        lastErr = e;
+        continue;
+      }
+      try {
+        await setRozetkaOrderStatus(orderId, status, opts);
+        return;
+      } catch (e) {
+        if (!isStatusTransitionError(e)) throw e;
+        lastErr = e;
+      }
+    }
+    throw lastErr;
+  }
 }
 
 export interface RozetkaOrderStatus {
