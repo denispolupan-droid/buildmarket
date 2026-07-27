@@ -488,6 +488,9 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
         sku:          ourSku,
         stock_qty:    stockQty,
         stock_status: stockStatus,
+        // Довідковий артикул постачальника в картці товару — тримаємо актуальним
+        // (раніше замирав на старому коді після зміни номенклатури постачальника)
+        supplier_sku: row.supplier_sku,
         updated_at:   rowTime,
         ...(!isCostProtected && { price_cost: parseFloat(priceCost.toFixed(2)) }),
         ...(!isPriceLocked && {
