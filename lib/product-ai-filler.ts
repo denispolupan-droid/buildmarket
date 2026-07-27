@@ -60,6 +60,7 @@ async function fillOne(
   categoryName: string,
   categoryLabels: string[],
   f: Required<FillFields>,
+  force: boolean,
 ): Promise<void> {
   const gp: GenProduct = {
     sku: product.sku, name: product.name, name_ru: product.name_ru,
@@ -75,17 +76,23 @@ async function fillOne(
     supabase.from('product_faq').select('product_sku').eq('product_sku', product.sku).limit(1),
   ]);
 
+  // force = «повністю переписати картку»: перезаписуємо ВСЕ, навіть заповнене
+  // (включно з FAQ і рос. назвою). Інакше — обрані чекбоксами поля регенеруємо,
+  // FAQ/name_ru лише дозаповнюємо, якщо порожні.
   await applyContent(supabase, gp, ua, ru, {
-    // Обрані користувачем поля — перезаписуємо (regen); faq/name_ru дозаповнюємо лише якщо порожні.
-    fields: {
-      description: f.description, description_full: f.description_full,
-      keywords: f.keywords, characteristics: f.characteristics,
-      faq: true, name_ru: true,
-    },
-    regen: {
-      description: f.description, description_full: f.description_full,
-      keywords: f.keywords, characteristics: f.characteristics,
-    },
+    fields: force
+      ? { description: true, description_full: true, keywords: true, characteristics: true, faq: true, name_ru: true }
+      : {
+          description: f.description, description_full: f.description_full,
+          keywords: f.keywords, characteristics: f.characteristics,
+          faq: true, name_ru: true,
+        },
+    regen: force
+      ? { description: true, description_full: true, keywords: true, characteristics: true, faq: true, name_ru: true }
+      : {
+          description: f.description, description_full: f.description_full,
+          keywords: f.keywords, characteristics: f.characteristics,
+        },
     currentFull: product.description_full,
     currentKeywords: product.keywords,
     hasChars: !!chars?.length,
@@ -93,7 +100,7 @@ async function fillOne(
   });
 }
 
-export async function* fillProducts(skus: string[], fields?: FillFields): AsyncGenerator<AiFillEvent> {
+export async function* fillProducts(skus: string[], fields?: FillFields, force = false): AsyncGenerator<AiFillEvent> {
   const f = { ...DEFAULT_FIELDS, ...fields };
   const supabase = db();
 
@@ -137,7 +144,7 @@ export async function* fillProducts(skus: string[], fields?: FillFields): AsyncG
       push({ type: 'progress', sku: product.sku, name: product.name, done, total: products!.length });
       try {
         const categoryName = catName.get(product.category_slug ?? '') ?? product.category_slug ?? '';
-        await fillOne(supabase, product, categoryName, labelsByCat.get(product.category_slug) ?? [], f);
+        await fillOne(supabase, product, categoryName, labelsByCat.get(product.category_slug) ?? [], f, force);
         done++;
         push({ type: 'result', sku: product.sku, name: product.name });
       } catch (err) {

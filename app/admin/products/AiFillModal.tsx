@@ -46,10 +46,13 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
     keywords:         true,
     characteristics:  false, // off by default — protect manual edits
   });
+  // «Повністю переписати»: регенерувати ВЕСЬ контент, навіть уже заповнений
+  // (включно з FAQ і рос. назвою). Ігнорує вибір полів нижче.
+  const [force, setForce] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const selected = products.filter(p => skus.includes(p.sku));
-  const anyFieldSelected = Object.values(fields).some(Boolean);
+  const anyFieldSelected = force || Object.values(fields).some(Boolean);
 
   function toggleField(key: keyof FillFields) {
     setFields(f => ({ ...f, [key]: !f[key] }));
@@ -68,7 +71,7 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
       const res = await fetch('/api/admin/products/ai-fill', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ skus, fields }),
+        body: JSON.stringify({ skus, fields, force }),
         signal: abortRef.current.signal,
       });
 
@@ -177,10 +180,29 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
         {/* Field selector — shows only before start */}
         {!running && !finished && (
           <div style={{ padding: '16px 24px', borderBottom: '1px solid #E2E8F0' }}>
+            {/* Повний перепис — перезаписує ВЕСЬ контент */}
+            <label
+              onClick={() => setForce(v => !v)}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: 14, padding: '10px 12px', borderRadius: 8, border: `1.5px solid ${force ? '#F59E0B' : '#E2E8F0'}`, background: force ? '#FFFBEB' : '#F8FAFC' }}
+            >
+              <div style={{
+                width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                border: `2px solid ${force ? '#F59E0B' : '#CBD5E1'}`,
+                background: force ? '#F59E0B' : '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {force && <span style={{ color: '#fff', fontSize: 11, lineHeight: 1, fontWeight: 700 }}>✓</span>}
+              </div>
+              <div>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#92400E' }}>Повністю переписати картку</span>
+                <span style={{ fontSize: 12, color: '#B45309', marginLeft: 6 }}>перезаписати ВЕСЬ контент, навіть заповнений (опис, keywords, характеристики, FAQ, рос. назва)</span>
+              </div>
+            </label>
+
             <div style={{ fontSize: 12, fontWeight: 600, color: '#64748B', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Що заповнити
+              {force ? 'Буде перезаписано все (вибір полів вимкнено)' : 'Що заповнити'}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, opacity: force ? 0.4 : 1, pointerEvents: force ? 'none' : 'auto' }}>
               {FIELD_LABELS.map(({ key, label, hint }) => (
                 <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
                   <div

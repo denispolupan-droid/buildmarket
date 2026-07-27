@@ -278,8 +278,9 @@ export async function applyContent(
 
   const update: Record<string, string | null> = {};
 
-  // Рос. назва — тільки якщо порожня (не перезаписуємо переклад/ручне).
-  if (on('name_ru') && !product.name_ru?.trim() && ua.name_ru?.trim()) {
+  // Рос. назва — зазвичай тільки якщо порожня (не чіпаємо переклад/ручне),
+  // але при regen.name_ru (повний перепис картки) перезаписуємо.
+  if (on('name_ru') && (regen('name_ru') || !product.name_ru?.trim()) && ua.name_ru?.trim()) {
     update.name_ru = ua.name_ru.trim();
   }
   if (on('description') && (regen('description') || !product.description?.trim())) {
