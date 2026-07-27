@@ -98,6 +98,10 @@ ${labelsHint}
 }`;
 }
 
+// Таймаут на один товар: якщо AI-запит завис — валимо його з помилкою,
+// щоб не тримати слот пулу і не з'їсти весь бюджет функції одним товаром.
+const ITEM_TIMEOUT_MS = 90_000;
+
 async function generateContent(
   product: {
     name: string;
@@ -109,11 +113,14 @@ async function generateContent(
   },
   categoryLabels: string[],
 ): Promise<AiContent> {
-  const msg = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 2500,
-    messages: [{ role: 'user', content: buildPrompt(product, categoryLabels) }],
-  });
+  const msg = await anthropic.messages.create(
+    {
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2500,
+      messages: [{ role: 'user', content: buildPrompt(product, categoryLabels) }],
+    },
+    { timeout: ITEM_TIMEOUT_MS },
+  );
 
   const raw = (msg.content[0] as { type: string; text: string }).text;
   const match = raw.match(/\{[\s\S]*\}/);
@@ -136,6 +143,64 @@ const DEFAULT_FIELDS: Required<FillFields> = {
   characteristics: true,
 };
 
+type ProductRow = {
+  sku: string;
+  name: string;
+  name_ru: string | null;
+  brand: string;
+  category_slug: string | null;
+  description: string | null;
+  description_ru: string | null;
+};
+
+// Скільки товарів обробляємо ПАРАЛЕЛЬНО. Кожен товар — важкий AI-запит (~15-25с),
+// послідовно 20+ товарів не влазять у 300с бюджету функції й потік обривався на
+// середині. Пул із 4 воркерів скорочує wall-time ~у 4 рази.
+const CONCURRENCY = 4;
+
+// Обробка одного товару: генерація + запис у БД. Кидає — якщо AI/БД впали.
+async function fillOne(
+  supabase: ReturnType<typeof db>,
+  product: ProductRow,
+  categoryLabels: string[],
+  f: Required<FillFields>,
+): Promise<void> {
+  const data = await generateContent(product, categoryLabels);
+
+  // Build product update object — only include selected fields
+  const update: Record<string, string | null> = {};
+  if (f.description) {
+    update.description    = data.description_ua;
+    update.description_ru = data.description_ru;
+  }
+  if (f.description_full) {
+    update.description_full    = data.description_full_ua;
+    update.description_full_ru = data.description_full_ru;
+  }
+  if (f.keywords) {
+    update.keywords    = data.keywords_ua;
+    update.keywords_ru = data.keywords_ru;
+  }
+
+  if (Object.keys(update).length > 0) {
+    const { error } = await supabase.from('products').update(update).eq('sku', product.sku);
+    if (error) throw error;
+  }
+
+  if (f.characteristics && data.characteristics?.length) {
+    await supabase.from('product_characteristics').delete().eq('product_sku', product.sku);
+    const { error } = await supabase.from('product_characteristics').insert(
+      data.characteristics.map((c, i) => ({
+        product_sku: product.sku,
+        label: c.label,
+        value: c.value,
+        sort_order: i + 1,
+      }))
+    );
+    if (error) throw error;
+  }
+}
+
 export async function* fillProducts(skus: string[], fields?: FillFields): AsyncGenerator<AiFillEvent> {
   const f = { ...DEFAULT_FIELDS, ...fields };
   const supabase = db();
@@ -144,7 +209,7 @@ export async function* fillProducts(skus: string[], fields?: FillFields): AsyncG
     .from('products')
     .select('sku, name, name_ru, brand, category_slug, description, description_ru')
     .in('sku', skus)
-    .order('category_slug');  // process same category together for better context
+    .order('category_slug');  // group same category together
 
   if (error) throw error;
   if (!products?.length) {
@@ -155,66 +220,49 @@ export async function* fillProducts(skus: string[], fields?: FillFields): AsyncG
 
   yield { type: 'start', total: products.length };
 
+  // Ярлики характеристик рахуємо ОДИН раз на кожну унікальну категорію наперед —
+  // так знімається послідовна залежність (кеш між ітераціями) і воркери незалежні.
+  const distinctCats = [...new Set(products.map(p => p.category_slug))];
+  const labelsByCat = new Map<string | null, string[]>();
+  await Promise.all(
+    distinctCats.map(async cat => { labelsByCat.set(cat, await getCategoryLabels(supabase, cat)); }),
+  );
+
+  // Канал: воркери штовхають події, генератор їх зливає споживачу по мірі готовності.
+  const queue: AiFillEvent[] = [];
+  let wake: (() => void) | null = null;
+  let finished = false;
+  const push = (e: AiFillEvent) => { queue.push(e); wake?.(); wake = null; };
+
   let done = 0;
   let errors = 0;
-  let lastCategory: string | null = null;
-  let categoryLabels: string[] = [];
+  let idx = 0;
 
-  for (const product of products) {
-    yield { type: 'progress', sku: product.sku, name: product.name, done, total: products.length };
-
-    try {
-      // Refresh category labels when category changes
-      if (product.category_slug !== lastCategory) {
-        categoryLabels = await getCategoryLabels(supabase, product.category_slug);
-        lastCategory = product.category_slug;
+  async function worker() {
+    while (idx < products!.length) {
+      const product = products![idx++];
+      push({ type: 'progress', sku: product.sku, name: product.name, done, total: products!.length });
+      try {
+        await fillOne(supabase, product, labelsByCat.get(product.category_slug) ?? [], f);
+        done++;
+        push({ type: 'result', sku: product.sku, name: product.name });
+      } catch (err) {
+        errors++;
+        push({ type: 'error', sku: product.sku, error: String(err) });
       }
+    }
+  }
 
-      const data = await generateContent(product, categoryLabels);
+  // Запускаємо пул; коли всі воркери відпрацювали — відмічаємо кінець.
+  void Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, products.length) }, () => worker()),
+  ).then(() => { finished = true; wake?.(); wake = null; });
 
-      // Build product update object — only include selected fields
-      const update: Record<string, string | null> = {};
-      if (f.description) {
-        update.description    = data.description_ua;
-        update.description_ru = data.description_ru;
-      }
-      if (f.description_full) {
-        update.description_full    = data.description_full_ua;
-        update.description_full_ru = data.description_full_ru;
-      }
-      if (f.keywords) {
-        update.keywords    = data.keywords_ua;
-        update.keywords_ru = data.keywords_ru;
-      }
-
-      if (Object.keys(update).length > 0) {
-        await supabase.from('products').update(update).eq('sku', product.sku);
-      }
-
-      if (f.characteristics && data.characteristics?.length) {
-        await supabase.from('product_characteristics').delete().eq('product_sku', product.sku);
-        await supabase.from('product_characteristics').insert(
-          data.characteristics.map((c, i) => ({
-            product_sku: product.sku,
-            label: c.label,
-            value: c.value,
-            sort_order: i + 1,
-          }))
-        );
-
-        // Update category labels cache with new labels from this product
-        for (const c of data.characteristics) {
-          if (!categoryLabels.includes(c.label)) {
-            categoryLabels = [...categoryLabels, c.label].slice(0, 15);
-          }
-        }
-      }
-
-      done++;
-      yield { type: 'result', sku: product.sku, name: product.name };
-    } catch (err) {
-      errors++;
-      yield { type: 'error', sku: product.sku, error: String(err) };
+  while (!finished || queue.length > 0) {
+    if (queue.length > 0) {
+      yield queue.shift()!;
+    } else {
+      await new Promise<void>(resolve => { wake = resolve; });
     }
   }
 

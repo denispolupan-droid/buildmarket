@@ -75,6 +75,7 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
       const reader  = res.body!.getReader();
       const decoder = new TextDecoder();
       let   buf     = '';
+      let   gotDone = false;
 
       while (true) {
         const { value, done } = await reader.read();
@@ -91,8 +92,10 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
           if (event.type === 'start') {
             setProgress(p => ({ ...p, total: event.total }));
           } else if (event.type === 'progress') {
+            // Позначаємо товар "в обробці". Лічильник done НЕ чіпаємо — при
+            // паралельній обробці кілька progress-подій несуть однакове done;
+            // рахуємо прогрес лише по result/error (єдине джерело правди).
             setStatuses(s => ({ ...s, [event.sku]: 'processing' }));
-            setProgress(p => ({ ...p, done: event.done }));
           } else if (event.type === 'result') {
             setStatuses(s => ({ ...s, [event.sku]: 'done' }));
             setProgress(p => ({ ...p, done: p.done + 1 }));
@@ -101,11 +104,24 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
             if (event.sku) setErrors(e => ({ ...e, [event.sku]: event.error }));
             setProgress(p => ({ ...p, errors: p.errors + 1 }));
           } else if (event.type === 'done') {
+            gotDone = true;
             setProgress(p => ({ ...p, done: event.done, errors: event.errors }));
             setFinished(true);
             onDone?.();
           }
         }
+      }
+
+      // Потік завершився без фінального 'done' (напр., функція вперлась у ліміт часу).
+      // Не мовчимо: показуємо, що обробку обірвано, а не скидаємо форму.
+      if (!gotDone) {
+        setStatuses(s => {
+          const next = { ...s };
+          for (const sku of skus) if (next[sku] === 'processing') next[sku] = 'error';
+          return next;
+        });
+        setFinished(true);
+        onDone?.();
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.name !== 'AbortError') {
@@ -225,7 +241,7 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
           {!running && !finished && (
             <div style={{ fontSize: 13, color: '#64748B', marginBottom: 10 }}>
               {selected.length > 5 && (
-                <span style={{ color: '#F59E0B' }}>⏱ Орієнтовний час: ~{Math.ceil(selected.length * 9 / 60)} хв.</span>
+                <span style={{ color: '#F59E0B' }}>⏱ Орієнтовний час: ~{Math.max(1, Math.ceil(selected.length * 9 / 4 / 60))} хв. (по 4 паралельно)</span>
               )}
             </div>
           )}
