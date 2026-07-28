@@ -28,7 +28,10 @@ type PostRow = {
 type Plan = {
   id: number; slug: string; title: string; is_published: boolean;
   categories: string[];
+  /** що дає автопідбір зараз */
   picks: { sku: string; label: string; href: string; price: number | null; volume: string | null }[];
+  /** що фактично збережено в статті (може бути змінене руками) */
+  current: { sku: string; label: string; price: number | null; volume: string | null }[];
   /** уже має посилання, вставлені не нами (AI/руками) — за замовчуванням не чіпаємо */
   manualLinks: boolean;
   /** наш блок уже стоїть — повторний запуск його освіжить */
@@ -61,6 +64,7 @@ async function buildPlans(): Promise<{ plans: Plan[]; posts: Map<number, PostRow
   }
 
   const byCategory = new Map<string, LinkProduct[]>();
+  const bySku = new Map<string, LinkProduct>();
   for (const p of products) {
     const stock = Array.isArray(p.product_stock) ? p.product_stock[0] : p.product_stock;
     const item: LinkProduct = {
@@ -72,6 +76,7 @@ async function buildPlans(): Promise<{ plans: Plan[]; posts: Map<number, PostRow
     };
     const key = p.category_slug ?? '';
     byCategory.set(key, [...(byCategory.get(key) ?? []), item]);
+    bySku.set(p.sku, item);
   }
 
   const posts = new Map<number, PostRow>();
@@ -107,6 +112,10 @@ async function buildPlans(): Promise<{ plans: Plan[]; posts: Map<number, PostRow
         sku: p.sku, label: productLabel(p, 'uk'),
         href: `/product/${p.slug ?? p.sku}`, price: p.price, volume: p.volume,
       })),
+      current: (post.product_skus ?? [])
+        .map(s => bySku.get(s))
+        .filter((p): p is LinkProduct => !!p)
+        .map(p => ({ sku: p.sku, label: productLabel(p, 'uk'), price: p.price, volume: p.volume })),
       manualLinks: countProductLinks(post.content_html) > 0 && !hasBlock,
       hasBlock,
       ruMissing: !(post.content_html_ru ?? '').trim(),
@@ -124,7 +133,48 @@ export async function GET() {
   return NextResponse.json(plans);
 }
 
-/** POST { ids } — вставити/оновити блок посилань у вказаних статтях. */
+/**
+ * PATCH { id, skus } — ручний набір товарів статті.
+ * Автопідбір за категоріями вгадує не завжди (у статті про герметизацію різьби
+ * із «Інструментів» витягувало відрізний диск), тому склад блоку має бути
+ * редагованим. Порядок артикулів = порядок карток на сторінці.
+ */
+export async function PATCH(req: NextRequest) {
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
+
+  const { id, skus } = await req.json() as { id?: number; skus?: string[] };
+  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+  if (!Array.isArray(skus)) return NextResponse.json({ error: 'skus required' }, { status: 400 });
+
+  const clean = [...new Set(skus.filter(s => typeof s === 'string' && s.trim()))].slice(0, 12);
+
+  // Приймаємо лише активні товари: неактивний однаково не відрендериться,
+  // але мовчки зниклу картку важко пояснити — краще сказати одразу.
+  if (clean.length) {
+    const { data: found } = await serviceClient
+      .from('products').select('sku').in('sku', clean).eq('is_active', true);
+    const ok = new Set((found ?? []).map(r => r.sku));
+    const missing = clean.filter(s => !ok.has(s));
+    if (missing.length) {
+      return NextResponse.json(
+        { error: `Немає серед активних товарів: ${missing.join(', ')}` },
+        { status: 400 },
+      );
+    }
+  }
+
+  const { error } = await serviceClient
+    .from('blog_posts')
+    .update({ product_skus: clean, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  revalidateTag('blog', 'max');
+  return NextResponse.json({ ok: true, count: clean.length });
+}
+
+/** POST { ids } — автопідбір: перерахувати товари для вказаних статей. */
 export async function POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;

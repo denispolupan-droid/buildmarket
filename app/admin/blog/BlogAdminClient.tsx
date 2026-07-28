@@ -23,10 +23,13 @@ type PostFull = PostRow & {
   content_html_ru: string | null;
 };
 
+type PlanItem = { sku: string; label: string; price: number | null; volume: string | null };
+
 type LinkPlan = {
   id: number; slug: string; title: string; is_published: boolean;
   categories: string[];
-  picks: { sku: string; label: string; href: string; price: number | null; volume: string | null }[];
+  picks: (PlanItem & { href: string })[];
+  current: PlanItem[];
   manualLinks: boolean;
   hasBlock: boolean;
   ruMissing: boolean;
@@ -159,6 +162,56 @@ export default function BlogAdminClient() {
       ));
     } catch (err) {
       setLinkMsg(`✗ ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  // ── Ручне редагування складу товарів статті ──
+  const [editSkus, setEditSkus] = useState<{ id: number; title: string; items: PlanItem[] } | null>(null);
+  const [search, setSearch] = useState('');
+  const [found, setFound] = useState<{ sku: string; name: string; brand: string; volume: string | null }[]>([]);
+  const [savingSkus, setSavingSkus] = useState(false);
+
+  useEffect(() => {
+    const q = search.trim();
+    if (q.length < 2) { setFound([]); return; }
+    const t = setTimeout(async () => {
+      const res = await fetch(`/api/admin/products/search?q=${encodeURIComponent(q)}`);
+      setFound(res.ok ? await res.json() : []);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  function moveItem(i: number, dir: -1 | 1) {
+    setEditSkus(prev => {
+      if (!prev) return prev;
+      const items = [...prev.items];
+      const j = i + dir;
+      if (j < 0 || j >= items.length) return prev;
+      [items[i], items[j]] = [items[j], items[i]];
+      return { ...prev, items };
+    });
+  }
+
+  async function saveSkus() {
+    if (!editSkus) return;
+    setSavingSkus(true);
+    setLinkMsg('');
+    try {
+      const res = await fetch('/api/admin/blog/link-products', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editSkus.id, skus: editSkus.items.map(i => i.sku) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setLinkMsg(`✓ «${editSkus.title}»: збережено ${data.count} товарів`);
+      setEditSkus(null);
+      setSearch('');
+      await loadPlans();
+    } catch (err) {
+      setLinkMsg(`✗ ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setSavingSkus(false);
     }
   }
 
@@ -297,10 +350,93 @@ export default function BlogAdminClient() {
                     </div>
                     <div style={{ fontSize: 11, color: '#94A3B8', margin: '2px 0 4px' }}>
                       {p.categories.join(', ') || 'категорій не вказано'}
+                      <button
+                        onClick={e => {
+                          e.preventDefault();
+                          setEditSkus(editSkus?.id === p.id ? null : {
+                            id: p.id, title: p.title,
+                            items: p.current.length ? p.current : p.picks.map(({ sku, label, price, volume }) => ({ sku, label, price, volume })),
+                          });
+                          setSearch('');
+                        }}
+                        style={{ marginLeft: 10, border: 'none', background: 'none', color: '#3DBFB8', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                      >
+                        {editSkus?.id === p.id ? 'згорнути' : '✏ змінити склад'}
+                      </button>
                     </div>
-                    {p.picks.length ? (
+
+                    {editSkus?.id === p.id ? (
+                      /* Редактор: свій набір товарів статті замість автопідбору */
+                      <div onClick={e => e.preventDefault()} style={{ border: '1px solid #CBD5E1', borderRadius: 8, padding: 10, background: '#F8FAFC' }}>
+                        {editSkus.items.length === 0 && (
+                          <div style={{ fontSize: 12, color: '#94A3B8', marginBottom: 8 }}>Товарів немає — додайте пошуком нижче</div>
+                        )}
+                        {editSkus.items.map((it, i) => (
+                          <div key={it.sku} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12 }}>
+                            <span style={{ color: '#94A3B8', width: 16 }}>{i + 1}.</span>
+                            <span style={{ flex: 1, color: '#1E293B' }}>
+                              {it.label}
+                              <span style={{ color: '#94A3B8' }}>{it.price ? ` — ${it.price} грн` : ''}</span>
+                            </span>
+                            <button onClick={() => moveItem(i, -1)} disabled={i === 0} style={miniBtn} title="Вище">↑</button>
+                            <button onClick={() => moveItem(i, 1)} disabled={i === editSkus.items.length - 1} style={miniBtn} title="Нижче">↓</button>
+                            <button
+                              onClick={() => setEditSkus(s => s && ({ ...s, items: s.items.filter(x => x.sku !== it.sku) }))}
+                              style={{ ...miniBtn, color: '#EF4444' }}
+                              title="Прибрати"
+                            >×</button>
+                          </div>
+                        ))}
+
+                        <input
+                          value={search}
+                          onChange={e => setSearch(e.target.value)}
+                          placeholder="Додати товар: назва, бренд або SKU"
+                          style={{ width: '100%', marginTop: 8, padding: '7px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12 }}
+                        />
+                        {found.length > 0 && (
+                          <div style={{ marginTop: 4, maxHeight: 160, overflowY: 'auto', border: '1px solid #E2E8F0', borderRadius: 6, background: '#fff' }}>
+                            {found.map(f => {
+                              const already = editSkus.items.some(x => x.sku === f.sku);
+                              return (
+                                <button
+                                  key={f.sku}
+                                  disabled={already}
+                                  onClick={() => {
+                                    setEditSkus(s => s && ({
+                                      ...s,
+                                      items: [...s.items, { sku: f.sku, label: `${f.brand} ${f.name}`, price: null, volume: f.volume }],
+                                    }));
+                                    setSearch('');
+                                  }}
+                                  style={{
+                                    display: 'block', width: '100%', textAlign: 'left', padding: '6px 10px',
+                                    border: 'none', borderBottom: '1px solid #F1F5F9', background: 'none',
+                                    fontSize: 12, color: already ? '#94A3B8' : '#1E293B', cursor: already ? 'default' : 'pointer',
+                                  }}
+                                >
+                                  <span style={{ fontFamily: 'monospace', color: '#94A3B8' }}>{f.sku}</span> {f.name}
+                                  {already && ' — уже додано'}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                          <button onClick={saveSkus} disabled={savingSkus}
+                                  style={{ padding: '6px 14px', background: '#3DBFB8', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: savingSkus ? 0.6 : 1 }}>
+                            {savingSkus ? 'Зберігаю…' : 'Зберегти склад'}
+                          </button>
+                          <button onClick={() => { setEditSkus(null); setSearch(''); }} style={{ ...btn, fontSize: 12 }}>Скасувати</button>
+                          <span style={{ fontSize: 11, color: '#94A3B8', alignSelf: 'center' }}>
+                            ручний склад не перезаписується автопідбором, поки не натиснете «Застосувати»
+                          </span>
+                        </div>
+                      </div>
+                    ) : p.picks.length || p.current.length ? (
                       <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#475569' }}>
-                        {p.picks.map(x => (
+                        {(p.current.length ? p.current : p.picks).map(x => (
                           <li key={x.sku}>
                             {x.label}
                             <span style={{ color: '#94A3B8' }}>
@@ -386,6 +522,10 @@ export default function BlogAdminClient() {
 const btn: React.CSSProperties = {
   padding: '7px 14px', background: '#fff', border: '1px solid #CBD5E1', borderRadius: 8,
   fontSize: 12, fontWeight: 600, color: '#475569', cursor: 'pointer',
+};
+const miniBtn: React.CSSProperties = {
+  width: 22, height: 22, lineHeight: '20px', padding: 0, background: '#fff',
+  border: '1px solid #CBD5E1', borderRadius: 5, fontSize: 12, color: '#475569', cursor: 'pointer',
 };
 const lbl: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: '#64748B' };
 const inp: React.CSSProperties = { padding: '8px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, fontFamily: 'inherit' };
