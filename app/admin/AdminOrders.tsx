@@ -1050,6 +1050,26 @@ export default function AdminOrders({
     });
   }
 
+  // ── Відмова від посилки (НП) ────────────────────────────────────────────────
+  // Скасоване замовлення з "Відмова від отримання" у статусі перевізника = посилка
+  // їде назад. Рішення менеджера зберігаємо у flags: return_received (забрав) /
+  // return_abandoned (не забираю — коли повернення дорожче за товар).
+  const isNpRefusal = (o: Order) => o.status === 'cancelled' && /відмов/i.test(o.carrier_status_text ?? '');
+  const returnState = (o: Order): 'received' | 'abandoned' | null =>
+    (o.flags ?? []).includes('return_received') ? 'received'
+    : (o.flags ?? []).includes('return_abandoned') ? 'abandoned'
+    : null;
+  async function setReturnState(id: string, state: 'received' | 'abandoned' | null) {
+    const cur = orders.find(o => o.id === id)?.flags ?? [];
+    const base = cur.filter(f => f !== 'return_received' && f !== 'return_abandoned');
+    const next = state ? [...base, `return_${state}`] : base;
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, flags: next } : o));
+    await fetch(`/api/admin/orders/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ flags: next }),
+    });
+  }
+
   // Внутрішня нотатка менеджера — зберігаємо по blur
   const [noteSaving, setNoteSaving] = useState<string | null>(null);
   async function saveInternalNote(id: string, note: string) {
@@ -1662,6 +1682,15 @@ export default function AdminOrders({
                       {order.mp_refund_status && (
                         <span title={`Покупець відкрив повернення — ${order.mp_refund_status}`} style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>↩ повернення</span>
                       )}
+                      {isNpRefusal(order) && (() => {
+                        const rs = returnState(order);
+                        const s = rs === 'received'
+                          ? { t: '↩ забрано', c: '#15803D', bg: '#F0FDF4', b: '#BBF7D0', title: 'Відмова від посилки — повернення забрано з пошти' }
+                          : rs === 'abandoned'
+                          ? { t: '↩ залишено', c: '#64748B', bg: '#F8FAFC', b: '#E2E8F0', title: 'Відмова від посилки — вирішено не забирати (повернення дорожче за товар)' }
+                          : { t: '↩ Відмова · забрати?', c: '#C2410C', bg: '#FFF7ED', b: '#FDBA74', title: 'Клієнт відмовився від посилки — вона їде назад. Відкрийте замовлення і вирішіть: забрати з пошти чи залишити.' };
+                        return <span title={s.title} style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: s.c, background: s.bg, border: `1px solid ${s.b}`, borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>{s.t}</span>;
+                      })()}
                       {isSmart && (
                         <span title="Rozetka Smart — безкоштовна доставка для покупця, компенсація списується з нас. НЕ редагуйте склад замовлення: будь-яка зміна знімає Smart безповоротно." style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 800, color: '#713F12', background: '#FDE047', border: '1px solid #FACC15', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>SMART</span>
                       )}
@@ -1803,6 +1832,41 @@ export default function AdminOrders({
                       <span>Прийміть товар і оформіть «↩ Повернення» в цій картці — це сторнує виручку, COGS і комісію.</span>
                     </div>
                   )}
+                  {/* Банер відмови від посилки НП: посилка їде назад — менеджер вирішує,
+                      забирати з пошти чи ні (коли зворотна доставка дорожча за товар) */}
+                  {isNpRefusal(order) && (() => {
+                    const rs = returnState(order);
+                    return (
+                      <div style={{ borderTop: '1px solid var(--border-light)', background: rs ? 'var(--bg-soft)' : '#FFF7ED', padding: '10px 16px', fontSize: '13px', color: rs ? 'var(--text-secondary)' : '#9A3412', lineHeight: 1.6 }}>
+                        <span style={{ fontWeight: 700 }}>↩ Клієнт відмовився від посилки</span>
+                        {order.tracking_number && <span> · ТТН {order.tracking_number}</span>}
+                        {order.carrier_status_text && <span> · НП: «{order.carrier_status_text}»</span>}
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap' }}>
+                          {rs === null && <>
+                            <span>Посилка повертається на відділення. Вирішіть:</span>
+                            <button onClick={() => setReturnState(order.id, 'received')}
+                              style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid #BBF7D0', background: '#F0FDF4', color: '#15803D', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>
+                              ✓ Забрав з пошти
+                            </button>
+                            <button onClick={() => setReturnState(order.id, 'abandoned')}
+                              title="Коли зворотна доставка дорожча за товар — дешевше залишити посилку на пошті"
+                              style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>
+                              ✗ Не забираю
+                            </button>
+                          </>}
+                          {rs === 'received' && <>
+                            <span style={{ color: '#15803D', fontWeight: 600 }}>✓ Повернення забрано з пошти.</span>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Якщо товар був закуплений — не забудьте оприбуткувати його на склад (Закупівля → Прихід).</span>
+                            <button onClick={() => setReturnState(order.id, null)} style={{ height: '26px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-muted)', fontSize: '11.5px', cursor: 'pointer' }}>скасувати рішення</button>
+                          </>}
+                          {rs === 'abandoned' && <>
+                            <span style={{ fontWeight: 600 }}>✗ Вирішено не забирати (повернення дорожче за товар).</span>
+                            <button onClick={() => setReturnState(order.id, null)} style={{ height: '26px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-muted)', fontSize: '11.5px', cursor: 'pointer' }}>скасувати рішення</button>
+                          </>}
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {/* Попередження Rozetka Smart: редагування складу замовлення знімає Smart безповоротно */}
                   {isSmart && !isCancelled && (
                     <div style={{ borderTop: '1px solid var(--border-light)', background: '#FEFCE8', padding: '10px 16px', fontSize: '13px', color: '#713F12', lineHeight: 1.5 }}>

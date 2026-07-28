@@ -66,8 +66,8 @@ export default async function AdminPage({
   // Пагінація: без range() лічильники вкладок і суми по статусах мовчки обрізалися б на 1000.
   const [{ data: orders, count }, statusRows, { count: recentReceiptCount }, allAmountRows, { data: promSetting }, { data: rozetkaSetting }] = await Promise.all([
     query,
-    fetchAllRows<{ status: string; carrier_accepted_at: string | null }>((f, t) => {
-      let q = serviceClient.from('orders').select('status, carrier_accepted_at');
+    fetchAllRows<{ status: string; carrier_accepted_at: string | null; carrier_status_text: string | null; flags: string[] | null }>((f, t) => {
+      let q = serviceClient.from('orders').select('status, carrier_accepted_at, carrier_status_text, flags');
       if (dateFrom) q = q.gte('created_at', `${dateFrom}T00:00:00`);
       if (dateTo)   q = q.lte('created_at', `${dateTo}T23:59:59`);
       return q.range(f, t);
@@ -159,6 +159,15 @@ export default async function AdminPage({
   }, {});
   const totalCount = statusRows?.length ?? 0;
 
+  // Невирішені відмови від посилок: скасовані з «Відмова від отримання» у статусі НП,
+  // без рішення менеджера (flags return_received / return_abandoned). Це «забрати з пошти».
+  const pendingReturns = (statusRows ?? []).filter(r =>
+    r.status === 'cancelled'
+    && /відмов/i.test(r.carrier_status_text ?? '')
+    && !(r.flags ?? []).includes('return_received')
+    && !(r.flags ?? []).includes('return_abandoned'),
+  ).length;
+
   const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE);
   const curStatus = status;
 
@@ -209,6 +218,16 @@ export default async function AdminPage({
                         background: isActive ? 'rgba(255,255,255,0.22)' : isNew ? '#EF4444' : '#E0ECF8',
                         color: isActive ? '#fff' : isNew ? '#fff' : '#3B6EA5',
                       }}>{cnt}</span>
+                    )}
+                    {/* Невирішені відмови (посилки їдуть назад — треба забрати з пошти або відмовитись) */}
+                    {tab.value === 'cancelled' && pendingReturns > 0 && (
+                      <span title={`Відмов від посилок без рішення: ${pendingReturns} — відкрийте замовлення і виберіть «забрати» чи «залишити»`} style={{
+                        display: 'inline-block', verticalAlign: 'middle', marginLeft: '3px',
+                        fontSize: '10px', fontWeight: 700, lineHeight: '15px',
+                        padding: '0 5px', borderRadius: '7px',
+                        background: isActive ? 'rgba(255,165,0,0.35)' : '#FFEDD5',
+                        color: isActive ? '#FFD9A8' : '#C2410C',
+                      }}>↩ {pendingReturns}</span>
                     )}
                   </span>
                 </div>
