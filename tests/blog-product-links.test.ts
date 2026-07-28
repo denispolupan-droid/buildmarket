@@ -66,6 +66,19 @@ describe('pickArticleProducts', () => {
     expect(new Set(out.map(x => x.category_slug)).size).toBeGreaterThanOrEqual(2);
   });
 
+  it('із суміжної категорії бере найдешевшу позицію (кейс «розчинники» у статті про радіатори)', () => {
+    const paints = [200, 400, 900].map((price, i) => p({ sku: `P${i}`, price, brand: `P${i}`, category_slug: 'radiatory' }));
+    const solvents = [
+      p({ sku: 'S-rust', price: 91, brand: 'Skyline', category_slug: 'rozchynnyky' }),
+      p({ sku: 'S-glue', price: 99, brand: 'XADO', category_slug: 'rozchynnyky' }),
+      p({ sku: 'S-white', price: 399, brand: 'Skyline2', category_slug: 'rozchynnyky' }),
+    ];
+    const out = pickArticleProducts([paints, solvents], 4);
+    const fromSolvents = out.filter(x => x.category_slug === 'rozchynnyky');
+    expect(fromSolvents).toHaveLength(1);
+    expect(fromSolvents[0].sku).toBe('S-rust');
+  });
+
   it('одна категорія — усі слоти їй', () => {
     const only = Array.from({ length: 20 }, (_, i) => p({ sku: `S${i}`, price: i * 10 + 10, brand: `B${i}` }));
     expect(pickArticleProducts([only], 4)).toHaveLength(4);

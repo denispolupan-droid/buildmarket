@@ -38,6 +38,7 @@ const NAV = [
   { href: '/admin/prom',                 label: 'Prom.ua',        icon: ShoppingBasket, exact: false },
   { href: '/admin/rozetka',              label: 'Rozetka',        icon: SocketIcon as typeof Store, exact: false },
   { href: '/admin/pricing',              label: 'Аналіз цін',     icon: TrendingUp,     exact: false },
+  { href: '/admin/pricing-model',        label: 'Модель націнок', icon: Tags,           exact: false },
   { href: '/admin/seo',                  label: 'SEO',            icon: Search,         exact: false },
   { href: '/admin/blog',                 label: 'Блог',           icon: BookOpen,       exact: false },
   { href: '/admin/finance',              label: 'Фінанси',        icon: BarChart3,      exact: false },

@@ -69,14 +69,17 @@ export function pickArticleProducts(groups: LinkProduct[][], limit = 4): LinkPro
   const picked = priceLadder(primary, primaryQuota);
   const used = new Set(picked.map(p => p.sku));
 
-  // По одній характерній (медіанній за ціною) позиції з кожної суміжної категорії
+  // По одній позиції з кожної суміжної категорії — найдешевшій. Раніше брали
+  // медіанну за ціною, і в статті про фарбування радіаторів із «Розчинників»
+  // випадково витягувало змивку клею замість перетворювача іржі. Найдешевша —
+  // це «спробувати», доречний вхід у суміжну тему; ціновий діапазон і так
+  // закриває драбина головної категорії.
   for (const g of others) {
     if (picked.length >= limit) break;
-    const rest = g.filter(p => !used.has(p.sku));
-    if (!rest.length) continue;
-    const mid = rest[Math.floor(rest.length / 2)];
-    picked.push(mid);
-    used.add(mid.sku);
+    const cheapest = g.find(p => !used.has(p.sku));
+    if (!cheapest) continue;
+    picked.push(cheapest);
+    used.add(cheapest.sku);
   }
 
   // Лишились слоти (суміжних категорій мало) — добираємо з головної
