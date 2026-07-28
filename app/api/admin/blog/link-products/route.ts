@@ -15,7 +15,8 @@ const serviceClient = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-const LIMIT_PER_ARTICLE = 4;
+// 6 — рівно два ряди по три в ширині статті (760px); 4 лягали 3+1 і виглядали обірвано
+const LIMIT_PER_ARTICLE = 6;
 
 type PostRow = {
   id: number; slug: string; title: string; is_published: boolean;

@@ -67,7 +67,9 @@ export default async function ArticleProducts({ skus, lang }: Props) {
               <div style={{ fontSize: 13, lineHeight: 1.4, color: 'var(--text-primary)', fontWeight: 500 }}>
                 {name}
               </div>
-              {p.volume && (
+              {/* Фасовка окремим рядком лише якщо її немає в назві — інакше
+                  «…для стін та стелі, 1 л» і під ним ще раз «1 л» */}
+              {p.volume && !name.toLowerCase().includes(p.volume.toLowerCase()) && (
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.volume}</div>
               )}
               <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'baseline', gap: 8 }}>
