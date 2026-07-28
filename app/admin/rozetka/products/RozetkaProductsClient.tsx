@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Search, Check, X, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
+import { computeSmartFee, type SmartBracket } from '../../../../lib/rozetka-smart-tariff';
 
 interface Product {
   sku:               string;
@@ -38,17 +39,17 @@ function calcRzPrice(base: number, markup: number, commission: number): number {
 }
 
 // Rozetka Smart: та сама формула, що у фіді (app/api/rozetka/feed) — надбавка
-// покриває компенсацію доставки (12/18/30 за порогами) з урахуванням комісії
-// на саму надбавку, зі ступінчастим перескоком порога 399/699.
-const smartFee = (p: number) => (p < 400 ? 12 : p < 700 ? 18 : 30);
-function calcSmartPrice(P: number, commission: number): number {
+// покриває компенсацію доставки (тариф з адмінки, «Умови Smart») з урахуванням
+// комісії на саму надбавку, зі ступінчастим перескоком порогів.
+function calcSmartPrice(P: number, commission: number, tariff: SmartBracket[]): number {
   const c = commission > 0 ? commission / 100 : 0.15;
-  let fee = smartFee(P);
+  const feeOf = (p: number) => computeSmartFee(p, tariff);
+  let fee = feeOf(P);
   let raised = P + fee / (1 - c);
-  if (smartFee(raised) !== fee) {
-    const fee2 = smartFee(raised);
+  if (feeOf(raised) !== fee) {
+    const fee2 = feeOf(raised);
     const raised2 = P + fee2 / (1 - c);
-    if (smartFee(raised2) === fee2) { fee = fee2; raised = raised2; }
+    if (feeOf(raised2) === fee2) { fee = fee2; raised = raised2; }
   }
   return Math.ceil(raised / 5) * 5;
 }
@@ -68,10 +69,11 @@ const TH: React.CSSProperties = {
   textTransform: 'uppercase', letterSpacing: '.03em',
 };
 
-export default function RozetkaProductsClient({ products, stock, categories }: {
-  products:   Product[];
-  stock:      Stock[];
-  categories: Category[];
+export default function RozetkaProductsClient({ products, stock, categories, smartTariff }: {
+  products:    Product[];
+  stock:       Stock[];
+  categories:  Category[];
+  smartTariff: SmartBracket[];
 }) {
   const stockMap = useMemo(() => new Map(stock.map(s => [s.sku, s])), [stock]);
   const catMap   = useMemo(() => new Map(categories.map(c => [c.slug, c])), [categories]);
@@ -112,6 +114,38 @@ export default function RozetkaProductsClient({ products, stock, categories }: {
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  // Умови Smart (тариф компенсації доставки): редагується тут, діє з моменту
+  // збереження — застосовується до нових відгрузок/фіда, минулі списання не чіпаємо.
+  const [tariff,       setTariff]       = useState<SmartBracket[]>(smartTariff);
+  const [tariffOpen,   setTariffOpen]   = useState(false);
+  const [tariffDraft,  setTariffDraft]  = useState<{ upTo: string; fee: string }[]>(
+    smartTariff.map(b => ({ upTo: b.upTo != null ? String(b.upTo) : '', fee: String(b.fee) }))
+  );
+  const [tariffSaving, setTariffSaving] = useState(false);
+  const [tariffError,  setTariffError]  = useState('');
+
+  async function saveTariff() {
+    setTariffSaving(true);
+    setTariffError('');
+    const brackets = tariffDraft.map((b, i) => ({
+      upTo: i === tariffDraft.length - 1 ? null : Number(b.upTo),
+      fee:  Number(b.fee),
+    }));
+    const res = await fetch('/api/admin/rozetka/smart-tariff', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brackets }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setTariffError(json.error ?? 'Не вдалося зберегти');
+    } else {
+      setTariff(json.brackets);
+      setTariffOpen(false);
+    }
+    setTariffSaving(false);
+  }
+
   const brands = useMemo(() => {
     const s = new Set(products.map(p => p.brand).filter(Boolean));
     return Array.from(s).sort((a, b) => a.localeCompare(b, 'uk'));
@@ -130,13 +164,13 @@ export default function RozetkaProductsClient({ products, stock, categories }: {
     const commission  = cat?.rozetka_commission_pct ?? 0;
     const baseRz      = basePrice > 0 ? calcRzPrice(basePrice, markup, commission) : null;
     const isSmart     = smart[p.sku] === true;
-    const rzPrice     = baseRz != null && isSmart ? calcSmartPrice(baseRz, commission) : baseRz;
+    const rzPrice     = baseRz != null && isSmart ? calcSmartPrice(baseRz, commission, tariff) : baseRz;
     // Маржа рахується від базової ціни: Smart-надбавка йде на компенсацію доставки, не в маржу
     const net         = baseRz != null && commission > 0 ? baseRz * (1 - commission / 100) : baseRz;
     const marginUah   = net != null && cost != null ? net - cost : null;
     const marginPct   = marginUah != null && net != null && net > 0 ? (marginUah / net) * 100 : null;
     return { p, cat, retailPrice, cost, basePrice, productMkp, catMkp, markup, commission, rzPrice, baseRz, isSmart, marginPct };
-  }), [products, stockMap, catMap, markups, smart]);
+  }), [products, stockMap, catMap, markups, smart, tariff]);
 
   const filteredRows = useMemo(() => {
     let list = allRows;
@@ -250,9 +284,56 @@ export default function RozetkaProductsClient({ products, stock, categories }: {
           <p style={{ margin: '2px 0 0', fontSize: 13, color: '#6B7280' }}>
             {totalEnabled} / {products.length} увімкнено в Rozetka
             <span style={{ marginLeft: 8, color: '#B45309', fontWeight: 600 }}>· {Object.values(smart).filter(Boolean).length} у Smart</span>
+            <button onClick={() => setTariffOpen(v => !v)}
+              style={{ marginLeft: 10, padding: '2px 10px', borderRadius: 7, border: '1px solid #FDBA74', background: tariffOpen ? '#FFF7ED' : '#fff', color: '#B45309', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              Умови Smart
+            </button>
           </p>
         </div>
       </div>
+
+      {/* Умови Smart — редагований тариф компенсації доставки */}
+      {tariffOpen && (
+        <div style={{ margin: '0 0 20px', padding: '14px 18px', borderRadius: 12, border: '1.5px solid #FDBA74', background: '#FFFBEB', maxWidth: 640 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#B45309', marginBottom: 10 }}>
+            Компенсація вартості доставки Smart (грн з ПДВ, за сумою замовлення)
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {tariffDraft.map((b, i) => {
+              const isLast = i === tariffDraft.length - 1;
+              const prevUpTo = i > 0 ? tariffDraft[i - 1].upTo : null;
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#374151' }}>
+                  <span style={{ minWidth: 170 }}>
+                    {isLast
+                      ? `замовлення від ${prevUpTo || '…'} грн`
+                      : i === 0 ? <>замовлення до{' '}
+                          <input value={b.upTo} onChange={e => setTariffDraft(d => d.map((x, j) => j === i ? { ...x, upTo: e.target.value } : x))}
+                            style={{ width: 60, padding: '3px 6px', borderRadius: 6, border: '1px solid #E2E8F0', fontSize: 13, textAlign: 'right' }} /> грн</>
+                        : <>{prevUpTo || '…'} –{' '}
+                          <input value={b.upTo} onChange={e => setTariffDraft(d => d.map((x, j) => j === i ? { ...x, upTo: e.target.value } : x))}
+                            style={{ width: 60, padding: '3px 6px', borderRadius: 6, border: '1px solid #E2E8F0', fontSize: 13, textAlign: 'right' }} /> грн</>}
+                  </span>
+                  <span>→</span>
+                  <input value={b.fee} onChange={e => setTariffDraft(d => d.map((x, j) => j === i ? { ...x, fee: e.target.value } : x))}
+                    style={{ width: 60, padding: '3px 6px', borderRadius: 6, border: '1px solid #E2E8F0', fontSize: 13, textAlign: 'right' }} />
+                  <span>грн</span>
+                </div>
+              );
+            })}
+          </div>
+          {tariffError && <div style={{ marginTop: 8, fontSize: 12, color: '#DC2626', fontWeight: 600 }}>{tariffError}</div>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
+            <button onClick={saveTariff} disabled={tariffSaving}
+              style={{ padding: '6px 16px', borderRadius: 8, border: 'none', background: '#B45309', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: tariffSaving ? 0.6 : 1 }}>
+              {tariffSaving ? 'Зберігаю…' : 'Зберегти'}
+            </button>
+            <span style={{ fontSize: 12, color: '#92400E' }}>
+              Діє з моменту збереження: нові відгрузки та фід — за новим тарифом; вже проведені списання не перераховуються.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>

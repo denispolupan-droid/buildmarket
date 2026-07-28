@@ -9,13 +9,17 @@ import { getRozetkaBalanceTotal, getRozetkaBalanceTxns } from '../../../../../..
 // різниці робиться вручну через існуючу «Операцію» (route /adjust).
 
 // Типи операцій Rozetka, що РЕАЛЬНО списують гроші по замовленню (поле debit):
-// 2 комісія за продаж, 7 коректування замовлення, 8 правка кількості,
-// 13 автокоректування, 15 коректування роялті по замовленню.
-const CHARGE_OPS = new Set([2, 7, 8, 13, 15]);
+// 2 комісія за продаж, 7 коректування замовлення, 13 автокоректування,
+// 15 коректування роялті по замовленню.
+// УВАГА: 8 «правка кількості» — це ДОРЕЗЕРВ (сіра зона росте, гроші не списуються;
+// комісія при доставці приходить уже за фінальним складом) — підтверджено звіркою
+// 2026-07-28 по замовленню 900675333: включення op 8 сюди задвоювало «їхню» суму.
+const CHARGE_OPS = new Set([2, 7, 13, 15]);
 // Повернення комісії (поле credit): 14 повернення замовлення.
 const REFUND_OPS = new Set([14]);
 // Резерви «сірої зони» — грошей не рухають, у звірці комісій не беруть участі:
-// 1 резерв, 3 зняття резерву, 9 повернення резерву за скасований товар, 10 резерв доданого товару.
+// 1 резерв, 3 зняття резерву, 8 правка кількості (дорезерв), 9 повернення резерву
+// за скасований товар, 10 резерв доданого товару.
 const OP_NAME: Record<number, string> = {
   1: 'Резерв суми', 2: 'Комісія за продаж', 3: 'Зняття резерву', 4: 'Поповнення роялті',
   5: 'Абонплата', 6: 'Коригування балансу', 7: 'Коректування замовлення', 8: 'Правка кількості',
@@ -71,7 +75,7 @@ export async function GET(req: NextRequest) {
 
     // Замовлення, по яких Rozetka вже тримає резерв (сіра зона, ops 1/10) — якщо ми вже
     // провели комісію, а списання ще немає, це нормальний лаг Rozetka, а не розбіжність.
-    const reservedRzIds = new Set(txns.filter(t => (t.operationType === 1 || t.operationType === 10) && t.orderId).map(t => t.orderId));
+    const reservedRzIds = new Set(txns.filter(t => [1, 8, 10].includes(t.operationType) && t.orderId).map(t => t.orderId));
 
     // Інші операції кабінету (без привʼязки до замовлення / резерви) — для контексту
     const othersMap = new Map<number, { count: number; debit: number; credit: number }>();
@@ -139,7 +143,7 @@ export async function GET(req: NextRequest) {
 
     // Наші комісії за період, яких НЕМАЄ у виписці Rozetka (навпаки)
     const { data: periodFees } = await db.from('money_entries')
-      .select('order_id, amount')
+      .select('order_id, amount, meta')
       .eq('account_type', 'marketplace_fee')
       .eq('counterparty_id', 'rozetka')
       .gte('business_date', from)
@@ -147,7 +151,15 @@ export async function GET(req: NextRequest) {
       .not('order_id', 'is', null)
       .limit(10000);
     const periodByOrder = new Map<string, number>();
+    // Smart-збори Rozetka списує ПОЗА випискою /balances/search — їх принципово немає
+    // на «їхньому» боці, тож у построчну звірку вони не входять; показуємо окремим рядком.
+    const smartFees = { count: 0, total: 0 };
     for (const f of periodFees ?? []) {
+      if ((f.meta as Record<string, unknown> | null)?.smart) {
+        smartFees.count++;
+        smartFees.total = r2(smartFees.total + Number(f.amount));
+        continue;
+      }
       periodByOrder.set(f.order_id!, (periodByOrder.get(f.order_id!) ?? 0) + Number(f.amount));
     }
     const matchedOurIds = new Set((orders ?? []).map(o => o.id));
@@ -181,7 +193,7 @@ export async function GET(req: NextRequest) {
     };
 
     return NextResponse.json({
-      cabinet, from, to, rows, others,
+      cabinet, from, to, rows, others, smartFees,
       totals: { ...totals, delta: r2(totals.their - totals.ours) },
     });
   } catch (err: unknown) {

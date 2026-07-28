@@ -3,6 +3,9 @@ import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { createSaleDraft } from '../../../../../../lib/accounting/dropship';
 import { completeOrderDelivery } from '../../../../../../lib/accounting/completion';
+import { recordMarketplaceServiceFee } from '../../../../../../lib/accounting/money';
+import { computeSmartFee, getSmartTariff } from '../../../../../../lib/rozetka-smart';
+import { alertAdmin } from '../../../../../../lib/alert';
 import { checkOrderCredit } from '../../../../../../lib/accounting/credit-guard';
 import { setPromTTN } from '../../../../../../lib/prom-api';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../../lib/rozetka-api';
@@ -55,7 +58,7 @@ export async function POST(
 
   const { data: order, error } = await db
     .from('orders')
-    .select('id, order_number, status, items, channel_code, customer_id, delivery_type, prom_order_id, rozetka_order_id, tracking_number, shipping_supplier_id')
+    .select('id, order_number, status, items, channel_code, customer_id, delivery_type, prom_order_id, rozetka_order_id, tracking_number, shipping_supplier_id, total_price, rozetka_data')
     .eq('id', id)
     .single();
 
@@ -150,6 +153,33 @@ export async function POST(
     shipping_supplier_id: (order as { shipping_supplier_id?: number | null }).shipping_supplier_id ?? null,
     tracking_number:      effectiveTtn,
   });
+
+  // Компенсація Rozetka Smart: площадка списує збір з балансу при передачі посилки
+  // перевізникові — проводимо одразу при відгрузці за чинним тарифом (адмінка →
+  // «Умови Smart»). Разово на замовлення (order-level ключ; completion при доставці
+  // використовує той самий ключ як страховку). Помилка проводки не валить відгрузку.
+  const isSmartOrder = order.channel_code === 'rozetka'
+    && Boolean((order.rozetka_data as Record<string, unknown> | null)?.is_smart);
+  if (isSmartOrder) {
+    try {
+      const orderTotal = Number(order.total_price) || 0;
+      const smartFee = computeSmartFee(orderTotal, await getSmartTariff());
+      if (smartFee > 0) {
+        await recordMarketplaceServiceFee({
+          orderId:        order.id,
+          amount:         smartFee,
+          marketplace:    'rozetka',
+          description:    `Rozetka Smart — компенсація доставки (замовлення #${order.order_number})`,
+          idempotencyKey: `smart-fee:rozetka:${order.id}`,
+          businessDate:   new Date().toISOString().split('T')[0],
+          createdBy:      user.email ?? 'admin',
+          meta:           { smart: true, order_total: orderTotal },
+        });
+      }
+    } catch (err) {
+      alertAdmin(`Smart-збір Rozetka не записався при відгрузці (замовлення #${order.order_number})`, err);
+    }
+  }
 
   // Чи все замовлення тепер включене в РН (повна відгрузка)?
   const newDrafted = { ...draftedBySku };

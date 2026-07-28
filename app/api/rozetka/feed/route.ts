@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../lib/supabase';
 import { formatForRozetka, toRozetkaVolume } from '../../../../lib/rozetka-name';
 import { fetchAllRows } from '../../../../lib/db-paginate';
+import { getSmartTariff } from '../../../../lib/rozetka-smart';
+import { computeSmartFee } from '../../../../lib/rozetka-smart-tariff';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://fixline.com.ua';
 const SHOP_NAME = 'Fixline';
@@ -64,8 +66,10 @@ export async function GET() {
     return Math.ceil(withComm / 5) * 5;
   }
 
-  // Компенсація Rozetka Smart за порогами суми замовлення (з ПДВ)
-  const smartFee = (p: number) => (p < 400 ? 12 : p < 700 ? 18 : 30);
+  // Компенсація Rozetka Smart за порогами суми замовлення (з ПДВ) —
+  // чинний тариф з адмінки (Товари Rozetka → «Умови Smart»)
+  const smartTariff = await getSmartTariff();
+  const smartFee = (p: number) => computeSmartFee(p, smartTariff);
 
   // Товар у програмі Smart (products.rozetka_smart): надбавка до ціни, що покриває
   // компенсацію доставки з урахуванням комісії на саму надбавку:

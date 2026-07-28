@@ -20,6 +20,7 @@ type CabinetData = {
   from: string; to: string;
   rows: CabinetRow[];
   others: Array<{ op: number; name: string; count: number; debit: number; credit: number }>;
+  smartFees?: { count: number; total: number };
   totals: { their: number; ours: number; delta: number };
 };
 
@@ -472,6 +473,13 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
                   {cabinetData.others.map(o =>
                     `${o.name} ×${o.count}${o.debit ? ` (−${fmt(o.debit)})` : ''}${o.credit ? ` (+${fmt(o.credit)})` : ''}`
                   ).join(' · ')}
+                </div>
+              )}
+              {(cabinetData.smartFees?.count ?? 0) > 0 && (
+                <div style={{ marginTop: '6px', fontSize: '11px', color: '#B45309', lineHeight: 1.6 }}>
+                  <strong style={{ fontWeight: 700 }}>Smart-збори за період (наші проводки):</strong>{' '}
+                  ×{cabinetData.smartFees!.count} на −{fmt(cabinetData.smartFees!.total)} ₴ — Rozetka списує їх поза випискою,
+                  тому в таблиці вище їх немає; у балансі кабінету вони вже враховані.
                 </div>
               )}
               <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.4 }}>

@@ -19,6 +19,7 @@ import { recordMarketplaceCommission, recordMarketplaceServiceFee, recordCustome
 import { SALE_DEBTOR } from './documents';
 import { computePromCommission } from '../prom-commission';
 import { computeRozetkaCommission } from '../rozetka-commission';
+import { computeSmartFee, getSmartTariff } from '../rozetka-smart';
 import { alertAdmin } from '../alert';
 
 export async function applyCompletionEffects(docId: string, createdBy = 'system'): Promise<void> {
@@ -87,13 +88,14 @@ export async function applyCompletionEffects(docId: string, createdBy = 'system'
   }
 
   // 3) Компенсація Rozetka Smart — фіксований збір за порогами СУМИ ЗАМОВЛЕННЯ (не посилки),
-  // разово на замовлення (order-level ключ; фактично Rozetka списує його при передачі
-  // перевізникові — проводимо разом з комісією при доставці, як і решту проводок Варіанта 3).
+  // разово на замовлення (order-level ключ). Основне проведення — при ВІДГРУЗЦІ (ship route),
+  // бо Rozetka списує збір при передачі перевізникові; тут — страховка для замовлень,
+  // відвантажених до цього механізму (той самий idempotency-ключ → задвоєння немає).
   const isSmart = mp === 'rozetka'
     && Boolean((order?.rozetka_data as Record<string, unknown> | null)?.is_smart);
   if (isSmart) {
     const orderTotal = Number(order?.total_price) || 0;
-    const smartFee = orderTotal < 400 ? 12 : orderTotal < 700 ? 18 : 30;
+    const smartFee = computeSmartFee(orderTotal, await getSmartTariff());
     try {
       await recordMarketplaceServiceFee({
         orderId:        doc.order_id,
