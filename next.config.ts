@@ -42,7 +42,16 @@ const nextConfig: NextConfig = {
     staticGenerationRetryCount: 2,
   },
   images: {
-    unoptimized: true,
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 86400,
+    // Broad catch-all rather than enumerating each public/ subfolder (blog/covers,
+    // brands, images, img/products) — missing just one silently breaks its images,
+    // as happened with blog covers when this only allowlisted /img/**. There's no
+    // SSRF concern here since every local path is an asset we control; remotePatterns
+    // below is what actually restricts external hosts.
+    localPatterns: [
+      { pathname: '/**' },
+    ],
     remotePatterns: [
       {
         protocol: 'https',
