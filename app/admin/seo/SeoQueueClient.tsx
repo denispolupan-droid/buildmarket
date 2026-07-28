@@ -185,6 +185,37 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
       .catch(err => setGscError(String(err)));
   }, []);
 
+  // ── Що вже робили з цією сторінкою ──
+  type PageAction = {
+    page_path: string; last_at: string; total: number;
+    kinds: ('article_boost' | 'article_products' | 'product_boost' | 'cover')[];
+    query: string | null; products: number | null;
+  };
+  const [actions, setActions] = useState<Map<string, PageAction>>(new Map());
+
+  async function loadActions() {
+    try {
+      const res = await fetch('/api/admin/seo/actions');
+      if (!res.ok) return;
+      const rows: PageAction[] = await res.json();
+      setActions(new Map(rows.map(r => [r.page_path, r])));
+    } catch { /* історія не критична для роботи розділу */ }
+  }
+  useEffect(() => { void loadActions(); }, []);
+
+  /** Той самий ключ, що в журналі: без домену й без /ru */
+  function pagePath(page: string): string {
+    return page.replace(/^https?:\/\/[^/]+/i, '').replace(/[?#].*$/, '')
+      .replace(/^\/ru(?=\/|$)/, '').replace(/\/+$/, '') || '/';
+  }
+
+  const KIND_LABEL: Record<string, string> = {
+    article_boost:    'дожим статті',
+    article_products: 'товари',
+    product_boost:    'перепис картки',
+    cover:            'обкладинка',
+  };
+
   function pickGscRow(row: GscRow) {
     setBoostQuery(row.query);
     // Якщо запит веде на сторінку товару — підставляємо SKU автоматично
@@ -260,6 +291,7 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
       const text = await res.text();
       if (text.includes('"type":"result"')) {
         setBoostMsg(`✓ Картку ${boostItem.sku} перезаписано під запит: опис, FAQ, keywords, характеристики — обидві мови`);
+        void loadActions();
       } else {
         const err = /"error":"([^"]*)"/.exec(text)?.[1];
         throw new Error(err ?? 'генерація не повернула результат');
@@ -294,6 +326,7 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
       const links = data.linkedSkus?.length ? `, посилання на ${data.linkedSkus.length} товар(ів)` : '';
       setBoostMsg(`✓ Статтю «${data.title}» дожато: ${grew}, FAQ: ${data.faqCount}${links}. Перевірте текст у розділі Блог.`);
       void refreshExisting(boostQuery.trim());
+      void loadActions();
     } catch (err) {
       setBoostMsg(`✗ ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -452,6 +485,7 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
                   <tr style={{ textAlign: 'left', color: '#64748B' }}>
                     <th style={{ padding: '4px 8px' }}>Запит</th>
                     <th style={{ padding: '4px 8px' }}>Сторінка</th>
+                    <th style={{ padding: '4px 8px' }}>Що робили</th>
                     <th style={{ padding: '4px 8px', textAlign: 'right' }}>Позиція</th>
                     <th style={{ padding: '4px 8px', textAlign: 'right' }}>Покази</th>
                     <th style={{ padding: '4px 8px', textAlign: 'right' }}>Кліки</th>
@@ -468,6 +502,25 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
                       <td style={{ padding: '5px 8px', fontWeight: 600, color: '#1E293B' }}>{r.query}</td>
                       <td style={{ padding: '5px 8px', color: '#64748B', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {r.page.replace('https://fixline.com.ua', '') || '/'}
+                      </td>
+                      <td style={{ padding: '5px 8px', whiteSpace: 'nowrap' }}>
+                        {(() => {
+                          const a = actions.get(pagePath(r.page));
+                          if (!a) return <span style={{ color: '#CBD5E1' }}>—</span>;
+                          const when = new Date(a.last_at).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' });
+                          return (
+                            <span
+                              title={`${a.kinds.map(k => KIND_LABEL[k]).join(', ')}${a.query ? ` · запит: «${a.query}»` : ''}${a.products != null ? ` · товарів: ${a.products}` : ''} · усього дій: ${a.total}`}
+                              style={{
+                                display: 'inline-block', padding: '2px 8px', borderRadius: 999,
+                                background: '#ECFDF5', border: '1px solid #A7F3D0', color: '#047857',
+                                fontSize: 11, fontWeight: 600,
+                              }}
+                            >
+                              ✓ {a.kinds.map(k => KIND_LABEL[k]).join(' + ')} · {when}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 700, color: r.position <= 15 ? '#F59E0B' : '#64748B' }}>{r.position.toFixed(1)}</td>
                       <td style={{ padding: '5px 8px', textAlign: 'right' }}>{r.impressions}</td>

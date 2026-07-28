@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
+import { logSeoAction } from '../../../../../lib/seo-actions';
 import {
   expandCategories, pickArticleProducts, stripLinksBlock,
   hasLinksBlock, countProductLinks, productLabel, type LinkProduct,
@@ -171,6 +172,13 @@ export async function PATCH(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   revalidateTag('blog', 'max');
+  const { data: post } = await serviceClient.from('blog_posts').select('slug').eq('id', id).maybeSingle();
+  if (post) {
+    await logSeoAction({
+      page: `/blog/${post.slug}`, action: 'article_products',
+      meta: { count: clean.length, mode: 'manual' }, by: auth.user.email ?? null,
+    });
+  }
   return NextResponse.json({ ok: true, count: clean.length });
 }
 
@@ -215,5 +223,11 @@ export async function POST(req: NextRequest) {
   }
 
   if (updated.length) revalidateTag('blog', 'max');
+  for (const u of updated) {
+    await logSeoAction({
+      page: `/blog/${u.slug}`, action: 'article_products',
+      meta: { count: u.links, mode: 'auto' }, by: auth.user.email ?? null,
+    });
+  }
   return NextResponse.json({ ok: true, updated, skipped });
 }

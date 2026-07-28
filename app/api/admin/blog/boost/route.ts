@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { boostBlogPost } from '../../../../../lib/blog-generator';
+import { logSeoAction } from '../../../../../lib/seo-actions';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -82,6 +83,13 @@ export async function POST(req: NextRequest) {
       skus: (skus ?? []).filter(s => typeof s === 'string' && s.length > 0),
     });
     revalidateTag('blog', 'max');
+    await logSeoAction({
+      page: `/blog/${res.slug}`,
+      action: 'article_boost',
+      query: focusQuery,
+      meta: { lenBefore: res.lenBefore, lenAfter: res.lenAfter, faq: res.faqCount, skus: res.linkedSkus },
+      by: auth.user.email ?? null,
+    });
     return NextResponse.json(res);
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
