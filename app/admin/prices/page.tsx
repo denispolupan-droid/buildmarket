@@ -3,6 +3,7 @@ import { createSupabaseServer } from '../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import PricesClient from './PricesClient';
 import { fetchProductsInCatalogOrder } from '../../api/admin/prices/_catalog-order';
+import { getSmartTariff } from '../../../lib/rozetka-smart';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,14 +12,14 @@ const db = createClient(
 
 export const metadata = { title: 'Ціни — Адмін' };
 
-const PRODUCT_SELECT = 'sku, name, brand, volume, category_slug, is_active, prom_markup_pct, image, sort_order';
+const PRODUCT_SELECT = 'sku, name, brand, volume, category_slug, is_active, prom_markup_pct, rozetka_markup_pct, rozetka_smart, image, sort_order';
 
 export default async function PricesPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) redirect('/');
 
-  const [{ data: stock }, { data: categories }, { data: activePromos }] = await Promise.all([
+  const [{ data: stock }, { data: categories }, { data: activePromos }, smartTariff] = await Promise.all([
     db.from('product_stock')
       .select('sku, price_cost, price_unit, price_retail, price_drop, price_promo, price_wholesale, price_locked, stock_status, stock_qty, updated_at'),
     db.from('categories')
@@ -28,6 +29,7 @@ export default async function PricesPage() {
       .eq('is_promo', true)
       .is('reverted_at', null)
       .neq('status', 'cancelled'),
+    getSmartTariff(),
   ]);
 
   // Same parent-aware ordering the storefront's category menu uses, so the price
@@ -42,7 +44,8 @@ export default async function PricesPage() {
 
   type AdminProdRow = {
     sku: string; name: string; brand: string; volume: string | null; category_slug: string | null;
-    is_active: boolean; prom_markup_pct: number | null; image: string | null; sort_order: number | null;
+    is_active: boolean; prom_markup_pct: number | null; rozetka_markup_pct: number | null;
+    rozetka_smart: boolean | null; image: string | null; sort_order: number | null;
   };
 
   // Active products first, in the exact order the storefront shows them (per-category
@@ -76,6 +79,7 @@ export default async function PricesPage() {
       stock={stock ?? []}
       categories={sortedCats}
       promoMap={promoMap}
+      smartTariff={smartTariff}
     />
   );
 }

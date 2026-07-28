@@ -6,6 +6,7 @@ const TYPE_LABEL: Record<string, string> = {
   multiply_cost: '× від собівартості',
   increase_pct:  '% зміна',
   fixed:         'Фіксована ціна',
+  manual:        'Ручна правка',
 };
 
 const TARGET_LABEL: Record<string, string> = {

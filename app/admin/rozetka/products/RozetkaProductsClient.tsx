@@ -3,7 +3,8 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Search, Check, X, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
-import { computeSmartFee, type SmartBracket } from '../../../../lib/rozetka-smart-tariff';
+import { type SmartBracket } from '../../../../lib/rozetka-smart-tariff';
+import { rozetkaBasePrice, rozetkaSmartPrice } from '../../../../lib/marketplace-pricing';
 
 interface Product {
   sku:               string;
@@ -30,28 +31,6 @@ interface Category {
   rozetka_markup_pct:     number | null;
   rozetka_category_id:    string | null;
   rozetka_category_name:  string | null;
-}
-
-function calcRzPrice(base: number, markup: number, commission: number): number {
-  const withMarkup = base * (1 + markup / 100);
-  const withComm   = commission > 0 ? withMarkup / (1 - commission / 100) : withMarkup;
-  return Math.ceil(withComm / 5) * 5;
-}
-
-// Rozetka Smart: та сама формула, що у фіді (app/api/rozetka/feed) — надбавка
-// покриває компенсацію доставки (тариф з адмінки, «Умови Smart») з урахуванням
-// комісії на саму надбавку, зі ступінчастим перескоком порогів.
-function calcSmartPrice(P: number, commission: number, tariff: SmartBracket[]): number {
-  const c = commission > 0 ? commission / 100 : 0.15;
-  const feeOf = (p: number) => computeSmartFee(p, tariff);
-  let fee = feeOf(P);
-  let raised = P + fee / (1 - c);
-  if (feeOf(raised) !== fee) {
-    const fee2 = feeOf(raised);
-    const raised2 = P + fee2 / (1 - c);
-    if (feeOf(raised2) === fee2) { fee = fee2; raised = raised2; }
-  }
-  return Math.ceil(raised / 5) * 5;
 }
 
 function marginColor(pct: number) {
@@ -162,9 +141,11 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
     const catMkp      = cat?.rozetka_markup_pct ?? null;
     const markup      = productMkp ?? catMkp ?? 0;
     const commission  = cat?.rozetka_commission_pct ?? 0;
-    const baseRz      = basePrice > 0 ? calcRzPrice(basePrice, markup, commission) : null;
+    // ЄДИНА формула lib/marketplace-pricing — та сама, що у фіді
+    const priceInputs = { cost, retail: retailPrice, productMarkupPct: productMkp, categoryMarkupPct: catMkp, commissionPct: commission };
+    const baseRz      = basePrice > 0 ? rozetkaBasePrice(priceInputs) : null;
     const isSmart     = smart[p.sku] === true;
-    const rzPrice     = baseRz != null && isSmart ? calcSmartPrice(baseRz, commission, tariff) : baseRz;
+    const rzPrice     = baseRz != null && isSmart ? rozetkaSmartPrice(baseRz, commission, tariff) : baseRz;
     // Маржа рахується від базової ціни: Smart-надбавка йде на компенсацію доставки, не в маржу
     const net         = baseRz != null && commission > 0 ? baseRz * (1 - commission / 100) : baseRz;
     const marginUah   = net != null && cost != null ? net - cost : null;

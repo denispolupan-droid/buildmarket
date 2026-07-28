@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { computeMarketplacePrice, type PricingRule, type PriceTarget } from '../../../../lib/pricing-rules';
+import { rozetkaPrice, promPrice } from '../../../../lib/marketplace-pricing';
+import { getSmartTariff } from '../../../../lib/rozetka-smart';
 
 export const runtime = 'nodejs';
 
@@ -12,13 +14,6 @@ const serviceClient = createClient(
 );
 
 type Marketplace = 'rozetka' | 'prom';
-
-/** Поточна ціна у фіді — стара модель: собівартість × (1+націнка) / (1−комісія), крок 5. */
-function legacyPrice(cost: number, markupPct: number, commissionPct: number): number {
-  const withMarkup = cost * (1 + markupPct / 100);
-  const withComm = commissionPct > 0 ? withMarkup / (1 - commissionPct / 100) : withMarkup;
-  return Math.ceil(withComm / 5) * 5;
-}
 
 /**
  * GET ?marketplace=rozetka — попередній перегляд: що станеться з кожною ціною.
@@ -31,28 +26,32 @@ export async function GET(req: NextRequest) {
   const marketplace = (req.nextUrl.searchParams.get('marketplace') ?? 'rozetka') as Marketplace;
   const onField = marketplace === 'rozetka' ? 'on_rozetka' : 'on_prom';
 
-  const [{ data: rulesRaw }, { data: cats }, products] = await Promise.all([
+  type StockRow = { price_cost: number | null; price_retail: number | null; price_wholesale: number | null };
+  const [{ data: rulesRaw }, { data: cats }, products, smartTariff] = await Promise.all([
     serviceClient.from('pricing_rules').select('*').eq('is_active', true),
-    serviceClient.from('categories').select('slug, name, rozetka_commission_pct, prom_commission_pct'),
+    serviceClient.from('categories').select('slug, name, rozetka_commission_pct, prom_commission_pct, rozetka_markup_pct, prom_markup_pct'),
     fetchAllRows<{
       sku: string; name: string; brand: string; category_slug: string | null;
       on_rozetka: boolean | null; on_prom: boolean | null; min_price: number | null;
-      rozetka_markup_pct: number | null; prom_markup_pct: number | null;
-      product_stock: { price_cost: number | null; price_retail: number | null }
-        | { price_cost: number | null; price_retail: number | null }[] | null;
+      rozetka_markup_pct: number | null; prom_markup_pct: number | null; rozetka_smart: boolean | null;
+      product_stock: StockRow | StockRow[] | null;
     }>((from, to) => serviceClient.from('products')
-      .select('sku, name, brand, category_slug, on_rozetka, on_prom, min_price, rozetka_markup_pct, prom_markup_pct, product_stock(price_cost, price_retail)')
+      .select('sku, name, brand, category_slug, on_rozetka, on_prom, min_price, rozetka_markup_pct, prom_markup_pct, rozetka_smart, product_stock(price_cost, price_retail, price_wholesale)')
       .eq('is_active', true)
       .range(from, to)),
+    getSmartTariff(),
   ]);
 
   const rules = (rulesRaw ?? []) as PricingRule[];
   const commissionOf = new Map<string, number>();
+  const catMarkupOf = new Map<string, number>();
   const catName = new Map<string, string>();
   for (const c of cats ?? []) {
     catName.set(c.slug, c.name);
     const pct = marketplace === 'rozetka' ? c.rozetka_commission_pct : c.prom_commission_pct;
     if (pct != null) commissionOf.set(c.slug, Number(pct));
+    const mkp = marketplace === 'rozetka' ? c.rozetka_markup_pct : c.prom_markup_pct;
+    if (mkp != null) catMarkupOf.set(c.slug, Number(mkp));
   }
 
   const rows = [];
@@ -69,10 +68,25 @@ export async function GET(req: NextRequest) {
     };
     const next = computeMarketplacePrice(target, rules, marketplace);
 
-    const oldMarkup = Number(
-      (marketplace === 'rozetka' ? p.rozetka_markup_pct : p.prom_markup_pct) ?? 0,
-    );
-    const before = legacyPrice(cost, oldMarkup, commissionPct);
+    // «Before» = фактична поточна ціна фіда — ЄДИНОЮ формулою lib/marketplace-pricing
+    // (включно з категорійною націнкою, Smart і ручним override Prom)
+    const productMarkup = marketplace === 'rozetka' ? p.rozetka_markup_pct : p.prom_markup_pct;
+    const categoryMarkup = catMarkupOf.get(p.category_slug ?? '') ?? null;
+    const retail = Number(stock?.price_retail ?? 0);
+    const before = marketplace === 'rozetka'
+      ? rozetkaPrice({
+          cost, retail,
+          productMarkupPct: productMarkup != null ? Number(productMarkup) : null,
+          categoryMarkupPct: categoryMarkup,
+          commissionPct, smart: p.rozetka_smart === true, smartTariff,
+        })
+      : promPrice({
+          cost, retail,
+          manualOverride: stock?.price_wholesale != null ? Number(stock.price_wholesale) : null,
+          productMarkupPct: productMarkup != null ? Number(productMarkup) : null,
+          categoryMarkupPct: categoryMarkup,
+          commissionPct,
+        });
     const beforeProfit = Math.round((before * (1 - commissionPct / 100) - cost) * 100) / 100;
 
     rows.push({

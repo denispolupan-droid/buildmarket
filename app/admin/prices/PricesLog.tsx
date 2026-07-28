@@ -24,6 +24,7 @@ const TYPE_LABEL: Record<string, string> = {
   multiply_cost: '× від собівартості',
   increase_pct:  '% зміна',
   fixed:         'Фіксована ціна',
+  manual:        'Ручна правка',
 };
 
 const TARGET_LABEL: Record<string, string> = {
@@ -103,7 +104,9 @@ export default function PricesLog() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {entries.map(entry => {
         const isOpen = expanded.has(entry.id);
-        const valStr = entry.type === 'increase_pct'
+        const valStr = entry.type === 'manual'
+          ? ''
+          : entry.type === 'increase_pct'
           ? (entry.value >= 0 ? `+${entry.value}%` : `${entry.value}%`)
           : entry.type === 'multiply_cost'
           ? `×${entry.value}`

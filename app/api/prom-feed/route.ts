@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/db-paginate';
+import { promPrice, promPriceFromBase, resolveMarkup } from '@/lib/marketplace-pricing';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -374,31 +375,27 @@ export async function GET(request: NextRequest) {
       const retailPrice = s.price_retail ?? s.price_unit;
       if (!retailPrice || retailPrice <= 0) return null;
 
-      // Base for markup = cost (ціна входу) if available, otherwise retail
-      const costPrice = (s as { price_cost?: number | null }).price_cost;
-      const basePrice = costPrice && costPrice > 0 ? costPrice : retailPrice;
-
-      // Prom price: manual override → auto-calculated from markup + commission
+      // Ціна — ЄДИНОЮ формулою lib/marketplace-pricing (як усі адмін-екрани):
+      // ручний override (price_wholesale) → інакше ціна входу × націнка ÷ (1 − комісія)
       const priceWholesale = (s as { price_wholesale?: number | null }).price_wholesale;
-      let price: number;
-      if (priceWholesale && priceWholesale > 0) {
-        price = priceWholesale;
-      } else {
-        const productMarkup = (p as { prom_markup_pct?: number | null }).prom_markup_pct;
-        const markup     = productMarkup ?? (p.category_slug ? (catMarkupMap.get(p.category_slug) ?? 0) : 0);
-        const commission = p.category_slug ? (catCommissionMap.get(p.category_slug) ?? 0) : 0;
-        price = Math.ceil(basePrice * (1 + markup / 100) / (1 - commission / 100));
-      }
+      const productMarkup = (p as { prom_markup_pct?: number | null }).prom_markup_pct;
+      const markup     = resolveMarkup(productMarkup, p.category_slug ? (catMarkupMap.get(p.category_slug) ?? 0) : 0);
+      const commission = p.category_slug ? (catCommissionMap.get(p.category_slug) ?? 0) : 0;
+      const price = promPrice({
+        cost: (s as { price_cost?: number | null }).price_cost,
+        retail: retailPrice,
+        manualOverride: priceWholesale,
+        productMarkupPct: productMarkup,
+        categoryMarkupPct: p.category_slug ? (catMarkupMap.get(p.category_slug) ?? 0) : 0,
+        commissionPct: commission,
+      });
 
       const priceOldBase = s.price_retail != null
         ? ((s as { price_retail_old?: number | null }).price_retail_old ?? null)
         : ((s as { price_old?: number | null }).price_old ?? null);
       let promPriceOld: number | null = null;
       if (!priceWholesale && priceOldBase && priceOldBase > retailPrice) {
-        const productMarkup = (p as { prom_markup_pct?: number | null }).prom_markup_pct;
-        const markup     = productMarkup ?? (p.category_slug ? (catMarkupMap.get(p.category_slug) ?? 0) : 0);
-        const commission = p.category_slug ? (catCommissionMap.get(p.category_slug) ?? 0) : 0;
-        promPriceOld = Math.ceil(priceOldBase * (1 + markup / 100) / (1 - commission / 100));
+        promPriceOld = promPriceFromBase(priceOldBase, markup, commission);
       }
       const hasDiscount = promPriceOld != null && promPriceOld > price;
 

@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Search, Check, X, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
+import { promPrice as calcPromPrice } from '../../../../lib/marketplace-pricing';
 
 interface Product {
   sku:             string;
@@ -46,10 +47,6 @@ function promCatLabel(url: string | null): string | null {
   }
 }
 
-function calcPromPrice(base: number, markup: number, commission: number) {
-  if (commission >= 100) return 0;
-  return Math.ceil(base * (1 + markup / 100) / (1 - commission / 100));
-}
 function marginColor(pct: number) {
   if (pct >= 30) return '#16A34A';
   if (pct >= 20) return '#65A30D';
@@ -116,9 +113,10 @@ export default function PromPricesClient({ products, stock, categories }: Props)
     const catMkp      = cat?.prom_markup_pct ?? null;
     const markup      = productMkp ?? catMkp ?? 0;
     const commission  = cat?.prom_commission_pct ?? 0;
-    const promPrice   = manual && manual > 0
-      ? manual
-      : (basePrice > 0 ? calcPromPrice(basePrice, markup, commission) : null);
+    // ЄДИНА формула lib/marketplace-pricing — та сама, що у фіді
+    const promPrice   = basePrice > 0 || (manual && manual > 0)
+      ? calcPromPrice({ cost, retail: retailPrice, manualOverride: manual, productMarkupPct: productMkp, categoryMarkupPct: catMkp, commissionPct: commission })
+      : null;
     const net       = promPrice != null && commission > 0 ? promPrice * (1 - commission / 100) : promPrice;
     const marginUah = net != null && cost != null ? net - cost : null;
     const marginPct  = marginUah != null && net != null && net > 0 ? (marginUah / net) * 100 : null;

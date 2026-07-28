@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 import { buildPdf, fetchImages, PdfGroup } from '../_pdf';
 import { fetchProductsInCatalogOrder } from '../_catalog-order';
+import { promPrice } from '../../../../../lib/marketplace-pricing';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -61,7 +62,7 @@ export async function GET(req: NextRequest) {
         db, 'sku, name, brand, volume, category_slug, image, prom_markup_pct', sortedCats.map(c => c.slug),
       ),
       db.from('product_stock')
-        .select('sku, price_unit, price_retail, price_drop, price_cost, price_promo, stock_status')
+        .select('sku, price_unit, price_retail, price_drop, price_cost, price_promo, price_wholesale, stock_status')
         .limit(2000),
     ]);
 
@@ -91,10 +92,18 @@ export async function GET(req: NextRequest) {
       const cat  = catMap.get(slug);
       let price: number | null;
       if (priceType === 'price_prom') {
-        const markup     = Number((prod as any).prom_markup_pct ?? (cat as any)?.prom_markup_pct ?? 0);
-        const commission = Number((cat as any)?.prom_commission_pct ?? 0);
-        const base = Number(s.price_retail) || Number(s.price_unit) || 0;
-        price = base > 0 ? Math.ceil(base * (1 + markup / 100) / (1 - commission / 100)) : null;
+        // ЄДИНА формула фіда Prom (lib/marketplace-pricing): від ціни входу + override
+        const retail = Number(s.price_retail) || Number(s.price_unit) || 0;
+        price = retail > 0 || Number((s as any).price_wholesale) > 0
+          ? promPrice({
+              cost: Number(s.price_cost) || null,
+              retail,
+              manualOverride: Number((s as any).price_wholesale) || null,
+              productMarkupPct: (prod as any).prom_markup_pct != null ? Number((prod as any).prom_markup_pct) : null,
+              categoryMarkupPct: (cat as any)?.prom_markup_pct != null ? Number((cat as any).prom_markup_pct) : null,
+              commissionPct: Number((cat as any)?.prom_commission_pct ?? 0),
+            })
+          : null;
       } else {
         price = Number(s[priceType as 'price_retail' | 'price_unit' | 'price_drop' | 'price_cost']) || null;
       }
@@ -146,7 +155,7 @@ export async function GET(req: NextRequest) {
       db, 'sku, name, brand, volume, category_slug, is_active, prom_markup_pct', xlsxSortedCats.map(c => c.slug),
     ),
     db.from('product_stock')
-      .select('sku, price_unit, price_retail, price_drop, price_cost, stock_status'),
+      .select('sku, price_unit, price_retail, price_drop, price_cost, price_wholesale, stock_status'),
   ]);
 
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
@@ -174,10 +183,18 @@ export async function GET(req: NextRequest) {
     const catName = catSlug !== '__other__' ? (cat?.name ?? catSlug) : 'Інше';
     let price: number | null;
     if (priceType === 'price_prom') {
-      const markup     = Number((p as any).prom_markup_pct ?? (cat as any)?.prom_markup_pct ?? 0);
-      const commission = Number((cat as any)?.prom_commission_pct ?? 0);
-      const base = Number(s.price_retail) || Number(s.price_unit) || 0;
-      price = base > 0 ? Math.ceil(base * (1 + markup / 100) / (1 - commission / 100)) : null;
+      // ЄДИНА формула фіда Prom (lib/marketplace-pricing)
+      const retail = Number(s.price_retail) || Number(s.price_unit) || 0;
+      price = retail > 0 || Number((s as any).price_wholesale) > 0
+        ? promPrice({
+            cost: Number(s.price_cost) || null,
+            retail,
+            manualOverride: Number((s as any).price_wholesale) || null,
+            productMarkupPct: (p as any).prom_markup_pct != null ? Number((p as any).prom_markup_pct) : null,
+            categoryMarkupPct: (cat as any)?.prom_markup_pct != null ? Number((cat as any).prom_markup_pct) : null,
+            commissionPct: Number((cat as any)?.prom_commission_pct ?? 0),
+          })
+        : null;
     } else {
       price = Number(s[priceType as 'price_retail' | 'price_unit' | 'price_drop' | 'price_cost']) || null;
     }

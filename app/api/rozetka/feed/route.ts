@@ -3,7 +3,7 @@ import { createServiceClient } from '../../../../lib/supabase';
 import { formatForRozetka, toRozetkaVolume } from '../../../../lib/rozetka-name';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { getSmartTariff } from '../../../../lib/rozetka-smart';
-import { computeSmartFee } from '../../../../lib/rozetka-smart-tariff';
+import { rozetkaPrice } from '../../../../lib/marketplace-pricing';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://fixline.com.ua';
 const SHOP_NAME = 'Fixline';
@@ -60,32 +60,9 @@ export async function GET() {
     `).eq('is_active', true).order('sort_order').range(from, to)),
   ]);
 
-  function rzPrice(retail: number, commission: number, markup: number): number {
-    const withMarkup = retail * (1 + markup / 100);
-    const withComm   = commission > 0 ? withMarkup / (1 - commission / 100) : withMarkup;
-    return Math.ceil(withComm / 5) * 5;
-  }
-
-  // Компенсація Rozetka Smart за порогами суми замовлення (з ПДВ) —
-  // чинний тариф з адмінки (Товари Rozetka → «Умови Smart»)
+  // Ціна рахується ЄДИНОЮ формулою lib/marketplace-pricing (та сама, що на всіх
+  // адмін-екранах). Тариф Smart — з адмінки (Товари Rozetka → «Умови Smart»).
   const smartTariff = await getSmartTariff();
-  const smartFee = (p: number) => computeSmartFee(p, smartTariff);
-
-  // Товар у програмі Smart (products.rozetka_smart): надбавка до ціни, що покриває
-  // компенсацію доставки з урахуванням комісії на саму надбавку:
-  // P' = P + fee(P')/(1 − комісія). Тариф ступінчастий, тому якщо надбавка
-  // перекидає ціну через поріг (399→400, 699→700) — рахуємо з більшим тарифом.
-  function smartPrice(P: number, commission: number): number {
-    const c = commission > 0 ? commission / 100 : 0.15;
-    let fee = smartFee(P);
-    let raised = P + fee / (1 - c);
-    if (smartFee(raised) !== fee) {
-      const fee2 = smartFee(raised);
-      const raised2 = P + fee2 / (1 - c);
-      if (smartFee(raised2) === fee2) { fee = fee2; raised = raised2; }
-    }
-    return Math.ceil(raised / 5) * 5;
-  }
 
   const catMap = new Map<string, Cat>((categories as Cat[])?.map(c => [c.slug, c]) || []);
 
@@ -125,13 +102,16 @@ export async function GET() {
     const cat = catMap.get(p.category_slug);
     if (!cat) continue;
 
-    const retail     = Number(stock.price_retail);
-    const cost       = Number(stock.price_cost ?? 0);
-    const base       = cost > 0 ? cost : retail;
-    const commission = Number(cat.rozetka_commission_pct ?? 0);
-    const markup     = Number(p.rozetka_markup_pct ?? cat.rozetka_markup_pct ?? 0);
-    const basePrice  = commission > 0 || markup > 0 ? rzPrice(base, commission, markup) : retail;
-    const price      = p.rozetka_smart ? smartPrice(basePrice, commission) : basePrice;
+    const retail = Number(stock.price_retail);
+    const price  = rozetkaPrice({
+      cost: stock.price_cost != null ? Number(stock.price_cost) : null,
+      retail,
+      productMarkupPct: p.rozetka_markup_pct != null ? Number(p.rozetka_markup_pct) : null,
+      categoryMarkupPct: cat.rozetka_markup_pct != null ? Number(cat.rozetka_markup_pct) : null,
+      commissionPct: Number(cat.rozetka_commission_pct ?? 0),
+      smart: p.rozetka_smart === true,
+      smartTariff,
+    });
     const priceOld   = stock.price_old ? Number(stock.price_old) : null;
     // Same "in stock" rule as the storefront (ShopClient/CatalogClient) — suppliers report a
     // binary in_stock/out_of_stock status, not exact counts, so stock_qty alone is unreliable.

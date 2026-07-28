@@ -5,18 +5,22 @@ import { createPortal } from 'react-dom';
 import { Pencil, Check, X, Lock, Unlock, FileSpreadsheet, Printer, ChevronDown, ChevronUp, RotateCcw, Tag } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
 import PricesLog from './PricesLog';
+import { promPrice as libPromPrice, promMargin, rozetkaPrice as libRozetkaPrice, rozetkaMargin, siteMargin } from '../../../lib/marketplace-pricing';
+import type { SmartBracket } from '../../../lib/rozetka-smart-tariff';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Product {
-  sku:             string;
-  name:            string;
-  brand:           string;
-  volume:          string | null;
-  category_slug:   string | null;
-  is_active:       boolean;
-  prom_markup_pct: number | null;
-  image:           string | null;
+  sku:                string;
+  name:               string;
+  brand:              string;
+  volume:             string | null;
+  category_slug:      string | null;
+  is_active:          boolean;
+  prom_markup_pct:    number | null;
+  rozetka_markup_pct: number | null;
+  rozetka_smart:      boolean | null;
+  image:              string | null;
 }
 
 interface Stock {
@@ -45,10 +49,11 @@ interface Category {
 }
 
 interface Props {
-  products:   Product[];
-  stock:      Stock[];
-  categories: Category[];
-  promoMap:   Record<string, string | null>; // sku → revert_at (null = indefinite)
+  products:    Product[];
+  stock:       Stock[];
+  categories:  Category[];
+  promoMap:    Record<string, string | null>; // sku → revert_at (null = indefinite)
+  smartTariff: SmartBracket[];                // «Умови Smart» Rozetka (для ціни фіда)
 }
 
 type PriceField = 'price_unit' | 'price_retail' | 'price_drop' | 'price_cost';
@@ -83,21 +88,18 @@ function fmt(v: number | null) {
   return v.toLocaleString('uk-UA', { maximumFractionDigits: 0 }) + ' ₴';
 }
 
-function calcPromPrice(retail: number, markup: number, commission: number) {
-  return Math.ceil(retail * (1 + markup / 100) / (1 - commission / 100));
-}
-
-function calcRzPrice(cost: number | null, retail: number | null, markup: number, commission: number): number | null {
-  const base = (cost ?? 0) > 0 ? cost! : (retail ?? 0) > 0 ? retail! : 0;
-  if (base === 0) return null;
-  const withMarkup = base * (1 + markup / 100);
-  const withComm = commission > 0 ? withMarkup / (1 - commission / 100) : withMarkup;
-  return Math.ceil(withComm / 5) * 5;
+// Кольори маржі — та сама шкала, що на екранах «Товари Rozetka» / «Ціни Prom»
+function marginColor(pct: number) {
+  if (pct >= 30) return '#16A34A';
+  if (pct >= 20) return '#65A30D';
+  if (pct >= 10) return '#D97706';
+  if (pct >= 0)  return '#EA580C';
+  return '#DC2626';
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function PricesClient({ products, stock, categories, promoMap }: Props) {
+export default function PricesClient({ products, stock, categories, promoMap, smartTariff }: Props) {
   const stockMap = useMemo(() => new Map(stock.map(s => [s.sku, s])), [stock]);
   const catMap   = useMemo(() => new Map(categories.map(c => [c.slug, c])), [categories]);
 
@@ -172,16 +174,34 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
         const drop    = n(ov?.price_drop    ?? s?.price_drop);
         const locked  = ov?.price_locked    ?? s?.price_locked ?? false;
 
-        const promMarkup     = p.prom_markup_pct ?? cat?.prom_markup_pct ?? 0;
-        const promCommission = cat?.prom_commission_pct ?? 0;
-        const baseForProm    = retail ?? unit ?? 0;
-        const promPrice      = baseForProm > 0 ? calcPromPrice(baseForProm, promMarkup, promCommission) : null;
+        // Ціни МП — ЄДИНОЮ формулою фідів (lib/marketplace-pricing):
+        // ціна входу → націнка (товарна ?? категорійна) → комісія (+Smart для Rozetka)
+        const promInputs = {
+          cost, retail: retail ?? unit ?? 0,
+          manualOverride: n(s?.price_wholesale),
+          productMarkupPct: n(p.prom_markup_pct),
+          categoryMarkupPct: n(cat?.prom_markup_pct),
+          commissionPct: n(cat?.prom_commission_pct) ?? 0,
+        };
+        const hasPromBase = promInputs.retail > 0 || (promInputs.manualOverride ?? 0) > 0;
+        const promPrice   = hasPromBase ? libPromPrice(promInputs) : null;
+        const promMrg     = hasPromBase ? promMargin(promInputs) : null;
 
-        const rzMarkup     = cat?.rozetka_markup_pct ?? 0;
-        const rzCommission = cat?.rozetka_commission_pct ?? 0;
-        const rzPrice      = calcRzPrice(cost, retail, rzMarkup, rzCommission);
+        const rzInputs = {
+          cost, retail: retail ?? 0,
+          productMarkupPct: n(p.rozetka_markup_pct),
+          categoryMarkupPct: n(cat?.rozetka_markup_pct),
+          commissionPct: n(cat?.rozetka_commission_pct) ?? 0,
+          smart: p.rozetka_smart === true,
+          smartTariff,
+        };
+        const hasRzBase = (cost ?? 0) > 0 || (retail ?? 0) > 0;
+        const rzPrice   = hasRzBase ? libRozetkaPrice(rzInputs) : null;
+        const rzMrg     = hasRzBase ? rozetkaMargin(rzInputs) : null;
 
-        return { p, cost, unit, retail, drop, locked, cat, promPrice, rzPrice, s };
+        const retailMrg = retail != null ? siteMargin(retail, cost) : null;
+
+        return { p, cost, unit, retail, drop, locked, cat, promPrice, promMrg, rzPrice, rzMrg, retailMrg, s };
       })
       .filter(r => filterStock === 'all' ? true : filterStock === 'in_stock' ? r.s?.stock_status === 'in_stock' : r.s?.stock_status !== 'in_stock')
       .filter(r => !filterBrand || r.p.brand === filterBrand)
@@ -268,6 +288,28 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
       };
       const res = await fetch('/api/admin/prices/bulk', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!res.ok) throw new Error(await res.text());
+
+      // Ручна правка — теж у журнал переоцінок (раніше проходила повз нього)
+      const beforeRow = rows.find(r => r.p.sku === sku);
+      const changed = beforeRow && (
+        beforeRow.cost !== body.price_cost || beforeRow.unit !== body.price_unit ||
+        beforeRow.retail !== body.price_retail || beforeRow.drop !== body.price_drop
+      );
+      if (changed) {
+        fetch('/api/admin/prices/log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'manual', value: 0, target: 'all', status: 'applied', count: 1,
+            snapshot: [{
+              sku, name: beforeRow.p.name,
+              before: { cost: beforeRow.cost, unit: beforeRow.unit, retail: beforeRow.retail, drop: beforeRow.drop },
+              after:  { cost: body.price_cost, unit: body.price_unit, retail: body.price_retail, drop: body.price_drop },
+            }],
+          }),
+        }).catch(() => {});
+      }
+
       setOverrides(prev => {
         const next = new Map(prev);
         next.set(sku, {
@@ -487,10 +529,16 @@ export default function PricesClient({ products, stock, categories, promoMap }: 
         const unit   = n(ov?.price_unit   ?? s?.price_unit);
         const drop   = n(ov?.price_drop   ?? s?.price_drop);
         const cost   = n(ov?.price_cost   ?? s?.price_cost);
-        const promMarkup     = p.prom_markup_pct ?? cat?.prom_markup_pct ?? 0;
-        const promCommission = cat?.prom_commission_pct ?? 0;
-        const baseForProm    = retail ?? unit ?? 0;
-        const prom_price     = baseForProm > 0 ? calcPromPrice(baseForProm, promMarkup, promCommission) : null;
+        // ЄДИНА формула фіда Prom (lib/marketplace-pricing)
+        const promInputs = {
+          cost, retail: retail ?? unit ?? 0,
+          manualOverride: n(s?.price_wholesale),
+          productMarkupPct: n(p.prom_markup_pct),
+          categoryMarkupPct: n(cat?.prom_markup_pct),
+          commissionPct: n(cat?.prom_commission_pct) ?? 0,
+        };
+        const prom_price = promInputs.retail > 0 || (promInputs.manualOverride ?? 0) > 0
+          ? libPromPrice(promInputs) : null;
         return {
           p, cat, s,
           retail,
@@ -1170,10 +1218,29 @@ async function sendEmail(){
                                     <span style={{ color: '#C2410C', fontWeight: 700 }}>{r.s.price_promo} ₴</span>
                                   </span>
                                 ) : fmt(r.retail)}
+                                {r.retailMrg && (
+                                  <div title="Чистий прибуток роздрібної ціни (роздріб − собівартість)" style={{ fontSize: 10, fontWeight: 600, color: marginColor(r.retailMrg.pct) }}>
+                                    +{Math.round(r.retailMrg.uah)} ₴ · {r.retailMrg.pct.toFixed(0)}%
+                                  </div>
+                                )}
                               </td>
                               <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }}>{fmt(r.drop)}</td>
-                              <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }}>{r.promPrice != null ? `${r.promPrice} ₴` : '—'}</td>
-                              <td style={{ padding: '8px 14px', fontSize: 13, color: '#0EA5E9', fontWeight: r.rzPrice ? 500 : 400 }}>{r.rzPrice != null ? `${r.rzPrice} ₴` : '—'}</td>
+                              <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }} title="Ціна фіда Prom (редагується в розділі «Ціни Prom»)">
+                                {r.promPrice != null ? `${r.promPrice} ₴` : '—'}
+                                {r.promMrg && (
+                                  <div title="Чистий прибуток Prom: ціна × (1 − комісія) − собівартість" style={{ fontSize: 10, fontWeight: 600, color: marginColor(r.promMrg.pct) }}>
+                                    +{Math.round(r.promMrg.uah)} ₴ · {r.promMrg.pct.toFixed(0)}%
+                                  </div>
+                                )}
+                              </td>
+                              <td style={{ padding: '8px 14px', fontSize: 13, color: '#0EA5E9', fontWeight: r.rzPrice ? 500 : 400 }} title="Ціна фіда Rozetka, з урахуванням Smart (редагується в розділі «Товари Rozetka»)">
+                                {r.rzPrice != null ? `${r.rzPrice} ₴` : '—'}
+                                {r.rzMrg && (
+                                  <div title="Чистий прибуток Rozetka: ціна без Smart × (1 − комісія) − собівартість (Smart-надбавка йде на компенсацію доставки)" style={{ fontSize: 10, fontWeight: 600, color: marginColor(r.rzMrg.pct) }}>
+                                    +{Math.round(r.rzMrg.uah)} ₴ · {r.rzMrg.pct.toFixed(0)}%
+                                  </div>
+                                )}
+                              </td>
                               <td style={{ padding: '8px 10px' }}>
                                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                                   {r.locked && (
