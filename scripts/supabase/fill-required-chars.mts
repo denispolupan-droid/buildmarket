@@ -6,9 +6,11 @@
 // Запуск: npx tsx --env-file=.env.local scripts/supabase/fill-required-chars.mts [--limit N]
 import { createClient } from '@supabase/supabase-js';
 import { appendFileSync } from 'node:fs';
-// tsx транспілює lib/*.ts у CJS — іменовані експорти опиняються в default
-import enricherModule from '../../lib/catalog-enricher.ts';
-const { enrichCatalog } = enricherModule as unknown as typeof import('../../lib/catalog-enricher.ts');
+// tsx транспілює lib/*.ts у CJS — іменовані експорти опиняються в default,
+// тому дістаємо через namespace із фолбеком (tsc-сумісно)
+import * as enricherNS from '../../lib/catalog-enricher';
+const { enrichCatalog } =
+  (((enricherNS as Record<string, unknown>).default ?? enricherNS)) as typeof enricherNS;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
