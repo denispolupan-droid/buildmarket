@@ -43,8 +43,14 @@ async function fetchAll(table, columns, filter) {
 async function main() {
   console.log(`Словник: ${DICTIONARY.length} канонічних лейблів. БД: ${env['NEXT_PUBLIC_SUPABASE_URL']}${DRY ? ' (DRY-RUN)' : ''}`);
 
-  // 1. Definitions
+  // 1. Definitions (+ прибираємо ті, що більше не в словнику — напр., злиті в аліас;
+  //    category_characteristics підчищається каскадом)
   if (!DRY) {
+    const { error: delErr } = await supabase
+      .from('characteristic_definitions')
+      .delete()
+      .not('label', 'in', `(${DICTIONARY.map(d => `"${d.label.replace(/"/g, '\\"')}"`).join(',')})`);
+    if (delErr) throw new Error(`definitions prune: ${delErr.message}`);
     const { error } = await supabase.from('characteristic_definitions').upsert(
       DICTIONARY.map(d => ({
         label: d.label,
