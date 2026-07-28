@@ -27,38 +27,80 @@ export default async function SeoQueuePage() {
     }
   }
 
-  const [{ data: products }, charsRes, faqRes] = await Promise.all([
+  const [{ data: products }, charsRes, faqRes, dictRes, catCharsRes] = await Promise.all([
     serviceClient
       .from('products')
       .select('sku, slug, name, brand, category_slug, description_full, description_full_ru, name_ru, description_ru, keywords, image')
       .eq('is_active', true)
       .order('category_slug')
       .order('sku'),
-    fetchAll<{ product_sku: string }>('product_characteristics', 'product_sku'),
+    fetchAll<{ product_sku: string; label: string }>('product_characteristics', 'product_sku, label'),
     fetchAll<{ product_sku: string; question_ru: string | null }>('product_faq', 'product_sku, question_ru'),
+    fetchAll<{ label: string; aliases: string[] }>('characteristic_definitions', 'label, aliases'),
+    fetchAll<{ category_slug: string; required: boolean; characteristic_definitions: { label: string } | null }>(
+      'category_characteristics', 'category_slug, required, characteristic_definitions(label)'),
   ]);
 
-  const hasChars = new Set(charsRes.rows.map(r => r.product_sku));
+  // Словник: normKey(аліас|канон) → канонічний лейбл; обов'язкові набори по категоріях
+  const normKey = (s: string) => s.replace(/['`´ʼ']/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
+  const aliasMap = new Map<string, string>();
+  for (const d of dictRes.rows) {
+    aliasMap.set(normKey(d.label), d.label);
+    for (const a of d.aliases ?? []) aliasMap.set(normKey(a), d.label);
+  }
+  const requiredByCat = new Map<string, string[]>();
+  for (const r of catCharsRes.rows) {
+    if (!r.required || !r.characteristic_definitions) continue;
+    if (!requiredByCat.has(r.category_slug)) requiredByCat.set(r.category_slug, []);
+    requiredByCat.get(r.category_slug)!.push(r.characteristic_definitions.label);
+  }
+
+  // По кожному товару: канонічні лейбли + лейбли поза словником
+  const charsBySku = new Map<string, { canon: Set<string>; dirty: boolean }>();
+  for (const c of charsRes.rows) {
+    if (!charsBySku.has(c.product_sku)) charsBySku.set(c.product_sku, { canon: new Set(), dirty: false });
+    const entry = charsBySku.get(c.product_sku)!;
+    const canon = aliasMap.get(normKey(c.label));
+    if (canon) {
+      entry.canon.add(canon);
+      if (canon !== c.label) entry.dirty = true; // синонім/апостроф — треба нормалізувати
+    } else if (normKey(c.label) === 'сфера застосування') {
+      // legacy-лейбл, канонізується за значенням — покриває обидві цілі
+      entry.canon.add('Тип використання');
+      entry.canon.add('Область застосування');
+      entry.dirty = true;
+    }
+    // інші лейбли поза словником — легальні додаткові, dirty не ставимо
+  }
+
   const faqRows = faqRes.ok ? faqRes.rows : [];
   const hasFaq = new Set(faqRows.map(r => r.product_sku));
   const hasUntranslatedFaq = new Set(faqRows.filter(r => !r.question_ru).map(r => r.product_sku));
 
-  const items: QueueItem[] = (products ?? []).map(p => ({
-    sku: p.sku,
-    slug: p.slug,
-    name: p.name,
-    brand: p.brand,
-    category: p.category_slug ?? '',
-    gaps: {
-      thinDesc: (p.description_full ?? '').length < THIN_DESCRIPTION_CHARS,
-      noFaq: !hasFaq.has(p.sku),
-      ruDesc: (p.description_full_ru ?? '').length < (p.description_full ?? '').length * 0.75 || hasUntranslatedFaq.has(p.sku),
-      noRu: !p.name_ru || !p.description_ru,
-      noKeywords: !p.keywords,
-      noChars: !hasChars.has(p.sku),
-      noImage: !p.image,
-    },
-  }));
+  const items: QueueItem[] = (products ?? []).map(p => {
+    const chars = charsBySku.get(p.sku);
+    const required = requiredByCat.get(p.category_slug ?? '') ?? [];
+    const missingLabels = chars ? required.filter(l => !chars.canon.has(l)) : required;
+    return {
+      sku: p.sku,
+      slug: p.slug,
+      name: p.name,
+      brand: p.brand,
+      category: p.category_slug ?? '',
+      missingLabels: chars ? missingLabels : [],
+      gaps: {
+        thinDesc: (p.description_full ?? '').length < THIN_DESCRIPTION_CHARS,
+        noFaq: !hasFaq.has(p.sku),
+        ruDesc: (p.description_full_ru ?? '').length < (p.description_full ?? '').length * 0.75 || hasUntranslatedFaq.has(p.sku),
+        noRu: !p.name_ru || !p.description_ru,
+        noKeywords: !p.keywords,
+        noChars: !chars,
+        missingRequired: !!chars && missingLabels.length > 0,
+        dirtyChars: !!chars?.dirty,
+        noImage: !p.image,
+      },
+    };
+  });
 
   return <SeoQueueClient items={items} faqTableReady={faqRes.ok} />;
 }

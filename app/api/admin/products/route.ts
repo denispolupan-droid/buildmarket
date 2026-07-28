@@ -4,6 +4,7 @@ import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { generateProductSlug } from '../../../../lib/seo/slug';
 import { deleteProducts } from '../../../../lib/product-delete';
+import { normalizeCharsDb, type CharInput } from '../../../../lib/characteristics';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -134,18 +135,16 @@ export async function POST(req: NextRequest) {
   }
 
   if (characteristics && characteristics.length > 0) {
-    const charRows = characteristics.map((c: { label: string; value: string }) => ({
-      product_sku: product.sku,
-      label: c.label,
-      value: c.value,
-    }));
-
+    const normalized = await normalizeCharsDb(serviceClient, characteristics as CharInput[]);
     const { error: charError } = await serviceClient
       .from('product_characteristics')
-      .insert(charRows);
+      .insert(normalized.map(c => ({ product_sku: product.sku, ...c })));
 
     if (charError) {
-      console.error('Characteristics insert error:', charError);
+      return NextResponse.json(
+        { error: `Товар збережено, але характеристики не записались: ${charError.message}` },
+        { status: 500 },
+      );
     }
   }
 
@@ -189,18 +188,16 @@ export async function PUT(req: NextRequest) {
     .eq('product_sku', sku);
 
   if (characteristics && characteristics.length > 0) {
-    const charRows = characteristics.map((c: { label: string; value: string }) => ({
-      product_sku: sku,
-      label: c.label,
-      value: c.value,
-    }));
-
+    const normalized = await normalizeCharsDb(serviceClient, characteristics as CharInput[]);
     const { error: charError } = await serviceClient
       .from('product_characteristics')
-      .insert(charRows);
+      .insert(normalized.map(c => ({ product_sku: sku, ...c })));
 
     if (charError) {
-      console.error('Characteristics insert error:', charError);
+      return NextResponse.json(
+        { error: `Товар збережено, але характеристики не записались: ${charError.message}` },
+        { status: 500 },
+      );
     }
   }
 

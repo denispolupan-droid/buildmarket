@@ -9,13 +9,17 @@ export type QueueItem = {
   name: string;
   brand: string;
   category: string;
+  /** незаповнені обов'язкові характеристики категорії (зі словника) */
+  missingLabels: string[];
   gaps: {
     thinDesc: boolean;   // description_full < порога — заповнюється кнопкою тут
     noFaq: boolean;      // немає FAQ — заповнюється кнопкою тут (разом з описом)
     ruDesc: boolean;     // рос. опис застарів / FAQ без перекладу — кнопкою тут
     noRu: boolean;       // немає name_ru/description_ru — AI-кнопка в картці товару
     noKeywords: boolean; // немає keywords — AI-кнопка в картці товару
-    noChars: boolean;    // немає характеристик — AI-кнопка в картці товару
+    noChars: boolean;    // немає характеристик взагалі — генерація тут
+    missingRequired: boolean; // є характеристики, але не всі обов'язкові — генерація тут
+    dirtyChars: boolean; // лейбли-синоніми/апострофи — кнопка «Нормалізувати» (без AI)
     noImage: boolean;    // немає фото — завантажити вручну
   };
 };
@@ -36,6 +40,8 @@ const GAP_LABELS: { key: keyof QueueItem['gaps']; label: string; color: string }
   { key: 'noRu',       label: 'немає рос. назви', color: '#8B5CF6' },
   { key: 'noKeywords', label: 'немає keywords',   color: '#8B5CF6' },
   { key: 'noChars',    label: 'немає характеристик', color: '#EF4444' },
+  { key: 'missingRequired', label: 'обов\'язкові хар-ки', color: '#EF4444' },
+  { key: 'dirtyChars', label: 'ненормовані лейбли', color: '#0EA5E9' },
   { key: 'noImage',    label: 'немає фото',       color: '#EF4444' },
 ];
 
@@ -67,7 +73,7 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
   // характеристики, FAQ, рос. назва + переклади). Придатні — усі з будь-яким
   // пробілом, крім фото (його завантажують вручну).
   const enrichable = useMemo(
-    () => visible.filter(i => i.gaps.thinDesc || i.gaps.noFaq || i.gaps.ruDesc || i.gaps.noRu || i.gaps.noKeywords || i.gaps.noChars),
+    () => visible.filter(i => i.gaps.thinDesc || i.gaps.noFaq || i.gaps.ruDesc || i.gaps.noRu || i.gaps.noKeywords || i.gaps.noChars || i.gaps.missingRequired),
     [visible],
   );
   const selectedEnrichable = enrichable.filter(i => selected.has(i.sku));
@@ -135,6 +141,36 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
 
   const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
 
+  // ── Нормалізація лейблів (без AI, безкоштовно): всі видимі товари з dirtyChars ──
+  const dirtyVisible = useMemo(() => visible.filter(i => i.gaps.dirtyChars), [visible]);
+  const [normBusy, setNormBusy] = useState(false);
+  const [normMsg, setNormMsg] = useState('');
+
+  async function normalizeDirty() {
+    if (!dirtyVisible.length || normBusy) return;
+    setNormBusy(true);
+    setNormMsg('');
+    try {
+      let changed = 0;
+      const skus = dirtyVisible.map(i => i.sku);
+      for (let i = 0; i < skus.length; i += 100) {
+        const res = await fetch('/api/admin/characteristics/normalize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ skus: skus.slice(i, i + 100) }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        changed += (data.changed ?? []).length;
+      }
+      setNormMsg(`✓ Нормалізовано ${changed} товарів — оновіть сторінку, щоб перерахувати пробіли`);
+    } catch (err) {
+      setNormMsg(`✗ ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setNormBusy(false);
+    }
+  }
+
   // ── Запити з Search Console (позиції 8–35 = "дожимаємі") ──
   type GscRow = { query: string; page: string; clicks: number; impressions: number; position: number };
   const [gscRows, setGscRows] = useState<GscRow[] | null>(null);
@@ -167,26 +203,97 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
   const [boostSku, setBoostSku] = useState('');
   const [boostBusy, setBoostBusy] = useState<'' | 'product' | 'article'>('');
   const [boostMsg, setBoostMsg] = useState('');
-  const boostItem = items.find(i => i.sku === boostSku.trim());
 
+  // Кілька SKU через кому: у статтю треба вести на ВСІ фасовки товару, інакше
+  // читач приходить на текст і не бачить, що саме купити під свій обсяг робіт.
+  const boostSkus = useMemo(
+    () => [...new Set(boostSku.split(/[,;\s]+/).map(s => s.trim()).filter(Boolean))],
+    [boostSku],
+  );
+  const boostItems = useMemo(
+    () => boostSkus.map(s => items.find(i => i.sku === s)).filter((i): i is QueueItem => !!i),
+    [boostSkus, items],
+  );
+  const boostItem = boostItems[0];
+  const boostUnknown = boostSkus.filter(s => !items.some(i => i.sku === s));
+  // Заповнена картка: дожим ПЕРЕЗАПИШЕ наявний опис/FAQ — попереджаємо явно
+  const boostItemFull = boostItem ? !hasAnyGap(boostItem) : false;
+
+  // ── Чи є вже стаття під цей запит (антиканібалізація) ──
+  type ExistingPost = {
+    id: number; slug: string; title: string; is_published: boolean;
+    hits: number; of: number; len: number; len_ru: number;
+    has_phrase: boolean; product_links: number;
+  };
+  const [existing, setExisting] = useState<ExistingPost[] | null>(null);
+
+  async function refreshExisting(q: string) {
+    try {
+      const res = await fetch(`/api/admin/blog/boost?query=${encodeURIComponent(q)}`);
+      setExisting(res.ok ? await res.json() : []);
+    } catch {
+      setExisting([]);
+    }
+  }
+
+  useEffect(() => {
+    const q = boostQuery.trim();
+    if (q.length < 6) { setExisting(null); return; }
+    const t = setTimeout(() => { void refreshExisting(q); }, 500);
+    return () => clearTimeout(t);
+  }, [boostQuery]);
+
+  // Дожим картки = ПЕРЕЗАПИС контенту під запит. Раніше тут викликався gap-driven
+  // enrich, який на заповненій картці не змінював нічого (опис перегенеровується
+  // лише якщо коротший за поріг, FAQ — лише якщо його немає), і запит просто
+  // дописувався в keywords — тобто кнопка витрачала гроші даремно. Тепер — force.
   async function boostProduct() {
     if (!boostQuery.trim() || !boostItem) return;
     setBoostBusy('product');
     setBoostMsg('');
     try {
-      const res = await fetch('/api/admin/catalog/enrich', {
+      const res = await fetch('/api/admin/products/ai-fill', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ skus: [boostItem.sku], limit: 1, targetQuery: boostQuery.trim() }),
+        body: JSON.stringify({ skus: [boostItem.sku], force: true, targetQuery: boostQuery.trim() }),
       });
-      // читаємо SSE-стрім до кінця, дивимось чи був result
       const text = await res.text();
       if (text.includes('"type":"result"')) {
-        setBoostMsg(`✓ Картку ${boostItem.sku} перегенеровано під запит (опис + FAQ + keywords, обидві мови)`);
+        setBoostMsg(`✓ Картку ${boostItem.sku} перезаписано під запит: опис, FAQ, keywords, характеристики — обидві мови`);
       } else {
         const err = /"error":"([^"]*)"/.exec(text)?.[1];
         throw new Error(err ?? 'генерація не повернула результат');
       }
+    } catch (err) {
+      setBoostMsg(`✗ ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setBoostBusy('');
+    }
+  }
+
+  // Дожим НАЯВНОЇ статті: розширення тексту під запит + блок посилань на товари.
+  // Це найчастіший корисний хід — стаття вже має позицію, її треба дотягнути,
+  // а не дублювати новою (дві сторінки під один запит канібалізують одна одну).
+  async function boostExistingArticle(postId: number) {
+    if (!boostQuery.trim()) return;
+    setBoostBusy('article');
+    setBoostMsg('');
+    try {
+      const res = await fetch('/api/admin/blog/boost', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          postId,
+          focusQuery: boostQuery.trim(),
+          skus: boostSkus,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const grew = `${data.lenBefore}→${data.lenAfter} симв. (рос. ${data.lenRuBefore}→${data.lenRuAfter})`;
+      const links = data.linkedSkus?.length ? `, посилання на ${data.linkedSkus.length} товар(ів)` : '';
+      setBoostMsg(`✓ Статтю «${data.title}» дожато: ${grew}, FAQ: ${data.faqCount}${links}. Перевірте текст у розділі Блог.`);
+      void refreshExisting(boostQuery.trim());
     } catch (err) {
       setBoostMsg(`✗ ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -231,8 +338,10 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
       <div style={{ padding: '16px 20px', background: 'var(--bg-card, #fff)', border: '1px solid #E2E8F0', borderRadius: 10, marginBottom: 20 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: '#1E293B', marginBottom: 4 }}>🎯 Дожим запиту</div>
         <p style={{ fontSize: 12, color: '#64748B', margin: '0 0 12px' }}>
-          Запити з 2–3 сторінки Google (Search Console → Ефективність, позиції 11–30) дожимаємо контентом:
-          посилення картки товару (~$0.04) та/або стаття в блог під запит (~$0.20, чернетка).
+          Запити з 2–3 сторінки Google (Search Console → Ефективність, позиції 11–30) дожимаємо контентом.
+          <b> Товар</b> (~$0.04) — перезапис опису/FAQ/keywords під запит.
+          <b> Стаття</b> (~$0.20) — якщо під запит уже є стаття, дожимаємо її, а не створюємо другу.
+          Інформаційні запити («як…», «чим…») тягне стаття, транзакційні («купити…», «ціна») — картка товару.
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <input
@@ -246,8 +355,8 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
             value={boostSku}
             onChange={e => setBoostSku(e.target.value)}
             disabled={!!boostBusy}
-            placeholder="SKU товару (напр. 1203-002)"
-            style={{ width: 180, padding: '9px 13px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, fontFamily: 'monospace' }}
+            placeholder="SKU, можна кілька: 1001-002, 1001-003"
+            style={{ width: 240, padding: '9px 13px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, fontFamily: 'monospace' }}
           />
           <button
             onClick={boostProduct}
@@ -260,15 +369,71 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
           <button
             onClick={boostArticle}
             disabled={!!boostBusy || !boostQuery.trim()}
-            style={{ ...btnPrimary, background: '#4880B8', opacity: boostBusy || !boostQuery.trim() ? 0.5 : 1 }}
+            title={existing?.length ? 'Під цей запит уже є стаття — краще дожати її (кнопка нижче), інакше сторінки конкуруватимуть' : ''}
+            style={{
+              ...btnPrimary,
+              background: existing?.length ? '#94A3B8' : '#4880B8',
+              opacity: boostBusy || !boostQuery.trim() ? 0.5 : 1,
+            }}
           >
-            {boostBusy === 'article' ? '⏳ Пишемо (1–2 хв)…' : 'Стаття під запит'}
+            {boostBusy === 'article' ? '⏳ Пишемо (1–2 хв)…' : existing?.length ? 'Все одно нова стаття' : 'Стаття під запит'}
           </button>
         </div>
-        {boostSku.trim() && (
-          <p style={{ fontSize: 12, margin: '8px 0 0', color: boostItem ? '#10B981' : '#EF4444' }}>
-            {boostItem ? `Товар: ${boostItem.brand} ${boostItem.name}` : 'SKU не знайдено серед активних товарів'}
+
+        {/* Стан вибраних товарів */}
+        {boostItems.length > 0 && (
+          <p style={{ fontSize: 12, margin: '8px 0 0', color: '#10B981' }}>
+            {boostItems.length === 1
+              ? `Товар: ${boostItems[0].brand} ${boostItems[0].name}`
+              : `Товарів: ${boostItems.length} — ${boostItems.map(i => i.sku).join(', ')} (усі отримають посилання зі статті)`}
           </p>
+        )}
+        {boostUnknown.length > 0 && (
+          <p style={{ fontSize: 12, margin: '4px 0 0', color: '#EF4444' }}>
+            Не знайдено серед активних товарів: {boostUnknown.join(', ')}
+          </p>
+        )}
+        {boostItemFull && boostItems.length === 1 && (
+          <p style={{ fontSize: 12, margin: '4px 0 0', color: '#B45309' }}>
+            ⚠️ Картка вже повністю заповнена — «Посилити товар» ПЕРЕЗАПИШЕ опис, FAQ і характеристики
+            під запит (у т.ч. ручні правки). Якщо ціль — інформаційний запит, дожимайте статтю.
+          </p>
+        )}
+
+        {/* Антиканібалізація: під запит уже є стаття → дожимаємо її */}
+        {existing && existing.length > 0 && (
+          <div style={{ marginTop: 10, padding: '10px 12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8 }}>
+            <div style={{ fontSize: 12, color: '#92400E', marginBottom: 8 }}>
+              Під цей запит уже є стаття. Друга сторінка на ту саму тему відбирає позицію в першої —
+              дожимайте наявну.
+            </div>
+            {existing.map(p => (
+              <div key={p.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '5px 0' }}>
+                <Link href={`/blog/${p.slug}`} target="_blank" style={{ fontSize: 13, fontWeight: 600, color: '#1E293B' }}>
+                  {p.title}
+                </Link>
+                <span style={{ fontSize: 11, color: '#64748B' }}>
+                  {p.is_published ? 'опублікована' : 'чернетка'} · {p.len} симв.
+                  {p.len_ru ? ` / рос. ${p.len_ru}` : ' / без рос.'}
+                  {' · '}
+                  <span style={{ color: p.has_phrase ? '#10B981' : '#EF4444' }}>
+                    {p.has_phrase ? 'фраза запиту є' : 'фрази запиту в тексті НЕМАЄ'}
+                  </span>
+                  {' · '}
+                  <span style={{ color: p.product_links ? '#10B981' : '#EF4444' }}>
+                    {p.product_links ? `посилань на товари: ${p.product_links}` : 'посилань на товари немає'}
+                  </span>
+                </span>
+                <button
+                  onClick={() => boostExistingArticle(p.id)}
+                  disabled={!!boostBusy}
+                  style={{ ...btnPrimary, background: '#B45309', opacity: boostBusy ? 0.5 : 1 }}
+                >
+                  {boostBusy === 'article' ? '⏳ Дожимаємо (1–2 хв)…' : 'Дожати статтю'}
+                </button>
+              </div>
+            ))}
+          </div>
         )}
         {boostMsg && <p style={{ fontSize: 13, margin: '8px 0 0', color: boostMsg.startsWith('✓') ? '#10B981' : '#EF4444' }}>{boostMsg}</p>}
 
@@ -336,6 +501,14 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
         <button onClick={() => setSelected(new Set())} disabled={running || !selected.size} style={btnGhost}>
           Скинути
         </button>
+        <button
+          onClick={normalizeDirty}
+          disabled={normBusy || running || !dirtyVisible.length}
+          title="Звести лейбли-синоніми до канонічних за словником (без AI, безкоштовно)"
+          style={{ ...btnGhost, color: '#0369A1', borderColor: '#BAE6FD', opacity: dirtyVisible.length ? 1 : 0.5 }}
+        >
+          {normBusy ? '⏳ Нормалізуємо…' : `Нормалізувати лейбли (${dirtyVisible.length})`}
+        </button>
         <div style={{ flex: 1 }} />
         <span style={{ fontSize: 13, color: '#475569' }}>
           Вибрано: <strong>{selectedEnrichable.length}</strong> · Орієнтовна вартість: <strong>${cost}</strong>
@@ -348,6 +521,10 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
           <button onClick={() => abortRef.current?.abort()} style={btnDanger}>■ Зупинити</button>
         )}
       </div>
+
+      {normMsg && (
+        <p style={{ fontSize: 13, margin: '0 0 12px', color: normMsg.startsWith('✓') ? '#10B981' : '#EF4444' }}>{normMsg}</p>
+      )}
 
       {/* Прогрес */}
       {(running || progress.done > 0) && (
@@ -387,7 +564,10 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
           </thead>
           <tbody>
             {visible.map(item => {
-              const canEnrich = item.gaps.thinDesc || item.gaps.noFaq || item.gaps.ruDesc;
+              // Той самий предикат, що й у enrichable — інакше товар лише з пробілом
+              // характеристик не можна було б вибрати чекбоксом
+              const canEnrich = item.gaps.thinDesc || item.gaps.noFaq || item.gaps.ruDesc
+                || item.gaps.noRu || item.gaps.noKeywords || item.gaps.noChars || item.gaps.missingRequired;
               return (
                 <tr key={item.sku} style={{ borderTop: '1px solid #F1F5F9' }}>
                   <td style={td}>
@@ -404,8 +584,12 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
                   <td style={td}>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                       {GAP_LABELS.filter(g => item.gaps[g.key]).map(g => (
-                        <span key={g.key} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, background: `${g.color}18`, color: g.color, fontWeight: 600 }}>
-                          {g.label}
+                        <span
+                          key={g.key}
+                          title={g.key === 'missingRequired' ? item.missingLabels.join(', ') : undefined}
+                          style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, background: `${g.color}18`, color: g.color, fontWeight: 600 }}
+                        >
+                          {g.key === 'missingRequired' ? `обов'язкові хар-ки: ${item.missingLabels.length}` : g.label}
                         </span>
                       ))}
                     </div>

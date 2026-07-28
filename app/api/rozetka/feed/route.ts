@@ -7,6 +7,10 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://fixline.com.ua';
 const SHOP_NAME = 'Fixline';
 const COMPANY = 'Fixline';
 
+// Характеристики-переліки: у БД один рядок зі значеннями через кому,
+// у фіді — окремий <param> на кожне значення (як і в Prom-фіді)
+const MULTISELECT_LABELS = new Set(['Область застосування']);
+
 function x(str: string | null | undefined): string {
   if (!str) return '';
   return str
@@ -181,7 +185,13 @@ export async function GET() {
       lines.push(`      <description><![CDATA[${descUa}]]></description>`);
     }
     for (const c of chars) {
-      if (c.label && c.value) {
+      if (!c.label || !c.value) continue;
+      // Multiselect, злитий в один рядок через "; " — окремий <param> на кожне
+      // значення. По комах НЕ ріжемо: вільний текст зі списками лишається цілим.
+      if (MULTISELECT_LABELS.has(c.label) && c.value.includes(';')) {
+        const parts = c.value.split(';').map(v => v.trim()).filter(Boolean);
+        for (const v of parts) lines.push(`      <param name="${x(c.label)}">${x(v)}</param>`);
+      } else {
         lines.push(`      <param name="${x(c.label)}">${x(c.value)}</param>`);
       }
     }

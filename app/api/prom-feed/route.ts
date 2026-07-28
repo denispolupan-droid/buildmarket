@@ -579,8 +579,15 @@ export async function GET(request: NextRequest) {
         return true;
       });
 
-      // Build text <param> tags (custom characteristics visible to buyers)
+      // Build text <param> tags (custom characteristics visible to buyers).
+      // Multiselect values merged into ONE row use "; " as separator — expand back
+      // to one <param> per value. Commas are NOT split (free-text values keep them).
       const paramsXml = [...usageTypeParam, ...countryParam, ...dedupedChars]
+        .flatMap(c => {
+          if (!MULTISELECT_LABELS.has(c.label) || !c.value.includes(';')) return [c];
+          return c.value.split(';').map(v => v.trim()).filter(Boolean)
+            .map(v => ({ label: c.label, value: v }));
+        })
         .map(c => `        <param name="${x(c.label)}">${x(c.value)}</param>`)
         .join('\n');
 

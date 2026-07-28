@@ -7,6 +7,7 @@ import { showToast } from '../../../../lib/toast';
 import type { ProductFull, Category, ProductCharacteristic } from '../../../../types';
 import CharValueInput from './CharValueInput';
 import CharLabelInput from './CharLabelInput';
+import { normCharKey } from '../../../../lib/characteristics';
 
 type Props = {
   product: ProductFull | null;
@@ -210,6 +211,8 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
     product?.characteristics?.map(c => ({ label: c.label, value: c.value })) ?? []
   );
   const [loadingChars, setLoadingChars] = useState(false);
+  // Обов'язкові лейбли категорії зі словника (characteristic_definitions)
+  const [requiredLabels, setRequiredLabels] = useState<string[]>([]);
 
   // Prom structured attributes
   const promCategoryId = categories.find(c => c.slug === categorySlug)?.prom_section_id ?? null;
@@ -239,17 +242,24 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
     } catch {}
   }, [isNew]);
 
-  const fetchCategoryChars = useCallback(async (catSlug: string) => {
+  const fetchCategoryChars = useCallback(async (catSlug: string): Promise<string[]> => {
     if (!catSlug) return [];
     try {
       const res = await fetch(`/api/admin/products/defaults?category=${encodeURIComponent(catSlug)}`);
       if (res.ok) {
         const data = await res.json();
+        setRequiredLabels(data.required ?? []);
         return data.characteristics ?? [];
       }
     } catch {}
     return [];
   }, []);
+
+  // Обов'язкові лейбли підтягуємо одразу при виборі категорії (для позначок у формі)
+  useEffect(() => {
+    if (!categorySlug) { setRequiredLabels([]); return; }
+    fetchCategoryChars(categorySlug);
+  }, [categorySlug, fetchCategoryChars]);
 
   const loadCategoryDefaults = async () => {
     if (!categorySlug) {
@@ -260,9 +270,10 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
     try {
       const defaultLabels = await fetchCategoryChars(categorySlug);
       if (defaultLabels.length > 0) {
-        const existingLabels = new Set(chars.map(c => c.label));
+        // Дедуп за нормалізованим ключем (апостроф/регістр), не за точним рядком
+        const existingLabels = new Set(chars.map(c => normCharKey(c.label)));
         const newChars = defaultLabels
-          .filter((label: string) => !existingLabels.has(label))
+          .filter((label: string) => !existingLabels.has(normCharKey(label)))
           .map((label: string) => ({ label, value: '' }));
         if (newChars.length > 0) {
           setChars([...chars, ...newChars]);
@@ -471,6 +482,18 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
     if (!isNew && !sku.trim()) { showToast('SKU обов\'язковий', 'error'); return; }
     if (!name.trim()) { showToast('Назва обов\'язкова', 'error'); return; }
     if (!brand.trim()) { showToast('Бренд обов\'язковий', 'error'); return; }
+
+    // Дублікати лейблів (з урахуванням апострофів/регістру) — блокуємо збереження
+    const seenLabels = new Set<string>();
+    for (const c of chars) {
+      if (!c.label.trim() || !c.value.trim()) continue;
+      const k = normCharKey(c.label);
+      if (seenLabels.has(k)) {
+        showToast(`Характеристика «${c.label}» вказана двічі — приберіть дубль`, 'error');
+        return;
+      }
+      seenLabels.add(k);
+    }
 
     setSaving(true);
 
@@ -972,6 +995,38 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
           </div>
         </div>
 
+        {(() => {
+          // Незаповнені обов'язкові лейбли категорії (враховуємо і вільні chars, і Prom-блок)
+          const filled = new Set([
+            ...chars.filter(c => c.value.trim()).map(c => normCharKey(c.label)),
+            ...Object.entries(promChars).filter(([, v]) => Array.isArray(v) ? v.length : String(v ?? '').trim()).map(([k]) => normCharKey(k)),
+          ]);
+          const missing = requiredLabels.filter(l => !filled.has(normCharKey(l)));
+          if (!missing.length) return null;
+          return (
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '14px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#B45309' }}>Обов&apos;язкові без значення:</span>
+              {missing.map(label => (
+                <button
+                  key={label}
+                  onClick={() => {
+                    if (!chars.some(c => normCharKey(c.label) === normCharKey(label))) {
+                      setChars([...chars, { label, value: '' }]);
+                    }
+                  }}
+                  title="Додати рядок"
+                  style={{
+                    fontSize: '11px', padding: '2px 8px', borderRadius: '999px',
+                    border: '1px solid #FDE68A', background: '#FFFBEB', color: '#B45309',
+                    fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
         {chars.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Характеристик немає. Натисніть {'"'}Додати{'"'} щоб створити.</p>
         ) : (

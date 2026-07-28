@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { XMLParser } from 'fast-xml-parser';
+import { normCharKey } from '../../../../../lib/characteristics';
 
 // ── Inference maps — keep in sync with fill-prom-chars.mjs ─────────────────
 const CATEGORY_USAGE_TYPE: Record<string, string> = {
@@ -144,10 +145,11 @@ async function fillProductCharsForCategory(
     .select('product_sku, label, value')
     .in('product_sku', skus);
 
+  // Ключі — нормалізовані (апостроф/регістр), щоб "Об`єм" і "Об'єм" не плодили дублі
   const existingBysku: Record<string, Map<string, string>> = {};
   for (const c of existingChars ?? []) {
     if (!existingBysku[c.product_sku]) existingBysku[c.product_sku] = new Map();
-    existingBysku[c.product_sku].set(c.label, c.value);
+    existingBysku[c.product_sku].set(normCharKey(c.label), c.value);
   }
 
   const toInsert: { product_sku: string; label: string; value: string; sort_order: number }[] = [];
@@ -157,7 +159,8 @@ async function fillProductCharsForCategory(
     const slug = product.category_slug ?? '';
 
     const addIfMissing = (label: string, value: string | null) => {
-      if (!value || existing.has(label)) return;
+      if (!value || existing.has(normCharKey(label))) return;
+      existing.set(normCharKey(label), value);
       toInsert.push({ product_sku: product.sku, label, value, sort_order: 900 });
     };
 
@@ -173,35 +176,29 @@ async function fillProductCharsForCategory(
       }
     }
 
-    // Область застосування (multiselect — one row per value)
+    // Область застосування (multiselect): один рядок, значення через "; " —
+    // фіди розгортають у кілька <param> по цьому розділювачу
     const areaAttr = attrMap.get('Область застосування');
-    if (areaAttr && !existing.has('Область застосування')) {
+    if (areaAttr && !existing.has(normCharKey('Область застосування'))) {
       const inferredAreas = CATEGORY_APPLICATION_AREA[slug];
-      if (inferredAreas) {
-        for (const area of inferredAreas) {
-          const opt = areaAttr.prom_attribute_values.find(
-            (v) => (v.name_uk ?? '').trim() === area.trim(),
-          );
-          toInsert.push({
-            product_sku: product.sku,
-            label: 'Область застосування',
-            value: opt?.name_uk ?? area,
-            sort_order: 901,
-          });
-        }
+      if (inferredAreas?.length) {
+        const values = inferredAreas.map(area =>
+          areaAttr.prom_attribute_values.find(v => (v.name_uk ?? '').trim() === area.trim())?.name_uk ?? area,
+        );
+        addIfMissing('Область застосування', values.join('; '));
       }
     }
 
-    // Об`єм
+    // Об'єм (у Prom атрибут називається з гравісом "Об`єм", у нашій БД — канонічний апостроф)
     const volAttr = attrMap.get('Об`єм');
-    if (volAttr && !existing.has('Об`єм')) {
+    if (volAttr && !existing.has(normCharKey("Об'єм"))) {
       const ml = parseVolumeML(product.volume);
-      if (ml !== null) addIfMissing('Об`єм', String(ml));
+      if (ml !== null) addIfMissing("Об'єм", String(ml));
     }
 
     // Колір
     const colorAttr = attrMap.get('Колір');
-    if (colorAttr && product.color && !existing.has('Колір')) {
+    if (colorAttr && product.color && !existing.has(normCharKey('Колір'))) {
       const opt = colorAttr.prom_attribute_values.find(
         (v) => (v.name_uk ?? '').trim().toLowerCase() === product.color!.trim().toLowerCase(),
       );
@@ -223,8 +220,8 @@ async function fillProductCharsForCategory(
     // Матеріал (for sealant categories where Prom attr is "Матеріал", not "Основа")
     // Copy from existing "Основа" char value (the material is stored as "Основа" in our DB)
     const materialAttr = attrMap.get('Матеріал');
-    if (materialAttr && !existing.has('Матеріал')) {
-      const osnoValue = existing.get('Основа');
+    if (materialAttr && !existing.has(normCharKey('Матеріал'))) {
+      const osnoValue = existing.get(normCharKey('Основа'));
       if (osnoValue) {
         const valid = materialAttr.prom_attribute_values.find(
           (v) => (v.name_uk ?? '').trim().toLowerCase() === osnoValue.trim().toLowerCase(),
@@ -271,15 +268,13 @@ async function fillProductCharsForCategory(
       return isNaN(n) ? null : String(n);
     };
     const minTempAttr = attrMap.get('Мінімальна температура застосування');
-    if (minTempAttr && !existing.has('Мінімальна температура застосування')) {
-      const src = existing.get('Мінімальна температура застосування')
-               ?? existing.get('Мінімальна температура експлуатації');
+    if (minTempAttr && !existing.has(normCharKey('Мінімальна температура застосування'))) {
+      const src = existing.get(normCharKey('Мінімальна температура експлуатації'));
       if (src) addIfMissing('Мінімальна температура застосування', parseTemp(src));
     }
     const maxTempAttr = attrMap.get('Максимальна температура застосування');
-    if (maxTempAttr && !existing.has('Максимальна температура застосування')) {
-      const src = existing.get('Максимальна температура застосування')
-               ?? existing.get('Максимальна температура експлуатації');
+    if (maxTempAttr && !existing.has(normCharKey('Максимальна температура застосування'))) {
+      const src = existing.get(normCharKey('Максимальна температура експлуатації'));
       if (src) addIfMissing('Максимальна температура застосування', parseTemp(src));
     }
   }

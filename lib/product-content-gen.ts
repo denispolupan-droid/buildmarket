@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
+import { normalizeCharsDb } from './characteristics';
 
 // ЄДИНИЙ рушій генерації контенту картки товару. Обидва входи — розділ SEO
 // (/admin/seo → catalog-enricher) і кнопка в картці (/products → product-ai-filler)
@@ -95,16 +96,41 @@ const RU_SCHEMA = {
   additionalProperties: false,
 };
 
-// Топ-ярлики характеристик у категорії (згорнуті за апострофом) — щоб AI вживав
-// узгоджені назви параметрів по каталогу.
-export async function getCategoryLabels(supabase: Db, categorySlug: string | null): Promise<string[]> {
-  if (!categorySlug) return [];
+// Набір характеристик категорії для промпту.
+export type CategoryLabelSpec = {
+  required: string[];  // обов'язкові (зі словника category_characteristics)
+  optional: string[];  // типові додаткові
+};
+
+// Обов'язкові + типові лейбли категорії зі словника (міграція 082).
+// Якщо словник для категорії порожній (ще не засіяний) — fallback на статистику
+// найчастіших лейблів категорії, як раніше.
+export async function getCategoryLabels(supabase: Db, categorySlug: string | null): Promise<CategoryLabelSpec> {
+  if (!categorySlug) return { required: [], optional: [] };
+
+  const { data: dictRows } = await supabase
+    .from('category_characteristics')
+    .select('required, sort_order, characteristic_definitions(label, sort_order)')
+    .eq('category_slug', categorySlug)
+    .limit(100);
+  if (dictRows?.length) {
+    type Row = { required: boolean; sort_order: number | null; characteristic_definitions: { label: string; sort_order: number } | null };
+    const rows = (dictRows as unknown as Row[])
+      .filter(r => r.characteristic_definitions)
+      .sort((a, b) => (a.sort_order ?? a.characteristic_definitions!.sort_order) - (b.sort_order ?? b.characteristic_definitions!.sort_order));
+    return {
+      required: rows.filter(r => r.required).map(r => r.characteristic_definitions!.label),
+      optional: rows.filter(r => !r.required).map(r => r.characteristic_definitions!.label),
+    };
+  }
+
+  // Fallback: статистика фактичних лейблів категорії (згорнута за апострофом)
   const { data } = await supabase
     .from('product_characteristics')
     .select('label, products!inner(category_slug)')
     .eq('products.category_slug', categorySlug)
     .limit(200);
-  if (!data?.length) return [];
+  if (!data?.length) return { required: [], optional: [] };
   const canon = (s: string) => s.replace(/['`´ʼ']/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
   const counts: Record<string, { n: number; label: string }> = {};
   for (const row of data as { label: string }[]) {
@@ -112,18 +138,22 @@ export async function getCategoryLabels(supabase: Db, categorySlug: string | nul
     if (!counts[k]) counts[k] = { n: 0, label: row.label };
     counts[k].n += 1;
   }
-  return Object.values(counts).sort((a, b) => b.n - a.n).slice(0, 15).map(c => c.label);
+  return { required: [], optional: Object.values(counts).sort((a, b) => b.n - a.n).slice(0, 15).map(c => c.label) };
 }
 
 function buildUaPrompt(
   product: GenProduct,
   categoryName: string,
-  categoryLabels: string[],
+  categoryLabels: CategoryLabelSpec,
   targetQuery?: string,
 ): string {
-  const labelsHint = categoryLabels.length
-    ? `\nСтандартні ярлики характеристик цієї категорії (вживай саме їх, де доречно): ${categoryLabels.join(', ')}.\n`
+  const requiredHint = categoryLabels.required.length
+    ? `\n   ОБОВ'ЯЗКОВІ характеристики цієї категорії — заповни КОЖНУ з них: ${categoryLabels.required.join(', ')}. Якщо точного значення немає в назві — дай типове для цього виду товару значення (без вигаданої точності: діапазони й загальні формулювання дозволені).\n`
     : '';
+  const optionalHint = categoryLabels.optional.length
+    ? `   Додаткові доречні ярлики (вживай саме ці назви, якщо параметр відомий): ${categoryLabels.optional.join(', ')}.\n`
+    : '';
+  const labelsHint = requiredHint + optionalHint;
   const boost = targetQuery
     ? `\nSEO-дожим: сторінка має краще ранжуватися за запитом "${targetQuery}". Природно інтегруй його (і близькі формулювання) в опис і зроби одне з FAQ прямою відповіддю на нього. Без переспаму.\n`
     : '';
@@ -141,7 +171,7 @@ ${boost}Згенеруй ПОВНИЙ контент картки товару (
    - ОСТАННІЙ абзац дослівно: "Оформлюйте замовлення в інтернет-магазині FIXLINE і отримайте якісний [за потреби країна-прикметник] продукт швидко та без зайвих клопотів.".
    Не вигадуй точних числових значень, яких не можеш обґрунтувати з назви/категорії.
 4. keywords — 12-18 пошукових фраз через кому, малими літерами: бренд, тип товару, синоніми, "купити [назва]", "[назва] ціна", "[назва] оптом", "[назва] Київ".
-5. characteristics — 6-14 рядків label/value з реальних даних назви.${labelsHint}   БЕЗ ДУБЛІВ: кожен параметр рівно один рядок; не давай синонімічних ярликів (обери одне: «Основа» або «Матеріал»; «Тип» або «Область застосування»; об'єм/вагу — раз). Апостроф скрізь звичайний (Об'єм). Порядок: спочатку специфічні, останніми — Бренд і Країна виробника.
+5. characteristics — рядки label/value з реальних даних назви (6-16 рядків).${labelsHint}   БЕЗ ДУБЛІВ: кожен параметр рівно один рядок; не давай синонімічних ярликів (обери одне: «Основа» або «Матеріал»; «Тип» або «Область застосування»; об'єм/вагу — раз). Апостроф скрізь звичайний (Об'єм). Порядок: спочатку специфічні, останніми — Бренд і Країна виробника.
 6. faq — 3-4 пари питання/відповідь під реальні пошукові запити (витрата, як застосовувати, чим відрізняється, скільки сохне). Відповіді 2-3 речення, тільки з наданих/загальновідомих даних.
 
 Товар:
@@ -164,7 +194,7 @@ const ITEM_TIMEOUT_MS = 120_000;
 export async function generateUA(
   product: GenProduct,
   categoryName: string,
-  categoryLabels: string[],
+  categoryLabels: CategoryLabelSpec,
   targetQuery?: string,
 ): Promise<GeneratedUA> {
   const msg = await anthropic.messages.create(
@@ -214,18 +244,6 @@ ${ua.faq.map((f, i) => `${i + 1}. Q: ${f.q}\n   A: ${f.a}`).join('\n')}`,
   return ru;
 }
 
-// Дедуп ярликів характеристик (варіанти апострофа + повтори): лишаємо перший.
-function dedupeChars(chars: { label: string; value: string }[]): { label: string; value: string }[] {
-  const norm = (s: string) => s.toLowerCase().replace(/['`´ʼ']/g, "'").replace(/\s+/g, ' ').trim();
-  const seen = new Set<string>();
-  return chars.filter(c => {
-    const k = norm(c.label ?? '');
-    if (!k || !c.value || seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
-}
-
 export async function replaceFaq(supabase: Db, sku: string, faq: FaqPair[], faqRu?: FaqPair[]): Promise<void> {
   const { error: delErr } = await supabase.from('product_faq').delete().eq('product_sku', sku);
   if (delErr) throw delErr;
@@ -240,11 +258,12 @@ export async function replaceFaq(supabase: Db, sku: string, faq: FaqPair[], faqR
 }
 
 async function replaceChars(supabase: Db, sku: string, chars: { label: string; value: string }[]): Promise<void> {
-  const unique = dedupeChars(chars);
+  // Канонізація лейблів + дедуп + порядок — спільна логіка з адмін-формою (lib/characteristics)
+  const unique = await normalizeCharsDb(supabase, chars);
   await supabase.from('product_characteristics').delete().eq('product_sku', sku);
   if (!unique.length) return;
   const { error } = await supabase.from('product_characteristics').insert(
-    unique.map((c, i) => ({ product_sku: sku, label: c.label, value: c.value, sort_order: i + 1 })),
+    unique.map(c => ({ product_sku: sku, ...c })),
   );
   if (error) throw error;
 }
@@ -262,8 +281,11 @@ export type ApplyOpts = {
   targetQuery?: string;
   currentFull?: string | null;    // поточний description_full (для порогу «тонкий»)
   currentKeywords?: string | null;
+  currentKeywordsRu?: string | null;
   hasChars?: boolean;
   hasFaq?: boolean;
+  /** При перезаписі характеристик злити з цими (існуючими) — існуючі значення мають пріоритет */
+  mergeChars?: { label: string; value: string }[];
 };
 
 export async function applyContent(
@@ -298,11 +320,19 @@ export async function applyContent(
     update.keywords = ua.keywords;
     if (ru) update.keywords_ru = ru.keywords_ru;
   } else if (opts.targetQuery) {
-    // Дожим: цільовий запит додаємо в keywords, навіть якщо їх не переписуємо
-    const existing = opts.currentKeywords ?? '';
-    if (!existing.toLowerCase().includes(opts.targetQuery.trim().toLowerCase())) {
-      update.keywords = existing ? `${existing}, ${opts.targetQuery.trim()}` : opts.targetQuery.trim();
-    }
+    // Дожим: цільовий запит додаємо в keywords, навіть якщо їх не переписуємо.
+    // Дописуємо в ОБА поля — запит буває російським, а раніше він осідав лише
+    // в українському keywords, тобто не там, де його шукали.
+    const q = opts.targetQuery.trim();
+    const append = (existing: string | null | undefined) => {
+      const cur = existing ?? '';
+      if (cur.toLowerCase().includes(q.toLowerCase())) return null;
+      return cur ? `${cur}, ${q}` : q;
+    };
+    const nextUa = append(opts.currentKeywords);
+    const nextRu = append(opts.currentKeywordsRu);
+    if (nextUa) update.keywords = nextUa;
+    if (nextRu && opts.currentKeywordsRu != null) update.keywords_ru = nextRu;
   }
 
   if (Object.keys(update).length) {
@@ -311,7 +341,12 @@ export async function applyContent(
   }
 
   if (on('characteristics') && (regen('characteristics') || !opts.hasChars) && ua.characteristics?.length) {
-    await replaceChars(supabase, product.sku, ua.characteristics);
+    // mergeChars: існуючі рядки попереду — normalizeChars лишає перше входження
+    // кожного лейбла, тож ручні значення не затираються AI-згенерованими
+    const chars = opts.mergeChars?.length
+      ? [...opts.mergeChars, ...ua.characteristics]
+      : ua.characteristics;
+    await replaceChars(supabase, product.sku, chars);
   }
 
   let faqCount = 0;

@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import {
   generateUA, translateRU, applyContent, getCategoryLabels,
-  THIN_DESCRIPTION_CHARS, type GenProduct, type GeneratedRU,
+  THIN_DESCRIPTION_CHARS, type GenProduct, type GeneratedRU, type CategoryLabelSpec,
 } from './product-content-gen';
+import { loadCharDictionary, normCharKey } from './characteristics';
 
 // Розділ SEO (/admin/seo) — головний вхід у ЄДИНИЙ рушій генерації контенту
 // (lib/product-content-gen). Тут лише оркестрація: вибір товарів за пробілами,
@@ -63,7 +64,7 @@ export async function* enrichCatalog(opts: {
 
   let done = 0;
   let errors = 0;
-  const labelsCache = new Map<string | null, string[]>();
+  const labelsCache = new Map<string | null, CategoryLabelSpec>();
 
   for (const product of products) {
     yield { type: 'progress', sku: product.sku, name: product.name, done, total: products.length };
@@ -71,7 +72,7 @@ export async function* enrichCatalog(opts: {
     try {
       // Наявність характеристик і FAQ (щоб не перезаписувати вже заповнене без потреби)
       const [{ data: chars }, { data: faqRows }] = await Promise.all([
-        supabase.from('product_characteristics').select('product_sku').eq('product_sku', product.sku).limit(1),
+        supabase.from('product_characteristics').select('label, value').eq('product_sku', product.sku).order('sort_order').limit(100),
         supabase.from('product_faq').select('question_ru').eq('product_sku', product.sku),
       ]);
       const hasChars = !!chars?.length;
@@ -81,6 +82,16 @@ export async function* enrichCatalog(opts: {
       if (!labelsCache.has(product.category_slug)) {
         labelsCache.set(product.category_slug, await getCategoryLabels(supabase, product.category_slug));
       }
+
+      // Характеристики перегенеровуємо не тільки коли їх немає, а й коли не всі
+      // обов'язкові (за словником категорії) заповнені
+      const requiredLabels = labelsCache.get(product.category_slug)?.required ?? [];
+      let missingRequired = false;
+      if (hasChars && requiredLabels.length) {
+        const dict = await loadCharDictionary(supabase);
+        const have = new Set((chars ?? []).map(c => dict.aliasMap.get(normCharKey(c.label)) ?? c.label));
+        missingRequired = requiredLabels.some(l => !have.has(l));
+      }
       const categoryName = catName.get(product.category_slug ?? '') ?? product.category_slug ?? '';
 
       const gp: GenProduct = {
@@ -88,15 +99,18 @@ export async function* enrichCatalog(opts: {
         brand: product.brand, category_slug: product.category_slug, description: product.description,
       };
 
-      const ua = await generateUA(gp, categoryName, labelsCache.get(product.category_slug) ?? [], opts.targetQuery);
+      const ua = await generateUA(gp, categoryName, labelsCache.get(product.category_slug) ?? { required: [], optional: [] }, opts.targetQuery);
 
       // RU — обов'язкова, але не критична: якщо переклад упав, зберігаємо UA
       let ru: GeneratedRU | null = null;
       try { ru = await translateRU(ua); } catch { /* лишиться пробіл «рос. версія» */ }
 
       const res = await applyContent(supabase, gp, ua, ru, {
-        // Опис перегенеровуємо лише якщо тонкий (gap-aware); FAQ — якщо немає або без перекладу
-        regen: { faq: !hasFaq || hasUntranslatedFaq },
+        // Опис перегенеровуємо лише якщо тонкий (gap-aware); FAQ — якщо немає або без
+        // перекладу; характеристики — якщо бракує обов'язкових зі словника
+        regen: { faq: !hasFaq || hasUntranslatedFaq, characteristics: missingRequired },
+        // Існуючі характеристики мають пріоритет — AI лише ДОДАЄ відсутні обов'язкові
+        mergeChars: missingRequired ? (chars ?? []) : undefined,
         targetQuery: opts.targetQuery,
         currentFull: product.description_full,
         currentKeywords: product.keywords,

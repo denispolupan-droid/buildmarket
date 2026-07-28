@@ -150,6 +150,8 @@ export async function getProductBySku(sku: string): Promise<ProductFull | null> 
     `)
     .eq('sku', sku)
     .eq('is_active', true)
+    // Порядок характеристик = порядок словника (canonicalize/normalizeChars пишуть 1..N)
+    .order('sort_order', { referencedTable: 'characteristics' })
     .single();
   if (error) return null;
   return data as ProductFull;
@@ -165,6 +167,7 @@ export async function getProductBySlug(slug: string): Promise<ProductFull | null
     `)
     .eq('slug', slug)
     .eq('is_active', true)
+    .order('sort_order', { referencedTable: 'characteristics' })
     .single();
   if (error) return null;
   return data as ProductFull;

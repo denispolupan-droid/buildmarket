@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
     bc?: string;
     ac?: string;
     characteristics?: string[];
+    required?: string[];
     values?: string[];
     labels?: string[];
   } = {};
@@ -42,28 +43,50 @@ export async function GET(req: NextRequest) {
   }
 
   if (category) {
-    const { data: categoryProducts } = await serviceClient
-      .from('products')
-      .select('sku')
+    // Насамперед — словник категорії (обов'язкові + типові), required попереду
+    const { data: dictRows } = await serviceClient
+      .from('category_characteristics')
+      .select('required, sort_order, characteristic_definitions(label, sort_order)')
       .eq('category_slug', category)
-      .limit(50);
+      .limit(100);
 
-    if (categoryProducts && categoryProducts.length > 0) {
-      const skus = categoryProducts.map(p => p.sku);
-      const { data: chars } = await serviceClient
-        .from('product_characteristics')
-        .select('label')
-        .in('product_sku', skus);
+    type DictRow = { required: boolean; sort_order: number | null; characteristic_definitions: { label: string; sort_order: number } | null };
+    // PostgREST повертає to-one embed об'єктом, але untyped-клієнт виводить масив
+    const dict = ((dictRows ?? []) as unknown as DictRow[])
+      .filter(r => r.characteristic_definitions)
+      .sort((a, b) => (a.sort_order ?? a.characteristic_definitions!.sort_order) - (b.sort_order ?? b.characteristic_definitions!.sort_order));
 
-      if (chars && chars.length > 0) {
-        const labelCounts: Record<string, number> = {};
-        chars.forEach((c: { label: string }) => {
-          labelCounts[c.label] = (labelCounts[c.label] || 0) + 1;
-        });
-        const sorted = Object.entries(labelCounts)
-          .sort((a, b) => b[1] - a[1])
-          .map(([label]) => label);
-        result.characteristics = sorted.slice(0, 15);
+    if (dict.length) {
+      result.required = dict.filter(r => r.required).map(r => r.characteristic_definitions!.label);
+      result.characteristics = [
+        ...result.required,
+        ...dict.filter(r => !r.required).map(r => r.characteristic_definitions!.label),
+      ];
+    } else {
+      // Fallback до заливки словника: статистика лейблів категорії
+      const { data: categoryProducts } = await serviceClient
+        .from('products')
+        .select('sku')
+        .eq('category_slug', category)
+        .limit(50);
+
+      if (categoryProducts && categoryProducts.length > 0) {
+        const skus = categoryProducts.map(p => p.sku);
+        const { data: chars } = await serviceClient
+          .from('product_characteristics')
+          .select('label')
+          .in('product_sku', skus);
+
+        if (chars && chars.length > 0) {
+          const labelCounts: Record<string, number> = {};
+          chars.forEach((c: { label: string }) => {
+            labelCounts[c.label] = (labelCounts[c.label] || 0) + 1;
+          });
+          const sorted = Object.entries(labelCounts)
+            .sort((a, b) => b[1] - a[1])
+            .map(([label]) => label);
+          result.characteristics = sorted.slice(0, 15);
+        }
       }
     }
   }
@@ -71,6 +94,14 @@ export async function GET(req: NextRequest) {
   // Список існуючих ярликів характеристик (для автокомпліту «фільтра»):
   // спершу популярні в цій категорії, далі — решта по всьому каталогу.
   if (req.nextUrl.searchParams.get('labels')) {
+    // Канонічні лейбли словника — попереду автокомпліту (в порядку словника)
+    const { data: defs } = await serviceClient
+      .from('characteristic_definitions')
+      .select('label, sort_order')
+      .order('sort_order')
+      .limit(1000);
+    const canonical = (defs ?? []).map((d: { label: string }) => d.label);
+
     const { data: allChars } = await serviceClient
       .from('product_characteristics')
       .select('label')
@@ -83,11 +114,11 @@ export async function GET(req: NextRequest) {
     const globalSorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([l]) => l);
     const merged: string[] = [];
     const seen = new Set<string>();
-    for (const l of [...(result.characteristics ?? []), ...globalSorted]) {
+    for (const l of [...(result.characteristics ?? []), ...canonical, ...globalSorted]) {
       const k = l.toLowerCase();
       if (!seen.has(k)) { seen.add(k); merged.push(l); }
     }
-    result.labels = merged.slice(0, 150);
+    result.labels = merged.slice(0, 200);
   }
 
   const label = req.nextUrl.searchParams.get('label');
