@@ -764,8 +764,11 @@ async function sendEmail(){
           {totalSelected > 0 && (
             <button onClick={clearAll} style={btnSecondary}>Зняти вибір</button>
           )}
-          {/* Розрахунок націнок для маркетплейсів — окрема сторінка, без пункту
-              в меню: заходять туди рідко, тільки коли переглядають модель */}
+          {/* Аналіз цін і модель націнок — окремі сторінки без пункту в меню:
+              заходять туди рідко, і обидві по суті про ціни */}
+          <a href="/admin/pricing" style={{ ...btnSecondary, textDecoration: 'none' }}>
+            Аналіз цін
+          </a>
           <a href="/admin/pricing-model" style={{ ...btnSecondary, textDecoration: 'none' }}>
             Модель націнок
           </a>

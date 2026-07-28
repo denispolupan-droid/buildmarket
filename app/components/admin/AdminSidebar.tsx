@@ -7,7 +7,7 @@ import Link from 'next/link';
 import {
   ShoppingBag, Package, Truck, Store,
   Settings, BookOpen, Warehouse, BarChart3, Users, Star,
-  MessageSquare, ShoppingCart, Mail, ExternalLink, TrendingUp,
+  MessageSquare, ShoppingCart, Mail, ExternalLink,
   ChevronLeft, ChevronRight, ShoppingBasket, Sparkles, Megaphone,
   Tags, Layers, Menu, X, Search,
 } from 'lucide-react';
@@ -37,7 +37,6 @@ const NAV = [
   { href: '/admin/procurement',          label: 'Закупівля',      icon: ShoppingCart,   exact: false },
   { href: '/admin/prom',                 label: 'Prom.ua',        icon: ShoppingBasket, exact: false },
   { href: '/admin/rozetka',              label: 'Rozetka',        icon: SocketIcon as typeof Store, exact: false },
-  { href: '/admin/pricing',              label: 'Аналіз цін',     icon: TrendingUp,     exact: false },
   { href: '/admin/seo',                  label: 'SEO',            icon: Search,         exact: false },
   { href: '/admin/blog',                 label: 'Блог',           icon: BookOpen,       exact: false },
   { href: '/admin/finance',              label: 'Фінанси',        icon: BarChart3,      exact: false },
