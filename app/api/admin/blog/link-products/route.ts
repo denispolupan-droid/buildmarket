@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
 import {
-  expandCategories, pickArticleProducts, upsertLinksBlock,
+  expandCategories, pickArticleProducts, stripLinksBlock,
   hasLinksBlock, countProductLinks, productLabel, type LinkProduct,
 } from '../../../../../lib/blog-product-links';
 
@@ -21,6 +21,7 @@ type PostRow = {
   id: number; slug: string; title: string; is_published: boolean;
   content_html: string; content_html_ru: string | null;
   related_links: { label: string; href: string }[] | null;
+  product_skus: string[] | null;
 };
 
 type Plan = {
@@ -38,7 +39,7 @@ type Plan = {
 async function buildPlans(): Promise<{ plans: Plan[]; posts: Map<number, PostRow>; picksBySku: Map<number, LinkProduct[]> }> {
   const [{ data: postsRaw }, { data: cats }, products] = await Promise.all([
     serviceClient.from('blog_posts')
-      .select('id, slug, title, is_published, content_html, content_html_ru, related_links')
+      .select('id, slug, title, is_published, content_html, content_html_ru, related_links, product_skus')
       .order('id'),
     serviceClient.from('categories').select('slug, parent_slug'),
     fetchAllRows<{
@@ -95,7 +96,9 @@ async function buildPlans(): Promise<{ plans: Plan[]; posts: Map<number, PostRow
     const picks = pickArticleProducts(groups, LIMIT_PER_ARTICLE);
     picksBySku.set(post.id, picks);
 
-    const hasBlock = hasLinksBlock(post.content_html, 'uk') || hasLinksBlock(post.content_html_ru ?? '', 'ru');
+    const hasBlock = (post.product_skus ?? []).length > 0
+      || hasLinksBlock(post.content_html, 'uk')
+      || hasLinksBlock(post.content_html_ru ?? '', 'ru');
     plans.push({
       id: post.id, slug: post.slug, title: post.title, is_published: post.is_published,
       categories: slugs,
@@ -140,15 +143,21 @@ export async function POST(req: NextRequest) {
     const picks = picksBySku.get(id) ?? [];
     if (!picks.length) { skipped.push({ slug: post.slug, reason: 'немає товарів у наявності за категоріями статті' }); continue; }
 
-    const ua = upsertLinksBlock(post.content_html, picks, 'uk');
-    // Російську версію чіпаємо лише якщо вона є: коли її немає, сторінка /ru
-    // показує український текст, і блок туди потрапить разом з ним.
+    // Пишемо АРТИКУЛИ, а не готовий HTML: ціни й наявність підтягуються на
+    // рендері. Заразом прибираємо «запечені» блоки, якщо вони лишились від
+    // попередньої схеми — інакше на сторінці буде два блоки, один зі старими цінами.
+    const ua = stripLinksBlock(post.content_html, 'uk');
     const ru = (post.content_html_ru ?? '').trim()
-      ? upsertLinksBlock(post.content_html_ru!, picks, 'ru')
+      ? stripLinksBlock(post.content_html_ru!, 'ru')
       : post.content_html_ru;
 
     const { error } = await serviceClient.from('blog_posts')
-      .update({ content_html: ua, content_html_ru: ru, updated_at: new Date().toISOString() })
+      .update({
+        product_skus: picks.map(p => p.sku),
+        content_html: ua,
+        content_html_ru: ru,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', id);
     if (error) { skipped.push({ slug: post.slug, reason: error.message }); continue; }
     updated.push({ slug: post.slug, links: picks.length });

@@ -110,7 +110,7 @@ export async function getProductsLight(opts?: {
   let query = supabase
     .from('products')
     .select(`
-      id, sku, slug, name, brand, category_slug, is_active, sort_order,
+      id, sku, slug, name, name_ru, brand, category_slug, is_active, sort_order,
       nl1, nl2, bc, ac, img_type, color, product_type, volume, image,
       stock:product_stock(*)
     `)

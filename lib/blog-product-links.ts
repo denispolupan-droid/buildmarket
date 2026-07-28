@@ -157,7 +157,13 @@ function blockRe(lang: 'uk' | 'ru'): RegExp {
 
 /**
  * Вставити або оновити блок. Повторний запуск не плодить дублікати —
- * наявний блок замінюється новим (ціни й наявність могли змінитись).
+ * наявний блок замінюється новим.
+ *
+ * УВАГА: «запечений» у HTML блок містить ціни, які застигають на момент вставки.
+ * Для статей це більше не використовується — товари зберігаються в
+ * blog_posts.product_skus і блок збирається на рендері з живих даних
+ * (див. ArticleProducts). Функція лишається для дожиму статей, де модель
+ * вплітає посилання в текст, і для тестів.
  */
 export function upsertLinksBlock(html: string, products: LinkProduct[], lang: 'uk' | 'ru'): string {
   const block = buildLinksBlock(products, lang);
@@ -165,4 +171,9 @@ export function upsertLinksBlock(html: string, products: LinkProduct[], lang: 'u
   const re = blockRe(lang);
   if (re.test(html)) return html.replace(re, block);
   return html + block;
+}
+
+/** Прибрати «запечений» блок із тексту (переїзд на рендер із живих даних). */
+export function stripLinksBlock(html: string, lang: 'uk' | 'ru'): string {
+  return html.replace(blockRe(lang), '').trim();
 }

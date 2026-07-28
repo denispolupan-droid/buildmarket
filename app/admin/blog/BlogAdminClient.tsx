@@ -245,8 +245,25 @@ export default function BlogAdminClient() {
           {linkMsg && <span style={{ fontSize: 13, color: linkMsg.startsWith('✓') ? '#10B981' : '#EF4444' }}>{linkMsg}</span>}
         </div>
 
+        {plans && (() => {
+          const selectable = plans.filter(p => p.picks.length);
+          const allPicked = selectable.length > 0 && selectable.every(p => planPicked.has(p.id));
+          return (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: 13, color: '#475569', cursor: 'pointer', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                checked={allPicked}
+                onChange={() => setPlanPicked(allPicked ? new Set() : new Set(selectable.map(p => p.id)))}
+                style={{ width: 15, height: 15, cursor: 'pointer' }}
+              />
+              {allPicked ? 'Зняти все' : `Вибрати все (${selectable.length})`}
+              <span style={{ color: '#94A3B8' }}>· вибрано {planPicked.size}</span>
+            </label>
+          );
+        })()}
+
         {plans && (
-          <div style={{ marginTop: 14, maxHeight: 460, overflowY: 'auto', border: '1px solid #F1F5F9', borderRadius: 8 }}>
+          <div style={{ marginTop: 8, maxHeight: 460, overflowY: 'auto', border: '1px solid #F1F5F9', borderRadius: 8 }}>
             {plans.map(p => {
               const disabled = !p.picks.length;
               return (

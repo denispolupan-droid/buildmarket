@@ -4,6 +4,7 @@ import { Clock } from 'lucide-react';
 import Footer from '../../components/Footer';
 import { getPublishedPostsCached, type BlogPost } from '../../../lib/blog-db';
 import { localizeArticleHtml } from '../../../lib/sanitize-article';
+import ArticleProducts from './ArticleProducts';
 
 // Рендер статті з БД — той самий шаблон, що й у статичних статей (lib/blog.ts),
 // тіло — довірений HTML з нашого AI-конвеєра через .article-body.
@@ -107,6 +108,9 @@ export default async function DbArticle({ post, lang = 'uk' }: Props) {
 
             {/* На /ru внутрішні посилання в тілі статті отримують префікс /ru */}
             <div className="article-body" dangerouslySetInnerHTML={{ __html: localizeArticleHtml(t.content, lang) }} />
+
+            {/* Товари статті — ціни й наявність живі, не з тексту */}
+            <ArticleProducts skus={post.product_skus ?? []} lang={lang} />
           </article>
 
           {t.faq.length > 0 && (

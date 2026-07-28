@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   expandCategories, pickArticleProducts, productLabel,
-  buildLinksBlock, upsertLinksBlock, hasLinksBlock, countProductLinks,
+  buildLinksBlock, upsertLinksBlock, stripLinksBlock, hasLinksBlock, countProductLinks,
   type LinkProduct,
 } from '../lib/blog-product-links';
 
@@ -137,6 +137,16 @@ describe('buildLinksBlock / upsertLinksBlock', () => {
 
   it('порожній список товарів не змінює статтю', () => {
     expect(upsertLinksBlock('<p>Текст</p>', [], 'uk')).toBe('<p>Текст</p>');
+  });
+
+  it('stripLinksBlock прибирає «запечений» блок і лишає текст', () => {
+    const withBlock = upsertLinksBlock('<p>Текст</p>', products, 'uk');
+    expect(stripLinksBlock(withBlock, 'uk')).toBe('<p>Текст</p>');
+  });
+
+  it('stripLinksBlock не чіпає статтю без блоку', () => {
+    expect(stripLinksBlock('<p>Текст</p><a href="/product/x">у тексті</a>', 'uk'))
+      .toBe('<p>Текст</p><a href="/product/x">у тексті</a>');
   });
 
   it('російський блок має власний заголовок і не плутається з українським', () => {

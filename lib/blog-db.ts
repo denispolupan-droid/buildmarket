@@ -34,6 +34,8 @@ export type BlogPost = {
   faq: BlogFaq[];
   faq_ru: BlogFaq[];
   related_links: BlogRelatedLink[];
+  /** Артикули товарів для блоку «Чим це зробити» — ціни беруться на рендері */
+  product_skus: string[];
   is_published: boolean;
   published_at: string | null;
   created_at: string;
