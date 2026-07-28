@@ -764,6 +764,11 @@ async function sendEmail(){
           {totalSelected > 0 && (
             <button onClick={clearAll} style={btnSecondary}>Зняти вибір</button>
           )}
+          {/* Розрахунок націнок для маркетплейсів — окрема сторінка, без пункту
+              в меню: заходять туди рідко, тільки коли переглядають модель */}
+          <a href="/admin/pricing-model" style={{ ...btnSecondary, textDecoration: 'none' }}>
+            Модель націнок
+          </a>
           <button onClick={openPricelist} style={btnPrimary}>
             <FileSpreadsheet size={15} /> Прайс-лист
           </button>
