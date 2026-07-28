@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { slugify } from './seo/slug';
+import { buildCovers } from './blog-cover';
 
 // Генерація статей блогу (SEO: інформаційні запити, довгий хвіст).
 // Запускається ТІЛЬКИ вручну з /admin/blog — жодних фонових витрат API.
@@ -309,10 +310,18 @@ ${catList}`,
     .slice(0, 4)
     .map(s => ({ label: catName.get(s)!, href: `/shop/${s}` }));
 
+  // Обкладинка малюється одразу при створенні (R2), щоб жодна стаття не
+  // виходила без заставки. Помилка тут не має валити статтю — див. buildCovers.
+  const covers = await buildCovers({
+    slug, title: parsed.title, title_ru: parsed.title_ru,
+    category: 'Поради', category_ru: 'Советы',
+  });
+
   const { data: inserted, error } = await supabase
     .from('blog_posts')
     .insert({
       slug,
+      ...covers,
       title: parsed.title,
       title_ru: parsed.title_ru,
       description: parsed.description,

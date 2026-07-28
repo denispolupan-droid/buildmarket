@@ -136,6 +136,27 @@ export default function BlogAdminClient() {
     await load();
   }
 
+  const [coverBusy, setCoverBusy] = useState<number | null>(null);
+
+  async function redrawCover(p: PostRow) {
+    setCoverBusy(p.id);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/blog/cover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: p.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCoverBusy(null);
+    }
+  }
+
   async function remove(p: PostRow) {
     if (!confirm(`Видалити статтю «${p.title}»? Це незворотно.`)) return;
     await fetch(`/api/admin/blog?id=${p.id}`, { method: 'DELETE' });
@@ -471,6 +492,14 @@ export default function BlogAdminClient() {
               <a href={`/blog/${p.slug}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#1E3A5F', fontWeight: 600 }}>Відкрити →</a>
             )}
             <button onClick={() => openEditor(p.id)} style={btn}>Редагувати</button>
+            <button
+              onClick={() => redrawCover(p)}
+              disabled={coverBusy === p.id}
+              title="Заголовок вшитий в обкладинку — перемалюйте, якщо змінювали назву"
+              style={btn}
+            >
+              {coverBusy === p.id ? '⏳' : '🖼'} Обкладинка
+            </button>
             <button onClick={() => togglePublish(p)} style={{ ...btn, color: p.is_published ? '#F59E0B' : '#10B981' }}>
               {p.is_published ? 'Зняти з публікації' : 'Опублікувати'}
             </button>

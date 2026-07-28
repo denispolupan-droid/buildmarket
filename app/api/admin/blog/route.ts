@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { checkAdmin } from '../../../../lib/check-admin';
 import { generateBlogPost, sanitizeArticleHtml } from '../../../../lib/blog-generator';
+import { buildCovers } from '../../../../lib/blog-cover';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -49,9 +50,10 @@ export async function POST(req: NextRequest) {
     let slug = slugify(topic.trim(), 70) || `stattia-${Date.now() % 100000}`;
     const { data: taken } = await serviceClient.from('blog_posts').select('slug').eq('slug', slug).maybeSingle();
     if (taken) slug = `${slug}-${Date.now() % 10000}`;
+    const covers = await buildCovers({ slug, title: topic.trim(), category: 'Поради' });
     const { data, error } = await serviceClient
       .from('blog_posts')
-      .insert({ slug, title: topic.trim(), description: '', content_html: '<p></p>', is_published: false })
+      .insert({ slug, ...covers, title: topic.trim(), description: '', content_html: '<p></p>', is_published: false })
       .select('id, slug, title')
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
