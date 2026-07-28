@@ -10,10 +10,12 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
   }
 
-  const { skus, fields, force } = await req.json() as {
+  const { skus, fields, force, targetQuery } = await req.json() as {
     skus: string[];
     fields?: { description?: boolean; description_full?: boolean; keywords?: boolean; characteristics?: boolean };
     force?: boolean;
+    /** «Дожим» із розділу SEO: контент цілиться в цей пошуковий запит */
+    targetQuery?: string;
   };
   if (!Array.isArray(skus) || skus.length === 0) {
     return new Response(JSON.stringify({ error: 'skus required' }), { status: 400 });
@@ -26,7 +28,7 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
 
       try {
-        for await (const event of fillProducts(skus, fields, !!force)) {
+        for await (const event of fillProducts(skus, fields, !!force, targetQuery?.trim() || undefined)) {
           send(event);
         }
       } catch (err) {

@@ -8,6 +8,23 @@ import sanitizeHtml from 'sanitize-html';
 const ALLOWED_TAGS = ['p', 'h2', 'h3', 'ul', 'ol', 'li', 'table', 'thead',
                       'tbody', 'tr', 'th', 'td', 'strong', 'em', 'a', 'br'];
 
+/**
+ * Внутрішні посилання в тілі статті на /ru — з мовним префіксом.
+ *
+ * Тіло статті зберігається в БД одне для обох мов (перекладається лише текст),
+ * тож href-и в ньому мовно-нейтральні: /product/..., /shop/... . Шаблон статті
+ * додає /ru до хлібних крихт, CTA і related, але тіло вставляється через
+ * dangerouslySetInnerHTML як є — і російський читач з тексту статті потрапляв на
+ * УКРАЇНСЬКУ картку товару. Тут дописуємо префікс на рендері (в БД не чіпаємо,
+ * щоб укр-версія лишалась чистою).
+ */
+export function localizeArticleHtml(html: string, lang: 'uk' | 'ru'): string {
+  if (lang !== 'ru' || !html) return html;
+  // Лише root-relative href-и, які ще не /ru (protocol-relative і зовнішні
+  // вирізає санітайзер, тому тут вони не зустрічаються).
+  return html.replace(/href="\/(?!ru\/|ru")/g, 'href="/ru/');
+}
+
 export function sanitizeArticleHtml(html: string): string {
   if (!html) return '';
   return sanitizeHtml(html, {

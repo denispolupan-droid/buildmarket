@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import {
   generateUA, translateRU, applyContent, getCategoryLabels,
-  type GenProduct, type GeneratedRU,
+  type GenProduct, type GeneratedRU, type CategoryLabelSpec,
 } from './product-content-gen';
 
 // Кнопка «AI заповнення» в картці товару — ДРУГИЙ вхід у той самий рушій
@@ -52,22 +52,24 @@ type ProductRow = {
   description: string | null;
   description_full: string | null;
   keywords: string | null;
+  keywords_ru: string | null;
 };
 
 async function fillOne(
   supabase: ReturnType<typeof db>,
   product: ProductRow,
   categoryName: string,
-  categoryLabels: string[],
+  categoryLabels: CategoryLabelSpec,
   f: Required<FillFields>,
   force: boolean,
+  targetQuery?: string,
 ): Promise<void> {
   const gp: GenProduct = {
     sku: product.sku, name: product.name, name_ru: product.name_ru,
     brand: product.brand, category_slug: product.category_slug, description: product.description,
   };
 
-  const ua = await generateUA(gp, categoryName, categoryLabels);
+  const ua = await generateUA(gp, categoryName, categoryLabels, targetQuery);
   let ru: GeneratedRU | null = null;
   try { ru = await translateRU(ua); } catch { /* лишиться пробіл «рос. версія», доб'ється в SEO */ }
 
@@ -93,20 +95,28 @@ async function fillOne(
           description: f.description, description_full: f.description_full,
           keywords: f.keywords, characteristics: f.characteristics,
         },
+    targetQuery,
     currentFull: product.description_full,
     currentKeywords: product.keywords,
+    currentKeywordsRu: product.keywords_ru,
     hasChars: !!chars?.length,
     hasFaq: !!faq?.length,
   });
 }
 
-export async function* fillProducts(skus: string[], fields?: FillFields, force = false): AsyncGenerator<AiFillEvent> {
+export async function* fillProducts(
+  skus: string[],
+  fields?: FillFields,
+  force = false,
+  /** «Дожим»: запит, під який цілиться контент (з розділу SEO) */
+  targetQuery?: string,
+): AsyncGenerator<AiFillEvent> {
   const f = { ...DEFAULT_FIELDS, ...fields };
   const supabase = db();
 
   const { data: products, error } = await supabase
     .from('products')
-    .select('sku, name, name_ru, brand, category_slug, description, description_full, keywords')
+    .select('sku, name, name_ru, brand, category_slug, description, description_full, keywords, keywords_ru')
     .in('sku', skus)
     .order('category_slug');  // group same category together
 
@@ -123,7 +133,7 @@ export async function* fillProducts(skus: string[], fields?: FillFields, force =
   const { data: categories } = await supabase.from('categories').select('slug, name');
   const catName = new Map((categories ?? []).map(c => [c.slug, c.name]));
   const distinctCats = [...new Set(products.map(p => p.category_slug))];
-  const labelsByCat = new Map<string | null, string[]>();
+  const labelsByCat = new Map<string | null, CategoryLabelSpec>();
   await Promise.all(
     distinctCats.map(async cat => { labelsByCat.set(cat, await getCategoryLabels(supabase, cat)); }),
   );
@@ -144,7 +154,7 @@ export async function* fillProducts(skus: string[], fields?: FillFields, force =
       push({ type: 'progress', sku: product.sku, name: product.name, done, total: products!.length });
       try {
         const categoryName = catName.get(product.category_slug ?? '') ?? product.category_slug ?? '';
-        await fillOne(supabase, product, categoryName, labelsByCat.get(product.category_slug) ?? [], f, force);
+        await fillOne(supabase, product, categoryName, labelsByCat.get(product.category_slug) ?? { required: [], optional: [] }, f, force, targetQuery);
         done++;
         push({ type: 'result', sku: product.sku, name: product.name });
       } catch (err) {
