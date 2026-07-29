@@ -4,7 +4,7 @@ import { fetchAllRows } from '../../../../lib/db-paginate';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, CreditCard } from 'lucide-react';
-import PayablesClient, { type SupplierBalance } from './PayablesClient';
+import PayablesClient, { type SupplierBalance, type TransitItem } from './PayablesClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -112,10 +112,89 @@ export default async function PayablesPage() {
     if (agg.balance < -0.005) agg.aging = computeAging(agg.transactions);
   }
 
-  // Сортуємо: спочатку найбільший борг (balance найменший = ми найбільше винні)
-  // Не фільтруємо по балансу тут — клієнт сам вирішує що показати (при фільтрі по даті може бути 0)
+  // 5. Дропшип «в дорозі»: відвантажені, ще не доставлені посилки (РН-чернетки).
+  // Борг у леджері виникає лише при доставці (postSaleDoc), але постачальник уже
+  // відвантажив — показуємо окремо, щоб «разом до сплати» збігався з рахунком
+  // постачальника. Групування дзеркалить postSaleDoc: dropship-рядки чернетки,
+  // постачальник = line.supplier_id → мапінг SKU.
+  const draftDocs = await fetchAllRows((f, t) => db
+    .from('acc_documents')
+    .select('id, order_id, doc_number, doc_date, tracking_number')
+    .eq('doc_type', 'sale')
+    .eq('status', 'draft')
+    .order('doc_date', { ascending: true })
+    .range(f, t));
+
+  const draftIds = (draftDocs ?? []).map(d => d.id as string);
+  const { data: draftLines } = draftIds.length
+    ? await db.from('acc_document_lines')
+        .select('document_id, sku, qty, cost_price, fulfillment_type, supplier_id')
+        .in('document_id', draftIds)
+        .limit(10000)
+    : { data: [] };
+  const dropDraftLines = (draftLines ?? []).filter(l => l.fulfillment_type === 'dropship');
+
+  const unmappedSkus = [...new Set(dropDraftLines.filter(l => !l.supplier_id).map(l => l.sku as string))];
+  const { data: skuMapRows } = unmappedSkus.length
+    ? await db.from('supplier_sku_map').select('our_sku, supplier_id').in('our_sku', unmappedSkus)
+    : { data: [] };
+  const supplierBySku = new Map((skuMapRows ?? []).map(r => [r.our_sku as string, r.supplier_id as number]));
+
+  const draftOrderIds = [...new Set((draftDocs ?? []).map(d => d.order_id).filter(Boolean))] as string[];
+  const { data: draftOrders } = draftOrderIds.length
+    ? await db.from('orders').select('id, order_number').in('id', draftOrderIds)
+    : { data: [] };
+  const orderNumById = new Map((draftOrders ?? []).map(o => [o.id as string, o.order_number as number]));
+
+  // (постачальник, РН) → сума собівартості цієї посилки
+  const transitByDocSupplier = new Map<string, number>();
+  for (const l of dropDraftLines) {
+    const supplierId = (l.supplier_id as number | null) ?? supplierBySku.get(l.sku as string) ?? null;
+    const cost = Number(l.cost_price ?? 0) * Number(l.qty);
+    if (!supplierId || cost <= 0) continue;
+    const key = `${supplierId}:${l.document_id}`;
+    transitByDocSupplier.set(key, (transitByDocSupplier.get(key) ?? 0) + cost);
+  }
+
+  const transitSupplierIds = [...new Set([...transitByDocSupplier.keys()].map(k => parseInt(k)))];
+  const { data: transitSuppliers } = transitSupplierIds.length
+    ? await db.from('suppliers').select('id, name').in('id', transitSupplierIds)
+    : { data: [] };
+  const transitNameMap = new Map((transitSuppliers ?? []).map(s => [s.id as number, s.name as string]));
+
+  const docById = new Map((draftDocs ?? []).map(d => [d.id as string, d]));
+  for (const [key, amount] of transitByDocSupplier) {
+    const [supplierIdStr, docId] = key.split(':');
+    const supplierId = parseInt(supplierIdStr);
+    const doc = docById.get(docId)!;
+    // постачальник може ще не мати жодної проводки в леджері — створюємо рядок
+    if (!aggMap.has(supplierId)) {
+      aggMap.set(supplierId, {
+        supplier_id:    supplierId,
+        supplier_name:  supplierNameMap.get(supplierId) ?? transitNameMap.get(supplierId) ?? `Постачальник #${supplierId}`,
+        total_receipts: 0,
+        total_payments: 0,
+        balance:        0,
+        transactions:   [],
+      });
+    }
+    const agg = aggMap.get(supplierId)!;
+    const item: TransitItem = {
+      doc_id:          docId,
+      doc_number:      (doc.doc_number as string) ?? null,
+      doc_date:        String(doc.doc_date ?? '').slice(0, 10),
+      order_number:    doc.order_id ? (orderNumById.get(doc.order_id as string) ?? null) : null,
+      tracking_number: (doc.tracking_number as string) ?? null,
+      amount:          Math.round(amount * 100) / 100,
+    };
+    agg.in_transit_items = [...(agg.in_transit_items ?? []), item];
+    agg.in_transit_total = Math.round(((agg.in_transit_total ?? 0) + amount) * 100) / 100;
+  }
+
+  // Сортуємо за ЗАГАЛЬНИМ боргом (проведений + в дорозі): balance від'ємний = винні,
+  // транзит завжди додає до боргу. Не фільтруємо по балансу тут — клієнт сам вирішує.
   const balances: SupplierBalance[] = [...aggMap.values()]
-    .sort((a, b) => a.balance - b.balance);
+    .sort((a, b) => (a.balance - (a.in_transit_total ?? 0)) - (b.balance - (b.in_transit_total ?? 0)));
 
   return (
     <div style={{ padding: '28px 32px 64px', maxWidth: '1200px' }}>

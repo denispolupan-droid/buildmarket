@@ -21,6 +21,15 @@ export type SupplierAging = {
   oldest_date: string | null;
 };
 
+export type TransitItem = {
+  doc_id:          string;
+  doc_number:      string | null;
+  doc_date:        string;
+  order_number:    number | null;
+  tracking_number: string | null;
+  amount:          number;
+};
+
 export type SupplierBalance = {
   supplier_id:    number;
   supplier_name:  string;
@@ -29,6 +38,9 @@ export type SupplierBalance = {
   balance:        number;
   transactions:   SupplierTransaction[];
   aging?:         SupplierAging;
+  /** Дропшип «в дорозі»: відвантажено, ще не доставлено — борг виникне при доставці */
+  in_transit_total?: number;
+  in_transit_items?: TransitItem[];
 };
 
 function fmt(n: number) {
@@ -170,6 +182,10 @@ export default function PayablesClient({ balances: allBalances }: Props) {
   const totalOverpaid  = balances.filter(b => b.balance > 0).reduce((s, b) => s + b.balance, 0);
   const debtCount      = balances.filter(b => b.balance < 0).length;
   const overpaidCount  = balances.filter(b => b.balance > 0).length;
+  // «В дорозі» — стан на зараз (не залежить від фільтра дат): відвантажено, не доставлено
+  const totalTransit   = balances.reduce((s, b) => s + (b.in_transit_total ?? 0), 0);
+  const transitCount   = balances.reduce((s, b) => s + (b.in_transit_items?.length ?? 0), 0);
+  const totalOwed      = totalDebt + totalTransit;
 
   const periodLabel = dateApplied
     ? `${dateFrom} — ${dateTo}`
@@ -255,10 +271,24 @@ export default function PayablesClient({ balances: allBalances }: Props) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
         {[
           {
-            label: 'Борг постачальникам',
+            label: 'Разом до сплати',
+            value: totalOwed > 0 ? `${fmt(totalOwed)} ₴` : '—',
+            sub: 'проведений борг + в дорозі',
+            color: totalOwed > 0 ? '#B91C1C' : '#15803D',
+            icon: TrendingDown,
+          },
+          {
+            label: 'Отримано клієнтами (борг)',
             value: totalDebt > 0 ? `${fmt(totalDebt)} ₴` : '—',
             sub: `${debtCount} пост. · ${periodLabel}`,
             color: totalDebt > 0 ? '#DC2626' : '#15803D',
+            icon: TrendingDown,
+          },
+          {
+            label: 'В дорозі (не доставлено)',
+            value: totalTransit > 0 ? `${fmt(totalTransit)} ₴` : '—',
+            sub: transitCount > 0 ? `${transitCount} посилок · борг виникне при доставці` : 'посилок немає',
+            color: totalTransit > 0 ? '#B45309' : '#64748B',
             icon: TrendingDown,
           },
           {
@@ -266,20 +296,6 @@ export default function PayablesClient({ balances: allBalances }: Props) {
             value: totalOverpaid > 0 ? `${fmt(totalOverpaid)} ₴` : '—',
             sub: `${overpaidCount} пост. · ${periodLabel}`,
             color: totalOverpaid > 0 ? '#15803D' : '#64748B',
-            icon: TrendingUp,
-          },
-          {
-            label: 'Всього куплено',
-            value: `${fmt(balances.reduce((s, b) => s + b.total_receipts, 0))} ₴`,
-            sub: periodLabel,
-            color: '#1E3A5F',
-            icon: TrendingDown,
-          },
-          {
-            label: 'Всього оплачено',
-            value: `${fmt(balances.reduce((s, b) => s + b.total_payments, 0))} ₴`,
-            sub: periodLabel,
-            color: '#15803D',
             icon: TrendingUp,
           },
         ].map(c => {
@@ -311,7 +327,9 @@ export default function PayablesClient({ balances: allBalances }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {balances.map(b => {
             const isOpen      = expanded.has(b.supplier_id);
-            const isDebt      = b.balance < 0;
+            const transit     = b.in_transit_total ?? 0;
+            const totalOwedB  = -b.balance + transit; // >0 = винні разом (проведено + в дорозі)
+            const isDebt      = totalOwedB > 0.005;
             const accentColor = isDebt ? '#EF4444' : '#22C55E';
 
             return (
@@ -326,7 +344,7 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                   onClick={() => toggle(b.supplier_id)}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 160px 160px 160px 36px',
+                    gridTemplateColumns: '1fr 130px 130px 130px 170px 36px',
                     padding: '14px 16px', alignItems: 'center', cursor: 'pointer',
                     borderLeft: `4px solid ${accentColor}`,
                     background: isOpen ? 'var(--bg-soft)' : 'transparent',
@@ -384,13 +402,25 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                     <div style={{ fontSize: '14px', fontWeight: 600, color: '#15803D' }}>{fmt(b.total_payments)} ₴</div>
                   </div>
 
+                  <div className="oc-hide-m" style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>В дорозі</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: transit > 0 ? '#B45309' : 'var(--text-muted)' }}>
+                      {transit > 0 ? `${fmt(transit)} ₴` : '—'}
+                    </div>
+                  </div>
+
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>
-                      {isDebt ? 'Борг' : 'Переплата'}
+                      {isDebt ? 'Разом до сплати' : 'Переплата'}
                     </div>
                     <div style={{ fontSize: '16px', fontWeight: 800, color: accentColor }}>
-                      {isDebt ? '−' : '+'}{fmt(b.balance)} ₴
+                      {isDebt ? '−' : '+'}{fmt(totalOwedB)} ₴
                     </div>
+                    {isDebt && transit > 0 && (
+                      <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', marginTop: '1px' }}>
+                        отримано: {fmt(Math.max(-b.balance, 0))} · в дорозі: <span style={{ color: '#B45309', fontWeight: 700 }}>{fmt(transit)}</span>
+                      </div>
+                    )}
                   </div>
 
                   <span style={{ display: 'flex', justifyContent: 'center', color: 'var(--text-muted)' }}>
@@ -430,6 +460,27 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                       style={{ height: '36px', padding: '0 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', cursor: 'pointer' }}>
                       Скасувати
                     </button>
+                  </div>
+                )}
+
+                {/* В дорозі: відвантажені, ще не доставлені посилки — борг виникне при доставці */}
+                {isOpen && (b.in_transit_items?.length ?? 0) > 0 && (
+                  <div style={{ borderTop: '1px solid #FDE68A', background: '#FFFBEB', padding: '10px 20px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#B45309', textTransform: 'uppercase', marginBottom: '6px' }}>
+                      В дорозі — {b.in_transit_items!.length} посилок на {fmt(transit)} ₴ (борг проведеться при доставці)
+                    </div>
+                    {b.in_transit_items!.map(it => (
+                      <div key={it.doc_id} style={{ display: 'grid', gridTemplateColumns: '100px 140px 1fr 140px', gap: '8px', padding: '4px 0', fontSize: '12px', alignItems: 'center' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>
+                          {it.doc_date ? new Date(it.doc_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}
+                        </span>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#92400E' }}>{it.doc_number ?? '—'}</span>
+                        <span style={{ color: 'var(--text-secondary)' }}>
+                          {it.order_number ? `Замовлення #${it.order_number}` : ''}{it.tracking_number ? ` · ТТН ${it.tracking_number}` : ''}
+                        </span>
+                        <span style={{ textAlign: 'right', fontWeight: 700, color: '#B45309' }}>−{fmt(it.amount)} ₴</span>
+                      </div>
+                    ))}
                   </div>
                 )}
 
