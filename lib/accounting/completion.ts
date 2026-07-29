@@ -20,6 +20,8 @@ import { SALE_DEBTOR } from './documents';
 import { computePromCommission } from '../prom-commission';
 import { computeRozetkaCommission } from '../rozetka-commission';
 import { computeSmartFee, getSmartTariff } from '../rozetka-smart';
+import { computePromDeliveryFee, getPromDeliveryTariff, isPromCheapDelivery } from '../prom-delivery';
+import { getPromOrder } from '../prom-api';
 import { alertAdmin } from '../alert';
 
 export async function applyCompletionEffects(docId: string, createdBy = 'system'): Promise<void> {
@@ -40,7 +42,7 @@ export async function applyCompletionEffects(docId: string, createdBy = 'system'
   // 2) Комісія маркетплейсу — рахуємо по позиціях САМЕ цієї посилки.
   const { data: order } = await db
     .from('orders')
-    .select('order_number, channel_code, total_price, rozetka_data')
+    .select('order_number, channel_code, total_price, rozetka_data, prom_data, prom_order_id')
     .eq('id', doc.order_id)
     .single();
   const mp = order?.channel_code;
@@ -54,16 +56,44 @@ export async function applyCompletionEffects(docId: string, createdBy = 'system'
   if (items.length === 0) return;
   const docRevenue = items.reduce((s, i) => s + i.qty * i.price, 0);
 
+  // Знімок prom_data робиться при імпорті і застаріває: редагування замовлення міняє
+  // cpa_commission, а «дешева доставка» може зніматися (зміна способу оплати, порушення).
+  // Перед проводками освіжаємо payload з Prom; на збої мережі — тихий fallback на знімок.
+  let promData = (order?.prom_data ?? null) as Record<string, unknown> | null;
+  if (mp === 'prom' && order?.prom_order_id) {
+    try {
+      const fresh = await getPromOrder(Number(order.prom_order_id));
+      if (fresh) {
+        promData = { ...(promData ?? {}), ...(fresh as unknown as Record<string, unknown>) };
+        await db.from('orders').update({ prom_data: promData }).eq('id', doc.order_id);
+      }
+    } catch (err) {
+      console.error('[completion] prom_data refresh failed, using snapshot:', order?.prom_order_id, err);
+    }
+  }
+
   try {
     let totalCommission = 0;
     if (mp === 'prom') {
-      const [{ data: planRow }, { data: fbRow }] = await Promise.all([
-        db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
-        db.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle(),
-      ]);
-      const plan = (planRow?.value ?? 'single') as 'single' | 'econom';
-      const fallbackPct = parseFloat(fbRow?.value ?? '3');
-      totalCommission = (await computePromCommission(items, { plan, fallbackPct })).total_commission;
+      // Джерело правди — ФАКТИЧНА комісія Prom із payload замовлення (cpa_commission):
+      // саме цю суму Prom списує з балансу. Розрахунок по категоріях недорахував
+      // 2026-07-29 (№26071051): план перемкнули на «Економ» між створенням і доставкою,
+      // а Prom списав повну ставку, зафіксовану при створенні. Беремо cpa лише коли
+      // РН покриває все замовлення (мультипосилку ділимо розрахунком по позиціях).
+      const cpaRaw = (promData?.cpa_commission as { amount?: unknown } | null)?.amount;
+      const cpa = Number(String(cpaRaw ?? '').replace(/\s/g, '').replace(',', '.'));
+      const wholeOrder = Math.abs(docRevenue - (Number(order?.total_price) || 0)) < 0.01;
+      if (cpa > 0 && wholeOrder) {
+        totalCommission = cpa;
+      } else {
+        const [{ data: planRow }, { data: fbRow }] = await Promise.all([
+          db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
+          db.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle(),
+        ]);
+        const plan = (planRow?.value ?? 'single') as 'single' | 'econom';
+        const fallbackPct = parseFloat(fbRow?.value ?? '3');
+        totalCommission = (await computePromCommission(items, { plan, fallbackPct })).total_commission;
+      }
     } else {
       const { data: fbRow } = await db
         .from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle();
@@ -109,6 +139,30 @@ export async function applyCompletionEffects(docId: string, createdBy = 'system'
       });
     } catch (err) {
       alertAdmin(`Smart-збір Rozetka не записався (замовлення #${order?.order_number})`, err);
+    }
+  }
+
+  // 4) «Дешева доставка» Prom — фіксована компенсація організації доставки НП.
+  // Prom списує її з балансу ПІСЛЯ вручення посилки покупцю (невикуп — не списує),
+  // тому проводимо саме тут, при доставці. Разово на замовлення (order-level ключ).
+  if (mp === 'prom' && isPromCheapDelivery(promData)) {
+    // Тариф — з адмінки (app_settings), НЕ константа: правки цін діють одразу
+    const fee = computePromDeliveryFee(Number(order?.total_price) || 0, await getPromDeliveryTariff());
+    if (fee > 0) {
+      try {
+        await recordMarketplaceServiceFee({
+          orderId:        doc.order_id,
+          amount:         fee,
+          marketplace:    'prom',
+          description:    `Дешева доставка Prom (компенсація організації доставки НП) — заказ #${order?.order_number}`,
+          idempotencyKey: `np-delivery-fee:prom:${doc.order_id}`,
+          businessDate:   bizDate,
+          createdBy,
+          meta:           { kind: 'np_delivery_fee', order_total: Number(order?.total_price) || 0 },
+        });
+      } catch (err) {
+        alertAdmin(`Збір «дешева доставка» Prom не записався (замовлення #${order?.order_number})`, err);
+      }
     }
   }
 }

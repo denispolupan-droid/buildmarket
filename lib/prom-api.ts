@@ -139,6 +139,15 @@ export async function getPromOrders(opts: {
   return data.orders ?? [];
 }
 
+// Одне замовлення зі СВІЖИМ payload (cpa_commission, ps_promotion тощо) — знімок у
+// orders.prom_data робиться при імпорті і застаріває: редагування замовлення міняє
+// cpa_commission, а «дешева доставка» може зніматися (зміна способу оплати, порушення).
+export async function getPromOrder(promOrderId: number): Promise<PromOrder | null> {
+  const data = await promFetch<{ order?: PromOrder; error?: string }>(`/orders/${promOrderId}`);
+  if (data.error) throw new Error(`Prom API /orders/${promOrderId}: ${data.error}`);
+  return data.order ?? null;
+}
+
 /* ── Status push ────────────────────────────────────────────────────────── */
 
 // Значення, які РЕАЛЬНО приймає POST /orders/set_status (перевірено живими запитами

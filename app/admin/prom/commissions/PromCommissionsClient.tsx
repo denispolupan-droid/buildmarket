@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Save, CheckCircle, List } from 'lucide-react';
+import { ArrowLeft, Save, CheckCircle, List, Truck, Plus, X } from 'lucide-react';
+import { type PromDeliveryBracket } from '../../../../lib/prom-delivery-fee';
 
 type Plan = 'single' | 'econom' | 'more_sales' | 'turbo';
 
@@ -41,8 +42,9 @@ interface RowVals {
 }
 
 interface Props {
-  categories: Category[];
-  plan:       Plan;
+  categories:     Category[];
+  plan:           Plan;
+  deliveryTariff: PromDeliveryBracket[];
 }
 
 const PLANS: { key: Plan; label: string; short: string; color: string }[] = [
@@ -357,9 +359,38 @@ function PromRow({
 
 // ── Основний компонент ────────────────────────────────────────────────────────
 
-export default function PromCommissionsClient({ categories, plan: initialPlan }: Props) {
+export default function PromCommissionsClient({ categories, plan: initialPlan, deliveryTariff }: Props) {
   const [plan,       setPlan]       = useState<Plan>(initialPlan);
   const [savingPlan, setSavingPlan] = useState(false);
+
+  // «Дешева доставка» — редагований тариф компенсації НП (app_settings, читається
+  // проводкою при доставці через getPromDeliveryTariff — правки діють одразу).
+  const [tariff,       setTariff]       = useState<PromDeliveryBracket[]>(deliveryTariff);
+  const [tariffOpen,   setTariffOpen]   = useState(false);
+  const [tariffDraft,  setTariffDraft]  = useState<{ from: string; fee: string }[]>(
+    deliveryTariff.map(b => ({ from: String(b.from), fee: String(b.fee) }))
+  );
+  const [tariffSaving, setTariffSaving] = useState(false);
+  const [tariffError,  setTariffError]  = useState('');
+
+  async function saveDeliveryTariff() {
+    setTariffSaving(true);
+    setTariffError('');
+    const brackets = tariffDraft.map(b => ({ from: Number(b.from), fee: Number(b.fee) }));
+    const res = await fetch('/api/admin/prom/delivery-tariff', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brackets }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setTariffError(json.error ?? 'Не вдалося зберегти');
+    } else {
+      setTariff(json.brackets);
+      setTariffOpen(false);
+    }
+    setTariffSaving(false);
+  }
 
   const [vals, setVals] = useState<Record<string, RowVals>>(
     Object.fromEntries(categories.map(c => [c.slug, {
@@ -517,9 +548,56 @@ export default function PromCommissionsClient({ categories, plan: initialPlan }:
           <p style={{ margin: '3px 0 0', color: '#6B7280', fontSize: 13 }}>
             {filledCount} / {categories.length} категорій з Prom ID
             &nbsp;·&nbsp; Активний план: <strong style={{ color: activePlanMeta.color }}>{activePlanMeta.label}</strong>
+            <button onClick={() => setTariffOpen(v => !v)}
+              style={{ marginLeft: 10, padding: '2px 10px', borderRadius: 7, border: '1px solid #FDBA74', background: tariffOpen ? '#FFF7ED' : '#fff', color: '#B45309', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              <Truck size={11} style={{ verticalAlign: '-1px', marginRight: 4 }} />
+              Дешева доставка: {tariff.map(b => `від ${b.from} → ${b.fee} грн`).join(' · ')}
+            </button>
           </p>
         </div>
       </div>
+
+      {/* «Дешева доставка» — редагований тариф компенсації доставки НП */}
+      {tariffOpen && (
+        <div style={{ margin: '0 0 16px', padding: '14px 18px', borderRadius: 12, border: '1.5px solid #FDBA74', background: '#FFFBEB', maxWidth: 640 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#B45309', marginBottom: 10 }}>
+            «Дешева доставка» — компенсація організації доставки НП (грн з ПДВ, за сумою замовлення)
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {tariffDraft.map((b, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#374151' }}>
+                <span>замовлення від</span>
+                <input value={b.from} onChange={e => setTariffDraft(d => d.map((x, j) => j === i ? { ...x, from: e.target.value } : x))}
+                  style={{ width: 60, padding: '3px 6px', borderRadius: 6, border: '1px solid #E2E8F0', fontSize: 13, textAlign: 'right' }} />
+                <span>грн →</span>
+                <input value={b.fee} onChange={e => setTariffDraft(d => d.map((x, j) => j === i ? { ...x, fee: e.target.value } : x))}
+                  style={{ width: 60, padding: '3px 6px', borderRadius: 6, border: '1px solid #E2E8F0', fontSize: 13, textAlign: 'right' }} />
+                <span>грн</span>
+                {tariffDraft.length > 1 && (
+                  <button onClick={() => setTariffDraft(d => d.filter((_, j) => j !== i))} title="Прибрати поріг"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 2, display: 'flex' }}>
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          <button onClick={() => setTariffDraft(d => [...d, { from: '', fee: '' }])}
+            style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 7, border: '1px dashed #FDBA74', background: 'none', color: '#B45309', fontSize: 12, cursor: 'pointer' }}>
+            <Plus size={11} /> Додати поріг
+          </button>
+          {tariffError && <div style={{ marginTop: 8, fontSize: 12, color: '#DC2626', fontWeight: 600 }}>{tariffError}</div>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
+            <button onClick={saveDeliveryTariff} disabled={tariffSaving}
+              style={{ padding: '6px 16px', borderRadius: 8, border: 'none', background: '#B45309', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: tariffSaving ? 0.6 : 1 }}>
+              {tariffSaving ? 'Зберігаю…' : 'Зберегти'}
+            </button>
+            <span style={{ fontSize: 12, color: '#92400E' }}>
+              Замовлення, дешевші за перший поріг, — без збору. Діє з моменту збереження: нові доставки — за новим тарифом; вже проведені списання не перераховуються.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Plan selector */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>

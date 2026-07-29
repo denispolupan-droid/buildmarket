@@ -3,8 +3,6 @@ import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { createDocument, confirmDocument, resolveSaleDebitParty } from '../../../../../../lib/accounting/documents';
 import { recordTxn, reverseMarketplaceCommission } from '../../../../../../lib/accounting/money';
-import { computePromCommission } from '../../../../../../lib/prom-commission';
-import { computeRozetkaCommission } from '../../../../../../lib/rozetka-commission';
 import { alertAdmin } from '../../../../../../lib/alert';
 
 // Повернення від покупця по замовленню: частковий вибір позицій.
@@ -101,7 +99,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { data: order } = await db
     .from('orders')
-    .select('id, order_number, customer_id, channel_code, shipping_supplier_id, items')
+    .select('id, order_number, customer_id, channel_code, shipping_supplier_id, items, total_price')
     .eq('id', id)
     .single();
   if (!order) return NextResponse.json({ error: 'Замовлення не знайдено' }, { status: 404 });
@@ -175,22 +173,34 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // Сторно комісії маркетплейсу по повернених позиціях (площадка повертає комісію
-  // за повернений товар). Рахуємо по тих самих позиціях, дзеркально до нарахування.
+  // за повернений товар). Сторнуємо ПРОПОРЦІЮ від фактично проведеної комісії, а не
+  // перерахунок за таблицею категорій: ставка на момент нарахування могла відрізнятися
+  // від поточної (реальний кейс 2026-07-29 — перемикання плану Prom на «Економ»).
   if (order.channel_code === 'prom' || order.channel_code === 'rozetka') {
     try {
-      const returnedForComm = reqItems.map(i => ({ sku: i.sku, qty: i.qty, price: state.get(i.sku)!.price }));
-      let commission = 0;
-      if (order.channel_code === 'prom') {
-        const { data: settings } = await db.from('app_settings').select('key, value').in('key', ['prom_plan', 'prom_commission_pct']);
-        const sMap = new Map((settings ?? []).map(s => [s.key, s.value]));
-        commission = (await computePromCommission(returnedForComm, {
-          plan: (sMap.get('prom_plan') ?? 'single') as 'single' | 'econom',
-          fallbackPct: parseFloat(sMap.get('prom_commission_pct') ?? '3'),
-        })).total_commission;
-      } else {
-        const { data: fb } = await db.from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle();
-        commission = (await computeRozetkaCommission(returnedForComm, { fallbackPct: parseFloat(fb?.value ?? '15') })).total_commission;
-      }
+      // Нетто проведеної комісії по замовленню (нарахування мінус попередні сторно).
+      // Сервісні збори (Rozetka Smart / «дешева доставка» НП) мають той самий doc_type,
+      // але площадки їх при поверненні НЕ повертають — виключаємо за meta.
+      const { data: feeRows } = await db
+        .from('money_entries')
+        .select('amount, meta')
+        .eq('order_id', order.id)
+        .eq('account_type', 'marketplace_fee')
+        .eq('counterparty_id', order.channel_code)
+        .eq('doc_type', 'commission')
+        .limit(1000);
+      const postedNet = (feeRows ?? [])
+        .filter(r => {
+          const m = r.meta as Record<string, unknown> | null;
+          return !m?.smart && !m?.kind;
+        })
+        .reduce((s, r) => s + Number(r.amount), 0);
+
+      const returnedTotal = reqItems.reduce((s, i) => s + state.get(i.sku)!.price * i.qty, 0);
+      const orderTotal = Number(order.total_price) || 0;
+      const commission = postedNet > 0 && orderTotal > 0
+        ? Math.round(Math.min(1, returnedTotal / orderTotal) * postedNet * 100) / 100
+        : 0; // комісії не проводили — і сторнувати нічого
       if (commission > 0) {
         await reverseMarketplaceCommission({
           orderId:        order.id,
