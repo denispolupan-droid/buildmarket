@@ -52,6 +52,9 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL:      ${{ secrets.TEST_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY:     ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+          # Фіктивний ключ: роути створюють new Resend(...) на рівні модуля, і
+          # «Collecting page data» падає без ключа. Білд листів не відправляє.
+          RESEND_API_KEY: re_dummy_ci_build_only
         run: npm run build
 
   # ── Integration tests — автоматично при push в main, вручну на PR ─────────────
