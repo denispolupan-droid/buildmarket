@@ -72,6 +72,8 @@ interface LocalOverride {
   price_retail:  number | null;
   price_drop:    number | null;
   price_locked:  boolean;
+  /** undefined = не чіпали; number = нова акційна ціна цієї сесії */
+  price_promo?:  number;
 }
 
 type RepricingType = 'multiply_cost' | 'increase_pct' | 'fixed';
@@ -204,8 +206,9 @@ export default function PricesClient({ products, stock, categories, promoMap, sm
 
         const retailMrg = retail != null ? siteMargin(retail, cost) : null;
 
-        // Актуальна акційна ціна (з урахуванням щойно завершених у цій сесії)
-        const promo = promoCancelled.has(p.sku) ? null : n(s?.price_promo);
+        // Актуальна акційна ціна: локальний override цієї сесії → БД; щойно
+        // завершені акції — null
+        const promo = promoCancelled.has(p.sku) ? null : n(ov?.price_promo ?? s?.price_promo);
 
         return { p, cost, unit, retail, drop, locked, cat, promPrice, promMrg, rzPrice, rzMrg, retailMrg, promo, s };
       })
@@ -420,10 +423,23 @@ export default function PricesClient({ products, stock, categories, promoMap, sm
           const next = new Map(prev);
           for (const u of updates) {
             const existing = next.get(u.sku) ?? { price_cost: null, price_unit: null, price_retail: null, price_drop: null, price_locked: false };
-            next.set(u.sku, { ...existing, price_unit: u.unit ?? existing.price_unit, price_retail: u.retail ?? existing.price_retail, price_drop: u.drop ?? existing.price_drop });
+            // Режим «Акція»: нова роздрібна йде в price_promo (роздріб лишається
+            // старою ціною) — точно як сервер (prices/bulk). Інакше таблиця до
+            // перезавантаження показувала акцію як звичайне зниження роздрібу.
+            next.set(u.sku, repricingIsPromo
+              ? { ...existing, price_promo: u.retail ?? undefined, price_unit: u.unit ?? existing.price_unit, price_drop: u.drop ?? existing.price_drop }
+              : { ...existing, price_unit: u.unit ?? existing.price_unit, price_retail: u.retail ?? existing.price_retail, price_drop: u.drop ?? existing.price_drop });
           }
           return next;
         });
+        // Якщо серед вибраних були щойно «завершені» акції — нова акція їх повертає
+        if (repricingIsPromo) {
+          setPromoCancelled(prev => {
+            const next = new Set(prev);
+            for (const u of updates) next.delete(u.sku);
+            return next;
+          });
+        }
       }
 
       const snapshot = selectedRows.map(r => {
@@ -551,7 +567,7 @@ export default function PricesClient({ products, stock, categories, promoMap, sm
           unit,
           drop,
           cost,
-          promo:  promoCancelled.has(p.sku) ? null : n(s?.price_promo),
+          promo:  promoCancelled.has(p.sku) ? null : n(ov?.price_promo ?? s?.price_promo),
           prom_price,
         };
       });
