@@ -110,6 +110,9 @@ export default function PricesClient({ products, stock, categories, promoMap, sm
   const [filterNoPrice, setFilterNoPrice]   = useState(false);
   const [filterLocked, setFilterLocked]     = useState(false);
   const [filterPromo, setFilterPromo]       = useState(false);
+  // SKU, чиї акції достроково завершені в цій сесії (для миттєвого оновлення UI)
+  const [promoCancelled, setPromoCancelled] = useState<Set<string>>(new Set());
+  const [promoCancelBusy, setPromoCancelBusy] = useState(false);
   const [collapsed, setCollapsed]       = useState<Set<string>>(new Set());
   const [selected, setSelected]         = useState<Set<string>>(new Set());
   const [editSku, setEditSku]           = useState<string | null>(null);
@@ -201,14 +204,17 @@ export default function PricesClient({ products, stock, categories, promoMap, sm
 
         const retailMrg = retail != null ? siteMargin(retail, cost) : null;
 
-        return { p, cost, unit, retail, drop, locked, cat, promPrice, promMrg, rzPrice, rzMrg, retailMrg, s };
+        // Актуальна акційна ціна (з урахуванням щойно завершених у цій сесії)
+        const promo = promoCancelled.has(p.sku) ? null : n(s?.price_promo);
+
+        return { p, cost, unit, retail, drop, locked, cat, promPrice, promMrg, rzPrice, rzMrg, retailMrg, promo, s };
       })
       .filter(r => filterStock === 'all' ? true : filterStock === 'in_stock' ? r.s?.stock_status === 'in_stock' : r.s?.stock_status !== 'in_stock')
       .filter(r => !filterBrand || r.p.brand === filterBrand)
       .filter(r => !filterNoPrice || r.cost == null || r.retail == null)
       .filter(r => !filterLocked || r.locked)
-      .filter(r => !filterPromo || r.s?.price_promo != null);
-  }, [products, stock, categories, search, showInactive, filterStock, filterBrand, filterNoPrice, filterLocked, filterPromo, overrides, stockMap, catMap]);
+      .filter(r => !filterPromo || r.promo != null);
+  }, [products, stock, categories, search, showInactive, filterStock, filterBrand, filterNoPrice, filterLocked, filterPromo, overrides, stockMap, catMap, promoCancelled, smartTariff]);
 
   // Group by category
   const grouped = useMemo(() => {
@@ -356,7 +362,7 @@ export default function PricesClient({ products, stock, categories, promoMap, sm
     if (!showPreview) return [];
     return selectedRows.map(r => {
       const result = applyFormula(r.cost, r.unit, r.retail, r.drop);
-      return { sku: r.p.sku, name: r.p.name, brand: r.p.brand, volume: r.p.volume, before: { unit: r.unit, retail: r.retail, drop: r.drop }, after: result, hasPromo: r.s?.price_promo != null, promoRevertAt: promoMap[r.p.sku] ?? null };
+      return { sku: r.p.sku, name: r.p.name, brand: r.p.brand, volume: r.p.volume, before: { unit: r.unit, retail: r.retail, drop: r.drop }, after: result, hasPromo: r.promo != null, promoRevertAt: promoMap[r.p.sku] ?? null };
     });
   }, [showPreview, previewKey, selectedRows, applyFormula]);
 
@@ -545,7 +551,7 @@ export default function PricesClient({ products, stock, categories, promoMap, sm
           unit,
           drop,
           cost,
-          promo:  n(s?.price_promo),
+          promo:  promoCancelled.has(p.sku) ? null : n(s?.price_promo),
           prom_price,
         };
       });
@@ -893,6 +899,51 @@ async function sendEmail(){
           <input type="checkbox" checked={filterPromo} onChange={e => setFilterPromo(e.target.checked)} />
           <Tag size={12} /> Акція
         </label>
+        {/* Дострокове завершення акцій: вибраних (якщо серед вибраного є акційні) або всіх */}
+        {(() => {
+          const activePromoRows = rows.filter(r => r.promo != null);
+          if (!activePromoRows.length) return null;
+          const selectedPromo = activePromoRows.filter(r => selected.has(r.p.sku));
+          const targetRows = selectedPromo.length ? selectedPromo : activePromoRows;
+          const label = selectedPromo.length
+            ? `Завершити акції: вибрані (${selectedPromo.length})`
+            : `Завершити всі акції (${activePromoRows.length})`;
+          return (
+            <button
+              disabled={promoCancelBusy}
+              onClick={async () => {
+                const explicit = selectedPromo.length > 0;
+                if (!confirm(explicit
+                  ? `Завершити акцію для ${targetRows.length} вибраних товарів? Роздрібна ціна повернеться до звичайної.`
+                  : `Завершити ВСІ активні акції (${targetRows.length} товарів)? Роздрібні ціни повернуться до звичайних.`)) return;
+                setPromoCancelBusy(true);
+                try {
+                  const res = await fetch('/api/admin/prices/promo-cancel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(explicit ? { skus: targetRows.map(r => r.p.sku) } : {}),
+                  });
+                  const data = await res.json();
+                  if (!res.ok) throw new Error(data.error);
+                  setPromoCancelled(prev => {
+                    const next = new Set(prev);
+                    for (const r of targetRows) next.add(r.p.sku);
+                    return next;
+                  });
+                  showToast(`Завершено акцій: ${data.cancelled}`, 'success');
+                } catch (err) {
+                  showToast(err instanceof Error ? err.message : 'Помилка завершення акцій', 'error');
+                } finally {
+                  setPromoCancelBusy(false);
+                }
+              }}
+              title="Знімає акційну ціну одразу, не чекаючи дати завершення; запис іде в журнал"
+              style={{ ...btnSecondary, fontSize: 12, color: '#C2410C', borderColor: '#FDBA74', background: '#FFF7ED', opacity: promoCancelBusy ? 0.6 : 1 }}
+            >
+              <X size={13} /> {promoCancelBusy ? 'Завершуємо…' : label}
+            </button>
+          );
+        })()}
         {/* Reset */}
         {(filterStock !== 'all' || filterBrand || filterNoPrice || filterLocked || filterPromo || showInactive) && (
           <button onClick={() => { setFilterStock('all'); setFilterBrand(''); setFilterNoPrice(false); setFilterLocked(false); setFilterPromo(false); setShowInactive(false); }} style={{ ...btnSecondary, color: '#fff', background: '#EF4444', borderColor: '#EF4444', fontSize: 12, fontWeight: 700 }}>
@@ -912,7 +963,7 @@ async function sendEmail(){
           </div>
           {/* Conflict warning: selected SKUs already have active promo */}
           {(() => {
-            const promoSkus = selectedRows.filter(r => r.s?.price_promo != null);
+            const promoSkus = selectedRows.filter(r => r.promo != null);
             if (promoSkus.length === 0) return null;
 
             // No conflict if our effective_from is after all promo end dates
@@ -1151,20 +1202,20 @@ async function sendEmail(){
                     {catRows.map(r => {
                       const isEditing = editSku === r.p.sku;
                       return (
-                        <tr key={r.p.sku} style={{ borderBottom: '1px solid #F3F4F6', background: selected.has(r.p.sku) && r.s?.price_promo != null ? '#FFFBEB' : selected.has(r.p.sku) ? '#F0F7FF' : undefined }}>
+                        <tr key={r.p.sku} style={{ borderBottom: '1px solid #F3F4F6', background: selected.has(r.p.sku) && r.promo != null ? '#FFFBEB' : selected.has(r.p.sku) ? '#F0F7FF' : undefined }}>
                           <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                             <input type="checkbox" checked={selected.has(r.p.sku)} onChange={() => toggleRow(r.p.sku)} />
                           </td>
                           <td style={{ padding: '8px 14px' }}>
                             <div style={{ fontSize: 13, fontWeight: 500, color: '#111', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                               <span>{r.p.brand} {r.p.name}{r.p.volume && !r.p.name.includes(r.p.volume) ? ` ${r.p.volume}` : ''}</span>
-                              {r.s?.price_promo != null && (() => {
+                              {r.promo != null && (() => {
                                 const revertAt = promoMap[r.p.sku] ?? null;
                                 const label = revertAt
                                   ? `до ${new Date(revertAt).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' })}`
                                   : 'акція';
                                 return (
-                                  <span title={`Акційна ціна: ${r.s!.price_promo.toLocaleString('uk-UA')} ₴${revertAt ? ` · діє до ${new Date(revertAt).toLocaleDateString('uk-UA')}` : ''}`} style={{ fontSize: 10, fontWeight: 700, color: '#C2410C', background: '#FFF7ED', border: '1px solid #FDBA74', padding: '1px 5px', borderRadius: 3, display: 'inline-flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                                  <span title={`Акційна ціна: ${r.promo.toLocaleString('uk-UA')} ₴${revertAt ? ` · діє до ${new Date(revertAt).toLocaleDateString('uk-UA')}` : ''}`} style={{ fontSize: 10, fontWeight: 700, color: '#C2410C', background: '#FFF7ED', border: '1px solid #FDBA74', padding: '1px 5px', borderRadius: 3, display: 'inline-flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
                                     <Tag size={9} /> {label}
                                   </span>
                                 );
@@ -1212,10 +1263,10 @@ async function sendEmail(){
                               <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }}>{fmt(r.cost)}</td>
                               <td style={{ padding: '8px 14px', fontSize: 13 }}>{fmt(r.unit)}</td>
                               <td style={{ padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
-                                {r.s?.price_promo != null ? (
+                                {r.promo != null ? (
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
                                     <span style={{ color: '#9CA3AF', textDecoration: 'line-through', fontWeight: 400 }}>{fmt(r.retail)}</span>
-                                    <span style={{ color: '#C2410C', fontWeight: 700 }}>{r.s.price_promo} ₴</span>
+                                    <span style={{ color: '#C2410C', fontWeight: 700 }}>{r.promo} ₴</span>
                                   </span>
                                 ) : fmt(r.retail)}
                                 {r.retailMrg && (

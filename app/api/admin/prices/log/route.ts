@@ -7,6 +7,7 @@ const TYPE_LABEL: Record<string, string> = {
   increase_pct:  '% зміна',
   fixed:         'Фіксована ціна',
   manual:        'Ручна правка',
+  promo_cancel:  'Завершення акції',
 };
 
 const TARGET_LABEL: Record<string, string> = {
