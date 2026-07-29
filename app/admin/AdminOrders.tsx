@@ -776,12 +776,21 @@ export default function AdminOrders({
     }
   }, []);
 
-  async function changeStatus(id: string, status: string) {
+  // Скасування Rozetka-замовлення вимагає причини (статус 13 «Скасовано
+  // адміністратором» продавцю недоступний) — перехоплюємо і питаємо менеджера.
+  const [rozCancelFor, setRozCancelFor] = useState<string | null>(null);
+
+  async function changeStatus(id: string, status: string, rozetkaCancelReason?: number) {
+    const order = orders.find(o => o.id === id);
+    if (status === 'cancelled' && order?.channel_code === 'rozetka' && order.rozetka_order_id && rozetkaCancelReason === undefined) {
+      setRozCancelFor(id); // відкриваємо вибір причини; PATCH піде після вибору
+      return;
+    }
     setLoading(id + status);
     const res = await fetch(`/api/admin/orders/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, ...(rozetkaCancelReason !== undefined ? { rozetka_cancel_reason: rozetkaCancelReason } : {}) }),
     });
     if (res.ok) {
       setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
@@ -3678,6 +3687,47 @@ export default function AdminOrders({
       )}
 
       {/* ── Ship modal (partial / full shipment) ──────────────────────────── */}
+      {/* Вибір причини скасування для Rozetka: без причини кабінет скасування не приймає
+          (статус 13 «Скасовано адміністратором» продавцю через API недоступний) */}
+      {rozCancelFor && (() => {
+        const REASONS = [
+          { id: 16, label: 'Немає в наявності / брак' },
+          { id: 18, label: 'Не вдалося зв\'язатися' },
+          { id: 17, label: 'Не влаштовують умови оплати' },
+          { id: 24, label: 'Не влаштовує доставка' },
+          { id: 20, label: 'Товар не підходить за характеристиками' },
+          { id: 11, label: 'Не прийшов за замовленням' },
+          { id: 12, label: 'Відмова при отриманні' },
+          { id: 25, label: 'Тестове замовлення' },
+        ];
+        const ord = orders.find(o => o.id === rozCancelFor);
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div className="adm-modal-box" style={{ background: '#fff', borderRadius: '16px', padding: '24px', width: '420px', maxWidth: '96vw', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+              <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px', color: '#DC2626' }}>Скасування замовлення Rozetka</div>
+              <div style={{ fontSize: '12.5px', color: '#6B7280', marginBottom: '16px', lineHeight: 1.5 }}>
+                #{ord?.order_number} — Rozetka вимагає вказати причину. Її побачить покупець, і вона піде в статистику кабінету.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '18px' }}>
+                {REASONS.map(r => (
+                  <button key={r.id}
+                    onClick={() => { const id = rozCancelFor; setRozCancelFor(null); changeStatus(id, 'cancelled', r.id); }}
+                    style={{ height: '38px', padding: '0 14px', textAlign: 'left', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13.5px', fontWeight: 600, cursor: 'pointer' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#DC2626'; e.currentTarget.style.background = '#FEF2F2'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-card)'; }}>
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setRozCancelFor(null)}
+                style={{ width: '100%', height: '36px', borderRadius: '9px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+                Не скасовувати
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {shipModal && (() => {
         const updateQty = (sku: string, val: number) =>
           setShipModal(prev => prev ? {

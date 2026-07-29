@@ -38,6 +38,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     delivery_type, delivery_subtype, delivery_city_name, delivery_address,
     payment_type, payment_due_date, shipping_supplier_id,
     internal_note, flags,
+    // Причина скасування для Rozetka (id статусу групи 3) — обирає менеджер
+    // при скасуванні rozetka-замовлення; без неї скасування в кабінет не пушиться
+    rozetka_cancel_reason,
   } = body;
 
   const db = createServiceClient();
@@ -404,7 +407,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         .maybeSingle();
 
       if (rozOrder?.channel_code === 'rozetka' && rozOrder.rozetka_order_id) {
-        const rozStatus = ourStatusToRozetkaStatus(status);
+        // Скасування: статус 13 продавцю недоступний, тому мапа дає null —
+        // пушимо конкретну причину, обрану менеджером (rozetka_cancel_reason)
+        const rozStatus = status === 'cancelled'
+          ? (typeof rozetka_cancel_reason === 'number' ? rozetka_cancel_reason : null)
+          : ourStatusToRozetkaStatus(status);
         if (rozStatus) {
           // status 3 (shipped) requires ttn — include it when already known, either from this
           // same request or a previously saved tracking_number.

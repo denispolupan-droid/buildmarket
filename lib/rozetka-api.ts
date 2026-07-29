@@ -212,7 +212,12 @@ export async function setRozetkaOrderStatus(
 // падає саме помилкою переходу, проходимо драбину проміжних статусів (26 «Обробляється
 // менеджером», далі 61 «Заплановано передачу», якщо є ТТН) і повторюємо цільовий.
 function isStatusTransitionError(err: unknown): boolean {
-  return err instanceof Error && err.message.includes('Наступний статус недоступний');
+  // Rozetka віддає ДВА різні тексти для відмови переходу: «Наступний статус
+  // недоступний» і «Перехід в цей статус неможливий» (живий кейс 26071052:
+  // другий текст не матчився, і драбина статусів навіть не пробувалась).
+  return err instanceof Error
+    && (err.message.includes('Наступний статус недоступний')
+     || err.message.includes('Перехід в цей статус неможливий'));
 }
 
 export async function setRozetkaOrderStatusChained(
@@ -274,8 +279,25 @@ const STATUS_MAP: Record<string, number | null> = {
   shipped:        61, // Заплановано передачу перевізникові (ttn required — id 3 "Передано до
                        // служби доставки" is the later, physical-handover status, not this one)
   delivered:      6,  // Замовлення виконано
-  cancelled:      13, // Скасовано адміністратором
+  // cancelled: НЕ мапиться на один статус — 13 «Скасовано адміністратором»
+  // продавцю через API недоступний («Перехід в цей статус неможливий» навіть
+  // із 26). Скасування вимагає КОНКРЕТНОЇ причини зі списку нижче — її обирає
+  // менеджер, і роут передає id явно (rozetka_cancel_reason).
+  cancelled:      null,
 };
+
+/** Причини скасування (статуси групи 3), які продавець може ставити через API.
+ *  13 «Скасовано адміністратором» виключено — його API продавцю не приймає. */
+export const ROZETKA_CANCEL_REASONS: { id: number; label: string }[] = [
+  { id: 16, label: 'Немає в наявності / брак' },
+  { id: 18, label: 'Не вдалося зв\'язатися' },
+  { id: 17, label: 'Не влаштовують умови оплати' },
+  { id: 24, label: 'Не влаштовує доставка' },
+  { id: 20, label: 'Товар не підходить за характеристиками' },
+  { id: 11, label: 'Не прийшов за замовленням' },
+  { id: 12, label: 'Відмова при отриманні' },
+  { id: 25, label: 'Тестове замовлення' },
+];
 
 export function ourStatusToRozetkaStatus(ourStatus: string): number | null {
   return STATUS_MAP[ourStatus] ?? null;
