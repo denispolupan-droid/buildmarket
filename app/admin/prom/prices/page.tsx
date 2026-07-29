@@ -24,7 +24,7 @@ export default async function PromPricesPage() {
     db.from('product_stock')
       .select('sku, price_cost, price_retail, price_unit, price_wholesale'),
     db.from('categories')
-      .select('slug, name, prom_commission_pct, prom_markup_pct, prom_section_url'),
+      .select('slug, name, prom_commission_pct, prom_commission_pct_econom, prom_markup_pct, prom_section_url'),
     db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
   ]);
 

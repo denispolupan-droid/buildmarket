@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Search, Check, X, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
-import { promPrice as calcPromPrice } from '../../../../lib/marketplace-pricing';
+import { promPrice as calcPromPrice, promCommissionOf } from '../../../../lib/marketplace-pricing';
 
 interface Product {
   sku:             string;
@@ -23,11 +23,12 @@ interface Stock {
   price_wholesale: number | null;
 }
 interface Category {
-  slug:                string;
-  name:                string;
-  prom_commission_pct: number | null;
-  prom_markup_pct:     number | null;
-  prom_section_url:    string | null;
+  slug:                       string;
+  name:                       string;
+  prom_commission_pct:        number | null;
+  prom_commission_pct_econom: number | null;
+  prom_markup_pct:            number | null;
+  prom_section_url:           string | null;
 }
 interface Props {
   products:   Product[];
@@ -62,7 +63,7 @@ const TH: React.CSSProperties = {
   textTransform: 'uppercase', letterSpacing: '.03em',
 };
 
-export default function PromPricesClient({ products, stock, categories }: Props) {
+export default function PromPricesClient({ products, stock, categories, plan }: Props) {
   const stockMap = useMemo(() => new Map(stock.map(s => [s.sku, s])), [stock]);
   const catMap   = useMemo(() => new Map(categories.map(c => [c.slug, c])), [categories]);
 
@@ -112,7 +113,7 @@ export default function PromPricesClient({ products, stock, categories }: Props)
     const productMkp  = mkpStr !== '' ? parseFloat(mkpStr) : null;
     const catMkp      = cat?.prom_markup_pct ?? null;
     const markup      = productMkp ?? catMkp ?? 0;
-    const commission  = cat?.prom_commission_pct ?? 0;
+    const commission  = promCommissionOf(cat, plan);
     // ЄДИНА формула lib/marketplace-pricing — та сама, що у фіді
     const promPrice   = basePrice > 0 || (manual && manual > 0)
       ? calcPromPrice({ cost, retail: retailPrice, manualOverride: manual, productMarkupPct: productMkp, categoryMarkupPct: catMkp, commissionPct: commission })
@@ -306,7 +307,7 @@ export default function PromPricesClient({ products, stock, categories }: Props)
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {[...grouped.entries()].map(([catSlug, rows]) => {
           const cat        = catSlug !== '—' ? catMap.get(catSlug) : null;
-          const commission = cat?.prom_commission_pct ?? 0;
+          const commission = promCommissionOf(cat, plan);
           const catMkp     = cat?.prom_markup_pct ?? null;
           const isCollapsed = collapsed[catSlug];
           const allOn  = rows.every(r => enabled[r.p.sku] !== false);

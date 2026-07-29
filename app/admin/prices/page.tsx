@@ -19,18 +19,20 @@ export default async function PricesPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) redirect('/');
 
-  const [{ data: stock }, { data: categories }, { data: activePromos }, smartTariff] = await Promise.all([
+  const [{ data: stock }, { data: categories }, { data: activePromos }, smartTariff, { data: promPlanRow }] = await Promise.all([
     db.from('product_stock')
       .select('sku, price_cost, price_unit, price_retail, price_drop, price_promo, price_wholesale, price_locked, stock_status, stock_qty, updated_at'),
     db.from('categories')
-      .select('slug, name, parent_slug, prom_commission_pct, prom_markup_pct, rozetka_commission_pct, rozetka_markup_pct, description, sort_order'),
+      .select('slug, name, parent_slug, prom_commission_pct, prom_commission_pct_econom, prom_markup_pct, rozetka_commission_pct, rozetka_markup_pct, description, sort_order'),
     db.from('price_change_log')
       .select('snapshot, revert_at')
       .eq('is_promo', true)
       .is('reverted_at', null)
       .neq('status', 'cancelled'),
     getSmartTariff(),
+    db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
   ]);
+  const promPlan = ((promPlanRow?.value as string | undefined) ?? 'single') as 'single' | 'econom';
 
   // Same parent-aware ordering the storefront's category menu uses, so the price
   // table (and the pricelist generated from it) group categories the same way.
@@ -80,6 +82,7 @@ export default async function PricesPage() {
       categories={sortedCats}
       promoMap={promoMap}
       smartTariff={smartTariff}
+      promPlan={promPlan}
     />
   );
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/db-paginate';
-import { promPrice, promPriceFromBase, resolveMarkup } from '@/lib/marketplace-pricing';
+import { promPrice, promPriceFromBase, resolveMarkup, promCommissionOf, type PromPlan } from '@/lib/marketplace-pricing';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -288,7 +288,7 @@ export async function GET(request: NextRequest) {
   // Fetch product_characteristics in 20 parallel pages of 1000 rows each
   // (Supabase PostgREST caps any single response at max_rows=1000 regardless of Range header)
   const CHAR_PAGE = 1000;
-  const [products, stock, categories, charPages] = await Promise.all([
+  const [products, stock, categories, charPages, { data: planRow }] = await Promise.all([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client, preserves prior field access
     fetchAllRows<any>((f, t) => serviceClient
       .from('products')
@@ -307,7 +307,7 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client, preserves prior field access
     fetchAllRows<any>((f, t) => serviceClient
       .from('categories')
-      .select('id, slug, name, parent_slug, prom_section_id, prom_section_url, prom_commission_pct, prom_markup_pct')
+      .select('id, slug, name, parent_slug, prom_section_id, prom_section_url, prom_commission_pct, prom_commission_pct_econom, prom_markup_pct')
       .order('sort_order')
       .range(f, t)),
     Promise.all(Array.from({ length: 20 }, (_, i) =>
@@ -318,21 +318,26 @@ export async function GET(request: NextRequest) {
         .order('sort_order')
         .range(i * CHAR_PAGE, (i + 1) * CHAR_PAGE - 1)
     )),
+    serviceClient.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
   ]);
+
+  // Активний тарифний план Prom — визначає, яка колонка комісії діє
+  const promPlan = ((planRow as { value?: string } | null)?.value ?? 'single') as PromPlan;
 
   const characteristics = charPages.flatMap(r => (r.data ?? []) as { product_sku: string; label: string; value: string }[]);
 
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
 
-  type CatRow = { id: number; slug: string; name: string; parent_slug: string | null; prom_section_id: number | null; prom_section_url: string | null; prom_commission_pct: number | null; prom_markup_pct: number | null };
+  type CatRow = { id: number; slug: string; name: string; parent_slug: string | null; prom_section_id: number | null; prom_section_url: string | null; prom_commission_pct: number | null; prom_commission_pct_econom: number | null; prom_markup_pct: number | null };
   const catData = (categories ?? []) as CatRow[];
 
   // Each category gets its own DB id — guarantees each <category> has the correct name for its products
   const slugToGroupId = new Map<string, number>(
     catData.map((c) => [c.slug, c.id]),
   );
+  // Комісія — з урахуванням активного плану (Економ → econom-колонка)
   const catCommissionMap = new Map<string, number>(
-    catData.filter(c => c.prom_commission_pct != null).map(c => [c.slug, c.prom_commission_pct!]),
+    catData.map(c => [c.slug, promCommissionOf(c, promPlan)]),
   );
   const catMarkupMap = new Map<string, number>(
     catData.filter(c => c.prom_markup_pct != null).map(c => [c.slug, c.prom_markup_pct!]),

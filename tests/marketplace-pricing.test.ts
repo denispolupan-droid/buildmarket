@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   resolveMarkup, rozetkaBasePrice, rozetkaSmartPrice, rozetkaPrice, rozetkaMargin,
-  promPriceFromBase, promPrice, promMargin, siteMargin,
+  promPriceFromBase, promPrice, promMargin, promCommissionOf, siteMargin,
 } from '../lib/marketplace-pricing';
 
 // Референс — SKU 1901-017 (Пластифікатор Байріс 10 л) станом на 2026-07-28:
@@ -71,6 +71,14 @@ describe('promPrice — формула фіда', () => {
   it('маржа: ціна × (1−комісія) − собівартість', () => {
     const m = promMargin(PROM_1901);
     expect(m!.uah).toBeCloseTo(631 * (1 - 0.1166) - 497.3, 1);
+  });
+
+  it('promCommissionOf: план Економ бере econom-колонку, з fallback на єдину', () => {
+    const cat = { prom_commission_pct: 15.29, prom_commission_pct_econom: 7.65 };
+    expect(promCommissionOf(cat, 'single')).toBe(15.29);
+    expect(promCommissionOf(cat, 'econom')).toBe(7.65);
+    expect(promCommissionOf({ prom_commission_pct: 15.29, prom_commission_pct_econom: null }, 'econom')).toBe(15.29);
+    expect(promCommissionOf(null, 'econom')).toBe(0);
   });
 });
 

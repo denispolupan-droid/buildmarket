@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { computeMarketplacePrice, type PricingRule, type PriceTarget } from '../../../../lib/pricing-rules';
-import { rozetkaPrice, promPrice } from '../../../../lib/marketplace-pricing';
+import { rozetkaPrice, promPrice, promCommissionOf, type PromPlan } from '../../../../lib/marketplace-pricing';
 import { getSmartTariff } from '../../../../lib/rozetka-smart';
 
 export const runtime = 'nodejs';
@@ -27,9 +27,9 @@ export async function GET(req: NextRequest) {
   const onField = marketplace === 'rozetka' ? 'on_rozetka' : 'on_prom';
 
   type StockRow = { price_cost: number | null; price_retail: number | null; price_wholesale: number | null };
-  const [{ data: rulesRaw }, { data: cats }, products, smartTariff] = await Promise.all([
+  const [{ data: rulesRaw }, { data: cats }, products, smartTariff, { data: planRow }] = await Promise.all([
     serviceClient.from('pricing_rules').select('*').eq('is_active', true),
-    serviceClient.from('categories').select('slug, name, rozetka_commission_pct, prom_commission_pct, rozetka_markup_pct, prom_markup_pct'),
+    serviceClient.from('categories').select('slug, name, rozetka_commission_pct, prom_commission_pct, prom_commission_pct_econom, rozetka_markup_pct, prom_markup_pct'),
     fetchAllRows<{
       sku: string; name: string; brand: string; category_slug: string | null;
       on_rozetka: boolean | null; on_prom: boolean | null; min_price: number | null;
@@ -40,7 +40,9 @@ export async function GET(req: NextRequest) {
       .eq('is_active', true)
       .range(from, to)),
     getSmartTariff(),
+    serviceClient.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
   ]);
+  const promPlan = ((planRow?.value as string | undefined) ?? 'single') as PromPlan;
 
   const rules = (rulesRaw ?? []) as PricingRule[];
   const commissionOf = new Map<string, number>();
@@ -48,7 +50,7 @@ export async function GET(req: NextRequest) {
   const catName = new Map<string, string>();
   for (const c of cats ?? []) {
     catName.set(c.slug, c.name);
-    const pct = marketplace === 'rozetka' ? c.rozetka_commission_pct : c.prom_commission_pct;
+    const pct = marketplace === 'rozetka' ? c.rozetka_commission_pct : promCommissionOf(c, promPlan);
     if (pct != null) commissionOf.set(c.slug, Number(pct));
     const mkp = marketplace === 'rozetka' ? c.rozetka_markup_pct : c.prom_markup_pct;
     if (mkp != null) catMarkupOf.set(c.slug, Number(mkp));

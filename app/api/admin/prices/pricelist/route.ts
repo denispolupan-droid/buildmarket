@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 import { buildPdf, fetchImages, PdfGroup } from '../_pdf';
 import { fetchProductsInCatalogOrder } from '../_catalog-order';
-import { promPrice } from '../../../../../lib/marketplace-pricing';
+import { promPrice, promCommissionOf, type PromPlan } from '../../../../../lib/marketplace-pricing';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,6 +34,9 @@ export async function GET(req: NextRequest) {
   const headerVariant     = (searchParams.get('headerVariant') === 'fop' ? 'fop' : 'fixline') as 'fixline' | 'fop';
 
   const selectedCats = categoriesParam === 'all' ? null : new Set(categoriesParam.split(',').filter(Boolean));
+  // Активний план Prom — визначає колонку комісії для «Ціна Prom.ua»
+  const { data: promPlanRow } = await db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle();
+  const promPlan = ((promPlanRow?.value as string | undefined) ?? 'single') as PromPlan;
   const priceLabel   = ({
     price_retail: 'Роздрібна ціна (₴)',
     price_unit:   'Оптова ціна (₴)',
@@ -46,7 +49,7 @@ export async function GET(req: NextRequest) {
   if (format === 'pdf') {
     // ── PDF ─────────────────────────────────────────────────────────────────────
     const { data: categories } = await db.from('categories')
-      .select('slug, name, description, parent_slug, sort_order, prom_commission_pct, prom_markup_pct');
+      .select('slug, name, description, parent_slug, sort_order, prom_commission_pct, prom_commission_pct_econom, prom_markup_pct');
 
     const catSortOrder = new Map((categories ?? []).map(c => [c.slug, c.sort_order ?? 999]));
     const sortedCats = [...(categories ?? [])].sort((a, b) => {
@@ -101,7 +104,7 @@ export async function GET(req: NextRequest) {
               manualOverride: Number((s as any).price_wholesale) || null,
               productMarkupPct: (prod as any).prom_markup_pct != null ? Number((prod as any).prom_markup_pct) : null,
               categoryMarkupPct: (cat as any)?.prom_markup_pct != null ? Number((cat as any).prom_markup_pct) : null,
-              commissionPct: Number((cat as any)?.prom_commission_pct ?? 0),
+              commissionPct: promCommissionOf(cat as { prom_commission_pct?: number | null; prom_commission_pct_econom?: number | null } | null, promPlan),
             })
           : null;
       } else {
@@ -139,7 +142,7 @@ export async function GET(req: NextRequest) {
 
   // ── XLSX ───────────────────────────────────────────────────────────────────────
   const { data: categories } = await db.from('categories')
-    .select('slug, name, parent_slug, sort_order, prom_commission_pct, prom_markup_pct');
+    .select('slug, name, parent_slug, sort_order, prom_commission_pct, prom_commission_pct_econom, prom_markup_pct');
 
   const xlsxCatSortOrder = new Map((categories ?? []).map(c => [c.slug, c.sort_order ?? 999]));
   const xlsxSortedCats = [...(categories ?? [])].sort((a, b) => {
@@ -192,7 +195,7 @@ export async function GET(req: NextRequest) {
             manualOverride: Number((s as any).price_wholesale) || null,
             productMarkupPct: (p as any).prom_markup_pct != null ? Number((p as any).prom_markup_pct) : null,
             categoryMarkupPct: (cat as any)?.prom_markup_pct != null ? Number((cat as any).prom_markup_pct) : null,
-            commissionPct: Number((cat as any)?.prom_commission_pct ?? 0),
+            commissionPct: promCommissionOf(cat as { prom_commission_pct?: number | null; prom_commission_pct_econom?: number | null } | null, promPlan),
           })
         : null;
     } else {

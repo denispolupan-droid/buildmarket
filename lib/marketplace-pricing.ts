@@ -79,6 +79,26 @@ export function rozetkaMargin(inp: RozetkaInputs): { uah: number; pct: number } 
 
 // ── Prom ──────────────────────────────────────────────────────────────────────
 
+export type PromPlan = 'single' | 'econom';
+
+/**
+ * Комісія Prom категорії з урахуванням активного плану (app_settings.prom_plan):
+ * «Економ» → prom_commission_pct_econom (fallback на єдину, якщо не заповнена),
+ * інакше — єдина prom_commission_pct.
+ */
+export function promCommissionOf(
+  cat: { prom_commission_pct?: number | null; prom_commission_pct_econom?: number | null } | null | undefined,
+  plan: PromPlan,
+): number {
+  if (!cat) return 0;
+  const single = cat.prom_commission_pct != null ? Number(cat.prom_commission_pct) : null;
+  if (plan === 'econom') {
+    const econom = cat.prom_commission_pct_econom != null ? Number(cat.prom_commission_pct_econom) : null;
+    return econom ?? single ?? 0;
+  }
+  return single ?? 0;
+}
+
 export type PromInputs = {
   cost: number | null | undefined;     // ціна входу
   retail: number;                      // price_retail ?? price_unit — fallback-база

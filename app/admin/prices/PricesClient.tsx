@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { Pencil, Check, X, Lock, Unlock, FileSpreadsheet, Printer, ChevronDown, ChevronUp, RotateCcw, Tag } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
 import PricesLog from './PricesLog';
-import { promPrice as libPromPrice, promMargin, rozetkaPrice as libRozetkaPrice, rozetkaMargin, siteMargin } from '../../../lib/marketplace-pricing';
+import { promPrice as libPromPrice, promMargin, promCommissionOf, rozetkaPrice as libRozetkaPrice, rozetkaMargin, siteMargin, type PromPlan } from '../../../lib/marketplace-pricing';
 import type { SmartBracket } from '../../../lib/rozetka-smart-tariff';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -38,14 +38,15 @@ interface Stock {
 }
 
 interface Category {
-  slug:                   string;
-  name:                   string;
-  parent_slug:            string | null;
-  prom_commission_pct:    number | null;
-  prom_markup_pct:        number | null;
-  rozetka_commission_pct: number | null;
-  rozetka_markup_pct:     number | null;
-  description:            string | null;
+  slug:                       string;
+  name:                       string;
+  parent_slug:                string | null;
+  prom_commission_pct:        number | null;
+  prom_commission_pct_econom: number | null;
+  prom_markup_pct:            number | null;
+  rozetka_commission_pct:     number | null;
+  rozetka_markup_pct:         number | null;
+  description:                string | null;
 }
 
 interface Props {
@@ -54,6 +55,7 @@ interface Props {
   categories:  Category[];
   promoMap:    Record<string, string | null>; // sku → revert_at (null = indefinite)
   smartTariff: SmartBracket[];                // «Умови Smart» Rozetka (для ціни фіда)
+  promPlan:    PromPlan;                      // активний план Prom (визначає колонку комісії)
 }
 
 type PriceField = 'price_unit' | 'price_retail' | 'price_drop' | 'price_cost';
@@ -101,7 +103,7 @@ function marginColor(pct: number) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function PricesClient({ products, stock, categories, promoMap, smartTariff }: Props) {
+export default function PricesClient({ products, stock, categories, promoMap, smartTariff, promPlan }: Props) {
   const stockMap = useMemo(() => new Map(stock.map(s => [s.sku, s])), [stock]);
   const catMap   = useMemo(() => new Map(categories.map(c => [c.slug, c])), [categories]);
 
@@ -186,7 +188,7 @@ export default function PricesClient({ products, stock, categories, promoMap, sm
           manualOverride: n(s?.price_wholesale),
           productMarkupPct: n(p.prom_markup_pct),
           categoryMarkupPct: n(cat?.prom_markup_pct),
-          commissionPct: n(cat?.prom_commission_pct) ?? 0,
+          commissionPct: promCommissionOf(cat, promPlan),
         };
         const hasPromBase = promInputs.retail > 0 || (promInputs.manualOverride ?? 0) > 0;
         const promPrice   = hasPromBase ? libPromPrice(promInputs) : null;
@@ -217,7 +219,7 @@ export default function PricesClient({ products, stock, categories, promoMap, sm
       .filter(r => !filterNoPrice || r.cost == null || r.retail == null)
       .filter(r => !filterLocked || r.locked)
       .filter(r => !filterPromo || r.promo != null);
-  }, [products, stock, categories, search, showInactive, filterStock, filterBrand, filterNoPrice, filterLocked, filterPromo, overrides, stockMap, catMap, promoCancelled, smartTariff]);
+  }, [products, stock, categories, search, showInactive, filterStock, filterBrand, filterNoPrice, filterLocked, filterPromo, overrides, stockMap, catMap, promoCancelled, smartTariff, promPlan]);
 
   // Group by category
   const grouped = useMemo(() => {
@@ -557,7 +559,7 @@ export default function PricesClient({ products, stock, categories, promoMap, sm
           manualOverride: n(s?.price_wholesale),
           productMarkupPct: n(p.prom_markup_pct),
           categoryMarkupPct: n(cat?.prom_markup_pct),
-          commissionPct: n(cat?.prom_commission_pct) ?? 0,
+          commissionPct: promCommissionOf(cat, promPlan),
         };
         const prom_price = promInputs.retail > 0 || (promInputs.manualOverride ?? 0) > 0
           ? libPromPrice(promInputs) : null;
