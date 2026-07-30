@@ -2,7 +2,11 @@ import { createClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import { THIN_DESCRIPTION_CHARS } from '../../../lib/catalog-enricher';
+import { CATEGORY_META } from '../../../lib/category-descriptions';
+import { CATEGORY_META_RU } from '../../../lib/category-descriptions-ru';
+import { auditCategories } from '../../../lib/seo/category-audit';
 import SeoQueueClient, { type QueueItem } from './SeoQueueClient';
+import CategoryAudit from './CategoryAudit';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,7 +31,7 @@ export default async function SeoQueuePage() {
     }
   }
 
-  const [{ data: products }, charsRes, faqRes, dictRes, catCharsRes] = await Promise.all([
+  const [{ data: products }, charsRes, faqRes, dictRes, catCharsRes, catsRes] = await Promise.all([
     serviceClient
       .from('products')
       .select('sku, slug, name, brand, category_slug, description_full, description_full_ru, name_ru, description_ru, keywords, image')
@@ -39,6 +43,7 @@ export default async function SeoQueuePage() {
     fetchAll<{ label: string; aliases: string[] }>('characteristic_definitions', 'label, aliases'),
     fetchAll<{ category_slug: string; required: boolean; characteristic_definitions: { label: string } | null }>(
       'category_characteristics', 'category_slug, required, characteristic_definitions(label)'),
+    fetchAll<{ slug: string; name: string; parent_slug: string | null }>('categories', 'slug, name, parent_slug'),
   ]);
 
   // Словник: normKey(аліас|канон) → канонічний лейбл; обов'язкові набори по категоріях
@@ -102,5 +107,19 @@ export default async function SeoQueuePage() {
     };
   });
 
-  return <SeoQueueClient items={items} faqTableReady={faqRes.ok} />;
+  // Категорійний зріз: чи не розійшовся текст категорії з фактичним асортиментом
+  const categoryRows = auditCategories({
+    categories: catsRes.rows,
+    products: (products ?? []).map(p => ({ category_slug: p.category_slug, brand: p.brand })),
+    metaUa: CATEGORY_META,
+    metaRu: CATEGORY_META_RU,
+    brands: [...new Set((products ?? []).map(p => p.brand).filter(Boolean))] as string[],
+  });
+
+  return (
+    <>
+      <CategoryAudit rows={categoryRows} />
+      <SeoQueueClient items={items} faqTableReady={faqRes.ok} />
+    </>
+  );
 }
