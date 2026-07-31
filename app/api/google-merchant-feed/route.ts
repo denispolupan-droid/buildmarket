@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { productDisplayName, variantBaseName } from '../../../lib/seo/meta';
+import { getCategoryNameRu } from '../../../lib/ru';
 import { fetchAllRows } from '../../../lib/db-paginate';
 
 const serviceClient = createClient(
@@ -39,12 +40,19 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
+  // ?lang=ru — дзеркальний фід для російських карток. Merchant Center вважає
+  // мову частиною ідентичності товару, тож це окреме джерело даних, а не дублі:
+  // uk-картка і ru-картка того самого SKU існують паралельно й ведуть кожна на
+  // свою мовну версію сторінки.
+  const lang: 'uk' | 'ru' = request.nextUrl.searchParams.get('lang') === 'ru' ? 'ru' : 'uk';
+  const isRu = lang === 'ru';
+
   const [products, stock, { data: categories }] = await Promise.all([
     // paginate: past 1000 products the feed would silently drop items and
     // Merchant Center would stop listing them.
     fetchAllRows((f, t) => serviceClient
       .from('products')
-      .select('sku, slug, name, brand, category_slug, volume, description, description_full, image')
+      .select('sku, slug, name, name_ru, brand, category_slug, volume, description, description_ru, description_full, description_full_ru, image')
       .eq('is_active', true)
       .order('sort_order')
       .range(f, t)),
@@ -61,12 +69,14 @@ export async function GET(request: NextRequest) {
   type CatRow = { slug: string; name: string; parent_slug: string | null };
   const catMap = new Map(((categories ?? []) as CatRow[]).map(c => [c.slug, c]));
 
+  const catName = (c: CatRow) => (isRu ? getCategoryNameRu(c.slug, c.name) : c.name);
+
   function categoryPath(slug: string | null): string | null {
     if (!slug) return null;
     const cat = catMap.get(slug);
     if (!cat) return null;
     const parent = cat.parent_slug ? catMap.get(cat.parent_slug) : null;
-    return parent ? `${parent.name} > ${cat.name}` : cat.name;
+    return parent ? `${catName(parent)} > ${catName(cat)}` : catName(cat);
   }
 
   // item_group_id: групуємо фасовки одного продукту (бренд + назва без об'єму),
@@ -96,11 +106,21 @@ export async function GET(request: NextRequest) {
 
       const available = s.stock_status === 'in_stock' ? 'in stock' : 'out of stock';
 
-      const title = truncate(productDisplayName(p), 150);
+      const title = truncate(productDisplayName(p, lang), 150);
 
-      const rawDesc = (p as { description_full?: string | null }).description_full
-        ?? p.description
-        ?? `${title} — будівельна хімія від FIXLINE. Доставка по всій Україні.`;
+      // Фолбек на українську свідомий: краще картка з описом іншою мовою, ніж
+      // товар, який випав з фіду. name_ru/description_ru заповнені у 100% каталогу,
+      // тож це страховка на майбутні імпорти, а не робочий сценарій.
+      const pl = p as {
+        description_full?: string | null; description_full_ru?: string | null;
+        description?: string | null; description_ru?: string | null;
+      };
+      const rawDesc = (isRu
+        ? (pl.description_full_ru ?? pl.description_ru ?? pl.description_full ?? pl.description)
+        : (pl.description_full ?? pl.description))
+        ?? (isRu
+          ? `${title} — строительная химия от FIXLINE. Доставка по всей Украине.`
+          : `${title} — будівельна хімія від FIXLINE. Доставка по всій Україні.`);
       const description = truncate(rawDesc, 5000);
 
       const productType = categoryPath(p.category_slug);
@@ -111,7 +131,7 @@ export async function GET(request: NextRequest) {
       <g:id>${x(p.sku)}</g:id>
       <title>${x(title)}</title>
       <description>${x(description)}</description>
-      <link>${BASE_URL}/product/${x(p.slug ?? p.sku)}</link>
+      <link>${BASE_URL}${isRu ? '/ru' : ''}/product/${x(p.slug ?? p.sku)}</link>
       <g:image_link>${x(img)}</g:image_link>
       <g:condition>new</g:condition>
       <g:availability>${available}</g:availability>
@@ -129,9 +149,9 @@ export async function GET(request: NextRequest) {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
   <channel>
-    <title>${SHOP_NAME} — будівельна хімія оптом та в роздріб</title>
-    <link>${BASE_URL}</link>
-    <description>Каталог товарів FIXLINE для Google Merchant Center</description>
+    <title>${SHOP_NAME} — ${isRu ? 'строительная химия оптом и в розницу' : 'будівельна хімія оптом та в роздріб'}</title>
+    <link>${BASE_URL}${isRu ? '/ru' : ''}</link>
+    <description>${isRu ? 'Каталог товаров FIXLINE для Google Merchant Center' : 'Каталог товарів FIXLINE для Google Merchant Center'}</description>
 ${items}
   </channel>
 </rss>`;
