@@ -37,7 +37,27 @@ export function publicStock(stock: AnyStock, keepUnitPrice = false): Record<stri
   return out;
 }
 
-/** Копія товару з обрізаним складом. Решта полів не чіпається. */
+/**
+ * Службові колонки самої таблиці products. Тут список ЧОРНИЙ, на відміну від
+ * складу: у products близько сорока колонок, і майже всі потрібні вітрині —
+ * білий список довелося б правити при кожному новому полі й ламати рендер,
+ * якщо забути. Тому перелічені ті, що назовні не потрібні ніколи:
+ * код постачальника, мінімальна ціна, коефіцієнти закупівлі та націнки МП.
+ */
+const INTERNAL_PRODUCT_KEYS = [
+  'supplier_sku',
+  'min_price',
+  'purchase_ratio',
+  'sale_ratio',
+  'purchase_uom',
+  'purchase_uom_factor',
+  'prom_markup_pct',
+  'rozetka_markup_pct',
+] as const;
+
+/** Копія товару з обрізаним складом і без службових колонок. */
 export function publicProduct<T extends { stock?: AnyStock }>(product: T, keepUnitPrice = false): T {
-  return { ...product, stock: publicStock(product.stock, keepUnitPrice) } as T;
+  const out: Record<string, unknown> = { ...product, stock: publicStock(product.stock, keepUnitPrice) };
+  for (const k of INTERNAL_PRODUCT_KEYS) delete out[k];
+  return out as T;
 }

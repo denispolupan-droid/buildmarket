@@ -154,7 +154,7 @@ export async function getProductsLight(opts?: {
     .select(`
       id, sku, slug, name, name_ru, brand, category_slug, is_active, sort_order,
       nl1, nl2, bc, ac, img_type, color, product_type, volume, image,
-      stock:product_stock(*)
+      stock:product_stock(price_retail, price_retail_old, price_promo, price_old, price_unit, stock_status, stock_qty)
     `)
     .eq('is_active', true)
     .order('sort_order');
@@ -430,7 +430,7 @@ export async function getPreviewProducts(categorySlugs: string[], limitPerCatego
       id, sku, slug, name, name_ru, brand, category_slug, is_active, is_hit, is_new, sort_order,
       nl1, nl2, bc, ac, img_type, color, product_type, volume, image,
       min_order, pack_qty,
-      stock:product_stock(*)
+      stock:product_stock(price_retail, price_retail_old, price_promo, stock_status, stock_qty)
     `)
     .eq('is_active', true)
     .in('category_slug', categorySlugs)

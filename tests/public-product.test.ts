@@ -65,3 +65,20 @@ describe('publicProduct', () => {
     expect(publicProduct({ sku: 'x', stock: null }).stock).toBeNull();
   });
 });
+
+describe('publicProduct: службові колонки самого товару', () => {
+  it('прибирає код постачальника і закупівельні коефіцієнти', () => {
+    const p = {
+      sku: '1605-006', name: 'Клей', brand: 'Lacrysil', slug: 'klei', stock: null,
+      supplier_sku: '1615-055', min_price: 100, purchase_ratio: 1, sale_ratio: 1,
+      purchase_uom: 'шт', purchase_uom_factor: 1, prom_markup_pct: 12, rozetka_markup_pct: 15,
+    };
+    const out = publicProduct(p) as Record<string, unknown>;
+    for (const k of ['supplier_sku', 'min_price', 'purchase_ratio', 'sale_ratio',
+                     'purchase_uom', 'purchase_uom_factor', 'prom_markup_pct', 'rozetka_markup_pct']) {
+      expect(out).not.toHaveProperty(k);
+    }
+    // вітринні поля лишаються
+    expect(out).toMatchObject({ sku: '1605-006', name: 'Клей', brand: 'Lacrysil', slug: 'klei' });
+  });
+});
