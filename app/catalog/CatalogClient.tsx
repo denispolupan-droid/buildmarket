@@ -11,7 +11,7 @@ import { RatingBadge } from '../components/StarRating';
 import ScrollToTop from '../components/ScrollToTop';
 import { PROMO } from '../promo.config';
 import SalesBanner from '../components/SalesBanner';
-import type { ProductFull, Category, ReviewStats } from '../../lib/supabase';
+import type { ProductB2B, Category, ReviewStats } from '../../lib/supabase';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
@@ -61,7 +61,7 @@ function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 620) {
   requestAnimationFrame(step);
 }
 
-type Props = { products: ProductFull[]; categories: Category[]; reviewStats?: ReviewStats; initialSearch?: string; initialCategory?: string; initialSaleOnly?: boolean };
+type Props = { products: ProductB2B[]; categories: Category[]; reviewStats?: ReviewStats; initialSearch?: string; initialCategory?: string; initialSaleOnly?: boolean };
 
 export default function CatalogClient({ products, categories, reviewStats, initialSearch = '', initialCategory = '', initialSaleOnly = false }: Props) {
   const [isWholesale, setIsWholesale] = useState(false);
@@ -591,7 +591,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
     setQuantities(prev => ({ ...prev, [sku]: valid }));
     setInputVals(prev => ({ ...prev, [sku]: String(valid) }));
   }
-  function handleAddToCart(p: ProductFull, qty: number) {
+  function handleAddToCart(p: ProductB2B, qty: number) {
     const unit = p.stock?.price_unit ?? 0;
     const retail = p.stock?.price_retail != null ? Number(p.stock.price_retail) : 0;
     const retailPromo = p.stock?.price_promo != null ? Number(p.stock.price_promo) : null;
@@ -612,7 +612,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
 
   const catalogTitle = t('Оптовий каталог', 'Оптовый каталог');
   const homeHref     = lang === 'ru' ? '/ru' : '/';
-  const displayName  = (p: ProductFull) =>
+  const displayName  = (p: ProductB2B) =>
     lang === 'ru' ? ((p as { name_ru?: string | null }).name_ru ?? p.name) : p.name;
 
   return (

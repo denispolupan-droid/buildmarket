@@ -90,6 +90,18 @@ export type ProductPublic = Product & {
   characteristics: ProductCharacteristicPublic[];
 };
 
+/** Склад для B2B-кабінету: вітринні поля + оптова ціна. Собівартості тут теж немає. */
+export type ProductStockB2B = Pick<
+  ProductStock,
+  'price_retail' | 'price_retail_old' | 'price_promo' | 'price_old' | 'price_unit' | 'stock_status' | 'stock_qty'
+>;
+
+/** Товар для /catalog — оптовий кабінет за авторизацією. */
+export type ProductB2B = Product & {
+  stock: ProductStockB2B | null;
+  characteristics: ProductCharacteristicPublic[];
+};
+
 /** Товар із повним складом — лише для адмінки і B2B-кабінету за авторизацією. */
 export type ProductFull = Product & {
   stock: ProductStock | null;

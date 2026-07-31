@@ -14,9 +14,11 @@ export type {
   ProductPublic,
   ProductStockPublic,
   ProductCharacteristicPublic,
+  ProductB2B,
+  ProductStockB2B,
 } from '../types';
 
-import type { Category, Product, ProductFull, ProductListItem, ProductStock, ProductPublic } from '../types';
+import type { Category, Product, ProductFull, ProductListItem, ProductStock, ProductPublic, ProductB2B } from '../types';
 
 // ── Клієнт для браузера / Server Components ───────────────────────────────────
 
@@ -83,10 +85,19 @@ const PRODUCT_LIST_SELECT = `${PRODUCT_LIST_BASE},
   characteristics:product_characteristics(label, value)
 `;
 
-/** ВНУТРІШНЯ вибірка — повний склад. Лише адмінка і B2B-кабінет за авторизацією. */
-const PRODUCT_LIST_SELECT_INTERNAL = `${PRODUCT_LIST_BASE},
-  stock:product_stock(*),
-  characteristics:product_characteristics(*)
+/**
+ * B2B-вибірка для /catalog: те саме, що публічна, плюс оптова ціна й price_old.
+ * Собівартості та коду постачальника тут теж немає — оптовому клієнту вони не
+ * потрібні. Адмінка цю функцію не використовує, вона будує власні запити з
+ * явним переліком колонок (див. /admin/prices).
+ *
+ * Важливо тримати вибірку вузькою: unstable_cache не кешує значення понад 2 МБ,
+ * і повний select мовчки перевищував ліміт — кожен рендер /catalog і магазину
+ * ходив у базу заново (у логах Vercel «items over 2MB can not be cached»).
+ */
+const PRODUCT_LIST_SELECT_B2B = `${PRODUCT_LIST_BASE},
+  stock:product_stock(price_retail, price_retail_old, price_promo, price_old, price_unit, stock_status, stock_qty),
+  characteristics:product_characteristics(label, value)
 `;
 
 export async function getProducts(opts?: {
@@ -129,14 +140,14 @@ export async function getProducts(opts?: {
 }
 
 /**
- * Те саме, але з повним складом — для адмінки і B2B-кабінету.
+ * Товари для оптового кабінету /catalog.
  * Окрема функція, а не прапорець: прапорець легко передати випадково,
  * а окремий імпорт видно на очі при рев'ю.
  */
-export async function getProductsInternal(): Promise<ProductFull[]> {
+export async function getProductsB2B(): Promise<ProductB2B[]> {
   const { data, error } = await supabase
     .from('products')
-    .select(PRODUCT_LIST_SELECT_INTERNAL)
+    .select(PRODUCT_LIST_SELECT_B2B)
     .eq('is_active', true)
     .order('sort_order');
   if (error) throw error;
@@ -147,7 +158,7 @@ export async function getProductsInternal(): Promise<ProductFull[]> {
     return aOut - bOut;
   });
 
-  return sorted as ProductFull[];
+  return sorted as ProductB2B[];
 }
 
 export async function getProductsLight(opts?: {
@@ -306,11 +317,11 @@ export const getProductsCached = unstable_cache(
   { revalidate: 60, tags: ['products'] }
 );
 
-// ОКРЕМИЙ ключ кешу — інакше публічна сторінка може отримати з кешу повний
-// склад (або навпаки), і витік повернеться тихо й непередбачувано.
-export const getProductsInternalCached = unstable_cache(
-  async () => getProductsInternal(),
-  ['products-internal'],
+// ОКРЕМИЙ ключ кешу — інакше публічна сторінка може отримати з кешу B2B-дані
+// (або навпаки), і оптова ціна поїде анонімам тихо й непередбачувано.
+export const getProductsB2BCached = unstable_cache(
+  async () => getProductsB2B(),
+  ['products-b2b'],
   { revalidate: 60, tags: ['products'] }
 );
 
