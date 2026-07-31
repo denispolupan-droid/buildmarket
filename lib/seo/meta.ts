@@ -198,6 +198,29 @@ export function categoryFamilySlugs(categories: Pick<Category, 'slug' | 'parent_
 }
 
 /**
+ * Батьківський слаг, якщо листинг категорії — точна копія батьківського.
+ * Так буває, коли в батька немає власних товарів і лише одна дитина з товаром:
+ * дві адреси віддають один і той самий набір і конкурують у видачі
+ * (пластифікатори ↔ пластифікатори для бетону, замазки для швів ↔ цементні).
+ * Перевірка за фактом, тож щойно з'явиться друга наповнена дитина — збіг зникне.
+ */
+export function duplicateOfParent(
+  categories: Pick<Category, 'slug' | 'parent_slug'>[],
+  products: { category_slug: string | null }[],
+  slug: string,
+): string | null {
+  const cat = categories.find(c => c.slug === slug);
+  if (!cat?.parent_slug) return null;
+  const countOf = (s: string) => {
+    const fam = new Set(categoryFamilySlugs(categories, s));
+    return products.filter(p => p.category_slug && fam.has(p.category_slug)).length;
+  };
+  const own = countOf(slug);
+  if (own === 0) return null;
+  return own === countOf(cat.parent_slug) ? cat.parent_slug : null;
+}
+
+/**
  * Категорії, у яких є хоч один активний товар — свій або в будь-якого нащадка.
  * Порожня категорія не має потрапляти ні в sitemap, ні в індекс: це тонка
  * сторінка, яка тільки розмиває краулінговий бюджет.
@@ -271,13 +294,15 @@ export function categoryMeta(
   cat: Pick<Category, 'slug' | 'name'>,
   stats: ListingStats,
   lang: Lang = 'uk',
-  opts?: { nameRu?: string; curatedDescription?: string | null },
+  opts?: { nameRu?: string; curatedDescription?: string | null; canonicalSlug?: string },
 ): Metadata {
   const t = T[lang];
   const name = lang === 'ru' ? (opts?.nameRu ?? cat.name) : cat.name;
   const title = `${name} — ${t.buyIn} ${t.bestPrice}`;
   const description = listingDescription(name, stats, lang, opts?.curatedDescription);
-  const path = `/shop/${cat.slug}`;
+  // canonicalSlug — коли листинг дублює батьківський: canonical і hreflang ведуть
+  // на батька, щоб дві адреси не ділили між собою сигнали (див. duplicateOfParent)
+  const path = `/shop/${opts?.canonicalSlug ?? cat.slug}`;
   const url = lang === 'uk' ? `${BASE}${path}` : `${BASE}/ru${path}`;
   return {
     title,

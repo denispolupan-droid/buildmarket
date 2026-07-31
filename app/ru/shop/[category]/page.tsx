@@ -7,7 +7,7 @@ import AllProductsLinks from '../../../shop/AllProductsLinks';
 import { getCategoriesCached, getProductsCached } from '../../../../lib/supabase';
 import { getCategoryNameRu, getCategoryDescriptionRu } from '../../../../lib/ru';
 import { getCategoryMetaRu } from '../../../../lib/category-descriptions-ru';
-import { categoryMeta, listingStats, productDisplayName, retailPrice, categoryFamilySlugs } from '../../../../lib/seo/meta';
+import { categoryMeta, listingStats, productDisplayName, retailPrice, categoryFamilySlugs, duplicateOfParent } from '../../../../lib/seo/meta';
 import '../../../shop/shop.css';
 
 const BASE = 'https://fixline.com.ua';
@@ -31,6 +31,7 @@ export async function generateMetadata(
   const meta = categoryMeta(cat, listingStats(products), 'ru', {
     nameRu,
     curatedDescription: getCategoryDescriptionRu(cat.slug, nameRu) ?? null,
+    canonicalSlug: duplicateOfParent(categories, await getProductsCached(), category) ?? undefined,
   });
   if (products.length === 0) return { ...meta, robots: { index: false, follow: true } };
   return meta;

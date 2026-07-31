@@ -6,7 +6,7 @@ import ShopLoader from '../ShopLoader';
 import AllProductsLinks from '../AllProductsLinks';
 import { getCategoriesCached, getProductsCached } from '../../../lib/supabase';
 import { getCategoryMeta } from '../../../lib/category-descriptions';
-import { categoryMeta, listingStats, productDisplayName, retailPrice, categoryFamilySlugs } from '../../../lib/seo/meta';
+import { categoryMeta, listingStats, productDisplayName, retailPrice, categoryFamilySlugs, duplicateOfParent } from '../../../lib/seo/meta';
 import '../shop.css';
 
 const BASE = 'https://fixline.com.ua';
@@ -36,6 +36,7 @@ export async function generateMetadata(
 
   return categoryMeta(cat, listingStats(products), 'uk', {
     curatedDescription: getCategoryMeta(category)?.description ?? null,
+    canonicalSlug: duplicateOfParent(categories, await getProductsCached(), category) ?? undefined,
   });
 }
 
