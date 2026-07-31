@@ -161,13 +161,17 @@ export default async function RuProductPage({ params, searchParams }: { params: 
     description: descriptionRu,
     image: productImage,
     url: `${BASE}${productPath(product, 'ru')}`,
-    offers: {
-      '@type': 'Offer',
-      priceCurrency: 'UAH',
-      price: priceUnit,
-      availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-      seller: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
-    },
+    // Без ціни offers не публікуємо — price: 0 читається як «безкоштовно».
+    // Див. коментар в українській версії сторінки.
+    ...(priceUnit && priceUnit > 0 ? {
+      offers: {
+        '@type': 'Offer',
+        priceCurrency: 'UAH',
+        price: priceUnit,
+        availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        seller: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
+      },
+    } : {}),
     ...(product.characteristics.length > 0 ? {
       additionalProperty: product.characteristics.map((c) => ({
         '@type': 'PropertyValue',

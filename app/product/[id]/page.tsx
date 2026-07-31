@@ -159,15 +159,20 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     description: product.description ?? undefined,
     image: productImage,
     url: `${BASE}${productPath(product)}`,
-    offers: {
-      '@type': 'Offer',
-      priceCurrency: 'UAH',
-      price: priceUnit,
-      availability: inStock
-        ? 'https://schema.org/InStock'
-        : 'https://schema.org/OutOfStock',
-      seller: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
-    },
+    // Товар без ціни (немає рядка product_stock) віддавав offers з price: 0 —
+    // для Google це «безкоштовно», а не «ціни немає». Пропозицію в такому разі
+    // не публікуємо взагалі: краще Product без offers, ніж Product із нульовою ціною.
+    ...(priceUnit && priceUnit > 0 ? {
+      offers: {
+        '@type': 'Offer',
+        priceCurrency: 'UAH',
+        price: priceUnit,
+        availability: inStock
+          ? 'https://schema.org/InStock'
+          : 'https://schema.org/OutOfStock',
+        seller: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
+      },
+    } : {}),
     ...(product.characteristics.length > 0 ? {
       additionalProperty: product.characteristics.map((c) => ({
         '@type': 'PropertyValue',
