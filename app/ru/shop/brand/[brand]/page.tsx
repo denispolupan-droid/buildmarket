@@ -27,7 +27,7 @@ export async function generateMetadata(
   const brands = await getBrandsCached();
   const brand = findBrandBySlug(slug, brands);
 
-  if (!brand) return { robots: { index: false, follow: false } };
+  if (!brand) return { robots: { index: false, follow: false }, alternates: { canonical: null } };
 
   const allProducts = await getProductsCached();
   const brandProducts = allProducts.filter(

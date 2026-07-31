@@ -70,7 +70,7 @@ export async function generateMetadata(
   const { category, brand: brandSlug } = await params;
   const resolved = await resolveParams(category, brandSlug);
 
-  if (!resolved) return { robots: { index: false, follow: false } };
+  if (!resolved) return { robots: { index: false, follow: false }, alternates: { canonical: null } };
   const { cat, brandName, products } = resolved;
 
   const catNameRu = getCategoryNameRu(cat.slug, cat.name);

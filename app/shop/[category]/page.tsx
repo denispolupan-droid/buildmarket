@@ -20,7 +20,7 @@ export async function generateMetadata(
   const categories = await getCategoriesCached();
   const cat = categories.find(c => c.slug === category);
 
-  if (!cat) return { robots: { index: false, follow: false } };
+  if (!cat) return { robots: { index: false, follow: false }, alternates: { canonical: null } };
 
   // Товари прив'язані до підкатегорій — для батьківської категорії беремо всю родину
   const family = new Set(categoryFamilySlugs(categories, category));

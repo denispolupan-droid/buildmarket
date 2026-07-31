@@ -26,7 +26,7 @@ export async function generateMetadata(
   }
 
   if (brand) {
-    return { robots: { index: false, follow: false } };
+    return { robots: { index: false, follow: false }, alternates: { canonical: null } };
   }
 
   return {
