@@ -16,7 +16,7 @@ import SalesBanner from '../components/SalesBanner';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
-import type { ProductFull, Category, ReviewStats } from '../../lib/supabase';
+import type { ProductPublic, Category, ReviewStats } from '../../lib/supabase';
 import { getCategoryMeta } from '../../lib/category-descriptions';
 import { useStickyCompact } from '../../lib/useStickyCompact';
 
@@ -62,7 +62,7 @@ function readShopSession<T>(field: string, fallback: T): T {
 }
 
 type CardProps = {
-  p: ProductFull;
+  p: ProductPublic;
   price: number | null;
   priceOld: number | null;
   inStock: boolean;
@@ -236,7 +236,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
 }
 
 type Props = {
-  products: ProductFull[];
+  products: ProductPublic[];
   categories: Category[];
   reviewStats?: ReviewStats;
   initialSaleOnly?: boolean;
@@ -670,8 +670,8 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   }, [catProducts, selCat, categories]);
 
   const isPlasticCat = catProducts.length > 0 && catProducts.every(p => /пластифікатор/i.test(p.product_type ?? ''));
-  const plasticIsFrost = (p: ProductFull) => /протиморозн/i.test(p.product_type ?? '');
-  const plasticIsWarm  = (p: ProductFull) => /теплих підлог/i.test(p.product_type ?? '');
+  const plasticIsFrost = (p: ProductPublic) => /протиморозн/i.test(p.product_type ?? '');
+  const plasticIsWarm  = (p: ProductPublic) => /теплих підлог/i.test(p.product_type ?? '');
 
   const filtered = useMemo(() => {
     let list = products;

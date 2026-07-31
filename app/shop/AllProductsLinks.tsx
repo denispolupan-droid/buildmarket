@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { ProductListItem } from '../../types';
+import type { ProductPublic } from '../../types';
 import { productDisplayName, retailPrice } from '../../lib/seo/meta';
 
 // SEO: клієнтський листинг рендерить лише перші 24 товари, «Показати більше» —
@@ -8,7 +8,7 @@ import { productDisplayName, retailPrice } from '../../lib/seo/meta';
 // клієнтський UI та ISR-кеш.
 
 type Props = {
-  products: ProductListItem[];
+  products: ProductPublic[];
   lang?: 'uk' | 'ru';
 };
 

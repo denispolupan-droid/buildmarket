@@ -67,6 +67,30 @@ export type ProductStock = {
   updated_at: string;
 };
 
+/**
+ * Те, що дозволено віддати в браузер анонімного відвідувача.
+ *
+ * До розділення публічний листинг тягнув product_stock(*) — і закупівельна ціна,
+ * оптова, дропшип та код постачальника лежали у вихідному коді /shop і в
+ * відкритому /api/products по всьому каталогу. Тип навмисно вужчий за
+ * ProductStock: спроба прочитати price_cost із публічних даних тепер не
+ * збереться, замість тихого undefined у рантаймі.
+ */
+export type ProductStockPublic = Pick<
+  ProductStock,
+  'price_retail' | 'price_retail_old' | 'price_promo' | 'stock_status' | 'stock_qty'
+>;
+
+/** Характеристика без службових полів — листингу треба лише пара «лейбл-значення». */
+export type ProductCharacteristicPublic = Pick<ProductCharacteristic, 'label' | 'value'>;
+
+/** Товар для публічної вітрини. */
+export type ProductPublic = Product & {
+  stock: ProductStockPublic | null;
+  characteristics: ProductCharacteristicPublic[];
+};
+
+/** Товар із повним складом — лише для адмінки і B2B-кабінету за авторизацією. */
 export type ProductFull = Product & {
   stock: ProductStock | null;
   characteristics: ProductCharacteristic[];

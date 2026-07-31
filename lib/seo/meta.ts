@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import type { Category, ProductFull, ProductListItem } from '../../types';
+import type { Category, ProductFull, ProductStockPublic } from '../../types';
 
 // Єдиний модуль генерації метатегів (SEO_SPEC, Фаза 2).
 // Таргетинг національний: «купити в Україні», доставка Нова Пошта.
@@ -51,7 +51,9 @@ export function productPath(p: { slug?: string | null; sku: string }, lang: Lang
 }
 
 /** Роздрібна ціна — та сама, що бачить гість на сторінці та в Product JSON-LD. */
-export function retailPrice(product: { stock: ProductListItem['stock'] }): number | null {
+// Приймає і публічний, і повний склад — читає лише роздрібні поля,
+// тому звужений ProductStockPublic сюди підходить.
+export function retailPrice(product: { stock: ProductStockPublic | null }): number | null {
   const s = product.stock;
   if (!s) return null;
   return s.price_promo ?? s.price_retail ?? null;
@@ -270,7 +272,7 @@ export function findVariants<T extends Pick<ProductFull, 'sku' | 'name' | 'brand
 
 export type ListingStats = { count: number; minPrice: number | null; maxPrice: number | null };
 
-export function listingStats(products: ProductListItem[]): ListingStats {
+export function listingStats(products: { stock: ProductStockPublic | null }[]): ListingStats {
   const prices = products
     .map(p => retailPrice(p))
     .filter((p): p is number => p != null && p > 0);

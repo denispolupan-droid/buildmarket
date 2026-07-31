@@ -11,9 +11,12 @@ export type {
   ProductStock,
   ProductFull,
   ProductListItem,
+  ProductPublic,
+  ProductStockPublic,
+  ProductCharacteristicPublic,
 } from '../types';
 
-import type { Category, Product, ProductFull, ProductListItem, ProductStock } from '../types';
+import type { Category, Product, ProductFull, ProductListItem, ProductStock, ProductPublic } from '../types';
 
 // ── Клієнт для браузера / Server Components ───────────────────────────────────
 
@@ -55,10 +58,27 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 // Поля для списку — без description (зберігає ~200KB на запит)
-const PRODUCT_LIST_SELECT = `
+const PRODUCT_LIST_BASE = `
   id, sku, slug, name, name_ru, brand, category_slug, is_active, is_hit, is_new, sort_order,
   nl1, nl2, bc, ac, img_type, color, product_type, volume, image,
-  min_order, pack_qty,
+  min_order, pack_qty`;
+
+/**
+ * ПУБЛІЧНА вибірка — усе, що тут перелічено, поїде у вихідний код сторінки та
+ * в браузер анонімного відвідувача. Раніше стояло product_stock(*), і разом із
+ * роздрібною ціною назовні йшли price_cost, price_wholesale, price_drop і
+ * supplier_sku по всьому каталогу. Додавати сюди поле можна лише свідомо.
+ *
+ * Характеристики потрібні — на них тримаються фільтри листингу, — але лише
+ * парою «лейбл-значення»: id, product_sku і sort_order клієнту ні до чого.
+ */
+const PRODUCT_LIST_SELECT = `${PRODUCT_LIST_BASE},
+  stock:product_stock(price_retail, price_retail_old, price_promo, stock_status, stock_qty),
+  characteristics:product_characteristics(label, value)
+`;
+
+/** ВНУТРІШНЯ вибірка — повний склад. Лише адмінка і B2B-кабінет за авторизацією. */
+const PRODUCT_LIST_SELECT_INTERNAL = `${PRODUCT_LIST_BASE},
   stock:product_stock(*),
   characteristics:product_characteristics(*)
 `;
@@ -68,7 +88,7 @@ export async function getProducts(opts?: {
   search?: string;
   inStockOnly?: boolean;
   limit?: number;
-}): Promise<ProductFull[]> {
+}): Promise<ProductPublic[]> {
   let query = supabase
     .from('products')
     .select(PRODUCT_LIST_SELECT)
@@ -93,6 +113,28 @@ export async function getProducts(opts?: {
   if (error) throw error;
 
   // Товари без наявності — в кінець
+  const sorted = (data ?? []).sort((a, b) => {
+    const aOut = (a as { stock?: { stock_status?: string } }).stock?.stock_status !== 'in_stock' ? 1 : 0;
+    const bOut = (b as { stock?: { stock_status?: string } }).stock?.stock_status !== 'in_stock' ? 1 : 0;
+    return aOut - bOut;
+  });
+
+  return sorted as ProductPublic[];
+}
+
+/**
+ * Те саме, але з повним складом — для адмінки і B2B-кабінету.
+ * Окрема функція, а не прапорець: прапорець легко передати випадково,
+ * а окремий імпорт видно на очі при рев'ю.
+ */
+export async function getProductsInternal(): Promise<ProductFull[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select(PRODUCT_LIST_SELECT_INTERNAL)
+    .eq('is_active', true)
+    .order('sort_order');
+  if (error) throw error;
+
   const sorted = (data ?? []).sort((a, b) => {
     const aOut = (a as { stock?: { stock_status?: string } }).stock?.stock_status !== 'in_stock' ? 1 : 0;
     const bOut = (b as { stock?: { stock_status?: string } }).stock?.stock_status !== 'in_stock' ? 1 : 0;
@@ -255,6 +297,14 @@ export const getCategoriesCached = unstable_cache(
 export const getProductsCached = unstable_cache(
   async (opts?: { category?: string; limit?: number }) => getProducts(opts),
   ['products'],
+  { revalidate: 60, tags: ['products'] }
+);
+
+// ОКРЕМИЙ ключ кешу — інакше публічна сторінка може отримати з кешу повний
+// склад (або навпаки), і витік повернеться тихо й непередбачувано.
+export const getProductsInternalCached = unstable_cache(
+  async () => getProductsInternal(),
+  ['products-internal'],
   { revalidate: 60, tags: ['products'] }
 );
 
