@@ -4,6 +4,8 @@ import { Clock } from 'lucide-react';
 import Footer from '../../components/Footer';
 import { getPublishedPostsCached, type BlogPost } from '../../../lib/blog-db';
 import { localizeArticleHtml } from '../../../lib/sanitize-article';
+import { getCategoriesCached, getProductsLightCached } from '../../../lib/supabase';
+import { categoriesWithProducts } from '../../../lib/seo/meta';
 import ArticleProducts from './ArticleProducts';
 
 // Рендер статті з БД — той самий шаблон, що й у статичних статей (lib/blog.ts),
@@ -35,8 +37,21 @@ export default async function DbArticle({ post, lang = 'uk' }: Props) {
   const coverImg = lang === 'ru' ? (post.image_ru ?? post.image) : post.image;
   const cover = coverImg ?? DEFAULT_COVER;
   const L = lang === 'ru'
-    ? { home: 'Главная', blog: 'Блог', min: 'мин чтения', faq: 'Частые вопросы', ctaTitle: 'Найдите нужный материал в нашем магазине', ctaText: 'Широкий выбор от проверенных производителей. От 1 единицы, доставка по всей Украине.', toShop: 'В магазин', other: 'Другие статьи', also: 'Читайте также' }
-    : { home: 'Головна', blog: 'Блог', min: 'хв читання', faq: 'Часті запитання', ctaTitle: 'Знайдіть потрібний матеріал у нашому магазині', ctaText: 'Широкий вибір від перевірених виробників. Від 1 одиниці, доставка по всій Україні.', toShop: 'До магазину', other: 'Інші статті', also: 'Читайте також' };
+    ? { home: 'Главная', blog: 'Блог', min: 'мин чтения', faq: 'Частые вопросы', ctaTitle: 'Найдите нужный материал в нашем магазине', ctaText: 'Широкий выбор от проверенных производителей. От 1 единицы, доставка по всей Украине.', toShop: 'В магазин', other: 'Другие статьи', also: 'Читайте также', buy: 'Купить' }
+    : { home: 'Головна', blog: 'Блог', min: 'хв читання', faq: 'Часті запитання', ctaTitle: 'Знайдіть потрібний матеріал у нашому магазині', ctaText: 'Широкий вибір від перевірених виробників. Від 1 одиниці, доставка по всій Україні.', toShop: 'До магазину', other: 'Інші статті', also: 'Читайте також', buy: 'Купити' };
+
+  // Категорії, у яких реально є товар. Вести читача в порожній листинг — і погана
+  // сторінка для нього, і злитий слот у блоці «купити». Порожні відсіюємо на рендері,
+  // щоб нічого не підтримувати руками: зникне товар — зникне і кнопка.
+  const [allCats, lightProducts] = await Promise.all([getCategoriesCached(), getProductsLightCached()]);
+  const liveCats = categoriesWithProducts(allCats, lightProducts);
+  const shopLinks = post.related_links.filter(
+    l => !l.href.startsWith('/shop/') || liveCats.has(l.href.slice('/shop/'.length)),
+  );
+  // Головна категорія статті — для комерційного посилання одразу під ліде.
+  // Стаття зараз ранжується краще за листинг (аудит 31.07: «бетоноконтакт» — стаття 3-тя,
+  // категорія 54-та), тож читача треба передати в магазин на початку, а не лише в кінці.
+  const primaryShop = shopLinks.find(l => l.href.startsWith('/shop/'));
 
   const breadcrumbLd = {
     '@context': 'https://schema.org',
@@ -98,7 +113,18 @@ export default async function DbArticle({ post, lang = 'uk' }: Props) {
             </div>
 
             <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.3, margin: '0 0 12px' }}>{t.title}</h1>
-            <p style={{ fontSize: '16px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 32px' }}>{t.description}</p>
+            <p style={{ fontSize: '16px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 16px' }}>{t.description}</p>
+
+            {primaryShop && (
+              <p style={{ margin: '0 0 32px' }}>
+                <Link
+                  href={`${prefix}${primaryShop.href}`}
+                  style={{ fontSize: '14px', fontWeight: 700, color: '#4880B8', textDecoration: 'none' }}
+                >
+                  {L.buy} {primaryShop.label.toLocaleLowerCase(lang === 'ru' ? 'ru-RU' : 'uk-UA')} →
+                </Link>
+              </p>
+            )}
 
             {coverImg && (
               <div style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '36px' }}>
@@ -131,7 +157,7 @@ export default async function DbArticle({ post, lang = 'uk' }: Props) {
             <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>{L.ctaTitle}</div>
             <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.6 }}>{L.ctaText}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
-              {(post.related_links.length ? post.related_links : [{ label: L.toShop, href: '/shop' }]).map(({ label, href }) => (
+              {(shopLinks.length ? shopLinks : [{ label: L.toShop, href: '/shop' }]).map(({ label, href }) => (
                 <Link key={href} href={`${prefix}${href}`} style={{ height: '38px', borderRadius: '8px', background: '#4880B8', color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 12px' }}>
                   {label}
                 </Link>
