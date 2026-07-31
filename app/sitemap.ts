@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 import { getProductsCached, getCategoriesCached } from '../lib/supabase';
 import { getPublishedPostsCached } from '../lib/blog-db';
-import { categoriesWithProducts } from '../lib/seo/meta';
+import { categoriesWithProducts, duplicateOfParent } from '../lib/seo/meta';
 
 function brandToSlug(brand: string): string {
   return brand.trim().toLowerCase().replace(/\s+/g, '-');
@@ -71,8 +71,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Порожні категорії (жодного активного товару в усій гілці) у sitemap не подаємо —
   // сторінка їх усе одно віддає noindex, див. generateMetadata у shop/[category].
   // Список рухається сам разом з асортиментом, руками нічого підтримувати не треба.
+  // Плюс дитячі категорії, чий листинг дублює батьківський: у них canonical веде
+  // на батька (див. duplicateOfParent), а sitemap має містити тільки канонічні
+  // адреси — інакше самі собі шлемо суперечливий сигнал.
   const liveSlugs = categoriesWithProducts(categories, products);
-  const liveCategories = categories.filter(c => liveSlugs.has(c.slug));
+  const liveCategories = categories.filter(
+    c => liveSlugs.has(c.slug) && !duplicateOfParent(categories, products, c.slug),
+  );
 
   // /shop — публічний магазин, категорії індексуємо
   const shopCategoryRoutes: MetadataRoute.Sitemap = liveCategories.map(cat => ({
