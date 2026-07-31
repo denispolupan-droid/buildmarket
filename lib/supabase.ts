@@ -48,10 +48,16 @@ export function createServiceClient() {
 
 // ── Допоміжні функції для Next.js ─────────────────────────────────────────────
 
+// Категорії теж їдуть у браузер (дерево магазину). select('*') тягнув із собою
+// всі маркетплейсні налаштування таблиці — prom_markup_pct, rozetka_markup_pct,
+// prom_commission_pct*, rozetka_commission_* — тобто нашу цінову політику по
+// кожній категорії. Перелік нижче збігається з типом Category і нічого зайвого
+// назовні не пускає. Код синхронізації МП цю функцію не використовує — він
+// робить власні запити.
 export async function getCategories(): Promise<Category[]> {
   const { data, error } = await supabase
     .from('categories')
-    .select('*')
+    .select('id, slug, name, sort_order, parent_slug, prom_section_url, prom_section_id, created_at')
     .order('sort_order');
   if (error) throw error;
   return data ?? [];
