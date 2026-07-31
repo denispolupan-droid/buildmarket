@@ -4,6 +4,10 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Сторінку не знайдено',
   robots: { index: false, follow: false },
+  // Кореневий layout задає canonical на головну, і 404 успадковувала його —
+  // сторінка помилки оголошувала себе копією головної. Явний null прибирає тег:
+  // при коректному 404 канонічної адреси в неї просто немає.
+  alternates: { canonical: null },
 };
 
 export default function NotFound() {
