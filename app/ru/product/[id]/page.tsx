@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { publicProduct } from '../../../../lib/public-product';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 
@@ -222,7 +223,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
 
         <div className="product-layout">
 
-          <ProductGallery product={product} priceOld={priceOld} priceUnit={priceUnit} />
+          <ProductGallery product={publicProduct(product, !isRetail)} priceOld={priceOld} priceUnit={priceUnit} />
 
           <div className="product-info">
             <div className="product-info__brand">{product.brand}</div>
@@ -335,7 +336,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
           </div>
         ) : null; })()}
 
-        {related.length > 0 && <RelatedCarousel products={related} retail={isRetail} reviewStats={reviewStats} />}
+        {related.length > 0 && <RelatedCarousel products={related.map(p => publicProduct(p, !isRetail))} retail={isRetail} reviewStats={reviewStats} />}
 
         <div id="reviews" style={{ borderTop: '1px solid var(--border)', paddingTop: '32px', marginTop: '32px' }}>
           <ProductReviews sku={product.sku} productName={`${product.brand} ${nameRu}`} />

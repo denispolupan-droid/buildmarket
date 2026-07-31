@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { publicProduct } from '../../../lib/public-product';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 
@@ -223,7 +224,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
         <div className="product-layout">
 
           {/* Галерея */}
-          <ProductGallery product={product} priceOld={priceOld} priceUnit={priceUnit} />
+          <ProductGallery product={publicProduct(product, !isRetail)} priceOld={priceOld} priceUnit={priceUnit} />
 
           {/* Інформація */}
           <div className="product-info">
@@ -341,7 +342,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
         ) : null; })()}
 
         {/* Схожі товари */}
-        {related.length > 0 && <RelatedCarousel products={related} retail={isRetail} reviewStats={reviewStats} />}
+        {related.length > 0 && <RelatedCarousel products={related.map(p => publicProduct(p, !isRetail))} retail={isRetail} reviewStats={reviewStats} />}
 
         {/* Відгуки */}
         <div id="reviews" style={{ borderTop: '1px solid var(--border)', paddingTop: '32px', marginTop: '32px' }}>
