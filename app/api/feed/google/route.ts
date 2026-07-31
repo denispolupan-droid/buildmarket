@@ -56,8 +56,11 @@ function googleCategory(slug: string | null): string {
   return 'Hardware > Building Materials';
 }
 
+// image_link у Merchant Center мусить бути абсолютним — відносний шлях
+// відхиляє КОЖЕН товар фіду. У БД шлях зберігається відносним ("/img/…").
 function imageUrl(product: { sku: string; image: string | null }): string {
-  return product.image ?? `${BASE_URL}/product/${product.sku}/opengraph-image`;
+  if (!product.image) return `${BASE_URL}/product/${product.sku}/opengraph-image`;
+  return product.image.startsWith('http') ? product.image : `${BASE_URL}${product.image.startsWith('/') ? '' : '/'}${product.image}`;
 }
 
 function x(s: string | null | undefined): string {
