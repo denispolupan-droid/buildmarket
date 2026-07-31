@@ -809,7 +809,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                     <div key={child.slug} ref={el => { catRefs.current[child.slug] = el; }} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                       <Link
                         href={`${shopBase}/${child.slug}`}
-                  prefetch={false}
+                        prefetch={false}
                         className={'shop-cat-item' + (isChildDirectActive ? ' active' : isChildParentActive ? ' parent-active' : '')}
                         style={{ paddingLeft: '12px', fontSize: '13px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                         onClick={e => {
@@ -826,7 +826,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                           <Link
                             key={gc.slug}
                             href={`${shopBase}/${gc.slug}`}
-                  prefetch={false}
+                            prefetch={false}
                             ref={el => { catRefs.current[gc.slug] = el as unknown as HTMLDivElement; }}
                             className={'shop-cat-item' + (selCat === gc.slug ? ' active' : '')}
                             style={{ paddingLeft: '26px', fontSize: '12px', width: '100%', textAlign: 'left' }}
