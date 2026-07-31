@@ -51,6 +51,7 @@
   gap: 7px;
   user-select: none;
 }
+.shop-cat-item { text-decoration: none; } /* пункти дерева — <a>, підкреслення не потрібне */
 .shop-cat-item:hover { background: var(--bg-soft); color: var(--text-primary); }
 .shop-cat-item-label {
   display: inline-block;

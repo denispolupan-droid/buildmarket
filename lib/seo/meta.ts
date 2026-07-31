@@ -183,9 +183,35 @@ export function productMeta(product: ProductFull, lang: Lang = 'uk'): Metadata {
   };
 }
 
-/** Слаги категорії разом з її підкатегоріями (товари прив'язані до підкатегорій). */
+/**
+ * Слаги категорії разом з УСІМА нащадками (товари прив'язані до листків дерева).
+ * Дерево трирівневе: farby → farby-3v1 → farby-3v1-akrylovi. Обхід лише на один
+ * рівень губив онуків, і батьківська категорія недораховувала товари, ціни й
+ * посилання в ItemList.
+ */
 export function categoryFamilySlugs(categories: Pick<Category, 'slug' | 'parent_slug'>[], slug: string): string[] {
-  return [slug, ...categories.filter(c => c.parent_slug === slug).map(c => c.slug)];
+  const out = [slug];
+  for (let i = 0; i < out.length; i++) {
+    for (const c of categories) if (c.parent_slug === out[i]) out.push(c.slug);
+  }
+  return out;
+}
+
+/**
+ * Категорії, у яких є хоч один активний товар — свій або в будь-якого нащадка.
+ * Порожня категорія не має потрапляти ні в sitemap, ні в індекс: це тонка
+ * сторінка, яка тільки розмиває краулінговий бюджет.
+ */
+export function categoriesWithProducts(
+  categories: Pick<Category, 'slug' | 'parent_slug'>[],
+  products: { category_slug: string | null }[],
+): Set<string> {
+  const own = new Set(products.map(p => p.category_slug).filter(Boolean) as string[]);
+  const withProducts = new Set<string>();
+  for (const c of categories) {
+    if (categoryFamilySlugs(categories, c.slug).some(s => own.has(s))) withProducts.add(c.slug);
+  }
+  return withProducts;
 }
 
 /** Базова назва без фасовки в кінці — для групування варіантів одного продукту. */

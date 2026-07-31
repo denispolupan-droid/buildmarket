@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next';
 import { getProductsCached, getCategoriesCached } from '../lib/supabase';
 import { getPublishedPostsCached } from '../lib/blog-db';
+import { categoriesWithProducts } from '../lib/seo/meta';
 
 function brandToSlug(brand: string): string {
   return brand.trim().toLowerCase().replace(/\s+/g, '-');
@@ -67,8 +68,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  // Порожні категорії (жодного активного товару в усій гілці) у sitemap не подаємо —
+  // сторінка їх усе одно віддає noindex, див. generateMetadata у shop/[category].
+  // Список рухається сам разом з асортиментом, руками нічого підтримувати не треба.
+  const liveSlugs = categoriesWithProducts(categories, products);
+  const liveCategories = categories.filter(c => liveSlugs.has(c.slug));
+
   // /shop — публічний магазин, категорії індексуємо
-  const shopCategoryRoutes: MetadataRoute.Sitemap = categories.map(cat => ({
+  const shopCategoryRoutes: MetadataRoute.Sitemap = liveCategories.map(cat => ({
     url: `${BASE}/shop/${cat.slug}`,
     lastModified: categoryUpdated.get(cat.slug) ?? new Date(cat.created_at),
     changeFrequency: 'daily',
@@ -141,7 +148,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.25,
   }));
 
-  const ruShopCategoryRoutes: MetadataRoute.Sitemap = categories.map(cat => ({
+  const ruShopCategoryRoutes: MetadataRoute.Sitemap = liveCategories.map(cat => ({
     url: `${BASE}/ru/shop/${cat.slug}`,
     lastModified: categoryUpdated.get(cat.slug) ?? new Date(cat.created_at),
     changeFrequency: 'monthly',

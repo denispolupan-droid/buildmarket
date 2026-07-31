@@ -25,6 +25,15 @@ export async function generateMetadata(
   // Товари прив'язані до підкатегорій — для батьківської категорії беремо всю родину
   const family = new Set(categoryFamilySlugs(categories, category));
   const products = (await getProductsCached()).filter(p => p.category_slug && family.has(p.category_slug));
+
+  // Категорія без жодного активного товару — порожній листинг. Індексувати нема чого:
+  // це тонка сторінка, яка тільки псує загальну оцінку розділу. follow лишаємо —
+  // хай краулер іде далі по меню. Щойно товар з'явиться, індексація повернеться сама.
+  if (products.length === 0) {
+    return { ...categoryMeta(cat, listingStats(products), 'uk', { curatedDescription: getCategoryMeta(category)?.description ?? null }),
+      robots: { index: false, follow: true } };
+  }
+
   return categoryMeta(cat, listingStats(products), 'uk', {
     curatedDescription: getCategoryMeta(category)?.description ?? null,
   });

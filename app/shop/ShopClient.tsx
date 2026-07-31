@@ -41,6 +41,14 @@ function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 620) {
   requestAnimationFrame(step);
 }
 
+// Пункти дерева категорій — справжні <Link>, а не <button>: інакше 68 підкатегорій
+// не мають жодного внутрішнього посилання і Google їх фактично не бачить (аудит 31.07,
+// середня позиція категорій 44). Клік лишається клієнтським фільтром без перезавантаження,
+// але Ctrl/⌘/середню кнопку віддаємо браузеру — інакше зникає «відкрити в новій вкладці».
+function isModifiedClick(e: React.MouseEvent): boolean {
+  return e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0;
+}
+
 const SHOP_STATE_KEY = 'shop_filter_state';
 
 function readShopSession<T>(field: string, fallback: T): T {
@@ -757,10 +765,14 @@ export default function ShopClient({ products, categories, reviewStats, initialS
             const isParentActive = !isDirectActive && children.some(c => c.slug === selCat || childrenOf[c.slug]?.some(g => g.slug === selCat));
             return (
               <div key={cat.slug} ref={el => { catRefs.current[cat.slug] = el; }} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <button
+                <Link
+                  href={`${shopBase}/${cat.slug}`}
+                  prefetch={false}
                   className={'shop-cat-item' + (isDirectActive ? ' active' : isParentActive ? ' parent-active' : '')}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', ...(isExpanded && !isDirectActive ? { background: 'rgba(30,58,95,0.06)', borderRadius: '7px', color: 'var(--text-primary)', fontWeight: 600 } : {}) }}
-                  onClick={() => {
+                  onClick={e => {
+                    if (isModifiedClick(e)) return; // Ctrl/⌘/середня кнопка — хай браузер відкриє вкладку
+                    e.preventDefault();
                     const expanding = !expandedCats.has(cat.slug);
                     if (children.length > 0) {
                       setExpandedCats(prev => { const next = new Set(prev); next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug); return next; });
@@ -786,7 +798,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                   {children.length > 0 && (
                     <ChevronDown size={13} style={{ flexShrink: 0, opacity: 0.45, transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)' }} />
                   )}
-                </button>
+                </Link>
                 <div style={{ overflow: 'hidden', maxHeight: isExpanded ? '2000px' : '0', transition: 'max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1)', marginLeft: '8px', borderLeft: '1px solid rgba(30,58,95,0.2)' }}>
                 {children.map(child => {
                   const grandchildren = childrenOf[child.slug] ?? [];
@@ -795,27 +807,37 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                   const isChildParentActive = !isChildDirectActive && grandchildren.some(g => g.slug === selCat);
                   return (
                     <div key={child.slug} ref={el => { catRefs.current[child.slug] = el; }} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <button
+                      <Link
+                        href={`${shopBase}/${child.slug}`}
+                  prefetch={false}
                         className={'shop-cat-item' + (isChildDirectActive ? ' active' : isChildParentActive ? ' parent-active' : '')}
                         style={{ paddingLeft: '12px', fontSize: '13px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                        onClick={() => {
+                        onClick={e => {
+                          if (isModifiedClick(e)) return;
+                          e.preventDefault();
                           selectCat(selCat === child.slug ? null : child.slug, cat.slug);
                           if (grandchildren.length > 0) setExpandedCats(prev => { const n = new Set(prev); n.has(child.slug) ? n.delete(child.slug) : n.add(child.slug); return n; });
                         }}
                       >
                         <span className="shop-cat-item-label">{catDisplayName(child.slug, child.name)}</span>
-                      </button>
+                      </Link>
                       <div style={{ overflow: 'hidden', maxHeight: childExpanded ? '1000px' : '0', transition: 'max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1)' }}>
                         {grandchildren.map(gc => (
-                          <button
+                          <Link
                             key={gc.slug}
+                            href={`${shopBase}/${gc.slug}`}
+                  prefetch={false}
                             ref={el => { catRefs.current[gc.slug] = el as unknown as HTMLDivElement; }}
                             className={'shop-cat-item' + (selCat === gc.slug ? ' active' : '')}
                             style={{ paddingLeft: '26px', fontSize: '12px', width: '100%', textAlign: 'left' }}
-                            onClick={() => selectCat(selCat === gc.slug ? null : gc.slug, cat.slug)}
+                            onClick={e => {
+                              if (isModifiedClick(e)) return;
+                              e.preventDefault();
+                              selectCat(selCat === gc.slug ? null : gc.slug, cat.slug);
+                            }}
                           >
                             <span className="shop-cat-item-label">{catDisplayName(gc.slug, gc.name)}</span>
-                          </button>
+                          </Link>
                         ))}
                       </div>
                     </div>

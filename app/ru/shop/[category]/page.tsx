@@ -26,10 +26,14 @@ export async function generateMetadata(
   const nameRu = getCategoryNameRu(cat.slug, cat.name);
   const family = new Set(categoryFamilySlugs(categories, category));
   const products = (await getProductsCached()).filter(p => p.category_slug && family.has(p.category_slug));
-  return categoryMeta(cat, listingStats(products), 'ru', {
+
+  // Порожню категорію не індексуємо — див. коментар в українській версії сторінки.
+  const meta = categoryMeta(cat, listingStats(products), 'ru', {
     nameRu,
     curatedDescription: getCategoryDescriptionRu(cat.slug, nameRu) ?? null,
   });
+  if (products.length === 0) return { ...meta, robots: { index: false, follow: true } };
+  return meta;
 }
 
 export default async function RuShopCategoryPage({ params }: { params: Promise<{ category: string }> }) {
