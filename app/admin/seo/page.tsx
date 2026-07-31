@@ -46,6 +46,12 @@ export default async function SeoQueuePage() {
     fetchAll<{ slug: string; name: string; parent_slug: string | null }>('categories', 'slug, name, parent_slug'),
   ]);
 
+  // Опубліковані статті — щоб зловити blogSlug, який веде в 404
+  const { data: blogRows } = await serviceClient
+    .from('blog_posts')
+    .select('slug')
+    .eq('is_published', true);
+
   // Словник: normKey(аліас|канон) → канонічний лейбл; обов'язкові набори по категоріях
   const normKey = (s: string) => s.replace(/['`´ʼ']/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
   const aliasMap = new Map<string, string>();
@@ -114,6 +120,7 @@ export default async function SeoQueuePage() {
     metaUa: CATEGORY_META,
     metaRu: CATEGORY_META_RU,
     brands: [...new Set((products ?? []).map(p => p.brand).filter(Boolean))] as string[],
+    blogSlugs: (blogRows ?? []).map(b => b.slug),
   });
 
   return (

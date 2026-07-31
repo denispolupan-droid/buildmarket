@@ -28,6 +28,8 @@ export type CategoryAuditGaps = {
   thinFaq: boolean;
   /** російська версія відстає від української */
   ruBehind: boolean;
+  /** blogSlug вказує на статтю, якої немає — кнопка «Читати статтю» веде в 404 */
+  deadBlogLink: boolean;
 };
 
 export type CategoryAuditRow = {
@@ -40,6 +42,8 @@ export type CategoryAuditRow = {
   missingBrands: string[];
   uaFaq: number;
   ruFaq: number;
+  /** slug статті, на яку посилається категорія, якщо такої статті немає */
+  deadBlogSlug: string | null;
   gaps: CategoryAuditGaps;
 };
 
@@ -69,8 +73,11 @@ export function auditCategories(input: {
   metaUa: Record<string, CategoryMeta>;
   metaRu: Record<string, CategoryMeta>;
   brands: string[];
+  /** slug'и опублікованих статей блогу; без них перевірку посилань пропускаємо */
+  blogSlugs?: string[];
 }): CategoryAuditRow[] {
-  const { categories, products, metaUa, metaRu, brands } = input;
+  const { categories, products, metaUa, metaRu, brands, blogSlugs } = input;
+  const knownBlog = blogSlugs ? new Set(blogSlugs) : null;
 
   // Товари прив'язані до підкатегорій — для батьківської беремо всю родину
   const children = new Map<string, string[]>();
@@ -128,6 +135,12 @@ export function auditCategories(input: {
     const uaFaq = ua?.faq?.length ?? 0;
     const ruFaq = ru?.faq?.length ?? 0;
 
+    // Стаття могла бути перейменована чи знята з публікації — тоді кнопка
+    // «Читати статтю» на сторінці категорії веде в 404. Дивимось обидві мови:
+    // RU-карта має власні blogSlug і теж може відстати.
+    const linked = [ua?.blogSlug, ru?.blogSlug].filter(Boolean) as string[];
+    const deadBlogSlug = knownBlog ? (linked.find(s => !knownBlog.has(s)) ?? null) : null;
+
     rows.push({
       slug,
       name: cat?.name ?? slug,
@@ -138,6 +151,7 @@ export function auditCategories(input: {
       missingBrands,
       uaFaq,
       ruFaq,
+      deadBlogSlug,
       gaps: {
         noProducts: !!ua && productCount === 0,
         noMeta: !ua && productCount > 0,
@@ -146,6 +160,7 @@ export function auditCategories(input: {
         missingBrands: missingBrands.length > 0,
         thinFaq: !!ua && productCount > 0 && (uaFaq < MIN_FAQ || ruFaq < MIN_FAQ),
         ruBehind: !!ua && (!ru || ruFaq < uaFaq),
+        deadBlogLink: deadBlogSlug !== null,
       },
     });
   }

@@ -8,6 +8,7 @@ const GAP_LABELS: { key: keyof CategoryAuditGaps; label: string; color: string; 
   { key: 'staleBrands',   label: 'бренд зник',        color: '#EF4444', hint: 'Текст називає бренд, якого в категорії вже немає' },
   { key: 'noProducts',    label: 'порожня сторінка',  color: '#EF4444', hint: 'Є текст, але жодного активного товару — сторінка нічого не продає' },
   { key: 'noMeta',        label: 'немає тексту',      color: '#EF4444', hint: 'Є товар, але категорія без курованого опису' },
+  { key: 'deadBlogLink',  label: 'стаття в 404',      color: '#EF4444', hint: 'blogSlug вказує на статтю, якої немає — кнопка «Читати статтю» веде в 404' },
   { key: 'missingBrands', label: 'бренд не згаданий', color: '#F59E0B', hint: 'Помітна частка асортименту не потрапила в перелік' },
   { key: 'noCatalogLine', label: 'немає переліку',    color: '#F59E0B', hint: 'У seoText немає речення з асортиментом — текст не прив\'язаний до каталогу' },
   { key: 'thinFaq',       label: 'мало FAQ',          color: '#0EA5E9', hint: 'Менше 4 питань хоча б однією мовою' },
@@ -33,7 +34,7 @@ export default function CategoryAudit({ rows }: { rows: CategoryAuditRow[] }) {
     return c;
   }, [withGaps]);
 
-  const critical = withGaps.filter(r => r.gaps.staleBrands || r.gaps.noProducts || r.gaps.noMeta).length;
+  const critical = withGaps.filter(r => r.gaps.staleBrands || r.gaps.noProducts || r.gaps.noMeta || r.gaps.deadBlogLink).length;
 
   return (
     <section style={{ border: '1px solid #E2E8F0', borderRadius: 10, marginBottom: 20, background: 'var(--bg-card, #fff)' }}>
@@ -103,6 +104,12 @@ export default function CategoryAudit({ rows }: { rows: CategoryAuditRow[] }) {
                     ))}
                   </div>
 
+                  {row.deadBlogSlug && (
+                    <div style={lineStyle}>
+                      <b style={{ color: '#B91C1C' }}>Стаття не існує:</b> <code>/blog/{row.deadBlogSlug}</code>{' '}
+                      — приберіть <code>blogSlug</code> або вкажіть наявну статтю
+                    </div>
+                  )}
                   {row.staleBrands.length > 0 && (
                     <div style={lineStyle}>
                       <b style={{ color: '#B91C1C' }}>У тексті, але не в каталозі:</b> {row.staleBrands.join(', ')}

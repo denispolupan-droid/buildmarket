@@ -133,6 +133,32 @@ describe('auditCategories', () => {
     expect(row.gaps.thinFaq).toBe(true);
   });
 
+  it('ловить blogSlug, який веде в 404', () => {
+    const withBlog = (slug: string): CategoryMeta => ({ ...meta('У каталозі FIXLINE можна купити клеї Ceresit.'), blogSlug: slug });
+    const rows = auditCategories({
+      categories: [cat('klei'), cat('farba')],
+      products: [prod('klei', 'Ceresit'), prod('farba', 'Ceresit')],
+      metaUa: { klei: withBlog('yak-vybrat-klei'), farba: withBlog('znykla-stattya') },
+      metaRu: { klei: withBlog('yak-vybrat-klei'), farba: withBlog('znykla-stattya') },
+      brands: BRANDS,
+      blogSlugs: ['yak-vybrat-klei'],
+    });
+    expect(rows.find(r => r.slug === 'farba')!.deadBlogSlug).toBe('znykla-stattya');
+    expect(rows.find(r => r.slug === 'farba')!.gaps.deadBlogLink).toBe(true);
+    expect(rows.find(r => r.slug === 'klei')!.gaps.deadBlogLink).toBe(false);
+  });
+
+  it('без списку статей посилання не перевіряються — це не привід червонити категорію', () => {
+    const rows = auditCategories({
+      categories: [cat('klei')],
+      products: [prod('klei', 'Ceresit')],
+      metaUa: { klei: { ...meta('У каталозі FIXLINE можна купити клеї Ceresit.'), blogSlug: 'bud-yaka-stattya' } },
+      metaRu: { klei: { ...meta('ru'), blogSlug: 'bud-yaka-stattya' } },
+      brands: BRANDS,
+    });
+    expect(rows.find(r => r.slug === 'klei')!.gaps.deadBlogLink).toBe(false);
+  });
+
   it('повністю узгоджена категорія не має жодного пробілу', () => {
     const rows = auditCategories({
       categories: [cat('klei')],
