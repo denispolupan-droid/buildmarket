@@ -1063,7 +1063,13 @@ export default function AdminOrders({
   // Скасоване замовлення з "Відмова від отримання" у статусі перевізника = посилка
   // їде назад. Рішення менеджера зберігаємо у flags: return_received (забрав) /
   // return_abandoned (не забираю — коли повернення дорожче за товар).
-  const isNpRefusal = (o: Order) => o.status === 'cancelled' && /відмов/i.test(o.carrier_status_text ?? '');
+  // Ознака «посилка десь є і з нею треба щось робити»: замовлення скасоване, але
+  // перевізник ВЖЕ прийняв відправлення (carrier_accepted_at). Джерело скасування
+  // неважливе — відмова на пошті, скасування покупцем у кабінеті МП чи наше рішення:
+  // фізично посилка їде назад у будь-якому разі. Раніше тут шукали слово «відмова»
+  // в статусі НП — і кейс #26071023 (скасування прийшло з кабінету Rozetka, а текст
+  // НП завмер на «Прибув у відділення») не підсвічувався взагалі.
+  const isReturnPending = (o: Order) => o.status === 'cancelled' && !!o.carrier_accepted_at;
   const returnState = (o: Order): 'received' | 'abandoned' | null =>
     (o.flags ?? []).includes('return_received') ? 'received'
     : (o.flags ?? []).includes('return_abandoned') ? 'abandoned'
@@ -1691,13 +1697,13 @@ export default function AdminOrders({
                       {order.mp_refund_status && (
                         <span title={`Покупець відкрив повернення — ${order.mp_refund_status}`} style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>↩ повернення</span>
                       )}
-                      {isNpRefusal(order) && (() => {
+                      {isReturnPending(order) && (() => {
                         const rs = returnState(order);
                         const s = rs === 'received'
-                          ? { t: '↩ забрано', c: '#15803D', bg: '#F0FDF4', b: '#BBF7D0', title: 'Відмова від посилки — повернення забрано з пошти' }
+                          ? { t: '↩ забрано', c: '#15803D', bg: '#F0FDF4', b: '#BBF7D0', title: 'Повернення забрано з пошти' }
                           : rs === 'abandoned'
-                          ? { t: '↩ залишено', c: '#64748B', bg: '#F8FAFC', b: '#E2E8F0', title: 'Відмова від посилки — вирішено не забирати (повернення дорожче за товар)' }
-                          : { t: '↩ Відмова · забрати?', c: '#C2410C', bg: '#FFF7ED', b: '#FDBA74', title: 'Клієнт відмовився від посилки — вона їде назад. Відкрийте замовлення і вирішіть: забрати з пошти чи залишити.' };
+                          ? { t: '↩ залишено', c: '#64748B', bg: '#F8FAFC', b: '#E2E8F0', title: 'Вирішено не забирати (повернення дорожче за товар)' }
+                          : { t: '↩ Повернення · забрати?', c: '#C2410C', bg: '#FFF7ED', b: '#FDBA74', title: `Замовлення скасоване, але посилку вже прийняла НП — вона їде назад${order.carrier_status_text ? ` (зараз: «${order.carrier_status_text}»)` : ''}. Відкрийте замовлення і вирішіть: забрати з пошти чи залишити.` };
                         return <span title={s.title} style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: s.c, background: s.bg, border: `1px solid ${s.b}`, borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>{s.t}</span>;
                       })()}
                       {isSmart && (
@@ -1841,13 +1847,14 @@ export default function AdminOrders({
                       <span>Прийміть товар і оформіть «↩ Повернення» в цій картці — це сторнує виручку, COGS і комісію.</span>
                     </div>
                   )}
-                  {/* Банер відмови від посилки НП: посилка їде назад — менеджер вирішує,
-                      забирати з пошти чи ні (коли зворотна доставка дорожча за товар) */}
-                  {isNpRefusal(order) && (() => {
+                  {/* Банер повернення посилки: замовлення скасоване, але НП уже прийняла
+                      відправлення — воно їде назад. Менеджер вирішує, забирати з пошти
+                      чи ні (коли зворотна доставка дорожча за товар) */}
+                  {isReturnPending(order) && (() => {
                     const rs = returnState(order);
                     return (
                       <div style={{ borderTop: '1px solid var(--border-light)', background: rs ? 'var(--bg-soft)' : '#FFF7ED', padding: '10px 16px', fontSize: '13px', color: rs ? 'var(--text-secondary)' : '#9A3412', lineHeight: 1.6 }}>
-                        <span style={{ fontWeight: 700 }}>↩ Клієнт відмовився від посилки</span>
+                        <span style={{ fontWeight: 700 }}>↩ Замовлення скасоване, а посилка вже в дорозі назад</span>
                         {order.tracking_number && <span> · ТТН {order.tracking_number}</span>}
                         {order.carrier_status_text && <span> · НП: «{order.carrier_status_text}»</span>}
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap' }}>

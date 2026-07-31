@@ -22,11 +22,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Fetch all shipped orders with a tracking number
+  // Відвантажені + СКАСОВАНІ, чию посилку НП уже прийняла: після скасування
+  // відправлення нікуди не зникає — воно їде назад, і менеджеру треба бачити,
+  // де воно зараз («Відмова від отримання» → «Прибув у відділення» вже для
+  // повернення). Для скасованих оновлюємо ЛИШЕ текст статусу — жодних проводок
+  // і зміни статусу замовлення (див. guard у циклі нижче).
   const { data: orders, error } = await serviceClient
     .from('orders')
-    .select('id, tracking_number, carrier_accepted_at, channel_code, rozetka_order_id')
-    .eq('status', 'shipped')
+    .select('id, status, tracking_number, carrier_accepted_at, channel_code, rozetka_order_id')
+    .or('status.eq.shipped,and(status.eq.cancelled,carrier_accepted_at.not.is.null)')
     .not('tracking_number', 'is', null);
 
   if (error || !orders?.length) {
@@ -89,6 +93,10 @@ export async function GET(req: NextRequest) {
             .eq('id', order.id),
         );
       }
+
+      // Скасовані відстежуємо ТІЛЬКИ заради тексту статусу (посилка їде назад).
+      // Жодних проводок, «доставлено» чи пушу статусу в МП для них бути не може.
+      if (order.status === 'cancelled') continue;
 
       if (DELIVERED_CODES.has(code)) {
         deliveredIds.push(order.id);

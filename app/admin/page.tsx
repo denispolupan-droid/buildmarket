@@ -159,11 +159,13 @@ export default async function AdminPage({
   }, {});
   const totalCount = statusRows?.length ?? 0;
 
-  // Невирішені відмови від посилок: скасовані з «Відмова від отримання» у статусі НП,
-  // без рішення менеджера (flags return_received / return_abandoned). Це «забрати з пошти».
+  // Невирішені повернення: замовлення скасоване, але перевізник УЖЕ прийняв посилку
+  // (carrier_accepted_at) — вона їде назад і з нею треба щось робити. Джерело скасування
+  // неважливе (відмова на пошті / скасування в кабінеті МП / наше рішення): раніше тут
+  // шукали слово «відмова» в статусі НП і кейс з кабінету Rozetka не рахувався.
   const pendingReturns = (statusRows ?? []).filter(r =>
     r.status === 'cancelled'
-    && /відмов/i.test(r.carrier_status_text ?? '')
+    && !!r.carrier_accepted_at
     && !(r.flags ?? []).includes('return_received')
     && !(r.flags ?? []).includes('return_abandoned'),
   ).length;
@@ -221,7 +223,7 @@ export default async function AdminPage({
                     )}
                     {/* Невирішені відмови (посилки їдуть назад — треба забрати з пошти або відмовитись) */}
                     {tab.value === 'cancelled' && pendingReturns > 0 && (
-                      <span title={`Відмов від посилок без рішення: ${pendingReturns} — відкрийте замовлення і виберіть «забрати» чи «залишити»`} style={{
+                      <span title={`Посилок у дорозі назад без рішення: ${pendingReturns} — відкрийте замовлення і виберіть «забрати з пошти» чи «залишити»`} style={{
                         display: 'inline-block', verticalAlign: 'middle', marginLeft: '3px',
                         fontSize: '10px', fontWeight: 700, lineHeight: '15px',
                         padding: '0 5px', borderRadius: '7px',
