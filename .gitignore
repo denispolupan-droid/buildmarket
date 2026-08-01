@@ -53,3 +53,9 @@ lint-new.txt
 
 # local image backups from one-off scripts (not meant to be committed)
 scripts/supabase/.image-backup/
+
+# playwright — .auth holds a live wholesale session, never commit it
+tests/e2e/.auth/
+/playwright-report/
+/test-results/
+/blob-report/

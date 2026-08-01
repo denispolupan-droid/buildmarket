@@ -23,4 +23,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 **Безпека вводу.** Екрануй користувацький текст перед вставкою в HTML/`document.write`/JSON у `<script>`. Fetch за користувацьким URL — через `assertPublicUrl` (`lib/safe-fetch-url`).
 
+**UI-регресії.** Правки, які видно тільки в браузері (скрол, ховер, лейаут), перевіряй через
+Playwright: `npm run test:e2e` (`tests/e2e/`, спеки ганяються проти `npm run dev`). Потрібен
+оптовий акаунт у `.env.local` — `E2E_WHOLESALE_EMAIL` / `E2E_WHOLESALE_PASSWORD`, бо `/catalog`
+під авторизацією; сесія кешується в `tests/e2e/.auth/` (у гіт не йде). У CI поки не гейтиться.
+
 **Перед мержем:** `tsc` без помилок, `eslint` без errors, тести зелені, `next build` проходить (усе це гейтить CI).
