@@ -9,6 +9,7 @@ import { WHOLESALE_MIN } from '../../lib/site';
 import { useCart } from '../../lib/cart';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { getStoredUtm, clearUtm } from '../../lib/utm';
+import { trackBeginCheckout, trackPurchase } from '../../lib/analytics';
 import ProductImage from '../components/ProductImage';
 import NovaPoshtaSelect from '../components/NovaPoshtaSelect';
 
@@ -400,6 +401,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     setSubmitting(true);
     setSubmitError('');
     const finalTotal = promoApplied?.finalTotal ?? totalPrice;
+    trackBeginCheckout(items, finalTotal);
     try {
       const res = await fetch('/api/orders', {
         method: 'POST',
@@ -429,6 +431,9 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
         clearUtm();
         window.location.href = data.pageUrl;
       } else {
+        // Гілка карткової оплати сюди не заходить — там ще нічого не оплачено,
+        // і подія purchase на редіректі рахувала б непідтверджені замовлення.
+        trackPurchase(String(data.id), finalTotal);
         clearCart();
         clearUtm();
         router.push(`/order-success?id=${data.id}&num=${data.orderNumber}${isRetail ? '&from=shop' : ''}`);
