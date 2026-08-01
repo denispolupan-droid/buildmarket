@@ -519,9 +519,18 @@ export default function CatalogClient({ products, categories, reviewStats, initi
     });
   }, [products, search, matchingSlugs, filterValues, filterVolumes, filterVolumesKg, inStockOnly, saleOnly]);
 
+  // Keyed on the filter *values*, not on `filtered`. `/catalog` is a fully dynamic route
+  // (auth + searchParams), so the Client Cache never reuses it and every
+  // router.replace('?category=…') refetches the RSC payload. That payload lands ~a second
+  // later with a brand-new `products` array, which rebuilds `filtered` — and an effect
+  // watching `filtered` then yanked the page back to the top mid-scroll. Nothing the user
+  // did changed here, so the value key stays identical and the scroll is left alone.
+  const filterKey = JSON.stringify([
+    search, selCat, filterValues, filterVolumes, filterVolumesKg, inStockOnly, saleOnly,
+  ]);
   useLayoutEffect(() => {
     window.scrollTo({ top: 0 });
-  }, [filtered]);
+  }, [filterKey]);
 
   const exportToExcel = useCallback(async () => {
     const XLSX = await import('xlsx');
@@ -563,7 +572,11 @@ export default function CatalogClient({ products, categories, reviewStats, initi
       return next;
     });
     setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]); setExpandedValues(new Set());
-  }, [selCat, categories, childrenOf]);
+  // Only `selCat` belongs here. `categories`/`childrenOf` are merely read, but their
+  // identity changes with every refetched RSC payload — which re-ran this effect a second
+  // after a category click and silently wiped filters the user had already picked.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selCat]);
 
   const loggedRef = useRef('');
   useEffect(() => {
@@ -1088,7 +1101,12 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                             />
                           </Link>
                           <div className="catalog-card__body">
-                            <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}?from=catalog`} className="catalog-card__name">{displayName(p)}</Link>
+                            {/* Fixed-height slot: the name itself is taken out of flow so that
+                                unclamping it on hover grows it over the meta row instead of
+                                pushing the card (and its whole grid row) taller. */}
+                            <div className="catalog-card__name-slot">
+                              <Link href={`${lang === 'ru' ? '/ru' : ''}/product/${p.sku}?from=catalog`} className="catalog-card__name">{displayName(p)}</Link>
+                            </div>
                             <div className="catalog-card__meta">
                               {/* This group truncates as a unit (color badge is the flexible/ellipsis one) so
                                   the rating badge stays fully visible at the right edge instead of wrapping
