@@ -7,7 +7,6 @@ import { Trash2, ShoppingCart, ArrowLeft, Plus, Minus, Check, ChevronDown, Chevr
 
 import { WHOLESALE_MIN } from '../../lib/site';
 import { useCart } from '../../lib/cart';
-import { trackBeginCheckout, trackPurchase } from '../../lib/analytics';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { getStoredUtm, clearUtm } from '../../lib/utm';
 import ProductImage from '../components/ProductImage';
@@ -401,7 +400,6 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     setSubmitting(true);
     setSubmitError('');
     const finalTotal = promoApplied?.finalTotal ?? totalPrice;
-    trackBeginCheckout(items, finalTotal);
     try {
       const res = await fetch('/api/orders', {
         method: 'POST',
@@ -431,7 +429,6 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
         clearUtm();
         window.location.href = data.pageUrl;
       } else {
-        trackPurchase(String(data.id), items, finalTotal);
         clearCart();
         clearUtm();
         router.push(`/order-success?id=${data.id}&num=${data.orderNumber}${isRetail ? '&from=shop' : ''}`);

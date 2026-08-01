@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Suspense } from "react";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Header from "./components/Header";
 import ChatWidget from "./components/ChatWidget";
-import GoogleAnalytics from "./components/GoogleAnalytics";
 import { Analytics } from "@vercel/analytics/next";
 import { CartProvider } from "../lib/cart";
 import { WishlistProvider } from "../lib/wishlist";
@@ -69,9 +67,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         ` }} />
       </head>
       <body>
-        <Suspense fallback={null}>
-          <GoogleAnalytics />
-        </Suspense>
         <ThemeProvider>
           <CartProvider>
             <WishlistProvider>
@@ -83,9 +78,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </WishlistProvider>
           </CartProvider>
         </ThemeProvider>
-        {/* Скрипт і бікон живуть на нашому ж домені (/_vercel/insights/*), тож
-            проходять CSP без послаблень — на відміну від gtag вище, який
-            script-src 'self' блокує. */}
+        {/* Єдина аналітика на сайті. Скрипт і бікон Vercel віддає з нашого ж
+            домену, тож вони проходять під script-src 'self' — на відміну від
+            gtag, який цей самий CSP різав і через це не працював ніколи. */}
         <Analytics />
       </body>
     </html>

@@ -3,7 +3,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import type { CartItem } from '../types';
-import { trackAddToCart } from './analytics';
 
 export type { CartItem } from '../types';
 
@@ -40,7 +39,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items, loaded]);
 
   const addItem = useCallback((item: Omit<CartItem, 'qty'>, qty: number) => {
-    trackAddToCart(item, qty);
     setItems(prev => {
       const existing = prev.find(i => i.sku === item.sku);
       if (existing) {
