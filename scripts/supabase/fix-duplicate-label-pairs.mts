@@ -5,17 +5,32 @@
 // точному збігу значень: «Час висихання: 30–60 хв» і «Час до наступного шару:
 // 2–4 год» — це два різні факти, і обидва лишаються.
 //
-// Пара «Сумісність → Розчинник» свідомо НЕ входить сюди: усі 12 випадків
-// у категорії koloranty, де «Сумісність» стоїть у req, а «Розчинник» — ні.
-// fill-required-chars повернув би її назад, та й по суті це не дубль, а
-// недозаповнене поле: у решти товарів там перелік сумісних фарб, а тут «Вода».
+// Пара «Сумісність → Розчинник» додана другим заходом. Спершу вона не входила:
+// усі 12 випадків у категорії koloranty, де «Сумісність» стояла в req, а
+// «Розчинник» — ні, тож fill-required-chars повернув би її назад. Після того
+// як req категорії змінено на «Розчинник» (char-dictionary.mjs + перезаливка
+// seed-char-dictionary.mjs), прибирати стало безпечно. У 8 колорантів, де
+// «Сумісність» заповнена переліком фарб, рядок лишається — там немає збігу.
 //
 // Запуск:
 //   npx tsx --env-file=.env.local scripts/supabase/fix-duplicate-label-pairs.mts          — сухий прогін
 //   npx tsx --env-file=.env.local scripts/supabase/fix-duplicate-label-pairs.mts --apply
 //   npx tsx --env-file=.env.local scripts/supabase/fix-duplicate-label-pairs.mts --revert <backup.json>
 import { createClient } from '@supabase/supabase-js';
-import { writeFileSync, readFileSync } from 'fs';
+import { writeFileSync, readFileSync, existsSync } from 'fs';
+
+/**
+ * Бекап ніколи не затирає попередній. Скрипт запускають кількома заходами
+ * (спершу п'ять пар, потім шоста), і фіксоване ім'я файлу знищує можливість
+ * відкотити перший захід — саме так і сталося з бекапом на 42 рядки.
+ */
+function freeBackupPath(base: string): string {
+  if (!existsSync(base)) return base;
+  for (let i = 2; ; i++) {
+    const p = base.replace(/\.json$/, `.${i}.json`);
+    if (!existsSync(p)) return p;
+  }
+}
 
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 const APPLY = process.argv.includes('--apply');
@@ -27,6 +42,7 @@ const PAIRS = [
   { keep: 'Вага',                 drop: 'Вага упаковки' },
   { keep: 'Час висихання',        drop: 'Час до наступного шару' },
   { keep: 'Колір',                drop: 'Відтінок' },
+  { keep: 'Розчинник',            drop: 'Сумісність' },
 ];
 
 const norm = (s: string) => s.replace(/['`´ʼ']/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
@@ -91,7 +107,7 @@ console.log('\n✓ перевірка: тільки узгоджені лейб�
 
 if (!APPLY) { console.log('\nсухий прогін. для запису — прапорець --apply'); process.exit(0); }
 
-const backupPath = 'scripts/supabase/fix-duplicate-label-pairs.backup.json';
+const backupPath = freeBackupPath('scripts/supabase/fix-duplicate-label-pairs.backup.json');
 writeFileSync(backupPath, JSON.stringify(
   toDelete.map(t => ({ product_sku: t.row.product_sku, label: t.row.label, value: t.row.value, sort_order: t.row.sort_order })),
   null, 2));

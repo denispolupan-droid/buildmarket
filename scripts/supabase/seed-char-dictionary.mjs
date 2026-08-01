@@ -15,6 +15,7 @@ import { DICTIONARY, CATEGORY_STANDARDS, buildAliasMap, canonicalLabel } from '.
 
 const args = process.argv.slice(2);
 const DRY = args.includes('--dry-run');
+const DIFF = args.includes('--diff');   // показати, що саме зміниться в БД
 const envPath = args.find(a => a.startsWith('--env='))?.slice(6) ?? '.env.local';
 
 const env = {};
@@ -70,6 +71,20 @@ async function main() {
     : await supabase.from('characteristic_definitions').select('id, label');
   if (defErr) throw new Error(defErr.message);
   const defId = new Map(defs.map(d => [d.label, d.id]));
+  const idLabel = new Map(defs.map(d => [d.id, d.label]));
+
+  // Знімок поточного стану — щоб --diff показав, що саме зміниться.
+  const current = new Map();
+  const diffs = [];
+  if (DIFF) {
+    const rows = await fetchAll('category_characteristics',
+      'category_slug, required, default_value, characteristic_definitions(label)');
+    for (const r of rows) {
+      const l = r.characteristic_definitions?.label;
+      if (l) current.set(`${r.category_slug}|${l}`, `${r.required ? 'req' : 'opt'}|${r.default_value ?? ''}`);
+    }
+    console.log(`знімок БД: ${current.size} рядків`);
+  }
 
   // 2. Статистика по категоріях (для автовиводу та optional-доповнення)
   const products = await fetchAll('products', 'sku, category_slug', q => q.eq('is_active', true));
@@ -124,6 +139,20 @@ async function main() {
     totalRows += rows.length;
     const reqCount = rows.filter(r => r.required).length;
     console.log(`  ${slug}: ${reqCount} обов'язкових + ${rows.length - reqCount} додаткових${std ? ' (стандарт)' : ' (автовивід)'}`);
+    // --diff показує, що саме зміниться в БД. Потрібно тому, що набори для
+    // категорій без явного стандарту виводяться зі СТАТИСТИКИ покриття: варто
+    // почистити характеристики — і перезаливка тихо перекине лейбл із
+    // обов'язкових у додаткові. Без цього прапорця різницю видно лише постфактум.
+    if (DIFF) {
+      for (const r of rows) {
+        const key = `${slug}|${idLabel.get(r.definition_id)}`;
+        const next = `${r.required ? 'req' : 'opt'}|${r.default_value ?? ''}`;
+        const prev = current.get(key);
+        if (prev === undefined) diffs.push(`+ ${key} → ${next}`);
+        else if (prev !== next) diffs.push(`~ ${key}: ${prev} → ${next}`);
+        current.delete(key);
+      }
+    }
 
     if (!DRY) {
       const { error: delErr } = await supabase.from('category_characteristics').delete().eq('category_slug', slug);
@@ -131,6 +160,13 @@ async function main() {
       const { error: insErr } = await supabase.from('category_characteristics').insert(rows);
       if (insErr) throw new Error(`${slug} insert: ${insErr.message}`);
     }
+  }
+
+  if (DIFF) {
+    // Те, що лишилося в current, у новому наборі відсутнє — тобто зникне.
+    for (const [k, v] of current) diffs.push(`- ${k} (було ${v})`);
+    console.log(`\n## Різниця з поточним станом БД: ${diffs.length}`);
+    for (const d of diffs.sort()) console.log(`  ${d}`);
   }
 
   console.log(`\n✅ category_characteristics: ${totalRows} рядків по ${catProducts.size} категоріях${DRY ? ' (нічого не записано)' : ''}`);

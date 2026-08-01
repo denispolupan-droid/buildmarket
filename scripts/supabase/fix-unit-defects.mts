@@ -19,7 +19,18 @@
 //   npx tsx --env-file=.env.local scripts/supabase/fix-unit-defects.mts --apply
 //   npx tsx --env-file=.env.local scripts/supabase/fix-unit-defects.mts --revert <backup.json>
 import { createClient } from '@supabase/supabase-js';
-import { writeFileSync, readFileSync } from 'fs';
+import { writeFileSync, readFileSync, existsSync } from 'fs';
+
+/** Бекап ніколи не затирає попередній: повторний запуск скрипта інакше знищує
+ *  можливість відкотити перший захід. */
+function freeBackupPath(base: string): string {
+  if (!existsSync(base)) return base;
+  for (let i = 2; ; i++) {
+    const p = base.replace(/\.json$/, `.${i}.json`);
+    if (!existsSync(p)) return p;
+  }
+}
+
 
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 const APPLY = process.argv.includes('--apply');
@@ -119,7 +130,7 @@ console.log('\n✓ перевірка: жодне число не змінило
 
 if (!APPLY) { console.log('\nсухий прогін. для запису — прапорець --apply'); process.exit(0); }
 
-const backupPath = 'scripts/supabase/fix-unit-defects.backup.json';
+const backupPath = freeBackupPath('scripts/supabase/fix-unit-defects.backup.json');
 writeFileSync(backupPath, JSON.stringify({
   updated: toUpdate.map(u => ({ id: u.row.id, value: u.row.value })),
   deleted: toDelete.map(d => ({ product_sku: d.row.product_sku, label: d.row.label, value: d.row.value, sort_order: d.row.sort_order })),

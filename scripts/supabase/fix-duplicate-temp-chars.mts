@@ -15,7 +15,18 @@
 //   npx tsx --env-file=.env.local scripts/supabase/fix-duplicate-temp-chars.mts --apply
 //   npx tsx --env-file=.env.local scripts/supabase/fix-duplicate-temp-chars.mts --revert <backup.json>
 import { createClient } from '@supabase/supabase-js';
-import { writeFileSync, readFileSync } from 'fs';
+import { writeFileSync, readFileSync, existsSync } from 'fs';
+
+/** Бекап ніколи не затирає попередній: повторний запуск скрипта інакше знищує
+ *  можливість відкотити перший захід. */
+function freeBackupPath(base: string): string {
+  if (!existsSync(base)) return base;
+  for (let i = 2; ; i++) {
+    const p = base.replace(/\.json$/, `.${i}.json`);
+    if (!existsSync(p)) return p;
+  }
+}
+
 
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 const APPLY = process.argv.includes('--apply');
@@ -122,7 +133,7 @@ for (const d of toDelete) if (!allowed.has(norm(d.label))) throw new Error(`не
 if (!APPLY) { console.log('\nсухий прогін. для запису — прапорець --apply'); process.exit(0); }
 
 // ── запис ───────────────────────────────────────────────────────────────────
-const backupPath = 'scripts/supabase/fix-duplicate-temp-chars.backup.json';
+const backupPath = freeBackupPath('scripts/supabase/fix-duplicate-temp-chars.backup.json');
 writeFileSync(backupPath, JSON.stringify({
   deleted: toDelete.map(({ product_sku, label, value, sort_order }) => ({ product_sku, label, value, sort_order })),
   updated: toUpdate.map(u => ({ id: u.row.id, value: u.from })),
