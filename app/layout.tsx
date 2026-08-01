@@ -6,6 +6,7 @@ import "./globals.css";
 import Header from "./components/Header";
 import ChatWidget from "./components/ChatWidget";
 import GoogleAnalytics from "./components/GoogleAnalytics";
+import { Analytics } from "@vercel/analytics/next";
 import { CartProvider } from "../lib/cart";
 import { WishlistProvider } from "../lib/wishlist";
 import { ThemeProvider } from "../lib/theme";
@@ -82,6 +83,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </WishlistProvider>
           </CartProvider>
         </ThemeProvider>
+        {/* Скрипт і бікон живуть на нашому ж домені (/_vercel/insights/*), тож
+            проходять CSP без послаблень — на відміну від gtag вище, який
+            script-src 'self' блокує. */}
+        <Analytics />
       </body>
     </html>
   );
