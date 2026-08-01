@@ -22,13 +22,20 @@ async function lowestScrollOver(page: Page, ms: number): Promise<number> {
   });
 }
 
-/** Expands the first sidebar category that has children and selects its first child. */
+/**
+ * Expands the first sidebar category that has children and selects its first child.
+ * Waits for the child to actually become the active category — a click that merely
+ * collapses a branch changes nothing, and a scroll assertion on top of that would be
+ * measuring an empty action.
+ */
 async function openFirstSubcategory(page: Page) {
-  const parent = page.locator('aside .cat-item').filter({ has: page.locator('svg').nth(1) }).first();
+  const parent = page.locator('aside .cat-item').first();
   await parent.click();
-  const child = page.locator('aside .cat-item').filter({ hasText: /\S/ }).nth(1);
+
+  const child = page.locator('aside .cat-item').nth(1);
   await expect(child).toBeVisible();
   await child.click();
+  await expect(child).toHaveClass(/\bactive\b/);
 }
 
 /** Scrolls down as far as the current page usefully allows; returns where it landed. */
