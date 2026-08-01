@@ -5,6 +5,7 @@ import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeBrandLogo } from '../../../../lib/brand-logo';
 import { uploadToR2, deleteFromR2 } from '../../../../lib/r2';
+import { brandFolder } from '../../../../lib/seo/slug';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,26 +16,6 @@ async function requireAdmin() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   return user && user.app_metadata?.role === 'admin';
-}
-
-// Supabase Storage object keys reject non-ASCII characters, but brand names are often
-// Cyrillic (e.g. "Байрис") — transliterate before slugifying so the upload doesn't 400.
-const CYRILLIC_TO_LATIN: Record<string, string> = {
-  а: 'a', б: 'b', в: 'v', г: 'h', ґ: 'g', д: 'd', е: 'e', є: 'ie', ж: 'zh', з: 'z',
-  и: 'y', і: 'i', ї: 'i', й: 'i', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p',
-  р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'shch',
-  ь: '', ю: 'iu', я: 'ia', ё: 'e', ъ: '', ы: 'y', э: 'e',
-};
-
-function transliterate(text: string): string {
-  return text.toLowerCase().replace(/[а-яіїєґё]/g, ch => CYRILLIC_TO_LATIN[ch] ?? ch);
-}
-
-function brandSlug(brand: string): string {
-  const slug = transliterate(brand.trim())
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return slug || 'brand';
 }
 
 export async function POST(req: NextRequest) {
@@ -66,7 +47,7 @@ export async function POST(req: NextRequest) {
   // Version lives in the path (not a "?v=" query string) so the /img/:path* edge cache,
   // which is keyed on path alone, always sees a fresh URL after a re-upload.
   const version = createHash('sha256').update(webpBuf).digest('hex').slice(0, 10);
-  const storagePath = `brand-logos/${brandSlug(brand)}-${version}.webp`;
+  const storagePath = `brand-logos/${brandFolder(brand)}-${version}.webp`;
 
   let logoUrl: string;
   try {

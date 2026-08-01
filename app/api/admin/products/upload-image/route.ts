@@ -4,6 +4,7 @@ import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeProductImage } from '../../../../../lib/product-image';
 import { uploadToR2, deleteFromR2 } from '../../../../../lib/r2';
+import { brandFolder } from '../../../../../lib/seo/slug';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
   // re-upload under the same path+"?v=" can keep serving stale bytes to every visitor
   // indefinitely. A distinct path guarantees a genuinely new URL the cache has never seen.
   const version = createHash('sha256').update(webpBuf).digest('hex').slice(0, 10);
-  const storagePath = `${brand}/${sku}-${version}.webp`;
+  const storagePath = `${brandFolder(brand)}/${sku}-${version}.webp`;
 
   let imageUrl: string;
   try {
