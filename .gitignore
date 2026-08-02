@@ -59,7 +59,7 @@ scripts/supabase/.image-backup/
 scripts/supabase/*-report*.json
 scripts/supabase/*-report*.md
 scripts/supabase/*-backup*.json
-scripts/supabase/*.backup.json
+scripts/supabase/*.backup*.json
 scripts/supabase/*-progress.log
 
 # playwright — .auth holds a live wholesale session, never commit it
