@@ -28,6 +28,7 @@ import SmartDateInput from '../components/SmartDateInput';
 import InvoiceMessengerButtons from '../components/InvoiceMessengerButtons';
 import InvoiceOptionsModal from '../components/admin/InvoiceOptionsModal';
 import ReturnOrderModal from '../components/admin/ReturnOrderModal';
+import { rozetkaStatusLabel, isRozetkaAhead } from '../../lib/rozetka-status';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number; is_bonus?: boolean; supplier_sku?: string };
 
@@ -128,6 +129,21 @@ const PAYMENT_LABEL: Record<string, string> = {
 const STATUS_RANK: Record<string, number> = {
   new: 0, confirmed: 1, awaiting_stock: 2, picking: 3, shipped: 4, delivered: 5,
 };
+
+/**
+ * Знімок статусу в кабінеті Rozetka — його оновлює крон синку замовлень.
+ * Наш статус змінюється тільки штатним роутом (резерви, документи), тож плашка
+ * лише показує, що менеджер уже зробив у кабінеті, і нічого не перемикає.
+ */
+function rozetkaCabinet(order: Order): { label: string; ahead: boolean; at: string | null } | null {
+  if (order.channel_code !== 'rozetka') return null;
+  const raw = order.rozetka_data?.status;
+  const id = typeof raw === 'number' ? raw : null;
+  const label = rozetkaStatusLabel(id);
+  if (!label) return null;
+  const seen = order.rozetka_data?._status_synced_at;
+  return { label, ahead: isRozetkaAhead(id, order.status), at: typeof seen === 'string' ? seen : null };
+}
 
 // Читабельний формат телефону: +380 (95) 172-76-41. Для tel: використовуємо сирий номер.
 function formatPhone(raw: string): string {
@@ -263,6 +279,8 @@ export default function AdminOrders({
   }
 
   const [channelFilter, setChannelFilter] = useState('');
+  // «Уже оброблені в кабінеті» — замовлення, які на Rozetka рухнули далі, ніж у нас
+  const [cabinetAheadOnly, setCabinetAheadOnly] = useState(false);
   const [search, setSearch]         = useState('');
   const [loading, setLoading]       = useState<string | null>(null);
   const [ttnValues, setTtnValues] = useState<Record<string, string>>(
@@ -1209,6 +1227,7 @@ export default function AdminOrders({
   const q = search.trim().toLowerCase();
   const filtered = orders.filter(o => {
     if (channelFilter && (o.channel_code ?? 'website') !== channelFilter) return false;
+    if (cabinetAheadOnly && !rozetkaCabinet(o)?.ahead) return false;
     if (q) {
       const num = String(o.order_number);
       const contact = (o.contact ?? '').toLowerCase();
@@ -1355,6 +1374,28 @@ export default function AdminOrders({
                 </button>
               );
             })}
+            {(() => {
+              // Кнопка з'являється тільки коли є що показувати — інакше вона
+              // просто займає місце в і без того щільній панелі фільтрів.
+              const n = orders.filter(o => rozetkaCabinet(o)?.ahead).length;
+              if (!n && !cabinetAheadOnly) return null;
+              return (
+                <button
+                  onClick={() => setCabinetAheadOnly(v => !v)}
+                  title="Замовлення, які в кабінеті Rozetka вже рухнули далі, ніж у нас"
+                  style={{
+                    height: '30px', padding: '0 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
+                    border: `1.5px solid ${cabinetAheadOnly ? '#15803D' : 'var(--border)'}`,
+                    background: cabinetAheadOnly ? '#DCFCE7' : 'var(--bg-card)',
+                    color: cabinetAheadOnly ? '#15803D' : 'var(--text-secondary)',
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}
+                >
+                  Оброблені в кабінеті
+                  <span style={{ marginLeft: '4px', fontSize: '10px', opacity: 0.7 }}>{n}</span>
+                </button>
+              );
+            })()}
           </div>
           <div className="oc-toolbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
             <a
@@ -1969,6 +2010,19 @@ export default function AdminOrders({
                           <MoreHorizontal size={18} />
                         </button>
                       </div>
+                      {(() => {
+                        // Що зараз у кабінеті Rozetka. Показуємо, лише коли кабінет
+                        // попереду нас: коли статуси збігаються, зайвий рядок під
+                        // плашкою нічого не додає й тільки шумить.
+                        const cab = rozetkaCabinet(order);
+                        if (!cab?.ahead) return null;
+                        return (
+                          <div title={cab.at ? `Зчитано з кабінету: ${new Date(cab.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
+                            style={{ fontSize: '11px', fontWeight: 600, textAlign: 'center', lineHeight: 1.3, color: '#15803D' }}>
+                            ↳ у кабінеті: {cab.label}
+                          </div>
+                        );
+                      })()}
                       {order.status === 'shipped' && order.tracking_number && (
                         <div title={order.carrier_status_synced_at ? `Оновлено: ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
                           style={{ fontSize: '11px', fontWeight: 600, textAlign: 'center', lineHeight: 1.3, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>

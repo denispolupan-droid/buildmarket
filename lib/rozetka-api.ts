@@ -1,5 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Назви статусів кабінету й порівняння воронок винесені в чистий модуль без
+// мережі й ключів: тут живе сервісний ключ Supabase, а адмінка — клієнтський
+// компонент, і імпортувати цей файл у браузер не можна.
+export { ROZETKA_STATUS_LABEL, rozetkaStatusLabel, isRozetkaAhead } from './rozetka-status';
+
 // Base host for the Rozetka Seller API — confirmed against the official apiDoc spec at
 // https://api-seller.rozetka.com.ua/apidoc/ (endpoints documented there, e.g. POST /sites,
 // GET /orders/search, are relative to this same host). Verify against a real response on
@@ -285,6 +290,7 @@ const STATUS_MAP: Record<string, number | null> = {
   // менеджер, і роут передає id явно (rozetka_cancel_reason).
   cancelled:      null,
 };
+
 
 /** Причини скасування (статуси групи 3), які продавець може ставити через API.
  *  13 «Скасовано адміністратором» виключено — його API продавцю не приймає. */

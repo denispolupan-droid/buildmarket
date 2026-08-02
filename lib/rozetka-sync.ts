@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { getRozetkaOrders, rozetkaOrderToOurFormat, ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from './rozetka-api';
+import { getRozetkaOrders, rozetkaOrderToOurFormat, ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, type RozetkaOrder } from './rozetka-api';
 import { computeRozetkaCommission } from './rozetka-commission';
 
 const db = createClient(
@@ -26,7 +26,24 @@ export async function syncRozetkaOrders() {
   const createdFrom = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const orders = await getRozetkaOrders({ createdFrom, statusGroup: 1 });
 
-  if (!orders.length) return { ok: true, created: 0, skipped: 0, repushed: 0 };
+  // Групи 2 (виконані) і 3 (скасовані) тягнемо ТІЛЬКИ щоб освіжити знімок кабінету
+  // у вже відомих замовленнях — нових рядків звідси не створюємо. Без цього плашка
+  // «що в кабінеті» замерзала б на останньому статусі групи 1: замовлення виїхало
+  // з «в обробці», і синк його більше не бачив. Помилка тут не має валити синк —
+  // це лише показ, а не гроші.
+  const refreshOnly: RozetkaOrder[] = [];
+  for (const group of [2, 3] as const) {
+    try {
+      refreshOnly.push(...await getRozetkaOrders({ createdFrom, statusGroup: group }));
+    } catch (err) {
+      console.error(`[rozetka-sync] refresh pull group ${group} failed:`, err);
+    }
+  }
+  const refreshOnlyIds = new Set(refreshOnly.map(o => o.id));
+
+  if (!orders.length && !refreshOnly.length) {
+    return { ok: true, created: 0, skipped: 0, repushed: 0, refreshed: 0 };
+  }
 
   // Read the Rozetka commission fallback once for the whole batch (per-category rate wins;
   // this covers SKUs without a category rate). Mirrors the Prom sync.
@@ -36,8 +53,9 @@ export async function syncRozetkaOrders() {
   let created = 0;
   let skipped = 0;
   let repushed = 0;
+  let refreshed = 0;
 
-  for (const rzOrder of orders) {
+  for (const rzOrder of [...orders, ...refreshOnly]) {
     const { data: existing } = await db
       .from('orders')
       .select('id, status, tracking_number, rozetka_data')
@@ -45,17 +63,40 @@ export async function syncRozetkaOrders() {
       .maybeSingle();
 
     if (existing) {
-      // Актуалізуємо ознаку Smart: редагування замовлення на Rozetka знімає Smart
-      // безповоротно — якщо не оновити, при доставці проведемо збір, якого не буде.
+      // Освіжаємо знімок кабінету. Раніше тут оновлювався тільки is_smart, а
+      // status лишався таким, яким приїхав у момент імпорту — тому замовлення,
+      // прийняте менеджером у кабінеті Rozetka, в адмінці й далі виглядало
+      // новим. Наш власний status НЕ чіпаємо: «Підтверджено» у нас — не мітка,
+      // а складська операція (резерв / замовлення постачальнику), і режим
+      // виконання обирає людина. Тут лише те, що показує плашка.
       const storedData = (existing.rozetka_data ?? {}) as Record<string, unknown>;
-      const storedSmart = Boolean(storedData.is_smart);
       const liveSmart = Boolean(rzOrder.is_smart);
-      if (storedSmart !== liveSmart) {
-        await db.from('orders')
-          .update({ rozetka_data: { ...storedData, is_smart: liveSmart } })
-          .eq('id', existing.id);
+      const liveTtn = rzOrder.ttn || null;
+      const moved = Boolean(storedData.is_smart) !== liveSmart
+        || storedData.status !== rzOrder.status
+        || (storedData.ttn ?? null) !== liveTtn;
+
+      if (moved) {
+        const patch: Record<string, unknown> = {
+          rozetka_data: {
+            ...storedData,
+            is_smart:          liveSmart,
+            status:            rzOrder.status,
+            status_group:      rzOrder.status_group,
+            ttn:               liveTtn,
+            _status_synced_at: new Date().toISOString(),
+          },
+        };
+        // ТТН із кабінету беремо, ТІЛЬКИ якщо свого немає: коли накладну
+        // створювали ми, наш номер авторитетніший — його ж ми туди й пушили.
+        if (!existing.tracking_number && liveTtn) patch.tracking_number = liveTtn;
+        await db.from('orders').update(patch).eq('id', existing.id);
+        refreshed++;
       }
-      const desired = ourStatusToRozetkaStatus(existing.status);
+      // Самолікування пушу — лише для замовлень «в обробці». Для груп 2/3 ми їх
+      // сюди й не тягнули б, якби не плашка: допушувати статус у виконане чи
+      // скасоване замовлення безглуздо, а драбина статусів там усе одно відіб'ється.
+      const desired = refreshOnlyIds.has(rzOrder.id) ? null : ourStatusToRozetkaStatus(existing.status);
       const lagging = desired != null && (REPUSH_FROM[desired] ?? []).includes(rzOrder.status);
       if (lagging && !(desired === 61 && !existing.tracking_number)) {
         try {
@@ -73,6 +114,11 @@ export async function syncRozetkaOrders() {
       skipped++;
       continue;
     }
+
+    // Замовлення з груп 2/3 тягнулися лише заради освіження плашки. Якщо такого
+    // рядка в нас немає — його й не має бути: створювати виконане чи скасоване
+    // замовлення заднім числом означало б завести його в облік як робоче.
+    if (refreshOnlyIds.has(rzOrder.id)) { skipped++; continue; }
 
     const mapped = rozetkaOrderToOurFormat(rzOrder);
 
@@ -140,5 +186,5 @@ export async function syncRozetkaOrders() {
     }
   }
 
-  return { ok: true, created, skipped, repushed, total: orders.length };
+  return { ok: true, created, skipped, repushed, refreshed, total: orders.length + refreshOnly.length };
 }
