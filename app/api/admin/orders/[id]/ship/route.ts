@@ -5,7 +5,7 @@ import { createSaleDraft } from '../../../../../../lib/accounting/dropship';
 import { completeOrderDelivery } from '../../../../../../lib/accounting/completion';
 import { recordMarketplaceServiceFee } from '../../../../../../lib/accounting/money';
 import { computeSmartFee, getSmartTariff } from '../../../../../../lib/rozetka-smart';
-import { computeRozetkaDeliveryFee, getRozetkaDeliveryTariff } from '../../../../../../lib/rozetka-delivery-fee';
+import { resolveRozetkaDeliveryFee, getRozetkaDeliveryTariff } from '../../../../../../lib/rozetka-delivery-fee';
 import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
 import { alertAdmin } from '../../../../../../lib/alert';
 import { checkOrderCredit } from '../../../../../../lib/accounting/credit-guard';
@@ -190,9 +190,16 @@ export async function POST(
   // читає звірка комісій, таких списань немає, тож без цієї проводки вартість
   // доставки не потрапляла в облік узагалі. Разово на замовлення, як і Smart;
   // помилка проводки не валить відгрузку.
+  // Скільки саме списати — вирішує resolveRozetkaDeliveryFee: Smart-замовлення
+  // дають нуль (їхній збір проводить блок вище), інакше береться фактична сума
+  // з накладної, а тариф лишається запасним варіантом.
   if ((order as { delivery_type?: string }).delivery_type === ROZETKA_DELIVERY_TYPE) {
     try {
-      const fee = computeRozetkaDeliveryFee({}, await getRozetkaDeliveryTariff());
+      const cabinet = (order.rozetka_data as Record<string, unknown> | null) ?? {};
+      const fee = resolveRozetkaDeliveryFee(
+        { isSmart: isSmartOrder, actualPrice: Number(cabinet._rz_delivery_price) },
+        await getRozetkaDeliveryTariff(),
+      );
       if (fee > 0) {
         await recordMarketplaceServiceFee({
           orderId:        order.id,

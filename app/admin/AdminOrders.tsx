@@ -29,6 +29,7 @@ import InvoiceMessengerButtons from '../components/InvoiceMessengerButtons';
 import InvoiceOptionsModal from '../components/admin/InvoiceOptionsModal';
 import ReturnOrderModal from '../components/admin/ReturnOrderModal';
 import { rozetkaStatusLabel, isRozetkaAhead } from '../../lib/rozetka-status';
+import RozetkaDeliveryTtnModal from '../components/admin/RozetkaDeliveryTtnModal';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number; is_bonus?: boolean; supplier_sku?: string };
 
@@ -319,6 +320,7 @@ export default function AdminOrders({
       .catch(() => {});
   }, []);
   const [ttnModalOrder,  setTtnModalOrder]  = useState<Order | null>(null);
+  const [rzTtnModal,     setRzTtnModal]     = useState<Order | null>(null);
   const [syncing,        setSyncing]        = useState(false);
   const [syncResult,     setSyncResult]     = useState<{ updated: number; accepted?: number; checked: number } | null>(null);
   const [creatingPo,     setCreatingPo]     = useState<string | null>(null);
@@ -1090,7 +1092,10 @@ export default function AdminOrders({
 
     const rozetkaIds = pushOnly.filter(id => {
       const o = targets.find(t => t.id === id);
-      return o?.channel_code === 'rozetka' && o.status !== 'new';
+      // Точки видачі виключені: накладну там виписує сама Rozetka своїм API,
+      // тож пушити їй же цей номер назад немає сенсу.
+      return o?.channel_code === 'rozetka' && o.status !== 'new'
+        && o.delivery_type !== 'rozetka_delivery';
     });
     if (rozetkaIds.length) await pushTtnToRozetka(rozetkaIds);
 
@@ -3119,14 +3124,22 @@ export default function AdminOrders({
                           )}
                         </div>
                       ) : order.delivery_type === 'rozetka_delivery' ? (
-                        // Накладну для точки видачі оформлює сама Rozetka своїм API
+                        // Накладну для точки видачі виписує сама Rozetka своїм API
                         // (розділ Octopus), номер має вигляд «RMP-…». ТТН Нової Пошти
                         // тут не підходить — точка видачі таку посилку не прийме.
-                        <div style={{ fontSize: '12px', lineHeight: 1.5, color: '#15803D', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '9px', padding: '10px 12px' }}>
-                          <strong>Точка видачі Rozetka.</strong> Накладну створюють у кабінеті
-                          Rozetka — «Створити ТТН» біля замовлення. Номер буде виду «RMP-…»
-                          і підтягнеться сюди сам.
-                          {order.tracking_number && <div style={{ marginTop: '4px', fontWeight: 700 }}>ТТН: {order.tracking_number}</div>}
+                        <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--text-secondary)', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '9px', padding: '10px 12px' }}>
+                          <div style={{ fontWeight: 700, color: '#15803D' }}>Точка видачі Rozetka</div>
+                          {order.tracking_number ? (
+                            <div style={{ marginTop: '4px' }}>ТТН: <strong>{order.tracking_number}</strong></div>
+                          ) : (
+                            <>
+                              <div style={{ marginTop: '3px' }}>Адресу отримувача Rozetka візьме із замовлення — потрібні лише габарити.</div>
+                              <button onClick={() => setRzTtnModal(order)}
+                                style={{ marginTop: '8px', height: '34px', padding: '0 14px', borderRadius: '9px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>
+                                Створити накладну Rozetka
+                              </button>
+                            </>
+                          )}
                         </div>
                       ) : (
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Доставка не Нова Пошта</div>
@@ -3804,6 +3817,23 @@ export default function AdminOrders({
             setOrders(prev => prev.map(o => o.id === orderId ? { ...o, tracking_number: ttn } : o));
             setTtnModalOrder(null);
             await finishTtnFlow([orderId]);
+          }}
+        />
+      )}
+
+      {rzTtnModal && (
+        <RozetkaDeliveryTtnModal
+          order={{ id: rzTtnModal.id, order_number: rzTtnModal.order_number, items: rzTtnModal.items.map(i => ({ sku: i.sku, qty: i.qty, name: i.name })) }}
+          onClose={() => setRzTtnModal(null)}
+          onCreated={ttn => {
+            const orderId = rzTtnModal.id;
+            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, tracking_number: ttn } : o));
+            setTtnValues(prev => ({ ...prev, [orderId]: ttn }));
+            setRzTtnModal(null);
+            showToast(`Накладна Rozetka створена: ${ttn}`, 'success', 5000);
+            // Далі — той самий хвіст, що й після накладної НП: у режимі
+            // «постачальник» замовлення відвантажується саме.
+            void finishTtnFlow([orderId]);
           }}
         />
       )}

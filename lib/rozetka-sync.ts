@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { getRozetkaOrders, rozetkaOrderToOurFormat, ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, type RozetkaOrder } from './rozetka-api';
 import { computeRozetkaCommission } from './rozetka-commission';
+import { getRozetkaDeliveryTtns } from './rozetka-delivery-ttn';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -186,5 +187,36 @@ export async function syncRozetkaOrders() {
     }
   }
 
-  return { ok: true, created, skipped, repushed, refreshed, total: orders.length + refreshOnly.length };
+  // Ціна доставки в точки видачі — з самих накладних, а не з нашої таблиці
+  // тарифів. Rozetka повідомляє її точно й по-різному: 30 грн за звичайне
+  // відправлення, але 18 за Smart-замовлення на 410 грн (там діє ставка Smart
+  // ЗАМІСТЬ збору за видачу). Вгадувати таке з боку не можна, тому зберігаємо
+  // фактичну суму й проводимо при відгрузці саме її.
+  let pricedTtns = 0;
+  try {
+    const ttns = await getRozetkaDeliveryTtns(100);
+    for (const t of ttns) {
+      if (!t.order_id) continue;
+      const price = Number(t.delivery_price);
+      const { data: row } = await db.from('orders')
+        .select('id, tracking_number, rozetka_data')
+        .eq('rozetka_order_id', t.order_id)
+        .maybeSingle();
+      if (!row) continue;
+      const stored = (row.rozetka_data ?? {}) as Record<string, unknown>;
+      const patch: Record<string, unknown> = {};
+      if (Number.isFinite(price) && stored._rz_delivery_price !== price) {
+        patch.rozetka_data = { ...stored, _rz_delivery_price: price, _rz_ttn: t.ttn };
+      }
+      if (!row.tracking_number && t.ttn) patch.tracking_number = t.ttn;
+      if (Object.keys(patch).length) {
+        await db.from('orders').update(patch).eq('id', row.id);
+        pricedTtns++;
+      }
+    }
+  } catch (err) {
+    console.error('[rozetka-sync] ttn-list pull failed:', err);
+  }
+
+  return { ok: true, created, skipped, repushed, refreshed, pricedTtns, total: orders.length + refreshOnly.length };
 }

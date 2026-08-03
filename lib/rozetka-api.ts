@@ -87,7 +87,9 @@ async function fetchWithRetry(url: string, init: RequestInit, tries = 3): Promis
   throw lastErr;
 }
 
-async function rozetkaFetch<T>(path: string, init?: RequestInit, _retried = false): Promise<T> {
+// Експортована: нею користуються модулі-супутники (напр. lib/rozetka-delivery-ttn.ts),
+// щоб не дублювати логін, кеш токена й ретраї мережевих збоїв.
+export async function rozetkaFetch<T>(path: string, init?: RequestInit, _retried = false): Promise<T> {
   const token = await getValidToken();
   const res = await fetchWithRetry(`${ROZETKA_BASE}${path}`, {
     ...init,
