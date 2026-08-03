@@ -29,6 +29,7 @@ import InvoiceMessengerButtons from '../components/InvoiceMessengerButtons';
 import InvoiceOptionsModal from '../components/admin/InvoiceOptionsModal';
 import ReturnOrderModal from '../components/admin/ReturnOrderModal';
 import { rozetkaStatusLabel, isRozetkaAhead } from '../../lib/rozetka-status';
+import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
 import RozetkaDeliveryTtnModal from '../components/admin/RozetkaDeliveryTtnModal';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number; is_bonus?: boolean; supplier_sku?: string };
@@ -1770,6 +1771,9 @@ export default function AdminOrders({
             // Rozetka Smart: безкоштовна доставка для покупця, компенсацію (12/18/30 грн)
             // списують з нас. Будь-яке редагування складу замовлення знімає Smart безповоротно.
             const isSmart = order.channel_code === 'rozetka' && Boolean(order.rozetka_data?.is_smart);
+            // Доставка в точки видачі Rozetka: накладну оформлюємо не в НП, а через Rozetka
+            // (номер «RMP-…»). Видно в списку, щоб не почати збирати посилку не тим перевізником.
+            const isRzPickup = order.delivery_type === ROZETKA_DELIVERY_TYPE;
 
             return (
               <div key={order.id} id={`order-${order.id}`} style={{
@@ -1834,6 +1838,9 @@ export default function AdminOrders({
                       })()}
                       {isSmart && (
                         <span title="Rozetka Smart — безкоштовна доставка для покупця, компенсація списується з нас. НЕ редагуйте склад замовлення: будь-яка зміна знімає Smart безповоротно." style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 800, color: '#713F12', background: '#FDE047', border: '1px solid #FACC15', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>SMART</span>
+                      )}
+                      {isRzPickup && (
+                        <span title="Доставка в точку видачі Rozetka. Накладна оформлюється НЕ в Новій Пошті, а через Rozetka (номер «RMP-…») — кнопка «Створити накладну Rozetka» в картці замовлення. Збір за видачу Rozetka списує з логістичного балансу." style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 800, color: '#065F46', background: '#ECFDF5', border: '1px solid #6EE7B7', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>ТОЧКА ROZETKA</span>
                       )}
                       {(() => {
                         // Однією посилкою з іншими замовленнями — спільна накладна.
