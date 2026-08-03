@@ -3863,9 +3863,12 @@ export default function AdminOrders({
           } : null);
         const hasAny = shipModal.items.some(i => i.shipQty > 0);
         const isPartial = shipModal.items.some(i => i.shipQty < (i.orderQty - i.shippedQty));
+        // padding + overflow на підкладці: замовлення з довгим списком товарів
+        // інакше не влізе, і верх вікна — заголовок і перші позиції — опиниться
+        // вище екрана, куди не доскролити.
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ background: '#fff', borderRadius: '16px', padding: '28px 28px 24px', width: '480px', maxWidth: '96vw', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
+            <div className="adm-modal-box" style={{ background: '#fff', borderRadius: '16px', padding: '28px 28px 24px', width: '480px', maxWidth: '96vw', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
               <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px', color: '#1E3A5F' }}>Відвантаження</div>
               <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '20px' }}>
                 Вкажіть кількість для відвантаження (можна змінити для часткового відвантаження)

@@ -177,12 +177,24 @@ html { zoom: 0.95; overflow-x: clip; }
 .cat-bullet-link { transition: color 0.15s ease; }
 .cat-bullet-link:hover { color: #4880B8; }
 
+/* fill-mode тут `backwards`, а не `forwards`/`both` — і це не косметика.
+   Клас висить на скрол-контейнері сторінки адмінки. При forwards/both кінцевий
+   кадр лишається на елементі НАЗАВЖДИ, тобто transform нікуди не дівається. А
+   будь-який transform робить елемент containing block для position:fixed
+   усередині: `inset: 0` починає означати «вся висота прокручуваного вмісту»
+   замість «весь екран», і модалки вилазять десь угорі, обрізані (живий випадок
+   03.08 — вікно «Відвантаження»).
+   Замінити кінцевий кадр на `transform: none` НЕ допомагає: анімація, що
+   тримає значення, обчислює none як одиничну матрицю, і containing block
+   лишається — перевірено в tests/e2e/admin-modal-position.spec.ts.
+   `backwards` дає той самий захист від блимання перед стартом, але після
+   завершення властивості повертаються до базових, тобто transform зникає. */
 @keyframes adminPageEnter {
   from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: none; }
 }
 .admin-page-enter {
-  animation: adminPageEnter 0.18s ease forwards;
+  animation: adminPageEnter 0.18s ease backwards;
 }
 
 /* ── Admin sidebar nav scrollbar ─────────────────────────────────────────── */
@@ -300,13 +312,15 @@ input, select { font-family: inherit; }
   animation: page-transition-enter 0.22s ease-out both;
 }
 
-/* admin alias */
+/* admin alias — саме ця анімація й перемагає, бо оголошена нижче за adminPageEnter.
+   `backwards` з тієї ж причини, що описана вище: `both` лишав би transform на
+   скрол-контейнері назавжди й ламав позиціонування модалок. */
 @keyframes admin-page-enter {
   0%   { opacity: 0; transform: translateY(5px); }
-  100% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 1; transform: none; }
 }
 .admin-page-enter {
-  animation: admin-page-enter 0.22s ease-out both;
+  animation: admin-page-enter 0.22s ease-out backwards;
 }
 
 /* ── Admin sidebar scrollbar ── */
