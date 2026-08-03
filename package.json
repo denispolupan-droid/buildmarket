@@ -21,6 +21,7 @@
     "db:import": "tsx --env-file=.env.local scripts/supabase/import-from-excel.ts",
     "db:sync-xml": "tsx --env-file=.env.local scripts/supabase/sync-stock.ts --format=1c_xml --supplier=1",
     "db:sync-csv": "tsx --env-file=.env.local scripts/supabase/sync-stock.ts --format=1c_csv --supplier=1",
+    "rz:sla": "tsx --env-file=.env.local scripts/rozetka/sla-report.mts",
     "db:migrate": "node --env-file=.env.local scripts/apply-accounting-migrations.mjs",
     "db:migrate:dry": "node --env-file=.env.local scripts/apply-accounting-migrations.mjs --dry-run",
     "prepare": "simple-git-hooks"
