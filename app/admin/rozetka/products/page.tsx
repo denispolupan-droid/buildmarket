@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { getSmartTariff } from '../../../../lib/rozetka-smart';
+import { getRozetkaDeliveryTariff } from '../../../../lib/rozetka-delivery-fee';
 import RozetkaProductsClient from './RozetkaProductsClient';
 
 export const metadata = { title: 'Товари Rozetka — Адмін' };
@@ -16,7 +17,7 @@ export default async function RozetkaProductsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
-  const [{ data: products }, { data: stock }, { data: categories }, smartTariff] = await Promise.all([
+  const [{ data: products }, { data: stock }, { data: categories }, smartTariff, deliveryTariff] = await Promise.all([
     db.from('products')
       .select('sku, name, rozetka_name, brand, category_slug, color, volume, on_rozetka, rozetka_markup_pct, rozetka_smart')
       .eq('is_active', true)
@@ -27,6 +28,7 @@ export default async function RozetkaProductsPage() {
     db.from('categories')
       .select('slug, name, rozetka_commission_pct, rozetka_markup_pct, rozetka_category_id, rozetka_category_name'),
     getSmartTariff(),
+    getRozetkaDeliveryTariff(),
   ]);
 
   return (
@@ -35,6 +37,7 @@ export default async function RozetkaProductsPage() {
       stock={stock ?? []}
       categories={categories ?? []}
       smartTariff={smartTariff}
+      deliveryTariff={deliveryTariff}
     />
   );
 }

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Search, Check, X, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
 import { type SmartBracket } from '../../../../lib/rozetka-smart-tariff';
+import { type RozetkaDeliveryTariff } from '../../../../lib/rozetka-delivery-tariff';
 import { rozetkaBasePrice, rozetkaSmartPrice } from '../../../../lib/marketplace-pricing';
 
 interface Product {
@@ -48,11 +49,23 @@ const TH: React.CSSProperties = {
   textTransform: 'uppercase', letterSpacing: '.03em',
 };
 
-export default function RozetkaProductsClient({ products, stock, categories, smartTariff }: {
-  products:    Product[];
-  stock:       Stock[];
-  categories:  Category[];
-  smartTariff: SmartBracket[];
+// Ширина колонки з підписом — спільна для обох тарифів, щоб поля вводу в блоці
+// Smart і в блоці доставки стояли на одній вертикалі, а не двома сходинками.
+const LABEL_COL = 170;
+
+// Числове поле в редакторах тарифів. Ширину задає колонка сітки, тож тут її немає —
+// інакше поля знову міряли б себе самі й ряди розʼїхались.
+const NUM_INPUT: React.CSSProperties = {
+  width: '100%', padding: '3px 6px', borderRadius: 6,
+  border: '1px solid #E2E8F0', fontSize: 13, textAlign: 'right',
+};
+
+export default function RozetkaProductsClient({ products, stock, categories, smartTariff, deliveryTariff }: {
+  products:       Product[];
+  stock:          Stock[];
+  categories:     Category[];
+  smartTariff:    SmartBracket[];
+  deliveryTariff: RozetkaDeliveryTariff;
 }) {
   const stockMap = useMemo(() => new Map(stock.map(s => [s.sku, s])), [stock]);
   const catMap   = useMemo(() => new Map(categories.map(c => [c.slug, c])), [categories]);
@@ -103,6 +116,17 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
   const [tariffSaving, setTariffSaving] = useState(false);
   const [tariffError,  setTariffError]  = useState('');
 
+  // Тариф доставки в точки видачі. Живе поруч зі Smart, бо це дві половини одного
+  // рішення: у Smart-замовлення збір за видачу НЕ додається (Rozetka бере компенсацію
+  // Smart замість нього), тож редагувати їх різними екранами було б оманливо.
+  const [delivery,      setDelivery]      = useState<RozetkaDeliveryTariff>(deliveryTariff);
+  const [deliveryDraft, setDeliveryDraft] = useState({
+    perParcel:          String(deliveryTariff.perParcel),
+    perParcelFromMeest: String(deliveryTariff.perParcelFromMeest),
+  });
+
+  // Обидва тарифи зберігаються однією кнопкою: два запити, спільний стан
+  // «зберігаю» й спільне повідомлення про помилку.
   async function saveTariff() {
     setTariffSaving(true);
     setTariffError('');
@@ -110,16 +134,30 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
       upTo: i === tariffDraft.length - 1 ? null : Number(b.upTo),
       fee:  Number(b.fee),
     }));
-    const res = await fetch('/api/admin/rozetka/smart-tariff', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brackets }),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setTariffError(json.error ?? 'Не вдалося зберегти');
+
+    const [smartRes, deliveryRes] = await Promise.all([
+      fetch('/api/admin/rozetka/smart-tariff', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brackets }),
+      }),
+      fetch('/api/admin/rozetka/delivery-tariff', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          perParcel:          deliveryDraft.perParcel,
+          perParcelFromMeest: deliveryDraft.perParcelFromMeest,
+        }),
+      }),
+    ]);
+    const smartJson    = await smartRes.json().catch(() => ({}));
+    const deliveryJson = await deliveryRes.json().catch(() => ({}));
+
+    if (!smartRes.ok || !deliveryRes.ok) {
+      setTariffError(smartJson.error ?? deliveryJson.error ?? 'Не вдалося зберегти');
     } else {
-      setTariff(json.brackets);
+      setTariff(smartJson.brackets);
+      setDelivery({ perParcel: deliveryJson.perParcel, perParcelFromMeest: deliveryJson.perParcelFromMeest });
       setTariffOpen(false);
     }
     setTariffSaving(false);
@@ -265,9 +303,10 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
           <p style={{ margin: '2px 0 0', fontSize: 13, color: '#6B7280' }}>
             {totalEnabled} / {products.length} увімкнено в Rozetka
             <span style={{ marginLeft: 8, color: '#B45309', fontWeight: 600 }}>· {Object.values(smart).filter(Boolean).length} у Smart</span>
+            <span style={{ marginLeft: 8 }}>· доставка {delivery.perParcel} грн</span>
             <button onClick={() => setTariffOpen(v => !v)}
               style={{ marginLeft: 10, padding: '2px 10px', borderRadius: 7, border: '1px solid #FDBA74', background: tariffOpen ? '#FFF7ED' : '#fff', color: '#B45309', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-              Умови Smart
+              Тарифи Rozetka
             </button>
           </p>
         </div>
@@ -279,29 +318,52 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
           <div style={{ fontSize: 13, fontWeight: 700, color: '#B45309', marginBottom: 10 }}>
             Компенсація вартості доставки Smart (грн з ПДВ, за сумою замовлення)
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Сітка, а не flex: колонки однакової ширини в усіх рядках, тож поля
+              вводу стоять одне під одним. У flex кожен рядок міряв себе сам —
+              підпис «400 – 700» коротший за «замовлення до», і поля розʼїжджались. */}
+          <div style={{ display: 'grid', gridTemplateColumns: `${LABEL_COL}px 64px auto 16px 64px auto`, alignItems: 'center', gap: '8px 6px', fontSize: 13, color: '#374151' }}>
             {tariffDraft.map((b, i) => {
               const isLast = i === tariffDraft.length - 1;
               const prevUpTo = i > 0 ? tariffDraft[i - 1].upTo : null;
+              const setUpTo = (v: string) => setTariffDraft(d => d.map((x, j) => j === i ? { ...x, upTo: v } : x));
               return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#374151' }}>
-                  <span style={{ minWidth: 170 }}>
-                    {isLast
-                      ? `замовлення від ${prevUpTo || '…'} грн`
-                      : i === 0 ? <>замовлення до{' '}
-                          <input value={b.upTo} onChange={e => setTariffDraft(d => d.map((x, j) => j === i ? { ...x, upTo: e.target.value } : x))}
-                            style={{ width: 60, padding: '3px 6px', borderRadius: 6, border: '1px solid #E2E8F0', fontSize: 13, textAlign: 'right' }} /> грн</>
-                        : <>{prevUpTo || '…'} –{' '}
-                          <input value={b.upTo} onChange={e => setTariffDraft(d => d.map((x, j) => j === i ? { ...x, upTo: e.target.value } : x))}
-                            style={{ width: 60, padding: '3px 6px', borderRadius: 6, border: '1px solid #E2E8F0', fontSize: 13, textAlign: 'right' }} /> грн</>}
+                <Fragment key={i}>
+                  <span style={{ justifySelf: 'end' }}>
+                    {isLast ? 'замовлення від' : i === 0 ? 'замовлення до' : `${prevUpTo || '…'} –`}
                   </span>
-                  <span>→</span>
-                  <input value={b.fee} onChange={e => setTariffDraft(d => d.map((x, j) => j === i ? { ...x, fee: e.target.value } : x))}
-                    style={{ width: 60, padding: '3px 6px', borderRadius: 6, border: '1px solid #E2E8F0', fontSize: 13, textAlign: 'right' }} />
+                  {isLast
+                    ? <span style={{ justifySelf: 'end', paddingRight: 7 }}>{prevUpTo || '…'}</span>
+                    : <input value={b.upTo} onChange={e => setUpTo(e.target.value)} style={NUM_INPUT} />}
                   <span>грн</span>
-                </div>
+                  <span style={{ justifySelf: 'center' }}>→</span>
+                  <input value={b.fee} onChange={e => setTariffDraft(d => d.map((x, j) => j === i ? { ...x, fee: e.target.value } : x))}
+                    style={NUM_INPUT} />
+                  <span>грн</span>
+                </Fragment>
               );
             })}
+          </div>
+
+          {/* Доставка в точки видачі — той самий блок, бо збір і компенсація Smart
+              взаємовиключні: Smart-замовлення сюди не потрапляє взагалі. */}
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #FDE68A' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#B45309', marginBottom: 4 }}>
+              Доставка в точки видачі Rozetka (грн з ПДВ, за відправлення)
+            </div>
+            <div style={{ fontSize: 12, color: '#92400E', marginBottom: 10 }}>
+              Списується з логістичного балансу при передачі перевізникові. Ставка нижче — запасна:
+              якщо в накладній є фактична сума, беремо її. Для Smart-замовлень збір не нараховується.
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: `${LABEL_COL}px 64px auto`, alignItems: 'center', gap: '8px 6px', fontSize: 13, color: '#374151' }}>
+              <span style={{ justifySelf: 'end' }}>організація видачі</span>
+              <input value={deliveryDraft.perParcel}
+                onChange={e => setDeliveryDraft(d => ({ ...d, perParcel: e.target.value }))} style={NUM_INPUT} />
+              <span>грн</span>
+              <span style={{ justifySelf: 'end' }}>якщо з відділення Meest</span>
+              <input value={deliveryDraft.perParcelFromMeest}
+                onChange={e => setDeliveryDraft(d => ({ ...d, perParcelFromMeest: e.target.value }))} style={NUM_INPUT} />
+              <span>грн</span>
+            </div>
           </div>
           {tariffError && <div style={{ marginTop: 8, fontSize: 12, color: '#DC2626', fontWeight: 600 }}>{tariffError}</div>}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
