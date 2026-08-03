@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/cron/rozetka-orders",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/5 * * * *"
     },
     {
       "path": "/api/cron/prom-orders",
-      "schedule": "7,22,37,52 * * * *"
+      "schedule": "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
     },
     {
       "path": "/api/cron/sync-delivery-status",

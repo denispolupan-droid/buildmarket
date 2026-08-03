@@ -1082,8 +1082,14 @@ export default function AdminOrders({
     const targets = orders.filter(o => ids.includes(o.id));
     const pushOnly: string[] = [];
 
+    // Відвантажити можна лише з тих статусів, які приймає роут відгрузки. Якщо
+    // замовлення вже відвантажене, а накладну переробляють (живий випадок 03.08:
+    // видалили ТТН, змінили кількість, створили нову) — відгрузка не потрібна,
+    // потрібно лише донести новий номер до маркетплейсу. Без цієї перевірки
+    // користувач отримував червоне «Неможливо відвантажити із статусу shipped».
+    const SHIPPABLE = ['confirmed', 'picking', 'awaiting_stock'];
     for (const o of targets) {
-      if (o.fulfillment_mode === 'supplier') {
+      if (o.fulfillment_mode === 'supplier' && SHIPPABLE.includes(o.status)) {
         await autoShipDropship(o.id);   // всередині — і статус, і пуш у маркетплейс
       } else {
         pushOnly.push(o.id);

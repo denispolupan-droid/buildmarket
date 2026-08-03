@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getRozetkaOrders, rozetkaOrderToOurFormat, ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, type RozetkaOrder } from './rozetka-api';
 import { computeRozetkaCommission } from './rozetka-commission';
 import { getRozetkaDeliveryTtns } from './rozetka-delivery-ttn';
+import { ROZETKA_DELIVERY_TYPE } from './rozetka-delivery';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -194,24 +195,29 @@ export async function syncRozetkaOrders() {
   // фактичну суму й проводимо при відгрузці саме її.
   let pricedTtns = 0;
   try {
-    const ttns = await getRozetkaDeliveryTtns(100);
-    for (const t of ttns) {
-      if (!t.order_id) continue;
-      const price = Number(t.delivery_price);
-      const { data: row } = await db.from('orders')
-        .select('id, tracking_number, rozetka_data')
-        .eq('rozetka_order_id', t.order_id)
-        .maybeSingle();
-      if (!row) continue;
-      const stored = (row.rozetka_data ?? {}) as Record<string, unknown>;
-      const patch: Record<string, unknown> = {};
-      if (Number.isFinite(price) && stored._rz_delivery_price !== price) {
-        patch.rozetka_data = { ...stored, _rz_delivery_price: price, _rz_ttn: t.ttn };
-      }
-      if (!row.tracking_number && t.ttn) patch.tracking_number = t.ttn;
-      if (Object.keys(patch).length) {
-        await db.from('orders').update(patch).eq('id', row.id);
-        pricedTtns++;
+    // Спершу наші замовлення однією вибіркою, і лише потім список ТТН. Раніше тут
+    // був запит у базу на КОЖНУ накладну — при кроні раз на 5 хвилин і зростаючій
+    // кількості ТТН це сотні зайвих запитів на годину рівно ні за чим.
+    const { data: ours } = await db.from('orders')
+      .select('id, rozetka_order_id, tracking_number, rozetka_data')
+      .eq('delivery_type', ROZETKA_DELIVERY_TYPE);
+    const byRzId = new Map((ours ?? []).map(o => [Number(o.rozetka_order_id), o]));
+
+    if (byRzId.size) {
+      for (const t of await getRozetkaDeliveryTtns(100)) {
+        const row = byRzId.get(Number(t.order_id));
+        if (!row) continue;
+        const stored = (row.rozetka_data ?? {}) as Record<string, unknown>;
+        const price = Number(t.delivery_price);
+        const patch: Record<string, unknown> = {};
+        if (Number.isFinite(price) && stored._rz_delivery_price !== price) {
+          patch.rozetka_data = { ...stored, _rz_delivery_price: price, _rz_ttn: t.ttn };
+        }
+        if (!row.tracking_number && t.ttn) patch.tracking_number = t.ttn;
+        if (Object.keys(patch).length) {
+          await db.from('orders').update(patch).eq('id', row.id);
+          pricedTtns++;
+        }
       }
     }
   } catch (err) {
