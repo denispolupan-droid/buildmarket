@@ -5,6 +5,8 @@ import { createSaleDraft } from '../../../../../../lib/accounting/dropship';
 import { completeOrderDelivery } from '../../../../../../lib/accounting/completion';
 import { recordMarketplaceServiceFee } from '../../../../../../lib/accounting/money';
 import { computeSmartFee, getSmartTariff } from '../../../../../../lib/rozetka-smart';
+import { computeRozetkaDeliveryFee, getRozetkaDeliveryTariff } from '../../../../../../lib/rozetka-delivery-fee';
+import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
 import { alertAdmin } from '../../../../../../lib/alert';
 import { checkOrderCredit } from '../../../../../../lib/accounting/credit-guard';
 import { setPromTTN } from '../../../../../../lib/prom-api';
@@ -178,6 +180,33 @@ export async function POST(
       }
     } catch (err) {
       alertAdmin(`Smart-збір Rozetka не записався при відгрузці (замовлення #${order.order_number})`, err);
+    }
+  }
+
+  // Доставка в точку видачі Rozetka: організацію видачі відправлення оплачує
+  // продавець — 30 грн з ПДВ (49, якщо відправляли з відділення Meest ПОШТА).
+  // Rozetka списує це автоматично після передачі перевізникові, але з ОКРЕМОГО
+  // логістичного балансу (/balance-logistic): у виписці /balances/search, яку
+  // читає звірка комісій, таких списань немає, тож без цієї проводки вартість
+  // доставки не потрапляла в облік узагалі. Разово на замовлення, як і Smart;
+  // помилка проводки не валить відгрузку.
+  if ((order as { delivery_type?: string }).delivery_type === ROZETKA_DELIVERY_TYPE) {
+    try {
+      const fee = computeRozetkaDeliveryFee({}, await getRozetkaDeliveryTariff());
+      if (fee > 0) {
+        await recordMarketplaceServiceFee({
+          orderId:        order.id,
+          amount:         fee,
+          marketplace:    'rozetka',
+          description:    `Rozetka Доставка — організація видачі відправлення (замовлення #${order.order_number})`,
+          idempotencyKey: `rz-delivery-fee:rozetka:${order.id}`,
+          businessDate:   new Date().toISOString().split('T')[0],
+          createdBy:      user.email ?? 'admin',
+          meta:           { rozetka_delivery: true },
+        });
+      }
+    } catch (err) {
+      alertAdmin(`Збір за доставку Rozetka не записався при відгрузці (замовлення #${order.order_number})`, err);
     }
   }
 
