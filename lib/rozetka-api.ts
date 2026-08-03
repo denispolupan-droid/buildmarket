@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 // мережі й ключів: тут живе сервісний ключ Supabase, а адмінка — клієнтський
 // компонент, і імпортувати цей файл у браузер не можна.
 export { ROZETKA_STATUS_LABEL, rozetkaStatusLabel, isRozetkaAhead } from './rozetka-status';
+import { isRozetkaBackwards } from './rozetka-status';
 
 // Base host for the Rozetka Seller API — confirmed against the official apiDoc spec at
 // https://api-seller.rozetka.com.ua/apidoc/ (endpoints documented there, e.g. POST /sites,
@@ -225,17 +226,31 @@ function isStatusTransitionError(err: unknown): boolean {
      || err.message.includes('Перехід в цей статус неможливий'));
 }
 
+/**
+ * @param opts.currentStatus — статус, який зараз у кабінеті, якщо ми його знаємо.
+ * Без нього драбина сліпа: коли замовлення вже стоїть на цільовому статусі,
+ * Rozetka відбиває повторний PUT як неможливий перехід, і драбина «лікує» це
+ * проміжним 26 — тобто відкочує кабінет НАЗАД, із «Заплановано передачу» в
+ * «Обробляється менеджером», і аж потім повертає назад. Живий випадок: ТТН
+ * пушиться при створенні накладної, а потім ще раз при «Відправити».
+ */
 export async function setRozetkaOrderStatusChained(
   orderId: number,
   status: number,
-  opts?: { ttn?: string; comment?: string },
+  opts?: { ttn?: string; comment?: string; currentStatus?: number | null },
 ): Promise<void> {
+  // Уже там, куди йдемо — пушити нічого. Найчастіший випадок повторного пушу.
+  if (opts?.currentStatus === status) return;
   try {
     await setRozetkaOrderStatus(orderId, status, opts);
     return;
   } catch (err) {
     if (!isStatusTransitionError(err)) throw err;
-    const ladder = [26, ...(opts?.ttn ? [61] : [])].filter(s => s !== status);
+    const ladder = [26, ...(opts?.ttn ? [61] : [])]
+      .filter(s => s !== status)
+      // Проміжний крок має вести ВПЕРЕД. Інакше «лікування» відкочує кабінет
+      // назад — покупець бачить, що замовлення повернулося в обробку.
+      .filter(s => !isRozetkaBackwards(s, opts?.currentStatus));
     let lastErr: unknown = err;
     for (const mid of ladder) {
       try {

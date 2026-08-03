@@ -66,6 +66,23 @@ const OUR_STAGE: Record<string, number> = {
  * Скасування (група 3) сюди не входять навмисно: у них немає місця у воронці, і
  * ними займаються окремі сторожі — watchRozetkaCancellations / watchRozetkaRefunds.
  */
+/**
+ * Крок веде назад по воронці Rozetka? Потрібно драбині проміжних статусів:
+ * «лікувати» відмову переходу можна лише кроком уперед, інакше замовлення
+ * відкочується в кабінеті на попередню стадію, і покупець бачить, що воно
+ * повернулося в обробку.
+ *
+ * Невідомий поточний статус — не заважаємо: повертаємо false, драбина працює
+ * як раніше.
+ */
+export function isRozetkaBackwards(step: number, currentStatus: number | null | undefined): boolean {
+  if (currentStatus == null) return false;
+  const from = ROZETKA_STAGE[currentStatus];
+  const to = ROZETKA_STAGE[step];
+  if (from === undefined || to === undefined) return false;
+  return to <= from;
+}
+
 export function isRozetkaAhead(rozetkaStatus: number | null | undefined, ourStatus: string): boolean {
   if (rozetkaStatus == null) return false;
   const rz = ROZETKA_STAGE[rozetkaStatus];

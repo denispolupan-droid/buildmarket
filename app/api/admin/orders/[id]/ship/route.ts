@@ -225,7 +225,14 @@ export async function POST(
   if (fullyShipped && rozetkaOrderId) {
     const rozStatus = ourStatusToRozetkaStatus(finalStatus);
     if (rozStatus) {
-      setRozetkaOrderStatusChained(rozetkaOrderId, rozStatus, effectiveTtn ? { ttn: effectiveTtn } : undefined).catch(err => {
+      // Останній відомий статус кабінету. ТТН тепер їде в Rozetka ще при
+      // створенні накладної, тож тут пуш часто повторний — без цієї підказки
+      // драбина «полікувала» б відмову переходу кроком назад, на 26.
+      const cabinet = (order.rozetka_data as Record<string, unknown> | null) ?? {};
+      setRozetkaOrderStatusChained(rozetkaOrderId, rozStatus, {
+        ...(effectiveTtn ? { ttn: effectiveTtn } : {}),
+        currentStatus: typeof cabinet.status === 'number' ? cabinet.status : null,
+      }).catch(err => {
         console.warn('[ship] setRozetkaOrderStatus failed:', err);
       });
     }

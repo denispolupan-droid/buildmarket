@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save } from 'lucide-react';
@@ -1033,6 +1033,34 @@ export default function AdminOrders({
     });
   }
 
+  /**
+   * Накладна створена — одразу віддаємо номер у кабінет Rozetka.
+   *
+   * Раніше ТТН їхала туди лише в момент «Відправити», тож між створенням
+   * накладної й відправкою кабінет про посилку не знав нічого: живий випадок
+   * 03.08 — два об'єднані замовлення отримали спільний номер, а в кабінеті
+   * обидва так і висіли «Обробляється менеджером» без ТТН.
+   *
+   * Помилку показуємо, а не ховаємо в консоль: якщо номер не пішов, менеджер
+   * має дізнатися про це зараз, а не з претензії покупця.
+   */
+  async function pushTtnToRozetka(ids: string[]) {
+    const targets = orders.filter(o => ids.includes(o.id) && o.channel_code === 'rozetka' && o.rozetka_order_id);
+    if (!targets.length) return;
+    const failures = (await Promise.all(targets.map(async o => {
+      try {
+        const res = await fetch(`/api/admin/orders/${o.id}/push-rozetka-ttn`, { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        return res.ok && !data.error ? null : `№${o.order_number}: ${data.error ?? res.status}`;
+      } catch (err) {
+        return `№${o.order_number}: ${err instanceof Error ? err.message : 'збій мережі'}`;
+      }
+    }))).filter(Boolean) as string[];
+
+    if (failures.length) showToast(`ТТН не передано в Rozetka — ${failures.join('; ')}`, 'error');
+    else showToast(targets.length > 1 ? `ТТН передано в Rozetka (${targets.length} замовлення)` : 'ТТН передано в Rozetka', 'success');
+  }
+
   function openMergeModal() {
     const sel = orders.filter(o => selectedIds.has(o.id));
     if (sel.length < 2) return;
@@ -1225,6 +1253,25 @@ export default function AdminOrders({
   }
 
   const q = search.trim().toLowerCase();
+  /**
+   * Об'єднані замовлення — ті, що їдуть однією посилкою. Окремої колонки в базі
+   * немає й не треба: ознака об'єднання — це і є спільна накладна, її прописує
+   * модалка створення ТТН усім вибраним замовленням. Без цієї підказки два
+   * однакові номери в довгому списку оком не зловиш, і легко відвантажити одне
+   * з двох, а друге забути.
+   */
+  const mergedByTtn = useMemo(() => {
+    const byTtn = new Map<string, number[]>();
+    for (const o of orders) {
+      if (!o.tracking_number) continue;
+      const a = byTtn.get(o.tracking_number) ?? [];
+      a.push(o.order_number);
+      byTtn.set(o.tracking_number, a);
+    }
+    for (const [ttn, nums] of byTtn) if (nums.length < 2) byTtn.delete(ttn);
+    return byTtn;
+  }, [orders]);
+
   const filtered = orders.filter(o => {
     if (channelFilter && (o.channel_code ?? 'website') !== channelFilter) return false;
     if (cabinetAheadOnly && !rozetkaCabinet(o)?.ahead) return false;
@@ -1750,6 +1797,19 @@ export default function AdminOrders({
                       {isSmart && (
                         <span title="Rozetka Smart — безкоштовна доставка для покупця, компенсація списується з нас. НЕ редагуйте склад замовлення: будь-яка зміна знімає Smart безповоротно." style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 800, color: '#713F12', background: '#FDE047', border: '1px solid #FACC15', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>SMART</span>
                       )}
+                      {(() => {
+                        // Однією посилкою з іншими замовленнями — спільна накладна.
+                        const group = order.tracking_number ? mergedByTtn.get(order.tracking_number) : undefined;
+                        if (!group) return null;
+                        const others = group.filter((n: number) => n !== order.order_number);
+                        return (
+                          <span
+                            title={`Одна посилка на ${group.length} замовлення — спільна ТТН ${order.tracking_number}. Разом із №${others.join(', №')}. Відвантажувати треба всі, інакше частина залишиться висіти.`}
+                            style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#5B21B6', background: '#F5F3FF', border: '1px solid #C4B5FD', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>
+                            ⛓ з №{others.join(', №')}
+                          </span>
+                        );
+                      })()}
                       {order.company
                         ? <><span style={{ fontWeight: 600 }}>{order.company}</span><span style={{ color: 'var(--text-muted)' }}> · {order.contact}</span></>
                         : <span style={{ fontWeight: 600 }}>{order.contact}</span>}
@@ -3718,14 +3778,12 @@ export default function AdminOrders({
                 })
                 .catch(() => showToast('Не вдалося надіслати ТТН на Prom', 'error'));
             }
-            if (ttnModalOrder.channel_code === 'rozetka' && ttnModalOrder.status === 'shipped') {
-              fetch(`/api/admin/orders/${orderId}/push-rozetka-ttn`, { method: 'POST' })
-                .then(r => r.json())
-                .then(d => {
-                  if (d.ok) showToast('ТТН надіслано на Rozetka', 'success');
-                  else showToast(`Rozetka TTN: ${d.error ?? 'помилка'}`, 'error');
-                })
-                .catch(() => showToast('Не вдалося надіслати ТТН на Rozetka', 'error'));
+            // Раніше умовою було status === 'shipped', і ТТН зависала в нас до
+            // самої відправки — кабінет про посилку не знав. Тепер, як і в Prom,
+            // пушимо з моменту, коли замовлення взяте в роботу: накладна вже
+            // існує, і статус 61 «Заплановано передачу» саме це й означає.
+            if (ttnModalOrder.channel_code === 'rozetka' && ttnModalOrder.status !== 'new') {
+              void pushTtnToRozetka([orderId]);
             }
           }}
         />
@@ -3743,6 +3801,7 @@ export default function AdminOrders({
             ids.forEach(id => setTtnValues(prev => ({ ...prev, [id]: ttn })));
             setSelectedIds(new Set());
             setMergeModal(null);
+            void pushTtnToRozetka(ids);
           }}
         />
       )}

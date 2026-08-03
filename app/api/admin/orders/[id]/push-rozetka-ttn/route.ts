@@ -19,7 +19,7 @@ export async function POST(
 
     const { data: order, error } = await db
       .from('orders')
-      .select('id, rozetka_order_id, tracking_number, channel_code')
+      .select('id, rozetka_order_id, tracking_number, channel_code, rozetka_data')
       .eq('id', id)
       .single();
 
@@ -43,7 +43,13 @@ export async function POST(
 
     const rozStatus = ourStatusToRozetkaStatus('shipped'); // see lib/rozetka-api.ts STATUS_MAP
     if (rozStatus) {
-      await setRozetkaOrderStatusChained(rozetkaOrderId, rozStatus, { ttn });
+      // Останній відомий статус кабінету — щоб драбина не відкотила замовлення
+      // назад, якщо воно вже стоїть там, куди ми пушимо (повторний пуш ТТН).
+      const cabinet = (order.rozetka_data ?? {}) as Record<string, unknown>;
+      await setRozetkaOrderStatusChained(rozetkaOrderId, rozStatus, {
+        ttn,
+        currentStatus: typeof cabinet.status === 'number' ? cabinet.status : null,
+      });
     }
 
     return NextResponse.json({ ok: true });
