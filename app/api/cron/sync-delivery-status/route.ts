@@ -29,10 +29,25 @@ export async function GET(req: NextRequest) {
   // де воно зараз («Відмова від отримання» → «Прибув у відділення» вже для
   // повернення). Для скасованих оновлюємо ЛИШЕ текст статусу — жодних проводок
   // і зміни статусу замовлення (див. guard у циклі нижче).
+  //
+  // Третя гілка — скасовані відправлення в точки видачі Rozetka БЕЗ
+  // carrier_accepted_at. Умова «прийнято перевізником» ставиться, поки замовлення
+  // ще «shipped», а для цієї доставки трекінг не працював узагалі — тож заявка
+  // на повернення (#26071055, «Відмова при отриманні») не потрапляла ні під одну
+  // умову й лишалася без кнопок «забрав / залишив». Обмежуємо вікном, щоб вибірка
+  // не росла вічно — по created_at, а не по shipped_at: у того самого #26071055
+  // shipped_at порожній (замовлення скасували, минаючи нашу відгрузку), і вікно
+  // по відгрузці його б не зачепило. Наявність ТТН і так гарантує .not(tracking_number).
+  // Дата без часу — щоб двокрапки й крапки ISO-мітки не довелося екранувати у фільтрі PostgREST.
+  const returnWindow = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const { data: orders, error } = await serviceClient
     .from('orders')
-    .select('id, status, tracking_number, carrier_accepted_at, channel_code, rozetka_order_id, delivery_type, telegram_chat_id, order_number')
-    .or('status.eq.shipped,and(status.eq.cancelled,carrier_accepted_at.not.is.null)')
+    .select('id, status, tracking_number, carrier_accepted_at, channel_code, rozetka_order_id, delivery_type, telegram_chat_id, order_number, flags')
+    .or([
+      'status.eq.shipped',
+      'and(status.eq.cancelled,carrier_accepted_at.not.is.null)',
+      `and(status.eq.cancelled,delivery_type.eq.${ROZETKA_DELIVERY_TYPE},created_at.gte.${returnWindow})`,
+    ].join(','))
     .not('tracking_number', 'is', null);
 
   if (error || !orders?.length) {
@@ -203,6 +218,11 @@ export async function GET(req: NextRequest) {
   // Штук на день одиниці, тож адресний запит на замовлення дешевший за будь-яку
   // пакетну хитрість. Помилка по одному замовленню не зриває решту.
   for (const o of rzOrders) {
+    // Доля повернення вже вирішена менеджером («забрав» / «залишив») — питати
+    // Rozetka про цю посилку більше нема сенсу.
+    const flags = (o.flags ?? []) as string[];
+    if (o.status === 'cancelled' && (flags.includes('return_received') || flags.includes('return_abandoned'))) continue;
+
     let info: Awaited<ReturnType<typeof getRozetkaOrderStatusInfo>> = null;
     try {
       info = o.rozetka_order_id ? await getRozetkaOrderStatusInfo(Number(o.rozetka_order_id)) : null;

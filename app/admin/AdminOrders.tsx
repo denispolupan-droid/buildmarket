@@ -2005,10 +2005,10 @@ export default function AdminOrders({
                         {order.carrier_status_text && <span> · {isRzPickup ? 'Rozetka' : 'НП'}: «{order.carrier_status_text}»</span>}
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap' }}>
                           {rs === null && <>
-                            <span>Посилка повертається на відділення. Вирішіть:</span>
+                            <span>Посилка повертається {isRzPickup ? 'у наше відділення відправлення' : 'на відділення'}. Вирішіть:</span>
                             <button onClick={() => setReturnState(order.id, 'received')}
                               style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid #BBF7D0', background: '#F0FDF4', color: '#15803D', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>
-                              ✓ Забрав з пошти
+                              ✓ Забрав {isRzPickup ? 'посилку' : 'з пошти'}
                             </button>
                             <button onClick={() => setReturnState(order.id, 'abandoned')}
                               title="Коли зворотна доставка дорожча за товар — дешевше залишити посилку на пошті"
