@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { notifyCustomerStatus } from '../../../../lib/telegram';
-import { setRozetkaOrderStatus } from '../../../../lib/rozetka-api';
+import { setRozetkaOrderStatus, getRozetkaOrderStatusInfo } from '../../../../lib/rozetka-api';
+import { ROZETKA_DELIVERY_TYPE } from '../../../../lib/rozetka-delivery';
+import { rozetkaDeliveryPhase } from '../../../../lib/rozetka-delivery-status';
 import { completeShipmentByTtn, allOrderSalesPosted, settleLegacyCommission } from '../../../../lib/accounting/completion';
 import { recordTxn } from '../../../../lib/accounting/money';
 
@@ -29,7 +31,7 @@ export async function GET(req: NextRequest) {
   // і зміни статусу замовлення (див. guard у циклі нижче).
   const { data: orders, error } = await serviceClient
     .from('orders')
-    .select('id, status, tracking_number, carrier_accepted_at, channel_code, rozetka_order_id')
+    .select('id, status, tracking_number, carrier_accepted_at, channel_code, rozetka_order_id, delivery_type, telegram_chat_id, order_number')
     .or('status.eq.shipped,and(status.eq.cancelled,carrier_accepted_at.not.is.null)')
     .not('tracking_number', 'is', null);
 
@@ -37,13 +39,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ updated: 0, checked: 0 });
   }
 
+  // Доставка в точки видачі Rozetka має свої номери («RMP-…») і власне джерело
+  // руху посилки — питати про них Нову Пошту безглуздо (вона їх просто не знає,
+  // і замовлення назавжди лишалося б у «shipped», а продаж — непроведеним).
+  const npOrders = orders.filter(o => o.delivery_type !== ROZETKA_DELIVERY_TYPE);
+  const rzOrders = orders.filter(o => o.delivery_type === ROZETKA_DELIVERY_TYPE);
+
   // NP API allows up to 100 documents per request
   const CHUNK = 100;
   let updated = 0;
   let accepted = 0;
 
-  for (let i = 0; i < orders.length; i += CHUNK) {
-    const chunk = orders.slice(i, i + CHUNK);
+  for (let i = 0; i < npOrders.length; i += CHUNK) {
+    const chunk = npOrders.slice(i, i + CHUNK);
 
     const res = await fetch('https://api.novaposhta.ua/v2.0/json/', {
       method: 'POST',
@@ -188,6 +196,56 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ── Доставка в точки видачі Rozetka ──────────────────────────────────────
+  // Рух посилки віддзеркалює САМ СТАТУС ЗАМОВЛЕННЯ (81 «Прийнято від продавця»
+  // → 3 → 82 «В РЦ» ⇄ 4 «Доставляється» → 5 «Очікує в пункті» → 6 «Виконано»).
+  // Назву статусу не вигадуємо — Rozetka віддає її українською в status_data.
+  // Штук на день одиниці, тож адресний запит на замовлення дешевший за будь-яку
+  // пакетну хитрість. Помилка по одному замовленню не зриває решту.
+  for (const o of rzOrders) {
+    let info: Awaited<ReturnType<typeof getRozetkaOrderStatusInfo>> = null;
+    try {
+      info = o.rozetka_order_id ? await getRozetkaOrderStatusInfo(Number(o.rozetka_order_id)) : null;
+    } catch (err) {
+      console.error('[sync-delivery-status] rozetka order fetch failed:', o.rozetka_order_id, err);
+    }
+    if (!info) continue;
+
+    const phase = rozetkaDeliveryPhase(info.status);
+    const carrierAccepted = phase === 'accepted' || phase === 'delivered' || phase === 'returning';
+
+    const patch: Record<string, unknown> = {
+      carrier_status_text:        info.title ?? `Статус ${info.status}`,
+      carrier_status_synced_at:   new Date().toISOString(),
+    };
+    if (carrierAccepted && !o.carrier_accepted_at) {
+      patch.carrier_accepted_at = new Date().toISOString();
+      accepted++;
+    }
+    await serviceClient.from('orders').update(patch).eq('id', o.id);
+
+    // Для скасованих — тільки текст: посилка їде назад, жодних проводок.
+    // Статус у Rozetka тут НЕ пушимо: у цій доставці його веде сама Rozetka.
+    if (o.status === 'cancelled' || phase !== 'delivered') continue;
+
+    try {
+      await completeShipmentByTtn(o.tracking_number as string, 'cron:sync-delivery-status');
+      await settleLegacyCommission(o.id, 'cron:sync-delivery-status');
+    } catch (err) {
+      console.error('[sync-delivery-status] rozetka completeShipment failed:', o.id, err);
+      continue;
+    }
+    // Збір за видачу вже проведено при відгрузці (rz-delivery-fee:…) — тут витрат немає.
+    if (!(await allOrderSalesPosted(o.id))) continue;
+
+    await serviceClient
+      .from('orders')
+      .update({ status: 'delivered', delivered_at: new Date().toISOString() })
+      .eq('id', o.id);
+    updated++;
+    if (o.telegram_chat_id) notifyCustomerStatus(o.telegram_chat_id, o.order_number, 'delivered');
+  }
+
   // Also run abandoned cart reminders (piggybacked on this daily cron)
   try {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua';
@@ -196,5 +254,5 @@ export async function GET(req: NextRequest) {
     });
   } catch {}
 
-  return NextResponse.json({ updated, accepted, checked: orders.length });
+  return NextResponse.json({ updated, accepted, checked: orders.length, np: npOrders.length, rozetka: rzOrders.length });
 }

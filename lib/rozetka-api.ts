@@ -200,6 +200,37 @@ export async function getRozetkaOrders(opts: {
   return data.orders ?? [];
 }
 
+/**
+ * Статус ОДНОГО замовлення разом із назвою (`status_data.title`).
+ *
+ * Чому не через /orders/search: пошук за id віддає порожній список, щойно
+ * замовлення виходить із поточного вікна вибірки (перевірено на 901698980 —
+ * `search?id=` дає totalCount 0, а `GET /orders/{id}` віддає його повністю).
+ * Для відстеження посилки нам треба саме адресний запит: замовлення живе
+ * тижнями після відгрузки.
+ */
+export async function getRozetkaOrderStatusInfo(orderId: number): Promise<{
+  status: number;
+  statusGroup: number | null;
+  title: string | null;
+  ttn: string | null;
+} | null> {
+  const data = await rozetkaFetch<{
+    id?: number;
+    status?: number;
+    status_group?: number;
+    ttn?: string | null;
+    status_data?: { title?: string; name_uk?: string };
+  }>(`/orders/${orderId}?expand=status_data`);
+  if (!data?.status) return null;
+  return {
+    status:      Number(data.status),
+    statusGroup: data.status_group != null ? Number(data.status_group) : null,
+    title:       data.status_data?.title ?? data.status_data?.name_uk ?? null,
+    ttn:         data.ttn ?? null,
+  };
+}
+
 /* ── Status push ────────────────────────────────────────────────────────── */
 
 // Status IDs confirmed live against this seller's account via GET /order-statuses/search

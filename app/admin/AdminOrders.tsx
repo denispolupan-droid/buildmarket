@@ -1833,7 +1833,7 @@ export default function AdminOrders({
                           ? { t: '↩ забрано', c: '#15803D', bg: '#F0FDF4', b: '#BBF7D0', title: 'Повернення забрано з пошти' }
                           : rs === 'abandoned'
                           ? { t: '↩ залишено', c: '#64748B', bg: '#F8FAFC', b: '#E2E8F0', title: 'Вирішено не забирати (повернення дорожче за товар)' }
-                          : { t: '↩ Повернення · забрати?', c: '#C2410C', bg: '#FFF7ED', b: '#FDBA74', title: `Замовлення скасоване, але посилку вже прийняла НП — вона їде назад${order.carrier_status_text ? ` (зараз: «${order.carrier_status_text}»)` : ''}. Відкрийте замовлення і вирішіть: забрати з пошти чи залишити.` };
+                          : { t: '↩ Повернення · забрати?', c: '#C2410C', bg: '#FFF7ED', b: '#FDBA74', title: `Замовлення скасоване, але посилку вже прийняла ${isRzPickup ? 'Rozetka Доставка' : 'НП'} — вона їде назад${order.carrier_status_text ? ` (зараз: «${order.carrier_status_text}»)` : ''}. Відкрийте замовлення і вирішіть: забрати з пошти чи залишити.` };
                         return <span title={s.title} style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: s.c, background: s.bg, border: `1px solid ${s.b}`, borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>{s.t}</span>;
                       })()}
                       {isSmart && (
@@ -1889,7 +1889,7 @@ export default function AdminOrders({
                     </span>
                     {order.status === 'shipped' && order.tracking_number && !order.carrier_status_text && (
                       <span
-                        title={order.carrier_accepted_at ? 'Прийнято Новою Поштою' : 'Очікує приймання Новою Поштою'}
+                        title={`${order.carrier_accepted_at ? 'Прийнято' : 'Очікує приймання'} ${isRzPickup ? 'Rozetka Доставкою' : 'Новою Поштою'}`}
                         style={{ fontSize: '12px', flexShrink: 0, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
                         {order.carrier_accepted_at ? '✓' : '⏳'}
                       </span>
@@ -2002,7 +2002,7 @@ export default function AdminOrders({
                       <div style={{ borderTop: '1px solid var(--border-light)', background: rs ? 'var(--bg-soft)' : '#FFF7ED', padding: '10px 16px', fontSize: '13px', color: rs ? 'var(--text-secondary)' : '#9A3412', lineHeight: 1.6 }}>
                         <span style={{ fontWeight: 700 }}>↩ Замовлення скасоване, а посилка вже в дорозі назад</span>
                         {order.tracking_number && <span> · ТТН {order.tracking_number}</span>}
-                        {order.carrier_status_text && <span> · НП: «{order.carrier_status_text}»</span>}
+                        {order.carrier_status_text && <span> · {isRzPickup ? 'Rozetka' : 'НП'}: «{order.carrier_status_text}»</span>}
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap' }}>
                           {rs === null && <>
                             <span>Посилка повертається на відділення. Вирішіть:</span>
@@ -2131,7 +2131,7 @@ export default function AdminOrders({
                       {order.status === 'shipped' && order.tracking_number && (
                         <div title={order.carrier_status_synced_at ? `Оновлено: ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
                           style={{ fontSize: '11px', fontWeight: 600, textAlign: 'center', lineHeight: 1.3, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
-                          {order.carrier_accepted_at ? '✓' : '⏳'} {order.carrier_status_text ?? (order.carrier_accepted_at ? 'Прийнято НП' : 'Очікує приймання НП')}
+                          {order.carrier_accepted_at ? '✓' : '⏳'} {order.carrier_status_text ?? `${order.carrier_accepted_at ? 'Прийнято' : 'Очікує приймання'} ${isRzPickup ? 'Rozetka' : 'НП'}`}
                         </div>
                       )}
                       {(statusEditOpen[order.id] ?? false) && (
