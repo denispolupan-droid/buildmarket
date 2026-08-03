@@ -120,6 +120,8 @@ const STATUSES = [
 
 const DELIVERY_LABEL: Record<string, string> = {
   nova: 'Нова Пошта', nova_poshta: 'Нова Пошта', kharkiv: 'Харків і область', pickup: 'Самовивіз',
+  // Точки видачі Rozetka: накладна оформлюється власним API Rozetka, не НП
+  rozetka_delivery: 'Rozetka Доставка',
 };
 
 const PAYMENT_LABEL: Record<string, string> = {
@@ -3115,6 +3117,16 @@ export default function AdminOrders({
                               {ttnDeleting === order.id ? '…' : <Trash2 size={14} />}
                             </button>
                           )}
+                        </div>
+                      ) : order.delivery_type === 'rozetka_delivery' ? (
+                        // Накладну для точки видачі оформлює сама Rozetka своїм API
+                        // (розділ Octopus), номер має вигляд «RMP-…». ТТН Нової Пошти
+                        // тут не підходить — точка видачі таку посилку не прийме.
+                        <div style={{ fontSize: '12px', lineHeight: 1.5, color: '#15803D', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '9px', padding: '10px 12px' }}>
+                          <strong>Точка видачі Rozetka.</strong> Накладну створюють у кабінеті
+                          Rozetka — «Створити ТТН» біля замовлення. Номер буде виду «RMP-…»
+                          і підтягнеться сюди сам.
+                          {order.tracking_number && <div style={{ marginTop: '4px', fontWeight: 700 }}>ТТН: {order.tracking_number}</div>}
                         </div>
                       ) : (
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Доставка не Нова Пошта</div>

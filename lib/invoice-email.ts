@@ -260,8 +260,10 @@ export type OrderEmailData = {
 
 const DELIVERY_LABELS: Record<string, string> = {
   nova: 'Нова Пошта',
+  nova_poshta: 'Нова Пошта',
   kharkiv: 'Доставка по Харкову та області',
   pickup: 'Самовивіз зі складу',
+  rozetka_delivery: 'Точка видачі Rozetka',
 };
 
 const PAYMENT_LABELS: Record<string, string> = {

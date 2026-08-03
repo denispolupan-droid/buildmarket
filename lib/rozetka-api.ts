@@ -5,6 +5,8 @@ import { createClient } from '@supabase/supabase-js';
 // компонент, і імпортувати цей файл у браузер не можна.
 export { ROZETKA_STATUS_LABEL, rozetkaStatusLabel, isRozetkaAhead } from './rozetka-status';
 import { isRozetkaBackwards } from './rozetka-status';
+export * from './rozetka-delivery';
+import { isRozetkaDelivery, rozetkaPickupAddress, ROZETKA_DELIVERY_TYPE } from './rozetka-delivery';
 
 // Base host for the Rozetka Seller API — confirmed against the official apiDoc spec at
 // https://api-seller.rozetka.com.ua/apidoc/ (endpoints documented there, e.g. POST /sites,
@@ -603,9 +605,14 @@ export function rozetkaOrderToOurFormat(order: RozetkaOrder) {
   // (Nova Poshta) and fall back to a generic "courier" bucket otherwise, matching the shape
   // the rest of the app (Prom sync, order form) already uses for delivery_type.
   const serviceName = (del?.delivery_service_name ?? '').toLowerCase();
-  const deliveryType = serviceName.includes('нова') || serviceName.includes('пошта')
-    ? 'nova_poshta'
-    : 'courier';
+  // Доставка в точки видачі Rozetka — окремий тип, а не 'courier': накладна
+  // оформлюється власним API Rozetka, а не Новою Поштою (див. lib/rozetka-delivery.ts).
+  const isRzDelivery = isRozetkaDelivery(del);
+  const deliveryType = isRzDelivery
+    ? ROZETKA_DELIVERY_TYPE
+    : serviceName.includes('нова') || serviceName.includes('пошта')
+      ? 'nova_poshta'
+      : 'courier';
   const isPostomat = serviceName.includes('поштомат');
 
   const addressParts = [
@@ -614,7 +621,11 @@ export function rozetkaOrderToOurFormat(order: RozetkaOrder) {
     del?.place_house,
     del?.place_flat ? `кв. ${del.place_flat}` : null,
   ].filter(Boolean);
-  const deliveryAddress = [cityName, ...addressParts].filter(Boolean).join(', ');
+  // У точках видачі place_number — орієнтир, а не номер відділення, тож збірка
+  // адреси там своя: інакше виходило «Відділення № (ЖК Ok'Land)».
+  const deliveryAddress = isRzDelivery
+    ? rozetkaPickupAddress(del, cityName)
+    : [cityName, ...addressParts].filter(Boolean).join(', ');
 
   // Спосіб оплати. Rozetka: payment_type 'cash' — накладений платіж (сплата при
   // отриманні), інше (card тощо) — передоплата, ЯКЩО payment_status.name='paid'

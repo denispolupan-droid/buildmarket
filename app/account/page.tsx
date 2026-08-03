@@ -28,8 +28,10 @@ const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }>
 
 const DELIVERY_LABEL: Record<string, string> = {
   nova:    'Нова Пошта',
+  nova_poshta: 'Нова Пошта',
   kharkiv: 'Доставка по Харкову',
   pickup:  'Самовивіз',
+  rozetka_delivery: 'Точка видачі Rozetka',
 };
 
 const PAYMENT_LABEL: Record<string, string> = {
