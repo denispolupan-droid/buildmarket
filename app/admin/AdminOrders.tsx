@@ -1061,6 +1061,50 @@ export default function AdminOrders({
     else showToast(targets.length > 1 ? `ТТН передано в Rozetka (${targets.length} замовлення)` : 'ТТН передано в Rozetka', 'success');
   }
 
+  /**
+   * Що робиться після створення накладної — однаково для одного замовлення і
+   * для об'єднаної посилки.
+   *
+   * Раніше цей хвіст існував лише в гілці одиночного замовлення, а об'єднання
+   * його не мало зовсім. Через це два об'єднані замовлення на постачальника
+   * (03.08, №26081001 і №26081002) лишилися в «Підтверджено» замість того, щоб
+   * відвантажитись самі, як робить будь-яке одиночне замовлення в тому ж режимі.
+   *
+   * Порядок важливий: у режимі «постачальник» відвантаження саме пушить статус
+   * і ТТН у маркетплейс, тож окремий пуш там був би другим поспіль — і Rozetka
+   * відповіла б на нього відмовою переходу.
+   */
+  async function finishTtnFlow(ids: string[]) {
+    const targets = orders.filter(o => ids.includes(o.id));
+    const pushOnly: string[] = [];
+
+    for (const o of targets) {
+      if (o.fulfillment_mode === 'supplier') {
+        await autoShipDropship(o.id);   // всередині — і статус, і пуш у маркетплейс
+      } else {
+        pushOnly.push(o.id);
+      }
+    }
+
+    const rozetkaIds = pushOnly.filter(id => {
+      const o = targets.find(t => t.id === id);
+      return o?.channel_code === 'rozetka' && o.status !== 'new';
+    });
+    if (rozetkaIds.length) await pushTtnToRozetka(rozetkaIds);
+
+    for (const id of pushOnly) {
+      const o = targets.find(t => t.id === id);
+      if (o?.channel_code !== 'prom' || o.status === 'new') continue;
+      try {
+        const res = await fetch(`/api/admin/orders/${id}/push-prom-ttn`, { method: 'POST' });
+        const d = await res.json().catch(() => ({}));
+        showToast(d.ok ? 'ТТН надіслано на Prom' : `Prom TTN: ${d.error ?? 'помилка'}`, d.ok ? 'success' : 'error');
+      } catch {
+        showToast('Не вдалося надіслати ТТН на Prom', 'error');
+      }
+    }
+  }
+
   function openMergeModal() {
     const sel = orders.filter(o => selectedIds.has(o.id));
     if (sel.length < 2) return;
@@ -1152,30 +1196,11 @@ export default function AdminOrders({
     });
     if (res.ok) {
       setOrders(prev => prev.map(o => o.id === id ? { ...o, tracking_number: ttnValues[id] || null } : o));
-      const order = orders.find(o => o.id === id);
-      if (order?.fulfillment_mode === 'supplier' && ttnValues[id]) {
-        await autoShipDropship(id);
-      }
-      // If Prom order is confirmed or beyond — push TTN to Prom automatically
-      if (order?.channel_code === 'prom' && order.status !== 'new' && ttnValues[id]) {
-        fetch(`/api/admin/orders/${id}/push-prom-ttn`, { method: 'POST' })
-          .then(r => r.json())
-          .then(d => {
-            if (d.ok) showToast('ТТН надіслано на Prom', 'success');
-            else showToast(`Prom TTN: ${d.error ?? 'помилка'}`, 'error');
-          })
-          .catch(() => showToast('Не вдалося надіслати ТТН на Prom', 'error'));
-      }
-      // If Rozetka order already shipped — push TTN to Rozetka automatically
-      if (order?.channel_code === 'rozetka' && order.status === 'shipped' && ttnValues[id]) {
-        fetch(`/api/admin/orders/${id}/push-rozetka-ttn`, { method: 'POST' })
-          .then(r => r.json())
-          .then(d => {
-            if (d.ok) showToast('ТТН надіслано на Rozetka', 'success');
-            else showToast(`Rozetka TTN: ${d.error ?? 'помилка'}`, 'error');
-          })
-          .catch(() => showToast('Не вдалося надіслати ТТН на Rozetka', 'error'));
-      }
+      // Той самий хвіст, що й після створення накладної: номер, введений руками,
+      // нічим не гірший за згенерований. Тут теж був перекіс — Rozetka чекала
+      // status === 'shipped', тобто ТТН, вписана в підтверджене замовлення,
+      // у кабінет не йшла зовсім.
+      if (ttnValues[id]) await finishTtnFlow([id]);
     }
     setTtnSaving(null);
   }
@@ -3762,29 +3787,11 @@ export default function AdminOrders({
           }}
           onClose={() => setTtnModalOrder(null)}
           onCreated={async (ttn) => {
-            const orderId    = ttnModalOrder.id;
-            const isSupplier = ttnModalOrder.fulfillment_mode === 'supplier';
+            const orderId = ttnModalOrder.id;
             setTtnValues(prev => ({ ...prev, [orderId]: ttn }));
             setOrders(prev => prev.map(o => o.id === orderId ? { ...o, tracking_number: ttn } : o));
             setTtnModalOrder(null);
-            if (isSupplier) await autoShipDropship(orderId);
-            // If Prom order is confirmed or beyond — push the new TTN automatically
-            if (ttnModalOrder.channel_code === 'prom' && ttnModalOrder.status !== 'new') {
-              fetch(`/api/admin/orders/${orderId}/push-prom-ttn`, { method: 'POST' })
-                .then(r => r.json())
-                .then(d => {
-                  if (d.ok) showToast('ТТН надіслано на Prom', 'success');
-                  else showToast(`Prom TTN: ${d.error ?? 'помилка'}`, 'error');
-                })
-                .catch(() => showToast('Не вдалося надіслати ТТН на Prom', 'error'));
-            }
-            // Раніше умовою було status === 'shipped', і ТТН зависала в нас до
-            // самої відправки — кабінет про посилку не знав. Тепер, як і в Prom,
-            // пушимо з моменту, коли замовлення взяте в роботу: накладна вже
-            // існує, і статус 61 «Заплановано передачу» саме це й означає.
-            if (ttnModalOrder.channel_code === 'rozetka' && ttnModalOrder.status !== 'new') {
-              void pushTtnToRozetka([orderId]);
-            }
+            await finishTtnFlow([orderId]);
           }}
         />
       )}
@@ -3801,7 +3808,7 @@ export default function AdminOrders({
             ids.forEach(id => setTtnValues(prev => ({ ...prev, [id]: ttn })));
             setSelectedIds(new Set());
             setMergeModal(null);
-            void pushTtnToRozetka(ids);
+            void finishTtnFlow(ids);
           }}
         />
       )}
