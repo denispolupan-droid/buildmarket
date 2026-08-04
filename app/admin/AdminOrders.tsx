@@ -131,6 +131,18 @@ const PAYMENT_LABEL: Record<string, string> = {
   invoice: 'Безготівковий', cod: 'Оплата при отриманні', card: 'Картка онлайн',
 };
 
+/**
+ * Перевізник замовлення. Rozetka Доставка — власний тип доставки (накладна
+ * «RMP-…», оформлюється через API Rozetka); усе інше, крім самовивозу, їде
+ * Новою Поштою. Самовивіз перевізника не має — повертаємо null, щоб такі
+ * замовлення не потрапляли в жоден фільтр перевізника.
+ */
+function carrierOf(o: { delivery_type: string }): 'rozetka' | 'nova' | null {
+  if (o.delivery_type === ROZETKA_DELIVERY_TYPE) return 'rozetka';
+  if (o.delivery_type === 'pickup') return null;
+  return 'nova';
+}
+
 const STATUS_RANK: Record<string, number> = {
   new: 0, confirmed: 1, awaiting_stock: 2, picking: 3, shipped: 4, delivered: 5,
 };
@@ -287,6 +299,10 @@ export default function AdminOrders({
   }
 
   const [channelFilter, setChannelFilter] = useState('');
+  // Фільтр за перевізником. Розрізняємо за delivery_type: доставка в точки видачі
+  // Rozetka — власний тип (накладна «RMP-…»), решта відправлень їде Новою Поштою.
+  // Самовивіз перевізника не має взагалі, тож під жоден фільтр не потрапляє.
+  const [carrierFilter, setCarrierFilter] = useState('');
   // «Уже оброблені в кабінеті» — замовлення, які на Rozetka рухнули далі, ніж у нас
   const [cabinetAheadOnly, setCabinetAheadOnly] = useState(false);
   const [search, setSearch]         = useState('');
@@ -1324,6 +1340,7 @@ export default function AdminOrders({
 
   const filtered = orders.filter(o => {
     if (channelFilter && (o.channel_code ?? 'website') !== channelFilter) return false;
+    if (carrierFilter && carrierOf(o) !== carrierFilter) return false;
     if (cabinetAheadOnly && !rozetkaCabinet(o)?.ahead) return false;
     if (q) {
       const num = String(o.order_number);
@@ -1471,6 +1488,33 @@ export default function AdminOrders({
                 </button>
               );
             })}
+            {/* Перевізник. Окремий ряд кнопок був би зайвим рядком у щільній
+                панелі, тож стоять тут же, відділені вертикальною рискою. */}
+            <span aria-hidden style={{ width: '1px', alignSelf: 'stretch', margin: '0 2px', background: 'var(--border)' }} />
+            {[
+              { value: 'nova',    label: 'НП',      color: '#7C2D12', bg: '#FFF7ED', border: '#FDBA74' },
+              { value: 'rozetka', label: 'Rozetka Доставка', color: '#065F46', bg: '#ECFDF5', border: '#6EE7B7' },
+            ].map(c => {
+              const active = carrierFilter === c.value;
+              const n = orders.filter(o => carrierOf(o) === c.value).length;
+              return (
+                <button
+                  key={c.value}
+                  title={c.value === 'nova' ? 'Відправлення Новою Поштою' : 'Доставка в точки видачі Rozetka (накладна RMP-…)'}
+                  onClick={() => setCarrierFilter(active ? '' : c.value)}
+                  style={{
+                    height: '30px', padding: '0 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
+                    border: `1.5px solid ${active ? c.border : 'var(--border)'}`,
+                    background: active ? c.bg : 'var(--bg-card)',
+                    color: active ? c.color : 'var(--text-secondary)',
+                    cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {c.label}
+                  <span style={{ marginLeft: '4px', fontSize: '10px', opacity: 0.7 }}>{n}</span>
+                </button>
+              );
+            })}
             {(() => {
               // Кнопка з'являється тільки коли є що показувати — інакше вона
               // просто займає місце в і без того щільній панелі фільтрів.
@@ -1597,7 +1641,12 @@ export default function AdminOrders({
         })()}
 
         {/* Row 3: Search */}
-        <div className="oc-filter-search" style={{ position: 'relative' }}>
+        {/* Внутрішня обгортка потрібна саме тут: на телефоні .oc-filter-search має
+            padding-top 14px (роздільник груп фільтрів), і лупа, позиційована від
+            зовнішнього блоку, рахувала свої 50% разом із цим відступом — тому
+            «прилипала» до верхньої межі поля. Тепер точка відліку — саме поле. */}
+        <div className="oc-filter-search">
+        <div style={{ position: 'relative' }}>
           <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           <input
             placeholder="№ замовлення, ФІО, телефон, ТТН..."
@@ -1618,9 +1667,10 @@ export default function AdminOrders({
             </button>
           )}
         </div>
+        </div>
 
         {/* Result count when filtering */}
-        {(q || channelFilter) && (
+        {(q || channelFilter || carrierFilter) && (
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
             Знайдено: <strong>{filtered.length}</strong> замовлень
           </div>
@@ -1631,7 +1681,7 @@ export default function AdminOrders({
       {(() => {
         const awaitingCount = orders.filter(o => o.status === 'awaiting_stock').length;
         if (!awaitingCount || !hasRecentReceipts) return null;
-        const isFiltered = channelFilter === '' && !q;
+        const isFiltered = channelFilter === '' && carrierFilter === '' && !q;
         return (
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
