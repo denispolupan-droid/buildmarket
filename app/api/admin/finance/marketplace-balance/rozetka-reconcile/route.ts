@@ -43,6 +43,20 @@ export type ReconcileRow = {
 const num = (v: string | number | null | undefined) => Number(String(v ?? '0').replace(',', '.')) || 0;
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
+/**
+ * Що це за витрата площадки. Усі три статті лежать на одному рахунку
+ * marketplace_fee, тож розрізняємо за описом і meta — інакше збір за видачу
+ * і Smart потрапляють у звірку комісії й дають розбіжність там, де її немає.
+ */
+type FeeKind = 'commission' | 'smart' | 'pickup' | 'subscription';
+function feeKind(f: { doc_type?: string | null; description?: string | null; meta?: unknown }): FeeKind {
+  const d = String(f.description ?? '');
+  if (f.doc_type === 'subscription_fee' || /абонплат/i.test(d)) return 'subscription';
+  if (/організація видачі/i.test(d)) return 'pickup';
+  if ((f.meta as Record<string, unknown> | null)?.smart || /Smart/i.test(d)) return 'smart';
+  return 'commission';
+}
+
 export async function GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
@@ -112,15 +126,20 @@ export async function GET(req: NextRequest) {
     const ourIds = (orders ?? []).map(o => o.id);
     const { data: fees } = ourIds.length
       ? await db.from('money_entries')
-          .select('order_id, amount, doc_type')
+          .select('order_id, amount, doc_type, description, meta')
           .eq('account_type', 'marketplace_fee')
           .eq('counterparty_id', 'rozetka')
           .in('order_id', ourIds)
           .limit(10000)
       : { data: [] as never[] };
+    // Построчна таблиця звіряє САМЕ КОМІСІЮ, тому Smart і збір за видачу сюди
+    // домішувати не можна: у «наших» сумах вони давали фантомні розбіжності
+    // рівно на 18/30 ₴ з кнопкою «Провести», яка створила б корекцію на порожньому
+    // місці. Ці статті звіряються окремими рядками таблиці статей.
     const ourByOrderId = new Map<string, number>();
     for (const f of fees ?? []) {
       if (!f.order_id) continue;
+      if (feeKind(f) !== 'commission') continue;
       ourByOrderId.set(f.order_id, (ourByOrderId.get(f.order_id) ?? 0) + Number(f.amount));
     }
 
@@ -149,7 +168,7 @@ export async function GET(req: NextRequest) {
 
     // Наші комісії за період, яких НЕМАЄ у виписці Rozetka (навпаки)
     const { data: periodFees } = await db.from('money_entries')
-      .select('order_id, amount, meta')
+      .select('order_id, amount, meta, doc_type, description')
       .eq('account_type', 'marketplace_fee')
       .eq('counterparty_id', 'rozetka')
       .gte('business_date', from)
@@ -157,15 +176,17 @@ export async function GET(req: NextRequest) {
       .not('order_id', 'is', null)
       .limit(10000);
     const periodByOrder = new Map<string, number>();
-    // Smart-збори Rozetka списує ПОЗА випискою /balances/search — їх принципово немає
-    // на «їхньому» боці, тож у построчну звірку вони не входять; показуємо окремим рядком.
+    // Smart і збір за видачу мають власні рядки в таблиці статей — у построчну
+    // звірку комісії вони не входять, інакше дають фантомні «розбіжності».
     const smartFees = { count: 0, total: 0 };
     for (const f of periodFees ?? []) {
-      if ((f.meta as Record<string, unknown> | null)?.smart) {
+      const kind = feeKind(f);
+      if (kind === 'smart') {
         smartFees.count++;
         smartFees.total = r2(smartFees.total + Number(f.amount));
         continue;
       }
+      if (kind !== 'commission') continue;
       periodByOrder.set(f.order_id!, (periodByOrder.get(f.order_id!) ?? 0) + Number(f.amount));
     }
     const matchedOurIds = new Set((orders ?? []).map(o => o.id));
@@ -216,17 +237,19 @@ export async function GET(req: NextRequest) {
       .reduce((s, t) => s + num(t.debit), 0));
 
     const { data: allPeriodFees } = await db.from('money_entries')
-      .select('amount, description, doc_type')
+      .select('amount, description, doc_type, meta')
       .eq('account_type', 'marketplace_fee')
       .eq('counterparty_id', 'rozetka')
       .gte('business_date', from)
       .lte('business_date', to)
       .limit(10000);
+    // Комісію для статті беремо з построчної звірки (totals.ours) — щоб число в
+    // таблиці статей і сума рядків нижче не розходились.
     let oursPickup = 0, oursSubscription = 0;
     for (const f of allPeriodFees ?? []) {
-      const d = String(f.description ?? '');
-      if (f.doc_type === 'subscription_fee' || /абонплат/i.test(d)) oursSubscription += Number(f.amount);
-      else if (/організація видачі/i.test(d)) oursPickup += Number(f.amount);
+      const kind = feeKind(f);
+      if (kind === 'subscription') oursSubscription += Number(f.amount);
+      else if (kind === 'pickup')  oursPickup       += Number(f.amount);
     }
 
     const article = (key: string, label: string, their: number, ours: number, note?: string) =>
