@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Scale, X, ArrowLeftRight, Landmark, RefreshCw } from 'lucide-react';
+import { Plus, X, ArrowLeftRight, Landmark, RefreshCw } from 'lucide-react';
 import type { LedgerRow, InTransit } from './page';
 
 type CabinetRow = {
@@ -118,7 +118,6 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
   const cfg = MARKETPLACE_LABEL[marketplace];
 
   const [topupOpen, setTopupOpen]         = useState(false);
-  const [reconcileOpen, setReconcileOpen] = useState(false);
   const [showTransit, setShowTransit]     = useState(false);
   const [saving, setSaving]               = useState(false);
   const [error, setError]                 = useState('');
@@ -127,9 +126,6 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
   const [topupMethod, setTopupMethod]   = useState<'bank' | 'cash'>('bank');
   const [topupDate, setTopupDate]       = useState(new Date().toISOString().slice(0, 10));
 
-  const [actualBalance, setActualBalance] = useState('');
-  const [reconcileReason, setReconcileReason] = useState('');
-  const [reconcileResult, setReconcileResult] = useState<{ diff: number; matched: boolean } | null>(null);
 
   const [adjustOpen, setAdjustOpen]         = useState(false);
   const [adjDirection, setAdjDirection]     = useState<'charge' | 'credit'>('charge');
@@ -194,7 +190,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
     setAdjOrder(row.orderNumber ? String(row.orderNumber) : '');
     setAdjNote(`Звірка з кабінетом Rozetka: у них ${fmt(row.theirAmount)} ₴, у нас ${fmt(row.ourAmount)} ₴`);
     setAdjDate(new Date().toISOString().slice(0, 10));
-    setAdjustOpen(true); setTopupOpen(false); setReconcileOpen(false); setError('');
+    setAdjustOpen(true); setTopupOpen(false); setError('');
   }
 
   async function submitAdjust() {
@@ -230,25 +226,6 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
     router.refresh();
   }
 
-  async function submitReconcile() {
-    const val = parseFloat(actualBalance);
-    if (Number.isNaN(val)) { setError('Вкажіть баланс з кабінету'); return; }
-    setSaving(true); setError('');
-    const res = await fetch('/api/admin/finance/marketplace-balance/reconcile', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ marketplace, actualBalance: val, reason: reconcileReason }),
-    });
-    const d = await res.json();
-    setSaving(false);
-    if (!res.ok) { setError(d.error ?? 'Помилка'); return; }
-    setReconcileResult({ diff: d.diff, matched: d.matched });
-    if (d.matched) {
-      setTimeout(() => { setReconcileOpen(false); setActualBalance(''); setReconcileResult(null); }, 1500);
-    } else {
-      router.refresh();
-    }
-  }
-
   // Стрічка: показуємо лише сторону marketplace_balance (кожна операція — один рядок
   // із правильним знаком). Контр-рядки marketplace_fee — це подвійний запис, у стрічці
   // вони дублювали б операцію.
@@ -271,17 +248,13 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
           </div>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={() => { setTopupOpen(v => !v); setReconcileOpen(false); setError(''); }}
+          <button onClick={() => { setTopupOpen(v => !v); setError(''); }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             <Plus size={14} /> Поповнити
           </button>
-          <button onClick={() => { setAdjustOpen(v => !v); setTopupOpen(false); setReconcileOpen(false); setError(''); }}
+          <button onClick={() => { setAdjustOpen(v => !v); setTopupOpen(false); setError(''); }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             <ArrowLeftRight size={14} /> Операція
-          </button>
-          <button onClick={() => { setReconcileOpen(v => !v); setTopupOpen(false); setAdjustOpen(false); setError(''); setReconcileResult(null); }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
-            <Scale size={14} /> Звірити
           </button>
           {marketplace === 'prom' && (
             <button onClick={() => setPromOpen(v => !v)}
@@ -423,37 +396,6 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
             Списання зменшує баланс на площадці (збір за доставку/рекламу), нарахування — збільшує (компенсація від площадки).
           </div>
           {error && <div style={{ marginTop: '8px', color: '#DC2626', fontSize: '12px' }}>{error}</div>}
-        </div>
-      )}
-
-      {/* Reconcile form */}
-      {reconcileOpen && (
-        <div style={{ padding: '16px 20px', background: '#FFFBEB', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <div style={{ width: '180px' }}>
-              <label style={lbl}>Баланс у кабінеті {cfg.label}, грн</label>
-              <input style={inp} type="number" step="0.01" value={actualBalance} onChange={e => setActualBalance(e.target.value)} placeholder="0.00" />
-            </div>
-            <div style={{ flex: 1, minWidth: '200px' }}>
-              <label style={lbl}>Коментар (необов&apos;язково)</label>
-              <input style={inp} value={reconcileReason} onChange={e => setReconcileReason(e.target.value)} placeholder="Причина розбіжності" />
-            </div>
-            <button onClick={submitReconcile} disabled={saving}
-              style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: 'none', background: '#B45309', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
-              {saving ? '...' : 'Звірити'}
-            </button>
-            <button onClick={() => setReconcileOpen(false)} style={{ height: '38px', width: '38px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <X size={14} />
-            </button>
-          </div>
-          {error && <div style={{ marginTop: '8px', color: '#DC2626', fontSize: '12px' }}>{error}</div>}
-          {reconcileResult && (
-            <div style={{ marginTop: '10px', fontSize: '13px', fontWeight: 600, color: reconcileResult.matched ? '#15803D' : '#B45309' }}>
-              {reconcileResult.matched
-                ? '✓ Збігається, різниці немає'
-                : `Різниця ${reconcileResult.diff > 0 ? '+' : ''}${fmt(reconcileResult.diff)} ₴ — записано як коригування`}
-            </div>
-          )}
         </div>
       )}
 
