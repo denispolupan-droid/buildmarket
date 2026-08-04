@@ -191,7 +191,7 @@ export default async function AdminPage({
   const curStatus = status;
 
   return (
-    <div style={{ padding: '28px 32px 64px' }}>
+    <div className="admin-orders-page" style={{ padding: '28px 32px 64px' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
