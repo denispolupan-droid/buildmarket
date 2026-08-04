@@ -896,11 +896,26 @@ input, select { font-family: inherit; }
   .drop-steps, .opt-steps          { grid-template-columns: 1fr 1fr !important; gap: 14px !important; }
   .drop-benefits, .opt-benefits    { grid-template-columns: 1fr !important; gap: 12px !important; }
   .drop-example                    { grid-template-columns: 1fr !important; gap: 16px !important; }
-  .drop-rules, .opt-audience       { grid-template-columns: 1fr !important; gap: 12px !important; }
+  .drop-rules                      { grid-template-columns: 1fr !important; gap: 12px !important; }
+  .opt-stats                       { grid-template-columns: 1fr 1fr !important; gap: 24px !important; }
+  .opt-brands                      { grid-template-columns: repeat(3, 1fr) !important; }
 }
 @media (max-width: 480px) {
   .drop-steps, .opt-steps { grid-template-columns: 1fr !important; }
+  .opt-brands             { grid-template-columns: repeat(2, 1fr) !important; }
 }
+
+/* Розкривні питання на /opt: власний шеврон замість системного маркера
+   (listStyle:none у самій сторінці ховає його лише в Chrome). */
+.opt-faq summary { position: relative; padding-right: 28px; }
+.opt-faq summary::-webkit-details-marker { display: none; }
+.opt-faq summary::after {
+  content: ''; position: absolute; right: 4px; top: 50%;
+  width: 8px; height: 8px; margin-top: -5px;
+  border-right: 2px solid var(--text-muted); border-bottom: 2px solid var(--text-muted);
+  transform: rotate(45deg); transition: transform 0.2s;
+}
+.opt-faq details[open] summary::after { transform: rotate(-135deg); margin-top: -2px; }
 
 /* ── Wishlist card ── */
 .wishlist-card-info { display: contents; }
