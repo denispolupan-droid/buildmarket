@@ -13,10 +13,12 @@ import { useTheme } from '../../lib/theme';
 import { getLang, localizeHref } from '../../lib/lang';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
+const WHOLESALE_TYPES = ['dealer', 'wholesale', 'contractor', 'shop_owner'];
+
 const BASE_NAV = [
   { href: '/',          icon: Home,         labelUk: 'Головна',    labelRu: 'Главная'     },
   { href: '/shop',      icon: Store,        labelUk: 'Магазин',    labelRu: 'Магазин'     },
-  { href: '/catalog',   icon: LayoutGrid,   labelUk: 'Опт',        labelRu: 'Опт'         },
+  { href: '/opt',       icon: LayoutGrid,   labelUk: 'Опт',        labelRu: 'Опт'         },
   { href: '/dropship',  icon: PackageCheck, labelUk: 'Дропшипінг', labelRu: 'Дропшиппинг' },
   { href: '/blog',      icon: BookOpen,     labelUk: 'Блог',       labelRu: 'Блог'        },
   { href: '/contacts',  icon: Phone,        labelUk: 'Контакти',   labelRu: 'Контакты'    },
@@ -26,12 +28,18 @@ export default function Header() {
   const pathname = usePathname();
   const router   = useRouter();
   const lang     = getLang(pathname);
-  const nav      = BASE_NAV.map(item => ({
-    href:  localizeHref(item.href, lang),
+  const [user,       setUser]       = useState<SupabaseUser | null>(null);
+
+  // «Опт» веде на публічний лендинг /opt — його бачать гість і краулер (/catalog
+  // закритий логіном, noindex і забороненй у robots, тож оптові запити не мали
+  // куди приземлятися). Тому, хто вже має оптовий акаунт, зайвий клік ні до чого:
+  // після гідратації посилання перемикається одразу на каталог.
+  const isWholesale = WHOLESALE_TYPES.includes((user?.app_metadata?.account_type as string | undefined) ?? '');
+  const nav = BASE_NAV.map(item => ({
+    href:  localizeHref(item.href === '/opt' && isWholesale ? '/catalog' : item.href, lang),
     icon:  item.icon,
     label: lang === 'ru' ? item.labelRu : item.labelUk,
   }));
-  const [user,       setUser]       = useState<SupabaseUser | null>(null);
   const [menuOpen,   setMenuOpen]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 

@@ -890,16 +890,16 @@ input, select { font-family: inherit; }
   .how-we-work-grid { grid-template-columns: 1fr !important; }
 }
 
-/* ── Dropship page mobile ── */
+/* ── Dropship / opt landing mobile (обидві сторінки ділять одну сітку) ── */
 @media (max-width: 768px) {
-  .drop-hero-grid  { grid-template-columns: 1fr !important; gap: 28px !important; }
-  .drop-steps      { grid-template-columns: 1fr 1fr !important; gap: 14px !important; }
-  .drop-benefits   { grid-template-columns: 1fr !important; gap: 12px !important; }
-  .drop-example    { grid-template-columns: 1fr !important; gap: 16px !important; }
-  .drop-rules      { grid-template-columns: 1fr !important; gap: 12px !important; }
+  .drop-hero-grid, .opt-hero-grid  { grid-template-columns: 1fr !important; gap: 28px !important; }
+  .drop-steps, .opt-steps          { grid-template-columns: 1fr 1fr !important; gap: 14px !important; }
+  .drop-benefits, .opt-benefits    { grid-template-columns: 1fr !important; gap: 12px !important; }
+  .drop-example                    { grid-template-columns: 1fr !important; gap: 16px !important; }
+  .drop-rules, .opt-audience       { grid-template-columns: 1fr !important; gap: 12px !important; }
 }
 @media (max-width: 480px) {
-  .drop-steps { grid-template-columns: 1fr !important; }
+  .drop-steps, .opt-steps { grid-template-columns: 1fr !important; }
 }
 
 /* ── Wishlist card ── */
