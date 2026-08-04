@@ -49,7 +49,9 @@ export default function CategoryHeader({ lang, name, parent, description, count 
           <span style={{ color: 'var(--text-secondary)' }}>{name}</span>
         </nav>
 
-        <div className="cat-head-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '32px', alignItems: 'center', marginTop: '10px' }}>
+        {/* Ліва колонка по ширині заголовка, а не половина екрана: інакше опис
+            починався з середини й ламався на три рядки замість двох. */}
+        <div className="cat-head-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, max-content) minmax(0, 1fr)', gap: '36px', alignItems: 'center', marginTop: '10px' }}>
           <div>
             <span className="eyebrow">{parent ? parent.name : t.section}</span>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
@@ -67,7 +69,7 @@ export default function CategoryHeader({ lang, name, parent, description, count 
           </div>
 
           {description && (
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0, maxWidth: '62ch' }}>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0, maxWidth: '92ch' }}>
               {description}
             </p>
           )}
