@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase';
+import { getMarketplaceBalance } from '../../../../../../lib/accounting/money';
 import { parsePromStatement, summarizePromStatement, type PromStatementRow } from '../../../../../../lib/prom-statement';
 
 // Звірка з Prom. На відміну від Rozetka, «їхній» бік автоматично не дістати:
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
-  const { text } = await req.json() as { text?: unknown };
+  const { text, cabinetBalance } = await req.json() as { text?: unknown; cabinetBalance?: unknown };
   if (typeof text !== 'string' || !text.trim()) {
     return NextResponse.json({ error: 'Вставте історію транзакцій із кабінету Prom' }, { status: 400 });
   }
@@ -153,9 +154,34 @@ export async function POST(req: NextRequest) {
     articles.reduce((s, a) => s + a.their, 0),
     articles.reduce((s, a) => s + a.ours, 0));
 
+  /* ── Перевірка ЗАЛИШКУ ──────────────────────────────────────────────────────
+     Головний контроль. У Prom немає «сірої зони», як у Rozetka, зате є зсув у
+     часі: комісію ProSale вони знімають при СТВОРЕННІ замовлення, а ми проводимо
+     при доставці. Тому наш баланс завжди більший рівно на те, що вони вже зняли,
+     а ми ще ні:
+
+        баланс кабінету = наш баланс − (їхні списання − наші проведення)
+
+     Баланс кабінету через API не дістати (у Prom його просто немає), тож
+     продавець вводить число з кабінету руками — це один раз на звірку. */
+  const ourBalance = r2(await getMarketplaceBalance('prom'));
+  const unposted = r2(articlesTotal.their - articlesTotal.ours);
+  const expected = r2(ourBalance - unposted);
+  const cab = typeof cabinetBalance === 'number' && Number.isFinite(cabinetBalance)
+    ? r2(cabinetBalance)
+    : null;
+  const balanceCheck = {
+    ours: ourBalance,
+    unposted,
+    expected,
+    cabinet: cab,
+    delta: cab == null ? null : r2(expected - cab),
+  };
+
   return NextResponse.json({
     from, to,
     parsedRows: parsed.length,
+    balanceCheck,
     // Поповнення й пакети до витрат по замовленнях не належать — показуємо окремо,
     // щоб не виглядало, ніби ми їх «загубили».
     outside: { topup: sum.topup, packages: sum.packages, other: sum.other },
