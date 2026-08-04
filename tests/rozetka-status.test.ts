@@ -8,6 +8,12 @@ describe('rozetkaStatusLabel', () => {
     expect(rozetkaStatusLabel(6)).toBe('Замовлення виконано');
   });
 
+  it('знає проміжні статуси доставки в точки видачі', () => {
+    expect(rozetkaStatusLabel(80)).toBe('Очікує отримання від продавця');
+    expect(rozetkaStatusLabel(81)).toBe('Прийнято від продавця');
+    expect(rozetkaStatusLabel(82)).toBe('Знаходиться в РЦ');
+  });
+
   it('незнайомий статус не ховає, а показує номер', () => {
     expect(rozetkaStatusLabel(999)).toBe('Статус 999');
   });
@@ -35,6 +41,13 @@ describe('isRozetkaBackwards', () => {
   it('нормальний крок уперед дозволений', () => {
     expect(isRozetkaBackwards(26, 1)).toBe(false);
     expect(isRozetkaBackwards(61, 26)).toBe(false);
+  });
+
+  it('посилку вже прийняли в точці видачі — не пушимо в неї 26 чи 61', () => {
+    for (const cur of [80, 81, 82]) {
+      expect(isRozetkaBackwards(26, cur)).toBe(true);
+      expect(isRozetkaBackwards(61, cur)).toBe(true);
+    }
   });
 
   it('невідомий поточний статус не блокує драбину — працює як раніше', () => {
@@ -69,6 +82,20 @@ describe('isRozetkaAhead', () => {
   it('доставка в кабінеті випереджає наше «підтверджено»', () => {
     expect(isRozetkaAhead(3, 'confirmed')).toBe(true);
     expect(isRozetkaAhead(6, 'shipped')).toBe(true);
+  });
+
+  // Живий випадок 26081007: Rozetka прийняла посилку в точці видачі (81), а в нас
+  // замовлення так і стояло «Підтверджено». Плашки не було, бо 80/81/82 не мали
+  // місця у шкалі — тепер мають.
+  it('проміжні статуси точок видачі бачить як «попереду»', () => {
+    for (const s of [80, 81, 82]) {
+      expect(isRozetkaAhead(s, 'confirmed')).toBe(true);
+      expect(isRozetkaAhead(s, 'new')).toBe(true);
+    }
+  });
+
+  it('після нашої відгрузки вони вже не «попереду» — ми на тій самій стадії', () => {
+    for (const s of [80, 81, 82]) expect(isRozetkaAhead(s, 'shipped')).toBe(false);
   });
 
   it('скасування не вважається просуванням — ним займаються окремі сторожі', () => {
