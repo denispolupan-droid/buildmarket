@@ -229,49 +229,64 @@ export default async function AdminPage({
                     («Скасовано», «Очікує оплати») він лишався 30, і назва сиділа на 4px
                     нижче, ніж у сусідів. 22 + 5 + 15 = 42 влазить у 44px контент-бокса,
                     тож тепер висота однакова в обох випадках. */}
-                <div style={{ height: '22px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', overflow: 'hidden' }}>
-                  {/* inline-flex, а не звичайний inline: чипи лічильників вирівнювались
-                      через vertical-align, і на «Скасовано» — де їх ДВА — рядок ставав
-                      вищим за решту, через що назва зʼїжджала відносно сусідніх карток. */}
-                  <span className="oc-tab-label" style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '4px',
-                    fontSize: '11.5px', fontWeight: 600, lineHeight: 1.15, letterSpacing: '0px', whiteSpace: 'nowrap',
-                    color: isActive ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)',
-                  }}>
-                    {tab.label}
-                    {cnt > 0 && (
-                      <span style={{
-                        flexShrink: 0, /* .admin-status-card на телефоні звужує ці чипи — див. globals.css */
-                        fontSize: '10px', fontWeight: 700, lineHeight: '15px',
-                        padding: '0 5px', borderRadius: '7px',
-                        background: isActive ? 'rgba(255,255,255,0.22)' : isNew ? '#EF4444' : '#E0ECF8',
-                        color: isActive ? '#fff' : isNew ? '#fff' : '#3B6EA5',
-                      }}>{cnt}</span>
-                    )}
-                    {/* Невирішені відмови (посилки їдуть назад — треба забрати з пошти або відмовитись) */}
-                    {tab.value === 'cancelled' && pendingReturns > 0 && (
-                      <span title={`Посилок у дорозі назад без рішення: ${pendingReturns} — відкрийте замовлення і виберіть «забрати з пошти» чи «залишити»`} style={{
-                        flexShrink: 0, /* .admin-status-card на телефоні звужує ці чипи — див. globals.css */
-                        fontSize: '10px', fontWeight: 700, lineHeight: '15px',
-                        padding: '0 5px', borderRadius: '7px',
-                        background: isActive ? 'rgba(255,165,0,0.35)' : '#FFEDD5',
-                        color: isActive ? '#FFD9A8' : '#C2410C',
-                      }}>↩ {pendingReturns}</span>
-                    )}
-                  </span>
-                </div>
-                {/* Рядок 2: сума — головний акцент. */}
                 {(() => {
                   const amount = tab.value === '' ? totalAmount : (statusAmounts[tab.value] ?? 0);
-                  if (amount <= 0) return null;
+                  const hasAmount = amount > 0;
+                  const chips = (
+                    <>
+                      {cnt > 0 && (
+                        <span style={{
+                          flexShrink: 0,
+                          fontSize: '10px', fontWeight: 700, lineHeight: '15px',
+                          padding: '0 5px', borderRadius: '7px',
+                          background: isActive ? 'rgba(255,255,255,0.22)' : isNew ? '#EF4444' : '#E0ECF8',
+                          color: isActive ? '#fff' : isNew ? '#fff' : '#3B6EA5',
+                        }}>{cnt}</span>
+                      )}
+                      {/* Невирішені відмови (посилки їдуть назад — треба забрати з пошти або відмовитись) */}
+                      {tab.value === 'cancelled' && pendingReturns > 0 && (
+                        <span title={`Посилок у дорозі назад без рішення: ${pendingReturns} — відкрийте замовлення і виберіть «забрати з пошти» чи «залишити»`} style={{
+                          flexShrink: 0,
+                          fontSize: '10px', fontWeight: 700, lineHeight: '15px',
+                          padding: '0 5px', borderRadius: '7px',
+                          background: isActive ? 'rgba(255,165,0,0.35)' : '#FFEDD5',
+                          color: isActive ? '#FFD9A8' : '#C2410C',
+                        }}>↩ {pendingReturns}</span>
+                      )}
+                    </>
+                  );
                   return (
-                    <span style={{
-                      fontSize: '15px', fontWeight: 800, lineHeight: 1,
-                      color: isActive ? '#93C5FD' : '#15803D',
-                      whiteSpace: 'nowrap', letterSpacing: '-0.2px',
-                    }}>
-                      {amount.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
-                    </span>
+                    <>
+                      {/* Рядок 1: назва. Лічильники стоять поруч ЛИШЕ там, де другий
+                          рядок зайнятий сумою. Де суми немає («Скасовано», «Очікує
+                          оплати») — вони переїжджають униз: там порожньо, а в один
+                          рядок «Скасовано» + два чипи не вміщалося й слово різалось. */}
+                      <div style={{ height: '22px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', overflow: 'hidden' }}>
+                        {/* inline-flex, а не звичайний inline: чипи вирівнювались через
+                            vertical-align, і на «Скасовано» — де їх ДВА — рядок ставав
+                            вищим за решту, через що назва зʼїжджала відносно сусідів. */}
+                        <span className="oc-tab-label" style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '4px',
+                          fontSize: '11.5px', fontWeight: 600, lineHeight: 1.15, letterSpacing: '0px', whiteSpace: 'nowrap',
+                          color: isActive ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)',
+                        }}>
+                          {tab.label}
+                          {hasAmount && chips}
+                        </span>
+                      </div>
+                      {/* Рядок 2: сума — головний акцент; якщо суми немає — лічильники. */}
+                      {hasAmount ? (
+                        <span style={{
+                          fontSize: '15px', fontWeight: 800, lineHeight: 1,
+                          color: isActive ? '#93C5FD' : '#15803D',
+                          whiteSpace: 'nowrap', letterSpacing: '-0.2px',
+                        }}>
+                          {amount.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
+                        </span>
+                      ) : (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>{chips}</span>
+                      )}
+                    </>
                   );
                 })()}
               </Link>

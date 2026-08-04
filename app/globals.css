@@ -12,6 +12,12 @@
   --brand-teal-dark:   #2EA8A2;
   --brand-teal-light:  #E6F7F6;
 
+  /* Світлі акценти — ЛИШЕ на темних підкладках (hero, CTA). У темній темі
+     не перевизначаються: підкладка там і так темна. На білому нечитабельні. */
+  --brand-sky:         #93C5FD;
+  --brand-teal-bright: #5EEAD4;
+  --brand-shadow:      0 8px 24px rgba(72,128,184,0.35);
+
   /* Backward-compat aliases used in product page */
   --brand-navy:        #4880B8;
   --brand-navy-dark:   #3A6FA5;
@@ -905,17 +911,55 @@ input, select { font-family: inherit; }
   .opt-brands             { grid-template-columns: repeat(2, 1fr) !important; }
 }
 
-/* Розкривні питання на /opt: власний шеврон замість системного маркера
-   (listStyle:none у самій сторінці ховає його лише в Chrome). */
-.opt-faq summary { position: relative; padding-right: 28px; }
-.opt-faq summary::-webkit-details-marker { display: none; }
-.opt-faq summary::after {
+/* ── Фірмові примітиви ──────────────────────────────────────────────────────
+   Один опис на весь сайт: лендинги, шапки каталогу, блоки «про категорію».
+   Раніше ці стилі жили інлайновими літералами в кожній сторінці — при першій
+   же зміні фірмового стилю їх довелося б правити в десятках місць. */
+
+/* Надзаголовок над H2. За замовчуванням — синій, для світлих секцій. */
+.eyebrow {
+  display: block;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--brand-blue);
+}
+.eyebrow.on-dark { color: var(--brand-teal-bright); } /* лише на темній підкладці */
+.eyebrow.alt     { color: var(--brand-teal-dark); }   /* друга барва на світлій */
+
+.section-title {
+  font-size: clamp(24px, 3vw, 34px); font-weight: 900; line-height: 1.3;
+  letter-spacing: -0.5px; color: var(--text-primary); margin: 12px 0 0;
+}
+
+/* Градієнтний текст — лише на темному, тому кольори фіксовані. */
+.grad-text {
+  background: linear-gradient(135deg, var(--brand-sky) 0%, var(--brand-teal-bright) 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+/* Розкривні питання: власний шеврон замість системного маркера
+   (list-style:none ховає його лише в Chrome). */
+.faq-accordion summary { position: relative; padding-right: 28px; list-style: none; }
+.faq-accordion summary::-webkit-details-marker { display: none; }
+.faq-accordion summary::after {
   content: ''; position: absolute; right: 4px; top: 50%;
   width: 8px; height: 8px; margin-top: -5px;
   border-right: 2px solid var(--text-muted); border-bottom: 2px solid var(--text-muted);
   transform: rotate(45deg); transition: transform 0.2s;
 }
-.opt-faq details[open] summary::after { transform: rotate(-135deg); margin-top: -2px; }
+.faq-accordion details[open] summary::after { transform: rotate(-135deg); margin-top: -2px; }
+
+/* Шапка категорії — компактна, бо під нею одразу товар. Не hero. */
+.cat-head {
+  background: linear-gradient(135deg, var(--brand-blue-light) 0%, transparent 60%);
+  border-bottom: 1px solid var(--border);
+  padding: 18px 0 20px;
+}
+.cat-head h1 {
+  font-size: clamp(20px, 2.4vw, 28px); font-weight: 900;
+  letter-spacing: -0.4px; line-height: 1.2; color: var(--text-primary);
+  margin: 8px 0 0;
+}
 
 /* ── Wishlist card ── */
 .wishlist-card-info { display: contents; }
@@ -1280,12 +1324,11 @@ input, select { font-family: inherit; }
      картка не липла до краю. */
   .admin-orders-page { padding: 14px 8px 48px !important; }
 
-  /* Картка статусу: «Скасовано» з двома чипами («15» + «↩ 1») вимагає 115px,
-     а при трьох картках у рядок контенту лишалось 95 — слово зрізалось.
-     Бічні поля 12 → 6 дають +12px, вужчі чипи ще +8. Три в рядок збережено. */
-  .admin-status-card { padding: 9px 5px !important; }
-  .admin-status-card span span { font-size: 9px !important; padding: 0 4px !important; }
-  .admin-status-card .oc-tab-label { gap: 3px !important; }
+  /* Бічні поля картки статусу трохи вужчі — на 390px три картки в рядок
+     інакше тиснуть довгі назви («Підтверджено», «Очікуємо товар»).
+     Чипи НЕ зменшуємо: там, де вони не вміщались у рядок з назвою, вони
+     тепер стоять на другому рядку (див. page.tsx), тож тіснота зникла. */
+  .admin-status-card { padding: 9px 8px !important; }
 
   /* Кнопки «Реєстр НП» і «Синхронізувати НП» — в один рядок навпіл. Excel на
      телефоні прихований (вивантажують його з компʼютера), і без нього ці дві
