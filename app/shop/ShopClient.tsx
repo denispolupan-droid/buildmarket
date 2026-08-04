@@ -28,6 +28,11 @@ function easeOutQuad(t: number) {
   return 1 - (1 - t) * (1 - t);
 }
 
+// Нижче цієї частки висоти сайдбара натиснутий пункт вважається «низько»
+// і його підтягують угору; EYE_LINE — куди саме підтягують.
+const COMFORT_LINE = 0.5;
+const EYE_LINE     = 0.45;
+
 function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 620) {
   const startTop = el.scrollTop;
   const distance = targetTop - startTop;
@@ -404,6 +409,19 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     smoothScrollTo(sidebar, Math.max(0, sidebar.scrollTop + offset - 16), 620);
   }, []);
 
+  // Підняти натиснутий пункт на «рівень очей» — трохи вище середини сайдбара.
+  // Не до самого верху: над пунктом має лишатися видимим його оточення, інакше
+  // губиться відчуття, де ти в дереві.
+  const scrollCatIntoComfort = useCallback((slug: string) => {
+    const catEl = catRefs.current[slug];
+    const sidebar = sidebarRef.current;
+    if (!catEl || !sidebar) return;
+    const containerRect = sidebar.getBoundingClientRect();
+    const offset = catEl.getBoundingClientRect().top - containerRect.top;
+    const target = sidebar.scrollTop + offset - containerRect.height * EYE_LINE;
+    smoothScrollTo(sidebar, Math.max(0, target), 620);
+  }, []);
+
   const selectCat = (slug: string | null, scrollSlug?: string) => {
     // На brand-сторінці заголовок рендериться сервером — потрібна повна навігація
     if (initialBrand) {
@@ -435,6 +453,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
         }
       }
       const bottomEl = catRefs.current[lastSlug];
+      const clickedEl = catRefs.current[slug ?? ''];
       if (container && topEl && bottomEl) {
         const containerRect = container.getBoundingClientRect();
         const topRect = topEl.getBoundingClientRect();
@@ -444,7 +463,20 @@ export default function ShopClient({ products, categories, reviewStats, initialS
         // in the lower half of the sidebar — comfortably "visible" isn't the same as
         // comfortably reachable.
         const belowMidpoint = topRect.top > containerRect.top + containerRect.height * 0.4;
-        if (fullyVisible && !belowMidpoint) return;
+        // …але «гілка вміщається» саме по собі ще нічого не означає для довгої гілки:
+        // корінь може стояти у верхніх 40%, а натиснутий пункт — біля нижнього краю.
+        // Раніше тут дивились ЛИШЕ на корінь, тож у «Фарбах» (11 підкатегорій) підйом
+        // мовчав, а обраний пункт лишався внизу. Тепер додатково міряємо сам пункт.
+        const clickedLow = clickedEl
+          ? clickedEl.getBoundingClientRect().top > containerRect.top + containerRect.height * COMFORT_LINE
+          : false;
+        if (fullyVisible && !belowMidpoint && !clickedLow) return;
+        // Пункт унизу — піднімаємо його, а не корінь: інакше довга гілка знову
+        // покладе його на те саме місце.
+        if (clickedLow) {
+          setTimeout(() => scrollCatIntoComfort(slug!), 120);
+          return;
+        }
       }
     }
     setTimeout(() => scrollCatToTop(target), 120);
