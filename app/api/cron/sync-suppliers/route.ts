@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { syncSupplier } from '../../../../lib/supplier-sync';
 import { pushPromStock } from '../../../../lib/prom-stock-push';
@@ -25,6 +26,7 @@ export async function GET(req: NextRequest) {
 
   const now = Date.now();
   const results: { id: number; name: string; status: string }[] = [];
+  let synced = 0;
 
   for (const s of suppliers) {
     // Постачальник без файлу-джерела не налаштований на авто-синк — це конфігурація,
@@ -45,6 +47,7 @@ export async function GET(req: NextRequest) {
 
     try {
       const result = await syncSupplier(s.id);
+      synced += result.rows_updated;
       results.push({ id: s.id, name: s.name, status: `ok: +${result.rows_updated} unmapped:${result.rows_unmapped}` });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'error';
@@ -52,6 +55,11 @@ export async function GET(req: NextRequest) {
       alertAdmin(`Cron: синк постачальника "${s.name}" впав`, message);
     }
   }
+
+  // Ціни й залишки змінилися в обхід адмінки (ручний синк постачальника чистить
+  // кеш сам, див. app/api/admin/suppliers/[id]/sync) — інакше листинги показували б
+  // стару ціну й наявність до природного протухання кешу.
+  if (synced > 0) revalidateTag('products', 'max');
 
   // Після оновлення залишків постачальників — одразу проштовхуємо їх у Prom
   // (фід Prom перечитує рідко; API-пуш закриває вікно оверсейлу).

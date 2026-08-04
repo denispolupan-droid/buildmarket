@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 
 const db = createClient(
@@ -55,6 +56,10 @@ export async function GET(req: NextRequest) {
       .from('product_stock')
       .update({ price_promo: null, updated_at: new Date().toISOString() })
       .in('sku', skusToRevert);
+
+    // Ціна змінилася в обхід адмінки — без цього листинги віддавали б скасовану
+    // акційну ціну до природного протухання кешу (адмінські роути це вже роблять).
+    revalidateTag('products', 'max');
   }
 
   // Mark all expired entries as processed

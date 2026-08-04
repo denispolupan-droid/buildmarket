@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 
 const db = createClient(
@@ -63,6 +64,10 @@ export async function GET(req: NextRequest) {
       .from('price_change_log')
       .update({ status: 'applied' })
       .in('id', appliedIds);
+
+    // Ціна змінилася в обхід адмінки — без цього листинги віддавали б стару
+    // ціну до природного протухання кешу (адмінські роути це вже роблять).
+    revalidateTag('products', 'max');
   }
 
   console.log(`[apply-scheduled-prices] applied=${appliedIds.length} errors=${errors.length}`);
