@@ -1265,6 +1265,27 @@ input, select { font-family: inherit; }
      картка не липла до краю. */
   .admin-orders-page { padding: 14px 8px 48px !important; }
 
+  /* Кнопки «Реєстр НП» і «Синхронізувати НП» — в один рядок навпіл. Excel на
+     телефоні прихований (вивантажують його з компʼютера), і без нього ці дві
+     якраз влазять. */
+  .oc-np-btn { flex: 1 1 0 !important; min-width: 0 !important; padding: 0 8px !important; white-space: nowrap; }
+
+  /* Фільтр дат — теж один рядок: три пресети + два поля. Пресети стискаються
+     до вмісту, поля ділять залишок. */
+  .oc-filter-dates { flex-wrap: nowrap !important; gap: 5px !important; }
+  .oc-filter-dates > button { padding: 0 8px !important; font-size: 11px !important; flex-shrink: 0; }
+  .oc-filter-dates > div { flex: 1 1 0; min-width: 0; }
+  .oc-filter-dates > div input { width: 100% !important; min-width: 0 !important; font-size: 11px !important; padding: 0 4px !important; }
+
+  /* Панель масових дій. Була рядком «текст ⟷ кнопки» з justify-content:
+     space-between — на телефоні текст стискався у вузький стовпчик ліворуч,
+     а кнопки налазили одна на одну. Тепер: підпис зверху на всю ширину,
+     кнопки під ним у стовпчик і на всю ширину. */
+  .oc-merge-bar { flex-direction: column; align-items: stretch !important; gap: 10px; padding: 12px !important; }
+  .oc-merge-title { font-size: 13px !important; line-height: 1.35; }
+  .oc-merge-actions { flex-direction: column; align-items: stretch !important; gap: 6px !important; }
+  .oc-merge-actions > * { width: 100%; justify-content: center; }
+
   /* Розміри тексту в картці. Базові 10–13px розраховані на таблицю з десятком
      колонок; на телефоні колонок немає, місце звільнилося — і дрібний шрифт
      лишався єдиною причиною, чому картка читається гірше за паперовий чек. */

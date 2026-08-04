@@ -223,15 +223,24 @@ export default async function AdminPage({
                 }}
               >
                 {/* Рядок 1: назва + лічильник інлайн (чип завжди в одному рядку з назвою). */}
-                <div style={{ height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', overflow: 'hidden' }}>
+                {/* height 22 + flexShrink 0, а не 30: при 30 рядок УМІЩАВСЯ лише там,
+                    де під ним є сума — flexbox стискав його до 22. На картках без суми
+                    («Скасовано», «Очікує оплати») він лишався 30, і назва сиділа на 4px
+                    нижче, ніж у сусідів. 22 + 5 + 15 = 42 влазить у 44px контент-бокса,
+                    тож тепер висота однакова в обох випадках. */}
+                <div style={{ height: '22px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', overflow: 'hidden' }}>
+                  {/* inline-flex, а не звичайний inline: чипи лічильників вирівнювались
+                      через vertical-align, і на «Скасовано» — де їх ДВА — рядок ставав
+                      вищим за решту, через що назва зʼїжджала відносно сусідніх карток. */}
                   <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '4px',
                     fontSize: '11.5px', fontWeight: 600, lineHeight: 1.15, letterSpacing: '0px', whiteSpace: 'nowrap',
                     color: isActive ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)',
                   }}>
                     {tab.label}
                     {cnt > 0 && (
                       <span style={{
-                        display: 'inline-block', verticalAlign: 'middle', marginLeft: '4px',
+                        flexShrink: 0,
                         fontSize: '10px', fontWeight: 700, lineHeight: '15px',
                         padding: '0 5px', borderRadius: '7px',
                         background: isActive ? 'rgba(255,255,255,0.22)' : isNew ? '#EF4444' : '#E0ECF8',
@@ -241,7 +250,7 @@ export default async function AdminPage({
                     {/* Невирішені відмови (посилки їдуть назад — треба забрати з пошти або відмовитись) */}
                     {tab.value === 'cancelled' && pendingReturns > 0 && (
                       <span title={`Посилок у дорозі назад без рішення: ${pendingReturns} — відкрийте замовлення і виберіть «забрати з пошти» чи «залишити»`} style={{
-                        display: 'inline-block', verticalAlign: 'middle', marginLeft: '3px',
+                        flexShrink: 0,
                         fontSize: '10px', fontWeight: 700, lineHeight: '15px',
                         padding: '0 5px', borderRadius: '7px',
                         background: isActive ? 'rgba(255,165,0,0.35)' : '#FFEDD5',

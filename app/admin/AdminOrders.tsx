@@ -1340,17 +1340,17 @@ export default function AdminOrders({
     <>
       {/* Merge bar */}
       {selectedIds.size >= 1 && (
-        <div style={{
+        <div className="oc-merge-bar" style={{
           position: 'sticky', top: '80px', zIndex: 50,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '12px 20px', marginBottom: '16px',
           background: 'linear-gradient(135deg, #0F1729 0%, #1A3456 100%)', borderRadius: '12px',
           boxShadow: '0 4px 20px rgba(15,23,41,0.45)',
         }}>
-          <span style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>
+          <span className="oc-merge-title" style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>
             Вибрано замовлень: {selectedIds.size} · Сума: {orders.filter(o => selectedIds.has(o.id)).reduce((s, o) => s + o.total_price, 0).toFixed(2)} грн
           </span>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="oc-merge-actions" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             {/* Bulk status change */}
             <select
 
@@ -1498,11 +1498,12 @@ export default function AdminOrders({
             <a
               href={`/api/admin/orders/export?${(() => { const p = new URLSearchParams(); if (currentStatus) p.set('status', currentStatus); if (dateFrom) p.set('dateFrom', dateFrom); if (dateTo) p.set('dateTo', dateTo); return p.toString(); })()}`}
               download
+              className="oc-hide-m"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 500, background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0' }}
             >
               ↓ Excel
             </a>
-            <Link href="/admin/dispatch" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 500, background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}>
+            <Link href="/admin/dispatch" className="oc-np-btn" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 500, background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}>
               <Send size={13} /> Реєстр НП
             </Link>
             {syncResult && (
@@ -1515,8 +1516,9 @@ export default function AdminOrders({
             <button
               onClick={syncDeliveryStatus}
               disabled={syncing}
+              className="oc-np-btn"
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                 height: '32px', padding: '0 12px', borderRadius: '8px',
                 border: '1.5px solid var(--border)', background: 'var(--bg-card)',
                 fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)',
