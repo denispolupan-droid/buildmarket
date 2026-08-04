@@ -7,12 +7,18 @@ import AllProductsLinks from '../../../shop/AllProductsLinks';
 import { getCategoriesCached, getProductsCached } from '../../../../lib/supabase';
 import { getCategoryNameRu, getCategoryDescriptionRu } from '../../../../lib/ru';
 import { getCategoryMetaRu } from '../../../../lib/category-descriptions-ru';
-import { categoryMeta, listingStats, productDisplayName, retailPrice, categoryFamilySlugs, duplicateOfParent } from '../../../../lib/seo/meta';
+import { categoryMeta, listingStats, productDisplayName, retailPrice, categoryFamilySlugs, duplicateOfParent, categoriesWithProducts } from '../../../../lib/seo/meta';
 import '../../../shop/shop.css';
 
 const BASE = 'https://fixline.com.ua';
 
 export const revalidate = 3600;
+
+/** Пререндер листингів — див. коментар в українській версії сторінки. */
+export async function generateStaticParams() {
+  const [categories, products] = await Promise.all([getCategoriesCached(), getProductsCached()]);
+  return [...categoriesWithProducts(categories, products)].map(category => ({ category }));
+}
 
 export async function generateMetadata(
   { params }: { params: Promise<{ category: string }> }

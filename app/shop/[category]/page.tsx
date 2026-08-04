@@ -6,12 +6,25 @@ import ShopLoader from '../ShopLoader';
 import AllProductsLinks from '../AllProductsLinks';
 import { getCategoriesCached, getProductsCached } from '../../../lib/supabase';
 import { getCategoryMeta } from '../../../lib/category-descriptions';
-import { categoryMeta, listingStats, productDisplayName, retailPrice, categoryFamilySlugs, duplicateOfParent } from '../../../lib/seo/meta';
+import { categoryMeta, listingStats, productDisplayName, retailPrice, categoryFamilySlugs, duplicateOfParent, categoriesWithProducts } from '../../../lib/seo/meta';
 import '../shop.css';
 
 const BASE = 'https://fixline.com.ua';
 
 export const revalidate = 3600;
+
+/**
+ * Без generateStaticParams маршрут із динамічним сегментом лишається `ƒ` —
+ * SSR на кожен запит попри revalidate вище. Саме тому листинги віддавалися
+ * з `no-store` і TTFB ~600 мс, тоді як сусідній [brand] (у якого ця функція є)
+ * кешувався. Порожні категорії свідомо не пререндеримо: вони й так noindex,
+ * а білд уже одного разу падав на пре-рендері сотень сторінок (див. next.config).
+ * Набір той самий, що йде в sitemap, — розійтися вони не можуть.
+ */
+export async function generateStaticParams() {
+  const [categories, products] = await Promise.all([getCategoriesCached(), getProductsCached()]);
+  return [...categoriesWithProducts(categories, products)].map(category => ({ category }));
+}
 
 export async function generateMetadata(
   { params }: { params: Promise<{ category: string }> }
