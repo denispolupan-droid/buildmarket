@@ -3,10 +3,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   ArrowRight, Handshake, Hammer, Store, UserPlus, MailCheck, Tags, Truck,
-  FileText, Boxes, ShieldCheck, Package, Layers, Clock, Check, Minus,
+  FileText, Boxes, ShieldCheck, Package, Layers, Clock,
 } from 'lucide-react';
 import Footer from '../../components/Footer';
 import Reveal from '../../components/Reveal';
+import ModelCompare from '../../components/ModelCompare';
 import { WHOLESALE_MIN } from '../../../lib/site';
 import { mergeVisibleBrands } from '../../../lib/brands';
 import { getBrandLogosCached, getVisibleBrandLogosCached } from '../../../lib/supabase';
@@ -65,15 +66,6 @@ const benefits = [
   { icon: ShieldCheck, title: 'Оригинал от производителей',    text: 'Работаем с официальными поставщиками — на каждую партию есть документы происхождения.' },
 ];
 
-const compare: { row: string; retail: string | boolean; opt: string | boolean; drop: string | boolean }[] = [
-  { row: 'Минимальный заказ',      retail: 'от 1 шт.',   opt: `${WHOLESALE_MIN} грн`, drop: 'от 1 шт.' },
-  { row: 'Цена',                   retail: 'розничная',  opt: 'оптовая в кабинете',   drop: 'дроп-цена' },
-  { row: 'Нужен свой склад',       retail: false,        opt: true,                   drop: false },
-  { row: 'Кто отправляет клиенту', retail: 'FIXLINE',    opt: 'вы сами',              drop: 'FIXLINE от вашего имени' },
-  { row: 'Счёт и накладная',       retail: true,         opt: true,                   drop: true },
-  { row: 'Кому подходит',          retail: 'частным покупателям', opt: 'дилерам, подрядчикам, магазинам', drop: 'продавцам без склада' },
-];
-
 const faq = [
   {
     q: 'Какая минимальная сумма оптового заказа?',
@@ -114,12 +106,6 @@ const gradientText = {
   background: 'linear-gradient(135deg, #93C5FD 0%, #5EEAD4 100%)',
   WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
 } as const;
-
-function Cell({ value }: { value: string | boolean }) {
-  if (value === true)  return <Check size={17} color="#15803D" strokeWidth={2.5} />;
-  if (value === false) return <Minus size={17} color="#94A3B8" strokeWidth={2.5} />;
-  return <span>{value}</span>;
-}
 
 export default async function RuOptPage() {
   const [brandLogos, visibleBrandLogos] = await Promise.all([
@@ -267,28 +253,7 @@ export default async function RuOptPage() {
               </div>
             </Reveal>
             <Reveal delay={100}>
-              <div style={{ maxWidth: '900px', margin: '0 auto', overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '620px', fontSize: '13px' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: 'left', padding: '14px 16px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '12px' }} />
-                      <th style={{ padding: '14px 16px', color: 'var(--text-secondary)', fontWeight: 700 }}>Розница</th>
-                      <th style={{ padding: '14px 16px', color: '#fff', fontWeight: 800, background: '#4880B8', borderRadius: '12px 12px 0 0' }}>Опт</th>
-                      <th style={{ padding: '14px 16px', color: 'var(--text-secondary)', fontWeight: 700 }}>Дропшиппинг</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {compare.map(({ row, retail, opt, drop }, i) => (
-                      <tr key={row} style={{ borderTop: '1px solid var(--border)' }}>
-                        <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>{row}</td>
-                        <td style={{ padding: '14px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}><Cell value={retail} /></td>
-                        <td style={{ padding: '14px 16px', textAlign: 'center', color: 'var(--text-primary)', fontWeight: 700, background: 'rgba(72,128,184,0.07)', ...(i === compare.length - 1 ? { borderRadius: '0 0 12px 12px' } : {}) }}><Cell value={opt} /></td>
-                        <td style={{ padding: '14px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}><Cell value={drop} /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ModelCompare lang="ru" highlight="opt" />
             </Reveal>
             <Reveal delay={160}>
               <p style={{ textAlign: 'center', fontSize: '14px', color: 'var(--text-secondary)', margin: '28px 0 0' }}>
