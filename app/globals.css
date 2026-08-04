@@ -1288,7 +1288,13 @@ input, select { font-family: inherit; }
      тобто на всю ширину праворуч від чекбокса. */
   .order-compact-row .oc-cust { grid-column: 2 / -1; grid-row: 2; min-width: 0; }
   .oc-status { width: auto !important; grid-column: 2 / -1; grid-row: 3; }
-  .order-compact-row .oc-ship { display: flex !important; grid-column: 2 / -1; grid-row: 4; }
+  /* Плашка ТТН — до правого краю картки. Номери різної довжини (НП — 14 цифр,
+     Rozetka — «RMP-…»), і притиснуті до міста вони стояли сходинками: очима
+     доводилось шукати початок кожного. Праворуч у них спільна вертикаль. */
+  .order-compact-row .oc-ship { display: flex !important; grid-column: 2 / -1; grid-row: 4; gap: 8px; }
+  /* margin-left:auto, а не space-between: коли міста немає, плашка лишається
+     сама в рядку — space-between притиснув би її ліворуч. */
+  .order-compact-row .oc-ship > :last-child { margin-left: auto; }
   /* Статус і статус перевізника — в один рядок, а не стовпчиком: удвох вони
      коротші за ширину екрана, а окремими рядками роздували картку. */
   .oc-status { flex-direction: row !important; align-items: center !important; flex-wrap: wrap; gap: 4px 8px !important; overflow: visible !important; }
