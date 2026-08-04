@@ -949,6 +949,27 @@ input, select { font-family: inherit; }
 }
 .faq-accordion details[open] summary::after { transform: rotate(-135deg); margin-top: -2px; }
 
+/* Блог: сітки карток і ховер. Раніше ховер жив інлайновим <style> у сторінці. */
+.blog-card { transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s; }
+.blog-card:hover { box-shadow: 0 10px 34px rgba(15,23,42,0.12); transform: translateY(-2px); border-color: var(--brand-blue); }
+
+@media (max-width: 1100px) {
+  .blog-grid, .blog-related { grid-template-columns: 1fr 1fr !important; }
+}
+@media (max-width: 700px) {
+  .blog-grid, .blog-related { grid-template-columns: 1fr !important; }
+  /* Ліда-картка: картинка зверху, текст під нею */
+  .blog-lead { grid-template-columns: 1fr !important; }
+  .blog-lead > div:first-child { min-height: 200px !important; }
+}
+
+/* Широкі таблиці в тілі статті прокручуються всередині себе,
+   інакше тягнуть горизонтальний скрол усій сторінці на телефоні. */
+.article-body table { display: block; overflow-x: auto; white-space: nowrap; }
+@media (min-width: 700px) {
+  .article-body table { display: table; white-space: normal; }
+}
+
 /* Шапка категорії — компактна, бо під нею одразу товар. Не hero. */
 .cat-head {
   background: linear-gradient(135deg, var(--brand-blue-light) 0%, transparent 60%);
