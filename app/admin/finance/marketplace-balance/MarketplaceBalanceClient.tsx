@@ -24,6 +24,11 @@ type CabinetData = {
   /** Звірка по статтях витрат площадки, а не лише по комісії за замовленнями. */
   articles?: Article[];
   articlesTotal?: Article;
+  /** Головний контроль: наш баланс проти «кабінет + сіра зона». */
+  balanceCheck?: {
+    ours: number; cabinetBalance: number; cabinetGray: number;
+    cabinetTotal: number; delta: number;
+  };
   totals: { their: number; ours: number; delta: number };
 };
 
@@ -516,6 +521,30 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
 
           {cabinetData && (
             <>
+              {/* Головна перевірка — по залишку. Частину зборів Rozetka знімає без
+                  рядка у виписці, тож построчна звірка їх не побачить, а залишок побачить. */}
+              {cabinetData.balanceCheck && (() => {
+                const b = cabinetData.balanceCheck!;
+                const ok = Math.abs(b.delta) < 0.01;
+                return (
+                  <div style={{ padding: '12px 16px', borderRadius: '10px', marginBottom: '14px', border: `1.5px solid ${ok ? '#BBF7D0' : '#FCA5A5'}`, background: ok ? '#F0FDF4' : '#FEF2F2' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 800, color: ok ? '#15803D' : '#B91C1C' }}>
+                        {ok ? '✓ Залишок сходиться' : `Залишок розходиться на ${fmt(b.delta)} ₴`}
+                      </span>
+                      <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                        наш баланс <b>{fmt(b.ours)} ₴</b> = кабінет {fmt(b.cabinetBalance)} + сіра зона {fmt(b.cabinetGray)} = <b>{fmt(b.cabinetTotal)} ₴</b>
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '5px', lineHeight: 1.5 }}>
+                      Сіра зона — зарезервована під замовлення в роботі майбутня комісія: гроші ще наші, просто заморожені,
+                      тому в «балансі» кабінету їх немає. Це головна перевірка: деякі збори Rozetka знімає без окремого
+                      рядка у виписці, і побачити їх можна тільки тут.
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Звірка по статтях — комісія це лише частина того, що площадка з нас бере */}
               <ArticlesTable articles={cabinetData.articles ?? []} total={cabinetData.articlesTotal} theirLabel="Rozetka" />
 

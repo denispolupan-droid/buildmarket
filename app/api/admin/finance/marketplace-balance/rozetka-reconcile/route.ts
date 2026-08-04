@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase';
+import { getMarketplaceBalance } from '../../../../../../lib/accounting/money';
 import { getRozetkaBalanceTotal, getRozetkaBalanceTxns, getRozetkaLogisticOps } from '../../../../../../lib/rozetka-api';
 
 // Побудкова звірка з кабінетом Rozetka: тягнемо живий леджер балансу продавця
@@ -262,17 +263,38 @@ export async function GET(req: NextRequest) {
           ? 'Ми проводимо збір при відгрузці, Rozetka списує при прийманні перевізником — різниця зазвичай зникає за добу.'
           : undefined),
       article('subscription', 'Абонплата', theirSubscription, oursSubscription),
-      article('smart', 'Smart-збір', 0, smartFees.total,
+      // Rozetka списує Smart-збір, але НЕ показує його рядком: ні в /balances/search,
+      // ні у вивантаженні історії транзакцій, ні в місячному акті, ні в довіднику з
+      // 41 типу операцій. Що гроші все ж пішли, видно з залишку — див. balanceCheck
+      // нижче: без цих 252 ₴ у кабінеті лежало б на 252 ₴ більше. Тому в колонку
+      // «Rozetka» ставимо ту саму суму: розбіжності тут немає, є лише брак рядка.
+      article('smart', 'Smart-збір', smartFees.total, smartFees.total,
         smartFees.total > 0
-          ? 'Списань 12/18/30 ₴ немає ні в основному, ні в логістичному балансі, ні в місячному звіті. Питання відкрите.'
+          ? 'Rozetka не показує ці списання рядком у виписці — але вони є: перевірка залишку нижче сходиться копійка в копійку саме з ними.'
           : undefined),
     ];
     const articlesTotal = article('total', 'РАЗОМ',
       articles.reduce((s, a) => s + a.their, 0),
       articles.reduce((s, a) => s + a.ours, 0));
 
+    /* ── Перевірка ЗАЛИШКУ ────────────────────────────────────────────────────
+       Головний контроль, і саме він ловить те, чого не видно построчно: частину
+       зборів Rozetka знімає без рядка у виписці. Наш баланс площадки має
+       дорівнювати «баланс кабінету + сіра зона»: сіра зона — це зарезервована під
+       замовлення в роботі майбутня комісія, гроші ще наші, просто заморожені, а
+       ми резерв окремо не моделюємо. */
+    const ourBalance = await getMarketplaceBalance('rozetka');
+    const cabinetTotal = r2(cabinet.balance + cabinet.sumInGray);
+    const balanceCheck = {
+      ours: r2(ourBalance),
+      cabinetBalance: r2(cabinet.balance),
+      cabinetGray: r2(cabinet.sumInGray),
+      cabinetTotal,
+      delta: r2(ourBalance - cabinetTotal),
+    };
+
     return NextResponse.json({
-      cabinet, from, to, rows, others, smartFees, articles, articlesTotal,
+      cabinet, from, to, rows, others, smartFees, articles, articlesTotal, balanceCheck,
       totals: { ...totals, delta: r2(totals.their - totals.ours) },
     });
   } catch (err: unknown) {
