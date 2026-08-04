@@ -1585,9 +1585,11 @@ export default function AdminOrders({
                 />
               </div>
               {hasDateFilter && (
-                <button onClick={clearDate}
-                  style={{ height: '32px', padding: '0 10px', borderRadius: '7px', border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#DC2626', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-                  ✕ Скинути дату
+                <button onClick={clearDate} title="Скинути дату" className="oc-date-clear"
+                  style={{ height: '32px', padding: '0 10px', borderRadius: '7px', border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#DC2626', fontSize: '12px', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                  {/* На телефоні лишається сам хрестик: підпис «Скинути дату» з'їдав
+                      стільки місця, що поля дат стискались до «0'» і «д». */}
+                  ✕<span className="oc-hide-m"> Скинути дату</span>
                 </button>
               )}
             </div>

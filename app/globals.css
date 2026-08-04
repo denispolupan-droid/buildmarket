@@ -1275,13 +1275,20 @@ input, select { font-family: inherit; }
   .oc-filter-dates { flex-wrap: nowrap !important; gap: 5px !important; }
   .oc-filter-dates > button { padding: 0 8px !important; font-size: 11px !important; flex-shrink: 0; }
   .oc-filter-dates > div { flex: 1 1 0; min-width: 0; }
-  .oc-filter-dates > div input { width: 100% !important; min-width: 0 !important; font-size: 11px !important; padding: 0 4px !important; }
+  /* min-width 62px, а не 0: із кнопкою скидання поля стискались до «0'» і «д» —
+     дата ставала нечитаною. 62px вистачає на «дд.мм.рр». */
+  .oc-filter-dates > div input { width: 100% !important; min-width: 62px !important; font-size: 11px !important; padding: 0 4px !important; }
+  .oc-date-clear { padding: 0 9px !important; }
 
   /* Панель масових дій. Була рядком «текст ⟷ кнопки» з justify-content:
      space-between — на телефоні текст стискався у вузький стовпчик ліворуч,
      а кнопки налазили одна на одну. Тепер: підпис зверху на всю ширину,
      кнопки під ним у стовпчик і на всю ширину. */
-  .oc-merge-bar { flex-direction: column; align-items: stretch !important; gap: 10px; padding: 12px !important; }
+  /* top:0, а не 80px: на телефоні верхня панель статусів не липка
+     (.admin-status-bar → position:static вище), тож зарезервовані 80px були
+     порожнім місцем, і панель дій починалася з середини екрана — під нею не
+     лишалось видимих замовлень, щоб добрати ще кілька. */
+  .oc-merge-bar { top: 0 !important; flex-direction: column; align-items: stretch !important; gap: 8px; padding: 10px !important; }
   .oc-merge-title { font-size: 13px !important; line-height: 1.35; }
   .oc-merge-actions { flex-direction: column; align-items: stretch !important; gap: 6px !important; }
   .oc-merge-actions > * { width: 100%; justify-content: center; }
