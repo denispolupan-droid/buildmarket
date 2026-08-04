@@ -5,6 +5,9 @@ import { fetchAllRows } from '../../lib/db-paginate';
 import AdminOrders from './AdminOrders';
 import Link from 'next/link';
 import NewOrderButton from './orders/NewOrderButton';
+import { SMART_TARIFF_KEY, parseSmartTariff } from '../../lib/rozetka-smart-tariff';
+import { ROZETKA_DELIVERY_TARIFF_KEY, parseRozetkaDeliveryTariff } from '../../lib/rozetka-delivery-tariff';
+import { PROM_DELIVERY_TARIFF_KEY, parsePromDeliveryTariff } from '../../lib/prom-delivery-fee';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -88,6 +91,20 @@ export default async function AdminPage({
   ]);
   const promCommissionPct = parseFloat(promSetting?.value ?? '3');
   const rozetkaCommissionPct = parseFloat(rozetkaSetting?.value ?? '15');
+
+  // Тарифи зборів за доставку — щоб оцінка економіки замовлення показувала те саме,
+  // що потім спишеться з балансу. Читаємо з тих самих ключів, які редагують екрани
+  // тарифів; на будь-якій невалідності parse-функції віддають офіційний дефолт.
+  const [smartRow, rzDeliveryRow, promDeliveryRow] = await Promise.all([
+    serviceClient.from('app_settings').select('value').eq('key', SMART_TARIFF_KEY).maybeSingle(),
+    serviceClient.from('app_settings').select('value').eq('key', ROZETKA_DELIVERY_TARIFF_KEY).maybeSingle(),
+    serviceClient.from('app_settings').select('value').eq('key', PROM_DELIVERY_TARIFF_KEY).maybeSingle(),
+  ]);
+  const feeTariffs = {
+    smart:           parseSmartTariff(smartRow.data?.value),
+    rozetkaDelivery: parseRozetkaDeliveryTariff(rzDeliveryRow.data?.value),
+    promDelivery:    parsePromDeliveryTariff(promDeliveryRow.data?.value),
+  };
 
   // Load confirmed sale docs + shipped quantities for orders on this page
   const orderIds = (orders ?? []).map(o => o.id);
@@ -259,7 +276,7 @@ export default async function AdminPage({
         {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
       </p>
 
-      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} rozetkaCommissionPct={rozetkaCommissionPct} initialSaleDocs={initialSaleDocs} initialReturnDocs={initialReturnDocs} initialShippedQty={initialShippedQty} />
+      <AdminOrders key={curStatus} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} rozetkaCommissionPct={rozetkaCommissionPct} feeTariffs={feeTariffs} initialSaleDocs={initialSaleDocs} initialReturnDocs={initialReturnDocs} initialShippedQty={initialShippedQty} />
     </div>
   );
 }
