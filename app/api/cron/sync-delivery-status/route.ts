@@ -4,6 +4,7 @@ import { notifyCustomerStatus } from '../../../../lib/telegram';
 import { setRozetkaOrderStatus, getRozetkaOrderStatusInfo } from '../../../../lib/rozetka-api';
 import { ROZETKA_DELIVERY_TYPE } from '../../../../lib/rozetka-delivery';
 import { rozetkaDeliveryPhase } from '../../../../lib/rozetka-delivery-status';
+import { groupByTracking } from '../../../../lib/delivery-tracking';
 import { completeShipmentByTtn, allOrderSalesPosted, settleLegacyCommission } from '../../../../lib/accounting/completion';
 import { recordTxn } from '../../../../lib/accounting/money';
 
@@ -65,8 +66,20 @@ export async function GET(req: NextRequest) {
   let updated = 0;
   let accepted = 0;
 
-  for (let i = 0; i < npOrders.length; i += CHUNK) {
-    const chunk = npOrders.slice(i, i + CHUNK);
+  // Одна ТТН може лежати на КІЛЬКОХ замовленнях: коли клієнт зробив два замовлення,
+  // а ми відправили їх однією посилкою. Раніше документ НП шукав своє замовлення
+  // через chunk.find(), тобто діставався РІВНО ОДНОМУ з них — другий не отримував ні
+  // статусу, ні carrier_accepted_at і при доставці не переходив у «Доставлено»,
+  // висячи у «Відвантажено» назавжди. Гірше, що вибірка без ORDER BY повертає рядки
+  // в довільному порядку, тож «щасливчик» міг мінятися між прогонами: живий кейс
+  // 26081001/26081002 — обидва зі спільною ТТН, але з різними текстами й різним часом
+  // синку. Тепер документ розкладаємо на ВСІ замовлення з цим номером.
+  const ordersByTtn = groupByTracking(npOrders);
+  const ttns = [...ordersByTtn.keys()];
+
+  for (let i = 0; i < ttns.length; i += CHUNK) {
+    const ttnChunk = ttns.slice(i, i + CHUNK);
+    const chunk = ttnChunk.flatMap(t => ordersByTtn.get(t) ?? []);
 
     const res = await fetch('https://api.novaposhta.ua/v2.0/json/', {
       method: 'POST',
@@ -76,7 +89,8 @@ export async function GET(req: NextRequest) {
         modelName: 'TrackingDocument',
         calledMethod: 'getStatusDocuments',
         methodProperties: {
-          Documents: chunk.map(o => ({ DocumentNumber: o.tracking_number })),
+          // Номери унікальні: дублікати лише зʼїдали б ліміт у 100 документів на запит.
+          Documents: ttnChunk.map(n => ({ DocumentNumber: n })),
         },
       }),
     });
@@ -94,8 +108,8 @@ export async function GET(req: NextRequest) {
     const deliveryByTtn = new Map<string, { cost: number; payer: string }>();
 
     for (const doc of (data.data ?? [])) {
-      const order = chunk.find(o => o.tracking_number === doc.Number);
-      if (!order) continue;
+      const docOrders = ordersByTtn.get(String(doc.Number)) ?? [];
+      if (!docOrders.length) continue;
       const code = String(doc.StatusCode);
 
       // Вартість доставки НП (DocumentCost) і платник (PayerType) — довідково на замовленні;
@@ -113,18 +127,20 @@ export async function GET(req: NextRequest) {
               ...(npCost != null ? { np_delivery_cost: npCost } : {}),
               ...(npPayer ? { np_delivery_payer: npPayer } : {}),
             })
-            .eq('id', order.id),
+            .in('id', docOrders.map(o => o.id)),
         );
       }
 
-      // Скасовані відстежуємо ТІЛЬКИ заради тексту статусу (посилка їде назад).
-      // Жодних проводок, «доставлено» чи пушу статусу в МП для них бути не може.
-      if (order.status === 'cancelled') continue;
+      for (const order of docOrders) {
+        // Скасовані відстежуємо ТІЛЬКИ заради тексту статусу (посилка їде назад).
+        // Жодних проводок, «доставлено» чи пушу статусу в МП для них бути не може.
+        if (order.status === 'cancelled') continue;
 
-      if (DELIVERED_CODES.has(code)) {
-        deliveredIds.push(order.id);
-      } else if (code !== NOT_HANDED_OVER_CODE && !order.carrier_accepted_at) {
-        acceptedOrders.push(order);
+        if (DELIVERED_CODES.has(code)) {
+          deliveredIds.push(order.id);
+        } else if (code !== NOT_HANDED_OVER_CODE && !order.carrier_accepted_at) {
+          acceptedOrders.push(order);
+        }
       }
     }
 
