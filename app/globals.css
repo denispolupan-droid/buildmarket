@@ -1280,6 +1280,13 @@ input, select { font-family: inherit; }
      картка не липла до краю. */
   .admin-orders-page { padding: 14px 8px 48px !important; }
 
+  /* Картка статусу: «Скасовано» з двома чипами («15» + «↩ 1») вимагає 115px,
+     а при трьох картках у рядок контенту лишалось 95 — слово зрізалось.
+     Бічні поля 12 → 6 дають +12px, вужчі чипи ще +8. Три в рядок збережено. */
+  .admin-status-card { padding: 9px 5px !important; }
+  .admin-status-card span span { font-size: 9px !important; padding: 0 4px !important; }
+  .admin-status-card .oc-tab-label { gap: 3px !important; }
+
   /* Кнопки «Реєстр НП» і «Синхронізувати НП» — в один рядок навпіл. Excel на
      телефоні прихований (вивантажують його з компʼютера), і без нього ці дві
      якраз влазять. */
@@ -1287,13 +1294,16 @@ input, select { font-family: inherit; }
 
   /* Фільтр дат — теж один рядок: три пресети + два поля. Пресети стискаються
      до вмісту, поля ділять залишок. */
-  .oc-filter-dates { flex-wrap: nowrap !important; gap: 5px !important; }
-  .oc-filter-dates > button { padding: 0 8px !important; font-size: 11px !important; flex-shrink: 0; }
-  .oc-filter-dates > div { flex: 1 1 0; min-width: 0; }
-  /* min-width 62px, а не 0: із кнопкою скидання поля стискались до «0'» і «д» —
-     дата ставала нечитаною. 62px вистачає на «дд.мм.рр». */
-  .oc-filter-dates > div input { width: 100% !important; min-width: 62px !important; font-size: 11px !important; padding: 0 4px !important; }
-  .oc-date-clear { padding: 0 9px !important; }
+  .oc-filter-dates { flex-wrap: nowrap !important; gap: 4px !important; }
+  /* Пресети тиснемо до мінімуму — вони підписані словом, їх видно й так, а
+     місце потрібне полям: у них рік із чотирьох цифр («01.08.2026»), і при
+     62px він зрізався до «01.08.202». */
+  .oc-filter-dates > button { padding: 0 6px !important; font-size: 11px !important; flex-shrink: 0; }
+  .oc-filter-dates > div { flex: 1 1 0; min-width: 0; gap: 3px !important; }
+  .oc-filter-dates > div input { width: 100% !important; min-width: 76px !important; font-size: 11px !important; padding: 0 3px !important; text-align: center; }
+  /* Тире між полями — зайві 14px там, де їх бракує: поля й так стоять поруч. */
+  .oc-filter-dates > div > span { display: none !important; }
+  .oc-date-clear { padding: 0 8px !important; }
 
   /* Панель масових дій. Була рядком «текст ⟷ кнопки» з justify-content:
      space-between — на телефоні текст стискався у вузький стовпчик ліворуч,
@@ -1336,15 +1346,19 @@ input, select { font-family: inherit; }
      Колонка 1 — чекбокс, колонка 2 — усе інше, тож ліві краї збігаються. */
   .order-compact-row {
     display: grid !important;
-    grid-template-columns: 16px minmax(0, 1fr) auto 14px !important;
+    grid-template-columns: 16px auto minmax(0, 1fr) auto 14px !important;
     align-items: center !important;
     gap: 5px 8px !important;
     padding: 14px 12px !important;
   }
   .order-compact-row > div:first-child { grid-column: 1; grid-row: 1; }
   .order-compact-row .oc-num { width: auto !important; grid-column: 2; grid-row: 1; }
-  .order-compact-row > span:last-of-type { grid-column: 3; grid-row: 1; text-align: right; }
-  .order-compact-row > svg { grid-column: 4; grid-row: 1; }
+  /* Дата — одразу після номера. Раніше ховалась разом з рештою колонок
+     (.oc-hide-m), і на телефоні дізнатися, коли замовлення створене, можна
+     було лише розгорнувши картку. */
+  .order-compact-row .oc-date { width: auto !important; grid-column: 3; grid-row: 1; white-space: nowrap; }
+  .order-compact-row > span:last-of-type { grid-column: 4; grid-row: 1; text-align: right; }
+  .order-compact-row > svg { grid-column: 5; grid-row: 1; }
   /* Клієнт/товар, статус і доставка — кожен на власному рядку, у колонці 2..4,
      тобто на всю ширину праворуч від чекбокса. */
   .order-compact-row .oc-cust { grid-column: 2 / -1; grid-row: 2; min-width: 0; }

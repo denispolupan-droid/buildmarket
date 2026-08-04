@@ -211,6 +211,7 @@ export default async function AdminPage({
             return (
               <Link
                 key={tab.value}
+                className="admin-status-card"
                 href={`/admin?status=${tab.value}${dateFrom ? `&dateFrom=${dateFrom}` : ''}${dateTo ? `&dateTo=${dateTo}` : ''}`}
                 style={{
                   display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
@@ -232,7 +233,7 @@ export default async function AdminPage({
                   {/* inline-flex, а не звичайний inline: чипи лічильників вирівнювались
                       через vertical-align, і на «Скасовано» — де їх ДВА — рядок ставав
                       вищим за решту, через що назва зʼїжджала відносно сусідніх карток. */}
-                  <span style={{
+                  <span className="oc-tab-label" style={{
                     display: 'inline-flex', alignItems: 'center', gap: '4px',
                     fontSize: '11.5px', fontWeight: 600, lineHeight: 1.15, letterSpacing: '0px', whiteSpace: 'nowrap',
                     color: isActive ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)',
@@ -240,7 +241,7 @@ export default async function AdminPage({
                     {tab.label}
                     {cnt > 0 && (
                       <span style={{
-                        flexShrink: 0,
+                        flexShrink: 0, /* .admin-status-card на телефоні звужує ці чипи — див. globals.css */
                         fontSize: '10px', fontWeight: 700, lineHeight: '15px',
                         padding: '0 5px', borderRadius: '7px',
                         background: isActive ? 'rgba(255,255,255,0.22)' : isNew ? '#EF4444' : '#E0ECF8',
@@ -250,7 +251,7 @@ export default async function AdminPage({
                     {/* Невирішені відмови (посилки їдуть назад — треба забрати з пошти або відмовитись) */}
                     {tab.value === 'cancelled' && pendingReturns > 0 && (
                       <span title={`Посилок у дорозі назад без рішення: ${pendingReturns} — відкрийте замовлення і виберіть «забрати з пошти» чи «залишити»`} style={{
-                        flexShrink: 0,
+                        flexShrink: 0, /* .admin-status-card на телефоні звужує ці чипи — див. globals.css */
                         fontSize: '10px', fontWeight: 700, lineHeight: '15px',
                         padding: '0 5px', borderRadius: '7px',
                         background: isActive ? 'rgba(255,165,0,0.35)' : '#FFEDD5',

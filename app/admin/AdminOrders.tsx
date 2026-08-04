@@ -1828,7 +1828,9 @@ export default function AdminOrders({
                   <span className="oc-num" style={{ width: '70px', flexShrink: 0, fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)' }}>#{order.order_number}</span>
 
                   {/* Дата */}
-                  <span className="oc-hide-m" style={{ width: '90px', flexShrink: 0, fontSize: '11px', color: 'var(--text-muted)' }}>{date}</span>
+                  {/* На телефоні дата показується одразу після номера (клас oc-date
+                      кладе її у свою комірку сітки), а не ховається, як решта колонок. */}
+                  <span className="oc-date" style={{ width: '90px', flexShrink: 0, fontSize: '11px', color: 'var(--text-muted)' }}>{date}</span>
 
                   {/* Клієнт / Товар */}
                   <div className="oc-cust" style={{ flex: '0 1 calc(50% - 230px)', minWidth: 0, overflow: 'hidden' }}>
