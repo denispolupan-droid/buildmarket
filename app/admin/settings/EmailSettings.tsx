@@ -13,6 +13,7 @@ type Props = {
   initialContactName:  string;
   initialContactPhone: string;
   initialExtraSenders: Sender[];
+  initialDefaultSender: string;
 };
 
 const inp: React.CSSProperties = {
@@ -25,13 +26,15 @@ const lbl: React.CSSProperties = {
   display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em',
 };
 
-export default function EmailSettings({ initialFromEmail, initialFromName, initialAdminEmail, initialContactName, initialContactPhone, initialExtraSenders }: Props) {
+export default function EmailSettings({ initialFromEmail, initialFromName, initialAdminEmail, initialContactName, initialContactPhone, initialExtraSenders, initialDefaultSender }: Props) {
   const [fromEmail,     setFromEmail]     = useState(initialFromEmail);
   const [fromName,      setFromName]      = useState(initialFromName);
   const [adminEmail,    setAdminEmail]    = useState(initialAdminEmail);
   const [contactName,   setContactName]   = useState(initialContactName);
   const [contactPhone,  setContactPhone]  = useState(initialContactPhone);
   const [extraSenders,  setExtraSenders]  = useState<Sender[]>(initialExtraSenders ?? []);
+  // Яка з адрес підставляється у вікні відправки постачальнику. Порожньо = основна.
+  const [defaultSender, setDefaultSender] = useState(initialDefaultSender ?? '');
   const [saving,      setSaving]      = useState(false);
   const [saved,       setSaved]       = useState(false);
 
@@ -53,6 +56,8 @@ export default function EmailSettings({ initialFromEmail, initialFromName, initi
           company_contact_name:  contactName.trim(),
           company_contact_phone: contactPhone.trim(),
           extra_senders:         JSON.stringify(cleaned),
+          // Адресу, яку щойно прибрали зі списку, за замовчуванням не лишаємо.
+          orders_default_sender: cleaned.some(s => s.email === defaultSender) ? defaultSender : '',
         }),
       });
       const data = await res.json();
@@ -87,6 +92,10 @@ export default function EmailSettings({ initialFromEmail, initialFromName, initi
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
               Використовується як FROM при відправці замовлень постачальникам
             </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer', marginTop: '6px' }}>
+              <input type="radio" name="default-sender" checked={!defaultSender} onChange={() => setDefaultSender('')} />
+              Підставляти за замовчуванням
+            </label>
           </div>
         </div>
 
@@ -125,6 +134,12 @@ export default function EmailSettings({ initialFromEmail, initialFromName, initi
                     <input type="checkbox" checked={!!s.anonymize}
                       onChange={e => setExtraSenders(prev => prev.map((x, j) => j === i ? { ...x, anonymize: e.target.checked } : x))} />
                     Приховувати дані клієнта в листі постачальнику (лише останні 4 цифри ТТН)
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: 'var(--text-secondary)', cursor: s.email ? 'pointer' : 'not-allowed', opacity: s.email ? 1 : 0.5 }}>
+                    <input type="radio" name="default-sender" disabled={!s.email}
+                      checked={!!s.email && defaultSender === s.email}
+                      onChange={() => setDefaultSender(s.email)} />
+                    Підставляти за замовчуванням
                   </label>
                 </div>
               ))}
