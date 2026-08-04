@@ -1828,7 +1828,8 @@ export default function AdminOrders({
 
                   {/* Клієнт / Товар */}
                   <div className="oc-cust" style={{ flex: '0 1 calc(50% - 230px)', minWidth: 0, overflow: 'hidden' }}>
-                    <div style={{ fontSize: '13px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div className="oc-nameline" style={{ fontSize: '13px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span className="oc-badges">
                       {(order.flags ?? []).includes('urgent') && (
                         <span title="Терміново" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>⚡</span>
                       )}
@@ -1866,10 +1867,13 @@ export default function AdminOrders({
                           </span>
                         );
                       })()}
-                      {order.company
-                        ? <><span style={{ fontWeight: 600 }}>{order.company}</span><span style={{ color: 'var(--text-muted)' }}> · {order.contact}</span></>
-                        : <span style={{ fontWeight: 600 }}>{order.contact}</span>}
-                      {order.phone && <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--text-muted)', marginLeft: '6px' }}>{order.phone}</span>}
+                      </span>
+                      <span className="oc-name">
+                        {order.company
+                          ? <><span style={{ fontWeight: 600 }}>{order.company}</span><span style={{ color: 'var(--text-muted)' }}> · {order.contact}</span></>
+                          : <span style={{ fontWeight: 600 }}>{order.contact}</span>}
+                        {order.phone && <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--text-muted)', marginLeft: '6px' }}>{order.phone}</span>}
+                      </span>
                     </div>
                     {order.items[0] && (
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
