@@ -29,6 +29,18 @@ type CabinetData = {
 
 type Article = { key: string; label: string; their: number; ours: number; delta: number; note?: string };
 
+type PromReconcile = {
+  from: string; to: string; parsedRows: number;
+  outside: { topup: number; packages: number; other: number };
+  articles: Article[];
+  articlesTotal: Article;
+  rows: Array<{
+    promOrderId: number; orderNumber: number | null; orderStatus: string | null;
+    date: string; theirAmount: number; ourAmount: number; delta: number;
+    status: 'ok' | 'diff' | 'missing_ours' | 'missing_theirs' | 'pending_delivery';
+  }>;
+};
+
 type MarketplaceData = { rows: LedgerRow[]; balance: number; inTransit: InTransit };
 
 const MARKETPLACE_LABEL: Record<string, { label: string; color: string; bg: string }> = {
@@ -57,6 +69,46 @@ export default function MarketplaceBalanceClient({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <MarketplacePanel marketplace="prom" data={prom} />
       <MarketplacePanel marketplace="rozetka" data={rozetka} />
+    </div>
+  );
+}
+
+/** Звірка по статтях витрат площадки. Спільна для Prom і Rozetka — щоб читалась однаково. */
+function ArticlesTable({ articles, total, theirLabel }: { articles: Article[]; total?: Article; theirLabel: string }) {
+  if (!articles.length) return null;
+  const cols = '1fr 110px 110px 100px';
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', background: 'var(--bg-card)', marginBottom: '14px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: cols, padding: '8px 14px', background: 'var(--bg-soft)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+        <span>Стаття</span>
+        <span style={{ textAlign: 'right' }}>{theirLabel}</span>
+        <span style={{ textAlign: 'right' }}>У нас</span>
+        <span style={{ textAlign: 'right' }}>Різниця</span>
+      </div>
+      {[...articles, ...(total ? [total] : [])].map((a, i) => {
+        const isTotal = a.key === 'total';
+        const ok = Math.abs(a.delta) < 0.01;
+        return (
+          <div key={a.key} style={{
+            padding: '9px 14px', fontSize: '13px',
+            borderTop: i > 0 ? '1px solid var(--border-light)' : 'none',
+            background: isTotal ? 'var(--bg-soft)' : undefined,
+            fontWeight: isTotal ? 700 : 400,
+          }}>
+            <div style={{ display: 'grid', gridTemplateColumns: cols, alignItems: 'center' }}>
+              <span style={{ color: 'var(--text-primary)' }}>{a.label}</span>
+              <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(a.their)} ₴</span>
+              <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(a.ours)} ₴</span>
+              <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: ok ? '#15803D' : '#B45309' }}>
+                {ok ? '✓ 0' : `${a.delta > 0 ? '+' : ''}${fmt(a.delta)}`}
+              </span>
+            </div>
+            {a.note && (
+              <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '3px', fontWeight: 400, lineHeight: 1.45 }}>{a.note}</div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -94,6 +146,31 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
   const [cabinetData, setCabinetData]       = useState<CabinetData | null>(null);
   const [cabinetFrom, setCabinetFrom]       = useState(new Date(Date.now() - 30 * 86400e3).toISOString().slice(0, 10));
   const [cabinetTo, setCabinetTo]           = useState(new Date().toISOString().slice(0, 10));
+
+  // Звірка з Prom — тільки за вставленою випискою: API балансу в Prom немає
+  // (/balance/list, /payments/list, /finance/list — 404, працюють лише замовлення).
+  const [promOpen, setPromOpen]         = useState(false);
+  const [promText, setPromText]         = useState('');
+  const [promLoading, setPromLoading]   = useState(false);
+  const [promError, setPromError]       = useState('');
+  const [promData, setPromData]         = useState<PromReconcile | null>(null);
+
+  async function loadProm() {
+    setPromLoading(true); setPromError('');
+    try {
+      const res = await fetch('/api/admin/finance/marketplace-balance/prom-reconcile', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: promText }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? 'Не вдалося звірити');
+      setPromData(d);
+    } catch (e) {
+      setPromError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPromLoading(false);
+    }
+  }
 
   async function loadCabinet(from = cabinetFrom, to = cabinetTo) {
     setCabinetLoading(true); setCabinetError('');
@@ -206,6 +283,12 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             <Scale size={14} /> Звірити
           </button>
+          {marketplace === 'prom' && (
+            <button onClick={() => setPromOpen(v => !v)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: promOpen ? '1.5px solid #8B5CF6' : '1.5px solid var(--border)', background: promOpen ? '#F5F3FF' : 'var(--bg-soft)', color: promOpen ? '#8B5CF6' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+              <Landmark size={14} /> Виписка
+            </button>
+          )}
           {marketplace === 'rozetka' && (
             <button onClick={() => {
               setCabinetOpen(v => !v);
@@ -374,6 +457,81 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
         </div>
       )}
 
+      {/* Звірка з випискою Prom — вставленою вручну, бо API балансу в Prom немає */}
+      {marketplace === 'prom' && promOpen && (
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg-soft)' }}>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px', lineHeight: 1.5 }}>
+            У Prom немає API для балансу, тож виписку копіюємо руками: кабінет → Фінанси → Історія транзакцій,
+            виділити таблицю з колонками <b>Дата · Сума · Примітка · Тип</b> і вставити сюди.
+          </div>
+          <textarea value={promText} onChange={e => setPromText(e.target.value)}
+            placeholder={'04.08.2026\t-45,59 ₴\tОплата за доступ к онлайн Каталогу ProSale Prom.ua по заказу 419549833\tСписание'}
+            style={{ width: '100%', minHeight: '110px', padding: '10px 12px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '12px', fontFamily: 'ui-monospace, monospace', boxSizing: 'border-box', background: 'var(--bg-card)', color: 'var(--text-primary)', resize: 'vertical' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
+            <button onClick={() => loadProm()} disabled={promLoading || !promText.trim()}
+              style={{ height: '36px', padding: '0 16px', borderRadius: '8px', border: 'none', background: '#8B5CF6', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: promLoading || !promText.trim() ? 'default' : 'pointer', opacity: promLoading || !promText.trim() ? 0.5 : 1 }}>
+              {promLoading ? 'Звіряю…' : 'Звірити'}
+            </button>
+            {promData && (
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                розібрано {promData.parsedRows} рядків · період {promData.from} — {promData.to}
+              </span>
+            )}
+          </div>
+          {promError && <div style={{ color: '#DC2626', fontSize: '12px', marginTop: '8px' }}>{promError}</div>}
+
+          {promData && (
+            <div style={{ marginTop: '14px' }}>
+              <ArticlesTable articles={promData.articles} total={promData.articlesTotal} theirLabel="Prom" />
+
+              {(promData.outside.topup !== 0 || promData.outside.packages !== 0) && (
+                <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', margin: '8px 0 12px', lineHeight: 1.5 }}>
+                  Поза звіркою: поповнення {fmt(promData.outside.topup)} ₴, пакети/бонуси {fmt(promData.outside.packages)} ₴ —
+                  це не витрати по замовленнях, тому в статті не входять.
+                </div>
+              )}
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', background: 'var(--bg-card)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 100px 100px 90px 180px', padding: '8px 14px', background: 'var(--bg-soft)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  <span>Дата</span><span>Замовлення</span>
+                  <span style={{ textAlign: 'right' }}>Prom</span>
+                  <span style={{ textAlign: 'right' }}>У нас</span>
+                  <span style={{ textAlign: 'right' }}>Різниця</span>
+                  <span style={{ textAlign: 'right' }}>Статус</span>
+                </div>
+                <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
+                  {promData.rows.map((row, idx) => {
+                    const ui: Record<string, { text: string; color: string }> = {
+                      ok:               { text: '✓ Збігається', color: '#15803D' },
+                      diff:             { text: 'Розбіжність', color: '#DC2626' },
+                      missing_ours:     { text: 'Немає у нас', color: '#DC2626' },
+                      missing_theirs:   { text: 'Немає у Prom', color: '#DC2626' },
+                      pending_delivery: { text: 'В дорозі — проведемо при доставці', color: '#B45309' },
+                    };
+                    const s = ui[row.status];
+                    return (
+                      <div key={`${row.promOrderId}-${idx}`} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 100px 100px 90px 180px', padding: '8px 14px', alignItems: 'center', fontSize: '13px', borderTop: idx > 0 ? '1px solid var(--border-light)' : 'none' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{row.date || '—'}</span>
+                        <span style={{ color: 'var(--text-primary)' }}>
+                          {row.orderNumber ? `#${row.orderNumber}` : `Prom ${row.promOrderId}`}
+                          <span style={{ color: 'var(--text-muted)', fontSize: '11.5px' }}> · {row.orderStatus ?? 'немає у нас'}</span>
+                        </span>
+                        <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(row.theirAmount)}</span>
+                        <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(row.ourAmount)}</span>
+                        <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: Math.abs(row.delta) < 0.01 ? '#15803D' : '#B45309' }}>
+                          {Math.abs(row.delta) < 0.01 ? '0' : `${row.delta > 0 ? '+' : ''}${fmt(row.delta)}`}
+                        </span>
+                        <span style={{ textAlign: 'right', fontSize: '11.5px', fontWeight: 600, color: s.color }}>{s.text}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Звірка з кабінетом Rozetka — живі дані /balances API */}
       {marketplace === 'rozetka' && cabinetOpen && (
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg-soft)' }}>
@@ -417,40 +575,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
           {cabinetData && (
             <>
               {/* Звірка по статтях — комісія це лише частина того, що площадка з нас бере */}
-              {cabinetData.articles && cabinetData.articles.length > 0 && (
-                <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', background: 'var(--bg-card)', marginBottom: '14px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px 100px', padding: '8px 14px', background: 'var(--bg-soft)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                    <span>Стаття</span>
-                    <span style={{ textAlign: 'right' }}>Rozetka</span>
-                    <span style={{ textAlign: 'right' }}>У нас</span>
-                    <span style={{ textAlign: 'right' }}>Різниця</span>
-                  </div>
-                  {[...cabinetData.articles, ...(cabinetData.articlesTotal ? [cabinetData.articlesTotal] : [])].map((a, i) => {
-                    const isTotal = a.key === 'total';
-                    const ok = Math.abs(a.delta) < 0.01;
-                    return (
-                      <div key={a.key} style={{
-                        padding: '9px 14px', fontSize: '13px',
-                        borderTop: i > 0 ? `1px solid var(--border-light)` : 'none',
-                        background: isTotal ? 'var(--bg-soft)' : undefined,
-                        fontWeight: isTotal ? 700 : 400,
-                      }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px 100px', alignItems: 'center' }}>
-                          <span style={{ color: 'var(--text-primary)' }}>{a.label}</span>
-                          <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(a.their)} ₴</span>
-                          <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(a.ours)} ₴</span>
-                          <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: ok ? '#15803D' : '#B45309' }}>
-                            {ok ? '✓ 0' : `${a.delta > 0 ? '+' : ''}${fmt(a.delta)}`}
-                          </span>
-                        </div>
-                        {a.note && (
-                          <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '3px', fontWeight: 400, lineHeight: 1.45 }}>{a.note}</div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <ArticlesTable articles={cabinetData.articles ?? []} total={cabinetData.articlesTotal} theirLabel="Rozetka" />
 
               <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', background: 'var(--bg-card)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 110px 110px 90px 190px', padding: '8px 14px', background: 'var(--bg-soft)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
