@@ -4,10 +4,13 @@ import type { CategoryMeta } from '../../lib/category-descriptions';
 
 // Текстовий блок під листингом: опис категорії, розгорнутий SEO-текст і FAQ.
 //
-// Українська версія сторінки досі віддавала FAQPage у JSON-LD, але самих
-// питань на сторінці не було — розмітка без видимого контенту порушує вимоги
-// Google до FAQ-сніпетів, а весь seoText не потрапляв в індекс основною мовою.
-// Тепер обидві мови рендерять однаковий блок із того самого джерела.
+// Той самий контент до цього рендерив ShopClient — клієнтсько, і на сторінці
+// /shop/[category] показувався двічі (див. hideCategoryInfo). Тут він у
+// серверному HTML, тобто присутній ще до виконання JS.
+//
+// Дві колонки: проза ліворуч, питання праворуч. Одна колонка на всю ширину
+// сторінки (у магазину немає max-width) або лишала половину екрана порожньою,
+// або розтягувала рядок до нечитабельної довжини.
 
 type Props = {
   lang: 'uk' | 'ru';
@@ -23,59 +26,68 @@ const T = {
 export default function CategoryAbout({ lang, name, meta }: Props) {
   const t = T[lang];
   const prefix = lang === 'ru' ? '/ru' : '';
-  const hasFaq = !!meta.faq?.length;
+  const faq = meta.faq ?? [];
 
   return (
     <section style={{ marginTop: '40px', paddingTop: '32px', borderTop: '1px solid var(--border)' }}>
-      <Reveal>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
-          <div>
-            <span className="eyebrow alt">{t.eyebrow}</span>
-            <h2 style={{ fontSize: 'clamp(18px, 2vw, 22px)', fontWeight: 800, color: 'var(--text-primary)', margin: '8px 0 0', letterSpacing: '-0.3px' }}>
-              {name}
-            </h2>
-          </div>
-          {meta.blogSlug && (
-            <Link
-              href={`${prefix}/blog/${meta.blogSlug}`}
-              style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-blue)', textDecoration: 'none', whiteSpace: 'nowrap', marginTop: '18px' }}
-            >
-              {t.read} →
-            </Link>
-          )}
-        </div>
-      </Reveal>
-
-      <Reveal delay={80}>
-        <p style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.75, margin: '16px 0 0', maxWidth: '860px' }}>
-          {meta.description}
-        </p>
-        {meta.seoText && (
-          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.75, margin: '14px 0 0', maxWidth: '860px' }}>
-            {meta.seoText}
-          </p>
-        )}
-      </Reveal>
-
-      {hasFaq && (
-        <div style={{ marginTop: '32px' }}>
+      <div
+        className="cat-about-grid"
+        style={{ display: 'grid', gridTemplateColumns: faq.length ? 'minmax(0, 1fr) minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: '40px', alignItems: 'start' }}
+      >
+        {/* Проза */}
+        <div>
           <Reveal>
-            <h3 style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              {t.faq}
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
+              <div>
+                <span className="eyebrow alt">{t.eyebrow}</span>
+                <h2 style={{ fontSize: 'clamp(18px, 2vw, 22px)', fontWeight: 800, color: 'var(--text-primary)', margin: '8px 0 0', letterSpacing: '-0.3px' }}>
+                  {name}
+                </h2>
+              </div>
+              {meta.blogSlug && (
+                <Link
+                  href={`${prefix}/blog/${meta.blogSlug}`}
+                  style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-blue)', textDecoration: 'none', whiteSpace: 'nowrap', marginTop: '18px' }}
+                >
+                  {t.read} →
+                </Link>
+              )}
+            </div>
           </Reveal>
-          <div className="faq-accordion" style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: '860px' }}>
-            {meta.faq!.map(({ q, a }, i) => (
-              <Reveal key={q} delay={i * 40}>
-                <details style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 18px' }}>
-                  <summary style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', cursor: 'pointer' }}>{q}</summary>
-                  <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: '10px 0 0' }}>{a}</p>
-                </details>
-              </Reveal>
-            ))}
-          </div>
+
+          <Reveal delay={80}>
+            <p style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.75, margin: '16px 0 0', maxWidth: '68ch' }}>
+              {meta.description}
+            </p>
+            {meta.seoText && (
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.75, margin: '14px 0 0', maxWidth: '68ch' }}>
+                {meta.seoText}
+              </p>
+            )}
+          </Reveal>
         </div>
-      )}
+
+        {/* Питання */}
+        {faq.length > 0 && (
+          <div>
+            <Reveal>
+              <h3 style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                {t.faq}
+              </h3>
+            </Reveal>
+            <div className="faq-accordion" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {faq.map(({ q, a }, i) => (
+                <Reveal key={q} delay={i * 40}>
+                  <details style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 18px' }}>
+                    <summary style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', cursor: 'pointer' }}>{q}</summary>
+                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: '10px 0 0' }}>{a}</p>
+                  </details>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

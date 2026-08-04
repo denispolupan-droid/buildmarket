@@ -120,7 +120,7 @@ export default async function RuShopCategoryPage({ params }: { params: Promise<{
           count={allCategoryProducts.length}
         />
         <div style={{ margin: '0 auto', padding: '16px 16px 64px' }} className="mobile-pad">
-          <ShopLoader initialCategory={category} />
+          <ShopLoader initialCategory={category} hideCategoryInfo />
           <AllProductsLinks products={allCategoryProducts} lang="ru" />
           {meta && <CategoryAbout lang="ru" name={nameRu} meta={meta} />}
         </div>

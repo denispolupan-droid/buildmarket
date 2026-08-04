@@ -982,6 +982,16 @@ input, select { font-family: inherit; }
   margin: 8px 0 0;
 }
 
+/* Дві колонки шапки й блоку «Про категорію» складаються на вузьких екранах.
+   1000px, а не 768: при двох колонках опис стискається до нечитабельного
+   раніше, ніж спрацював би планшетний брейкпойнт. */
+@media (max-width: 1000px) {
+  .cat-head-grid, .cat-about-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+}
+@media (max-width: 1000px) {
+  .cat-about-grid { gap: 28px !important; }
+}
+
 /* ── Wishlist card ── */
 .wishlist-card-info { display: contents; }
 .wishlist-card__stock-price-row { display: contents; }

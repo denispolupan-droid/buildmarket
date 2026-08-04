@@ -128,7 +128,7 @@ export default async function ShopCategoryPage({ params }: { params: Promise<{ c
           count={allCategoryProducts.length}
         />
         <div style={{ margin: '0 auto', padding: '16px 16px 64px' }} className="mobile-pad">
-          <ShopLoader initialCategory={category} />
+          <ShopLoader initialCategory={category} hideCategoryInfo />
           <AllProductsLinks products={allCategoryProducts} lang="uk" />
           {meta && <CategoryAbout lang="uk" name={cat.name} meta={meta} />}
         </div>

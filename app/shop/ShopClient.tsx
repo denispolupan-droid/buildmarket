@@ -247,9 +247,11 @@ type Props = {
   initialSaleOnly?: boolean;
   initialCategory?: string;
   initialBrand?: string;
+  /** Сторінка /shop/[category] сама рендерить опис і FAQ на сервері — тут не дублюємо. */
+  hideCategoryInfo?: boolean;
 };
 
-export default function ShopClient({ products, categories, reviewStats, initialSaleOnly = false, initialCategory, initialBrand }: Props) {
+export default function ShopClient({ products, categories, reviewStats, initialSaleOnly = false, initialCategory, initialBrand, hideCategoryInfo = false }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const lang = pathname.startsWith('/ru') ? 'ru' as const : 'uk' as const;
@@ -1227,6 +1229,9 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     {/* Category description + FAQ — shown only when category selected via sidebar filter,
         NOT when already on a dedicated /shop/[category] page (it renders this server-side) */}
     {(() => {
+      // hideCategoryInfo: на /shop/[category] цей блок рендериться на сервері
+      // (CategoryAbout) — інакше опис і FAQ показувались двічі поспіль.
+      if (hideCategoryInfo) return null;
       const meta = selCat ? getCategoryMeta(selCat) : null;
       const catName = selCat ? categories.find(c => c.slug === selCat)?.name : null;
       if (!meta || !catName) return null;

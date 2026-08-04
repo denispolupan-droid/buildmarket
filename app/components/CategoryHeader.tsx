@@ -1,9 +1,11 @@
 import Link from 'next/link';
 
-// Шапка сторінки категорії. Свідомо компактна (~120 px): під нею одразу
-// листинг, тож повноцінний hero з лендингів тут шкодив би — відсував би товар
-// за перший екран. Від фірмового стилю беремо надзаголовок, кегль і легкий
-// градієнт, але не воздух по 72 px.
+// Шапка сторінки категорії. Свідомо компактна: під нею одразу листинг, тож
+// повноцінний hero з лендингів тут шкодив би — відсував би товар за перший екран.
+//
+// Опис стоїть праворуч від заголовка, а не під ним: сторінка магазину не має
+// обмеження по ширині, і колонка тексту на 760px лишала половину екрана порожньою.
+// Двома колонками шапка ще й нижча, тож товар піднімається вище.
 
 type Props = {
   lang: 'uk' | 'ru';
@@ -47,19 +49,27 @@ export default function CategoryHeader({ lang, name, parent, description, count 
           <span style={{ color: 'var(--text-secondary)' }}>{name}</span>
         </nav>
 
-        <span className="eyebrow" style={{ marginTop: '10px' }}>{parent ? parent.name : t.section}</span>
-        <h1>{name}</h1>
+        <div className="cat-head-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '32px', alignItems: 'center', marginTop: '10px' }}>
+          <div>
+            <span className="eyebrow">{parent ? parent.name : t.section}</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
+              <h1>{name}</h1>
+              {count > 0 && (
+                <span style={{
+                  fontSize: '12px', fontWeight: 700, color: 'var(--brand-blue)',
+                  background: 'var(--brand-blue-light)', borderRadius: '20px',
+                  padding: '3px 10px', whiteSpace: 'nowrap',
+                }}>
+                  {t.items(count)}
+                </span>
+              )}
+            </div>
+          </div>
 
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap', marginTop: '8px' }}>
           {description && (
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0, maxWidth: '760px' }}>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0, maxWidth: '62ch' }}>
               {description}
             </p>
-          )}
-          {count > 0 && (
-            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--brand-blue)', whiteSpace: 'nowrap' }}>
-              {t.items(count)}
-            </span>
           )}
         </div>
       </div>
