@@ -77,7 +77,7 @@ const benefits = [
 
 const rules = [
   {
-    icon: CreditCard, color: '#4880B8', bg: '#EFF6FF',
+    icon: CreditCard, color: 'var(--brand-blue)', bg: 'var(--brand-blue-light)',
     title: 'Поповнення балансу',
     items: [
       'Мінімальне поповнення: 500 грн',
@@ -156,16 +156,6 @@ const faq = [
   },
 ];
 
-const eyebrow = {
-  fontSize: '12px', fontWeight: 700, letterSpacing: '0.14em',
-  textTransform: 'uppercase' as const, color: '#5EEAD4',
-};
-
-const gradientText = {
-  background: 'linear-gradient(135deg, #93C5FD 0%, #5EEAD4 100%)',
-  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-} as const;
-
 export default async function DropshipPage() {
   const [brandLogos, visibleBrandLogos] = await Promise.all([
     getBrandLogosCached(),
@@ -208,12 +198,12 @@ export default async function DropshipPage() {
             <div className="drop-hero-grid" style={{ display: 'grid', gridTemplateColumns: '1.15fr 1fr', gap: '56px', alignItems: 'center' }}>
               <div>
                 <Reveal>
-                  <span style={eyebrow}>Дропшипінг</span>
+                  <span className="eyebrow on-dark">Дропшипінг</span>
                   {/* Заголовок довший за /opt — менший максимум кегля, щоб «хімію»
                       не лишалася сиротою на власному рядку. */}
                   <h1 style={{ fontSize: 'clamp(28px, 3.6vw, 44px)', fontWeight: 900, color: '#fff', lineHeight: 1.18, margin: '14px 0 20px', letterSpacing: '-0.8px' }}>
                     Продавайте будівельну хімію<br />
-                    <span style={gradientText}>без власного складу</span>
+                    <span className="grad-text">без власного складу</span>
                   </h1>
                 </Reveal>
                 <Reveal delay={90}>
@@ -222,7 +212,7 @@ export default async function DropshipPage() {
                     й відправляємо, а Ваш заробіток автоматично надходить на баланс.
                   </p>
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                    <Link href="/register?type=dropship" style={{ height: '50px', padding: '0 30px', borderRadius: '12px', background: '#4880B8', color: '#fff', fontSize: '15px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', boxShadow: '0 8px 24px rgba(72,128,184,0.35)' }}>
+                    <Link href="/register?type=dropship" style={{ height: '50px', padding: '0 30px', borderRadius: '12px', background: 'var(--brand-blue)', color: '#fff', fontSize: '15px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', boxShadow: 'var(--brand-shadow)' }}>
                       Зареєструватись <ArrowRight size={16} />
                     </Link>
                     <Link href="/cabinet" style={{ height: '50px', padding: '0 24px', borderRadius: '12px', border: '1.5px solid rgba(255,255,255,0.2)', color: '#E2E8F0', fontSize: '14px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', background: 'rgba(255,255,255,0.04)' }}>
@@ -264,8 +254,8 @@ export default async function DropshipPage() {
               {stats.map(({ icon: Icon, stat, label, text }, i) => (
                 <Reveal key={label} delay={i * 90}>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                      <Icon size={21} color="#4880B8" strokeWidth={2} />
+                    <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: 'var(--brand-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                      <Icon size={21} color="var(--brand-blue)" strokeWidth={2} />
                     </div>
                     <div style={{ fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1, letterSpacing: '-0.5px' }}>{stat}</div>
                     <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', margin: '6px 0' }}>{label}</div>
@@ -282,7 +272,7 @@ export default async function DropshipPage() {
           <div className="page-container">
             <Reveal>
               <div style={{ textAlign: 'center', maxWidth: '620px', margin: '0 auto 48px' }}>
-                <span style={{ ...eyebrow, color: '#4880B8' }}>Як це працює</span>
+                <span className="eyebrow">Як це працює</span>
                 <h2 style={{ fontSize: 'clamp(24px, 3vw, 34px)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.3, margin: '12px 0 0', letterSpacing: '-0.5px' }}>
                   Чотири кроки від реєстрації до першого заробітку
                 </h2>
@@ -293,8 +283,8 @@ export default async function DropshipPage() {
                 <Reveal key={n} delay={i * 90}>
                   <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '20px', padding: '30px 26px', display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Icon size={21} color="#4880B8" strokeWidth={1.75} />
+                      <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'var(--brand-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon size={21} color="var(--brand-blue)" strokeWidth={1.75} />
                       </div>
                       <span style={{ fontSize: '28px', fontWeight: 900, color: 'var(--text-primary)', opacity: 0.10, lineHeight: 1, marginLeft: 'auto' }}>{n}</span>
                     </div>
@@ -312,7 +302,7 @@ export default async function DropshipPage() {
           <div className="page-container">
             <Reveal>
               <div style={{ textAlign: 'center', maxWidth: '620px', margin: '0 auto 44px' }}>
-                <span style={{ ...eyebrow, color: '#14B8A6' }}>Фінансова модель</span>
+                <span className="eyebrow alt">Фінансова модель</span>
                 <h2 style={{ fontSize: 'clamp(24px, 3vw, 34px)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.3, margin: '12px 0 0', letterSpacing: '-0.5px' }}>
                   Прозорий баланс — Ви бачите кожну гривню
                 </h2>
@@ -321,7 +311,7 @@ export default async function DropshipPage() {
 
             <Reveal delay={100}>
               <div style={{ maxWidth: '860px', margin: '0 auto 44px', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '20px', padding: '34px' }}>
-                <div style={{ ...eyebrow, color: 'var(--text-muted)', marginBottom: '22px' }}>Приклад розрахунку</div>
+                <div className="eyebrow" style={{ color: 'var(--text-muted)', marginBottom: '22px' }}>Приклад розрахунку</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }} className="drop-example">
                   <div>
                     <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '14px', fontWeight: 700 }}>Ваші умови</div>
@@ -384,7 +374,7 @@ export default async function DropshipPage() {
           <div className="page-container">
             <Reveal>
               <div style={{ textAlign: 'center', maxWidth: '620px', margin: '0 auto 40px' }}>
-                <span style={{ ...eyebrow, color: '#4880B8' }}>Що обрати</span>
+                <span className="eyebrow">Що обрати</span>
                 <h2 style={{ fontSize: 'clamp(24px, 3vw, 34px)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.3, margin: '12px 0 0', letterSpacing: '-0.5px' }}>
                   Роздріб, опт чи дропшипінг
                 </h2>
@@ -396,7 +386,7 @@ export default async function DropshipPage() {
             <Reveal delay={160}>
               <p style={{ textAlign: 'center', fontSize: '14px', color: 'var(--text-secondary)', margin: '28px 0 0' }}>
                 Готові викуповувати товар на свій склад?{' '}
-                <Link href="/opt" style={{ color: '#4880B8', fontWeight: 700, textDecoration: 'none' }}>
+                <Link href="/opt" style={{ color: 'var(--brand-blue)', fontWeight: 700, textDecoration: 'none' }}>
                   Умови опту →
                 </Link>
               </p>
@@ -409,7 +399,7 @@ export default async function DropshipPage() {
           <div className="page-container">
             <Reveal>
               <div style={{ textAlign: 'center', maxWidth: '620px', margin: '0 auto 48px' }}>
-                <span style={{ ...eyebrow, color: '#14B8A6' }}>Умови роботи</span>
+                <span className="eyebrow alt">Умови роботи</span>
                 <h2 style={{ fontSize: 'clamp(24px, 3vw, 34px)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.3, margin: '12px 0 0', letterSpacing: '-0.5px' }}>
                   Що ви отримуєте
                 </h2>
@@ -419,8 +409,8 @@ export default async function DropshipPage() {
               {benefits.map(({ icon: Icon, title, text }, i) => (
                 <Reveal key={title} delay={i * 70}>
                   <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '18px', padding: '26px', height: '100%' }}>
-                    <div style={{ width: '42px', height: '42px', borderRadius: '11px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-                      <Icon size={20} color="#4880B8" strokeWidth={1.75} />
+                    <div style={{ width: '42px', height: '42px', borderRadius: '11px', background: 'var(--brand-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+                      <Icon size={20} color="var(--brand-blue)" strokeWidth={1.75} />
                     </div>
                     <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px' }}>{title}</h3>
                     <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{text}</p>
@@ -437,7 +427,7 @@ export default async function DropshipPage() {
             <div className="page-container">
               <Reveal>
                 <div style={{ textAlign: 'center', maxWidth: '620px', margin: '0 auto 36px' }}>
-                  <span style={{ ...eyebrow, color: '#14B8A6' }}>Асортимент</span>
+                  <span className="eyebrow alt">Асортимент</span>
                   <h2 style={{ fontSize: 'clamp(22px, 2.6vw, 30px)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.3, margin: '12px 0 0', letterSpacing: '-0.5px' }}>
                     Бренди, які ви продаєте
                   </h2>
@@ -474,7 +464,7 @@ export default async function DropshipPage() {
                 Часті питання
               </h2>
             </Reveal>
-            <div className="opt-faq" style={{ maxWidth: '820px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className="faq-accordion" style={{ maxWidth: '820px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {faq.map(({ q, a }, i) => (
                 <Reveal key={q} delay={i * 40}>
                   <details style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '14px', padding: '18px 22px' }}>
@@ -495,13 +485,13 @@ export default async function DropshipPage() {
           <div className="page-container" style={{ textAlign: 'center' }}>
             <Reveal>
               <h2 style={{ fontSize: 'clamp(24px, 3.4vw, 36px)', fontWeight: 900, color: '#fff', margin: '0 0 14px', letterSpacing: '-0.5px', lineHeight: 1.25 }}>
-                Готові <span style={gradientText}>розпочати</span>?
+                Готові <span className="grad-text">розпочати</span>?
               </h2>
               <p style={{ fontSize: '16px', color: '#94A3B8', margin: '0 auto 32px', maxWidth: '520px', lineHeight: 1.7 }}>
                 Зареєструйтесь — отримайте доступ до особистого кабінету, каталогу з дроп-цінами та XML-фіду.
               </p>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <Link href="/register?type=dropship" style={{ height: '50px', padding: '0 32px', borderRadius: '12px', background: '#4880B8', color: '#fff', fontSize: '15px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', boxShadow: '0 8px 24px rgba(72,128,184,0.35)' }}>
+                <Link href="/register?type=dropship" style={{ height: '50px', padding: '0 32px', borderRadius: '12px', background: 'var(--brand-blue)', color: '#fff', fontSize: '15px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', boxShadow: 'var(--brand-shadow)' }}>
                   Зареєструватись <ArrowRight size={16} />
                 </Link>
                 <Link href="/cabinet" style={{ height: '50px', padding: '0 28px', borderRadius: '12px', border: '1.5px solid rgba(255,255,255,0.18)', color: '#E2E8F0', fontSize: '15px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.04)', textDecoration: 'none' }}>

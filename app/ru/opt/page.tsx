@@ -97,16 +97,6 @@ const faq = [
   },
 ];
 
-const eyebrow = {
-  fontSize: '12px', fontWeight: 700, letterSpacing: '0.14em',
-  textTransform: 'uppercase' as const, color: '#5EEAD4',
-};
-
-const gradientText = {
-  background: 'linear-gradient(135deg, #93C5FD 0%, #5EEAD4 100%)',
-  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-} as const;
-
 export default async function RuOptPage() {
   const [brandLogos, visibleBrandLogos] = await Promise.all([
     getBrandLogosCached(),
@@ -149,10 +139,10 @@ export default async function RuOptPage() {
             <div className="opt-hero-grid" style={{ display: 'grid', gridTemplateColumns: '1.15fr 1fr', gap: '56px', alignItems: 'center' }}>
               <div>
                 <Reveal>
-                  <span style={eyebrow}>Оптовое направление</span>
+                  <span className="eyebrow on-dark">Оптовое направление</span>
                   <h1 style={{ fontSize: 'clamp(30px, 4.5vw, 52px)', fontWeight: 900, color: '#fff', lineHeight: 1.15, margin: '14px 0 20px', letterSpacing: '-1px' }}>
                     Строительная химия<br />
-                    <span style={gradientText}>оптом</span>
+                    <span className="grad-text">оптом</span>
                   </h1>
                 </Reveal>
                 <Reveal delay={90}>
@@ -162,7 +152,7 @@ export default async function RuOptPage() {
                     кабинете, без прайсов в почте.
                   </p>
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                    <Link href="/register?type=dealer" style={{ height: '50px', padding: '0 30px', borderRadius: '12px', background: '#4880B8', color: '#fff', fontSize: '15px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', boxShadow: '0 8px 24px rgba(72,128,184,0.35)' }}>
+                    <Link href="/register?type=dealer" style={{ height: '50px', padding: '0 30px', borderRadius: '12px', background: 'var(--brand-blue)', color: '#fff', fontSize: '15px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', boxShadow: 'var(--brand-shadow)' }}>
                       Открыть оптовые цены <ArrowRight size={16} />
                     </Link>
                     <Link href="/ru/catalog" style={{ height: '50px', padding: '0 24px', borderRadius: '12px', border: '1.5px solid rgba(255,255,255,0.2)', color: '#E2E8F0', fontSize: '14px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', background: 'rgba(255,255,255,0.04)' }}>
@@ -198,8 +188,8 @@ export default async function RuOptPage() {
               {stats.map(({ icon: Icon, stat, label, text }, i) => (
                 <Reveal key={label} delay={i * 90}>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                      <Icon size={21} color="#4880B8" strokeWidth={2} />
+                    <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: 'var(--brand-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                      <Icon size={21} color="var(--brand-blue)" strokeWidth={2} />
                     </div>
                     <div style={{ fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1, letterSpacing: '-0.5px' }}>{stat}</div>
                     <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', margin: '6px 0 6px' }}>{label}</div>
@@ -216,7 +206,7 @@ export default async function RuOptPage() {
           <div className="page-container">
             <Reveal>
               <div style={{ textAlign: 'center', maxWidth: '620px', margin: '0 auto 48px' }}>
-                <span style={{ ...eyebrow, color: '#4880B8' }}>Как начать</span>
+                <span className="eyebrow">Как начать</span>
                 <h2 style={{ fontSize: 'clamp(24px, 3vw, 34px)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.3, margin: '12px 0 0', letterSpacing: '-0.5px' }}>
                   Четыре шага до первой отгрузки
                 </h2>
@@ -227,8 +217,8 @@ export default async function RuOptPage() {
                 <Reveal key={n} delay={i * 90}>
                   <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '20px', padding: '30px 26px', display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Icon size={21} color="#4880B8" strokeWidth={1.75} />
+                      <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'var(--brand-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon size={21} color="var(--brand-blue)" strokeWidth={1.75} />
                       </div>
                       <span style={{ fontSize: '28px', fontWeight: 900, color: 'var(--text-primary)', opacity: 0.10, lineHeight: 1, marginLeft: 'auto' }}>{n}</span>
                     </div>
@@ -246,7 +236,7 @@ export default async function RuOptPage() {
           <div className="page-container">
             <Reveal>
               <div style={{ textAlign: 'center', maxWidth: '620px', margin: '0 auto 40px' }}>
-                <span style={{ ...eyebrow, color: '#14B8A6' }}>Что выбрать</span>
+                <span className="eyebrow alt">Что выбрать</span>
                 <h2 style={{ fontSize: 'clamp(24px, 3vw, 34px)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.3, margin: '12px 0 0', letterSpacing: '-0.5px' }}>
                   Розница, опт или дропшиппинг
                 </h2>
@@ -258,7 +248,7 @@ export default async function RuOptPage() {
             <Reveal delay={160}>
               <p style={{ textAlign: 'center', fontSize: '14px', color: 'var(--text-secondary)', margin: '28px 0 0' }}>
                 Работаете без собственного склада?{' '}
-                <Link href="/ru/dropship" style={{ color: '#4880B8', fontWeight: 700, textDecoration: 'none' }}>
+                <Link href="/ru/dropship" style={{ color: 'var(--brand-blue)', fontWeight: 700, textDecoration: 'none' }}>
                   Условия дропшиппинга →
                 </Link>
               </p>
@@ -271,7 +261,7 @@ export default async function RuOptPage() {
           <div className="page-container">
             <Reveal>
               <div style={{ textAlign: 'center', maxWidth: '620px', margin: '0 auto 48px' }}>
-                <span style={{ ...eyebrow, color: '#4880B8' }}>Условия работы</span>
+                <span className="eyebrow">Условия работы</span>
                 <h2 style={{ fontSize: 'clamp(24px, 3vw, 34px)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.3, margin: '12px 0 0', letterSpacing: '-0.5px' }}>
                   Без прайсов в почте и ожидания менеджера
                 </h2>
@@ -281,8 +271,8 @@ export default async function RuOptPage() {
               {benefits.map(({ icon: Icon, title, text }, i) => (
                 <Reveal key={title} delay={i * 70}>
                   <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '18px', padding: '26px', height: '100%' }}>
-                    <div style={{ width: '42px', height: '42px', borderRadius: '11px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-                      <Icon size={20} color="#4880B8" strokeWidth={1.75} />
+                    <div style={{ width: '42px', height: '42px', borderRadius: '11px', background: 'var(--brand-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+                      <Icon size={20} color="var(--brand-blue)" strokeWidth={1.75} />
                     </div>
                     <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px' }}>{title}</h3>
                     <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{text}</p>
@@ -299,7 +289,7 @@ export default async function RuOptPage() {
             <div className="page-container">
               <Reveal>
                 <div style={{ textAlign: 'center', maxWidth: '620px', margin: '0 auto 36px' }}>
-                  <span style={{ ...eyebrow, color: '#14B8A6' }}>Ассортимент</span>
+                  <span className="eyebrow alt">Ассортимент</span>
                   <h2 style={{ fontSize: 'clamp(22px, 2.6vw, 30px)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.3, margin: '12px 0 0', letterSpacing: '-0.5px' }}>
                     Бренды, которые вы получаете по оптовой цене
                   </h2>
@@ -336,7 +326,7 @@ export default async function RuOptPage() {
                 Частые вопросы об опте
               </h2>
             </Reveal>
-            <div className="opt-faq" style={{ maxWidth: '820px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className="faq-accordion" style={{ maxWidth: '820px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {faq.map(({ q, a }, i) => (
                 <Reveal key={q} delay={i * 50}>
                   <details style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '18px 22px' }}>
@@ -357,13 +347,13 @@ export default async function RuOptPage() {
           <div className="page-container" style={{ textAlign: 'center' }}>
             <Reveal>
               <h2 style={{ fontSize: 'clamp(24px, 3.4vw, 36px)', fontWeight: 900, color: '#fff', margin: '0 0 14px', letterSpacing: '-0.5px', lineHeight: 1.25 }}>
-                Откройте <span style={gradientText}>оптовые цены</span> за две минуты
+                Откройте <span className="grad-text">оптовые цены</span> за две минуты
               </h2>
               <p style={{ fontSize: '16px', color: '#94A3B8', margin: '0 auto 32px', maxWidth: '520px', lineHeight: 1.7 }}>
                 Регистрация бесплатная, доступ включается сразу после подтверждения почты.
               </p>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <Link href="/register?type=dealer" style={{ height: '50px', padding: '0 32px', borderRadius: '12px', background: '#4880B8', color: '#fff', fontSize: '15px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', boxShadow: '0 8px 24px rgba(72,128,184,0.35)' }}>
+                <Link href="/register?type=dealer" style={{ height: '50px', padding: '0 32px', borderRadius: '12px', background: 'var(--brand-blue)', color: '#fff', fontSize: '15px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', boxShadow: 'var(--brand-shadow)' }}>
                   Зарегистрироваться <ArrowRight size={16} />
                 </Link>
                 <Link href="/ru/contacts" style={{ height: '50px', padding: '0 28px', borderRadius: '12px', border: '1.5px solid rgba(255,255,255,0.18)', color: '#E2E8F0', fontSize: '15px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.04)', textDecoration: 'none' }}>

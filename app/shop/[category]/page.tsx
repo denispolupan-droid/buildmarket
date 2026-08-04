@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
 import Footer from '../../components/Footer';
 import ShopLoader from '../ShopLoader';
 import AllProductsLinks from '../AllProductsLinks';
+import CategoryHeader from '../../components/CategoryHeader';
+import CategoryAbout from '../../components/CategoryAbout';
 import { getCategoriesCached, getProductsCached } from '../../../lib/supabase';
 import { getCategoryMeta } from '../../../lib/category-descriptions';
 import { categoryMeta, listingStats, productDisplayName, retailPrice, categoryFamilySlugs, duplicateOfParent, categoriesWithProducts } from '../../../lib/seo/meta';
@@ -119,25 +120,17 @@ export default async function ShopCategoryPage({ params }: { params: Promise<{ c
       {itemListLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd).replace(/</g, '\\u003c') }} />}
       {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd).replace(/</g, '\\u003c') }} />}
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
-        <div style={{ margin: '0 auto', padding: '12px 16px 64px' }} className="mobile-pad">
-          <nav aria-label="Breadcrumb" style={{ marginBottom: '6px', fontSize: '12px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Link href="/" style={{ color: '#94A3B8', textDecoration: 'none' }}>Головна</Link>
-            <span>/</span>
-            <Link href="/shop" style={{ color: '#94A3B8', textDecoration: 'none' }}>Магазин</Link>
-            {parentCat && (
-              <>
-                <span>/</span>
-                <Link href={`/shop/${parentCat.slug}`} style={{ color: '#94A3B8', textDecoration: 'none' }}>{parentCat.name}</Link>
-              </>
-            )}
-            <span>/</span>
-            <span style={{ color: '#475569' }}>{cat.name}</span>
-          </nav>
-          <h1 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 10px' }}>
-            {cat.name}
-          </h1>
+        <CategoryHeader
+          lang="uk"
+          name={cat.name}
+          parent={parentCat ? { name: parentCat.name, slug: parentCat.slug } : null}
+          description={meta?.description ?? null}
+          count={allCategoryProducts.length}
+        />
+        <div style={{ margin: '0 auto', padding: '16px 16px 64px' }} className="mobile-pad">
           <ShopLoader initialCategory={category} />
           <AllProductsLinks products={allCategoryProducts} lang="uk" />
+          {meta && <CategoryAbout lang="uk" name={cat.name} meta={meta} />}
         </div>
       </div>
       <Footer />
