@@ -9,13 +9,25 @@ function brandToSlug(brand: string): string {
 
 const BASE = 'https://fixline.com.ua';
 
-// Дата запуску/останнього суттєвого оновлення сайту — оновлюй вручну при великих змінах
-const SITE_UPDATED = new Date('2026-06-22');
+// Дата останнього суттєвого оновлення статичних сторінок — оновлюй ВРУЧНУ, коли
+// реально змінюєш їх зміст. Не підставляй сюди дату збірки: Google перевіряє
+// lastmod на чесність і перестає йому вірити, якщо він стрибає на кожен деплой.
+// 2026-08-05 — редизайн /opt, /dropship, /blog і головної.
+const SITE_UPDATED = new Date('2026-08-05');
 
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [products, categories] = await Promise.all([getProductsCached(), getCategoriesCached()]);
+  const [products, categories, dbPosts] = await Promise.all([
+    getProductsCached(), getCategoriesCached(), getPublishedPostsCached(),
+  ]);
+
+  // Листинг блогу змінюється щоразу, коли виходить чи правиться стаття — беремо
+  // найсвіжішу дату з самих статей, щоб не залежати від ручного оновлення.
+  const blogUpdated = dbPosts.reduce<Date>((max, p) => {
+    const d = new Date(p.updated_at);
+    return d > max ? d : max;
+  }, SITE_UPDATED);
 
   // Бренди з 5+ продуктів отримуємо з кешованого списку продуктів
   const brandCounts = new Map<string, number>();
@@ -51,7 +63,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/shop`,        lastModified: SITE_UPDATED, changeFrequency: 'daily',   priority: 0.9 },
     { url: `${BASE}/shop/sale`,   lastModified: SITE_UPDATED, changeFrequency: 'daily',   priority: 0.8 },
     // /catalog — закритий B2B розділ, noindex, не додаємо в sitemap
-    { url: `${BASE}/blog`,        lastModified: SITE_UPDATED, changeFrequency: 'weekly',  priority: 0.7 },
+    { url: `${BASE}/blog`,        lastModified: blogUpdated,  changeFrequency: 'weekly',  priority: 0.7 },
     { url: `${BASE}/about`,       lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${BASE}/calculators`, lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${BASE}/contacts`,    lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.5 },
@@ -61,7 +73,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/returns`,     lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.4 },
   ];
 
-  const dbPosts = await getPublishedPostsCached();
   const blogRoutes: MetadataRoute.Sitemap = dbPosts.map(p => ({
     url: `${BASE}/blog/${p.slug}`,
     lastModified: new Date(p.updated_at),
@@ -138,7 +149,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/ru`,            lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${BASE}/ru/shop`,       lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.35 },
     { url: `${BASE}/ru/shop/sale`,  lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.3 },
-    { url: `${BASE}/ru/blog`,       lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${BASE}/ru/blog`,       lastModified: blogUpdated,  changeFrequency: 'monthly', priority: 0.3 },
     { url: `${BASE}/ru/about`,      lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },
     { url: `${BASE}/ru/calculators`, lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },
     { url: `${BASE}/ru/contacts`,   lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },

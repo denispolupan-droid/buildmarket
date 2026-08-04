@@ -431,7 +431,11 @@ export default function ShopClient({ products, categories, reviewStats, initialS
       return;
     }
     setSelCat(slug);
-    window.history.pushState(null, '', slug ? `${shopBase}/${slug}` : shopBase);
+    // router.push, а не history.pushState: pushState міняє адресу повз роутер,
+    // тож серверна частина сторінки (шапка категорії, блок «Про категорію») не
+    // перемальовується — у шапці лишалася попередня категорія. scroll: false
+    // зберігає колишню поведінку «фільтруємо без стрибка сторінки».
+    router.push(slug ? `${shopBase}/${slug}` : shopBase, { scroll: false });
     setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]); setFilterPlasticGroup(''); setExpandedValues(new Set());
     setVisibleCount(24);
     setMobilePanel(null);
@@ -814,9 +818,10 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                         if (initialBrand) {
                           router.push(`${shopBase}/${cat.slug}`);
                         } else {
-                          // Оновлюємо фільтр БЕЗ скролу сторінки
+                          // Оновлюємо фільтр БЕЗ скролу сторінки; навігація потрібна
+                          // справжня, інакше серверна шапка лишиться від старої категорії
                           setSelCat(cat.slug);
-                          window.history.pushState(null, '', `${shopBase}/${cat.slug}`);
+                          router.push(`${shopBase}/${cat.slug}`, { scroll: false });
                           setVisibleCount(24);
                           // Тільки сайдбар — після анімації
                           setTimeout(() => scrollCatToTop(cat.slug), 450);
