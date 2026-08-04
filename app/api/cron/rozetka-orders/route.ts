@@ -3,6 +3,7 @@ import { syncRozetkaOrders } from '../../../../lib/rozetka-sync';
 import { watchRozetkaCancellations } from '../../../../lib/marketplace-cancel-watch';
 import { watchRozetkaRefunds } from '../../../../lib/marketplace-returns-watch';
 import { alertRozetkaChatUnread, alertRozetkaReviews } from '../../../../lib/marketplace-chat-alerts';
+import { syncRozetkaFees } from '../../../../lib/rozetka-fees-sync';
 import { alertAdmin } from '../../../../lib/alert';
 
 export async function GET(req: NextRequest) {
@@ -47,7 +48,16 @@ export async function GET(req: NextRequest) {
       console.error('[rozetka-review-alert]', err);
     }
 
-    return NextResponse.json({ ...result, cancelWatch, refundWatch, chatWatch, reviewWatch });
+    // Фактичні збори з балансів Rozetka (організація видачі, абонплата).
+    // Проводимо саме факт, а не передбачення — див. lib/rozetka-fees-sync.
+    let fees: unknown = null;
+    try {
+      fees = await syncRozetkaFees();
+    } catch (err) {
+      console.error('[rozetka-fees-sync]', err);
+    }
+
+    return NextResponse.json({ ...result, cancelWatch, refundWatch, chatWatch, reviewWatch, fees });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     alertAdmin('Cron: синк замовлень Rozetka впав', msg);
