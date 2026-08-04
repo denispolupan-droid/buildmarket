@@ -91,7 +91,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
   useEffect(() => {
     fetch('/api/admin/procurement/senders')
       .then(r => r.json())
-      .then(d => { const list = d.senders ?? []; setSenders(list); if (list[0]) setChosenSender(list[0].email); })
+      .then(d => { const list = d.senders ?? []; setSenders(list); setChosenSender(d.defaultSender || list[0]?.email || ''); })
       .catch(() => {});
   }, []);
 
