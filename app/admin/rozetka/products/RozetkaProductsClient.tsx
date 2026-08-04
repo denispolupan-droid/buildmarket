@@ -6,6 +6,10 @@ import { ArrowLeft, Search, Check, X, Pencil, ChevronDown, ChevronRight } from '
 import { type SmartBracket } from '../../../../lib/rozetka-smart-tariff';
 import { type RozetkaDeliveryTariff } from '../../../../lib/rozetka-delivery-tariff';
 import { rozetkaBasePrice, rozetkaSmartPrice } from '../../../../lib/marketplace-pricing';
+// ТІЛЬКИ тип: lib/rozetka-sla тягне lib/rozetka-api, а там SUPABASE_SERVICE_ROLE_KEY.
+// import type стирається компілятором і в клієнтський бандл не потрапляє — звичайний
+// import цього модуля відправив би сервісний ключ у браузер.
+import type { RozetkaSlaReport } from '../../../../lib/rozetka-sla';
 
 interface Product {
   sku:               string;
@@ -105,6 +109,44 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
   );
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // Звіт «Точки видачі»: які набори доставки (SLA) містять ROZETKA Delivery і на
+  // якому наборі стоїть кожен товар. Тягнемо по кнопці, а не при відкритті екрана:
+  // це живий обхід усіх товарів у Rozetka (≈40 запитів), секунд на десять.
+  const [slaOpen,    setSlaOpen]    = useState(false);
+  const [slaData,    setSlaData]    = useState<RozetkaSlaReport | null>(null);
+  const [slaLoading, setSlaLoading] = useState(false);
+  const [slaError,   setSlaError]   = useState('');
+  const [slaAllOff,  setSlaAllOff]  = useState(false);
+
+  async function loadSlaReport(force = false) {
+    if (slaLoading || (slaData && !force)) return;
+    setSlaLoading(true);
+    setSlaError('');
+    try {
+      const res = await fetch('/api/admin/rozetka/sla-report');
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error ?? `HTTP ${res.status}`);
+      setSlaData(json as RozetkaSlaReport);
+    } catch (e) {
+      setSlaError(e instanceof Error ? e.message : 'Не вдалося отримати звіт');
+    }
+    setSlaLoading(false);
+  }
+
+  function downloadSlaCsv() {
+    if (!slaData) return;
+    const esc = (v: unknown) => String(v ?? '').replace(/;/g, ',').replace(/[\r\n]+/g, ' ');
+    const rows = ['article;name;sla_id;sla;stock'];
+    for (const i of slaData.off) rows.push([esc(i.article), esc(i.name), i.slaId, esc(i.slaTitle), i.stock].join(';'));
+    // BOM — щоб Excel не зіпсував кирилицю
+    const url = URL.createObjectURL(new Blob(['﻿' + rows.join('\n')], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'rozetka-bez-tochok-vydachi.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   // Умови Smart (тариф компенсації доставки): редагується тут, діє з моменту
   // збереження — застосовується до нових відгрузок/фіда, минулі списання не чіпаємо.
@@ -308,9 +350,115 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
               style={{ marginLeft: 10, padding: '2px 10px', borderRadius: 7, border: '1px solid #FDBA74', background: tariffOpen ? '#FFF7ED' : '#fff', color: '#B45309', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
               Тарифи Rozetka
             </button>
+            <button onClick={() => { setSlaOpen(v => !v); loadSlaReport(); }}
+              style={{ marginLeft: 6, padding: '2px 10px', borderRadius: 7, border: '1px solid #6EE7B7', background: slaOpen ? '#ECFDF5' : '#fff', color: '#065F46', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              Точки видачі
+            </button>
           </p>
         </div>
       </div>
+
+      {/* Звіт «Точки видачі» — тільки читання: набір доставки товару через API не міняється */}
+      {slaOpen && (
+        <div style={{ margin: '0 0 20px', padding: '14px 18px', borderRadius: 12, border: '1.5px solid #6EE7B7', background: '#F0FDF4', maxWidth: 860 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#065F46' }}>Доставка в точки видачі Rozetka</span>
+            <button onClick={() => loadSlaReport(true)} disabled={slaLoading}
+              style={{ padding: '2px 9px', borderRadius: 6, border: '1px solid #A7F3D0', background: '#fff', color: '#065F46', fontSize: 11.5, fontWeight: 600, cursor: slaLoading ? 'default' : 'pointer', opacity: slaLoading ? 0.5 : 1 }}>
+              {slaLoading ? 'Оновлюю…' : 'Оновити'}
+            </button>
+            {slaData && (
+              <button onClick={downloadSlaCsv}
+                style={{ padding: '2px 9px', borderRadius: 6, border: '1px solid #A7F3D0', background: '#fff', color: '#065F46', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>
+                CSV
+              </button>
+            )}
+          </div>
+
+          {slaLoading && !slaData && <div style={{ fontSize: 13, color: '#047857' }}>Читаю набори доставки і всі товари Rozetka…</div>}
+          {slaError && <div style={{ fontSize: 13, color: '#B91C1C' }}>Помилка: {slaError}</div>}
+
+          {slaData && (
+            <>
+              <div style={{ fontSize: 13, color: '#374151', marginBottom: 12 }}>
+                {slaData.totals.items} товарів ·{' '}
+                <b style={{ color: '#065F46' }}>{slaData.totals.withPickup} з точками видачі</b> ·{' '}
+                <b style={{ color: '#B45309' }}>{slaData.totals.withoutPickup} без</b>
+              </div>
+
+              {/* Набори доставки */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                {slaData.slas.map(s => (
+                  <div key={s.id} style={{ padding: '7px 10px', borderRadius: 8, background: '#fff', border: `1px solid ${s.pickup ? '#A7F3D0' : '#E5E7EB'}` }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: s.pickup ? '#065F46' : '#6B7280' }}>
+                      {s.pickup ? '✅' : '❌'} {s.title}
+                      <span style={{ fontWeight: 500, color: '#9CA3AF' }}>
+                        {' '}· {s.itemCount} товарів{s.isStandard ? ' · стандартний набір' : ''}{s.isReserve ? ' · резерв' : ''}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11.5, color: '#9CA3AF', marginTop: 2 }}>{s.services.join(' · ') || 'служби не вказані'}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Групи, де набір розʼїхався */}
+              {slaData.groups.length > 0 && (
+                <>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 6 }}>
+                    Групи без точок видачі ({slaData.groups.length})
+                  </div>
+                  <div style={{ maxHeight: 220, overflowY: 'auto', background: '#fff', borderRadius: 8, border: '1px solid #E5E7EB' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                      <thead>
+                        <tr style={{ position: 'sticky', top: 0, background: '#F9FAFB' }}>
+                          <th style={{ textAlign: 'left',  padding: '5px 10px', color: '#6B7280', fontWeight: 600 }}>Група</th>
+                          <th style={{ textAlign: 'right', padding: '5px 10px', color: '#B45309', fontWeight: 600 }}>без точок</th>
+                          <th style={{ textAlign: 'right', padding: '5px 10px', color: '#065F46', fontWeight: 600 }}>з точками</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {slaData.groups.map(g => (
+                          <tr key={g.group} style={{ borderTop: '1px solid #F3F4F6' }}>
+                            <td style={{ padding: '4px 10px', color: '#374151' }}>{g.group}</td>
+                            <td style={{ padding: '4px 10px', textAlign: 'right', fontWeight: 700, color: '#B45309' }}>{g.off}</td>
+                            <td style={{ padding: '4px 10px', textAlign: 'right', color: g.on ? '#065F46' : '#D1D5DB' }}>{g.on}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {/* Перелік товарів без точок видачі — згорнутий, бо їх сотні */}
+              {slaData.off.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <button onClick={() => setSlaAllOff(v => !v)}
+                    style={{ padding: 0, border: 'none', background: 'none', color: '#047857', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+                    {slaAllOff ? '▾' : '▸'} Перелік товарів без точок видачі ({slaData.off.length})
+                  </button>
+                  {slaAllOff && (
+                    <div style={{ maxHeight: 300, overflowY: 'auto', marginTop: 6, background: '#fff', borderRadius: 8, border: '1px solid #E5E7EB', padding: '6px 10px' }}>
+                      {slaData.off.map(i => (
+                        <div key={i.article} style={{ fontSize: 12, color: '#374151', padding: '2px 0', borderBottom: '1px solid #F9FAFB' }}>
+                          <span style={{ color: '#9CA3AF', fontFamily: 'monospace' }}>{i.article}</span>{' '}
+                          {i.name}
+                          <span style={{ color: '#9CA3AF' }}> · {i.stock} шт · {i.slaTitle}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div style={{ marginTop: 12, fontSize: 11.5, color: '#6B7280', lineHeight: 1.5 }}>
+                Точки видачі вмикаються не по товару, а набором доставки (SLA). Призначити товару
+                інший набір через API не можна — тільки в кабінеті Rozetka. Тут лише видно, де що стоїть.
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Умови Smart — редагований тариф компенсації доставки */}
       {tariffOpen && (
