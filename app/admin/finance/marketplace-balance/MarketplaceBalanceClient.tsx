@@ -21,8 +21,13 @@ type CabinetData = {
   rows: CabinetRow[];
   others: Array<{ op: number; name: string; count: number; debit: number; credit: number }>;
   smartFees?: { count: number; total: number };
+  /** Звірка по статтях витрат площадки, а не лише по комісії за замовленнями. */
+  articles?: Article[];
+  articlesTotal?: Article;
   totals: { their: number; ours: number; delta: number };
 };
+
+type Article = { key: string; label: string; their: number; ours: number; delta: number; note?: string };
 
 type MarketplaceData = { rows: LedgerRow[]; balance: number; inTransit: InTransit };
 
@@ -411,6 +416,42 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
 
           {cabinetData && (
             <>
+              {/* Звірка по статтях — комісія це лише частина того, що площадка з нас бере */}
+              {cabinetData.articles && cabinetData.articles.length > 0 && (
+                <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', background: 'var(--bg-card)', marginBottom: '14px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px 100px', padding: '8px 14px', background: 'var(--bg-soft)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                    <span>Стаття</span>
+                    <span style={{ textAlign: 'right' }}>Rozetka</span>
+                    <span style={{ textAlign: 'right' }}>У нас</span>
+                    <span style={{ textAlign: 'right' }}>Різниця</span>
+                  </div>
+                  {[...cabinetData.articles, ...(cabinetData.articlesTotal ? [cabinetData.articlesTotal] : [])].map((a, i) => {
+                    const isTotal = a.key === 'total';
+                    const ok = Math.abs(a.delta) < 0.01;
+                    return (
+                      <div key={a.key} style={{
+                        padding: '9px 14px', fontSize: '13px',
+                        borderTop: i > 0 ? `1px solid var(--border-light)` : 'none',
+                        background: isTotal ? 'var(--bg-soft)' : undefined,
+                        fontWeight: isTotal ? 700 : 400,
+                      }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px 100px', alignItems: 'center' }}>
+                          <span style={{ color: 'var(--text-primary)' }}>{a.label}</span>
+                          <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(a.their)} ₴</span>
+                          <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(a.ours)} ₴</span>
+                          <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: ok ? '#15803D' : '#B45309' }}>
+                            {ok ? '✓ 0' : `${a.delta > 0 ? '+' : ''}${fmt(a.delta)}`}
+                          </span>
+                        </div>
+                        {a.note && (
+                          <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '3px', fontWeight: 400, lineHeight: 1.45 }}>{a.note}</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', background: 'var(--bg-card)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 110px 110px 90px 190px', padding: '8px 14px', background: 'var(--bg-soft)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                   <span>Дата</span>

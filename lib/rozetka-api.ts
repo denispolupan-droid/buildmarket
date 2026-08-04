@@ -400,6 +400,37 @@ export async function getRozetkaBalanceTxns(opts: { dateFrom: string; dateTo?: s
   return all;
 }
 
+/**
+ * Операції ЛОГІСТИЧНОГО балансу — окремого від основного. Саме тут живе збір за
+ * організацію видачі в точках Rozetka (operation_type 34): у /balances/search
+ * його немає взагалі, тому без цього виклику доставка в точки видачі у звірці
+ * не бачилась би зовсім.
+ */
+export interface RozetkaLogisticOp {
+  operation_id: number;
+  operation_type: number;
+  order_id: string | null;
+  ttn: string | null;
+  transaction_ts: string;
+  debit: number;
+  credit: number;
+  operation_type_title: string;
+}
+
+export async function getRozetkaLogisticOps(perPage = 100, maxPages = 20): Promise<RozetkaLogisticOp[]> {
+  const all: RozetkaLogisticOp[] = [];
+  for (let page = 1; page <= maxPages; page++) {
+    const data = await rozetkaFetch<{
+      logisticBalances: RozetkaLogisticOp[];
+      _meta?: { pageCount?: number; currentPage?: number };
+    }>(`/balance-logistic/search?per_page=${perPage}&page=${page}`);
+    all.push(...(data.logisticBalances ?? []));
+    const meta = data._meta;
+    if (!meta || Number(meta.currentPage ?? page) >= Number(meta.pageCount ?? 1)) break;
+  }
+  return all;
+}
+
 /* ── Заявки на повернення (/order-refund) ───────────────────────────────────
    Модуль повернень кабінету: покупець відкриває заявку, вона проходить статуси
    (перелік — /order-refund/search-data). Поля підтверджені apiDoc; живий запит

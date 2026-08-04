@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase';
-import { getRozetkaBalanceTotal, getRozetkaBalanceTxns } from '../../../../../../lib/rozetka-api';
+import { getRozetkaBalanceTotal, getRozetkaBalanceTxns, getRozetkaLogisticOps } from '../../../../../../lib/rozetka-api';
 
 // Побудкова звірка з кабінетом Rozetka: тягнемо живий леджер балансу продавця
 // (/balances/search) і зіставляємо їхні списання комісій по замовленнях із нашими
@@ -54,9 +54,15 @@ export async function GET(req: NextRequest) {
   const to = /^\d{4}-\d{2}-\d{2}$/.test(sp.get('to') ?? '') ? sp.get('to')! : today;
 
   try {
-    const [cabinet, txns] = await Promise.all([
+    const [cabinet, txns, logisticOps] = await Promise.all([
       getRozetkaBalanceTotal(),
       getRozetkaBalanceTxns({ dateFrom: from, dateTo: to }),
+      // Логістичний баланс окремий: збір за організацію видачі в точках Rozetka
+      // у /balances/search не потрапляє взагалі. Помилка тут не має валити звірку.
+      getRozetkaLogisticOps().catch(err => {
+        console.error('[rozetka-reconcile] logistic ops failed:', err);
+        return [];
+      }),
     ]);
 
     // Їхні списання/повернення по кожному Rozetka-замовленню
@@ -192,8 +198,58 @@ export async function GET(req: NextRequest) {
       ours:  r2(rows.reduce((s, r) => s + r.ourAmount, 0)),
     };
 
+    /* ── Звірка ПО СТАТТЯХ ────────────────────────────────────────────────────
+       Построчна звірка вище дивиться лише комісію по замовленнях. Але грошей з
+       нас площадка бере більше: збір за організацію видачі (окремий логістичний
+       баланс) і абонплата (без прив'язки до замовлення). Без них «зійшлося»
+       означало б лише «зійшлася комісія».
+
+       Усі суми ЧИСТІ — і нарахування, і сторно. Це не дрібниця: фільтр «лише
+       додатні» ховає сторно і показує розбіжність там, де її вже виправили. */
+    const inPeriod = (d: string) => d >= from && d <= to;
+
+    const theirPickup = r2(logisticOps
+      .filter(o => o.operation_type === 34 && inPeriod(String(o.transaction_ts).slice(0, 10)))
+      .reduce((s, o) => s + Math.abs(num(o.debit)), 0));
+    const theirSubscription = r2(txns
+      .filter(t => t.operationType === 5)
+      .reduce((s, t) => s + num(t.debit), 0));
+
+    const { data: allPeriodFees } = await db.from('money_entries')
+      .select('amount, description, doc_type')
+      .eq('account_type', 'marketplace_fee')
+      .eq('counterparty_id', 'rozetka')
+      .gte('business_date', from)
+      .lte('business_date', to)
+      .limit(10000);
+    let oursPickup = 0, oursSubscription = 0;
+    for (const f of allPeriodFees ?? []) {
+      const d = String(f.description ?? '');
+      if (f.doc_type === 'subscription_fee' || /абонплат/i.test(d)) oursSubscription += Number(f.amount);
+      else if (/організація видачі/i.test(d)) oursPickup += Number(f.amount);
+    }
+
+    const article = (key: string, label: string, their: number, ours: number, note?: string) =>
+      ({ key, label, their: r2(their), ours: r2(ours), delta: r2(ours - their), note });
+
+    const articles = [
+      article('commission', 'Комісія за продаж', totals.their, totals.ours),
+      article('pickup', 'Доставка в точки видачі', theirPickup, oursPickup,
+        oursPickup > theirPickup
+          ? 'Ми проводимо збір при відгрузці, Rozetka списує при прийманні перевізником — різниця зазвичай зникає за добу.'
+          : undefined),
+      article('subscription', 'Абонплата', theirSubscription, oursSubscription),
+      article('smart', 'Smart-збір', 0, smartFees.total,
+        smartFees.total > 0
+          ? 'Списань 12/18/30 ₴ немає ні в основному, ні в логістичному балансі, ні в місячному звіті. Питання відкрите.'
+          : undefined),
+    ];
+    const articlesTotal = article('total', 'РАЗОМ',
+      articles.reduce((s, a) => s + a.their, 0),
+      articles.reduce((s, a) => s + a.ours, 0));
+
     return NextResponse.json({
-      cabinet, from, to, rows, others, smartFees,
+      cabinet, from, to, rows, others, smartFees, articles, articlesTotal,
       totals: { ...totals, delta: r2(totals.their - totals.ours) },
     });
   } catch (err: unknown) {
