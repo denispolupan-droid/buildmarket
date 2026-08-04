@@ -349,6 +349,13 @@ export default function AdminOrders({
   const [confirming, setConfirming] = useState<string | null>(null);
   const [confirmErrors, setConfirmErrors] = useState<Record<string, { error: string; insufficient?: { sku: string; requested: number; available: number }[] }>>({});
   const [copiedSku, setCopiedSku] = useState<string | null>(null);
+  // ТТН із мобільного рядка картки: копіюємо, щоб одразу вставити в пошук перевізника.
+  const [copiedTtn, setCopiedTtn] = useState<string | null>(null);
+  function copyTtn(ttn: string) {
+    navigator.clipboard.writeText(ttn);
+    setCopiedTtn(ttn);
+    setTimeout(() => setCopiedTtn(c => (c === ttn ? null : c)), 1500);
+  }
 
   // Edit order items
   const [editingId,   setEditingId]   = useState<string | null>(null);
@@ -1872,6 +1879,37 @@ export default function AdminOrders({
                         {order.items.length > 1 && <span style={{ marginLeft: '4px', color: 'var(--text-muted)' }}>+{order.items.length - 1}</span>}
                         {order.items.some(i => i.is_bonus) && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#15803D', fontWeight: 600, background: '#F0FDF4', padding: '0 5px', borderRadius: '4px' }}>🎁 бонус</span>}
                       </div>
+                    )}
+                  </div>
+
+                  {/* Доставка + ТТН — ТІЛЬКИ на телефоні. На широкому екрані для цього є
+                      власні колонки («Доставка», значок приймання біля статусу), а на
+                      телефоні вони сховані через .oc-hide-m, і номер посилки не було
+                      видно взагалі — доводилось розгортати картку заради одного рядка.
+                      Тап по номеру копіює його: у списку ТТН потрібна саме для того,
+                      щоб вставити в пошук перевізника. */}
+                  <div className="oc-only-m oc-ship" style={{ display: 'none', minWidth: 0, alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    {(order.delivery_type === 'pickup' || order.delivery_city_name || order.delivery_address) && (
+                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {order.delivery_type === 'pickup' ? 'Самовивіз'
+                          : `${order.delivery_city_name ?? order.delivery_address ?? delivery}${order.delivery_subtype === 'courier' ? ' · кур.' : ''}`}
+                      </span>
+                    )}
+                    {order.tracking_number && (
+                      <span
+                        onClick={e => { e.stopPropagation(); copyTtn(order.tracking_number!); }}
+                        title={`${isRzPickup ? 'Rozetka Доставка' : 'Нова Пошта'} · ${order.tracking_number} — натисніть, щоб скопіювати`}
+                        style={{
+                          flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '4px',
+                          padding: '1px 7px', borderRadius: '20px', fontWeight: 700, letterSpacing: '.02em',
+                          color: isRzPickup ? '#065F46' : '#7C2D12',
+                          background: isRzPickup ? '#ECFDF5' : '#FFF7ED',
+                          border: `1px solid ${isRzPickup ? '#6EE7B7' : '#FDBA74'}`,
+                        }}>
+                        <Truck size={10} style={{ flexShrink: 0 }} />
+                        {isRzPickup ? 'Rozetka' : 'НП'} {order.tracking_number}
+                        {copiedTtn === order.tracking_number && <Check size={10} strokeWidth={3} />}
+                      </span>
                     )}
                   </div>
 

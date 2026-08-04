@@ -1260,13 +1260,31 @@ input, select { font-family: inherit; }
   /* «Зберегти» ТТН → компактна кнопка-дискета, щоб поле + Зберегти + «Створити ТТН»
      влізли в один рядок на телефоні. */
   .oc-ttn-save { padding: 0 !important; width: 34px !important; }
-  .order-compact-row { gap: 6px !important; padding: 8px 10px !important; flex-wrap: wrap !important; }
-  .order-compact-row .oc-num { width: auto !important; }
+  /* Картка замовлення на телефоні — три сталі рядки замість «як ляже».
+     Було: усе в один flex-wrap, і рядки перескакували залежно від того, чи є
+     статус перевізника: сума то праворуч від статусу, то під ним, а шеврон
+     часом займав власний рядок. Тепер порядок фіксований:
+       1) чекбокс · № · статус · сума · шеврон
+       2) ПІБ + телефон, товар
+       3) місто · ТТН перевізника
+     Порядок задає order, перенос — flex-basis:100% у перших елементів рядка. */
+  .order-compact-row { gap: 4px 6px !important; padding: 10px !important; flex-wrap: wrap !important; align-items: flex-start !important; }
+  .order-compact-row .oc-num { width: auto !important; order: 2 !important; }
+  .order-compact-row > div:first-child { order: 1 !important; margin-top: 3px; }
+  /* Статус тисне суму зі свого рядка, коли має другий рядок («Доставляється»),
+     тож віддаємо йому лише вільний залишок і не даємо рости. */
+  .oc-status { width: auto !important; flex: 1 1 auto !important; min-width: 0 !important; order: 3 !important; }
+  /* Сума і шеврон — завжди в кінці першого рядка, на своїх місцях. */
+  .order-compact-row > span:last-of-type { order: 4 !important; margin-left: auto !important; }
+  .order-compact-row > svg { order: 5 !important; flex-shrink: 0; margin-top: 3px; }
   /* Клієнт/Товар: у рядку з №+статус+сума на телефоні лишалось ~40px і ФІО/товар
-     обрізались у «Де…»/«AUR…». Тепер колонка переноситься на власний рядок на всю
-     ширину картки (flex-basis:100% + order), тож видно ПІБ і товар повністю. */
-  .order-compact-row .oc-cust { flex: 1 0 100% !important; order: 20 !important; margin-left: 22px; }
-  .oc-status { width: auto !important; }
+     обрізались у «Де…»/«AUR…». Тепер колонка переноситься на власний рядок.
+     Ширина — calc(100% − відступ), а не 100%: базис 100% РАЗОМ із margin-left
+     давав рядок ширший за картку, і кінець ПІБ («…Леонідівна») зрізало за
+     краєм екрана замість «…». */
+  .order-compact-row .oc-cust { flex: 1 0 calc(100% - 22px) !important; order: 20 !important; margin-left: 22px; }
+  /* Доставка + ТТН — окремий рядок під клієнтом. На широкому екрані прихований. */
+  .order-compact-row .oc-ship { display: flex !important; flex: 1 0 calc(100% - 22px) !important; order: 21 !important; margin-left: 22px; }
   /* Розгорнуте: «Фінанси | Логістика» на телефоні у 2 колонки давали ~140px — лейбли
      налазили на суми («Собіварт222 ₴»), кнопки/селекти обрізались. Складаємо в стовпчик. */
   .oc-finlog-grid { grid-template-columns: 1fr !important; }
