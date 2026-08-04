@@ -30,7 +30,7 @@ import InvoiceOptionsModal from '../components/admin/InvoiceOptionsModal';
 import ReturnOrderModal from '../components/admin/ReturnOrderModal';
 import { rozetkaStatusLabel, isRozetkaAhead } from '../../lib/rozetka-status';
 import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
-import { estimateMarketplaceDeliveryFee, type MarketplaceFeeTariffs } from '../../lib/marketplace-delivery-fee';
+import { estimateMarketplaceDeliveryFee, splitFeeByRevenue, type MarketplaceFeeTariffs } from '../../lib/marketplace-delivery-fee';
 import RozetkaDeliveryTtnModal from '../components/admin/RozetkaDeliveryTtnModal';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number; is_bonus?: boolean; supplier_sku?: string };
@@ -2688,6 +2688,15 @@ export default function AdminOrders({
                               const commBySku = new Map<string, { amt: number; pct: number }>();
                               (commItems ?? []).forEach(c => commBySku.set(c.sku, { amt: c.commission_amt, pct: c.commission_pct }));
                               const hasComm = commBySku.size > 0;
+                              // Збір за доставку — на ЗАМОВЛЕННЯ, а не на позицію: у рядок товару його не
+                              // покласти. Розкидаємо між постачальниками пропорційно їхній виручці (у
+                              // звичайному замовленні постачальник один, тож уся сума йде йому) і показуємо
+                              // окремим рядком — інакше підсумок групи мовчки не сходився б із «Економікою».
+                              const mpFee = estimateMarketplaceDeliveryFee(order, feeTariffs);
+                              const feeShares = splitFeeByRevenue(
+                                mpFee?.amount ?? 0,
+                                fi.by_supplier.map(g => g.items.reduce((s, it) => s + it.sale_price * it.qty, 0)),
+                              );
                               const activeReservations = (fi.reservations ?? []).filter(r => r.reservation_status === 'active');
                               return (
                                 <div style={{ marginTop: '8px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--border)', fontSize: '12px' }}>
@@ -2705,13 +2714,15 @@ export default function AdminOrders({
                                       (маржа − комісія), щоб математика сходилась із блоком «Економіка». */}
                                   {fi.by_supplier.map((group, gi) => {
                                     const groupComm = group.items.reduce((s, it) => s + (commBySku.get(it.sku)?.amt ?? 0), 0);
-                                    const groupNet = group.total_margin - groupComm;
+                                    const groupFee = feeShares[gi] ?? 0;
+                                    const groupNet = group.total_margin - groupComm - groupFee;
                                     return (
                                     <div key={gi} style={{ borderBottom: gi < fi.by_supplier.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
-                                      <div style={{ padding: '7px 12px', background: 'var(--bg-soft)', fontWeight: 700, color: 'var(--text-primary)', fontSize: '11px', display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                                      <div title={`Валовий прибуток ${group.total_margin.toFixed(0)}${groupComm > 0 ? ` − комісія ${groupComm.toFixed(0)}` : ''}${groupFee > 0 ? ` − ${mpFee!.label.toLowerCase()} ${groupFee.toFixed(0)}` : ''} = ${groupNet.toFixed(0)} ₴`}
+                                        style={{ padding: '7px 12px', background: 'var(--bg-soft)', fontWeight: 700, color: 'var(--text-primary)', fontSize: '11px', display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
                                         <span>📦 {group.supplier_name ?? 'Невідомий поставщик'}</span>
                                         <span style={{ color: groupNet >= 0 ? '#15803D' : '#DC2626' }}>
-                                          {groupNet >= 0 ? '+' : ''}{groupNet.toFixed(0)} грн{hasComm ? ' чистими' : ''}
+                                          {groupNet >= 0 ? '+' : ''}{groupNet.toFixed(0)} грн{(hasComm || groupFee > 0) ? ' чистими' : ''}
                                         </span>
                                       </div>
                                       {group.items.map((item, ii) => {
@@ -2732,6 +2743,13 @@ export default function AdminOrders({
                                           </div>
                                         );
                                       })}
+                                      {groupFee > 0 && (
+                                        <div title={mpFee!.hint}
+                                          style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', padding: '6px 12px', alignItems: 'center', borderTop: '1px solid var(--border-light)', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                          <span>🚚 {mpFee!.label}{fi.by_supplier.length > 1 ? ' · частка' : ''}</span>
+                                          <span style={{ whiteSpace: 'nowrap', fontWeight: 700, color: '#C2410C' }}>−{groupFee.toFixed(0)} грн</span>
+                                        </div>
+                                      )}
                                     </div>
                                     );
                                   })}

@@ -42,6 +42,24 @@ export type FeeOrderShape = {
   prom_data?: Record<string, unknown> | null;
 };
 
+/**
+ * Розкидати збір замовлення між постачальниками пропорційно їхній виручці.
+ * Збір беруть із замовлення цілком, а показуємо його в розрізі постачальників —
+ * тож останній забирає залишок, інакше копійки округлення губилися б і підсумки
+ * груп не сходились би з «Економікою».
+ */
+export function splitFeeByRevenue(amount: number, revenues: number[]): number[] {
+  if (!revenues.length) return [];
+  if (!(amount > 0)) return revenues.map(() => 0);
+  const total = revenues.reduce((s, r) => s + r, 0);
+  if (!(total > 0)) return revenues.map((_, i) => (i === revenues.length - 1 ? amount : 0));
+
+  const shares = revenues.map(r => Math.round((amount * r / total) * 100) / 100);
+  const allButLast = shares.slice(0, -1).reduce((s, v) => s + v, 0);
+  shares[shares.length - 1] = Math.round((amount - allButLast) * 100) / 100;
+  return shares;
+}
+
 export function estimateMarketplaceDeliveryFee(
   order: FeeOrderShape,
   tariffs: MarketplaceFeeTariffs = {},

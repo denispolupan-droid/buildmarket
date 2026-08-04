@@ -1,5 +1,34 @@
 import { describe, it, expect } from 'vitest';
-import { estimateMarketplaceDeliveryFee } from '../lib/marketplace-delivery-fee';
+import { estimateMarketplaceDeliveryFee, splitFeeByRevenue } from '../lib/marketplace-delivery-fee';
+
+describe('splitFeeByRevenue', () => {
+  it('один постачальник забирає збір цілком — щоб підсумок збігся з «Економікою»', () => {
+    // живий кейс: валовий 255 − комісія 84 − доставка 30 = 141, як у блоці «Фінанси»
+    expect(splitFeeByRevenue(30, [1555])).toEqual([30]);
+  });
+
+  it('між постачальниками ділить пропорційно виручці', () => {
+    expect(splitFeeByRevenue(30, [700, 300])).toEqual([21, 9]);
+  });
+
+  it('сума часток дорівнює збору навіть на неділимих пропорціях', () => {
+    const shares = splitFeeByRevenue(10, [100, 100, 100]);
+    expect(shares.reduce((s, v) => s + v, 0)).toBe(10);
+    expect(shares).toEqual([3.33, 3.33, 3.34]);
+  });
+
+  it('без збору всі частки нульові', () => {
+    expect(splitFeeByRevenue(0, [100, 200])).toEqual([0, 0]);
+  });
+
+  it('нульова виручка не дає ділення на нуль — збір вішаємо на останнього', () => {
+    expect(splitFeeByRevenue(30, [0, 0])).toEqual([0, 30]);
+  });
+
+  it('порожній список постачальників — порожній результат', () => {
+    expect(splitFeeByRevenue(30, [])).toEqual([]);
+  });
+});
 
 describe('estimateMarketplaceDeliveryFee', () => {
   describe('Rozetka Smart', () => {
