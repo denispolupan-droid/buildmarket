@@ -18,10 +18,10 @@ export type CashflowEntry = {
   counterparty: string | null;    // ім'я клієнта або постачальника
 };
 
-const ACCOUNT_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  cash:      { label: 'Каса',       color: '#15803D', bg: '#F0FDF4' },
-  bank:      { label: 'Банк',       color: '#1D4ED8', bg: '#EFF6FF' },
-  acquiring: { label: 'Еквайринг', color: '#7C3AED', bg: '#F5F3FF' },
+const ACCOUNT_LABELS: Record<string, { label: string }> = {
+  cash:      { label: 'Каса' },
+  bank:      { label: 'Банк' },
+  acquiring: { label: 'Еквайринг' },
 };
 
 function docHref(e: CashflowEntry): string | null {
@@ -104,19 +104,17 @@ export default function CashflowClient({ entries, openingBalance, defaultFrom, d
   return (
     <div>
       {/* ── Summary cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px' }}>
         {[
-          { label: 'Залишок на початок', value: openingBalance, color: '#1E3A5F', neutral: true },
-          { label: 'Надходження',        value: totalIn,        color: '#15803D', neutral: false },
-          { label: 'Видатки',            value: Math.abs(totalOut), color: '#DC2626', neutral: false },
-          { label: 'Залишок на кінець',  value: closingBalance, color: closingBalance >= 0 ? '#15803D' : '#DC2626', neutral: true },
+          { label: 'Залишок на початок', value: openingBalance, color: undefined as string | undefined, sign: '' },
+          { label: 'Надходження',        value: totalIn,        color: '#15803D', sign: '+' },
+          { label: 'Видатки',            value: Math.abs(totalOut), color: '#DC2626', sign: '−' },
+          { label: 'Залишок на кінець',  value: closingBalance, color: closingBalance < 0 ? '#DC2626' : undefined, sign: '' },
         ].map(card => (
-          <div key={card.label} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px 18px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
-              {card.label}
-            </div>
-            <div style={{ fontSize: '22px', fontWeight: 800, color: card.color }}>
-              {card.neutral ? '' : card.label === 'Видатки' ? '−' : '+'}{fmtBalance(card.value)} ₴
+          <div key={card.label} className="fin-card">
+            <div className="fin-kpi-label">{card.label}</div>
+            <div className="fin-money-val" style={card.color ? { color: card.color } : undefined}>
+              {card.sign}{fmtBalance(card.value)} ₴
             </div>
           </div>
         ))}
@@ -134,34 +132,26 @@ export default function CashflowClient({ entries, openingBalance, defaultFrom, d
           style={{ ...inp, width: '138px' }} />
 
         {/* Account tabs */}
-        <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)', marginLeft: '8px' }}>
-          {(['all', 'cash', 'bank', 'acquiring'] as const).map((a, i) => (
-            <button key={a} onClick={() => setAccount(a)} style={{
-              height: '34px', padding: '0 14px', fontSize: '12px', fontWeight: 600,
-              cursor: 'pointer', border: 'none',
-              borderLeft: i > 0 ? '1px solid var(--border)' : 'none',
-              background: account === a ? '#1E3A5F' : 'var(--bg-soft)',
-              color:      account === a ? '#fff' : 'var(--text-secondary)',
-            }}>
+        <div style={{ display: 'flex', gap: '6px', marginLeft: '8px' }}>
+          {(['all', 'cash', 'bank', 'acquiring'] as const).map(a => (
+            <button key={a} onClick={() => setAccount(a)}
+              className={'fin-pill' + (account === a ? ' active' : '')}
+              style={{ cursor: 'pointer' }}>
               {a === 'all' ? 'Всі' : ACCOUNT_LABELS[a].label}
             </button>
           ))}
         </div>
 
         {/* Direction tabs */}
-        <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', gap: '6px' }}>
           {([
             { key: 'all', label: 'Всі' },
             { key: 'in',  label: '↓ Прихід' },
             { key: 'out', label: '↑ Видаток' },
-          ] as const).map((d, i) => (
-            <button key={d.key} onClick={() => setDir(d.key)} style={{
-              height: '34px', padding: '0 14px', fontSize: '12px', fontWeight: 600,
-              cursor: 'pointer', border: 'none',
-              borderLeft: i > 0 ? '1px solid var(--border)' : 'none',
-              background: dir === d.key ? '#1E3A5F' : 'var(--bg-soft)',
-              color:      dir === d.key ? '#fff' : 'var(--text-secondary)',
-            }}>
+          ] as const).map(d => (
+            <button key={d.key} onClick={() => setDir(d.key)}
+              className={'fin-pill' + (dir === d.key ? ' active' : '')}
+              style={{ cursor: 'pointer' }}>
               {d.label}
             </button>
           ))}
@@ -176,7 +166,7 @@ export default function CashflowClient({ entries, openingBalance, defaultFrom, d
       </div>
 
       {/* ── Table ── */}
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+      <div className="fin-card" style={{ padding: 0, overflow: 'hidden' }}>
         {/* Header */}
         <div style={{
           display: 'grid',
@@ -213,21 +203,14 @@ export default function CashflowClient({ entries, openingBalance, defaultFrom, d
               padding: '10px 16px',
               alignItems: 'center',
               borderBottom: isLast ? 'none' : '1px solid var(--border-light)',
-              background: idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)',
             }}>
               {/* Date */}
               <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
                 {new Date(e.business_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' })}
               </span>
 
-              {/* Account badge */}
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                fontSize: '11px', fontWeight: 700,
-                color: accCfg.color, background: accCfg.bg,
-                padding: '2px 8px', borderRadius: '20px',
-                width: 'fit-content',
-              }}>
+              {/* Account */}
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                 {accCfg.label}
               </span>
 
@@ -238,7 +221,7 @@ export default function CashflowClient({ entries, openingBalance, defaultFrom, d
                 </div>
                 {href && e.doc_number && (
                   <Link href={href} style={{
-                    fontSize: '11px', color: '#1D4ED8', textDecoration: 'none', fontWeight: 600,
+                    fontSize: '11px', color: 'var(--brand-blue)', textDecoration: 'none', fontWeight: 600,
                   }}>
                     {e.doc_number}
                   </Link>

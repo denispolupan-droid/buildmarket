@@ -2,23 +2,24 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
+import FinanceTabs from '../FinanceTabs';
 import AddExpenseButton from './AddExpenseButton';
 import AddTransferButton from './AddTransferButton';
 
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
-const EXPENSE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  logistics:       { label: 'Доставка',              color: '#1E3A5F', bg: '#EFF4FF' },
-  loading:         { label: 'Навантаження',           color: '#0E7490', bg: '#ECFEFF' },
-  customs:         { label: 'Мито / брокер',          color: '#7C3AED', bg: '#F5F3FF' },
-  packaging:       { label: 'Пакування',              color: '#B45309', bg: '#FEF3C7' },
-  acquiring_fee:   { label: 'Комісія еквайрингу',    color: '#EA580C', bg: '#FFF7ED' },
-  marketplace_fee: { label: 'Комісія маркетплейсу',  color: '#DC2626', bg: '#FEF2F2' },
-  rent:            { label: 'Оренда',                 color: '#64748B', bg: '#F8FAFC' },
-  salary:          { label: 'Зарплата',               color: '#15803D', bg: '#F0FDF4' },
-  marketing:       { label: 'Маркетинг',              color: '#BE185D', bg: '#FDF2F8' },
-  opex:            { label: 'Інші витрати',           color: '#64748B', bg: '#F8FAFC' },
+const EXPENSE_LABELS: Record<string, string> = {
+  logistics:       'Доставка',
+  loading:         'Навантаження',
+  customs:         'Мито / брокер',
+  packaging:       'Пакування',
+  acquiring_fee:   'Комісія еквайрингу',
+  marketplace_fee: 'Комісія маркетплейсу',
+  rent:            'Оренда',
+  salary:          'Зарплата',
+  marketing:       'Маркетинг',
+  opex:            'Інші витрати',
 };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -90,20 +91,15 @@ export default async function ExpensesPage({
   const COL = '100px 120px 1fr 160px 110px 120px';
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: '1300px' }}>
+    <div style={{ padding: '28px 32px 64px', maxWidth: '1400px' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Link href="/admin/finance" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-            <ArrowLeft size={16} />
-          </Link>
-          <div>
-            <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Витрати</h1>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-              Операційні витрати · {rows.length} записів за період
-            </p>
-          </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', gap: '16px', flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Витрати</h1>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+            Операційні витрати · {rows.length} записів за період
+          </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
           <AddTransferButton />
@@ -111,8 +107,10 @@ export default async function ExpensesPage({
         </div>
       </div>
 
+      <FinanceTabs />
+
       {/* Date filter */}
-      <form method="GET" style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', marginBottom: '20px', flexWrap: 'wrap' }}>
+      <form method="GET" style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', margin: '18px 0 20px', flexWrap: 'wrap' }}>
         {[
           { name: 'from', label: 'З',  value: dateFrom },
           { name: 'to',   label: 'По', value: dateTo   },
@@ -129,32 +127,29 @@ export default async function ExpensesPage({
       </form>
 
       {/* Summary cards */}
-      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
-        <div style={{ padding: '12px 18px', borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-          <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>{fmt(total)} ₴</div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Всього витрат</div>
+      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '20px' }}>
+        <div className="fin-card" style={{ padding: '14px 18px' }}>
+          <div className="fin-kpi-label">Всього витрат</div>
+          <div className="fin-money-val">{fmt(total)} ₴</div>
         </div>
-        {Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([type, amount]) => {
-          const cfg = EXPENSE_LABELS[type] ?? { label: type, color: '#64748B', bg: '#F8FAFC' };
-          return (
-            <div key={type} style={{ padding: '12px 18px', borderRadius: '10px', background: cfg.bg }}>
-              <div style={{ fontSize: '18px', fontWeight: 800, color: cfg.color }}>{fmt(amount)} ₴</div>
-              <div style={{ fontSize: '11px', color: cfg.color, opacity: 0.8 }}>{cfg.label}</div>
-            </div>
-          );
-        })}
+        {Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([type, amount]) => (
+          <div key={type} className="fin-card" style={{ padding: '14px 18px' }}>
+            <div className="fin-kpi-label">{EXPENSE_LABELS[type] ?? type}</div>
+            <div className="fin-money-val">{fmt(amount)} ₴</div>
+          </div>
+        ))}
       </div>
 
       {/* Table */}
       {rows.length === 0 ? (
-        <div style={{ padding: '64px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
+        <div className="fin-card" style={{ padding: '64px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
           Немає витрат за обраний період
         </div>
       ) : (
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+        <div className="fin-card" style={{ padding: 0, overflow: 'hidden' }}>
 
           {/* Header row */}
-          <div style={{ display: 'grid', gridTemplateColumns: COL, padding: '8px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: COL, padding: '8px 16px', borderBottom: '1px solid var(--border)', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             <span>Дата</span>
             <span>Категорія</span>
             <span>Опис</span>
@@ -164,7 +159,7 @@ export default async function ExpensesPage({
           </div>
 
           {rows.map((row, idx) => {
-            const cfg    = EXPENSE_LABELS[row.expense_type] ?? { label: row.expense_type, color: '#64748B', bg: '#F8FAFC' };
+            const label  = EXPENSE_LABELS[row.expense_type] ?? row.expense_type;
             const pmLabel: Record<string, string> = { bank: '🏦 Банк', cash: '💵 Готівка', acquiring: '💳 Еквайринг' };
 
             // Джерело
@@ -180,13 +175,13 @@ export default async function ExpensesPage({
                 borderBottom: idx < rows.length - 1 ? '1px solid var(--border-light)' : 'none',
               }}>
                 {/* Дата */}
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
                   {new Date(row.business_date).toLocaleDateString('uk-UA')}
                 </span>
 
                 {/* Категорія */}
-                <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, color: cfg.color, background: cfg.bg, display: 'inline-block', whiteSpace: 'nowrap' }}>
-                  {cfg.label}
+                <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-soft)', border: '1px solid var(--border)', display: 'inline-block', whiteSpace: 'nowrap', justifySelf: 'start' }}>
+                  {label}
                 </span>
 
                 {/* Опис */}
@@ -204,7 +199,7 @@ export default async function ExpensesPage({
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                       <Link href={href} style={{
                         display: 'inline-flex', alignItems: 'center', gap: '3px',
-                        fontSize: '12px', fontWeight: 600, color: '#1D4ED8',
+                        fontSize: '12px', fontWeight: 600, color: 'var(--brand-blue)',
                         textDecoration: 'none', fontFamily: 'monospace',
                       }}>
                         {docRef}
@@ -227,7 +222,7 @@ export default async function ExpensesPage({
                 </span>
 
                 {/* Сума */}
-                <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#DC2626' }}>
+                <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#DC2626', fontVariantNumeric: 'tabular-nums' }}>
                   −{fmt(Number(row.amount))} ₴
                 </span>
               </div>
@@ -237,7 +232,7 @@ export default async function ExpensesPage({
           {/* Total */}
           <div style={{ padding: '10px 16px', borderTop: '2px solid var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)' }}>
             <span>Разом за період</span>
-            <span style={{ color: '#DC2626' }}>−{fmt(total)} ₴</span>
+            <span style={{ color: '#DC2626', fontVariantNumeric: 'tabular-nums' }}>−{fmt(total)} ₴</span>
           </div>
         </div>
       )}

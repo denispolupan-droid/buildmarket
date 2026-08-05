@@ -2,8 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, CreditCard } from 'lucide-react';
+import FinanceTabs from '../FinanceTabs';
 import PayablesClient, { type SupplierBalance, type TransitItem } from './PayablesClient';
 
 export const dynamic = 'force-dynamic';
@@ -198,17 +197,18 @@ export default async function PayablesPage() {
 
   return (
     <div style={{ padding: '28px 32px 64px', maxWidth: '1200px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <Link href="/admin/finance" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-          <ArrowLeft size={16} />
-        </Link>
-        <CreditCard size={18} color="#1E3A5F" />
-        <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-          Взаєморозрахунки з постачальниками
-        </h1>
+      <div style={{ marginBottom: '14px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Кредиторка</h1>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+          Взаєморозрахунки з постачальниками: борг, оплати і посилки в дорозі
+        </p>
       </div>
 
-      <PayablesClient balances={balances} />
+      <FinanceTabs />
+
+      <div style={{ marginTop: '20px' }}>
+        <PayablesClient balances={balances} />
+      </div>
     </div>
   );
 }

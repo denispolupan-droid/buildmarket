@@ -2,8 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, Scale } from 'lucide-react';
+import FinanceTabs from '../FinanceTabs';
 
 export const dynamic = 'force-dynamic';
 
@@ -111,23 +110,24 @@ export default async function TrialBalancePage({ searchParams }: { searchParams:
     for (const r of rows) { grand.opening += r.opening; grand.debit += r.debit; grand.credit += r.credit; grand.closing += r.closing; }
   }
 
-  const th: React.CSSProperties = { padding: '8px 14px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'right', whiteSpace: 'nowrap' };
+  const th: React.CSSProperties = { padding: '8px 14px', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right', whiteSpace: 'nowrap' };
   const td: React.CSSProperties = { padding: '7px 14px', fontSize: '13px', textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' };
 
   return (
-    <div style={{ padding: '28px 32px 64px', maxWidth: '1100px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-        <Link href="/admin/finance" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-          <ArrowLeft size={16} />
-        </Link>
-        <Scale size={18} color="#1E3A5F" />
-        <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+    <div style={{ padding: '28px 32px 64px', maxWidth: '1400px' }}>
+      <div style={{ marginBottom: '14px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
           Оборотно-сальдова відомість
         </h1>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+          Вхідне сальдо, обороти Дт/Кт і вихідне сальдо за леджером подвійного запису
+        </p>
       </div>
 
+      <FinanceTabs />
+
       {/* Період */}
-      <form method="GET" style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', marginBottom: '20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 18px' }}>
+      <form method="GET" className="fin-card" style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap', margin: '20px 0', padding: '14px 18px' }}>
         <div>
           <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>З</label>
           <input type="date" name="from" defaultValue={from} style={{ height: '34px', padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', background: 'var(--bg-soft)', color: 'var(--text-primary)' }} />
@@ -144,7 +144,7 @@ export default async function TrialBalancePage({ searchParams }: { searchParams:
         </span>
       </form>
 
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'auto' }}>
+      <div className="fin-card" style={{ padding: 0, overflow: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--bg-soft)', borderBottom: '2px solid var(--border)' }}>

@@ -1,8 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import FinanceTabs from '../FinanceTabs';
 import MarketplaceBalanceClient from './MarketplaceBalanceClient';
 import { computePromCommission } from '../../../../lib/prom-commission';
 import { computeRozetkaCommission } from '../../../../lib/rozetka-commission';
@@ -98,24 +97,23 @@ export default async function MarketplaceBalancePage() {
 
   return (
     <div style={{ padding: '28px 32px 64px', maxWidth: '1300px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <Link href="/admin/finance" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-          <ArrowLeft size={16} />
-        </Link>
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-            Баланс маркетплейсів
-          </h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Поповнення та автоматичне списання комісії за доставлені замовлення — звіряйте з реальним балансом у кабінеті Prom/Rozetka
-          </p>
-        </div>
+      <div style={{ marginBottom: '14px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+          Баланс маркетплейсів
+        </h1>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+          Поповнення та автоматичне списання комісії за доставлені замовлення — звіряйте з реальним балансом у кабінеті Prom/Rozetka
+        </p>
       </div>
 
-      <MarketplaceBalanceClient
-        prom={prom}
-        rozetka={rozetka}
-      />
+      <FinanceTabs />
+
+      <div style={{ marginTop: '20px' }}>
+        <MarketplaceBalanceClient
+          prom={prom}
+          rozetka={rozetka}
+        />
+      </div>
     </div>
   );
 }

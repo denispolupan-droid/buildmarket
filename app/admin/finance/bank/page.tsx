@@ -1,6 +1,7 @@
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
+import FinanceTabs from '../FinanceTabs';
 import BankStatementClient from './BankStatementClient';
 
 const db = createClient(
@@ -19,5 +20,23 @@ export default async function BankPage() {
     .eq('status', 'active')
     .order('customer_name');
 
-  return <BankStatementClient contracts={contracts ?? []} />;
+  return (
+    <div style={{ padding: '28px 32px 64px', maxWidth: '1100px' }}>
+      {/* Header */}
+      <div style={{ marginBottom: '14px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+          Банківська виписка
+        </h1>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+          Завантажте CSV з Monobank Business — система автоматично зіставить платежі до договорів
+        </p>
+      </div>
+
+      <FinanceTabs />
+
+      <div style={{ height: '20px' }} />
+
+      <BankStatementClient contracts={contracts ?? []} />
+    </div>
+  );
 }

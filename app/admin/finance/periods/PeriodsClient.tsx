@@ -63,12 +63,9 @@ export default function PeriodsClient() {
       {months.map(m => {
         const isCurrent = m.month === currentKey;
         return (
-          <div key={m.month} style={{
+          <div key={m.month} className="fin-card" style={{
             display: 'grid', gridTemplateColumns: '1fr 130px 150px 140px',
-            gap: '12px', alignItems: 'center',
-            background: 'var(--bg-card)', borderRadius: '12px', padding: '14px 18px',
-            border: `1px solid ${m.closed ? '#BBF7D0' : 'var(--border)'}`,
-            borderLeft: `4px solid ${m.closed ? '#15803D' : isCurrent ? '#1E3A5F' : 'var(--border)'}`,
+            gap: '12px', alignItems: 'center', padding: '14px 18px',
           }}>
             <div>
               <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -80,10 +77,10 @@ export default function PeriodsClient() {
                 </div>
               )}
             </div>
-            <div style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-secondary)' }}>
+            <div style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
               {m.entries} проводок
             </div>
-            <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+            <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
               {m.revenue > 0 ? `${m.revenue.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴` : '—'}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -96,7 +93,7 @@ export default function PeriodsClient() {
                 </button>
               ) : (
                 <button onClick={() => act(m.month, 'close')} disabled={busy === m.month}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: busy === m.month ? 0.6 : 1 }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: busy === m.month ? 0.6 : 1 }}>
                   <Lock size={13} /> Закрити місяць
                 </button>
               )}

@@ -62,32 +62,32 @@ export default function AddExpenseButton() {
   return (
     <div>
       <button onClick={() => setOpen(v => !v)}
-        style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '36px', padding: '0 16px', borderRadius: '8px', background: '#B45309', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer' }}>
+        style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '36px', padding: '0 16px', borderRadius: '8px', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer' }}>
         <Plus size={14} /> Додати витрату
       </button>
 
       {open && (
-        <div style={{ marginTop: '12px', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '12px', padding: '14px 18px', display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={{ marginTop: '12px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 18px', display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#92400E', textTransform: 'uppercase', marginBottom: '4px' }}>Тип</label>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Тип</label>
             <select value={type} onChange={e => setType(e.target.value)} style={{ ...inp, cursor: 'pointer' }}>
               {TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#92400E', textTransform: 'uppercase', marginBottom: '4px' }}>Сума, ₴</label>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Сума, ₴</label>
             <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" style={{ ...inp, width: '110px', fontWeight: 700 }} />
           </div>
           <div style={{ flex: '1 1 200px' }}>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#92400E', textTransform: 'uppercase', marginBottom: '4px' }}>Опис</label>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Опис</label>
             <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="напр., оренда складу за липень" style={{ ...inp, width: '100%' }} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#92400E', textTransform: 'uppercase', marginBottom: '4px' }}>Контрагент</label>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Контрагент</label>
             <input value={cp} onChange={e => setCp(e.target.value)} placeholder="необов'язково" style={{ ...inp, width: '160px' }} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#92400E', textTransform: 'uppercase', marginBottom: '4px' }}>Оплата</label>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Оплата</label>
             <select value={method} onChange={e => setMethod(e.target.value as 'bank' | 'cash' | 'novapay')} style={{ ...inp, cursor: 'pointer' }}>
               <option value="bank">🏦 Монобанк</option>
               <option value="novapay">💜 НоваПей</option>
@@ -95,11 +95,11 @@ export default function AddExpenseButton() {
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#92400E', textTransform: 'uppercase', marginBottom: '4px' }}>Дата</label>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Дата</label>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inp} />
           </div>
           <button onClick={submit} disabled={saving}
-            style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#B45309', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+            style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
             {saving ? 'Зберігаємо…' : 'Зберегти'}
           </button>
         </div>

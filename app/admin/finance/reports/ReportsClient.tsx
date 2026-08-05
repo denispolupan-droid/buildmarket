@@ -117,49 +117,45 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
 
   // ── P&L rows ────────────────────────────────────────────────────────────────
   const plRows = [
-    { label: 'Виручка',                     value: pl.revenue,        bold: true,  color: '#1E3A5F',             pctOf: null },
+    { label: 'Виручка',                     value: pl.revenue,        bold: true,  color: 'var(--text-primary)', pctOf: null },
     { label: 'Собівартість (FIFO)',          value: -pl.cogs,          bold: false, color: '#DC2626',             pctOf: pl.revenue },
     { label: 'Валовий прибуток',            value: pl.gross_profit,   bold: true,  color: pl.gross_profit >= 0 ? '#15803D' : '#DC2626', pctOf: pl.revenue, sep: true },
-    { label: 'Landed Costs (доп. витрати)', value: -pl.landed_costs,  bold: false, color: '#7C3AED',             pctOf: pl.revenue },
+    { label: 'Landed Costs (доп. витрати)', value: -pl.landed_costs,  bold: false, color: '#DC2626',             pctOf: pl.revenue },
     { label: 'Прибуток після LC',           value: pl.gross_after_lc, bold: true,  color: pl.gross_after_lc >= 0 ? '#15803D' : '#DC2626', pctOf: pl.revenue, sep: true },
-    { label: 'Операційні витрати',          value: -pl.op_expenses,   bold: false, color: '#B45309',             pctOf: pl.revenue },
-    { label: 'Комісія маркетплейсів',       value: -pl.marketplace_commission, bold: false, color: '#B45309',    pctOf: pl.revenue },
-    { label: 'Доставка НП (за наш рахунок)', value: -pl.np_delivery,  bold: false, color: '#B45309',             pctOf: pl.revenue },
+    { label: 'Операційні витрати',          value: -pl.op_expenses,   bold: false, color: '#DC2626',             pctOf: pl.revenue },
+    { label: 'Комісія маркетплейсів',       value: -pl.marketplace_commission, bold: false, color: '#DC2626',    pctOf: pl.revenue },
+    { label: 'Доставка НП (за наш рахунок)', value: -pl.np_delivery,  bold: false, color: '#DC2626',             pctOf: pl.revenue },
     { label: 'Операційний прибуток',        value: pl.op_profit,      bold: true,  color: pl.op_profit >= 0 ? '#15803D' : '#DC2626', pctOf: pl.revenue, sep: true, big: true },
   ];
 
   return (
     <div>
       {/* ── Period controls ── */}
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 18px', marginBottom: '20px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '20px' }}>
         {PRESETS.map(p => (
-          <button key={p.key} onClick={() => applyPreset(p.key)} style={{
-            height: '34px', padding: '0 14px', borderRadius: '8px', border: '1px solid var(--border)',
-            background: 'var(--bg-soft)', fontSize: '12px', fontWeight: 600,
-            color: 'var(--text-secondary)', cursor: 'pointer',
-          }}>{p.label}</button>
+          <button key={p.key} onClick={() => applyPreset(p.key)}
+            className="fin-pill" style={{ cursor: 'pointer' }}>{p.label}</button>
         ))}
         <div style={{ width: '1px', height: '24px', background: 'var(--border)', margin: '0 4px' }} />
         <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={{ ...inp, width: '138px' }} />
         <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>—</span>
         <input type="date" value={to}   onChange={e => setTo(e.target.value)}   style={{ ...inp, width: '138px' }} />
-        <button onClick={() => applyPeriod(from, to)} style={{
-          height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none',
-          background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
-        }}>Показати</button>
+        <button onClick={() => applyPeriod(from, to)} className="fin-pill active" style={{ cursor: 'pointer' }}>
+          Показати
+        </button>
       </div>
 
-      {/* ── Tabs ── */}
-      <div style={{ display: 'flex', gap: '0', marginBottom: '16px', borderBottom: '2px solid var(--border)' }}>
+      {/* ── Tabs (внутрішні P&L / Cash Flow — той самий візуальний код, що fin-tab) ── */}
+      <div style={{ display: 'flex', gap: '2px', marginBottom: '16px', borderBottom: '1px solid var(--border)' }}>
         {([
-          { key: 'pl', label: '📊 Звіт про прибутки та збитки (P&L)' },
-          { key: 'cf', label: '💵 Рух грошових коштів (Cash Flow)' },
+          { key: 'pl', label: 'Прибутки та збитки (P&L)' },
+          { key: 'cf', label: 'Рух грошових коштів (Cash Flow)' },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
-            padding: '10px 20px', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
-            border: 'none', borderBottom: tab === t.key ? '2px solid #1E3A5F' : '2px solid transparent',
-            marginBottom: '-2px', background: 'none',
-            color: tab === t.key ? '#1E3A5F' : 'var(--text-muted)',
+            padding: '9px 13px', fontSize: '13.5px', fontWeight: 600, cursor: 'pointer',
+            border: 'none', borderBottom: `2px solid ${tab === t.key ? 'var(--brand-blue)' : 'transparent'}`,
+            marginBottom: '-1px', background: 'none', whiteSpace: 'nowrap',
+            color: tab === t.key ? 'var(--brand-blue)' : 'var(--text-secondary)',
           }}>{t.label}</button>
         ))}
       </div>
@@ -169,8 +165,8 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '20px' }}>
 
           {/* Main P&L */}
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+          <div className="fin-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="fin-card-title" style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
               Звіт про прибутки та збитки
             </div>
             {plRows.map((row, i) => (
@@ -211,8 +207,8 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
 
             {/* By channel */}
             {pl.by_channel.length > 0 && (
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              <div className="fin-card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div className="fin-card-title" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
                   По каналах
                 </div>
                 {pl.by_channel.map(ch => {
@@ -229,7 +225,7 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
                           прибуток: {fmt(margin, 0)} ₴
                         </div>
                       </div>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#1E3A5F' }}>{fmt(ch.revenue, 0)} ₴</span>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(ch.revenue, 0)} ₴</span>
                     </div>
                   );
                 })}
@@ -238,14 +234,14 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
 
             {/* By expense type */}
             {pl.by_expense.length > 0 && (
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              <div className="fin-card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div className="fin-card-title" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
                   Витрати по категоріях
                 </div>
                 {pl.by_expense.map(e => (
                   <div key={e.type} style={{ padding: '8px 16px', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: '12px', color: 'var(--text-primary)' }}>{EXPENSE_LABELS[e.type] ?? e.type}</span>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#B45309' }}>{fmt(e.amount, 2)} ₴</span>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#DC2626', fontVariantNumeric: 'tabular-nums' }}>{fmt(e.amount, 2)} ₴</span>
                   </div>
                 ))}
               </div>
@@ -258,18 +254,18 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
       {tab === 'cf' && (
         <>
         {/* Стан рахунків — поточні залишки (усього, не за період) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '20px' }}>
           {([
             { key: 'monobank', label: 'Монобанк',      hint: 'сайт-картка + рахунок', value: cf.balances.monobank },
             { key: 'novapay',  label: 'НоваПей (COD)', hint: 'наложені платежі',      value: cf.balances.novapay },
             { key: 'cash',     label: 'Каса',          hint: 'готівка',               value: cf.balances.cash },
           ]).map(a => (
-            <div key={a.key} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 18px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.03em' }}>{a.label}</div>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: a.value >= 0 ? '#15803D' : '#DC2626', marginTop: '4px', fontVariantNumeric: 'tabular-nums' }}>
+            <div key={a.key} className="fin-card">
+              <div className="fin-kpi-label">{a.label}</div>
+              <div className="fin-money-val" style={a.value < 0 ? { color: '#DC2626' } : undefined}>
                 {fmt(a.value, 2)} ₴
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{a.hint}</div>
+              <div className="fin-money-sub">{a.hint}</div>
             </div>
           ))}
         </div>
@@ -277,15 +273,15 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px' }}>
 
           {/* Main CF statement */}
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+          <div className="fin-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="fin-card-title" style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
               Рух грошових коштів
             </div>
             {[
-              { label: 'Залишок на початок', value: cf.opening, bold: true, color: '#1E3A5F', indent: false, sep: false, big: false },
+              { label: 'Залишок на початок', value: cf.opening, bold: true, color: 'var(--text-primary)', indent: false, sep: false, big: false },
               ...cf.inflows.map(f  => ({ label: `+ ${CF_INFLOW_LABELS[f.key]  ?? f.key}`, value: f.amount, bold: false, color: '#15803D', indent: true, sep: false, big: false })),
               ...cf.outflows.map(f => ({ label: `− ${CF_OUTFLOW_LABELS[f.key] ?? f.key}`, value: f.amount, bold: false, color: '#DC2626', indent: true, sep: false, big: false })),
-              { label: 'Залишок на кінець', value: cf.closing, bold: true, color: cf.closing >= 0 ? '#15803D' : '#DC2626', indent: false, sep: true, big: true },
+              { label: 'Залишок на кінець', value: cf.closing, bold: true, color: cf.closing >= 0 ? 'var(--text-primary)' : '#DC2626', indent: false, sep: true, big: true },
             ].map((row, i) => (
               <div key={i} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -309,8 +305,8 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
           </div>
 
           {/* By account */}
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+          <div className="fin-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="fin-card-title" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
               По рахунках
             </div>
             {cf.by_account.map(a => (

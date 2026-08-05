@@ -131,16 +131,16 @@ export default function CashRegisterClient({ entries, openingBalance, currentBal
   return (
     <>
       {/* ── Summary ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px' }}>
         {[
-          { label: 'Залишок на початок місяця', value: openingBalance, color: '#1E3A5F' },
+          { label: 'Залишок на початок місяця', value: openingBalance, color: undefined as string | undefined },
           { label: 'Надходження (ПКО)',          value: totalIn,        color: '#15803D' },
           { label: 'Видатки (РКО)',              value: Math.abs(totalOut), color: '#DC2626' },
-          { label: 'Поточний залишок',           value: currentBalance, color: currentBalance >= 0 ? '#15803D' : '#DC2626' },
+          { label: 'Поточний залишок',           value: currentBalance, color: currentBalance < 0 ? '#DC2626' : undefined },
         ].map(c => (
-          <div key={c.label} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px 18px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>{c.label}</div>
-            <div style={{ fontSize: '22px', fontWeight: 800, color: c.color, fontVariantNumeric: 'tabular-nums' }}>
+          <div key={c.label} className="fin-card">
+            <div className="fin-kpi-label">{c.label}</div>
+            <div className="fin-money-val" style={c.color ? { color: c.color } : undefined}>
               {fmt(c.value)} ₴
             </div>
           </div>
@@ -166,19 +166,15 @@ export default function CashRegisterClient({ entries, openingBalance, currentBal
         </button>
 
         {/* Direction filter */}
-        <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)', marginLeft: '8px' }}>
+        <div style={{ display: 'flex', gap: '6px', marginLeft: '8px' }}>
           {([
             { key: 'all', label: 'Всі' },
             { key: 'in',  label: '↓ ПКО' },
             { key: 'out', label: '↑ РКО' },
-          ] as const).map((d, i) => (
-            <button key={d.key} onClick={() => setDir(d.key)} style={{
-              height: '36px', padding: '0 14px', fontSize: '12px', fontWeight: 600,
-              cursor: 'pointer', border: 'none',
-              borderLeft: i > 0 ? '1px solid var(--border)' : 'none',
-              background: dir === d.key ? '#1E3A5F' : 'var(--bg-soft)',
-              color:      dir === d.key ? '#fff'    : 'var(--text-secondary)',
-            }}>{d.label}</button>
+          ] as const).map(d => (
+            <button key={d.key} onClick={() => setDir(d.key)}
+              className={'fin-pill' + (dir === d.key ? ' active' : '')}
+              style={{ cursor: 'pointer' }}>{d.label}</button>
           ))}
         </div>
 
@@ -189,7 +185,7 @@ export default function CashRegisterClient({ entries, openingBalance, currentBal
       </div>
 
       {/* ── Table ── */}
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+      <div className="fin-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{
           display: 'grid', gridTemplateColumns: '100px 60px 1fr 150px 120px 130px',
           padding: '8px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)',
@@ -217,7 +213,6 @@ export default function CashRegisterClient({ entries, openingBalance, currentBal
               display: 'grid', gridTemplateColumns: '100px 60px 1fr 150px 120px 130px',
               padding: '10px 16px', alignItems: 'center',
               borderBottom: isLast ? 'none' : '1px solid var(--border-light)',
-              background: idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)',
             }}>
               <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
                 {new Date(e.business_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' })}
@@ -242,7 +237,7 @@ export default function CashRegisterClient({ entries, openingBalance, currentBal
                   </div>
                 )}
                 {href && e.doc_number && (
-                  <Link href={href} style={{ fontSize: '11px', color: '#1D4ED8', textDecoration: 'none', fontWeight: 600 }}>
+                  <Link href={href} style={{ fontSize: '11px', color: 'var(--brand-blue)', textDecoration: 'none', fontWeight: 600 }}>
                     {e.doc_number}
                   </Link>
                 )}
@@ -285,7 +280,7 @@ export default function CashRegisterClient({ entries, openingBalance, currentBal
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                  {mDir === 'in' ? '📥 ПКО — Прихід готівки' : '📤 РКО — Видаток готівки'}
+                  {mDir === 'in' ? 'ПКО — Прихід готівки' : 'РКО — Видаток готівки'}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>Ручне введення без документа</div>
               </div>

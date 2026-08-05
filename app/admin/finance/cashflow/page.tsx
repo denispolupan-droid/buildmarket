@@ -3,7 +3,8 @@ import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, TrendingUp, Banknote } from 'lucide-react';
+import { Banknote } from 'lucide-react';
+import FinanceTabs from '../FinanceTabs';
 import CashflowClient, { type CashflowEntry } from './CashflowClient';
 
 export const dynamic = 'force-dynamic';
@@ -141,26 +142,21 @@ export default async function CashflowPage({
   return (
     <div style={{ padding: '28px 32px 64px', maxWidth: '1400px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <Link href="/admin/finance" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-          <ArrowLeft size={16} />
-        </Link>
-        <TrendingUp size={18} color="#1D4ED8" />
-        <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+      <div style={{ marginBottom: '14px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
           Рух коштів
         </h1>
-        <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>каса · банк · еквайринг</span>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+          Каса · банк · еквайринг — усі грошові операції за період
+        </p>
       </div>
 
+      <FinanceTabs />
+
       {/* Quick link to cash register */}
-      <div style={{ marginBottom: '20px' }}>
-        <Link href="/admin/finance/cashflow/cash" style={{
-          display: 'inline-flex', alignItems: 'center', gap: '7px',
-          height: '36px', padding: '0 16px', borderRadius: '8px', textDecoration: 'none',
-          background: '#F0FDF4', border: '1px solid #BBF7D0', color: '#15803D',
-          fontSize: '13px', fontWeight: 600,
-        }}>
-          <Banknote size={14} /> Відкрити касову книгу →
+      <div style={{ margin: '18px 0 20px' }}>
+        <Link href="/admin/finance/cashflow/cash" className="fin-pill" style={{ gap: '7px' }}>
+          <Banknote size={14} /> Касова книга →
         </Link>
       </div>
 

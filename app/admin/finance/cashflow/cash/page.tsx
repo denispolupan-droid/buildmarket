@@ -1,8 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, Banknote } from 'lucide-react';
+import FinanceTabs from '../../FinanceTabs';
 import CashRegisterClient, { type CashEntry } from './CashRegisterClient';
 
 export const dynamic = 'force-dynamic';
@@ -132,18 +131,18 @@ export default async function CashRegisterPage() {
   return (
     <div style={{ padding: '28px 32px 64px', maxWidth: '1200px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <Link href="/admin/finance/cashflow" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-          <ArrowLeft size={16} />
-        </Link>
-        <Banknote size={18} color="#15803D" />
-        <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+      <div style={{ marginBottom: '14px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
           Каса
         </h1>
-        <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-          {monthLabel} · готівкові операції
-        </span>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+          {monthLabel} · готівкові операції (ПКО / РКО)
+        </p>
       </div>
+
+      <FinanceTabs />
+
+      <div style={{ height: '20px' }} />
 
       <CashRegisterClient
         entries={entries}

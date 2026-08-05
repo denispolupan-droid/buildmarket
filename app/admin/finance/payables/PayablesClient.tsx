@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, ChevronRight, TrendingDown, TrendingUp, CheckCircle, Search, X, Banknote } from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle, Search, X, Banknote } from 'lucide-react';
 import { showToast } from '../../../../lib/toast';
 
 export type SupplierTransaction = {
@@ -194,9 +194,8 @@ export default function PayablesClient({ balances: allBalances }: Props) {
   return (
     <>
       {/* ── Filter bar ───────────────────────────────────────────────────── */}
-      <div style={{
-        background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px',
-        padding: '16px 20px', marginBottom: '20px',
+      <div className="fin-card" style={{
+        marginBottom: '20px',
         display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap',
       }}>
         {/* Постачальник */}
@@ -268,53 +267,43 @@ export default function PayablesClient({ balances: allBalances }: Props) {
       </div>
 
       {/* Summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px' }}>
         {[
           {
             label: 'Разом до сплати',
             value: totalOwed > 0 ? `${fmt(totalOwed)} ₴` : '—',
             sub: 'проведений борг + в дорозі',
-            color: totalOwed > 0 ? '#B91C1C' : '#15803D',
-            icon: TrendingDown,
+            color: totalOwed > 0 ? '#DC2626' : undefined,
           },
           {
             label: 'Отримано клієнтами (борг)',
             value: totalDebt > 0 ? `${fmt(totalDebt)} ₴` : '—',
             sub: `${debtCount} пост. · ${periodLabel}`,
-            color: totalDebt > 0 ? '#DC2626' : '#15803D',
-            icon: TrendingDown,
+            color: totalDebt > 0 ? '#DC2626' : undefined,
           },
           {
             label: 'В дорозі (не доставлено)',
             value: totalTransit > 0 ? `${fmt(totalTransit)} ₴` : '—',
             sub: transitCount > 0 ? `${transitCount} посилок · борг виникне при доставці` : 'посилок немає',
-            color: totalTransit > 0 ? '#B45309' : '#64748B',
-            icon: TrendingDown,
+            color: totalTransit > 0 ? '#B45309' : undefined,
           },
           {
             label: 'Переплата',
             value: totalOverpaid > 0 ? `${fmt(totalOverpaid)} ₴` : '—',
             sub: `${overpaidCount} пост. · ${periodLabel}`,
-            color: totalOverpaid > 0 ? '#15803D' : '#64748B',
-            icon: TrendingUp,
+            color: totalOverpaid > 0 ? '#15803D' : undefined,
           },
-        ].map(c => {
-          const Icon = c.icon;
-          return (
-            <div key={c.label} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px 18px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>{c.label}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: c.color }}>{c.value}</div>
-                <Icon size={16} color={c.color} style={{ opacity: 0.5 }} />
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>{c.sub}</div>
-            </div>
-          );
-        })}
+        ].map(c => (
+          <div key={c.label} className="fin-card">
+            <div className="fin-kpi-label">{c.label}</div>
+            <div className="fin-money-val" style={c.color ? { color: c.color } : undefined}>{c.value}</div>
+            <div className="fin-money-sub">{c.sub}</div>
+          </div>
+        ))}
       </div>
 
       {balances.length === 0 ? (
-        <div style={{ padding: '64px', textAlign: 'center', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
+        <div className="fin-card" style={{ padding: '64px', textAlign: 'center' }}>
           <CheckCircle size={32} color="#15803D" style={{ marginBottom: '12px' }} />
           <div style={{ fontSize: '15px', fontWeight: 700, color: '#15803D' }}>
             {dateApplied ? 'Немає операцій за обраний період' : 'Взаєморозрахунків немає'}
@@ -330,14 +319,10 @@ export default function PayablesClient({ balances: allBalances }: Props) {
             const transit     = b.in_transit_total ?? 0;
             const totalOwedB  = -b.balance + transit; // >0 = винні разом (проведено + в дорозі)
             const isDebt      = totalOwedB > 0.005;
-            const accentColor = isDebt ? '#EF4444' : '#22C55E';
+            const accentColor = isDebt ? '#DC2626' : '#15803D';
 
             return (
-              <div key={b.supplier_id} style={{
-                background: 'var(--bg-card)',
-                border: `1px solid ${isDebt ? '#FCA5A5' : '#86EFAC'}`,
-                borderRadius: '12px', overflow: 'hidden',
-              }}>
+              <div key={b.supplier_id} className="fin-card" style={{ padding: 0, overflow: 'hidden' }}>
                 {/* Header row */}
                 <div
                   className="sup-row"
@@ -346,7 +331,6 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                     display: 'grid',
                     gridTemplateColumns: '1fr 130px 130px 130px 170px 36px',
                     padding: '14px 16px', alignItems: 'center', cursor: 'pointer',
-                    borderLeft: `4px solid ${accentColor}`,
                     background: isOpen ? 'var(--bg-soft)' : 'transparent',
                   }}
                 >
@@ -361,12 +345,12 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                       <Link
                         href={`/admin/finance/payables/${b.supplier_id}`}
                         onClick={e => e.stopPropagation()}
-                        style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', textDecoration: 'none', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '5px', padding: '1px 7px' }}>
+                        style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', textDecoration: 'none', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '5px', padding: '1px 7px' }}>
                         Акт звірки ↗
                       </Link>
                       <button
                         onClick={e => { e.stopPropagation(); payFor === b.supplier_id ? setPayFor(null) : openPay(b); }}
-                        style={{ fontSize: '11px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '5px', padding: '1px 7px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        style={{ fontSize: '11px', fontWeight: 700, color: '#15803D', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '5px', padding: '1px 7px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                         <Banknote size={11} /> Оплатити
                       </button>
                     </div>
@@ -374,12 +358,12 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                     {!dateApplied && b.aging && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '5px', flexWrap: 'wrap' }}>
                         {([
-                          ['0–30 дн', b.aging.d0_30,  '#64748B', '#F1F5F9'],
-                          ['31–60',   b.aging.d31_60, '#B45309', '#FEF3C7'],
-                          ['61–90',   b.aging.d61_90, '#C2410C', '#FFEDD5'],
-                          ['90+',     b.aging.d90p,   '#DC2626', '#FEE2E2'],
-                        ] as const).filter(([, v]) => v > 0.005).map(([lbl, v, color, bg]) => (
-                          <span key={lbl} style={{ fontSize: '10.5px', fontWeight: 700, color, background: bg, borderRadius: '5px', padding: '1px 7px' }}>
+                          ['0–30 дн', b.aging.d0_30,  'var(--text-secondary)'],
+                          ['31–60',   b.aging.d31_60, '#B45309'],
+                          ['61–90',   b.aging.d61_90, '#B45309'],
+                          ['90+',     b.aging.d90p,   '#DC2626'],
+                        ] as const).filter(([, v]) => v > 0.005).map(([lbl, v, color]) => (
+                          <span key={lbl} style={{ fontSize: '10.5px', fontWeight: 700, color, background: 'var(--bg-soft)', borderRadius: '5px', padding: '1px 7px' }}>
                             {lbl}: {fmt(v)} ₴
                           </span>
                         ))}
@@ -430,7 +414,7 @@ export default function PayablesClient({ balances: allBalances }: Props) {
 
                 {/* Payment form */}
                 {payFor === b.supplier_id && (
-                  <div style={{ borderTop: '1px solid var(--border)', background: '#F0FDF4', padding: '14px 20px', display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <div style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-soft)', padding: '14px 20px', display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                     <div>
                       <label style={{ ...thStyle, display: 'block', marginBottom: '4px' }}>Сума, ₴</label>
                       <input value={payAmount} onChange={e => setPayAmount(e.target.value)} inputMode="decimal" placeholder="0.00"
@@ -453,7 +437,7 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                         style={{ ...inp, width: '100%', boxSizing: 'border-box' }} />
                     </div>
                     <button onClick={submitPay} disabled={paySaving}
-                      style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: paySaving ? 'wait' : 'pointer', opacity: paySaving ? 0.6 : 1 }}>
+                      style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: paySaving ? 'wait' : 'pointer', opacity: paySaving ? 0.6 : 1 }}>
                       {paySaving ? 'Зберігаємо…' : 'Зафіксувати оплату'}
                     </button>
                     <button onClick={() => setPayFor(null)}
@@ -465,7 +449,7 @@ export default function PayablesClient({ balances: allBalances }: Props) {
 
                 {/* В дорозі: відвантажені, ще не доставлені посилки — борг виникне при доставці */}
                 {isOpen && (b.in_transit_items?.length ?? 0) > 0 && (
-                  <div style={{ borderTop: '1px solid #FDE68A', background: '#FFFBEB', padding: '10px 20px' }}>
+                  <div style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-soft)', padding: '10px 20px' }}>
                     <div style={{ fontSize: '11px', fontWeight: 700, color: '#B45309', textTransform: 'uppercase', marginBottom: '6px' }}>
                       В дорозі — {b.in_transit_items!.length} посилок на {fmt(transit)} ₴ (борг проведеться при доставці)
                     </div>
@@ -474,7 +458,7 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                         <span style={{ color: 'var(--text-muted)' }}>
                           {it.doc_date ? new Date(it.doc_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}
                         </span>
-                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#92400E' }}>{it.doc_number ?? '—'}</span>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#B45309' }}>{it.doc_number ?? '—'}</span>
                         <span style={{ color: 'var(--text-secondary)' }}>
                           {it.order_number ? `Замовлення #${it.order_number}` : ''}{it.tracking_number ? ` · ТТН ${it.tracking_number}` : ''}
                         </span>
@@ -490,7 +474,7 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                     <div className="sup-txn-row" style={{
                       display: 'grid', gridTemplateColumns: '100px 140px 1fr 140px',
                       padding: '6px 20px', gap: '8px',
-                      fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
+                      fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)',
                       textTransform: 'uppercase', background: 'var(--bg-soft)',
                       borderBottom: '1px solid var(--border)',
                     }}>
@@ -516,7 +500,6 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                             display: 'grid', gridTemplateColumns: '100px 140px 1fr 140px',
                             padding: '9px 20px', gap: '8px', alignItems: 'center',
                             borderTop: idx > 0 ? '1px solid var(--border-light)' : 'none',
-                            background: isPayment ? 'rgba(34,197,94,0.04)' : 'transparent',
                           }}>
                             <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                               {new Date(txn.business_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' })}
@@ -524,7 +507,7 @@ export default function PayablesClient({ balances: allBalances }: Props) {
 
                             <span className="oc-hide-m">
                               {link && link.href !== '#' ? (
-                                <Link href={link.href} onClick={e => e.stopPropagation()} style={{ fontSize: '12px', fontWeight: 700, color: '#1D4ED8', textDecoration: 'none', fontFamily: 'monospace' }}>
+                                <Link href={link.href} onClick={e => e.stopPropagation()} style={{ fontSize: '12px', fontWeight: 700, color: 'var(--brand-blue)', textDecoration: 'none', fontFamily: 'monospace' }}>
                                   {link.label}
                                 </Link>
                               ) : (
@@ -538,7 +521,7 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                               {txn.description}
                             </span>
 
-                            <div style={{ textAlign: 'right' }}>
+                            <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                               <div style={{ fontSize: '13px', fontWeight: 700, color: isPayment ? '#15803D' : '#DC2626' }}>
                                 {isPayment ? '+' : '−'}{fmt(txn.amount)} ₴
                               </div>

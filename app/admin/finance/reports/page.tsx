@@ -3,8 +3,7 @@ import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, BarChart2 } from 'lucide-react';
+import FinanceTabs from '../FinanceTabs';
 import ReportsClient, { type PLData, type CFData } from './ReportsClient';
 
 export const dynamic = 'force-dynamic';
@@ -274,16 +273,18 @@ export default async function ReportsPage({
 
   return (
     <div style={{ padding: '28px 32px 64px', maxWidth: '1300px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <Link href="/admin/finance" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-          <ArrowLeft size={16} />
-        </Link>
-        <BarChart2 size={18} color="#1E3A5F" />
-        <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+      <div style={{ marginBottom: '14px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
           Звіти
         </h1>
-        <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{periodLabel}</span>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+          P&L та рух грошових коштів · {periodLabel}
+        </p>
       </div>
+
+      <FinanceTabs />
+
+      <div style={{ height: '20px' }} />
 
       <Suspense>
         <ReportsClient pl={pl} cf={cf} dateFrom={dateFrom} dateTo={dateTo} />

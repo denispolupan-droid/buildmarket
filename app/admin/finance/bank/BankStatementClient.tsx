@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import Link from 'next/link';
-import { Upload, Check, ChevronDown, AlertCircle, Banknote, Zap, ArrowLeft } from 'lucide-react';
+import { Upload, Check, ChevronDown, AlertCircle, Zap } from 'lucide-react';
 import {
   parseMonobankBusiness, autoMatchBankTxn, buildPaymentBody,
   BANK_SPECIAL_OPTS as SPECIAL_OPTS, type BankContract as Contract,
@@ -109,21 +108,7 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
   };
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: '1100px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <Link href="/admin/finance" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-          <ArrowLeft size={16} />
-        </Link>
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-            Банківська виписка
-          </h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px', marginBottom: 0 }}>
-            Завантажте CSV з Monobank Business → система автоматично зіставить платежі до договорів
-          </p>
-        </div>
-      </div>
-
+    <div>
       {/* Upload zone */}
       {txns.length === 0 && (
         <div
@@ -146,7 +131,7 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
             або натисніть для вибору файлу
           </div>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', background: 'var(--bg-card)', padding: '10px 16px', borderRadius: '8px', display: 'inline-block' }}>
-            📥 Monobank Business → Рахунки → Виписка → Завантажити CSV
+            Monobank Business → Рахунки → Виписка → Завантажити CSV
           </div>
           <input ref={fileRef} type="file" accept=".csv,.xls,.xlsx" style={{ display: 'none' }}
             onChange={e => { const f = e.target.files?.[0]; if (f) processFile(f); }} />
@@ -164,29 +149,31 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
         <>
           {/* Summary + actions */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {[
-                { label: `⚡ Авто: ${autoCount}`,         color: '#15803D', bg: '#F0FDF4' },
-                { label: `💡 Пропозицій: ${suggestedCount}`, color: '#B45309', bg: '#FEF3C7' },
-                { label: `❓ Не знайдено: ${noneCount}`,  color: '#94A3B8', bg: '#F8FAFC' },
-                { label: `✅ Збережено: ${savedCount}`,   color: '#1E3A5F', bg: '#EFF4FF' },
+                { label: `Авто: ${autoCount}`,             dot: 'green' as const },
+                { label: `Пропозицій: ${suggestedCount}`,  dot: 'orange' as const },
+                { label: `Не знайдено: ${noneCount}`,      dot: null },
+                { label: `Збережено: ${savedCount}`,       dot: 'green' as const },
               ].map(s => (
-                <span key={s.label} style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, color: s.color, background: s.bg }}>
+                <span key={s.label} className="fin-pill">
+                  <span className={'fin-dot' + (s.dot ? ` ${s.dot}` : '')}
+                    style={s.dot ? undefined : { background: 'var(--text-muted)' }} />
                   {s.label}
                 </span>
               ))}
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={() => { setTxns([]); setParseErr(''); }}
-                style={{ height: '36px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
-                ← Новий файл
+                className="fin-pill" style={{ cursor: 'pointer' }}>
+                Новий файл
               </button>
               {readyToApply > 0 && (
                 <button onClick={applyAll} disabled={applying}
-                  style={{ height: '36px', padding: '0 18px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: applying ? 0.7 : 1 }}>
+                  style={{ height: '34px', padding: '0 18px', borderRadius: '999px', border: 'none', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: applying ? 0.7 : 1 }}>
                   {applying
-                    ? '⏳ Застосовуємо...'
-                    : `✅ Застосувати всі (${readyToApply})`}
+                    ? 'Застосовуємо…'
+                    : `Застосувати всі (${readyToApply})`}
                 </button>
               )}
             </div>
@@ -224,7 +211,7 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
                     )}
                     {txn.matchReason && !txn.saved && (
                       <div style={{ fontSize: '11px', color: conf.color, marginTop: '2px' }}>
-                        🎯 {txn.matchReason}
+                        {txn.matchReason}
                       </div>
                     )}
                     {txn.error && (

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Search, RefreshCw, ArrowLeft, ExternalLink, X, ChevronDown, AlertCircle } from 'lucide-react';
+import { Search, RefreshCw, ExternalLink, X, ChevronDown, AlertCircle } from 'lucide-react';
 
 type Customer = {
   id: string;
@@ -55,11 +55,10 @@ function rowContent(row: TxnRow): { label: string; href: string | null } {
 }
 
 function SaldoBadge({ value, size = 'md' }: { value: number; size?: 'sm' | 'md' }) {
-  const color = value > 0.005 ? '#DC2626' : value < -0.005 ? '#2563EB' : '#15803D';
-  const bg    = value > 0.005 ? '#FEF2F2' : value < -0.005 ? '#EFF6FF' : '#F0FDF4';
+  const color = value > 0.005 ? '#DC2626' : '#15803D';
   const fs    = size === 'sm' ? '12px' : '13px';
   return (
-    <span style={{ fontWeight: 700, color, background: bg, borderRadius: '6px', padding: '1px 8px', fontSize: fs, whiteSpace: 'nowrap' }}>
+    <span style={{ fontWeight: 700, color, background: 'var(--bg-soft)', borderRadius: '6px', padding: '1px 8px', fontSize: fs, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
       {fmt(value)} ₴
     </span>
   );
@@ -170,7 +169,7 @@ function CustomerCombobox({
               style={{
                 padding: '8px 14px', fontSize: '13px', cursor: 'pointer',
                 borderBottom: '1px solid var(--border-light)',
-                background: c.id === value ? '#EFF6FF' : 'transparent',
+                background: c.id === value ? 'var(--bg-soft)' : 'transparent',
                 color: c.id === value ? '#1E3A5F' : 'var(--text-primary)',
                 fontWeight: c.id === value ? 700 : 400,
               }}
@@ -304,48 +303,28 @@ export default function SettlementsClient({
   const selectedCustomer = customers.find(c => c.id === customerId);
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: '1300px' }}>
+    <div>
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Link href="/admin/finance" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-            <ArrowLeft size={16} />
-          </Link>
-          <div>
-            <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Взаєморозрахунки</h1>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px', marginBottom: 0 }}>
-              {mode === 'single' ? 'Карточка рахунку дебіторської заборгованості' : 'Реєстр дебіторської заборгованості'}
-            </p>
-          </div>
-        </div>
-
-        {/* Mode toggle */}
-        <div style={{ display: 'flex', gap: '6px', background: 'var(--bg-soft)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border)' }}>
-          {([
-            { key: 'single',  label: 'По контрагенту' },
-            { key: 'debtors', label: 'Всі боржники' },
-          ] as const).map(m => (
-            <button key={m.key} onClick={() => switchMode(m.key)}
-              style={{
-                height: '30px', padding: '0 14px', borderRadius: '7px', border: 'none',
-                background: mode === m.key ? '#1E3A5F' : 'transparent',
-                color: mode === m.key ? '#fff' : 'var(--text-secondary)',
-                fontSize: '13px', fontWeight: mode === m.key ? 700 : 400, cursor: 'pointer',
-              }}>
-              {m.label}
-            </button>
-          ))}
-        </div>
+      {/* Mode toggle */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        {([
+          { key: 'single',  label: 'По контрагенту' },
+          { key: 'debtors', label: 'Всі боржники' },
+        ] as const).map(m => (
+          <button key={m.key} onClick={() => switchMode(m.key)}
+            className={'fin-pill' + (mode === m.key ? ' active' : '')}
+            style={{ cursor: 'pointer' }}>
+            {m.label}
+          </button>
+        ))}
       </div>
 
       {/* ── Single mode ──────────────────────────────────────────────────────── */}
       {mode === 'single' && (
         <>
           {/* Filters */}
-          <div style={{
-            background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px',
-            padding: '16px 20px', marginBottom: '20px',
+          <div className="fin-card" style={{
+            marginBottom: '20px',
             display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap',
           }}>
             {/* Контрагент — combobox */}
@@ -405,7 +384,7 @@ export default function SettlementsClient({
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: '6px',
                     height: '32px', padding: '0 14px', borderRadius: '8px',
-                    border: '1px solid #BFDBFE', background: '#EFF6FF',
+                    border: '1px solid var(--border)', background: 'var(--bg-soft)',
                     color: '#1E3A5F', fontSize: '12px', fontWeight: 700,
                     textDecoration: 'none',
                   }}>
@@ -414,16 +393,16 @@ export default function SettlementsClient({
               </div>
 
               {/* Summary */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
-                {[
-                  { label: 'Вхідне сальдо',   value: opening ?? 0, accent: '#94A3B8' },
-                  { label: 'Оборот дебет',     value: totalDebit,   accent: '#DC2626' },
-                  { label: 'Оборот кредит',    value: totalCredit,  accent: '#16A34A' },
-                  { label: 'Вихідне сальдо',   value: closing,      accent: closing > 0.005 ? '#DC2626' : '#16A34A' },
-                ].map(s => (
-                  <div key={s.label} style={{ padding: '12px 16px', borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: `3px solid ${s.accent}` }}>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '3px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.label}</div>
-                    <div style={{ fontSize: '17px', fontWeight: 800, color: s.accent === '#94A3B8' ? 'var(--text-primary)' : s.accent }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
+                {([
+                  { label: 'Вхідне сальдо',  value: opening ?? 0, color: undefined },
+                  { label: 'Оборот дебет',   value: totalDebit,   color: undefined },
+                  { label: 'Оборот кредит',  value: totalCredit,  color: '#15803D' },
+                  { label: 'Вихідне сальдо', value: closing,      color: closing > 0.005 ? '#DC2626' : '#15803D' },
+                ] as { label: string; value: number; color?: string }[]).map(s => (
+                  <div key={s.label} className="fin-card">
+                    <div className="fin-kpi-label">{s.label}</div>
+                    <div className="fin-money-val" style={s.color ? { color: s.color } : undefined}>
                       {fmt(s.value)} ₴
                     </div>
                   </div>
@@ -432,13 +411,13 @@ export default function SettlementsClient({
 
               {/* Ledger */}
               {rows.length === 0 ? (
-                <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
+                <div className="fin-card" style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
                   Немає операцій за обраний період
                 </div>
               ) : (
-                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', fontSize: '13px' }}>
+                <div className="fin-card" style={{ padding: 0, overflow: 'hidden', fontSize: '13px' }}>
                   {/* Header */}
-                  <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: '0', padding: '8px 16px', background: '#1E3A5F', color: '#CBD5E1', fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: '0', padding: '8px 16px', background: 'var(--bg-soft)', color: 'var(--text-muted)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
                     <span>Дата</span>
                     {showContractCol && <span>Договір</span>}
                     <span>Зміст операції</span>
@@ -448,7 +427,7 @@ export default function SettlementsClient({
                   </div>
 
                   {/* Opening */}
-                  <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: '0', padding: '7px 16px', alignItems: 'center', background: '#F8FAFC', borderBottom: '1px solid var(--border)', fontStyle: 'italic' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: '0', padding: '7px 16px', alignItems: 'center', borderBottom: '1px solid var(--border)', fontStyle: 'italic' }}>
                     <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{dateFrom}</span>
                     {showContractCol && <span />}
                     <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Сальдо на початок</span>
@@ -457,16 +436,14 @@ export default function SettlementsClient({
                   </div>
 
                   {/* Rows */}
-                  {rowsWithSaldo.map((row, idx) => {
+                  {rowsWithSaldo.map(row => {
                     const isDebit = row.amount > 0;
                     const { label, href } = rowContent(row);
-                    const isEven = idx % 2 === 0;
                     return (
                       <div key={row.id} style={{
                         display: 'grid', gridTemplateColumns: COLS, gap: '0',
                         padding: '8px 16px', alignItems: 'center',
                         borderBottom: '1px solid var(--border-light)',
-                        background: isDebit ? (isEven ? '#fff' : '#FAFAFA') : (isEven ? '#F0FDF4' : '#ECFDF5'),
                       }}>
                         <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{row.business_date}</span>
                         {showContractCol && <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{row.contract_number ?? '—'}</span>}
@@ -478,7 +455,7 @@ export default function SettlementsClient({
                             </Link>
                           )}
                         </div>
-                        <span style={{ textAlign: 'right', fontWeight: isDebit ? 700 : 400, color: isDebit ? '#1E293B' : 'var(--text-muted)', fontFamily: 'monospace' }}>
+                        <span style={{ textAlign: 'right', fontWeight: isDebit ? 700 : 400, color: isDebit ? 'var(--text-primary)' : 'var(--text-muted)', fontFamily: 'monospace' }}>
                           {isDebit ? `${fmt(row.amount)} ₴` : ''}
                         </span>
                         <span style={{ textAlign: 'right', fontWeight: !isDebit ? 700 : 400, color: !isDebit ? '#15803D' : 'var(--text-muted)', fontFamily: 'monospace' }}>
@@ -490,17 +467,17 @@ export default function SettlementsClient({
                   })}
 
                   {/* Turnover */}
-                  <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: '0', padding: '9px 16px', alignItems: 'center', background: '#F1F5F9', borderTop: '2px solid #CBD5E1', fontWeight: 700 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: '0', padding: '9px 16px', alignItems: 'center', background: 'var(--bg-soft)', borderTop: '2px solid var(--border)', fontWeight: 700 }}>
                     <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>{dateTo}</span>
                     {showContractCol && <span />}
                     <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>Обороти за період</span>
-                    <span style={{ textAlign: 'right', color: '#1E293B', fontFamily: 'monospace' }}>{fmt(totalDebit)} ₴</span>
+                    <span style={{ textAlign: 'right', color: 'var(--text-primary)', fontFamily: 'monospace' }}>{fmt(totalDebit)} ₴</span>
                     <span style={{ textAlign: 'right', color: '#15803D', fontFamily: 'monospace' }}>{fmt(totalCredit)} ₴</span>
                     <span />
                   </div>
 
                   {/* Closing */}
-                  <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: '0', padding: '9px 16px', alignItems: 'center', background: '#EEF2F7', borderTop: '1px solid #CBD5E1', fontWeight: 700 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: '0', padding: '9px 16px', alignItems: 'center', background: 'var(--bg-soft)', borderTop: '1px solid var(--border)', fontWeight: 700 }}>
                     <span />{showContractCol && <span />}
                     <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>Сальдо на кінець</span>
                     <span /><span />
@@ -541,13 +518,13 @@ export default function SettlementsClient({
 
           {debtorsLoaded && !debtorsLoading && (
             debtors.length === 0 ? (
-              <div style={{ padding: '48px', textAlign: 'center', color: '#15803D', fontSize: '15px', fontWeight: 700, background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '12px' }}>
+              <div className="fin-card" style={{ padding: '48px', textAlign: 'center', color: '#15803D', fontSize: '15px', fontWeight: 700 }}>
                 ✓ Заборгованостей немає — всі розрахунки закриті
               </div>
             ) : (
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+              <div className="fin-card" style={{ padding: 0, overflow: 'hidden' }}>
                 {/* Header */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 130px 110px 110px 148px', gap: '0', padding: '8px 16px', background: '#1E3A5F', color: '#CBD5E1', fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 130px 110px 110px 148px', gap: '0', padding: '8px 16px', background: 'var(--bg-soft)', color: 'var(--text-muted)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
                   <span>Контрагент / Договір</span>
                   <span style={{ textAlign: 'right' }}>Заборгованість</span>
                   <span style={{ textAlign: 'right' }}>Ліміт</span>
@@ -565,7 +542,6 @@ export default function SettlementsClient({
                       display: 'grid', gridTemplateColumns: '1fr 160px 130px 110px 110px 148px', gap: '0',
                       padding: '10px 16px', alignItems: 'center',
                       borderBottom: idx < debtors.length - 1 ? '1px solid var(--border-light)' : 'none',
-                      background: isOverdue ? '#FFF7ED' : '#fff',
                     }}>
                       {/* Контрагент */}
                       <div>
@@ -584,7 +560,7 @@ export default function SettlementsClient({
                         {limitPct !== null && (
                           <div style={{ marginTop: '3px' }}>
                             <div style={{ height: '3px', background: '#E2E8F0', borderRadius: '2px', overflow: 'hidden' }}>
-                              <div style={{ height: '100%', width: `${limitPct}%`, background: limitPct > 80 ? '#DC2626' : '#F59E0B', borderRadius: '2px' }} />
+                              <div style={{ height: '100%', width: `${limitPct}%`, background: limitPct > 80 ? '#DC2626' : '#B45309', borderRadius: '2px' }} />
                             </div>
                             <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '1px' }}>{limitPct}% ліміту</div>
                           </div>
@@ -600,7 +576,7 @@ export default function SettlementsClient({
                       <div style={{ display: 'flex', justifyContent: 'center' }}>
                         <span style={{
                           fontSize: '11px', padding: '2px 8px', borderRadius: '20px', fontWeight: 600,
-                          background: d.contract_status === 'active' ? '#F0FDF4' : '#FEF2F2',
+                          background: 'var(--bg-soft)',
                           color: d.contract_status === 'active' ? '#15803D' : '#DC2626',
                         }}>
                           {d.contract_status === 'active' ? 'Активний' : d.contract_status === 'suspended' ? 'Призупинено' : 'Закрито'}
@@ -621,12 +597,12 @@ export default function SettlementsClient({
                       {/* Дія */}
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
                         <button onClick={() => openDebtor(d)}
-                          style={{ height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#1E3A5F', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+                          style={{ height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-soft)', color: '#1E3A5F', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
                           Картка
                         </button>
                         <Link
                           href={`/admin/finance/settlements/${d.customer_id}`}
-                          style={{ display: 'flex', alignItems: 'center', height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid #C7D2FE', background: '#EEF2FF', color: '#4338CA', fontSize: '11px', fontWeight: 600, textDecoration: 'none' }}>
+                          style={{ display: 'flex', alignItems: 'center', height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-soft)', color: '#1E3A5F', fontSize: '11px', fontWeight: 600, textDecoration: 'none' }}>
                           Акт ↗
                         </Link>
                       </div>
@@ -635,7 +611,7 @@ export default function SettlementsClient({
                 })}
 
                 {/* Total */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 130px 110px 110px 148px', gap: '0', padding: '10px 16px', background: '#F1F5F9', borderTop: '2px solid #CBD5E1', fontWeight: 700 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 130px 110px 110px 148px', gap: '0', padding: '10px 16px', background: 'var(--bg-soft)', borderTop: '2px solid var(--border)', fontWeight: 700 }}>
                   <span style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
                     Разом: {debtors.length} {debtors.length === 1 ? 'контрагент' : debtors.length < 5 ? 'контрагенти' : 'контрагентів'}
                     {debtors.filter(d => d.days_overdue > 0).length > 0 && (

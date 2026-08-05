@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { redirect } from 'next/navigation';
+import FinanceTabs from '../FinanceTabs';
 import SettlementsClient from './SettlementsClient';
 
 const db = createClient(
@@ -51,11 +52,24 @@ export default async function SettlementsPage({
   }
 
   return (
-    <SettlementsClient
-      customers={customers}
-      contracts={contracts ?? []}
-      defaultCustomerId={resolvedCustomerId}
-      defaultContractId={contractId}
-    />
+    <div style={{ padding: '28px 32px 64px', maxWidth: '1300px' }}>
+      <div style={{ marginBottom: '14px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Дебіторка</h1>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+          Карточка рахунку контрагента та реєстр дебіторської заборгованості
+        </p>
+      </div>
+
+      <FinanceTabs />
+
+      <div style={{ marginTop: '20px' }}>
+        <SettlementsClient
+          customers={customers}
+          contracts={contracts ?? []}
+          defaultCustomerId={resolvedCustomerId}
+          defaultContractId={contractId}
+        />
+      </div>
+    </div>
   );
 }
