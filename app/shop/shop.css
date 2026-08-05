@@ -519,10 +519,13 @@ body:has(.shop-layout) { overflow-anchor: none; }
   gap: 12px;
   padding: 10px 14px;
   border-radius: 14px;
-  background: linear-gradient(120deg, var(--brand-blue-light) 0%, transparent 55%);
+  /* --cat-accent — колір товарної родини (CATEGORY_COLORS), ставиться інлайном;
+     без категорії — фірмовий синій */
+  background: linear-gradient(120deg, color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 13%, transparent) 0%, transparent 55%);
 }
 /* Контент смуги — над декоративними іконками */
 .shop-topbar > :not(.cat-icon-backdrop) { position: relative; z-index: 1; }
+.shop-topbar .eyebrow { color: var(--cat-accent, var(--brand-blue)); }
 /* Фірмовий заголовок списку — розміщення як в оптовому каталозі: назва
    категорії живе в колонці товарів, без окремої повноширинної смуги зверху */
 .shop-title {
@@ -535,12 +538,15 @@ body:has(.shop-layout) { overflow-anchor: none; }
 }
 .shop-count {
   font-size: 12px; font-weight: 700;
-  color: var(--brand-blue);
-  background: var(--brand-blue-light);
+  color: var(--cat-accent, var(--brand-blue));
+  background: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 13%, transparent);
   border-radius: 20px;
   padding: 3px 10px;
   white-space: nowrap;
 }
+/* У темній темі акцентні відтінки затемні для тексту — підсвітлюємо */
+[data-theme="dark"] .shop-count,
+[data-theme="dark"] .shop-topbar .eyebrow { color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 55%, white); }
 /* Короткий опис категорії праворуч від заголовка. Обрізаємо до двох рядків;
    на вужчих екранах ховаємо зовсім — за рішенням власника «краще без нього,
    ніж криво з переносами» */

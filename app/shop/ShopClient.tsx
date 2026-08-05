@@ -6,7 +6,7 @@ import { getCategoryNameRu, getCategoryDescriptionRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 import Link from 'next/link';
 import { Plus, Minus, Heart, ChevronDown, Check, SlidersHorizontal, LayoutList, Grid2x2, Rows2, X, SearchX } from 'lucide-react';
-import { CATEGORY_ICONS } from '../../lib/category-icons';
+import { CATEGORY_ICONS, CATEGORY_COLORS } from '../../lib/category-icons';
 import CategoryIconBackdrop from '../components/CategoryIconBackdrop';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import ProductImage from '../components/ProductImage';
@@ -893,7 +893,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                     }
                   }}
                 >
-                  {(() => { const Icon = CATEGORY_ICONS[cat.slug]; return Icon ? <Icon size={14} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.65 }} /> : null; })()}
+                  {(() => { const Icon = CATEGORY_ICONS[cat.slug]; return Icon ? <Icon size={14} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.8, color: CATEGORY_COLORS[cat.slug] }} /> : null; })()}
                   <span className="shop-cat-item-label" style={{ flex: 1, textAlign: 'left' }}>{catDisplayName(cat.slug, cat.name)}</span>
                   {children.length > 0 && (
                     <ChevronDown size={13} style={{ flexShrink: 0, opacity: 0.45, transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)' }} />
@@ -1114,7 +1114,10 @@ export default function ShopClient({ products, categories, reviewStats, initialS
 
       {/* Main */}
       <div style={{ minWidth: 0 }}>
-        <div className="shop-topbar">
+        <div
+          className="shop-topbar"
+          style={selCat && CATEGORY_COLORS[selCat] ? ({ '--cat-accent': CATEGORY_COLORS[selCat] } as React.CSSProperties) : undefined}
+        >
           <CategoryIconBackdrop slug={selCat} />
           <div className="shop-title-wrap">
             {catInfo && (

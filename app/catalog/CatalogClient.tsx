@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2, X, SearchX } from 'lucide-react';
-import { CATEGORY_ICONS } from '../../lib/category-icons';
+import { CATEGORY_ICONS, CATEGORY_COLORS } from '../../lib/category-icons';
 import CategoryIconBackdrop from '../components/CategoryIconBackdrop';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import Link from 'next/link';
@@ -713,7 +713,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                           }
                         }}
                       >
-                        {(() => { const Icon = CATEGORY_ICONS[cat.slug]; return Icon ? <Icon size={14} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.65 }} /> : null; })()}
+                        {(() => { const Icon = CATEGORY_ICONS[cat.slug]; return Icon ? <Icon size={14} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.8, color: CATEGORY_COLORS[cat.slug] }} /> : null; })()}
                         <span className="cat-item-label" style={{ flex: 1, textAlign: 'left' }}>{cName(cat.name, cat.slug)}</span>
                         {children.length > 0 && (
                           isExpanded
@@ -915,7 +915,10 @@ export default function CatalogClient({ products, categories, reviewStats, initi
           <div className="catalog-main">
 
             {/* Title row */}
-            <div className="catalog-title-row">
+            <div
+              className="catalog-title-row"
+              style={selCat && CATEGORY_COLORS[selCat] ? ({ '--cat-accent': CATEGORY_COLORS[selCat] } as React.CSSProperties) : undefined}
+            >
               <CategoryIconBackdrop slug={selCat} />
               <div>
                 {selCat && <span className="eyebrow" style={{ fontSize: '11px' }}>{catalogTitle}</span>}
