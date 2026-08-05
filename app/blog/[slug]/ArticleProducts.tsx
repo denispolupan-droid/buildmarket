@@ -30,7 +30,7 @@ export default async function ArticleProducts({ skus, lang }: Props) {
 
   return (
     <section style={{ marginTop: 40 }}>
-      <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 16px' }}>
+      <h2 className="brand-section-title">
         {t.title}
       </h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 12 }}>
@@ -47,9 +47,10 @@ export default async function ArticleProducts({ skus, lang }: Props) {
             <Link
               key={p.sku}
               href={`${prefix}/product/${p.slug ?? p.sku}`}
+              className="article-product-card"
               style={{
                 display: 'flex', flexDirection: 'column', gap: 8, padding: 12,
-                background: 'var(--bg-card)', border: '1px solid var(--border)',
+                background: 'var(--bg-card)',
                 borderRadius: 12, textDecoration: 'none', opacity: inStock ? 1 : 0.6,
               }}
             >

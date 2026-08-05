@@ -7,6 +7,7 @@ import { getPublishedPostsCached, type BlogPost } from '../../../lib/blog-db';
 import { localizeArticleHtml } from '../../../lib/sanitize-article';
 import { getCategoriesCached, getProductsLightCached } from '../../../lib/supabase';
 import { categoriesWithProducts } from '../../../lib/seo/meta';
+import { CATEGORY_COLORS } from '../../../lib/category-icons';
 import ArticleProducts from './ArticleProducts';
 
 // Рендер статті з БД — той самий шаблон, що й у статичних статей (lib/blog.ts),
@@ -53,6 +54,9 @@ export default async function DbArticle({ post, lang = 'uk' }: Props) {
   // Стаття зараз ранжується краще за листинг (аудит 31.07: «бетоноконтакт» — стаття 3-тя,
   // категорія 54-та), тож читача треба передати в магазин на початку, а не лише в кінці.
   const primaryShop = shopLinks.find(l => l.href.startsWith('/shop/'));
+  // Колір товарної родини статті (від головної shop-категорії) — фарбує
+  // фірмові дрібниці світлої частини через --cat-accent, фолбек — синій
+  const accent = primaryShop ? CATEGORY_COLORS[primaryShop.href.slice('/shop/'.length)] : undefined;
 
   const breadcrumbLd = {
     '@context': 'https://schema.org',
@@ -132,7 +136,7 @@ export default async function DbArticle({ post, lang = 'uk' }: Props) {
           </div>
         </section>
 
-        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 24px 64px' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 24px 64px', ...(accent ? ({ '--cat-accent': accent } as React.CSSProperties) : {}) }}>
           <article>
             {coverImg && (
               <div style={{ borderRadius: '18px', overflow: 'hidden', margin: '-24px 0 36px', border: '1px solid var(--border)', boxShadow: '0 12px 40px rgba(15,23,42,0.14)' }}>

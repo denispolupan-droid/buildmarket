@@ -1048,6 +1048,29 @@ input, select { font-family: inherit; }
   .cat-about-grid { grid-template-columns: 1fr !important; gap: 28px !important; }
 }
 
+/* ── Спільні фірмові дрібниці контентних сторінок ─────────────────────────
+   Заголовок секції в кольорі родини (--cat-accent з інлайну, фолбек синій) —
+   той самий ряд, що секції на картці товару. */
+.brand-section-title {
+  font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 72%, black);
+  margin: 0 0 12px;
+}
+[data-theme="dark"] .brand-section-title {
+  color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 55%, white);
+}
+
+/* Міні-картка товару в статті блогу («Чим це зробити») */
+.article-product-card {
+  border: 1px solid var(--border);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.article-product-card:hover {
+  border-color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 45%, transparent);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
 /* ── Прогрес до оптового мінімуму (кошик) ──────────────────────────────────
    Фірмовий градієнт синій→бірюза, м'яке світіння; зелений — мінімум набрано.
    Ширина ставиться інлайном від відсотка. */
