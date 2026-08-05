@@ -55,6 +55,8 @@ function isModifiedClick(e: React.MouseEvent): boolean {
 }
 
 const SHOP_STATE_KEY = 'shop_filter_state';
+/** Позиція прокрутки, яку треба повернути після переходу між категоріями. */
+const KEEP_SCROLL_KEY = 'shop_keep_scroll';
 
 function readShopSession<T>(field: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -424,6 +426,31 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     smoothScrollTo(sidebar, Math.max(0, target), 620);
   }, []);
 
+  // Перехід між категоріями — справжня навігація (інакше серверна шапка лишається
+  // від попередньої категорії). Але Next скидає прокрутку на початок сторінки, і
+  // { scroll: false } цього не стримує — перевірено на продакшн-збірці.
+  //
+  // Позицію тримаємо в sessionStorage, а не в ref: при переході на іншу категорію
+  // ShopClient перемонтовується, тож ref обнулився б і відновлювати було б нічого.
+  const gotoCategory = (url: string) => {
+    sessionStorage.setItem(KEEP_SCROLL_KEY, String(window.scrollY));
+    router.push(url, { scroll: false });
+  };
+  useEffect(() => {
+    const raw = sessionStorage.getItem(KEEP_SCROLL_KEY);
+    if (raw == null) return;
+    sessionStorage.removeItem(KEEP_SCROLL_KEY);
+    const y = Number(raw);
+    if (!Number.isFinite(y) || y <= 0) return;
+    // Повертаємо позицію кілька разів поспіль: Next скидає прокрутку вже після
+    // коміту, а висота документа встигає перерахуватися не з першого кадру.
+    const restore = () => window.scrollTo(0, y);
+    requestAnimationFrame(() => requestAnimationFrame(restore));
+    const t1 = setTimeout(restore, 60);
+    const t2 = setTimeout(restore, 180);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [pathname]);
+
   const selectCat = (slug: string | null, scrollSlug?: string) => {
     // На brand-сторінці заголовок рендериться сервером — потрібна повна навігація
     if (initialBrand) {
@@ -431,11 +458,10 @@ export default function ShopClient({ products, categories, reviewStats, initialS
       return;
     }
     setSelCat(slug);
-    // router.push, а не history.pushState: pushState міняє адресу повз роутер,
-    // тож серверна частина сторінки (шапка категорії, блок «Про категорію») не
-    // перемальовується — у шапці лишалася попередня категорія. scroll: false
-    // зберігає колишню поведінку «фільтруємо без стрибка сторінки».
-    router.push(slug ? `${shopBase}/${slug}` : shopBase, { scroll: false });
+    // Навігація, а не history.pushState: pushState міняє адресу повз роутер,
+    // тож серверна частина сторінки (шапка категорії, блок «Про категорію»)
+    // не перемальовується — у шапці лишалася попередня категорія.
+    gotoCategory(slug ? `${shopBase}/${slug}` : shopBase);
     setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]); setFilterPlasticGroup(''); setExpandedValues(new Set());
     setVisibleCount(24);
     setMobilePanel(null);
@@ -821,7 +847,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                           // Оновлюємо фільтр БЕЗ скролу сторінки; навігація потрібна
                           // справжня, інакше серверна шапка лишиться від старої категорії
                           setSelCat(cat.slug);
-                          router.push(`${shopBase}/${cat.slug}`, { scroll: false });
+                          gotoCategory(`${shopBase}/${cat.slug}`);
                           setVisibleCount(24);
                           // Тільки сайдбар — після анімації
                           setTimeout(() => scrollCatToTop(cat.slug), 450);
