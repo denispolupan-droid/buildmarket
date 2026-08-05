@@ -46,8 +46,6 @@ function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 550) {
 // Нижче цієї частки висоти сайдбара натиснутий пункт вважається «низько»
 // і його підтягують угору; EYE_LINE — куди саме підтягують.
 const EYE_LINE     = 0.45;
-// Вище цієї лінії пункт вважається «комфортно видимим» і сайдбар не рухаємо
-const COMFORT_LINE = 0.55;
 
 
 
@@ -399,29 +397,41 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     });
   }, []);
 
-  // Плавно підтягнути пункт дерева на «рівень очей» (550 мс, ease-out).
-  // Використовується і при монтуванні (прямий захід на сторінку категорії),
-  // і при кліку в сайдбарі — клік більше не робить навігацію, тож анімацію
+  // Плавно підтягнути пункт дерева на «рівень очей» (550 мс, ease-out) — в
+  // ОБИДВА боки: пункт зверху опускається до лінії очей так само, як нижній
+  // піднімається. Мертва зона ±24px, щоб пункт, який уже стоїть на місці, не
+  // соватись на кожен клік. Клік більше не робить навігацію, тож анімацію
   // ніщо не обриває і не перемонтовує.
-  //
-  // ВАЖЛИВО: тягнемо лише коли пункт справді низько (нижче COMFORT_LINE) або
-  // обрізаний краєм сайдбара. Без цієї умови КОЖЕН клік перецентровував список
-  // на рівень очей: клік по верхньому пункту тягнув сайдбар униз, по нижньому —
-  // назад угору, і список «їздив туди-сюди» на кожне натискання.
   const pullCatToEye = useCallback((slug: string) => {
     const catEl = catRefs.current[slug];
     const sidebar = sidebarRef.current;
     if (!catEl || !sidebar) return;
     const containerRect = sidebar.getBoundingClientRect();
-    const itemRect = catEl.getBoundingClientRect();
-    const offset = itemRect.top - containerRect.top;
-    const fullyVisible = offset >= 0 && offset + itemRect.height <= containerRect.height;
-    if (fullyVisible && offset <= containerRect.height * COMFORT_LINE) return;
+    const offset = catEl.getBoundingClientRect().top - containerRect.top;
     const target = Math.max(0, sidebar.scrollTop + offset - containerRect.height * EYE_LINE);
+    if (Math.abs(target - sidebar.scrollTop) < 24) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       sidebar.scrollTop = target;
     } else {
       smoothScrollTo(sidebar, target);
+    }
+  }, []);
+
+  // Після зміни категорії піднімаємо сторінку до початку товарів: список уже
+  // інший, тож дивитись його треба спочатку. Без цього при переході на коротшу
+  // категорію глибока прокрутка висаджувала користувача в «Про категорію» чи
+  // біля футера. Рухаємось лише ВГОРУ (якщо користувач вище початку товарів —
+  // не смикаємо) і плавно, тим самим ease-out, що й сайдбар.
+  const scrollPageToProducts = useCallback(() => {
+    const layout = document.querySelector('.shop-layout');
+    if (!layout) return;
+    const target = Math.max(0, layout.getBoundingClientRect().top + window.scrollY - 80);
+    const doc = document.scrollingElement as HTMLElement | null;
+    if (!doc || doc.scrollTop <= target + 8) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      doc.scrollTop = target;
+    } else {
+      smoothScrollTo(doc, target);
     }
   }, []);
 
@@ -528,8 +538,8 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]); setFilterPlasticGroup(''); setExpandedValues(new Set());
     setVisibleCount(24);
     setMobilePanel(null);
-    // Плавне підтягування обраного пункту — після кадру з новим станом дерева
-    if (slug) setTimeout(() => pullCatToEye(slug), 120);
+    // Після кадру з новим станом: сторінку — до початку товарів, пункт — на рівень очей
+    setTimeout(() => { scrollPageToProducts(); if (slug) pullCatToEye(slug); }, 120);
   };
   const { skus: wishSkus, toggle: toggleWish } = useWishlist();
 
@@ -868,8 +878,8 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                           setSelCat(cat.slug);
                           applyCategory(cat.slug);
                           setVisibleCount(24);
-                          // Підтягуємо гілку після старту анімації розгортання
-                          setTimeout(() => pullCatToEye(cat.slug), 150);
+                          // Сторінку до товарів; гілку підтягуємо після старту анімації розгортання
+                          setTimeout(() => { scrollPageToProducts(); pullCatToEye(cat.slug); }, 150);
                         }
                       }
                     } else {
