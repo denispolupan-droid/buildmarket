@@ -507,12 +507,17 @@ body:has(.shop-layout) { overflow-anchor: none; }
 }
 
 /* Top bar */
+/* Легкий фірмовий градієнт — відлуння колишньої смуги категорії, без крику:
+   м'яко тане вправо; у темній темі --brand-blue-light напівпрозорий сам */
 .shop-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
   gap: 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: linear-gradient(120deg, var(--brand-blue-light) 0%, transparent 55%);
 }
 /* Фірмовий заголовок списку — розміщення як в оптовому каталозі: назва
    категорії живе в колонці товарів, без окремої повноширинної смуги зверху */

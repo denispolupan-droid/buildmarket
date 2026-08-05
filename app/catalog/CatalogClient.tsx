@@ -139,9 +139,8 @@ export default function CatalogClient({ products, categories, reviewStats, initi
   // (documentElement.scrollTop = 0), який читався як ривок; а без підйому
   // взагалі перехід на коротку категорію висаджував у підвал.
   const scrollPageToProducts = useCallback(() => {
-    const pageEl = document.querySelector('.catalog-page');
-    if (!pageEl) return;
-    const target = Math.max(0, pageEl.getBoundingClientRect().top + window.scrollY - 80);
+    // До самого верху — так само, як у магазині (див. ShopClient)
+    const target = 0;
     const doc = document.scrollingElement as HTMLElement | null;
     if (!doc || doc.scrollTop <= target + 8) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {

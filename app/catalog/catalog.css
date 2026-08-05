@@ -1,3 +1,6 @@
+/* Загальний фон — як у магазині (--bg-soft), а не темніший body-фон */
+body:has(.catalog-page) { background: var(--bg-soft); }
+
 .catalog-page { display: grid; grid-template-columns: 310px 1fr; gap: 16px; padding: 28px 0 48px; align-items: start; }
 
 /* ── Sidebar ── */
@@ -115,7 +118,14 @@
 
 /* ── Main content ── */
 .catalog-main { min-width: 0; }
-.catalog-title-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
+/* Той самий легкий градієнт, що в магазині (.shop-topbar) */
+.catalog-title-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; margin-bottom: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: linear-gradient(120deg, var(--brand-blue-light) 0%, transparent 55%);
+}
 /* Фірмова типографіка, як у шапки категорії магазину (.cat-head h1) — але
    компактніша: /catalog це робочий інструмент, а не посадкова сторінка */
 .catalog-title {

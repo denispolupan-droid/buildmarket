@@ -441,9 +441,9 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   // біля футера. Рухаємось лише ВГОРУ (якщо користувач вище початку товарів —
   // не смикаємо) і плавно, тим самим ease-out, що й сайдбар.
   const scrollPageToProducts = useCallback(() => {
-    const layout = document.querySelector('.shop-layout');
-    if (!layout) return;
-    const target = Math.max(0, layout.getBoundingClientRect().top + window.scrollY - 80);
+    // До самого верху: заголовок категорії тепер перший елемент контенту, і
+    // будь-яка інша ціль лишала його частково під липким рядком пошуку
+    const target = 0;
     const doc = document.scrollingElement as HTMLElement | null;
     if (!doc || doc.scrollTop <= target + 8) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -1312,7 +1312,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     {/* Category description + FAQ — shown only when category selected via sidebar filter,
         NOT when already on a dedicated /shop/[category] page (it renders this server-side) */}
     {catInfo?.meta && (
-      <div style={{ padding: '0 0 32px' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 4px 32px' }}>
         <CategoryAbout lang={lang} name={catInfo.name} meta={catInfo.meta} />
       </div>
     )}
