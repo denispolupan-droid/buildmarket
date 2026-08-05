@@ -960,7 +960,7 @@ input, select { font-family: inherit; }
   content: '';
   position: absolute;
   left: 0; top: 0; bottom: 0;
-  width: 2px;
+  width: 1px;
   z-index: 1;
   pointer-events: none;
   /* Тане з обох кінців: прозоро → щільно всередині → прозоро */
