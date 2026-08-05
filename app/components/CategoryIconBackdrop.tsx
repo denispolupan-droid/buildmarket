@@ -1,12 +1,13 @@
-import { CATEGORY_ICONS } from '../../lib/category-icons';
+import { categoryIcon } from '../../lib/category-icons';
 
 /**
  * Декоративна підкладка зони заголовка категорії: стрічка з іконки категорії
  * (та сама, що в сайдбарі), яка тане зліва направо — від щільного до
- * прозорого (mask у .cat-icon-backdrop). Без іконки для slug — нічого.
+ * прозорого (mask у .cat-icon-backdrop). Слаг без власної іконки успадковує
+ * батьківську; без обох — нічого.
  */
-export default function CategoryIconBackdrop({ slug }: { slug?: string | null }) {
-  const Icon = slug ? CATEGORY_ICONS[slug] : undefined;
+export default function CategoryIconBackdrop({ slug, parentSlug }: { slug?: string | null; parentSlug?: string | null }) {
+  const Icon = categoryIcon(slug, parentSlug);
   if (!Icon) return null;
   return (
     <div className="cat-icon-backdrop" aria-hidden="true">

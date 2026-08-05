@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2, X, SearchX } from 'lucide-react';
-import { CATEGORY_ICONS, CATEGORY_COLORS } from '../../lib/category-icons';
+import { CATEGORY_ICONS, CATEGORY_COLORS, categoryAccent } from '../../lib/category-icons';
 import CategoryIconBackdrop from '../components/CategoryIconBackdrop';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import Link from 'next/link';
@@ -916,9 +916,9 @@ export default function CatalogClient({ products, categories, reviewStats, initi
             {/* Title row */}
             <div
               className="catalog-title-row"
-              style={selCat && CATEGORY_COLORS[selCat] ? ({ '--cat-accent': CATEGORY_COLORS[selCat] } as React.CSSProperties) : undefined}
+              style={(() => { const a = categoryAccent(selCat, categories.find(c => c.slug === selCat)?.parent_slug); return a ? ({ '--cat-accent': a } as React.CSSProperties) : undefined; })()}
             >
-              <CategoryIconBackdrop slug={selCat} />
+              <CategoryIconBackdrop slug={selCat} parentSlug={categories.find(c => c.slug === selCat)?.parent_slug} />
               <div>
                 {selCat && <span className="eyebrow" style={{ fontSize: '11px' }}>{catalogTitle}</span>}
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>

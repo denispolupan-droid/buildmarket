@@ -107,3 +107,17 @@ export const CATEGORY_COLORS: Record<string, string> = {
   'farby-dlya-radiatoriv':  '#B25E93',
 };
 
+/* Частини слагів (напр. gruntivky-kontsentraty) немає в мапах — тоді беремо
+   родину батька, щоб заголовок і сайдбар не розійшлися в кольорах. */
+export function categoryAccent(slug?: string | null, parentSlug?: string | null): string | undefined {
+  if (slug && CATEGORY_COLORS[slug]) return CATEGORY_COLORS[slug];
+  if (parentSlug && CATEGORY_COLORS[parentSlug]) return CATEGORY_COLORS[parentSlug];
+  return undefined;
+}
+
+export function categoryIcon(slug?: string | null, parentSlug?: string | null): FC<LucideProps> | undefined {
+  if (slug && CATEGORY_ICONS[slug]) return CATEGORY_ICONS[slug];
+  if (parentSlug && CATEGORY_ICONS[parentSlug]) return CATEGORY_ICONS[parentSlug];
+  return undefined;
+}
+
