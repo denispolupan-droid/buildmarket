@@ -24,11 +24,42 @@ import { useStickyCompact, suppressStickyCompact } from '../../lib/useStickyComp
 // this gives the category auto-lift its own slower, eased animation instead. Ease-out
 // (fast start, gentle settle) reads as "pulling" the category up, rather than the
 // uniform, scroll-like motion an ease-in-out curve produces.
+function easeOutQuad(t: number) {
+  return t * (2 - t);
+}
+
+function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 550) {
+  const startTop = el.scrollTop;
+  const distance = targetTop - startTop;
+  if (Math.abs(distance) < 3) return;
+  const startTime = performance.now();
+  const step = (now: number) => {
+    const progress = Math.min((now - startTime) / duration, 1);
+    el.scrollTop = startTop + distance * easeOutQuad(progress);
+    if (progress < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
 
 // Нижче цієї частки висоти сайдбара натиснутий пункт вважається «низько»
 // і його підтягують угору; EYE_LINE — куди саме підтягують.
 const EYE_LINE     = 0.45;
 
+// Позиція прокрутки сайдбара переживає перемонтування при навігації між
+// категоріями: новий ShopClient стартує з того самого місця, де сайдбар був у
+// момент кліку, і вже звідти ПЛАВНО підтягує обраний пункт на рівень очей.
+// Без цього сайдбар телепортувався одним кадром — читалось як різкий підскок.
+let lastSidebarScroll = 0;
+
+
+
+// Клік мишею фокусує <a>, і браузер підскролює сторінку до сфокусованого
+// елемента — ~19px «пинок» на кожен клік по категорії (заміри: JS-клік без
+// фокуса — 0, реальний клік — 19). preventDefault на mousedown прибирає фокус
+// від миші; клавіатурний Tab-фокус працює як і раніше.
+function blockFocusScroll(e: React.MouseEvent) {
+  e.preventDefault();
+}
 
 // Пункти дерева категорій — справжні <Link>, а не <button>: інакше 68 підкатегорій
 // не мають жодного внутрішнього посилання і Google їх фактично не бачить (аудит 31.07,
@@ -369,27 +400,41 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     });
   }, []);
 
-  // Ставимо обраний пункт на «рівень очей» ОДИН раз — при монтуванні, тобто вже
-  // після того, як прийшла нова сторінка.
+  // «Рівень очей» у два кроки, обидва вже на новій сторінці:
   //
-  // Саме useLayoutEffect і саме без setTimeout: layout-ефект відпрацьовує ДО
-  // першої відмальовки, тож сайдбар одразу з'являється у правильній позиції.
-  // З таймером (як було) сайдбар встигав показатися з нулем і за 60 мс стрибав
-  // на місце — заміри: t=870 сайдбар=0, t=970 сайдбар=507. Це і було останнє
+  // 1. useLayoutEffect, ДО першої відмальовки: повертаємо сайдбару позицію,
+  //    яку він мав у момент кліку (lastSidebarScroll). Без цього новий сайдбар
+  //    з'являвся одразу в цільовій точці — телепорт одним кадром, «різкий
+  //    підскок».
+  // 2. useEffect, ПІСЛЯ відмальовки: плавно підтягуємо обраний пункт (550 мс,
+  //    ease-out) — те саме підтягування, що було до переходу на навігацію.
+  //    Тепер його ніщо не обриває: воно стартує після приходу сторінки.
+  //
+  // Раніше підтягування жило в обробниках кліку: сайдбар пів секунди їхав,
+  // навігація перемонтовувала його в нуль, позиція ставилась знову — звідси
   // «передьоргування».
-  //
-  // Раніше підстроювання жило ще й у обробниках кліку. Після переходу на
-  // навігацію воно стало марним: сайдбар пів секунди плавно їхав, а навігація
-  // перемонтовувала його і скидала в нуль.
   useLayoutEffect(() => {
-    if (!initialCategory) return;
-    const catEl = catRefs.current[initialCategory];
     const sidebar = sidebarRef.current;
-    if (!catEl || !sidebar) return;
-    const containerRect = sidebar.getBoundingClientRect();
-    const offset = catEl.getBoundingClientRect().top - containerRect.top;
-    const target = sidebar.scrollTop + offset - containerRect.height * EYE_LINE;
-    sidebar.scrollTop = Math.max(0, target);
+    if (!sidebar || !lastSidebarScroll) return;
+    sidebar.scrollTop = lastSidebarScroll;
+    lastSidebarScroll = 0;
+  }, []);
+  useEffect(() => {
+    if (!initialCategory) return;
+    const t = setTimeout(() => {
+      const catEl = catRefs.current[initialCategory];
+      const sidebar = sidebarRef.current;
+      if (!catEl || !sidebar) return;
+      const containerRect = sidebar.getBoundingClientRect();
+      const offset = catEl.getBoundingClientRect().top - containerRect.top;
+      const target = Math.max(0, sidebar.scrollTop + offset - containerRect.height * EYE_LINE);
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        sidebar.scrollTop = target;
+      } else {
+        smoothScrollTo(sidebar, target);
+      }
+    }, 120);
+    return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -412,6 +457,8 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   // Спроба повернути позицію після переходу давала двічі гірше: сторінка стрибала
   // вгору, а через ~1 с — назад.
   const gotoCategory = (url: string) => {
+    // Сайдбар нової сторінки стартує з поточної позиції — див. lastSidebarScroll.
+    lastSidebarScroll = sidebarRef.current?.scrollTop ?? 0;
     // Анкоринг зсуне scrollY при підміні списку — хай sticky-бар це ігнорує,
     // інакше він анімовано смикається на кожен клік (див. useStickyCompact).
     suppressStickyCompact();
@@ -742,7 +789,8 @@ export default function ShopClient({ products, categories, reviewStats, initialS
 
         <div ref={catsListRef} className="shop-cats-list">
           <button
-            className={'shop-cat-item' + (!selCat ? ' active' : '')}
+            onMouseDown={blockFocusScroll}
+                  className={'shop-cat-item' + (!selCat ? ' active' : '')}
             onClick={() => { selectCat(null); setExpandedCats(new Set()); }}
           >
             <span className="shop-cat-item-label">{t('Всі категорії', 'Все категории')}</span>
@@ -757,6 +805,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                 <Link
                   href={`${shopBase}/${cat.slug}`}
                   prefetch={false}
+                  onMouseDown={blockFocusScroll}
                   className={'shop-cat-item' + (isDirectActive ? ' active' : isParentActive ? ' parent-active' : '')}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', ...(isExpanded && !isDirectActive ? { background: 'rgba(30,58,95,0.06)', borderRadius: '7px', color: 'var(--text-primary)', fontWeight: 600 } : {}) }}
                   onClick={e => {
@@ -800,7 +849,8 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                       <Link
                         href={`${shopBase}/${child.slug}`}
                         prefetch={false}
-                        className={'shop-cat-item' + (isChildDirectActive ? ' active' : isChildParentActive ? ' parent-active' : '')}
+                        onMouseDown={blockFocusScroll}
+                  className={'shop-cat-item' + (isChildDirectActive ? ' active' : isChildParentActive ? ' parent-active' : '')}
                         style={{ paddingLeft: '12px', fontSize: '13px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                         onClick={e => {
                           if (isModifiedClick(e)) return;
@@ -818,7 +868,8 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                             href={`${shopBase}/${gc.slug}`}
                             prefetch={false}
                             ref={el => { catRefs.current[gc.slug] = el as unknown as HTMLDivElement; }}
-                            className={'shop-cat-item' + (selCat === gc.slug ? ' active' : '')}
+                            onMouseDown={blockFocusScroll}
+                  className={'shop-cat-item' + (selCat === gc.slug ? ' active' : '')}
                             style={{ paddingLeft: '26px', fontSize: '12px', width: '100%', textAlign: 'left' }}
                             onClick={e => {
                               if (isModifiedClick(e)) return;
