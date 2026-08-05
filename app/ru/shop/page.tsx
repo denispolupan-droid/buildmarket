@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import Footer from '../../components/Footer';
 import ShopLoader from '../../shop/ShopLoader';
-import CategoryAbout from '../../components/CategoryAbout';
 import '../../shop/shop.css';
 
 const BASE = 'https://fixline.com.ua';

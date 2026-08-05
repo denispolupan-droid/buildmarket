@@ -36,7 +36,9 @@ export async function generateMetadata(
   // Порожню категорію не індексуємо — див. коментар в українській версії сторінки.
   const meta = categoryMeta(cat, listingStats(products), 'ru', {
     nameRu,
-    curatedDescription: getCategoryDescriptionRu(cat.slug, nameRu) ?? null,
+    // Спершу повний перекладений опис категорії (той самий, що в блоці
+    // «О категории»), і лише як фолбек — короткий шаблон
+    curatedDescription: getCategoryMetaRu(cat.slug)?.description ?? getCategoryDescriptionRu(cat.slug, nameRu) ?? null,
     canonicalSlug: duplicateOfParent(categories, await getProductsCached(), category) ?? undefined,
   });
   if (products.length === 0) return { ...meta, robots: { index: false, follow: true } };

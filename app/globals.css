@@ -963,6 +963,8 @@ input, select { font-family: inherit; }
   width: 2px;
   z-index: 1;
   pointer-events: none;
+  /* фолбек без color-mix — проста сіра лінія */
+  background: var(--border);
   /* Тане з обох кінців: прозоро → щільно всередині → прозоро */
   background: linear-gradient(
     to bottom,

@@ -1705,7 +1705,7 @@ export default function AdminOrders({
               </button>
             ) : (
               <button
-                onClick={() => { setChannelFilter(''); setSearch(''); }}
+                onClick={() => { setChannelFilter(''); setCarrierFilter(''); setSearch(''); }}
                 style={{ height: '28px', padding: '0 12px', borderRadius: '6px', border: '1.5px solid #A78BFA', background: '#EDE9FE', color: '#6D28D9', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
               >
                 Скинути фільтри →

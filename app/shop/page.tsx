@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import Footer from '../components/Footer';
 import ShopLoader from './ShopLoader';
-import CategoryAbout from '../components/CategoryAbout';
 import './shop.css';
 
 function brandToSlug(brand: string): string {
@@ -32,7 +30,7 @@ export async function generateMetadata(
 
   return {
     title: 'Магазин — будівельна хімія в роздріб',
-    description: 'Купити будівельну хімію в роздріб: герметики, монтажні піни, клеї, ґрунтовки. Доставка по всій Україні. Купить строительную химию в розницу: герметики, монтажная пена, клеи.',
+    description: 'Купити будівельну хімію в роздріб: герметики, монтажні піни, клеї, ґрунтовки. Широкий вибір від перевірених виробників. Доставка Новою Поштою по всій Україні.',
     keywords: ['магазин будівельної хімії', 'магазин строительной химии', 'герметики купити', 'герметики купить', 'монтажна піна', 'монтажная пена', 'клей будівельний', 'клей строительный', 'ґрунтовка', 'грунтовка'],
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
     alternates: { canonical: `${BASE}/shop`, languages: { 'uk': `${BASE}/shop`, 'ru': `${BASE}/ru/shop`, 'x-default': `${BASE}/shop` } },

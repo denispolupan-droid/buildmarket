@@ -3,7 +3,8 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Сторінку не знайдено',
-  robots: { index: false, follow: false },
+  // robots не задаємо: Next сам додає <meta name="robots" content="noindex"/>
+  // для not-found — власний тег давав дубль
   // Кореневий layout задає canonical на головну, і 404 успадковувала його —
   // сторінка помилки оголошувала себе копією головної. Явний null прибирає тег:
   // при коректному 404 канонічної адреси в неї просто немає.

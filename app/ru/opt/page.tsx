@@ -46,7 +46,7 @@ const audience = [
 const stats = [
   { icon: Package, stat: '700+',    label: 'позиций в каталоге',    text: 'Строительная химия и расходные материалы' },
   { icon: Layers,  stat: '30+',     label: 'брендов',               text: 'Ceresit, Lacrysil, AURA, Knauf, Bitugum' },
-  { icon: Tags,    stat: '3 000 ₴', label: 'минимальный заказ',     text: 'Дальше — ваша оптовая цена на каждую позицию' },
+  { icon: Tags,    stat: `${WHOLESALE_MIN.toLocaleString('ru-RU')} ₴`, label: 'минимальный заказ',     text: 'Дальше — ваша оптовая цена на каждую позицию' },
   { icon: Clock,   stat: '2 мин',   label: 'на регистрацию',        text: 'Доступ включается без ручной модерации' },
 ];
 

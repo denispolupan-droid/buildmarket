@@ -75,7 +75,10 @@ body:has(.shop-layout) { overflow-anchor: none; }
 .shop-cat-item.active > svg:first-child,
 .shop-cat-item.parent-active > svg:first-child { color: var(--cat-accent, var(--brand-blue)); opacity: 0.95; }
 .shop-cat-item.active {
+  /* перший рядок — фолбек для браузерів без color-mix (Safari <16.2) */
+  background: var(--brand-blue-light);
   background: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 13%, transparent);
+  color: var(--brand-blue-dark);
   color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 72%, black);
   font-weight: 600;
 }
