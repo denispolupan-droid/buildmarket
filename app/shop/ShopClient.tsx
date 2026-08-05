@@ -494,6 +494,12 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   // Синхронізуємо стан із адреси самі. Записи роутера (бренд-сторінки, хлібні
   // крихти) містять '/' у хвості або чужий префікс — їх пропускаємо, ними
   // займеться сам Next.
+  // Свіже монтування = справжня навігація, серверний вміст актуальний.
+  // Опублікований раніше view міг лишитися від клієнтського перемикання на
+  // цей самий шлях — тоді HideOnCategorySwitch ховав би коректний свіжий
+  // серверний блок «Усі товари розділу».
+  useEffect(() => { publishCategoryView(null); }, []);
+
   useEffect(() => {
     const onPop = () => {
       const path = window.location.pathname;
@@ -501,11 +507,17 @@ export default function ShopClient({ products, categories, reviewStats, initialS
       if (path === shopBase) slug = null;
       else if (path.startsWith(shopBase + '/')) {
         const rest = decodeURIComponent(path.slice(shopBase.length + 1));
-        if (!rest || rest.includes('/')) return;
+        // 'sale' — не слаг категорії, а роутерна сторінка акцій; без цієї
+        // перевірки «Назад» з категорії на /shop/sale шукав категорію 'sale'
+        // і показував «Нічого не знайдено»
+        if (!rest || rest.includes('/') || rest === 'sale') return;
         slug = rest;
       } else return;
       suppressStickyCompact();
       setSelCat(slug);
+      // «Назад» має показувати категорію так само, як клік по ній:
+      // без успадкованих фільтрів попередньої категорії
+      setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]); setFilterPlasticGroup(''); setExpandedValues(new Set());
       setVisibleCount(24);
       publishCategoryView({ targetPath: window.location.pathname, header: null, about: null });
     };
@@ -515,8 +527,10 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   }, [shopBase]);
 
   const selectCat = (slug: string | null) => {
-    // На brand-сторінці заголовок рендериться сервером — потрібна повна навігація
-    if (initialBrand) {
+    // На brand- і sale-сторінках заголовок (h1) рендериться сервером, а sale ще
+    // й фільтрує «тільки акційні» — клієнтське перемикання лишало б URL, що
+    // бреше про вміст. Потрібна повна навігація.
+    if (initialBrand || initialSaleOnly) {
       suppressStickyCompact();
       router.push(slug ? `${shopBase}/${slug}` : shopBase);
       return;
@@ -877,7 +891,8 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                     if (children.length > 0) {
                       setExpandedCats(prev => { const next = new Set(prev); next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug); return next; });
                       if (expanding) {
-                        if (initialBrand) {
+                        if (initialBrand || initialSaleOnly) {
+                          // brand/sale: серверний h1 і фільтр сторінки — тільки навігація
                           suppressStickyCompact();
                           router.push(`${shopBase}/${cat.slug}`);
                         } else {
@@ -1221,7 +1236,10 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                 key={cat.slug}
                 className={'shop-cat-pill' + (isActive ? ' active' : '')}
                 onClick={() => {
-                  const willNavigate = !!initialBrand || (!!initialCategory && cat.slug !== initialCategory);
+                  // Навігація тепер тільки на brand/sale-сторінках (selectCat);
+                  // на категорійних перемикання клієнтське — сайдбар треба
+                  // синхронізувати тут, інакше гілка лишається на старій категорії
+                  const willNavigate = !!initialBrand || !!initialSaleOnly;
                   if (isActive) {
                     selectCat(null);
                     if (!willNavigate) setExpandedCats(new Set());

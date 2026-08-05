@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2, X, SearchX } from 'lucide-react';
 import { CATEGORY_ICONS, CATEGORY_COLORS, categoryAccent } from '../../lib/category-icons';
 import CategoryIconBackdrop from '../components/CategoryIconBackdrop';
@@ -22,6 +22,7 @@ import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 
 import { WHOLESALE_MIN } from '../../lib/site';
 import { getCategoryMeta } from '../../lib/category-descriptions';
+import { getCategoryMetaRu } from '../../lib/category-descriptions-ru';
 import { useStickyCompact } from '../../lib/useStickyCompact';
 import './catalog.css';
 
@@ -73,7 +74,6 @@ export default function CatalogClient({ products, categories, reviewStats, initi
   const [isWholesale, setIsWholesale] = useState(false);
   const [search,        setSearch]        = useState(initialSearch);
   const [selCat,        setSelCat]        = useState(initialCategory);
-  const router   = useRouter();
   const pathname = usePathname();
   const lang     = pathname.startsWith('/ru') ? 'ru' as const : 'uk' as const;
   const t        = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
@@ -158,7 +158,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
 
   const selectCat = (slug: string) => {
     setSelCat(slug);
-    window.history.replaceState(null, '', slug ? `?category=${slug}` : '?');
+    window.history.replaceState(null, '', slug ? `?category=${slug}` : window.location.pathname);
     setVisibleCount(50);
     setMobilePanel(null);
     // Після кадру з новим станом: сторінку — до товарів, пункт — на рівень очей
@@ -624,7 +624,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
           <Link href={homeHref} style={{ color: '#94A3B8', textDecoration: 'none' }}>{t('Головна', 'Главная')}</Link>
           <span>/</span>
           {selCat ? (
-            <button onClick={() => selectCat(null as unknown as string)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: '13px', padding: 0 }}>
+            <button onClick={() => selectCat('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: '13px', padding: 0 }}>
               {catalogTitle}
             </button>
           ) : (
@@ -1018,7 +1018,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
               <div className="catalog-cats-pills" ref={pillsRef}>
                 <button
                   className={'catalog-cat-pill' + (!selCat ? ' active' : '')}
-                  onClick={() => { setSelCat(''); window.history.replaceState(null, '', '?'); setVisibleCount(50); }}
+                  onClick={() => { setSelCat(''); window.history.replaceState(null, '', window.location.pathname); setVisibleCount(50); }}
                 >
                   {t('Всі категорії', 'Все категории')}
                 </button>
@@ -1031,7 +1031,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                       onClick={() => {
                         const next = isActive ? '' : cat.slug;
                         setSelCat(next);
-                        window.history.replaceState(null, '', next ? `?category=${next}` : '?');
+                        window.history.replaceState(null, '', next ? `?category=${next}` : window.location.pathname);
                         setExpandedCats(new Set(next ? [next] : []));
                         setVisibleCount(50);
                         if (next) setTimeout(() => { scrollPageToProducts(); pullCatToEye(next); }, 120);
@@ -1356,7 +1356,8 @@ export default function CatalogClient({ products, categories, reviewStats, initi
       </div>
 
       {(() => {
-        const meta = selCat ? getCategoryMeta(selCat) : null;
+        // На /ru/catalog — російський словник, інакше опис і FAQ були українською
+        const meta = selCat ? (lang === 'ru' ? getCategoryMetaRu(selCat) : getCategoryMeta(selCat)) : null;
         const catNameStr = selCat ? cName(categories.find(c => c.slug === selCat)?.name ?? '', selCat) : null;
         if (!meta || !catNameStr) return null;
         return (
