@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getCategoryNameRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
@@ -18,7 +18,7 @@ import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import type { ProductPublic, Category, ReviewStats } from '../../lib/supabase';
 import { getCategoryMeta } from '../../lib/category-descriptions';
-import { useStickyCompact } from '../../lib/useStickyCompact';
+import { useStickyCompact, suppressStickyCompact } from '../../lib/useStickyCompact';
 
 // Native `behavior: 'smooth'` has a fixed, fairly snappy browser-controlled duration —
 // this gives the category auto-lift its own slower, eased animation instead. Ease-out
@@ -370,25 +370,26 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   }, []);
 
   // Ставимо обраний пункт на «рівень очей» ОДИН раз — при монтуванні, тобто вже
-  // після того, як прийшла нова сторінка. Без анімації: сайдбар після навігації
-  // починає з нуля, і плавний під'їзд читався б як окремий рух після зміни контенту.
+  // після того, як прийшла нова сторінка.
   //
-  // Раніше підстроювання жило ще й у обробниках кліку. Після переходу на навігацію
-  // воно стало марним і шкідливим: сайдбар пів секунди плавно їхав до потрібного
-  // місця, а потім навігація перемонтовувала його і скидала в нуль — звідси
-  // «передьоргування». Заміри: t=321..537 плавний рух до 520, t=583 — знову 0.
-  useEffect(() => {
+  // Саме useLayoutEffect і саме без setTimeout: layout-ефект відпрацьовує ДО
+  // першої відмальовки, тож сайдбар одразу з'являється у правильній позиції.
+  // З таймером (як було) сайдбар встигав показатися з нулем і за 60 мс стрибав
+  // на місце — заміри: t=870 сайдбар=0, t=970 сайдбар=507. Це і було останнє
+  // «передьоргування».
+  //
+  // Раніше підстроювання жило ще й у обробниках кліку. Після переходу на
+  // навігацію воно стало марним: сайдбар пів секунди плавно їхав, а навігація
+  // перемонтовувала його і скидала в нуль.
+  useLayoutEffect(() => {
     if (!initialCategory) return;
-    const t = setTimeout(() => {
-      const catEl = catRefs.current[initialCategory];
-      const sidebar = sidebarRef.current;
-      if (!catEl || !sidebar) return;
-      const containerRect = sidebar.getBoundingClientRect();
-      const offset = catEl.getBoundingClientRect().top - containerRect.top;
-      const target = sidebar.scrollTop + offset - containerRect.height * EYE_LINE;
-      sidebar.scrollTop = Math.max(0, target);
-    }, 60);
-    return () => clearTimeout(t);
+    const catEl = catRefs.current[initialCategory];
+    const sidebar = sidebarRef.current;
+    if (!catEl || !sidebar) return;
+    const containerRect = sidebar.getBoundingClientRect();
+    const offset = catEl.getBoundingClientRect().top - containerRect.top;
+    const target = sidebar.scrollTop + offset - containerRect.height * EYE_LINE;
+    sidebar.scrollTop = Math.max(0, target);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -411,12 +412,16 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   // Спроба повернути позицію після переходу давала двічі гірше: сторінка стрибала
   // вгору, а через ~1 с — назад.
   const gotoCategory = (url: string) => {
+    // Анкоринг зсуне scrollY при підміні списку — хай sticky-бар це ігнорує,
+    // інакше він анімовано смикається на кожен клік (див. useStickyCompact).
+    suppressStickyCompact();
     router.push(url, { scroll: false });
   };
 
   const selectCat = (slug: string | null) => {
     // На brand-сторінці заголовок рендериться сервером — потрібна повна навігація
     if (initialBrand) {
+      suppressStickyCompact();
       router.push(slug ? `${shopBase}/${slug}` : shopBase);
       return;
     }
@@ -762,6 +767,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                       setExpandedCats(prev => { const next = new Set(prev); next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug); return next; });
                       if (expanding) {
                         if (initialBrand) {
+                          suppressStickyCompact();
                           router.push(`${shopBase}/${cat.slug}`);
                         } else {
                           // Оновлюємо фільтр БЕЗ скролу сторінки; навігація потрібна

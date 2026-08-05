@@ -15,10 +15,30 @@ import { useEffect, useRef, useState } from 'react';
  * frame, which reads as the bar "jumping" even though the CSS transition
  * itself is smooth.
  */
+/**
+ * Вікно, протягом якого хук ігнорує зміни scrollY, лише пересинхронізовуючись.
+ *
+ * Потрібно при переході між категоріями: скрол-анкоринг браузера програмно
+ * зсуває scrollY (список підмінюється, висота контенту змінюється), хук читав
+ * це як «користувач крутнув угору» і анімовано повертав пошуковий бар — бар
+ * смикався на КОЖЕН клік по категорії. Виклич suppressStickyCompact() перед
+ * router.push, і програмні зсуви перестануть впливати на стан бара.
+ */
+let suppressUntil = 0;
+export function suppressStickyCompact(ms = 1500) {
+  suppressUntil = Date.now() + ms;
+}
+
+// Стан переживає перемонтування: при переході між категоріями ShopClient
+// монтується заново, і useState(false) різко розгортав бар одним кадром —
+// клац на кожен клік. Модульна змінна безпечна: бар на сторінці один.
+let lastCompact = false;
+
 export function useStickyCompact(threshold = 80, toggleDistance = 24) {
-  const [compact, setCompact] = useState(false);
+  const [compact, setCompactState] = useState(() => lastCompact);
   const lastY = useRef(0);
   const accum = useRef(0);
+  const setCompact = (v: boolean) => { lastCompact = v; setCompactState(v); };
 
   useEffect(() => {
     lastY.current = window.scrollY;
@@ -30,6 +50,13 @@ export function useStickyCompact(threshold = 80, toggleDistance = 24) {
         const y = window.scrollY;
         const delta = y - lastY.current;
         lastY.current = y;
+
+        if (Date.now() < suppressUntil) {
+          // Програмний зсув (навігація/анкоринг): пересинхронізуємось і мовчимо.
+          accum.current = 0;
+          ticking = false;
+          return;
+        }
 
         if (y < threshold) {
           accum.current = 0;
