@@ -116,8 +116,23 @@
 /* ── Main content ── */
 .catalog-main { min-width: 0; }
 .catalog-title-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
-.catalog-title { font-size: 18px; font-weight: 800; color: var(--text-primary); }
-.catalog-count { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+/* Фірмова типографіка, як у шапки категорії магазину (.cat-head h1) — але
+   компактніша: /catalog це робочий інструмент, а не посадкова сторінка */
+.catalog-title {
+  font-size: clamp(20px, 2.2vw, 26px);
+  font-weight: 900;
+  letter-spacing: -0.4px;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+.catalog-count {
+  font-size: 12px; font-weight: 700;
+  color: var(--brand-blue);
+  background: var(--brand-blue-light);
+  border-radius: 20px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
 .catalog-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
 /* Wholesale minimum order badge */

@@ -970,6 +970,28 @@ input, select { font-family: inherit; }
   .article-body table { display: table; white-space: normal; }
 }
 
+/* Порожній результат фільтра/пошуку — магазин і оптовий каталог.
+   Раніше це був сірий текст у порожнечі; фірмова картка з іконкою та кнопкою
+   скидання дає користувачу вихід, а не глухий кут. */
+.brand-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 52px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+.brand-empty svg { color: var(--brand-blue); opacity: 0.45; }
+.brand-empty h3 { font-size: 17px; font-weight: 800; color: var(--text-primary); margin: 12px 0 6px; letter-spacing: -0.2px; }
+.brand-empty p { font-size: 14px; color: var(--text-secondary); margin: 0; line-height: 1.6; }
+.brand-empty button {
+  margin-top: 18px;
+  height: 40px; padding: 0 22px;
+  border: none; border-radius: 10px;
+  background: var(--brand-blue); color: #fff;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+}
+
 /* Шапка категорії — компактна, бо під нею одразу товар. Не hero. */
 .cat-head {
   background: linear-gradient(135deg, var(--brand-blue-light) 0%, transparent 60%);

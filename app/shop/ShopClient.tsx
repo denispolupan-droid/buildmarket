@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { getCategoryNameRu, getCategoryDescriptionRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 import Link from 'next/link';
-import { Plus, Minus, Heart, ChevronDown, Check, SlidersHorizontal, LayoutList, Grid2x2, Rows2, X } from 'lucide-react';
+import { Plus, Minus, Heart, ChevronDown, Check, SlidersHorizontal, LayoutList, Grid2x2, Rows2, X, SearchX } from 'lucide-react';
 import { CATEGORY_ICONS } from '../../lib/category-icons';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import ProductImage from '../components/ProductImage';
@@ -1218,7 +1218,14 @@ export default function ShopClient({ products, categories, reviewStats, initialS
         <SalesBanner mode="shop" activeSlugs={matchingSlugs} />
         <div className={'shop-grid' + (gridCols === 1 ? ' list-view' : '')}>
           {sorted.length === 0 && (
-            <div className="shop-empty">{t('Нічого не знайдено', 'Ничего не найдено')}</div>
+            <div className="brand-empty">
+              <SearchX size={36} strokeWidth={1.5} />
+              <h3>{t('Нічого не знайдено', 'Ничего не найдено')}</h3>
+              <p>{t('Спробуйте змінити фільтри або пошуковий запит', 'Попробуйте изменить фильтры или поисковый запрос')}</p>
+              {activeFilterCount > 0 && (
+                <button onClick={() => { setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]); setFilterPlasticGroup(''); setInStockOnly(false); setSaleOnly(false); setExpandedValues(new Set()); }}>{t('Скинути фільтри', 'Сбросить фильтры')}</button>
+              )}
+            </div>
           )}
           {sorted.slice(0, visibleCount).map(p => {
             const pricePromo = p.stock?.price_promo ?? null;

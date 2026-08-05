@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2, X } from 'lucide-react';
+import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2, X, SearchX } from 'lucide-react';
 import { CATEGORY_ICONS } from '../../lib/category-icons';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import Link from 'next/link';
@@ -959,11 +959,14 @@ export default function CatalogClient({ products, categories, reviewStats, initi
 
             {/* Title row */}
             <div className="catalog-title-row">
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                <h1 className="catalog-title">
-                  {selCat ? (cName(categories.find(c => c.slug === selCat)?.name ?? catalogTitle, selCat)) : catalogTitle}
-                </h1>
-                <p className="catalog-count">{filtered.length} {t('товарів', 'товаров')}</p>
+              <div>
+                {selCat && <span className="eyebrow" style={{ fontSize: '11px' }}>{catalogTitle}</span>}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
+                  <h1 className="catalog-title">
+                    {selCat ? (cName(categories.find(c => c.slug === selCat)?.name ?? catalogTitle, selCat)) : catalogTitle}
+                  </h1>
+                  <span className="catalog-count">{filtered.length} {t('товарів', 'товаров')}</span>
+                </div>
               </div>
               {isWholesale && (
                 <a ref={badgeRef} href={lang === 'ru' ? '/ru/cart' : '/cart'} className={`wholesale-min-badge${cartMet ? ' wholesale-min-met' : ''}`}>
@@ -1100,7 +1103,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
             {/* Grid view */}
             {effectiveViewMode === 'grid' && (
               filtered.length === 0 ? (
-                <div className="product-table-wrap"><div className="empty-state"><h3>{t('Нічого не знайдено', 'Ничего не найдено')}</h3><p>{t('Спробуйте змінити фільтри або пошуковий запит', 'Попробуйте изменить фильтры или поисковый запрос')}</p></div></div>
+                <div className="product-table-wrap"><div className="brand-empty"><SearchX size={36} strokeWidth={1.5} /><h3>{t('Нічого не знайдено', 'Ничего не найдено')}</h3><p>{t('Спробуйте змінити фільтри або пошуковий запит', 'Попробуйте изменить фильтры или поисковый запрос')}</p>{activeFilterCount > 0 && (<button onClick={() => { setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]); setInStockOnly(false); setSaleOnly(false); setExpandedValues(new Set()); }}>{t('Скинути фільтри', 'Сбросить фильтры')}</button>)}</div></div>
               ) : (
                 <>
                   <div className="catalog-grid">
@@ -1225,10 +1228,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
             {/* Table */}
             {effectiveViewMode === 'table' && (filtered.length === 0 ? (
               <div className="product-table-wrap">
-                <div className="empty-state">
-                  <h3>{t('Нічого не знайдено', 'Ничего не найдено')}</h3>
-                  <p>{t('Спробуйте змінити фільтри або пошуковий запит', 'Попробуйте изменить фильтры или поисковый запрос')}</p>
-                </div>
+                <div className="brand-empty"><SearchX size={36} strokeWidth={1.5} /><h3>{t('Нічого не знайдено', 'Ничего не найдено')}</h3><p>{t('Спробуйте змінити фільтри або пошуковий запит', 'Попробуйте изменить фильтры или поисковый запрос')}</p>{activeFilterCount > 0 && (<button onClick={() => { setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]); setInStockOnly(false); setSaleOnly(false); setExpandedValues(new Set()); }}>{t('Скинути фільтри', 'Сбросить фильтры')}</button>)}</div>
               </div>
             ) : (
               <div className="product-table-wrap">
