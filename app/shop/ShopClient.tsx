@@ -13,6 +13,7 @@ import { RatingBadge } from '../components/StarRating';
 import ScrollToTop from '../components/ScrollToTop';
 import { PROMO } from '../promo.config';
 import SalesBanner from '../components/SalesBanner';
+import CategoryAbout from '../components/CategoryAbout';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
@@ -259,21 +260,38 @@ type Props = {
   initialSaleOnly?: boolean;
   initialCategory?: string;
   initialBrand?: string;
-  /** Сторінка /shop/[category] сама рендерить опис і FAQ на сервері — тут не дублюємо. */
-  hideCategoryInfo?: boolean;
 };
 
-export default function ShopClient({ products, categories, reviewStats, initialSaleOnly = false, initialCategory, initialBrand, hideCategoryInfo = false }: Props) {
+export default function ShopClient({ products, categories, reviewStats, initialSaleOnly = false, initialCategory, initialBrand }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const lang = pathname.startsWith('/ru') ? 'ru' as const : 'uk' as const;
   const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
   const catDisplayName = (slug: string, name: string) => lang === 'ru' ? getCategoryNameRu(slug, name) : name;
   const shopBase = lang === 'ru' ? '/ru/shop' : '/shop';
+
   const [isWholesale,   setIsWholesale]   = useState(false);
   const [showWholesaleModal, setShowWholesaleModal] = useState(false);
   const [search,       setSearch]       = useState('');
   const [selCat,       setSelCat]       = useState<string | null>(initialCategory ?? null);
+
+// Дані обраної категорії для фірмового заголовка, хлібних крихт і блоку
+  // «Про категорію». Рахуються з selCat і на сервері при першому рендері
+  // (SSR: заголовок, опис і FAQ потрапляють у HTML — SEO як раніше), і на
+  // клієнті при миттєвому перемиканні.
+  const catInfo = useMemo(() => {
+    if (!selCat) return null;
+    const cat = categories.find(c => c.slug === selCat);
+    if (!cat) return null;
+    const name = lang === 'ru' ? getCategoryNameRu(cat.slug, cat.name) : cat.name;
+    const parentCat = cat.parent_slug ? categories.find(c => c.slug === cat.parent_slug) : null;
+    const parentName = parentCat ? (lang === 'ru' ? getCategoryNameRu(parentCat.slug, parentCat.name) : parentCat.name) : null;
+    const meta = (lang === 'ru' ? getCategoryMetaRu(cat.slug) : getCategoryMeta(cat.slug)) ?? null;
+    const description = lang === 'ru' ? (getCategoryDescriptionRu(cat.slug, name) || null) : (meta?.description ?? null);
+    return { name, parentSlug: cat.parent_slug ?? null, parentName, description, meta };
+  }, [selCat, categories, lang]);
+  // На sale- і бренд-сторінках власний серверний h1 — там наш заголовок стає h2
+  const TitleTag: 'h1' | 'h2' = (initialSaleOnly || initialBrand) ? 'h2' : 'h1';
   const [saleOnly,     setSaleOnly]     = useState(() => readShopSession('saleOnly', initialSaleOnly));
   const [filterValues,       setFilterValues]       = useState<Record<string, string[]>>(() => readShopSession<Record<string, string[]>>('filterValues', initialBrand ? { 'Бренд': [initialBrand] } : {}));
   const [filterVolumes,      setFilterVolumes]      = useState<string[]>(() => readShopSession('filterVolumes', []));
@@ -459,46 +477,15 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   // читалось як смикання. Серверні шапка (CategoryHeader) і «Про категорію»
   // (CategoryAbout) — клієнтські компоненти, підписані на category-view:
   // публікуємо їм свіжі дані, і вони оновлюються тим самим кадром.
-  // При прямому заході все, як і раніше, рендериться сервером — SEO без змін.
-  const publishView = (slug: string | null) => {
-    const path = slug ? `${shopBase}/${slug}` : shopBase;
-    const cat = slug ? categories.find(c => c.slug === slug) : null;
-    // «Всі категорії» (або невідомий слаг): явний 'порожній' стан — компоненти
-    // ховаються, а не відкочуються до застарілих серверних пропсів
-    if (!cat) { publishCategoryView({ targetPath: path, header: null, about: null }); return; }
-    // Повне сімейство: товари прив'язані до листків дерева
-    const fam = new Set<string>([cat.slug]);
-    for (let added = true; added; ) {
-      added = false;
-      for (const c of categories) {
-        if (c.parent_slug && fam.has(c.parent_slug) && !fam.has(c.slug)) { fam.add(c.slug); added = true; }
-      }
-    }
-    const count = products.filter(pr => pr.category_slug && fam.has(pr.category_slug)).length;
-    const parentCat = cat.parent_slug ? categories.find(c => c.slug === cat.parent_slug) : null;
-    const name = lang === 'ru' ? getCategoryNameRu(cat.slug, cat.name) : cat.name;
-    const meta = (lang === 'ru' ? getCategoryMetaRu(cat.slug) : getCategoryMeta(cat.slug)) ?? null;
-    const description = lang === 'ru' ? (getCategoryDescriptionRu(cat.slug, name) || null) : (meta?.description ?? null);
-    publishCategoryView({
-      targetPath: path,
-      header: {
-        lang, name, count, description,
-        parent: parentCat
-          ? { slug: parentCat.slug, name: lang === 'ru' ? getCategoryNameRu(parentCat.slug, parentCat.name) : parentCat.name }
-          : null,
-      },
-      about: meta ? { lang, name, meta } : null,
-    });
-  };
-  // Свіжа версія для popstate-обробника, що живе в ефекті з порожніми залежностями
-  const publishViewRef = useRef(publishView);
-  publishViewRef.current = publishView;
-
   const applyCategory = (slug: string | null) => {
+    const path = slug ? `${shopBase}/${slug}` : shopBase;
     // Підміна списку зсуне висоту документа — хай sticky-бар це ігнорує
     suppressStickyCompact();
-    window.history.pushState(null, '', slug ? `${shopBase}/${slug}` : shopBase);
-    publishView(slug);
+    window.history.pushState(null, '', path);
+    // Заголовок/опис/FAQ рендеряться зсередини компонента від selCat, тож стору
+    // лишається одна робота: позначити «було клієнтське перемикання», щоб
+    // HideOnCategorySwitch сховав серверний список посилань старої категорії.
+    publishCategoryView({ targetPath: path, header: null, about: null });
   };
 
   // «Назад»/«вперед» по наших pushState-записах: роутер Next про них не знає і
@@ -519,7 +506,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
       suppressStickyCompact();
       setSelCat(slug);
       setVisibleCount(24);
-      publishViewRef.current(slug);
+      publishCategoryView({ targetPath: window.location.pathname, header: null, about: null });
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
@@ -822,6 +809,24 @@ export default function ShopClient({ products, categories, reviewStats, initialS
 
   return (
     <>
+    {!initialSaleOnly && !initialBrand && (
+      <nav aria-label="Breadcrumb" className="shop-crumbs">
+        <Link href={lang === 'ru' ? '/ru' : '/'}>{t('Головна', 'Главная')}</Link>
+        <span>/</span>
+        {catInfo ? (
+          <>
+            <Link href={shopBase}>{t('Магазин', 'Магазин')}</Link>
+            {catInfo.parentSlug && (
+              <><span>/</span><Link href={`${shopBase}/${catInfo.parentSlug}`}>{catInfo.parentName}</Link></>
+            )}
+            <span>/</span>
+            <span className="cur">{catInfo.name}</span>
+          </>
+        ) : (
+          <span className="cur">{t('Магазин', 'Магазин')}</span>
+        )}
+      </nav>
+    )}
     <div className="shop-layout">
       {/* Sidebar */}
       <aside className={`shop-sidebar${mobilePanel ? ' mobile-open' : ''}${mobilePanel === 'cats' ? ' mobile-cats' : ''}${mobilePanel === 'filters' ? ' mobile-filters' : ''}`} ref={sidebarRef}>
@@ -1109,10 +1114,20 @@ export default function ShopClient({ products, categories, reviewStats, initialS
       {/* Main */}
       <div style={{ minWidth: 0 }}>
         <div className="shop-topbar">
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-            <div className="shop-title">{saleOnly ? t('Акційні товари', 'Акционные товары') : t('Магазин', 'Магазин')}</div>
-            <span className="shop-count">{filtered.length} {t('товарів', 'товаров')}</span>
+          <div className="shop-title-wrap">
+            {catInfo && (
+              <span className="eyebrow" style={{ fontSize: '11px' }}>
+                {catInfo.parentName ?? t('Категорія', 'Категория')}
+              </span>
+            )}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
+              <TitleTag className="shop-title">
+                {catInfo ? catInfo.name : saleOnly ? t('Акційні товари', 'Акционные товары') : t('Будівельна хімія', 'Строительная химия')}
+              </TitleTag>
+              <span className="shop-count">{filtered.length} {t('товарів', 'товаров')}</span>
+            </div>
           </div>
+          {catInfo?.description && <p className="shop-title-desc">{catInfo.description}</p>}
           <div className="shop-topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div className="shop-view-toggle">
               <button
@@ -1296,47 +1311,11 @@ export default function ShopClient({ products, categories, reviewStats, initialS
 
     {/* Category description + FAQ — shown only when category selected via sidebar filter,
         NOT when already on a dedicated /shop/[category] page (it renders this server-side) */}
-    {(() => {
-      // hideCategoryInfo: на /shop/[category] цей блок рендериться на сервері
-      // (CategoryAbout) — інакше опис і FAQ показувались двічі поспіль.
-      if (hideCategoryInfo) return null;
-      const meta = selCat ? getCategoryMeta(selCat) : null;
-      const catName = selCat ? categories.find(c => c.slug === selCat)?.name : null;
-      if (!meta || !catName) return null;
-      return (
-        <div style={{ padding: '0 0 32px' }}>
-          <div style={{ padding: '16px 20px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '8px' }}>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', margin: 0 }}>
-                {t('Про категорію', 'О категории')} «{catName}»
-              </p>
-              {meta.blogSlug && (
-                <Link href={lang === 'ru' ? `/ru/blog/${meta.blogSlug}` : `/blog/${meta.blogSlug}`} style={{ fontSize: '12px', color: '#4880B8', fontWeight: 600, whiteSpace: 'nowrap', textDecoration: 'none' }}>
-                  {t('Читати статтю →', 'Читать статью →')}
-                </Link>
-              )}
-            </div>
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>{meta.description}</p>
-            {meta.seoText && (
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7, margin: '8px 0 0' }}>{meta.seoText}</p>
-            )}
-            {meta.faq && meta.faq.length > 0 && (
-              <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
-                <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {t('Часті запитання', 'Частые вопросы')}
-                </p>
-                {meta.faq.map((item, i) => (
-                  <div key={i} style={{ marginBottom: i < meta.faq!.length - 1 ? '12px' : 0 }}>
-                    <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px' }}>{item.q}</p>
-                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{item.a}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    })()}
+    {catInfo?.meta && (
+      <div style={{ padding: '0 0 32px' }}>
+        <CategoryAbout lang={lang} name={catInfo.name} meta={catInfo.meta} />
+      </div>
+    )}
 
     <ScrollToTop />
 

@@ -4,8 +4,6 @@ import Footer from '../../components/Footer';
 import ShopLoader from '../ShopLoader';
 import AllProductsLinks from '../AllProductsLinks';
 import HideOnCategorySwitch from '../../components/HideOnCategorySwitch';
-import CategoryHeader from '../../components/CategoryHeader';
-import CategoryAbout from '../../components/CategoryAbout';
 import { getCategoriesCached, getProductsCached } from '../../../lib/supabase';
 import { getCategoryMeta } from '../../../lib/category-descriptions';
 import { categoryMeta, listingStats, productDisplayName, retailPrice, categoryFamilySlugs, duplicateOfParent, categoriesWithProducts } from '../../../lib/seo/meta';
@@ -121,17 +119,9 @@ export default async function ShopCategoryPage({ params }: { params: Promise<{ c
       {itemListLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd).replace(/</g, '\\u003c') }} />}
       {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd).replace(/</g, '\\u003c') }} />}
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
-        <CategoryHeader
-          lang="uk"
-          name={cat.name}
-          parent={parentCat ? { name: parentCat.name, slug: parentCat.slug } : null}
-          description={meta?.description ?? null}
-          count={allCategoryProducts.length}
-        />
-        <div style={{ margin: '0 auto', padding: '16px 16px 64px' }} className="mobile-pad">
-          <ShopLoader initialCategory={category} hideCategoryInfo />
+        <div style={{ margin: '0 auto', padding: '12px 16px 64px' }} className="mobile-pad">
+          <ShopLoader initialCategory={category} />
           <HideOnCategorySwitch><AllProductsLinks products={allCategoryProducts} lang="uk" /></HideOnCategorySwitch>
-          {meta && <CategoryAbout lang="uk" name={cat.name} meta={meta} />}
         </div>
       </div>
       <Footer />

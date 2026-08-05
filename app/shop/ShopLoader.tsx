@@ -5,12 +5,10 @@ type Props = {
   initialSaleOnly?: boolean;
   initialCategory?: string;
   initialBrand?: string;
-  /** Сторінка категорії рендерить опис і FAQ сама — прапорець гасить дубль у листингу. */
-  hideCategoryInfo?: boolean;
 };
 
 // Server Component — дані отримуються на сервері, без client-side waterfall
-export default async function ShopLoader({ initialSaleOnly, initialCategory, initialBrand, hideCategoryInfo }: Props) {
+export default async function ShopLoader({ initialSaleOnly, initialCategory, initialBrand }: Props) {
   const [products, categories, reviewStats] = await Promise.all([
     getProductsCached(),
     getCategoriesCached(),
@@ -25,7 +23,6 @@ export default async function ShopLoader({ initialSaleOnly, initialCategory, ini
       initialSaleOnly={initialSaleOnly}
       initialCategory={initialCategory}
       initialBrand={initialBrand}
-      hideCategoryInfo={hideCategoryInfo}
     />
   );
 }

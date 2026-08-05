@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import Reveal from './Reveal';
-import { useCategoryView } from '../../lib/category-view';
 import type { CategoryMeta } from '../../lib/category-descriptions';
 
 // Текстовий блок під листингом: опис категорії, розгорнутий SEO-текст і FAQ.
@@ -17,9 +16,8 @@ import type { CategoryMeta } from '../../lib/category-descriptions';
 
 type Props = {
   lang: 'uk' | 'ru';
-  /** Порожньо на /shop: блок з'явиться, щойно оберуть категорію в сайдбарі */
-  name?: string;
-  meta?: CategoryMeta;
+  name: string;
+  meta: CategoryMeta;
 };
 
 const T = {
@@ -27,15 +25,10 @@ const T = {
   ru: { eyebrow: 'О категории',   faq: 'Частые вопросы', read: 'Читать статью' },
 };
 
-// Клієнтський компонент із серверним первинним рендером — як CategoryHeader:
-// прямий захід бере пропси (текст у HTML), клієнтське перемикання категорії
-// підхоплює живі дані з category-view.
-export default function CategoryAbout(props: Props) {
-  // Опубліковане для поточної адреси — авторитетне, навіть якщо about: null
-  const view = useCategoryView();
-  const data = view ? view.about : (props.meta ? props : null);
-  if (!data || !data.meta || !data.name) return null;
-  const { lang, name, meta } = data as { lang: 'uk' | 'ru'; name: string; meta: CategoryMeta };
+// Клієнтський компонент із серверним первинним рендером: рендериться зсередини
+// ShopClient/CatalogClient від поточної категорії, тож при прямому заході текст
+// потрапляє в HTML, а при клієнтському перемиканні оновлюється тим самим кадром.
+export default function CategoryAbout({ lang, name, meta }: Props) {
   const t = T[lang];
   const prefix = lang === 'ru' ? '/ru' : '';
   const faq = meta.faq ?? [];

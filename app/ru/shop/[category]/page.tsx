@@ -4,8 +4,6 @@ import Footer from '../../../components/Footer';
 import ShopLoader from '../../../shop/ShopLoader';
 import AllProductsLinks from '../../../shop/AllProductsLinks';
 import HideOnCategorySwitch from '../../../components/HideOnCategorySwitch';
-import CategoryHeader from '../../../components/CategoryHeader';
-import CategoryAbout from '../../../components/CategoryAbout';
 import { getCategoriesCached, getProductsCached } from '../../../../lib/supabase';
 import { getCategoryNameRu, getCategoryDescriptionRu } from '../../../../lib/ru';
 import { getCategoryMetaRu } from '../../../../lib/category-descriptions-ru';
@@ -113,17 +111,9 @@ export default async function RuShopCategoryPage({ params }: { params: Promise<{
       {itemListLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd).replace(/</g, '\\u003c') }} />}
       {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd).replace(/</g, '\\u003c') }} />}
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
-        <CategoryHeader
-          lang="ru"
-          name={nameRu}
-          parent={parentCat ? { name: parentNameRu ?? parentCat.name, slug: parentCat.slug } : null}
-          description={meta?.description ?? null}
-          count={allCategoryProducts.length}
-        />
-        <div style={{ margin: '0 auto', padding: '16px 16px 64px' }} className="mobile-pad">
-          <ShopLoader initialCategory={category} hideCategoryInfo />
+        <div style={{ margin: '0 auto', padding: '12px 16px 64px' }} className="mobile-pad">
+          <ShopLoader initialCategory={category} />
           <HideOnCategorySwitch><AllProductsLinks products={allCategoryProducts} lang="ru" /></HideOnCategorySwitch>
-          {meta && <CategoryAbout lang="ru" name={nameRu} meta={meta} />}
         </div>
         <Footer />
       </div>

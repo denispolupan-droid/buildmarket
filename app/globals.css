@@ -992,26 +992,13 @@ input, select { font-family: inherit; }
   font-size: 14px; font-weight: 700; cursor: pointer;
 }
 
-/* Шапка категорії — компактна, бо під нею одразу товар. Не hero. */
-.cat-head {
-  background: linear-gradient(135deg, var(--brand-blue-light) 0%, transparent 60%);
-  border-bottom: 1px solid var(--border);
-  padding: 18px 0 20px;
-}
-.cat-head h1 {
-  font-size: clamp(20px, 2.4vw, 28px); font-weight: 900;
-  letter-spacing: -0.4px; line-height: 1.2; color: var(--text-primary);
-  margin: 8px 0 0;
-}
 
-/* Дві колонки шапки й блоку «Про категорію» складаються на вузьких екранах.
-   1000px, а не 768: при двох колонках опис стискається до нечитабельного
+
+/* Дві колонки блоку «Про категорію» складаються на вузьких екранах.
+   1000px, а не 768: при двох колонках текст стискається до нечитабельного
    раніше, ніж спрацював би планшетний брейкпойнт. */
 @media (max-width: 1000px) {
-  .cat-head-grid, .cat-about-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
-}
-@media (max-width: 1000px) {
-  .cat-about-grid { gap: 28px !important; }
+  .cat-about-grid { grid-template-columns: 1fr !important; gap: 28px !important; }
 }
 
 /* ── Wishlist card ── */

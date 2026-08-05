@@ -9,6 +9,7 @@ import Link from 'next/link';
 import ProductImage from '../components/ProductImage';
 import { RatingBadge } from '../components/StarRating';
 import ScrollToTop from '../components/ScrollToTop';
+import CategoryAbout from '../components/CategoryAbout';
 import { PROMO } from '../promo.config';
 import SalesBanner from '../components/SalesBanner';
 import type { ProductB2B, Category, ReviewStats } from '../../lib/supabase';
@@ -157,7 +158,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
 
   const selectCat = (slug: string) => {
     setSelCat(slug);
-    router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
+    window.history.replaceState(null, '', slug ? `?category=${slug}` : '?');
     setVisibleCount(50);
     setMobilePanel(null);
     // Після кадру з новим станом: сторінку — до товарів, пункт — на рівень очей
@@ -703,7 +704,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                             setExpandedCats(prev => { const next = new Set(prev); next.has(cat.slug) ? next.delete(cat.slug) : next.add(cat.slug); return next; });
                             if (expanding) {
                               setSelCat(cat.slug);
-                              router.replace(`?category=${cat.slug}`, { scroll: false } as never);
+                              window.history.replaceState(null, '', `?category=${cat.slug}`);
                               setVisibleCount(50);
                               setTimeout(() => { scrollPageToProducts(); pullCatToEye(cat.slug); }, 150);
                             }
@@ -1014,7 +1015,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
               <div className="catalog-cats-pills" ref={pillsRef}>
                 <button
                   className={'catalog-cat-pill' + (!selCat ? ' active' : '')}
-                  onClick={() => { setSelCat(''); router.replace('?', { scroll: false } as never); setVisibleCount(50); }}
+                  onClick={() => { setSelCat(''); window.history.replaceState(null, '', '?'); setVisibleCount(50); }}
                 >
                   {t('Всі категорії', 'Все категории')}
                 </button>
@@ -1027,7 +1028,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                       onClick={() => {
                         const next = isActive ? '' : cat.slug;
                         setSelCat(next);
-                        router.replace(next ? `?category=${next}` : '?', { scroll: false } as never);
+                        window.history.replaceState(null, '', next ? `?category=${next}` : '?');
                         setExpandedCats(new Set(next ? [next] : []));
                         setVisibleCount(50);
                         if (next) setTimeout(() => { scrollPageToProducts(); pullCatToEye(next); }, 120);
@@ -1357,35 +1358,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
         if (!meta || !catNameStr) return null;
         return (
           <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 20px 32px' }}>
-            <div style={{ padding: '16px 20px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '8px' }}>
-                <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', margin: 0 }}>
-                  {t('Про категорію', 'О категории')} «{catNameStr}»
-                </p>
-                {meta.blogSlug && (
-                  <Link href={lang === 'ru' ? `/ru/blog/${meta.blogSlug}` : `/blog/${meta.blogSlug}`} style={{ fontSize: '12px', color: '#4880B8', fontWeight: 600, whiteSpace: 'nowrap', textDecoration: 'none' }}>
-                    {t('Читати статтю →', 'Читать статью →')}
-                  </Link>
-                )}
-              </div>
-              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>{meta.description}</p>
-              {meta.seoText && (
-                <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7, margin: '8px 0 0' }}>{meta.seoText}</p>
-              )}
-              {meta.faq && meta.faq.length > 0 && (
-                <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
-                  <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    {t('Часті запитання', 'Часто задаваемые вопросы')}
-                  </p>
-                  {meta.faq.map((item, i) => (
-                    <div key={i} style={{ marginBottom: i < meta.faq!.length - 1 ? '12px' : 0 }}>
-                      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px' }}>{item.q}</p>
-                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{item.a}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <CategoryAbout lang={lang} name={catNameStr} meta={meta} />
           </div>
         );
       })()}

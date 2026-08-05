@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
 import ShopLoader from '../../shop/ShopLoader';
-import CategoryHeader from '../../components/CategoryHeader';
 import CategoryAbout from '../../components/CategoryAbout';
 import '../../shop/shop.css';
 
@@ -50,20 +49,10 @@ export default function RuShopPage() {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd).replace(/</g, '\\u003c') }} />
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
-        {/* Порожня шапка: з'явиться, щойно в сайдбарі оберуть категорію — див.
-            коментар в українській версії сторінки */}
-        <CategoryHeader lang="ru" />
+        {/* Заголовок, хлібні крихти і блок «Про категорію» рендерить сам
+            ShopClient від обраної категорії — і на сервері, і при перемиканні */}
         <div style={{ margin: '0 auto', padding: '12px 16px 64px' }} className="mobile-pad">
-          <nav aria-label="Breadcrumb" style={{ marginBottom: '6px', fontSize: '12px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Link href="/ru" style={{ color: '#94A3B8', textDecoration: 'none' }}>Главная</Link>
-            <span>/</span>
-            <span style={{ color: '#475569' }}>Магазин</span>
-          </nav>
-          <h1 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 10px' }}>
-            Строительная химия
-          </h1>
-          <ShopLoader hideCategoryInfo />
-          <CategoryAbout lang="ru" />
+          <ShopLoader />
         </div>
         <Footer />
       </div>
