@@ -16,6 +16,7 @@ import CoverageCalculator from './CoverageCalculator';
 import CalculatorLink from './CalculatorLink';
 import DeliveryInfo from './DeliveryInfo';
 import ProductFaq from './ProductFaq';
+import { CATEGORY_COLORS } from '../../../lib/category-icons';
 import ArticleLink from './ArticleLink';
 import { Tag, BadgeCheck, Box, Truck } from 'lucide-react';
 import Footer from '../../components/Footer';
@@ -204,13 +205,16 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     })),
   } : null;
 
+  // Колір товарної родини — успадковується всіма фірмовими блоками сторінки
+  const accent = product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined;
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd).replace(/</g, '\\u003c') }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
       {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd).replace(/</g, '\\u003c') }} />}
       <BackButton breadcrumbId="product-breadcrumb" />
-      <div style={{ background: 'var(--bg-page)', minHeight: '100vh' }}>
+      <div style={{ background: 'var(--bg-page)', minHeight: '100vh', ...(accent ? ({ '--cat-accent': accent } as React.CSSProperties) : {}) }}>
       <div className="page-container" style={{paddingTop: '8px', paddingBottom: '48px'}}>
 
         <div className="breadcrumb" id="product-breadcrumb">
@@ -329,17 +333,17 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
           characteristics={product.characteristics}
         />
 
-        <ProductFaq faq={faq} lang="uk" />
+        <ProductFaq faq={faq} lang="uk" accent={product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined} />
 
-        <DeliveryInfo lang="uk" />
+        <DeliveryInfo lang="uk" accent={product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined} />
 
         {/* Стаття по темі */}
         {(() => { const blogSlug = product.category_slug ? getCategoryMeta(product.category_slug)?.blogSlug : null; return blogSlug ? (
-          <ArticleLink blogSlug={blogSlug} lang="uk" />
+          <ArticleLink blogSlug={blogSlug} lang="uk" accent={product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined} />
         ) : null; })()}
 
         {/* Схожі товари */}
-        {related.length > 0 && <RelatedCarousel products={related.map(p => publicProduct(p, !isRetail))} retail={isRetail} reviewStats={reviewStats} />}
+        {related.length > 0 && <RelatedCarousel products={related.map(p => publicProduct(p, !isRetail))} retail={isRetail} reviewStats={reviewStats} accent={product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined} />}
 
         {/* Відгуки */}
         <div id="reviews" style={{ borderTop: '1px solid var(--border)', paddingTop: '32px', marginTop: '32px' }}>
