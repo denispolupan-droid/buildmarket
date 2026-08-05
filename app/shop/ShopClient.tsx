@@ -7,6 +7,7 @@ import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 import Link from 'next/link';
 import { Plus, Minus, Heart, ChevronDown, Check, SlidersHorizontal, LayoutList, Grid2x2, Rows2, X, SearchX } from 'lucide-react';
 import { CATEGORY_ICONS } from '../../lib/category-icons';
+import CategoryIconBackdrop from '../components/CategoryIconBackdrop';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import ProductImage from '../components/ProductImage';
 import { RatingBadge } from '../components/StarRating';
@@ -1114,6 +1115,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
       {/* Main */}
       <div style={{ minWidth: 0 }}>
         <div className="shop-topbar">
+          <CategoryIconBackdrop slug={selCat} />
           <div className="shop-title-wrap">
             {catInfo && (
               <span className="eyebrow" style={{ fontSize: '11px' }}>

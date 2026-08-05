@@ -510,6 +510,8 @@ body:has(.shop-layout) { overflow-anchor: none; }
 /* Легкий фірмовий градієнт — відлуння колишньої смуги категорії, без крику:
    м'яко тане вправо; у темній темі --brand-blue-light напівпрозорий сам */
 .shop-topbar {
+  position: relative; /* якір для .cat-icon-backdrop */
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -519,6 +521,8 @@ body:has(.shop-layout) { overflow-anchor: none; }
   border-radius: 14px;
   background: linear-gradient(120deg, var(--brand-blue-light) 0%, transparent 55%);
 }
+/* Контент смуги — над декоративними іконками */
+.shop-topbar > :not(.cat-icon-backdrop) { position: relative; z-index: 1; }
 /* Фірмовий заголовок списку — розміщення як в оптовому каталозі: назва
    категорії живе в колонці товарів, без окремої повноширинної смуги зверху */
 .shop-title {

@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation';
 import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2, X, SearchX } from 'lucide-react';
 import { CATEGORY_ICONS } from '../../lib/category-icons';
+import CategoryIconBackdrop from '../components/CategoryIconBackdrop';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import Link from 'next/link';
 import ProductImage from '../components/ProductImage';
@@ -915,6 +916,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
 
             {/* Title row */}
             <div className="catalog-title-row">
+              <CategoryIconBackdrop slug={selCat} />
               <div>
                 {selCat && <span className="eyebrow" style={{ fontSize: '11px' }}>{catalogTitle}</span>}
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>

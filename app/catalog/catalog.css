@@ -120,12 +120,16 @@ body:has(.catalog-page) { background: var(--bg-soft); }
 .catalog-main { min-width: 0; }
 /* Той самий легкий градієнт, що в магазині (.shop-topbar) */
 .catalog-title-row {
+  position: relative; /* якір для .cat-icon-backdrop */
+  overflow: hidden;
   display: flex; align-items: center; justify-content: space-between;
   gap: 16px; margin-bottom: 10px;
   padding: 10px 14px;
   border-radius: 14px;
   background: linear-gradient(120deg, var(--brand-blue-light) 0%, transparent 55%);
 }
+/* Контент смуги — над декоративними іконками */
+.catalog-title-row > :not(.cat-icon-backdrop) { position: relative; z-index: 1; }
 /* Фірмова типографіка, як у шапки категорії магазину (.cat-head h1) — але
    компактніша: /catalog це робочий інструмент, а не посадкова сторінка */
 .catalog-title {
