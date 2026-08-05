@@ -46,6 +46,8 @@ function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 550) {
 // Нижче цієї частки висоти сайдбара натиснутий пункт вважається «низько»
 // і його підтягують угору; EYE_LINE — куди саме підтягують.
 const EYE_LINE     = 0.45;
+// Вище цієї лінії пункт вважається «комфортно видимим» і сайдбар не рухаємо
+const COMFORT_LINE = 0.55;
 
 
 
@@ -401,12 +403,20 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   // Використовується і при монтуванні (прямий захід на сторінку категорії),
   // і при кліку в сайдбарі — клік більше не робить навігацію, тож анімацію
   // ніщо не обриває і не перемонтовує.
+  //
+  // ВАЖЛИВО: тягнемо лише коли пункт справді низько (нижче COMFORT_LINE) або
+  // обрізаний краєм сайдбара. Без цієї умови КОЖЕН клік перецентровував список
+  // на рівень очей: клік по верхньому пункту тягнув сайдбар униз, по нижньому —
+  // назад угору, і список «їздив туди-сюди» на кожне натискання.
   const pullCatToEye = useCallback((slug: string) => {
     const catEl = catRefs.current[slug];
     const sidebar = sidebarRef.current;
     if (!catEl || !sidebar) return;
     const containerRect = sidebar.getBoundingClientRect();
-    const offset = catEl.getBoundingClientRect().top - containerRect.top;
+    const itemRect = catEl.getBoundingClientRect();
+    const offset = itemRect.top - containerRect.top;
+    const fullyVisible = offset >= 0 && offset + itemRect.height <= containerRect.height;
+    if (fullyVisible && offset <= containerRect.height * COMFORT_LINE) return;
     const target = Math.max(0, sidebar.scrollTop + offset - containerRect.height * EYE_LINE);
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       sidebar.scrollTop = target;
