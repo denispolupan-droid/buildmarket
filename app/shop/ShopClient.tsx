@@ -24,27 +24,11 @@ import { useStickyCompact } from '../../lib/useStickyCompact';
 // this gives the category auto-lift its own slower, eased animation instead. Ease-out
 // (fast start, gentle settle) reads as "pulling" the category up, rather than the
 // uniform, scroll-like motion an ease-in-out curve produces.
-function easeOutQuad(t: number) {
-  return 1 - (1 - t) * (1 - t);
-}
 
 // Нижче цієї частки висоти сайдбара натиснутий пункт вважається «низько»
 // і його підтягують угору; EYE_LINE — куди саме підтягують.
-const COMFORT_LINE = 0.5;
 const EYE_LINE     = 0.45;
 
-function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 620) {
-  const startTop = el.scrollTop;
-  const distance = targetTop - startTop;
-  if (distance === 0) return;
-  const startTime = performance.now();
-  const step = (now: number) => {
-    const progress = Math.min((now - startTime) / duration, 1);
-    el.scrollTop = startTop + distance * easeOutQuad(progress);
-    if (progress < 1) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
-}
 
 // Пункти дерева категорій — справжні <Link>, а не <button>: інакше 68 підкатегорій
 // не мають жодного внутрішнього посилання і Google їх фактично не бачить (аудит 31.07,
@@ -385,8 +369,26 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     });
   }, []);
 
+  // Ставимо обраний пункт на «рівень очей» ОДИН раз — при монтуванні, тобто вже
+  // після того, як прийшла нова сторінка. Без анімації: сайдбар після навігації
+  // починає з нуля, і плавний під'їзд читався б як окремий рух після зміни контенту.
+  //
+  // Раніше підстроювання жило ще й у обробниках кліку. Після переходу на навігацію
+  // воно стало марним і шкідливим: сайдбар пів секунди плавно їхав до потрібного
+  // місця, а потім навігація перемонтовувала його і скидала в нуль — звідси
+  // «передьоргування». Заміри: t=321..537 плавний рух до 520, t=583 — знову 0.
   useEffect(() => {
-    if (initialCategory) setTimeout(() => scrollCatToTop(initialCategory), 150);
+    if (!initialCategory) return;
+    const t = setTimeout(() => {
+      const catEl = catRefs.current[initialCategory];
+      const sidebar = sidebarRef.current;
+      if (!catEl || !sidebar) return;
+      const containerRect = sidebar.getBoundingClientRect();
+      const offset = catEl.getBoundingClientRect().top - containerRect.top;
+      const target = sidebar.scrollTop + offset - containerRect.height * EYE_LINE;
+      sidebar.scrollTop = Math.max(0, target);
+    }, 60);
+    return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -398,29 +400,8 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   // категорія перемикалася миттєво, без навігації, і рух угору зливався зі зміною
   // списку в один кадр. З навігацією він відірвався від контенту й почав заважати.
   //
-  // Сайдбара це не стосується: його позицією керує scrollCatToTop, і лише коли
-  // обраний пункт справді поза полем зору.
+  // Сайдбара це не стосується: його позицію ставить ефект монтування вище.
 
-  const scrollCatToTop = useCallback((slug: string) => {
-    const catEl = catRefs.current[slug];
-    const sidebar = sidebarRef.current;
-    if (!catEl || !sidebar) return;
-    const offset = catEl.getBoundingClientRect().top - sidebar.getBoundingClientRect().top;
-    smoothScrollTo(sidebar, Math.max(0, sidebar.scrollTop + offset - 16), 620);
-  }, []);
-
-  // Підняти натиснутий пункт на «рівень очей» — трохи вище середини сайдбара.
-  // Не до самого верху: над пунктом має лишатися видимим його оточення, інакше
-  // губиться відчуття, де ти в дереві.
-  const scrollCatIntoComfort = useCallback((slug: string) => {
-    const catEl = catRefs.current[slug];
-    const sidebar = sidebarRef.current;
-    if (!catEl || !sidebar) return;
-    const containerRect = sidebar.getBoundingClientRect();
-    const offset = catEl.getBoundingClientRect().top - containerRect.top;
-    const target = sidebar.scrollTop + offset - containerRect.height * EYE_LINE;
-    smoothScrollTo(sidebar, Math.max(0, target), 620);
-  }, []);
 
   // Перехід між категоріями — справжня навігація, інакше серверна шапка лишається
   // від попередньої категорії (див. коментар у selectCat).
@@ -433,7 +414,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     router.push(url, { scroll: false });
   };
 
-  const selectCat = (slug: string | null, scrollSlug?: string) => {
+  const selectCat = (slug: string | null) => {
     // На brand-сторінці заголовок рендериться сервером — потрібна повна навігація
     if (initialBrand) {
       router.push(slug ? `${shopBase}/${slug}` : shopBase);
@@ -447,53 +428,10 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]); setFilterPlasticGroup(''); setExpandedValues(new Set());
     setVisibleCount(24);
     setMobilePanel(null);
-    const target = scrollSlug ?? slug;
-    if (!target) return;
-    // scrollSlug is only passed for child/grandchild clicks. Those only need the lift when
-    // the clicked branch — root category through its last visible child (or grandchild, if
-    // that last child is itself expanded) — isn't entirely visible in the sidebar. Top-level
-    // clicks (no scrollSlug) always scroll.
-    if (scrollSlug) {
-      const container = sidebarRef.current;
-      const topEl = catRefs.current[scrollSlug];
-      let lastSlug = scrollSlug;
-      const rootChildren = categories.filter(c => c.parent_slug === scrollSlug);
-      if (rootChildren.length) {
-        const lastChild = rootChildren[rootChildren.length - 1];
-        lastSlug = lastChild.slug;
-        if (expandedCats.has(lastChild.slug)) {
-          const grandchildren = categories.filter(c => c.parent_slug === lastChild.slug);
-          if (grandchildren.length) lastSlug = grandchildren[grandchildren.length - 1].slug;
-        }
-      }
-      const bottomEl = catRefs.current[lastSlug];
-      const clickedEl = catRefs.current[slug ?? ''];
-      if (container && topEl && bottomEl) {
-        const containerRect = container.getBoundingClientRect();
-        const topRect = topEl.getBoundingClientRect();
-        const bottomRect = bottomEl.getBoundingClientRect();
-        const fullyVisible = topRect.top >= containerRect.top && bottomRect.bottom <= containerRect.bottom;
-        // Even a fully-visible short branch (1-2 children) still gets lifted if it sits
-        // in the lower half of the sidebar — comfortably "visible" isn't the same as
-        // comfortably reachable.
-        const belowMidpoint = topRect.top > containerRect.top + containerRect.height * 0.4;
-        // …але «гілка вміщається» саме по собі ще нічого не означає для довгої гілки:
-        // корінь може стояти у верхніх 40%, а натиснутий пункт — біля нижнього краю.
-        // Раніше тут дивились ЛИШЕ на корінь, тож у «Фарбах» (11 підкатегорій) підйом
-        // мовчав, а обраний пункт лишався внизу. Тепер додатково міряємо сам пункт.
-        const clickedLow = clickedEl
-          ? clickedEl.getBoundingClientRect().top > containerRect.top + containerRect.height * COMFORT_LINE
-          : false;
-        if (fullyVisible && !belowMidpoint && !clickedLow) return;
-        // Пункт унизу — піднімаємо його, а не корінь: інакше довга гілка знову
-        // покладе його на те саме місце.
-        if (clickedLow) {
-          setTimeout(() => scrollCatIntoComfort(slug!), 120);
-          return;
-        }
-      }
-    }
-    setTimeout(() => scrollCatToTop(target), 120);
+    // Підстроювання сайдбара звідси прибрано: кожен клік тепер робить навігацію,
+    // яка перемонтовує сайдбар і скидає прокрутку в нуль. Усе, що ми тут порахували
+    // б, гарантовано затирається за пів секунди. Позицію ставить ефект монтування
+    // вище — один раз і вже після приходу нової сторінки.
   };
   const { skus: wishSkus, toggle: toggleWish } = useWishlist();
 
@@ -832,7 +770,6 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                           gotoCategory(`${shopBase}/${cat.slug}`);
                           setVisibleCount(24);
                           // Тільки сайдбар — після анімації
-                          setTimeout(() => scrollCatToTop(cat.slug), 450);
                         }
                       }
                     } else {
@@ -862,7 +799,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                         onClick={e => {
                           if (isModifiedClick(e)) return;
                           e.preventDefault();
-                          selectCat(selCat === child.slug ? null : child.slug, cat.slug);
+                          selectCat(selCat === child.slug ? null : child.slug);
                           if (grandchildren.length > 0) setExpandedCats(prev => { const n = new Set(prev); n.has(child.slug) ? n.delete(child.slug) : n.add(child.slug); return n; });
                         }}
                       >
@@ -880,7 +817,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                             onClick={e => {
                               if (isModifiedClick(e)) return;
                               e.preventDefault();
-                              selectCat(selCat === gc.slug ? null : gc.slug, cat.slug);
+                              selectCat(selCat === gc.slug ? null : gc.slug);
                             }}
                           >
                             <span className="shop-cat-item-label">{catDisplayName(gc.slug, gc.name)}</span>
@@ -1161,7 +1098,6 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                     // Only update sidebar state in-place; navigating pages handle it via useState init
                     if (!willNavigate) {
                       setExpandedCats(new Set([cat.slug]));
-                      setTimeout(() => scrollCatToTop(cat.slug), 500);
                     }
                   }
                 }}
