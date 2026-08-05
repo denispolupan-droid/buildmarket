@@ -19,7 +19,6 @@ import CoverageCalculator from '../../../product/[id]/CoverageCalculator';
 import CalculatorLink from '../../../product/[id]/CalculatorLink';
 import DeliveryInfo from '../../../product/[id]/DeliveryInfo';
 import ProductFaq, { faqText } from '../../../product/[id]/ProductFaq';
-import { CATEGORY_COLORS } from '../../../../lib/category-icons';
 import ArticleLink from '../../../product/[id]/ArticleLink';
 import { Tag, BadgeCheck, Box, Truck } from 'lucide-react';
 import Footer from '../../../components/Footer';
@@ -211,7 +210,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
       {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd).replace(/</g, '\\u003c') }} />}
       <BackButton breadcrumbId="product-breadcrumb" />
-      <div style={{ background: 'var(--bg-page)', minHeight: '100vh', ...(product.category_slug && CATEGORY_COLORS[product.category_slug] ? ({ '--cat-accent': CATEGORY_COLORS[product.category_slug] } as React.CSSProperties) : {}) }}>
+      <div style={{ background: 'var(--bg-page)', minHeight: '100vh' }}>
       <div className="page-container" style={{paddingTop: '8px', paddingBottom: '48px'}}>
 
         <div className="breadcrumb" id="product-breadcrumb">
@@ -325,16 +324,16 @@ export default async function RuProductPage({ params, searchParams }: { params: 
           characteristics={product.characteristics}
         />
 
-        <ProductFaq faq={faq} lang="ru" accent={product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined} />
+        <ProductFaq faq={faq} lang="ru" />
 
-        <DeliveryInfo lang="ru" accent={product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined} />
+        <DeliveryInfo lang="ru" />
 
         {/* Статья по теме */}
         {(() => { const blogSlug = product.category_slug ? getCategoryMeta(product.category_slug)?.blogSlug : null; return blogSlug ? (
-          <ArticleLink blogSlug={blogSlug} lang="ru" accent={product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined} />
+          <ArticleLink blogSlug={blogSlug} lang="ru" />
         ) : null; })()}
 
-        {related.length > 0 && <RelatedCarousel products={related.map(p => publicProduct(p, !isRetail))} retail={isRetail} reviewStats={reviewStats} accent={product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined} />}
+        {related.length > 0 && <RelatedCarousel products={related.map(p => publicProduct(p, !isRetail))} retail={isRetail} reviewStats={reviewStats} />}
 
         <div id="reviews" style={{ borderTop: '1px solid var(--border)', paddingTop: '32px', marginTop: '32px' }}>
           <ProductReviews sku={product.sku} productName={`${product.brand} ${nameRu}`} />
