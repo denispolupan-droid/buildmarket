@@ -466,7 +466,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
       <>
         <div style={{ background: 'var(--bg-soft)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ textAlign: 'center', padding: '40px' }}>
-            <div style={{ color: '#CBD5E1', marginBottom: '16px' }}>
+            <div style={{ color: 'var(--brand-blue)', opacity: 0.45, marginBottom: '16px' }}>
               <ShoppingCart size={64} strokeWidth={1} />
             </div>
             <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>{tr.emptyTitle}</h1>

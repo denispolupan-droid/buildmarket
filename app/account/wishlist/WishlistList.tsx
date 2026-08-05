@@ -25,7 +25,7 @@ export default function WishlistList({ products, role }: { products: ProductFull
         background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px',
         padding: '64px', textAlign: 'center',
       }}>
-        <Heart size={40} color="#CBD5E1" strokeWidth={1} style={{ marginBottom: '12px' }} />
+        <Heart size={40} strokeWidth={1} style={{ marginBottom: '12px', color: 'var(--brand-blue)', opacity: 0.45 }} />
         <p style={{ fontSize: '15px', color: '#64748B', marginBottom: '16px' }}>Список обраного порожній</p>
         <Link href={isRetail ? '/shop' : '/catalog'} style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px',

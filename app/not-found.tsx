@@ -17,7 +17,11 @@ export default function NotFound() {
       background: 'var(--bg-page)',
     }}>
       <div style={{ textAlign: 'center', padding: '40px' }}>
-        <div style={{ fontSize: '72px', fontWeight: 800, color: 'var(--border)', lineHeight: 1 }}>404</div>
+        <div style={{
+          fontSize: '84px', fontWeight: 900, lineHeight: 1, letterSpacing: '-3px',
+          background: 'linear-gradient(135deg, var(--brand-blue) 20%, var(--brand-teal-bright))',
+          WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
+        }}>404</div>
         <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', margin: '16px 0 8px' }}>
           Сторінку не знайдено
         </h1>
