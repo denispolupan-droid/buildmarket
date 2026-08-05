@@ -19,6 +19,7 @@ import CoverageCalculator from '../../../product/[id]/CoverageCalculator';
 import CalculatorLink from '../../../product/[id]/CalculatorLink';
 import DeliveryInfo from '../../../product/[id]/DeliveryInfo';
 import ProductFaq, { faqText } from '../../../product/[id]/ProductFaq';
+import { CATEGORY_COLORS } from '../../../../lib/category-icons';
 import Footer from '../../../components/Footer';
 import ProductReviews from '../../../product/[id]/ProductReviews';
 import { RatingBadge } from '../../../components/StarRating';
@@ -322,9 +323,9 @@ export default async function RuProductPage({ params, searchParams }: { params: 
           characteristics={product.characteristics}
         />
 
-        <ProductFaq faq={faq} lang="ru" />
+        <ProductFaq faq={faq} lang="ru" accent={product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined} />
 
-        <DeliveryInfo lang="ru" />
+        <DeliveryInfo lang="ru" accent={product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined} />
 
         {/* Статья по теме */}
         {(() => { const blogSlug = product.category_slug ? getCategoryMeta(product.category_slug)?.blogSlug : null; return blogSlug ? (

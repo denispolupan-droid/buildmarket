@@ -1,7 +1,16 @@
+import type { CSSProperties } from 'react';
+import { Truck, Clock, Wallet, Package } from 'lucide-react';
+
 // Єдиний серверний блок «Доставка і оплата» на сторінці товару (SEO_SPEC, Фаза 5.6).
 // Тільки реальні умови — джерело: app/delivery/page.tsx.
 
-type Props = { lang?: 'uk' | 'ru' };
+type Props = {
+  lang?: 'uk' | 'ru';
+  /** Колір товарної родини (CATEGORY_COLORS) — фарбує іконки та заголовок */
+  accent?: string;
+};
+
+const ICONS = [Truck, Clock, Wallet, Package] as const;
 
 const CONTENT = {
   uk: {
@@ -48,19 +57,27 @@ const CONTENT = {
   },
 } as const;
 
-export default function DeliveryInfo({ lang = 'uk' }: Props) {
+export default function DeliveryInfo({ lang = 'uk', accent }: Props) {
   const t = CONTENT[lang];
   return (
-    <section style={{ margin: '24px 0', padding: '16px 20px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-      <h2 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 12px' }}>
-        {t.title}
-      </h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {t.rows.map(({ label, text }) => (
-          <p key={label} style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-            <strong style={{ color: 'var(--text-primary)' }}>{label}:</strong> {text}
-          </p>
-        ))}
+    <section
+      className="product-brand-section"
+      style={{ margin: '24px 0', ...(accent ? ({ '--cat-accent': accent } as CSSProperties) : {}) }}
+    >
+      <h2 className="product-brand-section__title">{t.title}</h2>
+      <div className="delivery-grid">
+        {t.rows.map(({ label, text }, i) => {
+          const Icon = ICONS[i];
+          return (
+            <div key={label} className="delivery-card">
+              <span className="delivery-card__icon"><Icon size={18} strokeWidth={1.8} /></span>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '3px' }}>{label}</div>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>{text}</p>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

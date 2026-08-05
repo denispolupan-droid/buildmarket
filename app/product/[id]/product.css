@@ -214,3 +214,36 @@
 [data-theme="dark"] .pc-tags { border-color: #334155; }
 [data-theme="dark"] .pc-tag { background: #0F172A; color: #94A3B8; }
 [data-theme="dark"] .pc-btn-icon { background: #1E293B; border-color: #334155; color: #94A3B8; }
+
+/* ── Фірмові секції товару (FAQ, доставка) ─────────────────────────────────
+   --cat-accent — колір товарної родини (CATEGORY_COLORS), ставиться інлайном
+   на секції; фолбек — фірмовий синій. Той самий підхід, що в /shop і /catalog. */
+.product-brand-section__title {
+  font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 72%, black);
+  margin: 0 0 12px;
+}
+[data-theme="dark"] .product-brand-section__title {
+  color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 55%, white);
+}
+
+.delivery-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 720px) { .delivery-grid { grid-template-columns: 1fr; } }
+
+.delivery-card {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px 16px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--bg-card);
+}
+.delivery-card__icon {
+  flex-shrink: 0;
+  width: 34px; height: 34px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 72%, black);
+  background: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 13%, transparent);
+}
+[data-theme="dark"] .delivery-card__icon {
+  color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 55%, white);
+}

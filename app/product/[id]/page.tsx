@@ -16,6 +16,7 @@ import CoverageCalculator from './CoverageCalculator';
 import CalculatorLink from './CalculatorLink';
 import DeliveryInfo from './DeliveryInfo';
 import ProductFaq from './ProductFaq';
+import { CATEGORY_COLORS } from '../../../lib/category-icons';
 import Footer from '../../components/Footer';
 import ProductReviews from './ProductReviews';
 import { RatingBadge } from '../../components/StarRating';
@@ -327,9 +328,9 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
           characteristics={product.characteristics}
         />
 
-        <ProductFaq faq={faq} lang="uk" />
+        <ProductFaq faq={faq} lang="uk" accent={product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined} />
 
-        <DeliveryInfo lang="uk" />
+        <DeliveryInfo lang="uk" accent={product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined} />
 
         {/* Стаття по темі */}
         {(() => { const blogSlug = product.category_slug ? getCategoryMeta(product.category_slug)?.blogSlug : null; return blogSlug ? (
