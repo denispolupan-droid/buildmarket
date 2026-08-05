@@ -85,3 +85,34 @@ export const getPostBySlugCached = unstable_cache(
   ['blog-post'],
   { revalidate: 300, tags: ['blog'] }
 );
+
+/**
+ * Стаття, у блоці «Чим це зробити» якої стоїть саме цей товар.
+ *
+ * У картці товару стаття досі бралася лише з категорії, тобто одна на всю
+ * категорію: для «акрилових герметиків» це і віконний шов, і плінтус, і
+ * кольоровий по дереву — стаття підійде хіба що загальна. А звʼязок «стаття
+ * ↔ конкретний товар» у базі вже є (blog_posts.product_skus) і нею користується
+ * блок товарів у статті. Тут читаємо його у зворотний бік.
+ *
+ * Якщо товар потрапив у кілька статей, беремо найсвіжішу опубліковану: свіжа
+ * стаття зазвичай і точніша.
+ */
+export async function getPostSlugForSku(sku: string): Promise<string | null> {
+  if (!sku) return null;
+  const { data, error } = await supabase
+    .from('blog_posts')
+    .select('slug')
+    .eq('is_published', true)
+    .contains('product_skus', [sku])
+    .order('published_at', { ascending: false })
+    .limit(1);
+  if (error || !data?.length) return null;
+  return (data[0] as { slug: string }).slug;
+}
+
+export const getPostSlugForSkuCached = unstable_cache(
+  async (sku: string) => getPostSlugForSku(sku),
+  ['blog-post-for-sku'],
+  { revalidate: 300, tags: ['blog'] }
+);

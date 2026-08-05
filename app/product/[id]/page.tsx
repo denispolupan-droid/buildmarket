@@ -5,6 +5,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 
 import { getProductBySkuCached, getProductBySlugCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsLightCached, getProductFaqCached } from '../../../lib/supabase';
 import { getCategoryMeta } from '../../../lib/category-descriptions';
+import { getPostSlugForSkuCached } from '../../../lib/blog-db';
 import { productMeta, productDisplayName, productH1, findVariants, productPath } from '../../../lib/seo/meta';
 import ProductTabs from './ProductTabs';
 import ProductOrderPanel from './ProductOrderPanel';
@@ -91,7 +92,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   }
   const sku = product.sku;
 
-  const [related, categoryProducts, faq, categories, reviewsData, reviewStats] = await Promise.all([
+  const [related, categoryProducts, faq, categories, reviewsData, reviewStats, articleSlugForSku] = await Promise.all([
     product.category_slug ? getRelatedProductsCached(product.category_slug, product.sku, 5) : Promise.resolve([]),
     // Лише для findVariants (список фасовок) — беремо ту саму категорію, але легкою вибіркою
     // (без описів/характеристик), findVariants однаково фільтрує лише по бренду+базовій назві.
@@ -103,6 +104,10 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
       .eq('product_sku', sku)
       .eq('is_approved', true),
     getReviewStatsCached(),
+    // Стаття саме про цей товар (він стоїть у блоці «Чим це зробити»). Точніша за
+    // категорійну: у «акрилових герметиках» і віконний шов, і плінтус, і кольоровий
+    // по дереву — одна стаття на всіх підходить хіба що загальна.
+    getPostSlugForSkuCached(sku),
   ]);
 
   const approvedReviews = reviewsData.data ?? [];
@@ -333,10 +338,12 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
 
         <DeliveryInfo lang="uk" />
 
-        {/* Стаття по темі */}
-        {(() => { const blogSlug = product.category_slug ? getCategoryMeta(product.category_slug)?.blogSlug : null; return blogSlug ? (
-          <ArticleLink blogSlug={blogSlug} lang="uk" />
-        ) : null; })()}
+        {/* Стаття по темі: спершу та, де стоїть саме цей товар, інакше — категорійна */}
+        {(() => {
+          const blogSlug = articleSlugForSku
+            ?? (product.category_slug ? getCategoryMeta(product.category_slug)?.blogSlug : null);
+          return blogSlug ? <ArticleLink blogSlug={blogSlug} lang="uk" /> : null;
+        })()}
 
         {/* Схожі товари */}
         {related.length > 0 && <RelatedCarousel products={related.map(p => publicProduct(p, !isRetail))} retail={isRetail} reviewStats={reviewStats} />}
