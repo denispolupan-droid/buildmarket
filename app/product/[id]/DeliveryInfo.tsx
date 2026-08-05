@@ -1,14 +1,9 @@
-import type { CSSProperties } from 'react';
 import { Truck, Clock, Wallet, Package } from 'lucide-react';
 
 // Єдиний серверний блок «Доставка і оплата» на сторінці товару (SEO_SPEC, Фаза 5.6).
 // Тільки реальні умови — джерело: app/delivery/page.tsx.
 
-type Props = {
-  lang?: 'uk' | 'ru';
-  /** Колір товарної родини (CATEGORY_COLORS) — фарбує іконки та заголовок */
-  accent?: string;
-};
+type Props = { lang?: 'uk' | 'ru' };
 
 const ICONS = [Truck, Clock, Wallet, Package] as const;
 
@@ -57,13 +52,10 @@ const CONTENT = {
   },
 } as const;
 
-export default function DeliveryInfo({ lang = 'uk', accent }: Props) {
+export default function DeliveryInfo({ lang = 'uk' }: Props) {
   const t = CONTENT[lang];
   return (
-    <section
-      className="product-brand-section"
-      style={{ margin: '24px 0', ...(accent ? ({ '--cat-accent': accent } as CSSProperties) : {}) }}
-    >
+    <section className="product-brand-section" style={{ margin: '24px 0' }}>
       <h2 className="product-brand-section__title">{t.title}</h2>
       <div className="delivery-grid">
         {t.rows.map(({ label, text }, i) => {

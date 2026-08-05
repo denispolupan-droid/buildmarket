@@ -14,7 +14,7 @@ import { tFilterValue } from '../../../lib/translations-ru';
 const VISIBLE = 5;
 const GAP = 16;
 
-export default function RelatedCarousel({ products, retail = false, reviewStats, accent }: { products: ProductFull[]; retail?: boolean; reviewStats?: ReviewStats; accent?: string }) {
+export default function RelatedCarousel({ products, retail = false, reviewStats }: { products: ProductFull[]; retail?: boolean; reviewStats?: ReviewStats }) {
   const pathname = usePathname();
   const lang = pathname.startsWith('/ru') ? 'ru' : 'uk';
   const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
@@ -60,7 +60,7 @@ export default function RelatedCarousel({ products, retail = false, reviewStats,
   });
 
   return (
-    <div style={{ position: 'relative', ...(accent ? ({ '--cat-accent': accent } as React.CSSProperties) : {}) }}>
+    <div style={{ position: 'relative' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '20px' }}>
