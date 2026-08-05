@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2, X, SearchX } from 'lucide-react';
 import { CATEGORY_ICONS } from '../../lib/category-icons';
@@ -50,7 +50,6 @@ function easeOutQuad(t: number) {
 
 // Нижче цієї частки висоти сайдбара натиснутий пункт вважається «низько»
 // і його підтягують угору; EYE_LINE — куди саме підтягують.
-const COMFORT_LINE = 0.5;
 const EYE_LINE     = 0.45;
 
 function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 620) {
@@ -81,7 +80,6 @@ export default function CatalogClient({ products, categories, reviewStats, initi
   const catsListRef = useRef<HTMLDivElement>(null);
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sidebarRef = useRef<HTMLElement>(null);
-  const prevSelCat = useRef(initialCategory);
   const pillsRef    = useRef<HTMLDivElement>(null);
   const filtersRef  = useRef<HTMLDivElement>(null);
   const stickyCompact = useStickyCompact();
@@ -115,93 +113,55 @@ export default function CatalogClient({ products, categories, reviewStats, initi
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
-  useEffect(() => {
-    if (initialCategory) setTimeout(() => scrollCatToTop(initialCategory), 150);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (selCat !== prevSelCat.current) {
-      prevSelCat.current = selCat;
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    }
-  }, [selCat]);
-
-  const scrollCatToTop = useCallback((slug: string) => {
-    const catEl = catRefs.current[slug];
-    const container = sidebarRef.current;
-    if (!catEl || !container) return;
-    const offset = catEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-    smoothScrollTo(container, Math.max(0, container.scrollTop + offset - 8), 620);
-  }, []);
-
-  // Підняти натиснутий пункт на «рівень очей» — трохи вище середини сайдбара.
-  // Не до самого верху: над пунктом має лишатися видимим його оточення, інакше
-  // губиться відчуття, де ти в дереві.
-  const scrollCatIntoComfort = useCallback((slug: string) => {
+  // Та сама механіка, що в магазині (ShopClient):
+  //
+  // pullCatToEye — плавно ставить обраний пункт на «рівень очей» в ОБИДВА боки:
+  // верхній опускається так само, як нижній піднімається. Мертва зона ±24px,
+  // щоб пункт, який уже на місці, не соватись.
+  const pullCatToEye = useCallback((slug: string) => {
     const catEl = catRefs.current[slug];
     const container = sidebarRef.current;
     if (!catEl || !container) return;
     const containerRect = container.getBoundingClientRect();
     const offset = catEl.getBoundingClientRect().top - containerRect.top;
-    const target = container.scrollTop + offset - containerRect.height * EYE_LINE;
-    smoothScrollTo(container, Math.max(0, target), 620);
+    const target = Math.max(0, container.scrollTop + offset - containerRect.height * EYE_LINE);
+    if (Math.abs(target - container.scrollTop) < 24) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      container.scrollTop = target;
+    } else {
+      smoothScrollTo(container, target, 620);
+    }
   }, []);
 
-  const selectCat = (slug: string, scrollSlug?: string) => {
+  // scrollPageToProducts — після зміни категорії плавно підняти сторінку до
+  // початку товарів (лише ВГОРУ): раніше тут був миттєвий стрибок у нуль
+  // (documentElement.scrollTop = 0), який читався як ривок; а без підйому
+  // взагалі перехід на коротку категорію висаджував у підвал.
+  const scrollPageToProducts = useCallback(() => {
+    const pageEl = document.querySelector('.catalog-page');
+    if (!pageEl) return;
+    const target = Math.max(0, pageEl.getBoundingClientRect().top + window.scrollY - 80);
+    const doc = document.scrollingElement as HTMLElement | null;
+    if (!doc || doc.scrollTop <= target + 8) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      doc.scrollTop = target;
+    } else {
+      smoothScrollTo(doc, target, 620);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (initialCategory) setTimeout(() => pullCatToEye(initialCategory), 120);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const selectCat = (slug: string) => {
     setSelCat(slug);
     router.replace(slug ? `?category=${slug}` : '?', { scroll: false } as never);
-    document.documentElement.scrollTop = 0; document.body.scrollTop = 0;
     setVisibleCount(50);
     setMobilePanel(null);
-    const target = scrollSlug ?? slug;
-    if (!target) return;
-    // scrollSlug is only passed for child/grandchild clicks. Those only need the lift when
-    // the clicked branch — root category through its last visible child (or grandchild, if
-    // that last child is itself expanded) — isn't entirely visible in the sidebar. Top-level
-    // clicks (no scrollSlug) always scroll.
-    if (scrollSlug) {
-      const container = sidebarRef.current;
-      const topEl = catRefs.current[scrollSlug];
-      let lastSlug = scrollSlug;
-      const rootChildren = categories.filter(c => c.parent_slug === scrollSlug);
-      if (rootChildren.length) {
-        const lastChild = rootChildren[rootChildren.length - 1];
-        lastSlug = lastChild.slug;
-        if (expandedCats.has(lastChild.slug)) {
-          const grandchildren = categories.filter(c => c.parent_slug === lastChild.slug);
-          if (grandchildren.length) lastSlug = grandchildren[grandchildren.length - 1].slug;
-        }
-      }
-      const bottomEl = catRefs.current[lastSlug];
-      const clickedEl = catRefs.current[slug];
-      if (container && topEl && bottomEl) {
-        const containerRect = container.getBoundingClientRect();
-        const topRect = topEl.getBoundingClientRect();
-        const bottomRect = bottomEl.getBoundingClientRect();
-        const fullyVisible = topRect.top >= containerRect.top && bottomRect.bottom <= containerRect.bottom;
-        // Even a fully-visible short branch (1-2 children) still gets lifted if it sits
-        // in the lower half of the sidebar — comfortably "visible" isn't the same as
-        // comfortably reachable.
-        const belowMidpoint = topRect.top > containerRect.top + containerRect.height * 0.4;
-        // …але «гілка вміщається» саме по собі ще нічого не означає для довгої гілки:
-        // корінь може стояти у верхніх 40%, а натиснутий пункт — біля нижнього краю.
-        // Раніше тут дивились ЛИШЕ на корінь, тож у «Фарбах» (11 підкатегорій) підйом
-        // мовчав, а обраний пункт лишався внизу. Тепер додатково міряємо сам пункт.
-        const clickedLow = clickedEl
-          ? clickedEl.getBoundingClientRect().top > containerRect.top + containerRect.height * COMFORT_LINE
-          : false;
-        if (fullyVisible && !belowMidpoint && !clickedLow) return;
-        // Пункт унизу — піднімаємо його, а не корінь: інакше довга гілка знову
-        // покладе його на те саме місце.
-        if (clickedLow) {
-          setTimeout(() => scrollCatIntoComfort(slug), 120);
-          return;
-        }
-      }
-    }
-    setTimeout(() => scrollCatToTop(target), 120);
+    // Після кадру з новим станом: сторінку — до товарів, пункт — на рівень очей
+    setTimeout(() => { scrollPageToProducts(); if (slug) pullCatToEye(slug); }, 120);
   };
   const [filterValues,     setFilterValues]     = useState<Record<string, string[]>>({});
   const [filterVolumes,    setFilterVolumes]    = useState<string[]>([]);
@@ -557,12 +517,8 @@ export default function CatalogClient({ products, categories, reviewStats, initi
   // later with a brand-new `products` array, which rebuilds `filtered` — and an effect
   // watching `filtered` then yanked the page back to the top mid-scroll. Nothing the user
   // did changed here, so the value key stays identical and the scroll is left alone.
-  const filterKey = JSON.stringify([
-    search, selCat, filterValues, filterVolumes, filterVolumesKg, inStockOnly, saleOnly,
-  ]);
-  useLayoutEffect(() => {
-    window.scrollTo({ top: 0 });
-  }, [filterKey]);
+  // ПРИБРАНО: миттєвий скрол у нуль на кожну зміну фільтрів — читався як ривок.
+  // Підйом до товарів при зміні категорії робить scrollPageToProducts.
 
   const exportToExcel = useCallback(async () => {
     const XLSX = await import('xlsx');
@@ -749,7 +705,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                               setSelCat(cat.slug);
                               router.replace(`?category=${cat.slug}`, { scroll: false } as never);
                               setVisibleCount(50);
-                              setTimeout(() => scrollCatToTop(cat.slug), 450);
+                              setTimeout(() => { scrollPageToProducts(); pullCatToEye(cat.slug); }, 150);
                             }
                           } else {
                             selectCat(selCat === cat.slug ? '' : cat.slug);
@@ -785,9 +741,9 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                                   if (grandchildren.length > 0) {
                                     const expanding = !expandedCats.has(child.slug);
                                     setExpandedCats(prev => { const next = new Set(prev); next.has(child.slug) ? next.delete(child.slug) : next.add(child.slug); return next; });
-                                    if (expanding) selectCat(child.slug, cat.slug);
+                                    if (expanding) selectCat(child.slug);
                                   } else {
-                                    selectCat(selCat === child.slug ? '' : child.slug, cat.slug);
+                                    selectCat(selCat === child.slug ? '' : child.slug);
                                   }
                                 }}
                               >
@@ -810,7 +766,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                                       ref={el => { catRefs.current[gc.slug] = el; }}
                                       className={'cat-item' + (selCat === gc.slug ? ' active' : '')}
                                       style={{ paddingLeft: '26px', fontSize: '12px' }}
-                                      onClick={() => selectCat(selCat === gc.slug ? '' : gc.slug, cat.slug)}
+                                      onClick={() => selectCat(selCat === gc.slug ? '' : gc.slug)}
                                     >
                                       <span className="cat-item-label">{cName(gc.name, gc.slug)}</span>
                                     </div>
@@ -1074,7 +1030,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                         router.replace(next ? `?category=${next}` : '?', { scroll: false } as never);
                         setExpandedCats(new Set(next ? [next] : []));
                         setVisibleCount(50);
-                        if (next) setTimeout(() => scrollCatToTop(next), 500);
+                        if (next) setTimeout(() => { scrollPageToProducts(); pullCatToEye(next); }, 120);
                       }}
                     >
                       {cName(cat.name, cat.slug)}
