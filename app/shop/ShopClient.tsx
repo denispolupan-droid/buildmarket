@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getCategoryNameRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
@@ -344,7 +344,6 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   const sidebarRef = useRef<HTMLElement>(null);
   const filtersRef  = useRef<HTMLDivElement>(null);
   const pillsRef = useRef<HTMLDivElement>(null);
-  const prevSelCat = useRef<string | null>(initialCategory ?? null);
   const stickyCompact = useStickyCompact();
 
   // Clear sessionStorage after restoring (so stale state isn't reused on next fresh visit)
@@ -391,17 +390,16 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Скрол вгору сторінки після зміни категорії — спрацьовує після рендеру. Сайдбар сюди
-  // навмисно не входить: його позицією керує лише scrollCatToTop, і лише коли потрібно
-  // (див. shouldScroll у selectCat) — інакше клік всередині вже розкритої гілки збивав
-  // скрол сайдбара до нуля щоразу.
-  useEffect(() => {
-    if (selCat !== prevSelCat.current) {
-      prevSelCat.current = selCat;
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    }
-  }, [selCat]);
+  // ПРИБРАНО: скрол сторінки вгору при зміні категорії (тут і в useLayoutEffect на
+  // [sorted] нижче по файлу). Це був єдиний рух на сторінці при кліку — висота шапки
+  // не змінюється, тож більше нічого не рухалося, — і читався він як смикання.
+  //
+  // Скрол свого часу додавали свідомо (aecf2b6, 04d5ca1, 006f860, 8680ed5), але тоді
+  // категорія перемикалася миттєво, без навігації, і рух угору зливався зі зміною
+  // списку в один кадр. З навігацією він відірвався від контенту й почав заважати.
+  //
+  // Сайдбара це не стосується: його позицією керує scrollCatToTop, і лише коли
+  // обраний пункт справді поза полем зору.
 
   const scrollCatToTop = useCallback((slug: string) => {
     const catEl = catRefs.current[slug];
@@ -766,9 +764,9 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     });
   }, [filtered, sortBy]);
 
-  useLayoutEffect(() => {
-    window.scrollTo({ top: 0 });
-  }, [sorted]);
+  // ПРИБРАНО: другий скрол угору — на будь-яку зміну списку (категорія, фільтр,
+  // сортування). Знятий разом із тим, що на [selCat]: інакше сторінка смикалась би
+  // однаково. Див. коментар вище.
 
   const countFor = (slug: string) => {
     const children = (childrenOf[slug] ?? []).map(c => c.slug);
