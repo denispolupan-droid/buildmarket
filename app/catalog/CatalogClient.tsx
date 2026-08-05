@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2, X, SearchX } from 'lucide-react';
 import { CATEGORY_ICONS, CATEGORY_COLORS, categoryAccent } from '../../lib/category-icons';
@@ -172,18 +172,25 @@ export default function CatalogClient({ products, categories, reviewStats, initi
   const [inStockOnly,      setInStockOnly]      = useState(false);
   const [saleOnly,      setSaleOnly]      = useState(initialSaleOnly);
   const [visibleCount,  setVisibleCount]  = useState(50);
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>(() => {
-    if (typeof window === 'undefined') return 'table';
-    return (localStorage.getItem('catalog-view') as 'table' | 'grid') ?? 'table';
-  });
+  // Обидва стани стартують серверним значенням, а реальні (localStorage /
+  // matchMedia) підставляються в useLayoutEffect — ПІСЛЯ гідрації, але ДО
+  // кадру. Ініціалізація одразу з window давала hydration mismatch: сервер
+  // рендерив таблицю/десктоп, клієнт — збережений вид/мобілку, і React
+  // перебудовував усе піддерево з нуля з warning'ом у консолі.
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  useLayoutEffect(() => {
+    const saved = localStorage.getItem('catalog-view');
+    if (saved === 'grid') setViewMode('grid');
+  }, []);
   function changeViewMode(mode: 'table' | 'grid') {
     setViewMode(mode);
     localStorage.setItem('catalog-view', mode);
   }
   // The pricing table has 8 fixed-width columns and doesn't fit a phone screen — always show cards on mobile
-  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches);
-  useEffect(() => {
+  const [isMobile, setIsMobile] = useState(false);
+  useLayoutEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)');
+    setIsMobile(mq.matches);
     const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getCategoryNameRu, getCategoryDescriptionRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
@@ -69,16 +69,6 @@ function isModifiedClick(e: React.MouseEvent): boolean {
 }
 
 const SHOP_STATE_KEY = 'shop_filter_state';
-
-function readShopSession<T>(field: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback;
-  try {
-    const raw = sessionStorage.getItem(SHOP_STATE_KEY);
-    if (!raw) return fallback;
-    const val = JSON.parse(raw)[field];
-    return val !== undefined ? val : fallback;
-  } catch { return fallback; }
-}
 
 type CardProps = {
   p: ProductPublic;
@@ -293,12 +283,30 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   }, [selCat, categories, lang]);
   // На sale- і бренд-сторінках власний серверний h1 — там наш заголовок стає h2
   const TitleTag: 'h1' | 'h2' = (initialSaleOnly || initialBrand) ? 'h2' : 'h1';
-  const [saleOnly,     setSaleOnly]     = useState(() => readShopSession('saleOnly', initialSaleOnly));
-  const [filterValues,       setFilterValues]       = useState<Record<string, string[]>>(() => readShopSession<Record<string, string[]>>('filterValues', initialBrand ? { 'Бренд': [initialBrand] } : {}));
-  const [filterVolumes,      setFilterVolumes]      = useState<string[]>(() => readShopSession('filterVolumes', []));
-  const [filterVolumesKg,    setFilterVolumesKg]    = useState<string[]>(() => readShopSession('filterVolumesKg', []));
-  const [filterPlasticGroup, setFilterPlasticGroup] = useState<string>(() => readShopSession('filterPlasticGroup', ''));
-  const [inStockOnly,        setInStockOnly]        = useState<boolean>(() => readShopSession('inStockOnly', false));
+  // Старт — серверні значення; збережені фільтри (повернення з товару)
+  // підставляються нижче в useLayoutEffect: після гідрації, але до кадру.
+  // Ініціалізація одразу з sessionStorage давала hydration mismatch —
+  // сервер рендерив нефільтрований список, клієнт — відфільтрований.
+  const [saleOnly,     setSaleOnly]     = useState(initialSaleOnly);
+  const [filterValues,       setFilterValues]       = useState<Record<string, string[]>>(initialBrand ? { 'Бренд': [initialBrand] } : {});
+  const [filterVolumes,      setFilterVolumes]      = useState<string[]>([]);
+  const [filterVolumesKg,    setFilterVolumesKg]    = useState<string[]>([]);
+  const [filterPlasticGroup, setFilterPlasticGroup] = useState<string>('');
+  const [inStockOnly,        setInStockOnly]        = useState<boolean>(false);
+  useLayoutEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(SHOP_STATE_KEY);
+      if (!raw) return;
+      sessionStorage.removeItem(SHOP_STATE_KEY); // stale state не має пережити наступний свіжий захід
+      const s = JSON.parse(raw);
+      if (s.saleOnly !== undefined) setSaleOnly(s.saleOnly);
+      if (s.filterValues) setFilterValues(s.filterValues);
+      if (s.filterVolumes) setFilterVolumes(s.filterVolumes);
+      if (s.filterVolumesKg) setFilterVolumesKg(s.filterVolumesKg);
+      if (s.filterPlasticGroup !== undefined) setFilterPlasticGroup(s.filterPlasticGroup);
+      if (s.inStockOnly !== undefined) setInStockOnly(s.inStockOnly);
+    } catch {}
+  }, []);
   const [collapsedFilters,   setCollapsedFilters]   = useState<Set<string>>(new Set());
   const [expandedValues,     setExpandedValues]     = useState<Set<string>>(new Set());
   const activeFilterCount =
@@ -376,9 +384,6 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   const filtersRef  = useRef<HTMLDivElement>(null);
   const pillsRef = useRef<HTMLDivElement>(null);
   const stickyCompact = useStickyCompact();
-
-  // Clear sessionStorage after restoring (so stale state isn't reused on next fresh visit)
-  useEffect(() => { sessionStorage.removeItem(SHOP_STATE_KEY); }, []);
 
   const saveFilterState = useCallback(() => {
     sessionStorage.setItem(SHOP_STATE_KEY, JSON.stringify({
