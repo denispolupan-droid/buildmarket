@@ -66,10 +66,32 @@ body:has(.shop-layout) { overflow-anchor: none; }
   transition: transform 0.15s ease;
 }
 .shop-cat-item:hover .shop-cat-item-label { transform: scale(1.07); }
-.shop-cat-item.active { background: #EEF4FF; color: #1E40AF; font-weight: 600; }
-[data-theme="dark"] .shop-cat-item.active { background: #1E3A5F; color: #93C5FD; }
-.shop-cat-item.parent-active { background: #F5F8FF; color: #3B6EC4; font-weight: 600; }
-[data-theme="dark"] .shop-cat-item.parent-active { background: #172B47; color: #7EB5E8; }
+/* Колір родини (--cat-accent, інлайн на пункті) — лише в активної гілки та
+   в іконки на hover; решта сайдбара монохромна, щоб не пістрявило.
+   Для тексту акцент затемнюємо (light) чи висвітлюємо (dark) — чисті
+   відтінки на кшталт бурштинового замалоконтрастні для 13px. */
+.shop-cat-item > svg:first-child { opacity: 0.65; }
+.shop-cat-item:hover > svg:first-child,
+.shop-cat-item.active > svg:first-child,
+.shop-cat-item.parent-active > svg:first-child { color: var(--cat-accent, var(--brand-blue)); opacity: 0.95; }
+.shop-cat-item.active {
+  background: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 13%, transparent);
+  color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 72%, black);
+  font-weight: 600;
+}
+[data-theme="dark"] .shop-cat-item.active {
+  background: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 24%, transparent);
+  color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 55%, white);
+}
+.shop-cat-item.parent-active {
+  background: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 7%, transparent);
+  color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 62%, black);
+  font-weight: 600;
+}
+[data-theme="dark"] .shop-cat-item.parent-active {
+  background: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 14%, transparent);
+  color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 42%, white);
+}
 .shop-cat-count {
   font-size: 11px;
   color: var(--text-muted);
@@ -525,7 +547,7 @@ body:has(.shop-layout) { overflow-anchor: none; }
 }
 /* Контент смуги — над декоративними іконками */
 .shop-topbar > :not(.cat-icon-backdrop) { position: relative; z-index: 1; }
-.shop-topbar .eyebrow { color: var(--cat-accent, var(--brand-blue)); }
+.shop-topbar .eyebrow { color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 72%, black); }
 /* Фірмовий заголовок списку — розміщення як в оптовому каталозі: назва
    категорії живе в колонці товарів, без окремої повноширинної смуги зверху */
 .shop-title {
@@ -538,7 +560,7 @@ body:has(.shop-layout) { overflow-anchor: none; }
 }
 .shop-count {
   font-size: 12px; font-weight: 700;
-  color: var(--cat-accent, var(--brand-blue));
+  color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 72%, black);
   background: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 13%, transparent);
   border-radius: 20px;
   padding: 3px 10px;

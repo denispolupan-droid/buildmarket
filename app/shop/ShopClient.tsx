@@ -869,7 +869,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                   prefetch={false}
                   onMouseDown={blockFocusScroll}
                   className={'shop-cat-item' + (isDirectActive ? ' active' : isParentActive ? ' parent-active' : '')}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', ...(isExpanded && !isDirectActive ? { background: 'rgba(30,58,95,0.06)', borderRadius: '7px', color: 'var(--text-primary)', fontWeight: 600 } : {}) }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', ...(CATEGORY_COLORS[cat.slug] ? ({ '--cat-accent': CATEGORY_COLORS[cat.slug] } as React.CSSProperties) : {}), ...(isExpanded && !isDirectActive ? { background: 'rgba(30,58,95,0.06)', borderRadius: '7px', color: 'var(--text-primary)', fontWeight: 600 } : {}) }}
                   onClick={e => {
                     if (isModifiedClick(e)) return; // Ctrl/⌘/середня кнопка — хай браузер відкриє вкладку
                     e.preventDefault();
@@ -893,7 +893,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                     }
                   }}
                 >
-                  {(() => { const Icon = CATEGORY_ICONS[cat.slug]; return Icon ? <Icon size={14} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.8, color: CATEGORY_COLORS[cat.slug] }} /> : null; })()}
+                  {(() => { const Icon = CATEGORY_ICONS[cat.slug]; return Icon ? <Icon size={14} strokeWidth={1.8} style={{ flexShrink: 0 }} /> : null; })()}
                   <span className="shop-cat-item-label" style={{ flex: 1, textAlign: 'left' }}>{catDisplayName(cat.slug, cat.name)}</span>
                   {children.length > 0 && (
                     <ChevronDown size={13} style={{ flexShrink: 0, opacity: 0.45, transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)' }} />
@@ -912,7 +912,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                         prefetch={false}
                         onMouseDown={blockFocusScroll}
                   className={'shop-cat-item' + (isChildDirectActive ? ' active' : isChildParentActive ? ' parent-active' : '')}
-                        style={{ paddingLeft: '12px', fontSize: '13px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                        style={{ paddingLeft: '12px', fontSize: '13px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', ...(CATEGORY_COLORS[child.slug] ? ({ '--cat-accent': CATEGORY_COLORS[child.slug] } as React.CSSProperties) : {}) }}
                         onClick={e => {
                           if (isModifiedClick(e)) return;
                           e.preventDefault();
@@ -931,7 +931,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                             ref={el => { catRefs.current[gc.slug] = el as unknown as HTMLDivElement; }}
                             onMouseDown={blockFocusScroll}
                   className={'shop-cat-item' + (selCat === gc.slug ? ' active' : '')}
-                            style={{ paddingLeft: '26px', fontSize: '12px', width: '100%', textAlign: 'left' }}
+                            style={{ paddingLeft: '26px', fontSize: '12px', width: '100%', textAlign: 'left', ...(CATEGORY_COLORS[gc.slug] ? ({ '--cat-accent': CATEGORY_COLORS[gc.slug] } as React.CSSProperties) : {}) }}
                             onClick={e => {
                               if (isModifiedClick(e)) return;
                               e.preventDefault();

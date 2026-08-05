@@ -697,7 +697,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                     <div key={cat.slug} ref={el => { catRefs.current[cat.slug] = el; }}>
                       <div
                         className={'cat-item' + (isDirectActive ? ' active' : isParentActive ? ' parent-active' : '')}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', ...(CATEGORY_COLORS[cat.slug] ? ({ '--cat-accent': CATEGORY_COLORS[cat.slug] } as React.CSSProperties) : {}) }}
                         onClick={() => {
                           const expanding = !expandedCats.has(cat.slug);
                           if (children.length > 0) {
@@ -713,7 +713,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                           }
                         }}
                       >
-                        {(() => { const Icon = CATEGORY_ICONS[cat.slug]; return Icon ? <Icon size={14} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.8, color: CATEGORY_COLORS[cat.slug] }} /> : null; })()}
+                        {(() => { const Icon = CATEGORY_ICONS[cat.slug]; return Icon ? <Icon size={14} strokeWidth={1.8} style={{ flexShrink: 0 }} /> : null; })()}
                         <span className="cat-item-label" style={{ flex: 1, textAlign: 'left' }}>{cName(cat.name, cat.slug)}</span>
                         {children.length > 0 && (
                           isExpanded
@@ -737,7 +737,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                             <div key={child.slug} ref={el => { catRefs.current[child.slug] = el; }}>
                               <div
                                 className={'cat-item' + (isChildActive ? ' active' : isChildParentActive ? ' parent-active' : '')}
-                                style={{ paddingLeft: '10px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                                style={{ paddingLeft: '10px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', ...(CATEGORY_COLORS[child.slug] ? ({ '--cat-accent': CATEGORY_COLORS[child.slug] } as React.CSSProperties) : {}) }}
                                 onClick={() => {
                                   if (grandchildren.length > 0) {
                                     const expanding = !expandedCats.has(child.slug);
@@ -766,7 +766,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                                       key={gc.slug}
                                       ref={el => { catRefs.current[gc.slug] = el; }}
                                       className={'cat-item' + (selCat === gc.slug ? ' active' : '')}
-                                      style={{ paddingLeft: '26px', fontSize: '12px' }}
+                                      style={{ paddingLeft: '26px', fontSize: '12px', ...(CATEGORY_COLORS[gc.slug] ? ({ '--cat-accent': CATEGORY_COLORS[gc.slug] } as React.CSSProperties) : {}) }}
                                       onClick={() => selectCat(selCat === gc.slug ? '' : gc.slug)}
                                     >
                                       <span className="cat-item-label">{cName(gc.name, gc.slug)}</span>
