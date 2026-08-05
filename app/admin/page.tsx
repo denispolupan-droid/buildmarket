@@ -232,35 +232,34 @@ export default async function AdminPage({
                 {(() => {
                   const amount = tab.value === '' ? totalAmount : (statusAmounts[tab.value] ?? 0);
                   const hasAmount = amount > 0;
-                  const chips = (
-                    <>
-                      {cnt > 0 && (
-                        <span style={{
-                          flexShrink: 0,
-                          fontSize: '10px', fontWeight: 700, lineHeight: '15px',
-                          padding: '0 5px', borderRadius: '7px',
-                          background: isActive ? 'rgba(255,255,255,0.22)' : isNew ? '#EF4444' : '#E0ECF8',
-                          color: isActive ? '#fff' : isNew ? '#fff' : '#3B6EA5',
-                        }}>{cnt}</span>
-                      )}
-                      {/* Невирішені відмови (посилки їдуть назад — треба забрати з пошти або відмовитись) */}
-                      {tab.value === 'cancelled' && pendingReturns > 0 && (
-                        <span title={`Посилок у дорозі назад без рішення: ${pendingReturns} — відкрийте замовлення і виберіть «забрати з пошти» чи «залишити»`} style={{
-                          flexShrink: 0,
-                          fontSize: '10px', fontWeight: 700, lineHeight: '15px',
-                          padding: '0 5px', borderRadius: '7px',
-                          background: isActive ? 'rgba(255,165,0,0.35)' : '#FFEDD5',
-                          color: isActive ? '#FFD9A8' : '#C2410C',
-                        }}>↩ {pendingReturns}</span>
-                      )}
-                    </>
+                  // Лічильник замовлень — завжди в рядку з назвою: він читається як
+                  // частина заголовка («Скасовано 15»), а не як окреме значення.
+                  const countChip = cnt > 0 && (
+                    <span style={{
+                      flexShrink: 0,
+                      fontSize: '10px', fontWeight: 700, lineHeight: '15px',
+                      padding: '0 5px', borderRadius: '7px',
+                      background: isActive ? 'rgba(255,255,255,0.22)' : isNew ? '#EF4444' : '#E0ECF8',
+                      color: isActive ? '#fff' : isNew ? '#fff' : '#3B6EA5',
+                    }}>{cnt}</span>
+                  );
+                  // Невирішені відмови (посилки їдуть назад — треба забрати з пошти
+                  // або відмовитись). Окреме попередження, не частина заголовка, тож
+                  // стоїть нижче — там, де в інших картках сума.
+                  const returnsChip = tab.value === 'cancelled' && pendingReturns > 0 && (
+                    <span title={`Посилок у дорозі назад без рішення: ${pendingReturns} — відкрийте замовлення і виберіть «забрати з пошти» чи «залишити»`} style={{
+                      flexShrink: 0,
+                      fontSize: '10px', fontWeight: 700, lineHeight: '15px',
+                      padding: '0 5px', borderRadius: '7px',
+                      background: isActive ? 'rgba(255,165,0,0.35)' : '#FFEDD5',
+                      color: isActive ? '#FFD9A8' : '#C2410C',
+                    }}>↩ {pendingReturns}</span>
                   );
                   return (
                     <>
-                      {/* Рядок 1: назва. Лічильники стоять поруч ЛИШЕ там, де другий
-                          рядок зайнятий сумою. Де суми немає («Скасовано», «Очікує
-                          оплати») — вони переїжджають униз: там порожньо, а в один
-                          рядок «Скасовано» + два чипи не вміщалося й слово різалось. */}
+                      {/* Рядок 1: назва + лічильник замовлень. Разом вони вміщаються
+                          скрізь; не вміщалося тільки коли сюди ж додавався чип відмов —
+                          його й винесено на другий рядок. */}
                       <div style={{ height: '22px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', overflow: 'hidden' }}>
                         {/* inline-flex, а не звичайний inline: чипи вирівнювались через
                             vertical-align, і на «Скасовано» — де їх ДВА — рядок ставав
@@ -271,10 +270,11 @@ export default async function AdminPage({
                           color: isActive ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)',
                         }}>
                           {tab.label}
-                          {hasAmount && chips}
+                          {countChip}
                         </span>
                       </div>
-                      {/* Рядок 2: сума — головний акцент; якщо суми немає — лічильники. */}
+                      {/* Рядок 2: сума — головний акцент. Якщо суми немає, тут стоїть
+                          попередження про невирішені відмови (лише «Скасовано»). */}
                       {hasAmount ? (
                         <span style={{
                           fontSize: '15px', fontWeight: 800, lineHeight: 1,
@@ -283,9 +283,9 @@ export default async function AdminPage({
                         }}>
                           {amount.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
                         </span>
-                      ) : (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>{chips}</span>
-                      )}
+                      ) : returnsChip ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center' }}>{returnsChip}</span>
+                      ) : null}
                     </>
                   );
                 })()}
