@@ -911,12 +911,8 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                           {metMin ? '' : tr.minRemaining(need)}
                         </span>
                       </div>
-                      <div style={{ height: '6px', borderRadius: '4px', background: 'var(--bg-soft)', overflow: 'hidden' }}>
-                        <div style={{
-                          height: '100%', borderRadius: '4px', transition: 'width 0.3s ease',
-                          width: `${pct}%`,
-                          background: metMin ? '#15803D' : '#4880B8',
-                        }} />
+                      <div className="wm-progress">
+                        <div className={'wm-progress__fill' + (metMin ? ' met' : '')} style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   );

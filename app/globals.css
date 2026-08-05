@@ -1048,6 +1048,25 @@ input, select { font-family: inherit; }
   .cat-about-grid { grid-template-columns: 1fr !important; gap: 28px !important; }
 }
 
+/* ── Прогрес до оптового мінімуму (кошик) ──────────────────────────────────
+   Фірмовий градієнт синій→бірюза, м'яке світіння; зелений — мінімум набрано.
+   Ширина ставиться інлайном від відсотка. */
+.wm-progress {
+  height: 10px; border-radius: 6px;
+  background: var(--bg-soft);
+  overflow: hidden;
+}
+.wm-progress__fill {
+  height: 100%; border-radius: 6px;
+  background: linear-gradient(90deg, var(--brand-blue-dark), var(--brand-blue) 55%, var(--brand-teal-bright));
+  box-shadow: 0 0 10px rgba(72, 128, 184, 0.45);
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.wm-progress__fill.met {
+  background: linear-gradient(90deg, #16A34A, #4ADE80);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+}
+
 /* ── Wishlist card ── */
 .wishlist-card-info { display: contents; }
 .wishlist-card__stock-price-row { display: contents; }
