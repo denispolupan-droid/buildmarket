@@ -963,10 +963,12 @@ input, select { font-family: inherit; }
   width: 2px;
   z-index: 1;
   pointer-events: none;
+  /* Тане з обох кінців: прозоро → щільно всередині → прозоро */
   background: linear-gradient(
     to bottom,
-    color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 55%, transparent),
-    color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 12%, transparent) 80%,
+    transparent,
+    color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 50%, transparent) 18%,
+    color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 50%, transparent) 82%,
     transparent
   );
 }
