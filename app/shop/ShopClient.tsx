@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { getCategoryNameRu } from '../../lib/ru';
+import { getCategoryNameRu, getCategoryDescriptionRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 import Link from 'next/link';
 import { Plus, Minus, Heart, ChevronDown, Check, SlidersHorizontal, LayoutList, Grid2x2, Rows2, X } from 'lucide-react';
@@ -18,6 +18,8 @@ import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import type { ProductPublic, Category, ReviewStats } from '../../lib/supabase';
 import { getCategoryMeta } from '../../lib/category-descriptions';
+import { getCategoryMetaRu } from '../../lib/category-descriptions-ru';
+import { publishCategoryView } from '../../lib/category-view';
 import { useStickyCompact, suppressStickyCompact } from '../../lib/useStickyCompact';
 
 // Native `behavior: 'smooth'` has a fixed, fairly snappy browser-controlled duration —
@@ -45,11 +47,6 @@ function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 550) {
 // і його підтягують угору; EYE_LINE — куди саме підтягують.
 const EYE_LINE     = 0.45;
 
-// Позиція прокрутки сайдбара переживає перемонтування при навігації між
-// категоріями: новий ShopClient стартує з того самого місця, де сайдбар був у
-// момент кліку, і вже звідти ПЛАВНО підтягує обраний пункт на рівень очей.
-// Без цього сайдбар телепортувався одним кадром — читалось як різкий підскок.
-let lastSidebarScroll = 0;
 
 
 
@@ -400,40 +397,27 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     });
   }, []);
 
-  // «Рівень очей» у два кроки, обидва вже на новій сторінці:
-  //
-  // 1. useLayoutEffect, ДО першої відмальовки: повертаємо сайдбару позицію,
-  //    яку він мав у момент кліку (lastSidebarScroll). Без цього новий сайдбар
-  //    з'являвся одразу в цільовій точці — телепорт одним кадром, «різкий
-  //    підскок».
-  // 2. useEffect, ПІСЛЯ відмальовки: плавно підтягуємо обраний пункт (550 мс,
-  //    ease-out) — те саме підтягування, що було до переходу на навігацію.
-  //    Тепер його ніщо не обриває: воно стартує після приходу сторінки.
-  //
-  // Раніше підтягування жило в обробниках кліку: сайдбар пів секунди їхав,
-  // навігація перемонтовувала його в нуль, позиція ставилась знову — звідси
-  // «передьоргування».
-  useLayoutEffect(() => {
+  // Плавно підтягнути пункт дерева на «рівень очей» (550 мс, ease-out).
+  // Використовується і при монтуванні (прямий захід на сторінку категорії),
+  // і при кліку в сайдбарі — клік більше не робить навігацію, тож анімацію
+  // ніщо не обриває і не перемонтовує.
+  const pullCatToEye = useCallback((slug: string) => {
+    const catEl = catRefs.current[slug];
     const sidebar = sidebarRef.current;
-    if (!sidebar || !lastSidebarScroll) return;
-    sidebar.scrollTop = lastSidebarScroll;
-    lastSidebarScroll = 0;
+    if (!catEl || !sidebar) return;
+    const containerRect = sidebar.getBoundingClientRect();
+    const offset = catEl.getBoundingClientRect().top - containerRect.top;
+    const target = Math.max(0, sidebar.scrollTop + offset - containerRect.height * EYE_LINE);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      sidebar.scrollTop = target;
+    } else {
+      smoothScrollTo(sidebar, target);
+    }
   }, []);
+
   useEffect(() => {
     if (!initialCategory) return;
-    const t = setTimeout(() => {
-      const catEl = catRefs.current[initialCategory];
-      const sidebar = sidebarRef.current;
-      if (!catEl || !sidebar) return;
-      const containerRect = sidebar.getBoundingClientRect();
-      const offset = catEl.getBoundingClientRect().top - containerRect.top;
-      const target = Math.max(0, sidebar.scrollTop + offset - containerRect.height * EYE_LINE);
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        sidebar.scrollTop = target;
-      } else {
-        smoothScrollTo(sidebar, target);
-      }
-    }, 120);
+    const t = setTimeout(() => pullCatToEye(initialCategory), 120);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -449,21 +433,78 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   // Сайдбара це не стосується: його позицію ставить ефект монтування вище.
 
 
-  // Перехід між категоріями — справжня навігація, інакше серверна шапка лишається
-  // від попередньої категорії (див. коментар у selectCat).
-  //
-  // Прокруткою сторінки тут НЕ керуємо. Вона й так іде на початок — цим займаються
-  // два ефекти нижче (на [selCat] і на [sorted]), і так було задовго до навігації.
-  // Спроба повернути позицію після переходу давала двічі гірше: сторінка стрибала
-  // вгору, а через ~1 с — назад.
-  const gotoCategory = (url: string) => {
-    // Сайдбар нової сторінки стартує з поточної позиції — див. lastSidebarScroll.
-    lastSidebarScroll = sidebarRef.current?.scrollTop ?? 0;
-    // Анкоринг зсуне scrollY при підміні списку — хай sticky-бар це ігнорує,
-    // інакше він анімовано смикається на кожен клік (див. useStickyCompact).
-    suppressStickyCompact();
-    router.push(url, { scroll: false });
+  // Перемикання категорії — миттєвий клієнтський фільтр БЕЗ навігації.
+  // Справжня навігація на кожен клік означала повний RSC-своп сторінки
+  // (~150 КБ, перерендер сотень карток) — пів секунди «завмирання», яке
+  // читалось як смикання. Серверні шапка (CategoryHeader) і «Про категорію»
+  // (CategoryAbout) — клієнтські компоненти, підписані на category-view:
+  // публікуємо їм свіжі дані, і вони оновлюються тим самим кадром.
+  // При прямому заході все, як і раніше, рендериться сервером — SEO без змін.
+  const publishView = (slug: string | null) => {
+    const path = slug ? `${shopBase}/${slug}` : shopBase;
+    const cat = slug ? categories.find(c => c.slug === slug) : null;
+    // «Всі категорії» (або невідомий слаг): явний 'порожній' стан — компоненти
+    // ховаються, а не відкочуються до застарілих серверних пропсів
+    if (!cat) { publishCategoryView({ targetPath: path, header: null, about: null }); return; }
+    // Повне сімейство: товари прив'язані до листків дерева
+    const fam = new Set<string>([cat.slug]);
+    for (let added = true; added; ) {
+      added = false;
+      for (const c of categories) {
+        if (c.parent_slug && fam.has(c.parent_slug) && !fam.has(c.slug)) { fam.add(c.slug); added = true; }
+      }
+    }
+    const count = products.filter(pr => pr.category_slug && fam.has(pr.category_slug)).length;
+    const parentCat = cat.parent_slug ? categories.find(c => c.slug === cat.parent_slug) : null;
+    const name = lang === 'ru' ? getCategoryNameRu(cat.slug, cat.name) : cat.name;
+    const meta = (lang === 'ru' ? getCategoryMetaRu(cat.slug) : getCategoryMeta(cat.slug)) ?? null;
+    const description = lang === 'ru' ? (getCategoryDescriptionRu(cat.slug, name) || null) : (meta?.description ?? null);
+    publishCategoryView({
+      targetPath: path,
+      header: {
+        lang, name, count, description,
+        parent: parentCat
+          ? { slug: parentCat.slug, name: lang === 'ru' ? getCategoryNameRu(parentCat.slug, parentCat.name) : parentCat.name }
+          : null,
+      },
+      about: meta ? { lang, name, meta } : null,
+    });
   };
+  // Свіжа версія для popstate-обробника, що живе в ефекті з порожніми залежностями
+  const publishViewRef = useRef(publishView);
+  publishViewRef.current = publishView;
+
+  const applyCategory = (slug: string | null) => {
+    // Підміна списку зсуне висоту документа — хай sticky-бар це ігнорує
+    suppressStickyCompact();
+    window.history.pushState(null, '', slug ? `${shopBase}/${slug}` : shopBase);
+    publishView(slug);
+  };
+
+  // «Назад»/«вперед» по наших pushState-записах: роутер Next про них не знає і
+  // на popstate нічого не робить — URL повертався, а контент лишався старим.
+  // Синхронізуємо стан із адреси самі. Записи роутера (бренд-сторінки, хлібні
+  // крихти) містять '/' у хвості або чужий префікс — їх пропускаємо, ними
+  // займеться сам Next.
+  useEffect(() => {
+    const onPop = () => {
+      const path = window.location.pathname;
+      let slug: string | null;
+      if (path === shopBase) slug = null;
+      else if (path.startsWith(shopBase + '/')) {
+        const rest = decodeURIComponent(path.slice(shopBase.length + 1));
+        if (!rest || rest.includes('/')) return;
+        slug = rest;
+      } else return;
+      suppressStickyCompact();
+      setSelCat(slug);
+      setVisibleCount(24);
+      publishViewRef.current(slug);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shopBase]);
 
   const selectCat = (slug: string | null) => {
     // На brand-сторінці заголовок рендериться сервером — потрібна повна навігація
@@ -473,17 +514,12 @@ export default function ShopClient({ products, categories, reviewStats, initialS
       return;
     }
     setSelCat(slug);
-    // Навігація, а не history.pushState: pushState міняє адресу повз роутер,
-    // тож серверна частина сторінки (шапка категорії, блок «Про категорію»)
-    // не перемальовується — у шапці лишалася попередня категорія.
-    gotoCategory(slug ? `${shopBase}/${slug}` : shopBase);
+    applyCategory(slug);
     setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]); setFilterPlasticGroup(''); setExpandedValues(new Set());
     setVisibleCount(24);
     setMobilePanel(null);
-    // Підстроювання сайдбара звідси прибрано: кожен клік тепер робить навігацію,
-    // яка перемонтовує сайдбар і скидає прокрутку в нуль. Усе, що ми тут порахували
-    // б, гарантовано затирається за пів секунди. Позицію ставить ефект монтування
-    // вище — один раз і вже після приходу нової сторінки.
+    // Плавне підтягування обраного пункту — після кадру з новим станом дерева
+    if (slug) setTimeout(() => pullCatToEye(slug), 120);
   };
   const { skus: wishSkus, toggle: toggleWish } = useWishlist();
 
@@ -819,12 +855,11 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                           suppressStickyCompact();
                           router.push(`${shopBase}/${cat.slug}`);
                         } else {
-                          // Оновлюємо фільтр БЕЗ скролу сторінки; навігація потрібна
-                          // справжня, інакше серверна шапка лишиться від старої категорії
                           setSelCat(cat.slug);
-                          gotoCategory(`${shopBase}/${cat.slug}`);
+                          applyCategory(cat.slug);
                           setVisibleCount(24);
-                          // Тільки сайдбар — після анімації
+                          // Підтягуємо гілку після старту анімації розгортання
+                          setTimeout(() => pullCatToEye(cat.slug), 150);
                         }
                       }
                     } else {

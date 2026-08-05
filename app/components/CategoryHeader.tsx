@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useCategoryView } from '../../lib/category-view';
 
 // Шапка сторінки категорії. Свідомо компактна: під нею одразу листинг, тож
 // повноцінний hero з лендингів тут шкодив би — відсував би товар за перший екран.
@@ -6,13 +9,19 @@ import Link from 'next/link';
 // Опис стоїть праворуч від заголовка, а не під ним: сторінка магазину не має
 // обмеження по ширині, і колонка тексту на 760px лишала половину екрана порожньою.
 // Двома колонками шапка ще й нижча, тож товар піднімається вище.
+//
+// Клієнтський компонент із серверним первинним рендером: при прямому заході
+// текст у HTML з пропсів; при клієнтському перемиканні категорії в сайдбарі
+// ShopClient публікує свіжі дані у category-view — шапка оновлюється миттєво,
+// без навігації (див. коментар у lib/category-view.ts).
 
 type Props = {
   lang: 'uk' | 'ru';
-  name: string;
+  /** Порожньо на /shop: шапка з'явиться, щойно оберуть категорію в сайдбарі */
+  name?: string;
   parent?: { name: string; slug: string } | null;
   description?: string | null;
-  count: number;
+  count?: number;
 };
 
 const T = {
@@ -27,8 +36,15 @@ function plural(n: number, one: string, few: string, many: string): string {
   return many;
 }
 
-export default function CategoryHeader({ lang, name, parent, description, count }: Props) {
+export default function CategoryHeader(props: Props) {
+  // Опубліковане для поточної адреси — авторитетне, НАВІТЬ якщо header: null
+  // (клік «Всі категорії»: шапка має зникнути, а не відкотитись до пропсів).
+  const view = useCategoryView();
+  const data = view ? view.header : (props.name ? props : null);
+  const lang = data?.lang ?? props.lang;
   const t = T[lang];
+  if (!data || !data.name) return null;
+  const { name, parent, description, count = 0 } = data;
   const prefix = lang === 'ru' ? '/ru' : '';
   const crumb: React.CSSProperties = { color: 'var(--text-muted)', textDecoration: 'none' };
 
