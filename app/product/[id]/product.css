@@ -247,3 +247,36 @@
 [data-theme="dark"] .delivery-card__icon {
   color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 55%, white);
 }
+
+/* Картка-посилання на статтю блогу — той самий ряд, що .delivery-card */
+.article-link-card {
+  display: flex; gap: 12px; align-items: center;
+  margin: 24px 0; padding: 14px 16px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--bg-card);
+  text-decoration: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.article-link-card:hover {
+  border-color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 45%, transparent);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+.article-link-card__cta {
+  flex-shrink: 0; font-size: 13px; font-weight: 700; white-space: nowrap;
+  color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 72%, black);
+}
+[data-theme="dark"] .article-link-card__cta {
+  color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 55%, white);
+}
+
+/* Надзаголовок секції в кольорі родини (над «Схожі товари») */
+.product-eyebrow {
+  display: block;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 72%, black);
+  margin-bottom: 2px;
+}
+[data-theme="dark"] .product-eyebrow {
+  color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 55%, white);
+}

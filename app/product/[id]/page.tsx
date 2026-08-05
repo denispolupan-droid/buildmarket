@@ -17,6 +17,7 @@ import CalculatorLink from './CalculatorLink';
 import DeliveryInfo from './DeliveryInfo';
 import ProductFaq from './ProductFaq';
 import { CATEGORY_COLORS } from '../../../lib/category-icons';
+import ArticleLink from './ArticleLink';
 import Footer from '../../components/Footer';
 import ProductReviews from './ProductReviews';
 import { RatingBadge } from '../../components/StarRating';
@@ -334,16 +335,11 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
 
         {/* Стаття по темі */}
         {(() => { const blogSlug = product.category_slug ? getCategoryMeta(product.category_slug)?.blogSlug : null; return blogSlug ? (
-          <div style={{ margin: '24px 0', padding: '16px 20px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Корисна стаття по темі</span>
-            <Link href={`/blog/${blogSlug}`} style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-main)', whiteSpace: 'nowrap', textDecoration: 'none' }}>
-              Читати статтю →
-            </Link>
-          </div>
+          <ArticleLink blogSlug={blogSlug} lang="uk" accent={product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined} />
         ) : null; })()}
 
         {/* Схожі товари */}
-        {related.length > 0 && <RelatedCarousel products={related.map(p => publicProduct(p, !isRetail))} retail={isRetail} reviewStats={reviewStats} />}
+        {related.length > 0 && <RelatedCarousel products={related.map(p => publicProduct(p, !isRetail))} retail={isRetail} reviewStats={reviewStats} accent={product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined} />}
 
         {/* Відгуки */}
         <div id="reviews" style={{ borderTop: '1px solid var(--border)', paddingTop: '32px', marginTop: '32px' }}>

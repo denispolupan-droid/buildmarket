@@ -20,6 +20,7 @@ import CalculatorLink from '../../../product/[id]/CalculatorLink';
 import DeliveryInfo from '../../../product/[id]/DeliveryInfo';
 import ProductFaq, { faqText } from '../../../product/[id]/ProductFaq';
 import { CATEGORY_COLORS } from '../../../../lib/category-icons';
+import ArticleLink from '../../../product/[id]/ArticleLink';
 import Footer from '../../../components/Footer';
 import ProductReviews from '../../../product/[id]/ProductReviews';
 import { RatingBadge } from '../../../components/StarRating';
@@ -329,15 +330,10 @@ export default async function RuProductPage({ params, searchParams }: { params: 
 
         {/* Статья по теме */}
         {(() => { const blogSlug = product.category_slug ? getCategoryMeta(product.category_slug)?.blogSlug : null; return blogSlug ? (
-          <div style={{ margin: '24px 0', padding: '16px 20px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Полезная статья по теме</span>
-            <Link href={`/ru/blog/${blogSlug}`} style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-main)', whiteSpace: 'nowrap', textDecoration: 'none' }}>
-              Читать статью →
-            </Link>
-          </div>
+          <ArticleLink blogSlug={blogSlug} lang="ru" accent={product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined} />
         ) : null; })()}
 
-        {related.length > 0 && <RelatedCarousel products={related.map(p => publicProduct(p, !isRetail))} retail={isRetail} reviewStats={reviewStats} />}
+        {related.length > 0 && <RelatedCarousel products={related.map(p => publicProduct(p, !isRetail))} retail={isRetail} reviewStats={reviewStats} accent={product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined} />}
 
         <div id="reviews" style={{ borderTop: '1px solid var(--border)', paddingTop: '32px', marginTop: '32px' }}>
           <ProductReviews sku={product.sku} productName={`${product.brand} ${nameRu}`} />

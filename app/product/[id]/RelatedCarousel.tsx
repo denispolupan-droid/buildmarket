@@ -14,7 +14,7 @@ import { tFilterValue } from '../../../lib/translations-ru';
 const VISIBLE = 5;
 const GAP = 16;
 
-export default function RelatedCarousel({ products, retail = false, reviewStats }: { products: ProductFull[]; retail?: boolean; reviewStats?: ReviewStats }) {
+export default function RelatedCarousel({ products, retail = false, reviewStats, accent }: { products: ProductFull[]; retail?: boolean; reviewStats?: ReviewStats; accent?: string }) {
   const pathname = usePathname();
   const lang = pathname.startsWith('/ru') ? 'ru' : 'uk';
   const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
@@ -60,11 +60,14 @@ export default function RelatedCarousel({ products, retail = false, reviewStats 
   });
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', ...(accent ? ({ '--cat-accent': accent } as React.CSSProperties) : {}) }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <h2 className="section-title" style={{ margin: 0 }}>{t('Схожі товари', 'Похожие товары')}</h2>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '20px' }}>
+        <div>
+          <span className="product-eyebrow">{t('Може знадобитися', 'Может пригодиться')}</span>
+          <h2 className="section-title" style={{ margin: 0 }}>{t('Схожі товари', 'Похожие товары')}</h2>
+        </div>
         <div className="related-carousel-arrows" style={{ display: 'flex', gap: '8px' }}>
           <button onClick={() => moveTo(cur - 1)} disabled={cur === 0} style={arrowStyle(cur > 0)}>
             <ChevronLeft size={18} strokeWidth={2} />
