@@ -180,7 +180,9 @@ export function productMeta(product: ProductFull, lang: Lang = 'uk'): Metadata {
       T[lang].buy,
       product.sku,
     ],
-    ...ogTwitter(title, description, url, lang, `${BASE}${path}/opengraph-image`),
+    // Картинка — з локалізованого шляху (url уже містить /ru): у ru-роута
+    // власний opengraph-image з name_ru і російським слоганом
+    ...ogTwitter(title, description, url, lang, `${url}/opengraph-image`),
     alternates: alternatesFor(path, lang),
   };
 }
