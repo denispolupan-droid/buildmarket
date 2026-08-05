@@ -947,6 +947,19 @@ input, select { font-family: inherit; }
 .cat-icon-backdrop svg { flex-shrink: 0; }
 [data-theme="dark"] .cat-icon-backdrop { opacity: 0.2; }
 
+/* «Нитка» розкритої гілки сайдбара: замість сірої лінії — тонкий вертикальний
+   градієнт у кольорі родини (--cat-accent з інлайну), що тане донизу — той
+   самий мотив «від щільного до прозорого», що в зоні заголовка. */
+.cat-branch {
+  margin-left: 8px;
+  background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 55%, transparent),
+      color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 12%, transparent) 80%,
+      transparent
+    ) left top / 2px 100% no-repeat;
+}
+
 .section-title {
   font-size: clamp(24px, 3vw, 34px); font-weight: 900; line-height: 1.3;
   letter-spacing: -0.5px; color: var(--text-primary); margin: 12px 0 0;

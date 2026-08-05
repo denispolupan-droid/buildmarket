@@ -899,7 +899,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                     <ChevronDown size={13} style={{ flexShrink: 0, opacity: 0.45, transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)' }} />
                   )}
                 </Link>
-                <div style={{ overflow: 'hidden', maxHeight: isExpanded ? '2000px' : '0', transition: 'max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1)', marginLeft: '8px', borderLeft: '1px solid rgba(30,58,95,0.2)' }}>
+                <div className="cat-branch" style={{ overflow: 'hidden', maxHeight: isExpanded ? '2000px' : '0', transition: 'max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1)', ...(CATEGORY_COLORS[cat.slug] ? ({ '--cat-accent': CATEGORY_COLORS[cat.slug] } as React.CSSProperties) : {}) }}>
                 {children.map(child => {
                   const grandchildren = childrenOf[child.slug] ?? [];
                   const childExpanded = expandedCats.has(child.slug);

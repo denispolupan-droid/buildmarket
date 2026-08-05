@@ -721,12 +721,11 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                             : <ChevronRight size={13} style={{ flexShrink: 0, opacity: 0.45 }} />
                         )}
                       </div>
-                      <div style={{
+                      <div className="cat-branch" style={{
                         overflow: 'hidden',
                         maxHeight: isExpanded ? '2000px' : '0',
                         transition: 'max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
-                        marginLeft: '8px',
-                        borderLeft: '2px solid var(--border)',
+                        ...(CATEGORY_COLORS[cat.slug] ? ({ '--cat-accent': CATEGORY_COLORS[cat.slug] } as React.CSSProperties) : {}),
                       }}>
                         {children.map(child => {
                           const grandchildren = childrenOf[child.slug] ?? [];
