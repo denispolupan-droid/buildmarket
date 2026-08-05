@@ -55,8 +55,6 @@ function isModifiedClick(e: React.MouseEvent): boolean {
 }
 
 const SHOP_STATE_KEY = 'shop_filter_state';
-/** Позиція прокрутки, яку треба повернути після переходу між категоріями. */
-const KEEP_SCROLL_KEY = 'shop_keep_scroll';
 
 function readShopSession<T>(field: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -426,30 +424,16 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     smoothScrollTo(sidebar, Math.max(0, target), 620);
   }, []);
 
-  // Перехід між категоріями — справжня навігація (інакше серверна шапка лишається
-  // від попередньої категорії). Але Next скидає прокрутку на початок сторінки, і
-  // { scroll: false } цього не стримує — перевірено на продакшн-збірці.
+  // Перехід між категоріями — справжня навігація, інакше серверна шапка лишається
+  // від попередньої категорії (див. коментар у selectCat).
   //
-  // Позицію тримаємо в sessionStorage, а не в ref: при переході на іншу категорію
-  // ShopClient перемонтовується, тож ref обнулився б і відновлювати було б нічого.
+  // Прокруткою сторінки тут НЕ керуємо. Вона й так іде на початок — цим займаються
+  // два ефекти нижче (на [selCat] і на [sorted]), і так було задовго до навігації.
+  // Спроба повернути позицію після переходу давала двічі гірше: сторінка стрибала
+  // вгору, а через ~1 с — назад.
   const gotoCategory = (url: string) => {
-    sessionStorage.setItem(KEEP_SCROLL_KEY, String(window.scrollY));
     router.push(url, { scroll: false });
   };
-  useEffect(() => {
-    const raw = sessionStorage.getItem(KEEP_SCROLL_KEY);
-    if (raw == null) return;
-    sessionStorage.removeItem(KEEP_SCROLL_KEY);
-    const y = Number(raw);
-    if (!Number.isFinite(y) || y <= 0) return;
-    // Повертаємо позицію кілька разів поспіль: Next скидає прокрутку вже після
-    // коміту, а висота документа встигає перерахуватися не з першого кадру.
-    const restore = () => window.scrollTo(0, y);
-    requestAnimationFrame(() => requestAnimationFrame(restore));
-    const t1 = setTimeout(restore, 60);
-    const t2 = setTimeout(restore, 180);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [pathname]);
 
   const selectCat = (slug: string | null, scrollSlug?: string) => {
     // На brand-сторінці заголовок рендериться сервером — потрібна повна навігація
