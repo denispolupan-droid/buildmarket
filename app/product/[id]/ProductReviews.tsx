@@ -72,7 +72,7 @@ export default function ProductReviews({ sku, productName }: { sku: string; prod
     <div style={{ marginTop: '40px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+          <h2 className="product-brand-section__title" style={{ margin: 0 }}>
             {t('Відгуки', 'Отзывы')}
           </h2>
           {reviews.length > 0 && (
@@ -175,7 +175,7 @@ export default function ProductReviews({ sku, productName }: { sku: string; prod
           {reviews.map(r => (
             <div key={r.id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#4880B8', flexShrink: 0 }}>
+                <div className="review-avatar">
                   {r.author_name[0].toUpperCase()}
                 </div>
                 <div>

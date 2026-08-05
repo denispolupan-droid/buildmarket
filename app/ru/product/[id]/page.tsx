@@ -21,6 +21,7 @@ import DeliveryInfo from '../../../product/[id]/DeliveryInfo';
 import ProductFaq, { faqText } from '../../../product/[id]/ProductFaq';
 import { CATEGORY_COLORS } from '../../../../lib/category-icons';
 import ArticleLink from '../../../product/[id]/ArticleLink';
+import { Tag, BadgeCheck, Box, Truck } from 'lucide-react';
 import Footer from '../../../components/Footer';
 import ProductReviews from '../../../product/[id]/ProductReviews';
 import { RatingBadge } from '../../../components/StarRating';
@@ -210,7 +211,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
       {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd).replace(/</g, '\\u003c') }} />}
       <BackButton breadcrumbId="product-breadcrumb" />
-      <div style={{ background: 'var(--bg-page)', minHeight: '100vh' }}>
+      <div style={{ background: 'var(--bg-page)', minHeight: '100vh', ...(product.category_slug && CATEGORY_COLORS[product.category_slug] ? ({ '--cat-accent': CATEGORY_COLORS[product.category_slug] } as React.CSSProperties) : {}) }}>
       <div className="page-container" style={{paddingTop: '8px', paddingBottom: '48px'}}>
 
         <div className="breadcrumb" id="product-breadcrumb">
@@ -312,10 +313,10 @@ export default async function RuProductPage({ params, searchParams }: { params: 
             for the Описание/Характеристики tabs below to land in view without
             scrolling on most products. */}
         <div className="product-meta-strip">
-          <span><span className="product-meta-strip__label">Категория:</span> <Link href={productCat ? `/ru/shop/${productCat.slug}` : '/ru/shop'} style={{color:'var(--brand-main)'}}>{categoryName}</Link></span>
-          <span><span className="product-meta-strip__label">Бренд:</span> <Link href={`/ru/shop/brand/${brandToSlug(product.brand)}`} style={{color:'var(--brand-main)'}}>{product.brand}</Link></span>
-          <span><span className="product-meta-strip__label">Упаковка:</span> {product.pack_qty} шт</span>
-          <span><span className="product-meta-strip__label">Доставка:</span> Новая Почта</span>
+          <span><Tag size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Категория:</span> <Link href={productCat ? `/ru/shop/${productCat.slug}` : '/ru/shop'} style={{color:'var(--brand-main)'}}>{categoryName}</Link></span>
+          <span><BadgeCheck size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Бренд:</span> <Link href={`/ru/shop/brand/${brandToSlug(product.brand)}`} style={{color:'var(--brand-main)'}}>{product.brand}</Link></span>
+          <span><Box size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Упаковка:</span> {product.pack_qty} шт</span>
+          <span><Truck size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Доставка:</span> Новая Почта</span>
         </div>
 
         <ProductTabs

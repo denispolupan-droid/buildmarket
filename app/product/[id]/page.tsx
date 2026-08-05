@@ -18,6 +18,7 @@ import DeliveryInfo from './DeliveryInfo';
 import ProductFaq from './ProductFaq';
 import { CATEGORY_COLORS } from '../../../lib/category-icons';
 import ArticleLink from './ArticleLink';
+import { Tag, BadgeCheck, Box, Truck } from 'lucide-react';
 import Footer from '../../components/Footer';
 import ProductReviews from './ProductReviews';
 import { RatingBadge } from '../../components/StarRating';
@@ -204,13 +205,16 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     })),
   } : null;
 
+  // Колір товарної родини — успадковується всіма фірмовими блоками сторінки
+  const accent = product.category_slug ? CATEGORY_COLORS[product.category_slug] : undefined;
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd).replace(/</g, '\\u003c') }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
       {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd).replace(/</g, '\\u003c') }} />}
       <BackButton breadcrumbId="product-breadcrumb" />
-      <div style={{ background: 'var(--bg-page)', minHeight: '100vh' }}>
+      <div style={{ background: 'var(--bg-page)', minHeight: '100vh', ...(accent ? ({ '--cat-accent': accent } as React.CSSProperties) : {}) }}>
       <div className="page-container" style={{paddingTop: '8px', paddingBottom: '48px'}}>
 
         <div className="breadcrumb" id="product-breadcrumb">
@@ -317,10 +321,10 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
             for the Опис/Характеристики tabs below to land in view without
             scrolling on most products. */}
         <div className="product-meta-strip">
-          <span><span className="product-meta-strip__label">Категорія:</span> <Link href={productCat ? `/shop/${productCat.slug}` : '/shop'} style={{color:'var(--brand-main)'}}>{categoryName}</Link></span>
-          <span><span className="product-meta-strip__label">Бренд:</span> <Link href={`/shop/brand/${brandToSlug(product.brand)}`} style={{color:'var(--brand-main)'}}>{product.brand}</Link></span>
-          <span><span className="product-meta-strip__label">Упаковка:</span> {product.pack_qty} шт</span>
-          <span><span className="product-meta-strip__label">Доставка:</span> Нова Пошта</span>
+          <span><Tag size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Категорія:</span> <Link href={productCat ? `/shop/${productCat.slug}` : '/shop'} style={{color:'var(--brand-main)'}}>{categoryName}</Link></span>
+          <span><BadgeCheck size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Бренд:</span> <Link href={`/shop/brand/${brandToSlug(product.brand)}`} style={{color:'var(--brand-main)'}}>{product.brand}</Link></span>
+          <span><Box size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Упаковка:</span> {product.pack_qty} шт</span>
+          <span><Truck size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Доставка:</span> Нова Пошта</span>
         </div>
 
         <ProductTabs
