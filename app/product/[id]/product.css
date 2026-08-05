@@ -311,16 +311,3 @@
 [data-theme="dark"] .review-avatar {
   color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 55%, white);
 }
-
-/* Тонка фірмова смуга зверху карток hero (як у крокових карток на головній):
-   колір товарної родини, ::before щоб не чіпати layout. Обидві картки мають
-   border-radius: 20px — смуга ховається під скругленням через overflow. */
-.product-gallery, .product-info { position: relative; overflow: hidden; }
-.product-gallery::before, .product-info::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--cat-accent, var(--brand-blue)), color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 25%, transparent));
-  pointer-events: none;
-  z-index: 2;
-}
