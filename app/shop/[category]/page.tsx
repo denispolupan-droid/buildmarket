@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import Footer from '../../components/Footer';
 import ShopLoader from '../ShopLoader';
 import AllProductsLinks from '../AllProductsLinks';
+import HideOnCategorySwitch from '../../components/HideOnCategorySwitch';
 import CategoryHeader from '../../components/CategoryHeader';
 import CategoryAbout from '../../components/CategoryAbout';
 import { getCategoriesCached, getProductsCached } from '../../../lib/supabase';
@@ -129,7 +130,7 @@ export default async function ShopCategoryPage({ params }: { params: Promise<{ c
         />
         <div style={{ margin: '0 auto', padding: '16px 16px 64px' }} className="mobile-pad">
           <ShopLoader initialCategory={category} hideCategoryInfo />
-          <AllProductsLinks products={allCategoryProducts} lang="uk" />
+          <HideOnCategorySwitch><AllProductsLinks products={allCategoryProducts} lang="uk" /></HideOnCategorySwitch>
           {meta && <CategoryAbout lang="uk" name={cat.name} meta={meta} />}
         </div>
       </div>
