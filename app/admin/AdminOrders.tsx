@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
@@ -28,6 +28,7 @@ import SmartDateInput from '../components/SmartDateInput';
 import InvoiceMessengerButtons from '../components/InvoiceMessengerButtons';
 import InvoiceOptionsModal from '../components/admin/InvoiceOptionsModal';
 import ReturnOrderModal from '../components/admin/ReturnOrderModal';
+import NpReturnModal from '../components/admin/NpReturnModal';
 import { rozetkaStatusLabel, isRozetkaAhead } from '../../lib/rozetka-status';
 import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
 import { estimateMarketplaceDeliveryFee, splitFeeByRevenue, type MarketplaceFeeTariffs } from '../../lib/marketplace-delivery-fee';
@@ -88,6 +89,8 @@ type Order = {
   discount_amount:    number | null;
   shipping_supplier_id: number | null;
   mp_refund_status:   string | null;
+  np_return_ref:      string | null;
+  np_return_number:   string | null;
   fulfillment_mode:   string | null;
   confirmed_at:       string | null;
   shipped_at:         string | null;
@@ -205,6 +208,17 @@ export default function AdminOrders({
 }: AdminOrdersProps) {
   const isAdmin = userRole === 'admin';
   const router = useRouter();
+  // Посилання пагінації мусять нести з собою решту фільтрів: голий `?page=2`
+  // стирав ?status=/?dateFrom=/?sortBy=, і друга сторінка вкладки «Доставлено»
+  // відкривалася як повний список замовлень із дефолтним статусом.
+  const searchParams = useSearchParams();
+  const pageHref = (p: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', String(p));
+    // expand прив'язаний до конкретного замовлення на поточній сторінці
+    params.delete('expand');
+    return `?${params.toString()}`;
+  };
   const [orders, setOrders]         = useState<Order[]>(initialOrders);
   // Sync when server re-renders with new sort/filter
   useEffect(() => { setOrders(initialOrders); }, [initialOrders]);
@@ -221,6 +235,7 @@ export default function AdminOrders({
 
   // Модал повернення від покупця
   const [returnFor, setReturnFor] = useState<{ id: string; number: number } | null>(null);
+  const [npReturnFor, setNpReturnFor] = useState<{ id: string; number: number } | null>(null);
 
   const PRICE_TYPE_LABELS: Record<string, string> = { retail: 'Роздріб', wholesale: 'Опт', drop: 'Дроп' };
 
@@ -1895,6 +1910,9 @@ export default function AdminOrders({
                       {order.mp_refund_status && (
                         <span title={`Покупець відкрив повернення — ${order.mp_refund_status}`} style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>↩ повернення</span>
                       )}
+                      {order.np_return_ref && (
+                        <span title={`Заявка на повернення в НП${order.np_return_number ? ` №${order.np_return_number}` : ''} — посилка їде назад на наше відділення`} style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#9A3412', background: '#FFF7ED', border: '1px solid #FDBA74', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>↩ НП</span>
+                      )}
                       {isReturnPending(order) && (() => {
                         const rs = returnState(order);
                         const s = rs === 'received'
@@ -3432,8 +3450,22 @@ export default function AdminOrders({
                                 </div>
                                 {isAdmin && ['shipped', 'delivered'].includes(order.status) && (
                                   <button onClick={() => setReturnFor({ id: order.id, number: order.order_number })}
+                                    title="Фінансове повернення: сторнує виручку, COGS і комісію, оприбутковує товар"
                                     style={{ ...btnMuted, color: '#B45309' }}>
                                     ↩ Повернення
+                                  </button>
+                                )}
+                                {/* Повернення посилки НП — окрема, суто логістична дія: клієнт не
+                                    забирає, і посилку треба відкликати з відділення, поки НП не
+                                    почала рахувати зберігання. Для точок видачі Rozetka накладна
+                                    не в НП — заявку створювати нікуди. */}
+                                {isAdmin && order.tracking_number && !isRzPickup && ['shipped', 'cancelled'].includes(order.status) && (
+                                  <button onClick={() => setNpReturnFor({ id: order.id, number: order.order_number })}
+                                    title="Створити заявку на повернення в кабінеті Нової Пошти — посилка поїде назад на наше відділення"
+                                    style={{ ...btnMuted, color: order.np_return_ref ? '#15803D' : '#B45309' }}>
+                                    {order.np_return_ref
+                                      ? `↩ Повернення НП ${order.np_return_number ?? ''}`.trim()
+                                      : '↩ Повернути посилку (НП)'}
                                   </button>
                                 )}
                                 <div style={{ display: 'flex', gap: '4px' }}>
@@ -3615,7 +3647,7 @@ export default function AdminOrders({
       {totalPages > 1 && (
         <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '24px' }}>
           {currentPage > 1 && (
-            <a href={`?page=${currentPage - 1}`} style={{
+            <a href={pageHref(currentPage - 1)} style={{
               height: '36px', padding: '0 16px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center',
               border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
             }}>← Попередня</a>
@@ -3623,7 +3655,7 @@ export default function AdminOrders({
           {Array.from({ length: totalPages }, (_, i) => i + 1)
             .filter(p => Math.abs(p - currentPage) <= 2)
             .map(p => (
-              <a key={p} href={`?page=${p}`} style={{
+              <a key={p} href={pageHref(p)} style={{
                 height: '36px', width: '36px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 border: `1.5px solid ${p === currentPage ? '#162035' : 'var(--border)'}`,
                 background: p === currentPage ? 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)' : 'var(--bg-card)',
@@ -3631,7 +3663,7 @@ export default function AdminOrders({
               }}>{p}</a>
             ))}
           {currentPage < totalPages && (
-            <a href={`?page=${currentPage + 1}`} style={{
+            <a href={pageHref(currentPage + 1)} style={{
               height: '36px', padding: '0 16px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center',
               border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
             }}>Наступна →</a>
@@ -3921,6 +3953,15 @@ export default function AdminOrders({
           orderId={returnFor.id}
           orderNumber={returnFor.number}
           onClose={() => setReturnFor(null)}
+          onDone={() => router.refresh()}
+        />
+      )}
+
+      {npReturnFor && (
+        <NpReturnModal
+          orderId={npReturnFor.id}
+          orderNumber={npReturnFor.number}
+          onClose={() => setNpReturnFor(null)}
           onDone={() => router.refresh()}
         />
       )}
