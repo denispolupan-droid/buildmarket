@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase';
 import { getRozetkaChats } from '../../../../lib/rozetka-api';
 import { getPromChatRooms } from '../../../../lib/prom-api';
+import { loadChatSeen, isChatUnread } from '../../../../lib/marketplace-chat-seen';
 
 // Обʼєднаний список чатів з покупцями обох маркетплейсів (живі дані, без
 // дзеркала в БД). Rozetka: чати по замовленнях + питання про товари.
@@ -29,9 +30,11 @@ export async function GET() {
 
   // Rozetka: перша сторінка кожного типу, відсортовано за оновленням — для
   // робочої стрічки цього достатньо (20+20 останніх діалогів)
-  const [ordersChats, itemsChats] = await Promise.all([
+  const [ordersChats, itemsChats, seen] = await Promise.all([
     getRozetkaChats('orders').catch((e: unknown) => { errors.push(`Rozetka: ${e instanceof Error ? e.message : e}`); return { chats: [] }; }),
     getRozetkaChats('items').catch(() => ({ chats: [] })),
+    // Власний признак прочитаності — той самий, що й у бейджі сайдбара.
+    loadChatSeen(),
   ]);
   const rzChats = [...ordersChats.chats, ...itemsChats.chats];
 
@@ -48,13 +51,16 @@ export async function GET() {
 
   for (const c of rzChats) {
     const our = c.order_id ? orderByRz.get(Number(c.order_id)) : null;
+    const updatedAt = c.updated ?? c.created ?? null;
     items.push({
       mp: 'rozetka',
       id: String(c.id),
       subject: c.subject ?? (c.order_id ? `Замовлення rz ${c.order_id}` : 'Чат'),
       contact: c.user?.contact_fio?.trim() || null,
-      updatedAt: c.updated ?? c.created ?? null,
-      unread: Number(c.unread_messages_count) || 0,
+      updatedAt,
+      // Свій признак, а не unread_messages_count площадки: той гасне, щойно
+      // діалог відкриють у кабінеті Rozetka, хоча ми його не бачили.
+      unread: isChatUnread(seen, 'rozetka', String(c.id), updatedAt) ? 1 : 0,
       orderNumber: our?.order_number ?? null,
       ourOrderId: our?.id ?? null,
       receiverId: c.user_id ?? c.user?.id ?? null,
@@ -70,7 +76,8 @@ export async function GET() {
         subject: 'Чат з покупцем',
         contact: null,               // імʼя зʼявиться в треді (user_name повідомлень)
         updatedAt: r.date_sent,
-        unread: 0,                   // Prom не віддає лічильник на рівні кімнати
+        // Prom власного лічильника не має — тепер це й не потрібно, признак наш.
+        unread: isChatUnread(seen, 'prom', r.ident, r.date_sent ?? null) ? 1 : 0,
         orderNumber: null,
         ourOrderId: null,
         receiverId: null,

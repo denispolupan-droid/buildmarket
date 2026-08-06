@@ -67,3 +67,6 @@ tests/e2e/.auth/
 /playwright-report/
 /test-results/
 /blob-report/
+
+# supabase CLI — службовий стан зв'язку з проєктом, не джерельний код
+supabase/.temp/

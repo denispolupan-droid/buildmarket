@@ -658,8 +658,12 @@ export async function getRozetkaSellerRating(): Promise<RozetkaSellerRating> {
 /* ── Mapping helpers ────────────────────────────────────────────────────── */
 
 export function rozetkaOrderToOurFormat(order: RozetkaOrder) {
-  const contact = order.user_title?.full_name?.trim()
-    || order.delivery?.recipient_title?.trim()
+  // ОТРИМУВАЧ, а не замовник. У Rozetka це різні люди: user_* — хто оформив
+  // замовлення, delivery.recipient_* — хто його забирає. Саме отримувач їде в
+  // накладну перевізника, і саме йому дзвонить кур'єр. Раніше пріоритет був
+  // зворотний, тож у ТТН потрапляв телефон замовника — посилку не могли вручити.
+  const contact = order.delivery?.recipient_title?.trim()
+    || order.user_title?.full_name?.trim()
     || 'Клієнт Rozetka';
 
   const del = order.delivery;
@@ -714,7 +718,10 @@ export function rozetkaOrderToOurFormat(order: RozetkaOrder) {
 
   return {
     contact,
-    phone:            order.user_phone ?? del?.recipient_phone ?? '',
+    // Пара «ім'я + телефон» має бути з ОДНОГО джерела: інакше в накладній
+    // опиниться прізвище замовника з телефоном отримувача, і НП створить
+    // контрагента-химеру. Тому пріоритет отримувача тут той самий, що в contact.
+    phone:            del?.recipient_phone ?? order.user_phone ?? '',
     email:            del?.email ?? '',
     delivery_type:    deliveryType,
     delivery_address: deliveryAddress,

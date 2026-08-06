@@ -91,7 +91,12 @@ export default function MarketplaceChatsClient({ embedded = false }: { embedded?
     setMessages([]); setThreadError(''); setThreadContact(item.contact); setReceiverId(item.receiverId);
     setThreadLoading(true);
     try {
-      const res = await fetch(`/api/admin/marketplace-chats/thread?mp=${item.mp}&id=${encodeURIComponent(item.id)}`);
+      // updatedAt передаємо навмисно: сервер запамʼятає САМЕ цю мітку як
+      // «переглянуто». Порівняння в списку йде по тому самому полю чату, тож
+      // мітка останнього повідомлення тут не підійшла б — вони можуть різнитись,
+      // і чат залишався б підсвіченим назавжди.
+      const res = await fetch(`/api/admin/marketplace-chats/thread?mp=${item.mp}&id=${encodeURIComponent(item.id)}`
+        + (item.updatedAt ? `&updatedAt=${encodeURIComponent(item.updatedAt)}` : ''));
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? 'Помилка');
       setMessages(d.messages ?? []);

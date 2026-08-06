@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { getRozetkaChatThread, markRozetkaChatRead } from '../../../../../lib/rozetka-api';
 import { getPromChatHistory, markPromMessageRead } from '../../../../../lib/prom-api';
+import { markChatSeen } from '../../../../../lib/marketplace-chat-seen';
 
 // Тред одного чату (живі дані). Відкриття треда одразу позначає вхідні
 // повідомлення прочитаними на площадці — щоб лічильники не «висіли».
@@ -62,6 +63,14 @@ export async function GET(req: NextRequest) {
       // Позначаємо вхідні прочитаними (до 20 за раз, щоб не довбати API)
       await Promise.allSettled(unreadIncoming.slice(-20).map(mid => markPromMessageRead(mid)));
     }
+
+    // Наш власний признак прочитаності. Запамʼятовуємо мітку updated чату, яку
+    // клієнт щойно показував у списку — саме з нею список і звіряється. Мітка
+    // останнього повідомлення тут була б іншим полем: у чата updated може
+    // відрізнятись, і тоді рядок лишався б підсвіченим назавжди. Якщо клієнт
+    // мітку не передав (прямий виклик) — беремо час найсвіжішого повідомлення.
+    const latestMsg = messages.reduce<string | null>((max, m) => (m.at && (!max || m.at > max) ? m.at : max), null);
+    await markChatSeen(mp, id, sp.get('updatedAt') ?? latestMsg).catch(() => {});
 
     return NextResponse.json({ messages, receiverId, contact });
   } catch (err: unknown) {
