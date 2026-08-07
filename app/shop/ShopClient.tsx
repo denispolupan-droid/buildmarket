@@ -23,6 +23,7 @@ import { getCategoryMeta } from '../../lib/category-descriptions';
 import { getCategoryMetaRu } from '../../lib/category-descriptions-ru';
 import { publishCategoryView } from '../../lib/category-view';
 import { useStickyCompact, suppressStickyCompact } from '../../lib/useStickyCompact';
+import { orderByShowcase, isShowcaseVisible } from '../../lib/showcase';
 
 // Native `behavior: 'smooth'` has a fixed, fairly snappy browser-controlled duration —
 // this gives the category auto-lift its own slower, eased animation instead. Ease-out
@@ -251,9 +252,11 @@ type Props = {
   initialSaleOnly?: boolean;
   initialCategory?: string;
   initialBrand?: string;
+  /** SKU вітрини по порядку — товари, закріплені адміном першими на головній. */
+  showcaseSkus?: string[];
 };
 
-export default function ShopClient({ products, categories, reviewStats, initialSaleOnly = false, initialCategory, initialBrand }: Props) {
+export default function ShopClient({ products, categories, reviewStats, initialSaleOnly = false, initialCategory, initialBrand, showcaseSkus = [] }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const lang = pathname.startsWith('/ru') ? 'ru' as const : 'uk' as const;
@@ -803,8 +806,20 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     return list;
   }, [products, matchingSlugs, saleOnly, filterValues, filterVolumes, filterVolumesKg, inStockOnly, search, filterPlasticGroup, isPlasticCat]);
 
+  // Вітрина: товари, які адмін закріпив першими. Показуємо ТІЛЬКИ на чистій
+  // головній — щойно покупець обрав категорію, фільтр, сортування чи пошук, він
+  // шукає щось конкретне, і закріплені позиції вгорі йому б заважали.
+  const pristine = !selCat && !search.trim() && !saleOnly && !inStockOnly
+    && activeFilterCount === 0 && sortBy === 'default';
+
   const sorted = useMemo(() => {
-    if (sortBy === 'default') return filtered;
+    if (sortBy === 'default') {
+      if (!pristine || !showcaseSkus.length) return filtered;
+      const pinned = orderByShowcase(showcaseSkus, filtered, { visible: isShowcaseVisible });
+      if (!pinned.length) return filtered;
+      const pinnedSkus = new Set(pinned.map(p => p.sku));
+      return [...pinned, ...filtered.filter(p => !pinnedSkus.has(p.sku))];
+    }
     return [...filtered].sort((a, b) => {
       if (sortBy === 'price_asc') return (a.stock?.price_retail ?? 0) - (b.stock?.price_retail ?? 0);
       if (sortBy === 'price_desc') return (b.stock?.price_retail ?? 0) - (a.stock?.price_retail ?? 0);
@@ -815,7 +830,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
       }
       return 0;
     });
-  }, [filtered, sortBy]);
+  }, [filtered, sortBy, pristine, showcaseSkus]);
 
   // ПРИБРАНО: другий скрол угору — на будь-яку зміну списку (категорія, фільтр,
   // сортування). Знятий разом із тим, що на [selCat]: інакше сторінка смикалась би

@@ -1,5 +1,6 @@
 import ShopClient from './ShopClient';
 import { getProductsCached, getCategoriesCached, getReviewStatsCached } from '../../lib/supabase';
+import { getShowcaseSkusCached } from '../../lib/showcase-server';
 
 type Props = {
   initialSaleOnly?: boolean;
@@ -9,10 +10,11 @@ type Props = {
 
 // Server Component — дані отримуються на сервері, без client-side waterfall
 export default async function ShopLoader({ initialSaleOnly, initialCategory, initialBrand }: Props) {
-  const [products, categories, reviewStats] = await Promise.all([
+  const [products, categories, reviewStats, showcaseSkus] = await Promise.all([
     getProductsCached(),
     getCategoriesCached(),
     getReviewStatsCached(),
+    getShowcaseSkusCached('shop'),
   ]);
 
   return (
@@ -20,6 +22,7 @@ export default async function ShopLoader({ initialSaleOnly, initialCategory, ini
       products={products}
       categories={categories}
       reviewStats={reviewStats}
+      showcaseSkus={showcaseSkus}
       initialSaleOnly={initialSaleOnly}
       initialCategory={initialCategory}
       initialBrand={initialBrand}

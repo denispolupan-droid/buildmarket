@@ -23,6 +23,7 @@ import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 import { WHOLESALE_MIN } from '../../lib/site';
 import { getCategoryMeta } from '../../lib/category-descriptions';
 import { getCategoryMetaRu } from '../../lib/category-descriptions-ru';
+import { orderByShowcase, isShowcaseVisible } from '../../lib/showcase';
 import { useStickyCompact } from '../../lib/useStickyCompact';
 import './catalog.css';
 
@@ -68,9 +69,11 @@ function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 620) {
   requestAnimationFrame(step);
 }
 
-type Props = { products: ProductB2B[]; categories: Category[]; reviewStats?: ReviewStats; initialSearch?: string; initialCategory?: string; initialSaleOnly?: boolean };
+type Props = { products: ProductB2B[]; categories: Category[]; reviewStats?: ReviewStats; initialSearch?: string; initialCategory?: string; initialSaleOnly?: boolean;
+  /** SKU вітрини по порядку — товари, закріплені адміном першими на головній. */
+  showcaseSkus?: string[] };
 
-export default function CatalogClient({ products, categories, reviewStats, initialSearch = '', initialCategory = '', initialSaleOnly = false }: Props) {
+export default function CatalogClient({ products, categories, reviewStats, initialSearch = '', initialCategory = '', initialSaleOnly = false, showcaseSkus = [] }: Props) {
   const [isWholesale, setIsWholesale] = useState(false);
   const [search,        setSearch]        = useState(initialSearch);
   const [selCat,        setSelCat]        = useState(initialCategory);
@@ -518,6 +521,19 @@ export default function CatalogClient({ products, categories, reviewStats, initi
       return true;
     });
   }, [products, search, matchingSlugs, filterValues, filterVolumes, filterVolumesKg, inStockOnly, saleOnly]);
+
+  // Вітрина: закріплені адміном товари першими — але ТІЛЬКИ поки нічого не обрано.
+  // Щойно є категорія, фільтр чи пошук, покупець шукає конкретне, і закріплені
+  // позиції вгорі лише заважали б. Склад списку не змінюється, лише порядок,
+  // тому лічильники на filtered.length лишаються правильними.
+  const listed = useMemo(() => {
+    const pristine = !selCat && !search.trim() && !saleOnly && !inStockOnly && activeFilterCount === 0;
+    if (!pristine || !showcaseSkus.length) return filtered;
+    const pinned = orderByShowcase(showcaseSkus, filtered, { visible: isShowcaseVisible });
+    if (!pinned.length) return filtered;
+    const pinnedSkus = new Set(pinned.map(p => p.sku));
+    return [...pinned, ...filtered.filter(p => !pinnedSkus.has(p.sku))];
+  }, [filtered, showcaseSkus, selCat, search, saleOnly, inStockOnly, activeFilterCount]);
 
   // Keyed on the filter *values*, not on `filtered`. `/catalog` is a fully dynamic route
   // (auth + searchParams), so the Client Cache never reuses it and every
@@ -1074,7 +1090,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
               ) : (
                 <>
                   <div className="catalog-grid">
-                    {filtered.slice(0, visibleCount).map(p => {
+                    {listed.slice(0, visibleCount).map(p => {
                       const priceUnit    = p.stock?.price_unit  ?? 0;
                       const priceRetail  = p.stock?.price_retail != null ? Number(p.stock.price_retail) : 0;
                       const retailPromo  = p.stock?.price_promo != null ? Number(p.stock.price_promo) : null;
@@ -1223,7 +1239,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.slice(0, visibleCount).map(p => {
+                    {listed.slice(0, visibleCount).map(p => {
                       const priceUnit    = p.stock?.price_unit  ?? 0;
                       const priceRetail  = p.stock?.price_retail != null ? Number(p.stock.price_retail) : 0;
                       const retailPromo  = p.stock?.price_promo != null ? Number(p.stock.price_promo) : null;
