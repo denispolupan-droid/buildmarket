@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { buildCustomerOrderEmail, buildAdminNotificationHtml } from '../../../../lib/invoice-email';
@@ -41,7 +42,30 @@ export async function POST(req: NextRequest) {
   const signature = req.headers.get('x-sign');
 
   if (!await verifySignature(rawBody, signature)) {
-    console.error('[monobank webhook] invalid signature, x-sign:', signature?.slice(0, 20));
+    // Діагностика саме на невдачі: ззовні «підпис не зійшовся» виглядає однаково
+    // для зовсім різних причин — не той ключ, не той формат, підмінене тіло. Тут
+    // немає таємниць: публічний ключ на те й публічний, а з тіла беремо лише
+    // довжину й invoiceId.
+    const pubKeyB64 = await getMonoPubKey();
+    const decoded = pubKeyB64 ? Buffer.from(pubKeyB64, 'base64').toString('utf8') : '';
+    let keyType = 'не вдалось розібрати';
+    try {
+      if (decoded.includes('BEGIN PUBLIC KEY')) {
+        const k = crypto.createPublicKey(decoded);
+        keyType = `${k.asymmetricKeyType}/${k.asymmetricKeyDetails?.namedCurve ?? '?'}`;
+      }
+    } catch (e) {
+      keyType = `помилка: ${e instanceof Error ? e.message : String(e)}`;
+    }
+    console.error('[monobank webhook] invalid signature', JSON.stringify({
+      xSign:      signature?.slice(0, 24) ?? null,
+      signLen:    signature ? Buffer.from(signature, 'base64').length : 0,
+      pubKeyOk:   !!pubKeyB64,
+      pubKeyHead: decoded.slice(0, 28),
+      keyType,
+      bodyLen:    rawBody.length,
+      invoiceId:  (() => { try { return JSON.parse(rawBody).invoiceId ?? null; } catch { return null; } })(),
+    }));
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
