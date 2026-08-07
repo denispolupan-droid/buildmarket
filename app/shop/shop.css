@@ -662,6 +662,26 @@ body:has(.shop-layout) { overflow-anchor: none; }
   color: #1E3A5F;
   border-color: #4880B8;
 }
+
+/* Фільтр «тільки акційні». Розміри збігаються з .shop-mobile-filter-btn, щоб
+   уся група читалась одним рядом контролів. */
+.shop-sale-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.shop-sale-btn.active { background: #EF4444; color: #fff; border-color: #EF4444; }
 [data-theme="dark"] .shop-mobile-filter-btn.active { background: #1E3A5F55; color: #93B8D8; border-color: #4880B8; }
 .shop-mobile-filter-badge {
   display: inline-flex;
@@ -731,9 +751,20 @@ body:has(.shop-layout) { overflow-anchor: none; }
   .shop-mobile-filter-btn { display: flex; }
   .shop-title { display: none; }
   .shop-topbar { justify-content: flex-start; flex-wrap: wrap; }
-  .shop-topbar-actions { flex-wrap: wrap; row-gap: 8px; }
+  .shop-topbar-actions { flex-wrap: wrap; row-gap: 8px; gap: 6px; }
   .shop-topbar-actions .shop-sort-select { flex: 1 1 100%; }
   .shop-view-toggle { display: flex; gap: 6px; }
+
+  /* Уся група контролів — в один ряд. Раніше «Акція» не влазила й падала на
+     власний рядок, з'їдаючи екран перед товарами. Підпис ховаємо (лишається в
+     розмітці для читача екрана й тултипа), кнопка стає квадратною під іконку,
+     решті трохи ріжемо горизонтальні відступи. */
+  .shop-mobile-filter-btn { padding: 0 10px; gap: 5px; }
+  .shop-sale-btn__label { display: none; }
+  .shop-sale-btn { width: 34px; padding: 0; justify-content: center; gap: 0; font-size: 15px; }
+  /* Однакова висота в усієї групи — інакше перемикач вигляду (30px) сидить на
+     2px нижче за сусідів і ряд читається неохайно. */
+  .shop-view-toggle-btn { width: 34px; height: 34px; }
 }
 
 @keyframes hint-bounce {

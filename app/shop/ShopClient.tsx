@@ -1212,18 +1212,17 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                 </button>
               );
             })()}
+            {/* Стилі — у CSS, а не inline: на телефоні підпис ховається медіазапитом,
+                а inline-стилі перебили б його. Підпис лишається в розмітці для
+                екранного читача й тултипа. */}
             <button
               onClick={() => setSaleOnly(v => !v)}
-              className={saleOnly ? undefined : 'btn-icon'}
-              style={{
-                height: '34px', padding: '0 14px', borderRadius: '8px', border: '1px solid var(--border)',
-                background: saleOnly ? '#EF4444' : 'var(--bg-soft)',
-                color: saleOnly ? '#fff' : 'var(--text-secondary)',
-                fontSize: '13px', fontWeight: 700, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: '5px',
-              }}
+              className={'shop-sale-btn' + (saleOnly ? ' active' : ' btn-icon')}
+              title={t('Тільки акційні', 'Только акционные')}
+              aria-pressed={saleOnly}
             >
-              🔥 {t('Акція', 'Акция')}
+              <span aria-hidden="true">🔥</span>
+              <span className="shop-sale-btn__label">{t('Акція', 'Акция')}</span>
             </button>
             <select
               className="shop-sort-select"
