@@ -1147,12 +1147,15 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                               </span>
                               {priceUnit > 0 ? (
                                 <div className="catalog-card__price">
-                                  {isSale && (
-                                    <>
-                                      <span className="catalog-card__price-old catalog-card__price-old--desktop">{Number(priceOld).toFixed(2)} грн</span>
-                                      <span className="catalog-card__price-old catalog-card__price-old--mobile">{Math.round(Number(priceOld))} грн</span>
-                                    </>
-                                  )}
+                                  {/* Рядок старої ціни рендеримо ЗАВЖДИ: без акції він
+                                      порожній і прихований, але тримає висоту. Інакше
+                                      акційна картка вища на рядок і зсуває сусідню. */}
+                                  <span className={'catalog-card__price-old catalog-card__price-old--desktop' + (isSale ? '' : ' is-empty')} aria-hidden={!isSale}>
+                                    {isSale ? `${Number(priceOld).toFixed(2)} грн` : ' '}
+                                  </span>
+                                  <span className={'catalog-card__price-old catalog-card__price-old--mobile' + (isSale ? '' : ' is-empty')} aria-hidden={!isSale}>
+                                    {isSale ? `${Math.round(Number(priceOld))} грн` : ' '}
+                                  </span>
                                   <span className="catalog-card__price-desktop">{displayPrice.toFixed(2)} <em>грн</em></span>
                                   <span className="catalog-card__price-mobile">{Math.round(displayPrice)} <em>грн</em></span>
                                 </div>

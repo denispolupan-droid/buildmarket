@@ -178,7 +178,12 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
               {inStock ? t('В наявності', 'В наличии') : t('Немає', 'Нет')}
             </div>
             <div className="shop-card__price-wrap" style={{ textAlign: 'right' }}>
-              {priceOld && <span className="shop-card__price-old">{priceOld} грн</span>}
+              {/* Рядок старої ціни рендеримо ЗАВЖДИ: без акції він порожній і
+                  прихований, але місце тримає. Інакше акційна картка вища на один
+                  рядок, і в парі з сусідньою по ній зʼїжджають ціна й кнопки. */}
+              <span className={'shop-card__price-old' + (priceOld ? '' : ' is-empty')} aria-hidden={!priceOld}>
+                {priceOld ? `${priceOld} грн` : ' '}
+              </span>
               {price
                 ? <div className="shop-card__price">{price} <span>грн</span></div>
                 : <div className="shop-card__price-na">{t('Ціна за запитом', 'Цена по запросу')}</div>

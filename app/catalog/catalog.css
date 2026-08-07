@@ -571,6 +571,9 @@ body:has(.catalog-page) { background: var(--bg-soft); }
 .catalog-card__price { font-size: 18px; font-weight: 800; color: var(--text-primary); line-height: 1.1; white-space: nowrap; }
 .catalog-card__price em { font-size: 11px; font-weight: 500; color: var(--text-muted); font-style: normal; }
 .catalog-card__price-old { font-size: 11px; color: #EF4444; text-decoration: line-through; display: block; }
+/* Без акції рядок порожній, але місце тримає — visibility, а не display, інакше
+   акційна картка вища на рядок і ціна з кнопками зʼїжджають відносно сусідньої. */
+.catalog-card__price-old.is-empty { visibility: hidden; }
 .catalog-card__price-na { font-size: 12px; color: var(--text-muted); font-weight: 600; }
 /* Exact price (with kopecks) by default — mobile swaps to a rounded whole-number version
    below, matching the shop card's plain-number style so the price never needs to wrap. */

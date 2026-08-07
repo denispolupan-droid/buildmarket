@@ -444,6 +444,10 @@ body:has(.shop-layout) { overflow-anchor: none; }
   font-weight: 500;
   line-height: 1;
 }
+/* Без акції рядок лишається на місці, але порожній: visibility, а не display,
+   саме щоб він тримав висоту. Так ціна й кнопки стоять на одній лінії в усіх
+   картках ряду — раніше акційна була вища на рядок і зсувала сусідів. */
+.shop-card__price-old.is-empty { visibility: hidden; }
 .shop-card__price {
   font-size: 20px;
   font-weight: 800;
