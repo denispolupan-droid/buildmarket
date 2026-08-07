@@ -13,14 +13,14 @@ export type ShowcaseSurface = 'shop' | 'catalog';
 export const SHOWCASE_SURFACES: ShowcaseSurface[] = ['shop', 'catalog'];
 
 /**
- * Скільки позицій показуємо. Кратно сітці (4 в ряд) — інакше останній ряд
- * обривається на півслові. Більше додати в адмінці можна, але зайве не покажемо
- * і про це попередимо там же.
+ * Стеля вітрини. Показуємо ВСЕ, що додали, — окремої межі показу немає: типовий
+ * набір це «по одному товару з кожної категорії», а категорій із товаром у
+ * наявності зараз 59, і ховати більшу частину за «запасом» було б безглуздо.
+ *
+ * Сама стеля потрібна лише як запобіжник: щоб випадковий імпорт не заллявся
+ * тисячами рядків і не перетворив вітрину на другий каталог.
  */
-export const SHOWCASE_LIMIT = 8;
-
-/** Максимум рядків на вітрину в базі — щоб випадковий імпорт не залив тисячі. */
-export const SHOWCASE_MAX_ITEMS = 24;
+export const SHOWCASE_MAX_ITEMS = 96;
 
 export function isShowcaseSurface(v: unknown): v is ShowcaseSurface {
   return v === 'shop' || v === 'catalog';
@@ -53,7 +53,7 @@ export function orderByShowcase<T extends { sku: string }>(
   products: T[],
   opts: { limit?: number; visible?: (p: T) => boolean } = {},
 ): T[] {
-  const limit = opts.limit ?? SHOWCASE_LIMIT;
+  const limit = opts.limit ?? SHOWCASE_MAX_ITEMS;
   const visible = opts.visible ?? (() => true);
   const bySku = new Map(products.map(p => [p.sku, p]));
   const out: T[] = [];

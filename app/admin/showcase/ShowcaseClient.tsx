@@ -6,13 +6,13 @@ import { showToast } from '../../../lib/toast';
 // Тільки чисті функції й типи: lib/showcase тягне supabase у серверній частині,
 // але вона під динамічним import() — у клієнтський бандл не потрапляє.
 import {
-  moveShowcaseItem, SHOWCASE_LIMIT, SHOWCASE_MAX_ITEMS, type ShowcaseSurface,
+  moveShowcaseItem, SHOWCASE_MAX_ITEMS, type ShowcaseSurface,
 } from '../../../lib/showcase';
 
 type Item = {
   sku: string; name: string; brand: string | null; volume: string | null;
   image: string | null; price: number | null; stockStatus: string | null;
-  isActive: boolean; visible: boolean; overLimit: boolean;
+  isActive: boolean; visible: boolean;
 };
 type Found = { sku: string; name: string; brand: string | null; volume: string | null };
 
@@ -87,7 +87,7 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
     } finally { setSaving(false); }
   }
 
-  const shownCount = cur.filter(sku => byId.get(sku)?.visible !== false).slice(0, SHOWCASE_LIMIT).length;
+  const shownCount = cur.filter(sku => byId.get(sku)?.visible !== false).length;
 
   return (
     <div style={{ padding: '28px 32px 64px', maxWidth: 860 }}>
@@ -96,9 +96,9 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
         <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--text-primary)' }}>Вітрина</h1>
       </div>
       <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 640 }}>
-        Товари, які показуються першим рядом на головній. Перші <b>{SHOWCASE_LIMIT}</b> придатних —
-        це два ряди по чотири; решта лежить у запасі й підстрахує, коли щось закінчиться.
-        Товар без наявності або деактивований покупцю не показується, але зі списку не зникає.
+        Товари, які показуються першими на головній, у заданому тут порядку. Показуємо всі —
+        стеля <b>{SHOWCASE_MAX_ITEMS}</b> позицій. Товар без наявності або деактивований покупцю
+        не показується, але зі списку не зникає й позначений причиною.
       </p>
 
       {/* Вкладки вітрин */}
@@ -135,16 +135,14 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {cur.map((sku, i) => {
               const it = byId.get(sku);
-              const over = i >= SHOWCASE_LIMIT;
               const hidden = it && !it.visible;
               return (
                 <div key={sku} style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8,
-                  background: over ? 'var(--bg-soft)' : undefined,
                   opacity: hidden ? 0.55 : 1,
                   borderTop: i > 0 ? '1px solid var(--border-light)' : 'none',
                 }}>
-                  <span style={{ width: 22, fontSize: 12, fontWeight: 700, color: over ? 'var(--text-muted)' : '#1E3A5F' }}>
+                  <span style={{ width: 26, fontSize: 12, fontWeight: 700, color: '#1E3A5F' }}>
                     {i + 1}.
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -159,7 +157,6 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
                           {' · '}{!it?.isActive ? 'деактивований' : 'немає в наявності'} — не показується
                         </span>
                       )}
-                      {over && <span style={{ color: 'var(--text-muted)' }}>{' · '}у запасі, понад {SHOWCASE_LIMIT}</span>}
                     </div>
                   </div>
                   {canEdit && (

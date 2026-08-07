@@ -4,7 +4,7 @@ import { requireStaff } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase';
 import {
   isShowcaseSurface, normalizeShowcaseSkus, isShowcaseVisible,
-  SHOWCASE_LIMIT, SHOWCASE_SURFACES, type ShowcaseSurface,
+  SHOWCASE_MAX_ITEMS, SHOWCASE_SURFACES, type ShowcaseSurface,
 } from '../../../../lib/showcase';
 
 // Вітрина головної: набір і порядок товарів для роздрібу й опту.
@@ -20,8 +20,6 @@ type Item = {
   isActive: boolean;
   /** Показується покупцю? Ні — лишається в адмінці з поміткою, чому. */
   visible: boolean;
-  /** Понад ліміт показу: у списку є, на вітрині — ні. */
-  overLimit: boolean;
 };
 
 async function loadSurface(surface: ShowcaseSurface): Promise<Item[]> {
@@ -48,7 +46,7 @@ async function loadSurface(surface: ShowcaseSurface): Promise<Item[]> {
   const oneStock = (v: Row['product_stock']): Stock | null =>
     Array.isArray(v) ? (v[0] ?? null) : (v ?? null);
 
-  return skus.map((sku, i) => {
+  return skus.map(sku => {
     const p = bySku.get(sku);
     const stock = oneStock(p?.product_stock ?? null);
     return {
@@ -61,7 +59,6 @@ async function loadSurface(surface: ShowcaseSurface): Promise<Item[]> {
       stockStatus: stock?.stock_status ?? null,
       isActive: p?.is_active !== false,
       visible: !!p && isShowcaseVisible({ is_active: p.is_active, stock }),
-      overLimit: i >= SHOWCASE_LIMIT,
     };
   });
 }
@@ -71,7 +68,7 @@ export async function GET() {
   if (!gate.ok) return gate.response;
 
   const [shop, catalog] = await Promise.all(SHOWCASE_SURFACES.map(loadSurface));
-  return NextResponse.json({ shop, catalog, limit: SHOWCASE_LIMIT });
+  return NextResponse.json({ shop, catalog, max: SHOWCASE_MAX_ITEMS });
 }
 
 export async function PUT(req: NextRequest) {

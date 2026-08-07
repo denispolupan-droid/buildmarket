@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   isShowcaseSurface, isShowcaseVisible, orderByShowcase,
-  normalizeShowcaseSkus, moveShowcaseItem, SHOWCASE_LIMIT, SHOWCASE_MAX_ITEMS,
+  normalizeShowcaseSkus, moveShowcaseItem, SHOWCASE_MAX_ITEMS,
 } from '../lib/showcase';
 
 const p = (sku: string, over: Partial<{ is_active: boolean; status: string; price: number }> = {}) => ({
@@ -59,11 +59,20 @@ describe('orderByShowcase', () => {
       .toEqual(['B', 'C']);
   });
 
-  it('ріжемо по ліміту', () => {
+  it('за замовчуванням показуємо все, що додали — окремої межі показу немає', () => {
+    // типовий набір це «по товару з кожної категорії», а їх 59
+    const many = Array.from({ length: 59 }, (_, i) => p(`S${i}`));
+    expect(orderByShowcase(many.map(x => x.sku), many)).toHaveLength(59);
+  });
+
+  it('явний ліміт поважаємо', () => {
     const many = Array.from({ length: 20 }, (_, i) => p(`S${i}`));
-    const skus = many.map(x => x.sku);
-    expect(orderByShowcase(skus, many)).toHaveLength(SHOWCASE_LIMIT);
-    expect(orderByShowcase(skus, many, { limit: 3 })).toHaveLength(3);
+    expect(orderByShowcase(many.map(x => x.sku), many, { limit: 3 })).toHaveLength(3);
+  });
+
+  it('стеля лишається запобіжником від випадкового заливу', () => {
+    const many = Array.from({ length: SHOWCASE_MAX_ITEMS + 20 }, (_, i) => p(`S${i}`));
+    expect(orderByShowcase(many.map(x => x.sku), many)).toHaveLength(SHOWCASE_MAX_ITEMS);
   });
 
   it('порожня вітрина — порожній результат, без падінь', () => {
