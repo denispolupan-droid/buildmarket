@@ -167,11 +167,13 @@ export async function POST(req: NextRequest) {
 
     const { data: order, error: orderErr } = await serviceClient
       .from('orders')
-      // Гроші вже списані — замовлення одразу оплачене. Без цих двох полів
-      // картковий заказ висів у журналі як «Очікуємо оплату».
+      // Статус «нове», як у будь-якого свіжого замовлення: оплата — це стан
+      // ГРОШЕЙ (payment_confirmed + amount_paid), а не стадія обробки. Зі
+      // статусом «підтверджено» замовлення оминало вкладку «Нові», де менеджер
+      // його й шукає, і при цьому не мало ні резерву, ні дзвінка — тобто
+      // виглядало обробленим, не будучи ним.
       .insert({
         ...draft.payload,
-        status: 'confirmed',
         payment_reference: reference,
         payment_confirmed: true,
         amount_paid: amountUah,

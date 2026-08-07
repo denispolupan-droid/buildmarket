@@ -76,9 +76,10 @@ export async function recoverPaidCardOrders(opts: { days?: number; notify?: bool
 
     const { data: order, error } = await db
       .from('orders')
+      // Без статусу — база сама поставить 'new', як усім новим замовленням.
+      // Оплата — це payment_confirmed/amount_paid, а не стадія обробки.
       .insert({
         ...payload,
-        status:            'confirmed',
         payment_reference: draft.reference,
         payment_confirmed: true,
         amount_paid:       amountUah,
