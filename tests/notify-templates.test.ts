@@ -2,6 +2,25 @@ import { describe, it, expect } from 'vitest';
 import { buildMessage, smsSegments } from '../lib/notify/templates';
 
 describe('buildMessage', () => {
+  it('прийнято — з сумою та адресою сайту, без протоколу', () => {
+    const text = buildMessage('accepted', { orderNumber: 26081039, total: 352 })!;
+    expect(text).toContain('№26081039');
+    expect(text).toContain('352 ₴');
+    expect(text).toContain('прийнято');
+    expect(text).toContain('fixline.com.ua');
+    expect(text).not.toContain('https://');
+  });
+
+  it('прийнято без суми — не вигадує нулів', () => {
+    const text = buildMessage('accepted', { orderNumber: 7, total: null })!;
+    expect(text).not.toContain('₴');
+    expect(text).toContain('прийнято');
+  });
+
+  it('копійки в сумі округлюються — «352.4 ₴» у SMS не потрібні', () => {
+    expect(buildMessage('accepted', { orderNumber: 7, total: 352.4 })).toContain('352 ₴');
+  });
+
   it('відправлення — з номером накладної й перевізником', () => {
     expect(buildMessage('shipped', { orderNumber: 26081039, trackingNumber: '20451504982066', carrier: 'nova' }))
       .toBe('FIXLINE: замовлення №26081039 відправлено. Нова Пошта, ТТН 20451504982066');

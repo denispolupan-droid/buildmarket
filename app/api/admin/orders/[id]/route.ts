@@ -12,6 +12,7 @@ import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/pr
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../lib/rozetka-api';
 import { alertAdmin } from '../../../../../lib/alert';
 import { completeOrderDelivery, syncDraftShipmentTracking } from '../../../../../lib/accounting/completion';
+import { notifyCustomer } from '../../../../../lib/notify/send';
 import { checkOrderCredit } from '../../../../../lib/accounting/credit-guard';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -340,6 +341,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // перехід у delivered трактуємо як повну доставку.
   if (status === 'delivered') {
     await completeOrderDelivery(id, user.email ?? 'admin');
+  }
+
+  // «Підтверджено» — момент, коли ми беремо замовлення в роботу, і перше, що
+  // покупець має від нас почути. Далі його чекають «відправлено, ТТН …» і
+  // «прибуло у відділення» з крона доставки. Повтор виключено на рівні БД
+  // (UNIQUE order_id+event), тож повторне натискання статусу нічого не надішле.
+  if (status === 'confirmed') {
+    const { data: o } = await db
+      .from('orders').select('order_number, phone, total_price').eq('id', id).single();
+    if (o) {
+      notifyCustomer({
+        orderId: id,
+        phone:   o.phone as string,
+        event:   'accepted',
+        ctx:     { orderNumber: o.order_number as number, total: Number(o.total_price) },
+      }).catch(err => console.error('[orders] notify accepted failed:', id, err));
+    }
   }
 
   // Telegram notifications (fire-and-forget)

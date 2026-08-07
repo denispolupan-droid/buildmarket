@@ -7,21 +7,36 @@ import { SITE_URL } from '../site';
 // рядок — це гроші на кожному замовленні. Тримаємо в одному сегменті все, крім
 // повідомлення з ТТН, де номер накладної важливіший за економію.
 
-export type NotifyEvent = 'shipped' | 'arrived' | 'pickup_reminder';
+export type NotifyEvent = 'accepted' | 'shipped' | 'arrived' | 'pickup_reminder';
 
 export type NotifyContext = {
   orderNumber: number;
+  /** Сума замовлення — потрібна в підтвердженні, щоб покупець упізнав своє */
+  total?: number | null;
   trackingNumber?: string | null;
   carrier?: 'nova' | 'rozetka' | null;
   /** Скільки днів безкоштовного зберігання лишилось (для нагадування) */
   daysLeft?: number | null;
 };
 
+// Адреса без протоколу: у SMS «https://» — це 8 символів, які нічого не додають,
+// а телефон однаково зробить із домену посилання.
+const shortSite = () => SITE_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
 const carrierName = (c: NotifyContext['carrier']) =>
   c === 'rozetka' ? 'Rozetka Доставка' : 'Нова Пошта';
 
 export function buildMessage(event: NotifyEvent, ctx: NotifyContext): string | null {
   switch (event) {
+    // Перше повідомлення в житті замовлення: підтверджуємо, що взяли в роботу.
+    // Сума — щоб людина впізнала своє замовлення серед кількох, посилання —
+    // щоб було куди повернутись. Разом виходить два SMS-сегменти, і це свідомо:
+    // підтвердження без суми й адреси не виконує своєї роботи.
+    case 'accepted': {
+      const sum = ctx.total != null ? ` на ${Math.round(ctx.total)} ₴` : '';
+      return `FIXLINE: замовлення №${ctx.orderNumber}${sum} прийнято, найближчим часом відправимо. ${shortSite()}`;
+    }
+
     case 'shipped':
       if (!ctx.trackingNumber) return null;   // без номера повідомлення марне
       return `FIXLINE: замовлення №${ctx.orderNumber} відправлено. ${carrierName(ctx.carrier)}, ТТН ${ctx.trackingNumber}`;
