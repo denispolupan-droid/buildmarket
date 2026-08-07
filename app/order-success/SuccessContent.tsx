@@ -11,7 +11,11 @@ export default function SuccessContent() {
   const orderNum    = params.get('num');
   const isPaid      = params.get('paid') === '1';
   const short       = orderNum ? `#${orderNum}` : '—';
-  const continuePath = params.get('from') === 'shop' ? '/shop' : '/catalog';
+  // За замовчуванням — публічний магазин. Було навпаки: усе, крім явного
+  // ?from=shop, вело на /catalog, а це оптовий каталог під авторизацією — тож
+  // роздрібний покупець після оплати карткою (redirectUrl Monobank взагалі без
+  // параметра from) потрапляв не в магазин, а на сторінку входу.
+  const continuePath = params.get('from') === 'catalog' ? '/catalog' : '/shop';
   const { clearCart } = useCart();
 
   useEffect(() => {

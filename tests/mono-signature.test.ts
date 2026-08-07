@@ -28,6 +28,11 @@ describe('verifyMonoSignature', () => {
     expect(verifyMonoSignature(body, sign(body), derB64)).toBe(true);
   });
 
+  it('приймає й «сирий» підпис r‖s (IEEE P1363), не лише DER', () => {
+    const raw = crypto.sign('SHA256', Buffer.from(body), { key: privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64');
+    expect(verifyMonoSignature(body, raw, pubKeyB64)).toBe(true);
+  });
+
   it('відхиляє підмінене тіло (payment tampering)', () => {
     const goodSig = sign(body);
     const tampered = JSON.stringify({ invoiceId: 'abc', status: 'success', amount: 999999 });
