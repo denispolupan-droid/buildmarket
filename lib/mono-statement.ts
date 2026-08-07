@@ -37,6 +37,29 @@ export function extractOrderNumber(comment?: string | null, description?: string
   return null;
 }
 
+// ── Еквайринг: покриття за карткові оплати на сайті ──────────────────────────
+//
+// Такий платіж приходить не від покупця, а від банку — одним рядком за день, і
+// номера замовлення в ньому немає. Але сам факт покриття означає, що на сайті
+// хтось оплатив карткою, тобто замовлення МУСИТЬ існувати. Якщо його немає —
+// гроші взяті, а замовлення загубилось (кейс 04.08.2026, 104 ₴).
+const ACQUIRING_RE = /еквайринг/i;
+// «…Загалом 104 грн. Комісія банку 1.35 грн» — на рахунок падає сума за вирахуванням
+// комісії, а звіряти треба з тим, що заплатив покупець.
+const ACQUIRING_GROSS_RE = /загалом\s+([\d\s]+(?:[.,]\d+)?)\s*грн/i;
+
+export function isAcquiringSettlement(item: MonoStatementItem): boolean {
+  return ACQUIRING_RE.test(`${item.comment ?? ''} ${item.description ?? ''}`);
+}
+
+/** Сума, яку заплатив покупець (до комісії банку); null — якщо в тексті її немає. */
+export function extractAcquiringGross(comment?: string | null): number | null {
+  const m = (comment ?? '').match(ACQUIRING_GROSS_RE);
+  if (!m) return null;
+  const value = parseFloat(m[1].replace(/\s/g, '').replace(',', '.'));
+  return Number.isFinite(value) ? value : null;
+}
+
 export type MonoMatch =
   | { kind: 'order'; orderNumber: number; amount: number }   // знайдено №заказу → авто
   | { kind: 'unmatched'; amount: number };                   // на ручну сверку

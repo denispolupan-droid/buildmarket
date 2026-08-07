@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractOrderNumber, classifyMonoTxn } from '../lib/mono-statement';
+import { extractOrderNumber, classifyMonoTxn, isAcquiringSettlement, extractAcquiringGross } from '../lib/mono-statement';
 
 describe('extractOrderNumber — номер замовлення з призначення платежу', () => {
   it('реальний comment ФОП: «згідно рахунку №26071021»', () => {
@@ -52,5 +52,48 @@ describe('classifyMonoTxn — класифікація транзакції', ()
 
   it('нульова сума → null', () => {
     expect(classifyMonoTxn({ ...base, amount: 0 })).toBeNull();
+  });
+});
+
+// Покриття еквайрингу — рядок від банку за карткові оплати на сайті. Номера
+// замовлення в ньому немає, тож автозарахування не спрацює; але сам факт означає,
+// що замовлення МУСИТЬ існувати. Реальний рядок 05.08.2026, за яким і знайшлася
+// втрата замовлення на 104 ₴.
+describe('еквайринг у виписці', () => {
+  const acquiring = {
+    id: '3GM4gse68LLOuDm6xg',
+    time: 1786013730,
+    amount: 10265,
+    description: 'Від: АТ "УНІВЕРСАЛ БАНК"',
+    comment: 'Замовлення — FIXLINE.Покриття за проведені трансакції згідно договору еквайринга MI048034, Загалом 104 грн. Комісія банку 1.35 грн.',
+  };
+
+  it('розпізнається як покриття еквайрингу', () => {
+    expect(isAcquiringSettlement(acquiring)).toBe(true);
+  });
+
+  it('виплата маркетплейсу — не еквайринг', () => {
+    expect(isAcquiringSettlement({
+      id: 'y', time: 1786013730, amount: 39400,
+      description: 'Від: ТОВ "РОЗЕТКА ПЕЙ"',
+      comment: 'Переказ коштів за операції 04.08.2026-04.08.2026 зг.дог.№3198107136-П',
+    })).toBe(false);
+  });
+
+  it('дістає суму покупця до комісії банку, а не зараховану', () => {
+    expect(extractAcquiringGross(acquiring.comment)).toBe(104);
+  });
+
+  it('розуміє суму з пробілами й комою', () => {
+    expect(extractAcquiringGross('Загалом 1 552,50 грн. Комісія банку 20 грн.')).toBe(1552.5);
+  });
+
+  it('без «Загалом» повертає null, а не вигадує число', () => {
+    expect(extractAcquiringGross('Покриття за трансакції')).toBeNull();
+    expect(extractAcquiringGross(null)).toBeNull();
+  });
+
+  it('номер замовлення з такого рядка не вигадується', () => {
+    expect(extractOrderNumber(acquiring.comment, acquiring.description)).toBeNull();
   });
 });

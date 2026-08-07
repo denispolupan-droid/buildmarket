@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -32,6 +32,7 @@ import NpReturnModal from '../components/admin/NpReturnModal';
 import { rozetkaStatusLabel, isRozetkaAhead } from '../../lib/rozetka-status';
 import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
 import { deliveryPlace } from '../../lib/delivery-label';
+import { marketplacePaymentMethod } from '../../lib/payment-method';
 import { estimateMarketplaceDeliveryFee, splitFeeByRevenue, type MarketplaceFeeTariffs } from '../../lib/marketplace-delivery-fee';
 import { isPromCheapDelivery, computePromDeliveryFee } from '../../lib/prom-delivery-fee';
 import RozetkaDeliveryTtnModal from '../components/admin/RozetkaDeliveryTtnModal';
@@ -1791,9 +1792,9 @@ export default function AdminOrders({
             <span>Дата</span>
           </div>
           {/* Порожня комірка під мініатюру товару — щоб заголовки не з'їхали з колонок */}
-          {/* 78px = дві плитки по 36 + 6 проміжку */}
-          <span style={{ width: '78px', flexShrink: 0, marginLeft: '8px' }} />
-          <span style={{ flex: '0 1 calc(50% - 250px)', minWidth: 0 }}>Клієнт / Товар</span>
+          {/* 94px = дві плитки по 44 + 6 проміжку */}
+          <span style={{ width: '94px', flexShrink: 0, marginLeft: '8px' }} />
+          <span style={{ flex: '0 1 calc(50% - 266px)', minWidth: 0 }}>Клієнт / Товар</span>
           <span style={{ flex: 1, minWidth: '200px', overflow: 'hidden', whiteSpace: 'nowrap' }}>Доставка</span>
           {/* 118px — рівно як у комірки статусу в рядку (.oc-status). Було 104,
               і заголовок стояв на 14px правіше за плашку під ним. */}
@@ -1919,7 +1920,7 @@ export default function AdminOrders({
                 )}
                 {isPromCheapDeliv && (
                   <span title={`Замовлення за акцією Prom «Дешева доставка»: покупець платить за доставку символічно, організацію оплачуємо ми${promDeliveryFee > 0 ? ` — ${promDeliveryFee} ₴ за це замовлення` : ''}. Prom списує збір після вручення посилки; невикуп не списується. Збір проводиться автоматично при доставці.`}
-                    style={{ ...rowBadge, color: '#C2410C', background: '#FFF7ED', borderColor: '#FDBA74' }}>
+                    style={{ ...rowBadge, color: '#7C2D12', background: '#FDBA74', borderColor: '#FB923C' }}>
                     ДЕШ. ДОСТ.
                   </span>
                 )}
@@ -2015,11 +2016,11 @@ export default function AdminOrders({
                           return (
                             <div key={`${item.sku}-${idx}`} title={`${item.brand ?? ''} ${item.name}`.trim()}
                               style={{
-                                width: '36px', height: '36px', flexShrink: 0, borderRadius: '8px', position: 'relative',
+                                width: '44px', height: '44px', flexShrink: 0, borderRadius: '9px', position: 'relative',
                                 border: '1px solid var(--border-light)', background: img ? `#fff url("${img}") center/cover no-repeat` : 'var(--bg-soft)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                               }}>
-                              {!img && <Package size={13} color="var(--border)" />}
+                              {!img && <Package size={16} color="var(--border)" />}
                               {isLast && positions > 2 && (
                                 <span title={`Позицій у замовленні: ${positions}`}
                                   style={{
@@ -2036,7 +2037,7 @@ export default function AdminOrders({
                         })}
                         {/* Порожнє місце під другу плитку, коли позиція одна — щоб
                             блок клієнта в усіх рядках починався з тієї самої вертикалі */}
-                        {shown.length < 2 && <div style={{ width: '36px', flexShrink: 0 }} />}
+                        {shown.length < 2 && <div style={{ width: '44px', flexShrink: 0 }} />}
                       </div>
                     );
                   })()}
@@ -2045,7 +2046,7 @@ export default function AdminOrders({
                       копіювання, далі товар. Телефон окремим рядком, бо в парі з ПІБ
                       вони билися за ширину, а копіювати номер треба часто — і на
                       телефоні теж, тому кнопка не ховається під .oc-hide-m. */}
-                  <div className="oc-cust" style={{ flex: '0 1 calc(50% - 250px)', minWidth: 0, overflow: 'hidden' }}>
+                  <div className="oc-cust" style={{ flex: '0 1 calc(50% - 266px)', minWidth: 0, overflow: 'hidden' }}>
                     <div className="oc-nameline" style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, fontSize: '13px', color: 'var(--text-primary)' }}>
                       <span className="oc-name" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {order.company
@@ -3042,6 +3043,20 @@ export default function AdminOrders({
                       </div>
                     </div>
 
+                    {/* Внутрішня нотатка — одним рядком під товарами. Це коментар до
+                        самого замовлення, тож поруч із його складом він доречніший, ніж
+                        окремою карткою в колонці дій, де з'їдав її висоту. */}
+                    <div className="order-col-card" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0 }}>Нотатка</span>
+                      <input
+                        key={`note-${order.id}-${order.internal_note ?? ''}`}
+                        defaultValue={order.internal_note ?? ''}
+                        onBlur={e => { const v = e.target.value.trim(); if (v !== (order.internal_note ?? '')) saveInternalNote(order.id, v); }}
+                        placeholder="Напр. клієнт думає, чекаємо оплату…"
+                        style={{ flex: 1, minWidth: 0, height: '30px', padding: '0 10px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12.5px', color: 'var(--text-primary)', fontFamily: 'inherit', boxSizing: 'border-box', background: 'var(--bg-card)', outline: 'none' }} />
+                      {noteSaving === order.id && <span style={{ fontSize: '10.5px', color: 'var(--text-muted)', flexShrink: 0 }}>Збереження…</span>}
+                    </div>
+
                     {/* Col 2: Contact + Delivery + payment + callback + TTN */}
                     <div className="oc-info-wrap" style={{ order: -1, position: 'relative' }}>
                     <div className="oc-info-cards"
@@ -3054,7 +3069,8 @@ export default function AdminOrders({
                       }}
                       style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', alignItems: 'stretch' }}>
                     {/* Клієнт card */}
-                    <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div className="order-col-card oc-split" style={{ padding: '16px' }}>
+                      <div className="oc-card-body">
                       <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Клієнт</span>
                       {/* Contact info */}
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
@@ -3127,9 +3143,32 @@ export default function AdminOrders({
                           })}
                         </div>
                       </div>
-                      {/* Оплата — прижато до нижньої межі, однакова висота з блоком ТТН → розділювачі збігаються */}
-                      <div style={{ marginTop: 'auto', minHeight: '118px', paddingTop: '12px', borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      </div>{/* /oc-card-body */}
+                      {/* Оплата — притиснута до низу картки; спільна висота з блоком ТТН (.oc-card-footer) тримає розділювачі обох карток на одній лінії */}
+                      <div className="oc-card-footer">
                       <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Оплата</div>
+                      {/* Чим саме платив покупець на площадці. Наш payment_type знає лише
+                          грубий тип (cod / prepaid), а «Пром-оплата» чи «Оплата під час
+                          отримання» лежать у сирому payload маркетплейсу. */}
+                      {(() => {
+                        const method = marketplacePaymentMethod(order);
+                        if (!method) return null;
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '-4px', fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            <Wallet size={12} style={{ flexShrink: 0, color: 'var(--text-muted)' }} />
+                            <span>
+                              <span style={{ fontWeight: 600 }}>{method.label}</span>
+                              {method.detail && <span style={{ color: 'var(--text-muted)' }}> · {method.detail}</span>}
+                              {method.paidAt && (
+                                <span style={{ color: 'var(--text-muted)' }}>
+                                  {' · '}
+                                  {new Date(method.paidAt).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })()}
                       {editPaymentTypeId === order.id ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                           <select
@@ -3316,7 +3355,8 @@ export default function AdminOrders({
                       </div>
                     </div>
                     {/* Доставка / ТТН card */}
-                    <div className="order-col-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div className="order-col-card oc-split" style={{ padding: '16px' }}>
+                      <div className="oc-card-body">
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                         <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Доставка</div>
                         {editDeliveryId !== order.id && (
@@ -3386,9 +3426,14 @@ export default function AdminOrders({
                         </div>
                       )}
 
-                      {/* ТТН Нової Пошти — прижато до нижньої межі картки, однакова висота з «Доставкою» */}
-                      <div style={{ marginTop: 'auto', minHeight: '118px', paddingTop: '12px', borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ТТН Нової Пошти</div>
+                      </div>{/* /oc-card-body */}
+                      {/* Накладна — притиснута до низу картки; висоту задає .oc-card-footer, спільна з блоком «Оплата» сусідньої картки */}
+                      <div className="oc-card-footer">
+                      {/* Для точок видачі Rozetka накладну виписує Rozetka («RMP-…»),
+                          Нова Пошта до неї стосунку не має — заголовок мусить це знати */}
+                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {isRzPickup ? 'Накладна Rozetka' : 'ТТН Нової Пошти'}
+                      </div>
                       {(order.delivery_type === 'nova' || order.delivery_type === 'nova_poshta') ? (
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                           <div style={{ position: 'relative', flex: '1 1 140px', minWidth: 0 }}>
@@ -3513,17 +3558,6 @@ export default function AdminOrders({
                     {(() => {
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
-                        {/* Внутрішні нотатки — окремою карткою зверху, вирівняна з верхом колонки */}
-                        <div className="order-col-card" style={{ padding: '16px' }}>
-                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>Внутрішні нотатки</div>
-                          <textarea
-                            key={`note-${order.id}-${order.internal_note ?? ''}`}
-                            defaultValue={order.internal_note ?? ''}
-                            onBlur={e => { const v = e.target.value.trim(); if (v !== (order.internal_note ?? '')) saveInternalNote(order.id, v); }}
-                            placeholder="Напр. клієнт думає, чекаємо оплату…"
-                            style={{ width: '100%', minHeight: '68px', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12.5px', color: 'var(--text-primary)', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', background: 'var(--bg-card)' }} />
-                          {noteSaving === order.id && <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', marginTop: '3px' }}>Збереження…</div>}
-                        </div>
                         {/* Дії card */}
                         <div className="order-col-card" style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                           {/* Статус замовлення + ручна зміна винесені у правий верхній кут шапки */}

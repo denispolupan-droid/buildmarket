@@ -104,13 +104,43 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (!draft) {
-      // Already processed by a previous webhook retry — idempotent OK
-      return NextResponse.json({ ok: true });
+      // Чернетки немає — два зовсім різні випадки, які раніше зливалися в одне
+      // мовчазне «ok»:
+      //   1) замовлення вже створене попередньою доставкою вебхука — ідемпотентність;
+      //   2) чернетки не було НІКОЛИ (або її встиг прибрати клінер) — тоді гроші
+      //      списані, а замовлення не існує, і про це не дізнається ніхто.
+      // Другий випадок 04.08 коштував нам замовлення на 104 ₴: клієнт оплатив,
+      // замовлення не з'явилось, скаргу почули лише через три дні.
+      const { data: existing } = await serviceClient
+        .from('orders')
+        .select('id, order_number')
+        .eq('payment_reference', reference)
+        .maybeSingle();
+
+      if (existing) return NextResponse.json({ ok: true });
+
+      alertAdmin('🚨 Monobank: оплата пройшла, а замовлення НЕМАЄ', {
+        reference,
+        amount: amountUah,
+        invoiceId: body.invoiceId ?? null,
+        hint: 'Чернетки в pending_card_orders немає. Оформіть замовлення вручну і поверніться до причини.',
+      });
+      // 500 — щоб Monobank повторив: якщо це гонка (оплата встигла раніше, ніж
+      // закомітилась чернетка), наступна спроба вже знайде її і створить замовлення.
+      return NextResponse.json({ error: 'draft not found' }, { status: 500 });
     }
 
     const { data: order, error: orderErr } = await serviceClient
       .from('orders')
-      .insert({ ...draft.payload, status: 'confirmed', payment_reference: reference })
+      // Гроші вже списані — замовлення одразу оплачене. Без цих двох полів
+      // картковий заказ висів у журналі як «Очікуємо оплату».
+      .insert({
+        ...draft.payload,
+        status: 'confirmed',
+        payment_reference: reference,
+        payment_confirmed: true,
+        amount_paid: amountUah,
+      })
       .select('id, order_number, contact, company, phone, email, items, total_price, delivery_type, delivery_address, delivery_city_name, comment, channel_code')
       .single();
 

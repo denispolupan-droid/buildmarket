@@ -1,5 +1,5 @@
 import { createServiceClient } from './supabase';
-import { classifyMonoTxn, type MonoStatementItem } from './mono-statement';
+import { classifyMonoTxn, isAcquiringSettlement, extractAcquiringGross, type MonoStatementItem } from './mono-statement';
 import { applyOrderPayment } from './accounting/order-payment';
 import { alertAdmin } from './alert';
 
@@ -75,6 +75,28 @@ export async function ingestMonoTxn(
       `Перевір вручну (замовлення відсутнє, скасоване або помилка проведення). Платник: ${item.counterName ?? '—'}`,
     );
     return { status: 'unmatched', amount: m.amount, orderNumber: m.orderNumber };
+  }
+
+  // Покриття еквайрингу: номера замовлення в ньому немає, але воно доводить, що
+  // на сайті пройшла карткова оплата. Якщо жодне карткове замовлення на цю суму
+  // не з'явилося — гроші взяли, а замовлення загубилось. Саме так 04.08.2026
+  // непомітно зникло замовлення на 104 ₴; дізналися лише зі скарги покупця.
+  if (isAcquiringSettlement(item)) {
+    const gross = extractAcquiringGross(item.comment) ?? m.amount;
+    const since = new Date((item.time - 3 * 24 * 60 * 60) * 1000).toISOString();
+    const { data: cardOrders } = await db
+      .from('orders')
+      .select('order_number, total_price')
+      .not('payment_reference', 'is', null)
+      .gte('created_at', since)
+      .limit(200);
+    const hit = (cardOrders ?? []).find(o => Math.abs(Number(o.total_price) - gross) < 0.01);
+    if (!hit) {
+      alertAdmin(
+        `🚨 Еквайринг ${gross.toFixed(2)} ₴ — карткового замовлення на цю суму НЕМАЄ`,
+        `Покупець оплатив на сайті, а замовлення не створилось. Подивіться pending_card_orders за цей день і оформіть вручну. ${item.comment ?? ''}`.trim(),
+      );
+    }
   }
 
   // Немає номера (виплата маркетплейсу, поповнення) — лишаємо для ручної сверки

@@ -110,39 +110,10 @@ export async function POST(req: NextRequest) {
     const pendingId = crypto.randomUUID();
     const reference = `pending_${pendingId}_${Date.now()}`;
 
-    const token = (process.env.MONOBANK_API_TOKEN ?? '').replace(/[^\x20-\x7E]/g, '').trim();
-    let pageUrl: string | null = null;
-    try {
-      const monoRes  = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
-        method: 'POST',
-        headers: { 'X-Token': token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount:   Math.round(finalTotal * 100),
-          ccy:      980,
-          merchantPaymInfo: {
-            reference,
-            destination: `Замовлення — FIXLINE`,
-            comment:     `Замовлення — FIXLINE`,
-          },
-          redirectUrl: `${siteUrl}/order-success?paid=1`,
-          webHookUrl:  `${siteUrl}/api/webhooks/monobank`,
-        }),
-      });
-      const monoData = await monoRes.json();
-      if (monoRes.ok && monoData.pageUrl) {
-        pageUrl = monoData.pageUrl;
-      } else {
-        console.error('[monobank invoice]', monoData);
-      }
-    } catch (e) {
-      console.error('[monobank invoice]', e);
-    }
-
-    if (!pageUrl) {
-      return NextResponse.json({ error: 'Не вдалось ініціювати оплату. Спробуйте ще раз або оберіть інший спосіб оплати.' }, { status: 500 });
-    }
-
-    // Save pending draft — order only materialises after webhook confirms payment
+    // Чернетка ПЕРЕД інвойсом. Раніше спершу створювався інвойс Monobank, і лише
+    // потім писалась чернетка: якщо запис падав, посилання на оплату вже існувало —
+    // клієнт міг заплатити за замовлення, чернетки якого немає, а вебхуку не було з
+    // чого його створити. Тепер, якщо інвойс не вийде, зайву чернетку просто прибираємо.
     const payload = {
       user_id:               user?.id ?? null,
       customer_id:           customerId,
@@ -182,6 +153,41 @@ export async function POST(req: NextRequest) {
     if (pendingErr) {
       alertAdmin('Checkout: не збереглось pending_card_orders (картка)', { email, reference, error: pendingErr.message });
       return NextResponse.json({ error: 'Помилка збереження замовлення. Спробуйте ще раз.' }, { status: 500 });
+    }
+
+    const token = (process.env.MONOBANK_API_TOKEN ?? '').replace(/[^\x20-\x7E]/g, '').trim();
+    let pageUrl: string | null = null;
+    try {
+      const monoRes  = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
+        method: 'POST',
+        headers: { 'X-Token': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount:   Math.round(finalTotal * 100),
+          ccy:      980,
+          merchantPaymInfo: {
+            reference,
+            destination: `Замовлення — FIXLINE`,
+            comment:     `Замовлення — FIXLINE`,
+          },
+          redirectUrl: `${siteUrl}/order-success?paid=1`,
+          webHookUrl:  `${siteUrl}/api/webhooks/monobank`,
+        }),
+      });
+      const monoData = await monoRes.json();
+      if (monoRes.ok && monoData.pageUrl) {
+        pageUrl = monoData.pageUrl;
+      } else {
+        console.error('[monobank invoice]', monoData);
+      }
+    } catch (e) {
+      console.error('[monobank invoice]', e);
+    }
+
+    if (!pageUrl) {
+      // Оплати не буде — чернетка ні до чого; лишати її означало б тримати
+      // «замовлення-привид», яке нікому не належить.
+      await admin.from('pending_card_orders').delete().eq('id', pendingId);
+      return NextResponse.json({ error: 'Не вдалось ініціювати оплату. Спробуйте ще раз або оберіть інший спосіб оплати.' }, { status: 500 });
     }
 
     await admin.from('abandoned_carts')
