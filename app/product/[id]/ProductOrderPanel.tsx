@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { Plus, Check, Bell, Heart } from 'lucide-react';
+import { ShoppingCart, Check, Bell, Heart } from 'lucide-react';
 import { useCart } from '../../../lib/cart';
 import { useWishlist } from '../../../lib/wishlist';
 import { getSupabaseBrowser } from '../../../lib/supabase-browser';
@@ -110,7 +110,7 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
                 ? <><Check size={15} strokeWidth={2.5} /> {t('Додано', 'Добавлено')}</>
                 : inCart
                   ? <><Check size={15} strokeWidth={2.5} /> {t('В кошику', 'В корзине')}</>
-                  : <><Plus size={15} strokeWidth={2.5} /> {t('В кошик', 'В корзину')}</>
+                  : <><ShoppingCart size={15} strokeWidth={2} /> {t('В кошик', 'В корзину')}</>
               }
             </button>
 

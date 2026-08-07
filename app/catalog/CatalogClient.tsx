@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
-import { Upload, Heart, Eye, Plus, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2, X, SearchX } from 'lucide-react';
+import { Upload, Heart, Eye, ShoppingCart, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2, X, SearchX } from 'lucide-react';
 import { CATEGORY_ICONS, CATEGORY_COLORS, categoryAccent } from '../../lib/category-icons';
 import CategoryIconBackdrop from '../components/CategoryIconBackdrop';
 import SearchAutocomplete from '../components/SearchAutocomplete';
@@ -1184,7 +1184,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                               >
                                 {added[p.sku]
                                   ? <><Check size={14} strokeWidth={2.5} /> <span className="catalog-card__cart-btn-label">{t('Додано', 'Добавлено')}</span></>
-                                  : <><Plus size={14} strokeWidth={2.5} /> <span className="catalog-card__cart-btn-label">{t('В кошик', 'В корзину')}</span></>
+                                  : <><ShoppingCart size={14} strokeWidth={2} /> <span className="catalog-card__cart-btn-label">{t('В кошик', 'В корзину')}</span></>
                                 }
                               </button>
                             </div>
@@ -1323,7 +1323,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                                 onClick={e => { e.preventDefault(); e.stopPropagation(); handleAddToCart(p, qty); }}
                                 style={!inStock ? { opacity: 0.4, cursor: 'default' } : undefined}
                               >
-                                {added[p.sku] ? <Check size={14} strokeWidth={2.5} /> : <Plus size={14} strokeWidth={2.5} />}
+                                {added[p.sku] ? <Check size={14} strokeWidth={2.5} /> : <ShoppingCart size={14} strokeWidth={2} />}
                               </button>
                               <button
                                 className="action-icon-btn"

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Heart, Eye, Plus, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, Eye, ShoppingCart, Check } from 'lucide-react';
 import ProductImage from './ProductImage';
 import { RatingBadge } from './StarRating';
 import { getCatIcon, getCatColor, catDescription } from './CategoryCarousel';
@@ -207,7 +207,7 @@ function ProductCard({ product, isRetail, bordered, lang, prefix, rating }: { pr
         </button>
         <input type="number" value={inputVal} min={curMinOrder} onChange={e => setInputVal(e.target.value)} onBlur={() => { const v = parseInt(inputVal, 10); const valid = !isNaN(v) && v >= curMinOrder ? v : curMinOrder; setQty(valid); setInputVal(String(valid)); }} style={{ width: '52px', height: '40px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)', textAlign: 'center', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', outline: 'none' }} />
         <button onClick={handleAddToCart} disabled={!inStock} className={inStock && !cartAdded ? 'btn-primary' : undefined} style={{ flex: 1, height: '40px', borderRadius: '10px', background: cartAdded ? '#16A34A' : !inStock ? '#E2E8F0' : '#4880B8', color: !inStock ? '#94A3B8' : '#fff', border: 'none', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', cursor: !inStock ? 'default' : 'pointer', transition: 'background 0.2s' }}>
-          {cartAdded ? <><Check size={14} strokeWidth={2.5} /> {lang === 'ru' ? 'Добавлено' : 'Додано'}</> : !inStock ? (lang === 'ru' ? 'Нет' : 'Немає') : <><Plus size={14} strokeWidth={2.5} /> {lang === 'ru' ? 'В корзину' : 'В кошик'}</>}
+          {cartAdded ? <><Check size={14} strokeWidth={2.5} /> {lang === 'ru' ? 'Добавлено' : 'Додано'}</> : !inStock ? (lang === 'ru' ? 'Нет' : 'Немає') : <><ShoppingCart size={14} strokeWidth={2} /> {lang === 'ru' ? 'В корзину' : 'В кошик'}</>}
         </button>
         <Link href={prodHref} className="btn-icon" style={{ ...actionBtnStyle, width: '40px', height: '40px', textDecoration: 'none' }}>
           <Eye size={14} strokeWidth={2} />

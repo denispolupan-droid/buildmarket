@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Plus, Heart } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ShoppingCart, Heart } from 'lucide-react';
 import ProductImage from '../../components/ProductImage';
 import { RatingBadge } from '../../components/StarRating';
 import { useCart } from '../../../lib/cart';
@@ -172,7 +172,7 @@ export default function RelatedCarousel({ products, retail = false, reviewStats 
                     style={!inStock ? { opacity: 0.4, cursor: 'default' } : undefined}
                     onClick={() => inStock && addItem({ sku: p.sku, name: p.name, name_ru: p.name_ru ?? null, brand: p.brand, volume: p.volume, price: relPrice, min_order: relMinOrder, nl1: p.nl1 ?? '', nl2: p.nl2 ?? undefined, bc: p.bc, ac: p.ac, img_type: p.img_type, imageUrl: p.image ?? undefined, is_promo: retail && !!(p.stock?.price_promo) }, getQty(p.sku, relMinOrder))}
                   >
-                    <Plus size={13} strokeWidth={2.5} /> {t('В кошик', 'В корзину')}
+                    <ShoppingCart size={13} strokeWidth={2} /> {t('В кошик', 'В корзину')}
                   </button>
                   <button
                     className="pc-btn-icon"
