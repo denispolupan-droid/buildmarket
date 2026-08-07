@@ -7,6 +7,7 @@ import { notifyAdminNewOrder } from '../../../../lib/telegram';
 import { recordCustomerPayment } from '../../../../lib/accounting/money';
 import { verifyMonoSignature } from '../../../../lib/mono-signature';
 import { alertAdmin } from '../../../../lib/alert';
+import { getMonoAcquiringToken } from '../../../../lib/mono-config';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -20,14 +21,23 @@ let _monoPubKey: string | null = null;
 async function getMonoPubKey(): Promise<string | null> {
   if (_monoPubKey) return _monoPubKey;
   try {
+    // Токен саме через getMonoAcquiringToken: у змінній оточення трапляється BOM
+    // або перенос рядка, і сирим значенням fetch падає на невалідному заголовку —
+    // ключ не діставався, підпис не сходився, кожен вебхук отримував 401. Інвойси
+    // при цьому виставлялись, бо там чистка була, — тому збій і був невидимим.
     const res = await fetch('https://api.monobank.ua/api/merchant/pubkey', {
-      headers: { 'X-Token': process.env.MONOBANK_API_TOKEN! },
+      headers: { 'X-Token': getMonoAcquiringToken() },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error('[monobank pubkey] HTTP', res.status, (await res.text()).slice(0, 120));
+      return null;
+    }
     const data = await res.json();
-    _monoPubKey = data.key as string; // base64-encoded DER public key
+    _monoPubKey = data.key as string; // base64 від PEM з ECDSA-ключем
     return _monoPubKey;
-  } catch {
+  } catch (err) {
+    // Мовчазний catch тут колись і сховав першопричину на кілька днів
+    console.error('[monobank pubkey] fetch failed:', err instanceof Error ? err.message : err);
     return null;
   }
 }

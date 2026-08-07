@@ -9,6 +9,7 @@ import { alertAdmin } from '../../../lib/alert';
 import { findOrCreateCustomerForOrder } from '../../../lib/customers';
 import { repriceItems, applyPromoCode, type RepriceItem, type PriceRow, type PromoCodeRow } from '../../../lib/pricing';
 import type { CartItem } from '../../../types';
+import { getMonoAcquiringToken } from '../../../lib/mono-config';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -155,7 +156,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Помилка збереження замовлення. Спробуйте ще раз.' }, { status: 500 });
     }
 
-    const token = (process.env.MONOBANK_API_TOKEN ?? '').replace(/[^\x20-\x7E]/g, '').trim();
+    const token = getMonoAcquiringToken();
     let pageUrl: string | null = null;
     try {
       const monoRes  = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {

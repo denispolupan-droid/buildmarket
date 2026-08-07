@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getMonoAcquiringToken } from '../../../../../lib/mono-config';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,7 +30,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const due = Math.round((Number(order.total_price) - Number(order.amount_paid ?? 0)) * 100) / 100;
   if (due <= 0) return NextResponse.json({ error: 'Рахунок вже оплачено' }, { status: 409 });
 
-  const token = (process.env.MONOBANK_API_TOKEN ?? '').replace(/[^\x20-\x7E]/g, '').trim();
+  const token = getMonoAcquiringToken();
   if (!token) return NextResponse.json({ error: 'Онлайн-оплата тимчасово недоступна' }, { status: 503 });
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua';

@@ -1,6 +1,7 @@
 import { createServiceClient } from './supabase';
 import { recordCustomerPayment } from './accounting/money';
 import { alertAdmin } from './alert';
+import { getMonoAcquiringToken } from './mono-config';
 
 // Матеріалізація карткових замовлень із чернеток за ВИПИСКОЮ МЕРЧАНТА Monobank.
 //
@@ -29,7 +30,7 @@ export type RecoveryResult = {
 
 /** Успішні платежі мерчанта за останні `days` днів, ключ — reference інвойсу. */
 export async function fetchPaidInvoices(days = 7): Promise<Map<string, MerchantPayment>> {
-  const token = (process.env.MONOBANK_API_TOKEN ?? '').replace(/[^\x20-\x7E]/g, '').trim();
+  const token = getMonoAcquiringToken();
   if (!token) throw new Error('MONOBANK_API_TOKEN не заданий');
 
   const from = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;

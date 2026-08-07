@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { getRole } from '../../../../lib/user-role';
+import { getMonoAcquiringToken } from '../../../../lib/mono-config';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Партнера не знайдено' }, { status: 404 });
     }
 
-    const token = (process.env.MONOBANK_API_TOKEN ?? '').replace(/﻿/g, '').replace(/[^\x20-\x7E]/g, '').trim();
+    const token = getMonoAcquiringToken();
     if (!token) {
       return NextResponse.json({ error: 'Еквайринг не налаштовано' }, { status: 500 });
     }
