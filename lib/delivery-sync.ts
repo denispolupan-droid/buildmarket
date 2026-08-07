@@ -6,6 +6,7 @@ import { rozetkaDeliveryPhase } from './rozetka-delivery-status';
 import { groupByTracking } from './delivery-tracking';
 import { completeShipmentByTtn, allOrderSalesPosted, settleLegacyCommission } from './accounting/completion';
 import { recordTxn } from './accounting/money';
+import { notifyCustomer } from './notify/send';
 
 // Синхронізація руху посилок (НП + точки видачі Rozetka) і супутні проводки.
 // Живе в lib, а не в роуті крона, бо викликається З ДВОХ місць: щогодинний крон
@@ -25,6 +26,9 @@ const DELIVERED_CODES = new Set(['9', '10', '11']);
 // (verified against a live tracking response) — any other code means NP has registered some
 // movement on the parcel, i.e. it was actually accepted at the branch/pickup.
 const NOT_HANDED_OVER_CODE = '1';
+// 7 — «Прибув у відділення»: саме тут покупцю варто написати, а не при кожному
+// русі посилки. Перевірено на живому трекінгу (замовлення #26071048).
+const ARRIVED_CODE = '7';
 
 export type DeliverySyncResult = { updated: number; accepted: number; checked: number; np: number; rozetka: number };
 
@@ -48,7 +52,7 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
   const returnWindow = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const { data: orders, error } = await serviceClient
     .from('orders')
-    .select('id, status, tracking_number, carrier_accepted_at, channel_code, rozetka_order_id, delivery_type, telegram_chat_id, order_number, flags')
+    .select('id, status, tracking_number, carrier_accepted_at, channel_code, rozetka_order_id, delivery_type, telegram_chat_id, order_number, flags, phone')
     .or([
       'status.eq.shipped',
       'and(status.eq.cancelled,carrier_accepted_at.not.is.null)',
@@ -146,6 +150,18 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
         } else if (code !== NOT_HANDED_OVER_CODE && !order.carrier_accepted_at) {
           acceptedOrders.push(order);
         }
+
+        // Посилка у відділенні — момент, коли покупцю справді треба щось знати.
+        // Захист від повторів не тут: notifyCustomer столбить подію в базі, тож
+        // цей самий код у кожному прогоні крона не породжує нових повідомлень.
+        if (code === ARRIVED_CODE) {
+          notifyCustomer({
+            orderId: order.id,
+            phone:   order.phone,
+            event:   'arrived',
+            ctx:     { orderNumber: order.order_number, carrier: 'nova' },
+          }).catch((err: unknown) => console.error('[sync-delivery-status] notify arrived failed:', order.id, err));
+        }
       }
     }
 
@@ -220,6 +236,17 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
         .update({ carrier_accepted_at: new Date().toISOString() })
         .in('id', acceptedOrders.map(o => o.id));
       accepted += acceptedOrders.length;
+
+      // Момент «посилка поїхала» для покупця — саме приймання перевізником, а не
+      // наш клік «відвантажено»: тут ТТН уже точно існує і вже щось відстежує.
+      for (const o of acceptedOrders) {
+        notifyCustomer({
+          orderId: o.id,
+          phone:   o.phone,
+          event:   'shipped',
+          ctx:     { orderNumber: o.order_number, trackingNumber: o.tracking_number, carrier: 'nova' },
+        }).catch((err: unknown) => console.error('[sync-delivery-status] notify shipped failed:', o.id, err));
+      }
 
       // Upgrade Rozetka's status from 61 (scheduled handover) to 3 (handed to delivery service)
       for (const o of acceptedOrders) {
