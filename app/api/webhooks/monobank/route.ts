@@ -8,6 +8,7 @@ import { recordCustomerPayment } from '../../../../lib/accounting/money';
 import { verifyMonoSignature } from '../../../../lib/mono-signature';
 import { alertAdmin } from '../../../../lib/alert';
 import { getMonoAcquiringToken } from '../../../../lib/mono-config';
+import { notifyPaidCardOrder } from '../../../../lib/card-order-notify';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -210,38 +211,9 @@ export async function POST(req: NextRequest) {
     // Записуємо оплату в AR-леджер
     await recordOrderPaymentToLedger(order.id, draft.user_id, amountUah, businessDate(body));
 
-    notifyAdminNewOrder({
-      order_number:       order.order_number,
-      contact:            order.contact,
-      company:            order.company ?? null,
-      phone:              order.phone,
-      total_price:        order.total_price,
-      payment_type:       'card',
-      delivery_city_name: order.delivery_city_name ?? null,
-    });
-
-    resend.emails.send({
-      from: FROM, to: ADMIN_EMAIL,
-      subject: `✅ Оплачено! Замовлення №${order.order_number} — ${order.contact} (${order.phone})`,
-      html: buildAdminNotificationHtml({
-        orderNumber: order.order_number, company: order.company ?? '',
-        contact: order.contact, phone: order.phone, email: order.email,
-        items: order.items, totalPrice: order.total_price,
-        deliveryType: order.delivery_type, deliveryAddress: order.delivery_address ?? '',
-        paymentType: 'card', comment: order.comment,
-      }),
-    }).catch(() => {});
-
-    resend.emails.send({
-      from: FROM, to: order.email,
-      subject: `✅ Оплату підтверджено! Замовлення №${order.order_number} — FIXLINE`,
-      html: buildCustomerOrderEmail({
-        orderNumber: order.order_number, orderId: order.id,
-        company: order.company ?? '', contact: order.contact,
-        totalPrice: order.total_price, paymentType: 'card',
-        userId: null, invoiceUrl, siteUrl,
-      }),
-    }).catch(() => {});
+    // Листи покупцю й нам — спільною функцією зі звіркою: замовлення, підняте
+    // кроном, мусить давати покупцю таке саме підтвердження, як і це.
+    notifyPaidCardOrder(order);
 
     return NextResponse.json({ ok: true });
   }

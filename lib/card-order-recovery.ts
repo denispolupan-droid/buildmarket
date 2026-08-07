@@ -2,6 +2,7 @@ import { createServiceClient } from './supabase';
 import { recordCustomerPayment } from './accounting/money';
 import { alertAdmin } from './alert';
 import { getMonoAcquiringToken } from './mono-config';
+import { notifyPaidCardOrder } from './card-order-notify';
 
 // Матеріалізація карткових замовлень із чернеток за ВИПИСКОЮ МЕРЧАНТА Monobank.
 //
@@ -82,7 +83,7 @@ export async function recoverPaidCardOrders(opts: { days?: number; notify?: bool
         payment_confirmed: true,
         amount_paid:       amountUah,
       })
-      .select('id, order_number')
+      .select('id, order_number, contact, company, phone, email, items, total_price, delivery_type, delivery_address, delivery_city_name, comment')
       .single();
 
     if (error || !order) {
@@ -114,6 +115,10 @@ export async function recoverPaidCardOrders(opts: { days?: number; notify?: bool
 
     await db.from('pending_card_orders').delete().eq('id', draft.id);
     result.created.push(order.order_number as number);
+
+    // Підтвердження покупцю — те саме, що шле вебхук. Без нього людина оплатила,
+    // замовлення тихо зʼявилось у базі, а вона про це не знає.
+    notifyPaidCardOrder(order as unknown as Parameters<typeof notifyPaidCardOrder>[0]);
 
     if (opts.notify) {
       alertAdmin(
