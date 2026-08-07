@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, RefreshCw, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -31,7 +31,9 @@ import ReturnOrderModal from '../components/admin/ReturnOrderModal';
 import NpReturnModal from '../components/admin/NpReturnModal';
 import { rozetkaStatusLabel, isRozetkaAhead } from '../../lib/rozetka-status';
 import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
+import { deliveryPlace } from '../../lib/delivery-label';
 import { estimateMarketplaceDeliveryFee, splitFeeByRevenue, type MarketplaceFeeTariffs } from '../../lib/marketplace-delivery-fee';
+import { isPromCheapDelivery, computePromDeliveryFee } from '../../lib/prom-delivery-fee';
 import RozetkaDeliveryTtnModal from '../components/admin/RozetkaDeliveryTtnModal';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number; is_bonus?: boolean; supplier_sku?: string };
@@ -130,21 +132,23 @@ const DELIVERY_LABEL: Record<string, string> = {
   rozetka_delivery: 'Rozetka Доставка',
 };
 
+// Спільний вигляд міток рядка (SMART, ТОЧКА, ⛓, повернення…). Раніше кожна
+// несла власний копіпаст зі стилями, і нова мітка щоразу трохи з'їжджала.
+const rowBadge: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', maxWidth: '100%',
+  fontSize: '9.5px', fontWeight: 700, lineHeight: '14px', letterSpacing: '.02em',
+  border: '1px solid', borderRadius: '5px', padding: '0 5px',
+  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+  verticalAlign: 'middle',
+};
+
 const PAYMENT_LABEL: Record<string, string> = {
   invoice: 'Безготівковий', cod: 'Оплата при отриманні', card: 'Картка онлайн',
 };
 
-/**
- * Перевізник замовлення. Rozetka Доставка — власний тип доставки (накладна
- * «RMP-…», оформлюється через API Rozetka); усе інше, крім самовивозу, їде
- * Новою Поштою. Самовивіз перевізника не має — повертаємо null, щоб такі
- * замовлення не потрапляли в жоден фільтр перевізника.
- */
-function carrierOf(o: { delivery_type: string }): 'rozetka' | 'nova' | null {
-  if (o.delivery_type === ROZETKA_DELIVERY_TYPE) return 'rozetka';
-  if (o.delivery_type === 'pickup') return null;
-  return 'nova';
-}
+// Розподіл замовлень за перевізником (Rozetka Доставка — власний тип, решта —
+// НП, самовивіз ні під що не підпадає) тепер робить сервер: див. applyOrderFilters
+// у app/admin/page.tsx. Клієнтська копія була б другою правдою.
 
 const STATUS_RANK: Record<string, number> = {
   new: 0, confirmed: 1, awaiting_stock: 2, picking: 3, shipped: 4, delivered: 5,
@@ -185,6 +189,16 @@ interface AdminOrdersProps {
   dateTo?: string;
   statusCounts?: Record<string, number>;
   currentStatus?: string;
+  /** Пошук і фільтри каналу/перевізника застосовує сервер — сюди приходить чинний стан з URL */
+  initialSearch?: string;
+  channelFilter?: string;
+  carrierFilter?: string;
+  channelCounts?: Record<string, number>;
+  carrierCounts?: Record<string, number>;
+  /** Скільки замовлень підпадає під чинний зріз у всій базі (не на сторінці) */
+  totalFound?: number;
+  /** sku першої позиції → шлях до фото, для мініатюри в рядку */
+  productThumbs?: Record<string, string>;
   sortBy?: string;
   sortDir?: string;
   promCommissionPct?: number;
@@ -200,6 +214,8 @@ export default function AdminOrders({
   initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin',
   hasRecentReceipts = false, expandOrderId, dateFrom, dateTo,
   statusCounts = {}, currentStatus = '',
+  initialSearch = '', channelFilter = '', carrierFilter = '',
+  channelCounts = {}, carrierCounts = {}, totalFound = 0, productThumbs = {},
   sortBy = 'created_at', sortDir = 'desc',
   promCommissionPct = 3,
   rozetkaCommissionPct = 15,
@@ -313,14 +329,34 @@ export default function AdminOrders({
     }
   }
 
-  const [channelFilter, setChannelFilter] = useState('');
-  // Фільтр за перевізником. Розрізняємо за delivery_type: доставка в точки видачі
-  // Rozetka — власний тип (накладна «RMP-…»), решта відправлень їде Новою Поштою.
-  // Самовивіз перевізника не має взагалі, тож під жоден фільтр не потрапляє.
-  const [carrierFilter, setCarrierFilter] = useState('');
-  // «Уже оброблені в кабінеті» — замовлення, які на Rozetka рухнули далі, ніж у нас
+  // «Уже оброблені в кабінеті» — замовлення, які на Rozetka рухнули далі, ніж у нас.
+  // Єдиний фільтр, що лишився клієнтським: ознака рахується з rozetka_data вже в
+  // браузері, окремої колонки в базі під неї немає.
   const [cabinetAheadOnly, setCabinetAheadOnly] = useState(false);
-  const [search, setSearch]         = useState('');
+
+  // Пошук і фільтри каналу/перевізника живуть в URL, застосовує їх сервер по всій
+  // базі. Локально тримаємо лише набране в полі, щоб не смикати навігацію на кожну
+  // літеру; після паузи стан їде в URL і сторінка перезапитує дані.
+  const [searchInput, setSearchInput] = useState(initialSearch);
+  useEffect(() => { setSearchInput(initialSearch); }, [initialSearch]);
+
+  const pushFilters = useCallback((patch: Record<string, string>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [key, value] of Object.entries(patch)) {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    }
+    params.delete('page');   // новий зріз — завжди з першої сторінки
+    params.delete('expand');
+    router.push(`/admin?${params.toString()}`);
+  }, [router, searchParams]);
+
+  useEffect(() => {
+    const value = searchInput.trim();
+    if (value === initialSearch) return;
+    const timer = setTimeout(() => pushFilters({ q: value }), 400);
+    return () => clearTimeout(timer);
+  }, [searchInput, initialSearch, pushFilters]);
   const [loading, setLoading]       = useState<string | null>(null);
   const [ttnValues, setTtnValues] = useState<Record<string, string>>(
     Object.fromEntries(initialOrders.map(o => [o.id, o.tracking_number ?? '']))
@@ -357,8 +393,6 @@ export default function AdminOrders({
   }, []);
   const [ttnModalOrder,  setTtnModalOrder]  = useState<Order | null>(null);
   const [rzTtnModal,     setRzTtnModal]     = useState<Order | null>(null);
-  const [syncing,        setSyncing]        = useState(false);
-  const [syncResult,     setSyncResult]     = useState<{ updated: number; accepted?: number; checked: number } | null>(null);
   const [creatingPo,     setCreatingPo]     = useState<string | null>(null);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -386,6 +420,14 @@ export default function AdminOrders({
     navigator.clipboard.writeText(ttn);
     setCopiedTtn(ttn);
     setTimeout(() => setCopiedTtn(c => (c === ttn ? null : c)), 1500);
+  }
+
+  // Телефон із рядка: копіюємо, щоб одразу набрати або вставити в пошук.
+  const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
+  function copyPhone(phone: string) {
+    navigator.clipboard.writeText(phone);
+    setCopiedPhone(phone);
+    setTimeout(() => setCopiedPhone(p => (p === phone ? null : p)), 1500);
   }
 
   // Edit order items
@@ -814,32 +856,10 @@ export default function AdminOrders({
     }
   }
 
-  const SYNC_KEY = 'lastDeliverySync';
-  const SYNC_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 години
-
-  async function syncDeliveryStatus() {
-    setSyncing(true);
-    setSyncResult(null);
-    try {
-      const res = await fetch('/api/admin/sync-delivery-status', { method: 'POST' });
-      const data = await res.json();
-      setSyncResult(data);
-      if (data.updated > 0 || data.accepted > 0) {
-        router.refresh();
-      }
-      localStorage.setItem(SYNC_KEY, Date.now().toString());
-    } catch {
-      // silent fail — не заважаємо роботі
-    }
-    setSyncing(false);
-  }
-
-  useEffect(() => {
-    const last = parseInt(localStorage.getItem(SYNC_KEY) ?? '0', 10);
-    if (Date.now() - last > SYNC_INTERVAL_MS) {
-      syncDeliveryStatus();
-    }
-  }, []);
+  // Кнопки «Синхронізувати НП» (і фонового автосинку раз на 4 години) тут більше
+  // немає: рух посилок і проводки при доставці веде крон (vercel.json →
+  // /api/cron/sync-delivery-status). Ручний вхід був другою копією тієї ж логіки,
+  // яка відстала й ставила замовленням «Доставлено» без проведення видаткової.
 
   // Скасування Rozetka-замовлення вимагає причини (статус 13 «Скасовано
   // адміністратором» продавцю недоступний) — перехоплюємо і питаємо менеджера.
@@ -1333,7 +1353,6 @@ export default function AdminOrders({
     }
   }
 
-  const q = search.trim().toLowerCase();
   /**
    * Об'єднані замовлення — ті, що їдуть однією посилкою. Окремої колонки в базі
    * немає й не треба: ознака об'єднання — це і є спільна накладна, її прописує
@@ -1353,20 +1372,12 @@ export default function AdminOrders({
     return byTtn;
   }, [orders]);
 
-  const filtered = orders.filter(o => {
-    if (channelFilter && (o.channel_code ?? 'website') !== channelFilter) return false;
-    if (carrierFilter && carrierOf(o) !== carrierFilter) return false;
-    if (cabinetAheadOnly && !rozetkaCabinet(o)?.ahead) return false;
-    if (q) {
-      const num = String(o.order_number);
-      const contact = (o.contact ?? '').toLowerCase();
-      const phone = (o.phone ?? '').replace(/\D/g, '');
-      const company = (o.company ?? '').toLowerCase();
-      const ttn = (o.tracking_number ?? '').toLowerCase();
-      if (!num.includes(q) && !contact.includes(q) && !phone.includes(q.replace(/\D/g, '')) && !company.includes(q) && !ttn.includes(q)) return false;
-    }
-    return true;
-  });
+  // Пошук, канал і перевізник уже відфільтровані базою (див. applyOrderFilters
+  // у app/admin/page.tsx). Тут лишається тільки те, що рахується з rozetka_data
+  // у браузері й колонки в базі не має.
+  const filtered = cabinetAheadOnly
+    ? orders.filter(o => rozetkaCabinet(o)?.ahead)
+    : orders;
 
   return (
     <>
@@ -1484,10 +1495,13 @@ export default function AdminOrders({
             ].map(ch => {
               const active = channelFilter === ch.value;
               const cfg = ch.value ? CHANNEL_LABEL[ch.value] : null;
+              const n = ch.value
+                ? (channelCounts[ch.value] ?? 0)
+                : Object.values(channelCounts).reduce((s, c) => s + c, 0);
               return (
                 <button
                   key={ch.value}
-                  onClick={() => setChannelFilter(ch.value)}
+                  onClick={() => pushFilters({ channel: ch.value })}
                   style={{
                     height: '30px', padding: '0 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
                     border: `1.5px solid ${active ? (cfg?.color ?? '#1E3A5F') : 'var(--border)'}`,
@@ -1497,9 +1511,7 @@ export default function AdminOrders({
                   }}
                 >
                   {ch.label}
-                  <span style={{ marginLeft: '4px', fontSize: '10px', opacity: 0.7 }}>
-                    {orders.filter(o => !ch.value || (o.channel_code ?? 'website') === ch.value).length}
-                  </span>
+                  <span style={{ marginLeft: '4px', fontSize: '10px', opacity: 0.7 }}>{n}</span>
                 </button>
               );
             })}
@@ -1511,12 +1523,12 @@ export default function AdminOrders({
               { value: 'rozetka', label: 'Rozetka Доставка', color: '#065F46', bg: '#ECFDF5', border: '#6EE7B7' },
             ].map(c => {
               const active = carrierFilter === c.value;
-              const n = orders.filter(o => carrierOf(o) === c.value).length;
+              const n = carrierCounts[c.value] ?? 0;
               return (
                 <button
                   key={c.value}
                   title={c.value === 'nova' ? 'Відправлення Новою Поштою' : 'Доставка в точки видачі Rozetka (накладна RMP-…)'}
-                  onClick={() => setCarrierFilter(active ? '' : c.value)}
+                  onClick={() => pushFilters({ carrier: active ? '' : c.value })}
                   style={{
                     height: '30px', padding: '0 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
                     border: `1.5px solid ${active ? c.border : 'var(--border)'}`,
@@ -1565,28 +1577,6 @@ export default function AdminOrders({
             <Link href="/admin/dispatch" className="oc-np-btn" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 500, background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}>
               <Send size={13} /> Реєстр НП
             </Link>
-            {syncResult && (
-              <span style={{ fontSize: '12px', color: (syncResult.updated > 0 || (syncResult.accepted ?? 0) > 0) ? '#15803D' : 'var(--text-secondary)' }}>
-                {syncResult.updated > 0 || (syncResult.accepted ?? 0) > 0
-                  ? `✓ Доставлено: ${syncResult.updated}, прийнято НП: ${syncResult.accepted ?? 0} з ${syncResult.checked}`
-                  : `Перевірено: ${syncResult.checked}, змін немає`}
-              </span>
-            )}
-            <button
-              onClick={syncDeliveryStatus}
-              disabled={syncing}
-              className="oc-np-btn"
-              style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                height: '32px', padding: '0 12px', borderRadius: '8px',
-                border: '1.5px solid var(--border)', background: 'var(--bg-card)',
-                fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)',
-                cursor: syncing ? 'wait' : 'pointer', opacity: syncing ? 0.6 : 1,
-              }}
-            >
-              <RefreshCw size={13} style={{ animation: syncing ? 'spin 1s linear infinite' : 'none' }} />
-              {syncing ? 'Синхронізую...' : 'Синхронізувати НП'}
-            </button>
           </div>
         </div>
 
@@ -1651,6 +1641,40 @@ export default function AdminOrders({
                   ✕<span className="oc-hide-m"> Скинути дату</span>
                 </button>
               )}
+
+              {/* Сортування — праворуч, на одному рівні з датами. Раніше стрілки жили
+                  в шапці таблиці над колонками: губилися серед лейблів і працювали
+                  лише для трьох колонок із десяти. */}
+              <div className="oc-hide-m" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Сортування
+                </span>
+                {[
+                  { key: 'created_at',   label: 'Дата' },
+                  { key: 'order_number', label: '№' },
+                  { key: 'total_price',  label: 'Сума' },
+                ].map(s => {
+                  const active = sortBy === s.key;
+                  const nextDir = active && sortDir === 'desc' ? 'asc' : 'desc';
+                  return (
+                    <button key={s.key}
+                      onClick={() => pushFilters({ sortBy: s.key, sortDir: nextDir })}
+                      title={active
+                        ? (sortDir === 'desc' ? 'Спочатку більші — натисніть для зворотного порядку' : 'Спочатку менші — натисніть для зворотного порядку')
+                        : `Сортувати за: ${s.label}`}
+                      style={{
+                        height: '32px', padding: '0 10px', borderRadius: '7px', display: 'inline-flex', alignItems: 'center', gap: '4px',
+                        border: `1.5px solid ${active ? 'var(--brand-blue)' : 'var(--border)'}`,
+                        background: active ? 'var(--brand-blue-light)' : 'var(--bg-card)',
+                        color: active ? 'var(--brand-blue)' : 'var(--text-secondary)',
+                        fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+                      }}>
+                      {s.label}
+                      <span style={{ fontSize: '10px' }}>{active ? (sortDir === 'desc' ? '↓' : '↑') : '⇅'}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           );
         })()}
@@ -1664,18 +1688,21 @@ export default function AdminOrders({
         <div style={{ position: 'relative' }}>
           <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           <input
-            placeholder="№ замовлення, ФІО, телефон, ТТН..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+            placeholder="№ замовлення, ФІО, компанія, телефон, ТТН — по всій базі"
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            onFocus={e => { e.currentTarget.style.borderColor = 'var(--brand-teal)'; }}
+            onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
             style={{
-              width: '100%', height: '34px', paddingLeft: '32px', paddingRight: search ? '30px' : '10px',
+              width: '100%', height: '34px', paddingLeft: '32px', paddingRight: searchInput ? '30px' : '10px',
               border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px',
               outline: 'none', boxSizing: 'border-box', background: 'var(--bg-card)', color: 'var(--text-primary)',
+              transition: 'border-color 0.15s',
             }}
           />
-          {search && (
+          {searchInput && (
             <button
-              onClick={() => setSearch('')}
+              onClick={() => setSearchInput('')}
               style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}
             >
               <X size={13} />
@@ -1684,10 +1711,15 @@ export default function AdminOrders({
         </div>
         </div>
 
-        {/* Result count when filtering */}
-        {(q || channelFilter || carrierFilter) && (
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-            Знайдено: <strong>{filtered.length}</strong> замовлень
+        {/* Скільки знайшлося — по всій базі, а не на цій сторінці */}
+        {(initialSearch || channelFilter || carrierFilter) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+            <span>Знайдено: <strong style={{ color: 'var(--brand-blue)' }}>{totalFound}</strong> у всій базі</span>
+            <button
+              onClick={() => { setSearchInput(''); pushFilters({ q: '', channel: '', carrier: '' }); }}
+              style={{ height: '24px', padding: '0 10px', borderRadius: '20px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer' }}>
+              Скинути фільтри
+            </button>
           </div>
         )}
       </div>
@@ -1696,7 +1728,7 @@ export default function AdminOrders({
       {(() => {
         const awaitingCount = orders.filter(o => o.status === 'awaiting_stock').length;
         if (!awaitingCount || !hasRecentReceipts) return null;
-        const isFiltered = channelFilter === '' && carrierFilter === '' && !q;
+        const isFiltered = channelFilter === '' && carrierFilter === '' && !initialSearch;
         return (
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -1713,14 +1745,14 @@ export default function AdminOrders({
             </div>
             {isFiltered ? (
               <button
-                onClick={() => setChannelFilter('')}
+                onClick={() => pushFilters({ status: 'awaiting_stock' })}
                 style={{ height: '28px', padding: '0 12px', borderRadius: '6px', border: '1.5px solid #A78BFA', background: '#EDE9FE', color: '#6D28D9', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
               >
                 Показати →
               </button>
             ) : (
               <button
-                onClick={() => { setChannelFilter(''); setCarrierFilter(''); setSearch(''); }}
+                onClick={() => { setSearchInput(''); pushFilters({ q: '', channel: '', carrier: '' }); }}
                 style={{ height: '28px', padding: '0 12px', borderRadius: '6px', border: '1.5px solid #A78BFA', background: '#EDE9FE', color: '#6D28D9', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
               >
                 Скинути фільтри →
@@ -1734,7 +1766,9 @@ export default function AdminOrders({
       {filtered.length > 0 && (
         <div className="oc-hide-m" style={{
           display: 'flex', alignItems: 'center', gap: '10px',
-          padding: '5px 15px', marginBottom: '2px',
+          // 17px = 16px падінгу картки + її 1px рамка, щоб колонки шапки стояли
+          // рівно над вмістом рядка, а не на два пікселі лівіше
+          padding: '5px 17px', marginBottom: '2px',
           fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
           textTransform: 'uppercase', letterSpacing: '0.06em',
           borderBottom: '1px solid var(--border-light)',
@@ -1750,45 +1784,25 @@ export default function AdminOrders({
             style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, cursor: 'pointer', border: `2px solid ${filtered.length > 0 && filtered.every(o => selectedIds.has(o.id)) ? '#3DBFB8' : 'var(--border)'}`, background: filtered.length > 0 && filtered.every(o => selectedIds.has(o.id)) ? '#3DBFB8' : 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {filtered.length > 0 && filtered.every(o => selectedIds.has(o.id)) && <Check size={9} color="#fff" strokeWidth={3} />}
           </div>
-          {/* Sortable columns */}
-          {[
-            { key: 'order_number', label: '№',    width: '70px',  align: 'left'  },
-            { key: 'created_at',   label: 'Дата',  width: '90px',  align: 'left'  },
-          ].map(col => {
-            const active = sortBy === col.key;
-            const nextDir = active && sortDir === 'desc' ? 'asc' : 'desc';
-            return (
-              <button key={col.key}
-                onClick={() => {
-                  const p = new URLSearchParams(window.location.search);
-                  p.set('sortBy', col.key); p.set('sortDir', nextDir); p.delete('page');
-                  router.push(`/admin?${p.toString()}`);
-                }}
-                style={{ width: col.width, flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', textAlign: col.align as 'left', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '10px', fontWeight: 700, color: active ? '#1E3A5F' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: 0 }}>
-                {col.label}
-                <span style={{ fontSize: '9px' }}>{active ? (sortDir === 'desc' ? '↓' : '↑') : '⇅'}</span>
-              </button>
-            );
-          })}
-          <span style={{ flex: '0 1 calc(50% - 230px)', minWidth: 0 }}>Клієнт / Товар</span>
-          <span style={{ flex: 1, minWidth: '100px', overflow: 'hidden', whiteSpace: 'nowrap' }}>Доставка</span>
-          <span style={{ width: '104px', flexShrink: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>Статус</span>
+          {/* Заголовки колонок — просто підписи: сортування переїхало в панель
+              фільтрів, до вибору дати */}
+          <div style={{ width: '92px', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
+            <span>№</span>
+            <span>Дата</span>
+          </div>
+          {/* Порожня комірка під мініатюру товару — щоб заголовки не з'їхали з колонок */}
+          {/* 78px = дві плитки по 36 + 6 проміжку */}
+          <span style={{ width: '78px', flexShrink: 0, marginLeft: '8px' }} />
+          <span style={{ flex: '0 1 calc(50% - 250px)', minWidth: 0 }}>Клієнт / Товар</span>
+          <span style={{ flex: 1, minWidth: '200px', overflow: 'hidden', whiteSpace: 'nowrap' }}>Доставка</span>
+          {/* 118px — рівно як у комірки статусу в рядку (.oc-status). Було 104,
+              і заголовок стояв на 14px правіше за плашку під ним. */}
+          <span style={{ width: '118px', flexShrink: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>Статус</span>
           <span style={{ width: '64px', flexShrink: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>Канал</span>
           <span style={{ width: '64px', flexShrink: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>Відпр.</span>
           <span style={{ width: '46px', flexShrink: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>Опл.</span>
           <span style={{ width: '34px', flexShrink: 0, textAlign: 'center', overflow: 'hidden', whiteSpace: 'nowrap' }}>Дзв.</span>
-          {/* Sortable: Сума */}
-          {(() => {
-            const active = sortBy === 'total_price';
-            const nextDir = active && sortDir === 'desc' ? 'asc' : 'desc';
-            return (
-              <button onClick={() => { const p = new URLSearchParams(window.location.search); p.set('sortBy', 'total_price'); p.set('sortDir', nextDir); p.delete('page'); router.push(`/admin?${p.toString()}`); }}
-                style={{ width: '84px', flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '3px', fontSize: '10px', fontWeight: 700, color: active ? '#1E3A5F' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: 0 }}>
-                <span style={{ fontSize: '9px' }}>{active ? (sortDir === 'desc' ? '↓' : '↑') : '⇅'}</span>
-                Сума
-              </button>
-            );
-          })()}
+          <span style={{ width: '84px', flexShrink: 0, textAlign: 'right' }}>Сума</span>
           <div style={{ width: '14px', flexShrink: 0 }} />
         </div>
       )}
@@ -1854,6 +1868,88 @@ export default function AdminOrders({
             // Доставка в точки видачі Rozetka: накладну оформлюємо не в НП, а через Rozetka
             // (номер «RMP-…»). Видно в списку, щоб не почати збирати посилку не тим перевізником.
             const isRzPickup = order.delivery_type === ROZETKA_DELIVERY_TYPE;
+            // Акція Prom «Дешева доставка»: покупцю доставка майже безкоштовна, а
+            // організацію оплачуємо ми — 10 ₴ від 200 і 30 ₴ від 700 за замовлення.
+            // У кабінеті Prom це видно плашкою, у нас замовлення виглядало звичайним.
+            const isPromCheapDeliv = order.channel_code === 'prom' && isPromCheapDelivery(order.prom_data);
+            const promDeliveryFee = isPromCheapDeliv
+              ? computePromDeliveryFee(order.total_price, feeTariffs.promDelivery)
+              : 0;
+
+            /**
+             * Мітки рядка. Дві групи, бо вони про різне:
+             *  orderBadges    — про саме замовлення і те, що вимагає уваги (терміново,
+             *                   проблемне, повернення) — стоять біля ПІБ;
+             *  deliveryBadges — про умови доставки (SMART, точка видачі, дешева доставка
+             *                   Prom, спільна накладна) — стоять у колонці «Доставка»,
+             *                   поруч із ТТН, якої вони й стосуються.
+             * На телефоні колонки доставки немає, тому там обидві групи показуються
+             * поруч із ПІБ (oc-only-m у розмітці нижче).
+             */
+            const orderBadges = (
+              <>
+                {(order.flags ?? []).includes('urgent') && (
+                  <span title="Терміново" style={{ ...rowBadge, color: '#B91C1C', background: '#FEE2E2', borderColor: '#FCA5A5' }}>⚡</span>
+                )}
+                {(order.flags ?? []).includes('problem') && (
+                  <span title="Проблемний" style={{ ...rowBadge, color: '#B45309', background: '#FEF3C7', borderColor: '#FCD34D' }}>⚠</span>
+                )}
+                {order.mp_refund_status && (
+                  <span title={`Покупець відкрив повернення — ${order.mp_refund_status}`} style={{ ...rowBadge, color: '#B91C1C', background: '#FEE2E2', borderColor: '#FCA5A5' }}>↩ повернення</span>
+                )}
+                {order.np_return_ref && (
+                  <span title={`Заявка на повернення в НП${order.np_return_number ? ` №${order.np_return_number}` : ''} — посилка їде назад на наше відділення`} style={{ ...rowBadge, color: '#9A3412', background: '#FFF7ED', borderColor: '#FDBA74' }}>↩ НП</span>
+                )}
+                {isReturnPending(order) && (() => {
+                  const rs = returnState(order);
+                  const s = rs === 'received'
+                    ? { t: '↩ забрано', c: '#15803D', bg: '#F0FDF4', b: '#BBF7D0', title: 'Повернення забрано з пошти' }
+                    : rs === 'abandoned'
+                    ? { t: '↩ залишено', c: '#64748B', bg: '#F8FAFC', b: '#E2E8F0', title: 'Вирішено не забирати (повернення дорожче за товар)' }
+                    : { t: '↩ забрати?', c: '#C2410C', bg: '#FFF7ED', b: '#FDBA74', title: `Замовлення скасоване, але посилку вже прийняла ${isRzPickup ? 'Rozetka Доставка' : 'НП'} — вона їде назад${order.carrier_status_text ? ` (зараз: «${order.carrier_status_text}»)` : ''}. Відкрийте замовлення і вирішіть: забрати з пошти чи залишити.` };
+                  return <span title={s.title} style={{ ...rowBadge, color: s.c, background: s.bg, borderColor: s.b }}>{s.t}</span>;
+                })()}
+              </>
+            );
+
+            const deliveryBadges = (
+              <>
+                {isSmart && (
+                  <span title="Rozetka Smart — безкоштовна доставка для покупця, компенсація списується з нас. НЕ редагуйте склад замовлення: будь-яка зміна знімає Smart безповоротно." style={{ ...rowBadge, color: '#713F12', background: '#FDE047', borderColor: '#FACC15' }}>SMART</span>
+                )}
+                {isPromCheapDeliv && (
+                  <span title={`Замовлення за акцією Prom «Дешева доставка»: покупець платить за доставку символічно, організацію оплачуємо ми${promDeliveryFee > 0 ? ` — ${promDeliveryFee} ₴ за це замовлення` : ''}. Prom списує збір після вручення посилки; невикуп не списується. Збір проводиться автоматично при доставці.`}
+                    style={{ ...rowBadge, color: '#C2410C', background: '#FFF7ED', borderColor: '#FDBA74' }}>
+                    ДЕШ. ДОСТ.
+                  </span>
+                )}
+              </>
+            );
+
+            /**
+             * Спільна накладна — ознака самого замовлення, а не умов доставки: вона
+             * каже «це замовлення їде разом з іншим». Тому стоїть під номером, поруч
+             * із номерами-сусідами, а не в колонці доставки.
+             */
+            const mergedBadge = (() => {
+              const group = order.tracking_number ? mergedByTtn.get(order.tracking_number) : undefined;
+              if (!group) return null;
+              const others = group.filter((n: number) => n !== order.order_number);
+              return (
+                <span
+                  title={`Одна посилка на ${group.length} замовлення — спільна ТТН ${order.tracking_number}. Разом із №${others.join(', №')}. Відвантажувати треба всі, інакше частина залишиться висіти.`}
+                  style={{ ...rowBadge, marginTop: '2px', color: '#5B21B6', background: '#F5F3FF', borderColor: '#C4B5FD' }}>
+                  ⛓ №{others.join(', №')}
+                </span>
+              );
+            })();
+
+            // Перевізник рядком: раніше це читалося лише з кольору плашки ТТН, а для
+            // точок видачі Rozetka була окрема мітка «ТОЧКА» — тепер про це прямо
+            // сказано першим рядком колонки, і окрема мітка не потрібна.
+            const carrierLabel = order.delivery_type === 'pickup' ? 'Самовивіз'
+              : isRzPickup ? 'Rozetka Доставка'
+              : 'Нова Пошта';
 
             return (
               <div key={order.id} id={`order-${order.id}`} style={{
@@ -1871,7 +1967,11 @@ export default function AdminOrders({
                   onClick={() => { const next = isExpanded ? null : order.id; setExpandedId(next); if (next) { loadFulfillment(next); loadLinkedPOs(next); loadPayments(next); } }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '10px',
-                    padding: '12px 16px', cursor: 'pointer',
+                    // Нижня межа висоти: без неї рядок без телефону/товару/ТТН виходив
+                    // нижчим за сусідів і список «дихав». Стелю тримає те, що жодна
+                    // комірка не переносить текст — усюди nowrap + ellipsis, максимум
+                    // три рядки (ПІБ / телефон / товар).
+                    padding: '9px 16px', minHeight: '70px', boxSizing: 'border-box', cursor: 'pointer',
                     background: isExpanded
                       ? (isUnpaidInvoice ? '#FEF9EC' : 'var(--bg-soft)')
                       : (isUnpaidInvoice ? '#FFFBF0' : 'var(--bg-card)'),
@@ -1889,72 +1989,103 @@ export default function AdminOrders({
                     {selectedIds.has(order.id) && <Check size={9} color="#fff" strokeWidth={3} />}
                   </div>
 
-                  {/* № */}
-                  <span className="oc-num" style={{ width: '70px', flexShrink: 0, fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)' }}>#{order.order_number}</span>
+                  {/* № і дата одним стовпчиком: удвох вони займали 160px по горизонталі,
+                      хоча під номером був порожній другий рядок. Звільнене місце пішло
+                      клієнту й доставці. Розмір шрифту — на внутрішніх блоках, щоб
+                      мобільне правило .oc-num { font-size: 15px } не роздувало дату. */}
+                  <div className="oc-num" style={{ width: '92px', flexShrink: 0, minWidth: 0, fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    <div>#{order.order_number}</div>
+                    <div className="oc-date" style={{ fontSize: '10.5px', fontWeight: 500, color: 'var(--text-muted)', whiteSpace: 'nowrap', marginTop: '1px' }}>{date}</div>
+                    {mergedBadge}
+                  </div>
 
-                  {/* Дата */}
-                  {/* На телефоні дата показується одразу після номера (клас oc-date
-                      кладе її у свою комірку сітки), а не ховається, як решта колонок. */}
-                  <span className="oc-date" style={{ width: '90px', flexShrink: 0, fontSize: '11px', color: 'var(--text-muted)' }}>{date}</span>
+                  {/* Мініатюри товарів: дві вміщуються в рядок без шкоди для решти
+                      колонок, тому показуємо перші дві, а на третій і далі лічильник
+                      на другій плитці каже, скільки позицій у замовленні всього.
+                      Некликабельні навмисно: клік по рядку розгортає картку, і промах
+                      по мініатюрі не має відкривати сторонню сторінку. */}
+                  {(() => {
+                    const positions = order.items.length;
+                    const shown = order.items.slice(0, 2);
+                    return (
+                      <div className="oc-hide-m" style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '8px' }}>
+                        {shown.map((item, idx) => {
+                          const img = item.sku ? productThumbs[item.sku] : undefined;
+                          const isLast = idx === shown.length - 1;
+                          return (
+                            <div key={`${item.sku}-${idx}`} title={`${item.brand ?? ''} ${item.name}`.trim()}
+                              style={{
+                                width: '36px', height: '36px', flexShrink: 0, borderRadius: '8px', position: 'relative',
+                                border: '1px solid var(--border-light)', background: img ? `#fff url("${img}") center/cover no-repeat` : 'var(--bg-soft)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}>
+                              {!img && <Package size={13} color="var(--border)" />}
+                              {isLast && positions > 2 && (
+                                <span title={`Позицій у замовленні: ${positions}`}
+                                  style={{
+                                    position: 'absolute', right: '-5px', bottom: '-5px', minWidth: '15px', height: '15px',
+                                    padding: '0 3px', borderRadius: '8px', boxSizing: 'border-box',
+                                    background: 'var(--brand-blue)', color: '#fff', border: '1.5px solid var(--bg-card)',
+                                    fontSize: '9.5px', fontWeight: 800, lineHeight: '12px', textAlign: 'center',
+                                  }}>
+                                  {positions}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {/* Порожнє місце під другу плитку, коли позиція одна — щоб
+                            блок клієнта в усіх рядках починався з тієї самої вертикалі */}
+                        {shown.length < 2 && <div style={{ width: '36px', flexShrink: 0 }} />}
+                      </div>
+                    );
+                  })()}
 
-                  {/* Клієнт / Товар */}
-                  <div className="oc-cust" style={{ flex: '0 1 calc(50% - 230px)', minWidth: 0, overflow: 'hidden' }}>
-                    <div className="oc-nameline" style={{ fontSize: '13px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      <span className="oc-badges">
-                      {(order.flags ?? []).includes('urgent') && (
-                        <span title="Терміново" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>⚡</span>
-                      )}
-                      {(order.flags ?? []).includes('problem') && (
-                        <span title="Проблемний" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>⚠</span>
-                      )}
-                      {order.mp_refund_status && (
-                        <span title={`Покупець відкрив повернення — ${order.mp_refund_status}`} style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>↩ повернення</span>
-                      )}
-                      {order.np_return_ref && (
-                        <span title={`Заявка на повернення в НП${order.np_return_number ? ` №${order.np_return_number}` : ''} — посилка їде назад на наше відділення`} style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#9A3412', background: '#FFF7ED', border: '1px solid #FDBA74', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>↩ НП</span>
-                      )}
-                      {isReturnPending(order) && (() => {
-                        const rs = returnState(order);
-                        const s = rs === 'received'
-                          ? { t: '↩ забрано', c: '#15803D', bg: '#F0FDF4', b: '#BBF7D0', title: 'Повернення забрано з пошти' }
-                          : rs === 'abandoned'
-                          ? { t: '↩ залишено', c: '#64748B', bg: '#F8FAFC', b: '#E2E8F0', title: 'Вирішено не забирати (повернення дорожче за товар)' }
-                          : { t: '↩ Повернення · забрати?', c: '#C2410C', bg: '#FFF7ED', b: '#FDBA74', title: `Замовлення скасоване, але посилку вже прийняла ${isRzPickup ? 'Rozetka Доставка' : 'НП'} — вона їде назад${order.carrier_status_text ? ` (зараз: «${order.carrier_status_text}»)` : ''}. Відкрийте замовлення і вирішіть: забрати з пошти чи залишити.` };
-                        return <span title={s.title} style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: s.c, background: s.bg, border: `1px solid ${s.b}`, borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>{s.t}</span>;
-                      })()}
-                      {isSmart && (
-                        <span title="Rozetka Smart — безкоштовна доставка для покупця, компенсація списується з нас. НЕ редагуйте склад замовлення: будь-яка зміна знімає Smart безповоротно." style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 800, color: '#713F12', background: '#FDE047', border: '1px solid #FACC15', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>SMART</span>
-                      )}
-                      {isRzPickup && (
-                        <span title="Доставка в точку видачі Rozetka. Накладна оформлюється НЕ в Новій Пошті, а через Rozetka (номер «RMP-…») — кнопка «Створити накладну Rozetka» в картці замовлення. Збір за видачу Rozetka списує з логістичного балансу." style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 800, color: '#065F46', background: '#ECFDF5', border: '1px solid #6EE7B7', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>ТОЧКА ROZETKA</span>
-                      )}
-                      {(() => {
-                        // Однією посилкою з іншими замовленнями — спільна накладна.
-                        const group = order.tracking_number ? mergedByTtn.get(order.tracking_number) : undefined;
-                        if (!group) return null;
-                        const others = group.filter((n: number) => n !== order.order_number);
-                        return (
-                          <span
-                            title={`Одна посилка на ${group.length} замовлення — спільна ТТН ${order.tracking_number}. Разом із №${others.join(', №')}. Відвантажувати треба всі, інакше частина залишиться висіти.`}
-                            style={{ display: 'inline-flex', alignItems: 'center', fontSize: '10px', fontWeight: 700, color: '#5B21B6', background: '#F5F3FF', border: '1px solid #C4B5FD', borderRadius: '5px', padding: '0 4px', marginRight: '5px', verticalAlign: 'middle' }}>
-                            ⛓ з №{others.join(', №')}
-                          </span>
-                        );
-                      })()}
-                      </span>
-                      <span className="oc-name">
+                  {/* Клієнт: ПІБ із мітками замовлення, під ним телефон із кнопкою
+                      копіювання, далі товар. Телефон окремим рядком, бо в парі з ПІБ
+                      вони билися за ширину, а копіювати номер треба часто — і на
+                      телефоні теж, тому кнопка не ховається під .oc-hide-m. */}
+                  <div className="oc-cust" style={{ flex: '0 1 calc(50% - 250px)', minWidth: 0, overflow: 'hidden' }}>
+                    <div className="oc-nameline" style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, fontSize: '13px', color: 'var(--text-primary)' }}>
+                      <span className="oc-name" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {order.company
                           ? <><span style={{ fontWeight: 600 }}>{order.company}</span><span style={{ color: 'var(--text-muted)' }}> · {order.contact}</span></>
                           : <span style={{ fontWeight: 600 }}>{order.contact}</span>}
-                        {order.phone && <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--text-muted)', marginLeft: '6px' }}>{order.phone}</span>}
+                      </span>
+                      {/* flex-wrap потрібен лише телефону: там мітки стоять власним
+                          рядком під ПІБ і при кількох штуках не влазять у ширину
+                          екрана. На десктопі span не стискається, тож переносу немає. */}
+                      <span className="oc-badges" style={{ display: 'flex', gap: '3px', flexShrink: 0, flexWrap: 'wrap' }}>
+                        {orderBadges}
+                        {/* На телефоні колонки «Доставка» немає — мітки посилки показуємо тут */}
+                        <span className="oc-only-m" style={{ gap: '3px' }}>{deliveryBadges}</span>
                       </span>
                     </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minHeight: '16px' }}>
+                      {order.phone && (<>
+                        <span style={{ fontSize: '11.5px', fontWeight: 500, color: 'var(--text-secondary)', letterSpacing: '.01em', whiteSpace: 'nowrap' }}>{order.phone}</span>
+                        {/* Без рамки й фону: кнопка стоїть у кожному рядку, і обведення
+                            перетворювало список на решето. Достатньо самої іконки. */}
+                        <button
+                          onClick={e => { e.stopPropagation(); copyPhone(order.phone); }}
+                          title={copiedPhone === order.phone ? 'Скопійовано' : 'Скопіювати номер'}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                            width: '16px', height: '16px', padding: 0, border: 'none', background: 'none', cursor: 'pointer',
+                            color: copiedPhone === order.phone ? '#15803D' : 'var(--text-muted)',
+                          }}>
+                          {copiedPhone === order.phone ? <Check size={11} strokeWidth={3} /> : <Copy size={11} />}
+                        </button>
+                      </>)}
+                    </div>
+
                     {order.items[0] && (
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
                         {order.items[0].is_bonus && <span style={{ marginRight: '4px' }}>🎁</span>}
                         {order.items[0].brand ? `${order.items[0].brand} ` : ''}{order.items[0].name}
-                        <span style={{ marginLeft: '4px', color: 'var(--text-muted)' }}>×{order.items[0].qty}</span>
-                        {order.items.length > 1 && <span style={{ marginLeft: '4px', color: 'var(--text-muted)' }}>+{order.items.length - 1}</span>}
+                        <span style={{ marginLeft: '4px' }}>×{order.items[0].qty}</span>
+                        {order.items.length > 1 && <span style={{ marginLeft: '4px' }}>+{order.items.length - 1}</span>}
                         {order.items.some(i => i.is_bonus) && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#15803D', fontWeight: 600, background: '#F0FDF4', padding: '0 5px', borderRadius: '4px' }}>🎁 бонус</span>}
                       </div>
                     )}
@@ -1969,8 +2100,7 @@ export default function AdminOrders({
                   <div className="oc-only-m oc-ship" style={{ display: 'none', minWidth: 0, alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-secondary)' }}>
                     {(order.delivery_type === 'pickup' || order.delivery_city_name || order.delivery_address) && (
                       <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {order.delivery_type === 'pickup' ? 'Самовивіз'
-                          : `${order.delivery_city_name ?? order.delivery_address ?? delivery}${order.delivery_subtype === 'courier' ? ' · кур.' : ''}`}
+                        {deliveryPlace(order, delivery)}{order.delivery_subtype === 'courier' ? ' · кур.' : ''}
                       </span>
                     )}
                     {order.tracking_number && (
@@ -1991,13 +2121,42 @@ export default function AdminOrders({
                     )}
                   </div>
 
-                  {/* Доставка */}
-                  <span className="oc-hide-m" style={{ flex: 1, minWidth: '100px', fontSize: '12px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {order.delivery_type === 'pickup' ? 'Самовивіз'
-                      : order.delivery_city_name
-                        ? `${order.delivery_city_name}${order.delivery_subtype === 'courier' ? ' · кур.' : ''}${order.delivery_address ? ` · ${order.delivery_address}` : ''}`
-                        : (order.delivery_address ?? delivery)}
-                  </span>
+                  {/* Доставка трьома рядками: перевізник (+ умови акції), потім місто
+                      з відділенням без вулиці, потім ТТН. Раніше все тіснилось у два
+                      рядки, перевізник читався лише з кольору плашки, а повна адреса
+                      з'їдала колонку, хоча для впізнавання досить номера відділення.
+                      На телефоні цю інформацію показує блок oc-ship вище. */}
+                  <div className="oc-hide-m" style={{ flex: 1, minWidth: '200px', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0 }}>
+                      <span style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                        {carrierLabel}{order.delivery_subtype === 'courier' ? ' · кур.' : ''}
+                      </span>
+                      <span style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>{deliveryBadges}</span>
+                    </div>
+
+                    <div style={{ fontSize: '12px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {deliveryPlace(order, delivery)}
+                    </div>
+
+                    <div style={{ minHeight: '16px' }}>
+                      {order.tracking_number && (
+                        <span
+                          onClick={e => { e.stopPropagation(); copyTtn(order.tracking_number!); }}
+                          title={`${carrierLabel} · ${order.tracking_number} — натисніть, щоб скопіювати`}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer',
+                            padding: '0 6px', borderRadius: '20px', fontSize: '10.5px', fontWeight: 700, letterSpacing: '.02em',
+                            color: isRzPickup ? '#065F46' : '#7C2D12',
+                            background: isRzPickup ? '#ECFDF5' : '#FFF7ED',
+                            border: `1px solid ${isRzPickup ? '#6EE7B7' : '#FDBA74'}`,
+                          }}>
+                          <Truck size={9} style={{ flexShrink: 0 }} />
+                          <span style={{ whiteSpace: 'nowrap' }}>{order.tracking_number}</span>
+                          {copiedTtn === order.tracking_number && <Check size={9} strokeWidth={3} />}
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
                   {/* Статус */}
                   <div className="oc-status" style={{ width: '118px', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px', overflow: 'hidden' }}>
@@ -2284,8 +2443,12 @@ export default function AdminOrders({
                     <div className="order-main-col" style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
 
                     {/* Col 1: Items */}
-                    <div className="order-col-card" style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column' }}>
-                      <div style={{ paddingTop: '0', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0 }}>
+                    {/* Картка «Товари» тягнеться по вмісту, а не по висоті сусідньої
+                        колонки. Було flex:1 + justify-content:center — замовлення з
+                        однією позицією розтягувалось на всю висоту правого сайдбара
+                        і рядок висів посеред порожнечі. */}
+                    <div className="order-col-card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                           <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             Товари · {order.items.length}

@@ -33,6 +33,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Каталог збірки можна перекрити змінною — щоб перевірочний `next build` не
+  // писав у той самий `.next`, з якого зараз живе `next dev`: продакшн-збірка
+  // перетирає дев-артефакти, і після цього рендер-воркер починає падати на
+  // цілих сегментах роутів. У CI і на Vercel змінної немає — там звичайний `.next`.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   serverExternalPackages: ['pdfkit', 'sharp'],
   experimental: {
     // Під час білда БД одночасно обслуговує пре-рендер сотень сторінок і живий

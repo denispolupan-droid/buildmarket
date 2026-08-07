@@ -11,7 +11,7 @@ import { recordCustomerPayment, recordShipment } from '../../../../../lib/accoun
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/prom-api';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../lib/rozetka-api';
 import { alertAdmin } from '../../../../../lib/alert';
-import { completeOrderDelivery } from '../../../../../lib/accounting/completion';
+import { completeOrderDelivery, syncDraftShipmentTracking } from '../../../../../lib/accounting/completion';
 import { checkOrderCredit } from '../../../../../lib/accounting/credit-guard';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -98,7 +98,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     ];
   }
 
-  if (tracking_number !== undefined) update.tracking_number = tracking_number;
+  // Номер посилки правлять і руками (поле ТТН у картці), і при злитті замовлень
+  // в одну накладну. Непроведені РН мусять їхати з тим самим номером — крон
+  // доставки шукає їх саме за ним.
+  if (tracking_number !== undefined) {
+    update.tracking_number = tracking_number;
+    await syncDraftShipmentTracking(id, (tracking_number as string) || null);
+  }
   if (tracking_ref    !== undefined) update.tracking_ref    = tracking_ref;
   if (payment_confirmed  !== undefined) update.payment_confirmed  = payment_confirmed;
   if (callback_done      !== undefined) update.callback_done      = callback_done;

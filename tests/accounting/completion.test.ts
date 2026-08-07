@@ -144,4 +144,39 @@ describe('Варіант 3 — продаж при доставці', () => {
 
     await assertInvariants();
   }, 30000);
+
+  // Дзеркальний випадок до попереднього: не одне замовлення в двох посилках, а
+  // ДВА замовлення в одній. Живий кейс #26081005 + #26081006 — спільна ТТН
+  // 20451502111156; через maybeSingle() по ній не проводилось нічого, і обидва
+  // замовлення лишились доставленими з чернеткою РН (інваріант I7).
+  it('одна посилка на два замовлення: проводяться обидві чернетки', async () => {
+    const orderA = randomUUID();
+    const orderB = randomUUID();
+    const line = { sku: testSku, name: 'test', brand: 'test', price: 100 };
+    const TTN = '59TESTMERGED01';
+
+    expect((await createReservation({ order_id: orderA, warehouse_id: warehouseId, items: [{ sku: testSku, qty: 1 }] })).success).toBe(true);
+    expect((await createReservation({ order_id: orderB, warehouse_id: warehouseId, items: [{ sku: testSku, qty: 1 }] })).success).toBe(true);
+
+    const docA = await createSaleDraft({
+      order_id: orderA, order_number: 999996, order_items: [{ ...line, qty: 1 }],
+      channel_code: 'website', confirmed_by: 'test', tracking_number: TTN,
+    });
+    const docB = await createSaleDraft({
+      order_id: orderB, order_number: 999995, order_items: [{ ...line, qty: 1 }],
+      channel_code: 'website', confirmed_by: 'test', tracking_number: TTN,
+    });
+    await db.from('acc_documents').update({ meta: { test: true } }).in('id', [docA, docB]);
+
+    await completeShipmentByTtn(TTN, 'test');
+
+    const { data: a } = await db.from('acc_documents').select('status').eq('id', docA).single();
+    const { data: b } = await db.from('acc_documents').select('status').eq('id', docB).single();
+    expect(a?.status).toBe('confirmed');
+    expect(b?.status).toBe('confirmed');
+    expect(await allOrderSalesPosted(orderA)).toBe(true);
+    expect(await allOrderSalesPosted(orderB)).toBe(true);
+
+    await assertInvariants();
+  }, 30000);
 });

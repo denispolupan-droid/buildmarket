@@ -3,6 +3,7 @@ import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { createRozetkaDeliveryTtn, getRozetkaSender } from '../../../../../../lib/rozetka-delivery-ttn';
 import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
+import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
 
 /**
  * Створення накладної для доставки в точку видачі Rozetka.
@@ -92,6 +93,8 @@ export async function POST(
 
     if (ttn.ttn) {
       await db.from('orders').update({ tracking_number: ttn.ttn }).eq('id', order.id);
+      // Той самий номер — на непроведені РН, інакше синк доставки їх не знайде
+      await syncDraftShipmentTracking(order.id, ttn.ttn);
     }
     return NextResponse.json({ ok: true, ttn: ttn.ttn, delivery_price: ttn.delivery_price });
   } catch (err) {

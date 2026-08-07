@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
+import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -73,6 +74,9 @@ export async function DELETE(
 
   // Clear from DB regardless
   await db.from('orders').update({ tracking_number: null, tracking_ref: null }).eq('id', id);
+  // І з непроведених РН: інакше чернетка лишиться з номером видаленої накладної,
+  // і крон доставки шукатиме посилку, якої вже не існує.
+  await syncDraftShipmentTracking(id, null);
 
   return NextResponse.json({ ok: true, np_deleted: !npError, np_error: npError });
 }

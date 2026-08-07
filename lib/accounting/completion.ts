@@ -322,25 +322,56 @@ export async function completeOrderDelivery(orderId: string, createdBy = 'system
 }
 
 /**
- * Провести РН конкретної посилки за її ТТН (крон доставки НП). Якщо після цього всі
- * РН замовлення проведені — нараховуємо COD партнеру. Повертає order_id або null.
+ * Провести РН посилки за її ТТН (крон доставки НП). Якщо після цього всі РН
+ * замовлення проведені — нараховуємо COD партнеру. Повертає order_id першої
+ * проведеної РН або null.
+ *
+ * Одна ТТН може нести КІЛЬКА замовлень: клієнт зробив два, ми відправили однією
+ * посилкою — і тоді чернеток із цим номером теж дві. Раніше тут стояв
+ * maybeSingle(), який на двох рядках повертає помилку й порожні дані, тобто по
+ * спільній посилці мовчки не проводилось НІЧОГО. Тому обробляємо всі чернетки
+ * номера, а не «єдину».
  */
 export async function completeShipmentByTtn(trackingNumber: string, createdBy = 'system'): Promise<string | null> {
   const db = createServiceClient();
-  const { data: doc } = await db
+  const { data: docs } = await db
     .from('acc_documents')
     .select('id, order_id')
     .eq('doc_type', 'sale')
     .eq('status', 'draft')
     .eq('tracking_number', trackingNumber)
-    .maybeSingle();
-  if (!doc) return null;
-  await applyCompletionEffects(doc.id, createdBy);
-  if (doc.order_id && await allOrderSalesPosted(doc.order_id)) {
-    await settleOrderCOD(doc.order_id, createdBy);
-    await settleOwnCod(doc.order_id, createdBy);   // свій COD → novapay
+    .limit(100);
+  if (!docs?.length) return null;
+
+  for (const doc of docs) {
+    await applyCompletionEffects(doc.id, createdBy);
+    if (doc.order_id && await allOrderSalesPosted(doc.order_id)) {
+      await settleOrderCOD(doc.order_id, createdBy);
+      await settleOwnCod(doc.order_id, createdBy);   // свій COD → novapay
+    }
   }
-  return doc.order_id;
+  return docs[0].order_id;
+}
+
+/**
+ * Перештампувати номер посилки на НЕпроведених РН замовлення.
+ *
+ * РН-чернетка запам'ятовує ТТН у момент створення, а крон доставки шукає її саме
+ * за номером. Якщо накладну потім перевипустили (видалили й створили нову, змінили
+ * перевізника, злили в одну посилку), чернетка лишалася зі старим номером, і
+ * знайти її крон уже не міг НІКОЛИ: замовлення діставалося «Доставлено» з
+ * непроведеною видатковою (живий кейс #26081008 — на замовленні ТТН
+ * 20451502235853, на чернетці 20451502112370). Проведені РН не чіпаємо: вони
+ * фіксують факт відвантаження тим номером, який справді їхав.
+ */
+export async function syncDraftShipmentTracking(orderId: string, trackingNumber: string | null): Promise<void> {
+  const db = createServiceClient();
+  await db
+    .from('acc_documents')
+    .update({ tracking_number: trackingNumber })
+    .eq('order_id', orderId)
+    .eq('doc_type', 'sale')
+    .eq('status', 'draft');
 }
 
 /** Чи всі sale-чернетки замовлення проведені (для переходу замовлення в delivered). */

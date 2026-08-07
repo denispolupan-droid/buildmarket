@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
+import { syncDraftShipmentTracking } from '../../../../lib/accounting/completion';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -229,6 +230,9 @@ export async function POST(req: NextRequest) {
     .from('orders')
     .update({ tracking_number: ttn, tracking_ref: ref ?? null })
     .eq('id', orderId);
+  // Непроведені РН замовлення мають їхати з тим самим номером — інакше крон
+  // доставки їх не знайде і продаж ніколи не проведеться.
+  await syncDraftShipmentTracking(orderId, ttn);
 
   return NextResponse.json({ ttn, ref });
 }
