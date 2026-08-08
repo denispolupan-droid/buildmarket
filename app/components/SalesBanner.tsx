@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { PROMO, type PromoConfig } from '../promo.config';
+import { PROMO, isPromoEnded, type PromoConfig } from '../promo.config';
 
 type Props = { mode: 'shop' | 'catalog'; activeSlugs?: Set<string> | null };
 
@@ -26,9 +26,9 @@ export default function SalesBanner({ mode, activeSlugs }: Props) {
   const { banner, topBar } = cfg;
 
   useEffect(() => {
-    if (!banner.active) { setVisible(false); return; }
+    if (!banner.active || isPromoEnded(banner.endsAt)) { setVisible(false); return; }
     if (!localStorage.getItem(banner.dismissKey)) setVisible(true);
-  }, [banner.active, banner.dismissKey]);
+  }, [banner.active, banner.endsAt, banner.dismissKey]);
 
   if (!visible) return null;
   if (activeSlugs && !activeSlugs.has(cfg.banner.categorySlug)) return null;

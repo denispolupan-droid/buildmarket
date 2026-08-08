@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
-import { PROMO, type PromoConfig } from '../promo.config';
+import { PROMO, isPromoEnded, type PromoConfig } from '../promo.config';
 
 const WHOLESALE = ['dealer', 'contractor', 'shop_owner'];
 
@@ -30,7 +30,7 @@ export default function PromoBanner() {
     init();
   }, []);
 
-  if (!cfg.topBar.visible) return null;
+  if (!cfg.topBar.visible || isPromoEnded(cfg.topBar.endsAt)) return null;
 
   const { topBar } = cfg;
   // Російська версія тексту акції (з фолбеком на укр, якщо поля не заповнені)

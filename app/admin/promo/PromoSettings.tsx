@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Check, Loader2, Upload, X as XIcon } from 'lucide-react';
-import { type PromoConfig } from '../../promo.config';
+import { isPromoEnded, type PromoConfig } from '../../promo.config';
 
 /* ── Shared styles ─────────────────────────────────────────────────────────── */
 const inp: React.CSSProperties = {
@@ -52,6 +52,20 @@ function Toggle({ value, onChange, labelOn, labelOff }: { value: boolean; onChan
         {value ? labelOn : labelOff}
       </span>
     </label>
+  );
+}
+
+/* ── End-date field with auto-hide status ──────────────────────────────────── */
+function EndsAtField({ value, onChange }: { value?: string; onChange: (v: string) => void }) {
+  const ended = isPromoEnded(value);
+  return (
+    <div>
+      <label style={lbl}>Дата завершення акції</label>
+      <input type="date" style={inp} value={value ?? ''} onChange={e => onChange(e.target.value)} />
+      {ended
+        ? <p style={{ ...hint, color: '#DC2626', fontWeight: 600 }}>Акція завершена — блок автоматично сховано</p>
+        : <p style={hint}>Показується до цієї дати включно; порожньо — без обмеження</p>}
+    </div>
   );
 }
 
@@ -159,6 +173,10 @@ export default function PromoSettings({ initial }: { initial: PromoConfig }) {
           </div>
           <ColorField label="Колір фону" value={topBar.bgColor} onChange={v => setTop('bgColor', v)} />
         </div>
+        <div style={grid2}>
+          <EndsAtField value={topBar.endsAt} onChange={v => setTop('endsAt', v)} />
+          <div />
+        </div>
 
         {/* Російська версія текстів (сторінки /ru) */}
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: '14px', marginTop: '4px' }}>
@@ -236,6 +254,10 @@ export default function PromoSettings({ initial }: { initial: PromoConfig }) {
             <input style={inp} value={banner.categorySlug} onChange={e => setBanner('categorySlug', e.target.value)} />
             <p style={hint}>URL: ?category=...</p>
           </div>
+        </div>
+        <div style={grid2}>
+          <EndsAtField value={banner.endsAt} onChange={v => setBanner('endsAt', v)} />
+          <div />
         </div>
 
         {/* Російська версія текстів банера (сторінки /ru) */}
