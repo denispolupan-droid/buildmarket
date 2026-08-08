@@ -143,7 +143,7 @@ export default async function HomeRu() {
       {/* Hero — узкая фирменная шапка, как на странице блога */}
       <section style={{
         background: 'radial-gradient(900px 460px at 85% -20%, rgba(94,234,212,0.16), transparent 60%), radial-gradient(700px 420px at -5% 120%, rgba(72,128,184,0.32), transparent 60%), linear-gradient(160deg, #0F172A 0%, #1E3A5F 60%, #123B54 100%)',
-        padding: '56px 0 16px',
+        padding: '56px 0 12px',
       }}>
         <div className="page-container">
           <div className="home-hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '48px', alignItems: 'center' }}>
@@ -180,7 +180,7 @@ export default async function HomeRu() {
             </Reveal>
           </div>
 
-          {/* Преимущества тонкой полосой на всю ширину — низ hero заполнен на любом экране */}
+          {/* Преимущества тонкой полосой — минимальная высота: линия впритык к тексту */}
           <Reveal delay={170}>
             <div className="home-hero-perks">
               {[
@@ -191,7 +191,7 @@ export default async function HomeRu() {
               ].map(({ icon: Icon, title, text }) => (
                 <div key={title} style={{ display: 'flex', alignItems: 'center', gap: '12px', whiteSpace: 'nowrap' }}>
                   <Icon size={20} color="#7DB8E8" strokeWidth={1.75} style={{ flexShrink: 0 }} />
-                  <div style={{ fontSize: '14px', lineHeight: 1.5 }}>
+                  <div style={{ fontSize: '14px', lineHeight: 1.4 }}>
                     <span style={{ fontWeight: 700, color: '#F1F5F9' }}>{title}</span>
                     <span style={{ color: 'rgba(255,255,255,0.55)' }}> — {text}</span>
                   </div>

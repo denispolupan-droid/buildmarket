@@ -412,6 +412,22 @@ input, select { font-family: inherit; }
   padding: 52px 40px 48px;
   text-align: left;
 }
+/* Переваги тонкою смугою внизу hero — мінімальна висота розділу:
+   невеликий зазор над лінією і однакові 12px від лінії до тексту та від
+   тексту до нижнього краю секції (padding-bottom hero = 12px) */
+.home-hero-perks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 18px;
+  padding-top: 12px;
+}
+@media (max-width: 768px) {
+  .home-hero-perks { flex-direction: column; gap: 12px; margin-top: 16px; padding-top: 12px; }
+}
+
 /* Кнопки праворуч у hero головної — в один ряд */
 .home-hero-ctas {
   display: flex;
@@ -420,17 +436,6 @@ input, select { font-family: inherit; }
   gap: 12px;
 }
 
-/* Переваги тонкою смугою внизу hero — кучно зліва, компактні відступи.
-   Тексти скорочені так, щоб 4 пункти вміщались одним рядком від ~1280px. */
-.home-hero-perks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px 28px;
-  justify-content: space-between;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  margin-top: 24px;
-  padding-top: 16px; /* дорівнює нижньому відступу секції — текст по центру між лінією і краєм */
-}
 
 /* Рядок «пошук + чипи хітів» на головній */
 .home-search-row {
@@ -1152,7 +1157,6 @@ input, select { font-family: inherit; }
 /* ── Dropship / opt landing mobile (обидві сторінки ділять одну сітку) ── */
 @media (max-width: 768px) {
   .drop-hero-grid, .opt-hero-grid, .home-hero-grid { grid-template-columns: 1fr !important; gap: 28px !important; }
-  .home-hero-perks { flex-direction: column; gap: 14px; margin-top: 24px; padding-top: 16px; }
   .drop-steps, .opt-steps          { grid-template-columns: 1fr 1fr !important; gap: 14px !important; }
   .drop-benefits, .opt-benefits    { grid-template-columns: 1fr !important; gap: 12px !important; }
   .drop-example                    { grid-template-columns: 1fr !important; gap: 16px !important; }
