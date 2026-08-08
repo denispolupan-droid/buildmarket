@@ -26,7 +26,7 @@ export async function syncPromOrders() {
   const dateFrom = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   const orders   = await getPromOrders({ dateFrom, limit: 100 });
 
-  if (!orders.length) return { ok: true, created: 0, skipped: 0, repushed: 0 };
+  if (!orders.length) return { ok: true, created: 0, skipped: 0, repushed: 0, paidUpdated: 0 };
 
   // Read plan setting once for all orders in this batch
   const { data: planRow } = await db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle();
@@ -38,14 +38,36 @@ export async function syncPromOrders() {
   let skipped = 0;
   let repushed = 0;
 
+
+  let paidUpdated = 0;
+
   for (const promOrder of orders) {
     const { data: existing } = await db
       .from('orders')
-      .select('id, status')
+      .select('id, status, payment_confirmed, total_price, prom_data')
       .eq('prom_order_id', promOrder.id)
       .maybeSingle();
 
     if (existing) {
+      // Пізня оплата. «Пром-оплата» (evopay) в API з'являється зі status=unpaid —
+      // покупець платить уже ПІСЛЯ створення замовлення, а наш знімок prom_data
+      // застигав на моменті імпорту, і замовлення назавжди висіло «Очікує оплату».
+      // Тому в кожному прогоні звіряємо живий payment_data і допроводимо оплату.
+      if (!existing.payment_confirmed && promOrder.payment_data?.status === 'paid') {
+        const { error: payErr } = await db.from('orders').update({
+          payment_confirmed: true,
+          amount_paid:       existing.total_price,
+          payment_type:      'prepaid',
+          prom_data: { ...(existing.prom_data as Record<string, unknown> ?? {}), payment_data: promOrder.payment_data },
+        }).eq('id', existing.id);
+        if (payErr) {
+          console.error('[prom-sync] late payment update failed:', promOrder.id, payErr.message);
+        } else {
+          paidUpdated++;
+          console.log(`[prom-sync] late payment confirmed for order ${promOrder.id}`);
+        }
+      }
+
       const desired = ourStatusToPromStatus(existing.status);
       if (desired && REPUSH_FROM[desired].includes(promOrder.status)) {
         try {
@@ -133,5 +155,5 @@ export async function syncPromOrders() {
     }
   }
 
-  return { ok: true, created, skipped, repushed, total: orders.length };
+  return { ok: true, created, skipped, repushed, paidUpdated, total: orders.length };
 }
