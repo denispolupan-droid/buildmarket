@@ -241,12 +241,13 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
             {t('У магазині вказані роздрібні ціни. Для замовлення за вашими цінами перейдіть до оптового каталогу.', 'В магазине указаны розничные цены. Для заказа по вашим ценам перейдите в оптовый каталог.')}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <a href={lang === 'ru' ? '/ru/catalog' : '/catalog'} style={{
+            {/* ?q=SKU — каталог відфільтрує рівно цей товар, а не голий список */}
+            <a href={`${lang === 'ru' ? '/ru' : ''}/catalog?q=${encodeURIComponent(sku)}`} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               height: '44px', borderRadius: '10px', background: '#1E3A5F', color: '#fff',
               fontSize: '14px', fontWeight: 700, textDecoration: 'none',
             }}>
-              {t('Перейти до оптового каталогу →', 'Перейти в оптовый каталог →')}
+              {t('Відкрити цей товар в оптовому каталозі →', 'Открыть этот товар в оптовом каталоге →')}
             </a>
             <button onClick={() => setShowModal(false)} style={{
               height: '40px', borderRadius: '10px', border: '1px solid var(--border)',

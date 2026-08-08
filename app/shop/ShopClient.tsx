@@ -79,7 +79,8 @@ type CardProps = {
   salePercent: number | null;
   isWished: boolean;
   onToggleWish: () => void;
-  onWholesaleBlock: () => void;
+  /** Оптовик тисне «в кошик» у роздробі: відкрити модалку з посиланням САМЕ на цей товар у каталозі */
+  onWholesaleBlock: (sku: string) => void;
   isWholesale: boolean;
   lang: 'uk' | 'ru';
   onSaveState?: () => void;
@@ -105,7 +106,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
   }
 
   function handleAdd() {
-    if (isWholesale) { onWholesaleBlock(); return; }
+    if (isWholesale) { onWholesaleBlock(p.sku); return; }
     addItem({
       sku: p.sku, name: p.name, name_ru: (p as { name_ru?: string | null }).name_ru ?? null,
       brand: p.brand, volume: p.volume ?? null,
@@ -272,7 +273,8 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   const shopBase = lang === 'ru' ? '/ru/shop' : '/shop';
 
   const [isWholesale,   setIsWholesale]   = useState(false);
-  const [showWholesaleModal, setShowWholesaleModal] = useState(false);
+  // SKU товару, на якому оптовика зупинили; null — модалка закрита
+  const [wholesaleModalSku, setWholesaleModalSku] = useState<string | null>(null);
   const [search,       setSearch]       = useState(initialSearch ?? '');
   const [selCat,       setSelCat]       = useState<string | null>(initialCategory ?? null);
 
@@ -1339,7 +1341,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                 inStock={inStock}
                 salePercent={salePercent}
                 isWholesale={isWholesale}
-                onWholesaleBlock={() => setShowWholesaleModal(true)}
+                onWholesaleBlock={sku => setWholesaleModalSku(sku)}
                 isWished={wishSkus.has(p.sku)}
                 onToggleWish={() => toggleWish(p.sku)}
                 lang={lang}
@@ -1378,9 +1380,9 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     <ScrollToTop />
 
     {/* Wholesale block modal */}
-    {showWholesaleModal && (
+    {wholesaleModalSku && (
       <div
-        onClick={() => setShowWholesaleModal(false)}
+        onClick={() => setWholesaleModalSku(null)}
         style={{
           position: 'fixed', inset: 0, zIndex: 1000,
           background: 'rgba(0,0,0,0.5)', display: 'flex',
@@ -1403,15 +1405,16 @@ export default function ShopClient({ products, categories, reviewStats, initialS
             {t('У магазині вказані роздрібні ціни. Для замовлення за вашими цінами перейдіть до оптового каталогу.', 'В магазине указаны розничные цены. Для заказа по вашим ценам перейдите в оптовый каталог.')}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <a href={lang === 'ru' ? '/ru/catalog' : '/catalog'} style={{
+            {/* ?q=SKU — каталог відфільтрує рівно цей товар, а не голий список */}
+            <a href={`${lang === 'ru' ? '/ru' : ''}/catalog?q=${encodeURIComponent(wholesaleModalSku)}`} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               height: '44px', borderRadius: '10px', background: '#1E3A5F', color: '#fff',
               fontSize: '14px', fontWeight: 700, textDecoration: 'none',
             }}>
-              {t('Перейти до оптового каталогу →', 'Перейти в оптовый каталог →')}
+              {t('Відкрити цей товар в оптовому каталозі →', 'Открыть этот товар в оптовом каталоге →')}
             </a>
             <button
-              onClick={() => setShowWholesaleModal(false)}
+              onClick={() => setWholesaleModalSku(null)}
               style={{
                 height: '40px', borderRadius: '10px', border: '1px solid var(--border)',
                 background: 'transparent', color: 'var(--text-secondary)',
