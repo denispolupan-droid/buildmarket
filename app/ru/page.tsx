@@ -19,18 +19,22 @@ export const metadata: Metadata = {
     type: 'website',
   },
 };
-import { ShieldCheck, Truck, Store, LayoutGrid, CheckCircle, MessageCircle, Tag, PackageCheck, ShoppingCart, Phone, Package, ArrowRight } from 'lucide-react';
+import { Truck, Store, LayoutGrid, CheckCircle, PackageCheck, ShoppingCart, Phone, ArrowRight, ShieldCheck, Tag, MessageCircle } from 'lucide-react';
+import { WHOLESALE_MIN } from '../../lib/site';
 import { getPublishedPostsCached } from '../../lib/blog-db';
-import { getCategoriesCached, getPreviewProductsCached, getBrandLogosCached, getVisibleBrandLogosCached, getReviewStatsCached } from '../../lib/supabase';
+import { getCategoriesCached, getPreviewProductsCached, getBrandLogosCached, getVisibleBrandLogosCached, getReviewStatsCached, getProductsCached } from '../../lib/supabase';
+import { getShowcaseSkusCached } from '../../lib/showcase-server';
 import { mergeVisibleBrands } from '../../lib/brands';
 import Footer from '../components/Footer';
+import HomeSearch from '../components/HomeSearch';
+import HeroHitChips from '../components/HeroHitChips';
+import HomeCategoryCards from '../components/HomeCategoryCards';
 import CategorySection from '../components/CategorySection';
 import PromoBanner from '../components/PromoBanner';
 import BrandsCarousel from '../components/BrandsCarousel';
 import BlogCarousel from '../components/BlogCarousel';
 import DeliveryMapCard from '../components/DeliveryMapCard';
 import Reveal from '../components/Reveal';
-import AnimatedNumber from '../components/AnimatedNumber';
 import BgFadeImage from '../components/BgFadeImage';
 
 
@@ -43,6 +47,24 @@ export default async function HomeRu() {
   const visibleBrandLogos = await getVisibleBrandLogosCached();
   const brandTiles = mergeVisibleBrands(visibleBrandLogos);
   const reviewStats = await getReviewStatsCached();
+
+  // Чипы хитов возле поиска — закреплённая витрина магазина + добор is_hit
+  // (та же логика, что в украинской версии app/page.tsx)
+  const [showcaseSkus, allProducts] = await Promise.all([
+    getShowcaseSkusCached('shop'),
+    getProductsCached(),
+  ]);
+  const sellable = (p: (typeof allProducts)[number]) =>
+    p.stock?.stock_status === 'in_stock' && (p.stock?.price_promo ?? p.stock?.price_retail) != null;
+  const bySku = new Map(allProducts.map(p => [p.sku, p]));
+  const hitPool = showcaseSkus
+    .map(sku => bySku.get(sku))
+    .filter((p): p is NonNullable<typeof p> => !!p && sellable(p));
+  for (const p of allProducts) {
+    if (hitPool.length >= 20) break;
+    if (p.is_hit && sellable(p) && !hitPool.some(h => h.sku === p.sku)) hitPool.push(p);
+  }
+  const heroHits = hitPool.slice(0, 20);
 
   // Карусель блога: опубликованные статьи из БД (только с обложкой)
   const blogArticles = (await getPublishedPostsCached())
@@ -118,118 +140,81 @@ export default async function HomeRu() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessLd).replace(/</g, '\\u003c') }} />
       <PromoBanner />
 
-      {/* Hero */}
-      <section style={{ position: 'relative', overflow: 'hidden', minHeight: '560px', display: 'flex', flexDirection: 'column' }}>
-        <BgFadeImage src="/images/warehouse-hero.webp" style={{
-          position: 'absolute', inset: 0,
-          backgroundPosition: '25% center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat',
-          filter: 'grayscale(1) contrast(1.3) brightness(1.1)',
-        }} />
-        <div style={{ position: 'absolute', inset: 0, background: '#14243F', mixBlendMode: 'multiply', opacity: 0.55 }} />
-        <div style={{ position: 'absolute', inset: 0, background: '#8FC3F0', mixBlendMode: 'screen', opacity: 0.22 }} />
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(100deg, rgba(8,15,30,0.66) 0%, rgba(12,24,52,0.4) 38%, rgba(12,24,52,0.15) 62%, transparent 90%)',
-        }} />
-        <div style={{
-          position: 'absolute', left: 0, right: 0, bottom: 0, height: '170px',
-          background: 'linear-gradient(to top, rgba(6,12,26,0.96) 0%, rgba(6,12,26,0.8) 45%, rgba(6,12,26,0) 100%)',
-        }} />
-
-        <div className="page-container hero-content" style={{ position: 'relative', zIndex: 1, flex: 1 }}>
-
-          <div style={{ maxWidth: '560px' }}>
-            <h1 style={{
-              fontSize: 'clamp(30px, 4vw, 54px)', fontWeight: 900,
-              lineHeight: 1.1, marginBottom: '16px',
-              letterSpacing: '-0.5px',
-              background: 'linear-gradient(135deg, #ffffff 0%, #93C5FD 60%, #5EEAD4 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}>
-              Профессиональная строительная химия для бизнеса
-            </h1>
-
-            <p style={{
-              fontSize: '17px', color: 'rgba(255,255,255,0.6)',
-              marginBottom: '28px', lineHeight: 1.55, maxWidth: '480px',
-            }}>
-              Герметики, пены, клеи и грунтовки оптом и в розницу.
-            </p>
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '32px' }}>
-              {[
-                { icon: Package, value: 800, label: 'SKU' },
-                { icon: Tag,     value: 40,  label: 'брендов' },
-              ].map(({ icon: Icon, value, label }) => (
-                <span key={label} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '7px',
-                  padding: '7px 16px', borderRadius: '999px',
-                  background: 'rgba(255,255,255,0.07)',
-                  border: '1px solid rgba(255,255,255,0.13)',
-                  whiteSpace: 'nowrap',
+      {/* Hero — узкая фирменная шапка, как на странице блога */}
+      <section style={{
+        background: 'radial-gradient(900px 460px at 85% -20%, rgba(94,234,212,0.16), transparent 60%), radial-gradient(700px 420px at -5% 120%, rgba(72,128,184,0.32), transparent 60%), linear-gradient(160deg, #0F172A 0%, #1E3A5F 60%, #123B54 100%)',
+        padding: '56px 0 16px',
+      }}>
+        <div className="page-container">
+          <div className="home-hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '48px', alignItems: 'center' }}>
+            <Reveal>
+              <span className="eyebrow on-dark">Цифровая платформа строительных решений</span>
+              <h1 style={{ fontSize: 'clamp(28px, 3.8vw, 44px)', fontWeight: 900, color: '#fff', lineHeight: 1.18, margin: '14px 0 16px', letterSpacing: '-0.8px', maxWidth: '760px' }}>
+                Строительная химия <span className="grad-text">оптом и в розницу</span>
+              </h1>
+              <p style={{ fontSize: '16px', color: '#94A3B8', lineHeight: 1.7, margin: 0, maxWidth: '620px' }}>
+                Герметики, монтажные пены, клеи и грунтовки от ведущих брендов.
+                Отправка в день заказа, Новая Почта по всей Украине.
+              </p>
+            </Reveal>
+            <Reveal delay={110}>
+              <div className="home-hero-ctas">
+                <Link href="/ru/shop" className="hero-cta-btn" style={{
+                  height: '46px', padding: '0 26px', borderRadius: '11px',
+                  background: 'var(--brand-blue)', color: '#fff', fontSize: '14px', fontWeight: 700,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  textDecoration: 'none', boxShadow: 'var(--brand-shadow)',
                 }}>
-                  <Icon size={14} strokeWidth={2} color="#93C5FD" />
-                  <span style={{ fontSize: '17px', fontWeight: 800, color: '#93C5FD', lineHeight: 1 }}>
-                    <AnimatedNumber value={value} suffix="+" duration={1300} />
-                  </span>
-                  <span style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>{label}</span>
-                </span>
+                  В магазин <ArrowRight size={15} />
+                </Link>
+                <Link href="/register" className="hero-cta-btn" style={{
+                  height: '46px', padding: '0 22px', borderRadius: '11px',
+                  border: '1.5px solid rgba(255,255,255,0.2)', color: '#E2E8F0',
+                  fontSize: '14px', fontWeight: 600,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  textDecoration: 'none', background: 'rgba(255,255,255,0.04)',
+                }}>
+                  Стать партнёром
+                </Link>
+              </div>
+            </Reveal>
+          </div>
+
+          {/* Преимущества тонкой полосой на всю ширину — низ hero заполнен на любом экране */}
+          <Reveal delay={170}>
+            <div className="home-hero-perks">
+              {[
+                { icon: Store,         title: 'Розница и опт',         text: `от 1 шт · опт от ${WHOLESALE_MIN.toLocaleString('uk-UA')} грн` },
+                { icon: ShieldCheck,   title: 'Прямые поставки',       text: 'без задержек' },
+                { icon: Tag,           title: 'Выгодные цены',         text: 'тарифы для партнёров' },
+                { icon: MessageCircle, title: 'Персональный менеджер', text: 'консультации' },
+              ].map(({ icon: Icon, title, text }) => (
+                <div key={title} style={{ display: 'flex', alignItems: 'center', gap: '12px', whiteSpace: 'nowrap' }}>
+                  <Icon size={20} color="#7DB8E8" strokeWidth={1.75} style={{ flexShrink: 0 }} />
+                  <div style={{ fontSize: '14px', lineHeight: 1.5 }}>
+                    <span style={{ fontWeight: 700, color: '#F1F5F9' }}>{title}</span>
+                    <span style={{ color: 'rgba(255,255,255,0.55)' }}> — {text}</span>
+                  </div>
+                </div>
               ))}
             </div>
+          </Reveal>
+        </div>
+      </section>
 
-            <div className="hero-cta-row" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <Link href="/ru/shop" className="hero-cta-btn" style={{
-                height: '50px', padding: '0 30px', borderRadius: '12px',
-                background: '#4880B8', color: '#fff', fontSize: '15px', fontWeight: 700,
-                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                textDecoration: 'none', boxShadow: '0 4px 20px rgba(72,128,184,0.4)',
-              }}>
-                В магазин <ArrowRight size={16} strokeWidth={2.5} />
-              </Link>
-              <Link href="/register" className="hero-cta-btn" style={{
-                height: '50px', padding: '0 28px', borderRadius: '12px',
-                background: 'rgba(255,255,255,0.07)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                color: '#fff', fontSize: '15px', fontWeight: 600,
-                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                textDecoration: 'none',
-              }}>
-                Стать партнёром
-              </Link>
+      {/* Поиск + популярные категории — первый экран под hero */}
+      <section style={{ background: 'var(--bg-soft)', padding: '14px 0 40px' }}>
+        <div className="page-container">
+          {/* zIndex: transform от Reveal создаёт stacking context — без него
+              выпадашка поиска оказалась бы ПОД карточками категорий */}
+          <Reveal style={{ position: 'relative', zIndex: 50 }}>
+            <div className="home-search-row">
+              <HomeSearch lang="ru" />
+              <HeroHitChips products={heroHits} lang="ru" />
             </div>
-          </div>
-
-          <div className="hero-benefits-grid" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '48px', paddingTop: 0 }}>
-            {[
-              { icon: ShieldCheck,   title: 'Прямые поставки',           text: 'Своевременно и без задержек' },
-              { icon: Tag,           title: 'Выгодные цены',             text: 'Конкурентные тарифы для партнёров' },
-              { icon: Truck,         title: 'Доставка по всей Украине',  text: 'Новая Почта и собственная логистика' },
-              { icon: MessageCircle, title: 'Персональный менеджер',     text: 'Поддержка и консультации' },
-            ].map(({ icon: Icon, title, text }, i) => (
-              <div key={title} style={{
-                display: 'flex', alignItems: 'center', gap: '12px',
-                padding: '20px 24px',
-                borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none',
-              }}>
-                <Icon size={22} color="#7DB8E8" strokeWidth={1.75} style={{ flexShrink: 0 }} />
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '2px' }}>{title}</div>
-                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.58)', lineHeight: 1.4 }}>{text}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-
+          </Reveal>
+          <HomeCategoryCards categories={categories} lang="ru" />
         </div>
-
-        <div className="hero-scroll-hint">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-        </div>
-
       </section>
 
       {/* Brands auto-scroll carousel — right after hero */}
@@ -412,18 +397,20 @@ export default async function HomeRu() {
             <Reveal y={26} duration={1600} style={{ height: '100%' }}>
             <div className="home-warehouse-card" style={{
               position: 'relative', overflow: 'hidden',
-              borderTop: '3px solid #4880B8', borderRadius: '2px 2px 18px 18px',
+              borderRadius: '20px',
+              // Фирменный градиент hero — фото ложится поверх multiply-слоем
+              background: 'radial-gradient(560px 300px at 85% -10%, rgba(94,234,212,0.14), transparent 60%), linear-gradient(160deg, #0F172A 0%, #1E3A5F 60%, #123B54 100%)',
               height: '440px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
               isolation: 'isolate', willChange: 'opacity',
             }}>
               <BgFadeImage src="/images/warehouse-quality.webp" style={{
                 position: 'absolute', inset: 0,
                 backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat',
-                filter: 'grayscale(1) contrast(1.25) brightness(1.3)',
+                filter: 'grayscale(1) contrast(1.2) brightness(1.5)',
               }} />
-              <div style={{ position: 'absolute', inset: 0, background: '#14243F', mixBlendMode: 'multiply', opacity: 0.35 }} />
-              <div style={{ position: 'absolute', inset: 0, background: '#1E4D8C', mixBlendMode: 'color', opacity: 0.7 }} />
-              <div style={{ position: 'absolute', inset: 0, background: '#8FC3F0', mixBlendMode: 'screen', opacity: 0.22 }} />
+              <div style={{ position: 'absolute', inset: 0, background: '#0F172A', mixBlendMode: 'multiply', opacity: 0.3 }} />
+              <div style={{ position: 'absolute', inset: 0, background: '#1E3A5F', mixBlendMode: 'color', opacity: 0.65 }} />
+              <div style={{ position: 'absolute', inset: 0, background: '#7DB8E8', mixBlendMode: 'screen', opacity: 0.24 }} />
               <div className="home-warehouse-scrim" style={{
                 position: 'absolute', inset: 0,
                 background: 'linear-gradient(to top, rgba(8,15,30,0.92) 0%, rgba(8,15,30,0.15) 65%)',
@@ -440,7 +427,7 @@ export default async function HomeRu() {
                     'Быстрая комплектация заказов',
                   ].map(item => (
                     <li key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '14px', color: 'rgba(255,255,255,0.88)', lineHeight: 1.5 }}>
-                      <CheckCircle size={17} color="#3DBFB8" strokeWidth={2.5} style={{ flexShrink: 0, marginTop: '2px' }} />
+                      <CheckCircle size={17} color="#5EEAD4" strokeWidth={2.5} style={{ flexShrink: 0, marginTop: '2px' }} />
                       {item}
                     </li>
                   ))}
@@ -479,7 +466,7 @@ export default async function HomeRu() {
       </section>
 
       {/* CTA */}
-      <section className="home-cta-section" style={{ background: '#1E3059', padding: '28px 0', textAlign: 'center' }}>
+      <section className="home-cta-section" style={{ background: 'radial-gradient(700px 320px at 82% -20%, rgba(94,234,212,0.13), transparent 60%), linear-gradient(160deg, #0F172A 0%, #1E3A5F 60%, #123B54 100%)', padding: '28px 0', textAlign: 'center' }}>
         <div className="page-container">
           <Reveal>
             <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', marginBottom: '10px' }}>

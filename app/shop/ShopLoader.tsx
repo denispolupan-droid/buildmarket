@@ -6,10 +6,11 @@ type Props = {
   initialSaleOnly?: boolean;
   initialCategory?: string;
   initialBrand?: string;
+  initialSearch?: string;
 };
 
 // Server Component — дані отримуються на сервері, без client-side waterfall
-export default async function ShopLoader({ initialSaleOnly, initialCategory, initialBrand }: Props) {
+export default async function ShopLoader({ initialSaleOnly, initialCategory, initialBrand, initialSearch }: Props) {
   const [products, categories, reviewStats, showcaseSkus] = await Promise.all([
     getProductsCached(),
     getCategoriesCached(),
@@ -26,6 +27,7 @@ export default async function ShopLoader({ initialSaleOnly, initialCategory, ini
       initialSaleOnly={initialSaleOnly}
       initialCategory={initialCategory}
       initialBrand={initialBrand}
+      initialSearch={initialSearch}
     />
   );
 }

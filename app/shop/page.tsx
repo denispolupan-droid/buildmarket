@@ -43,8 +43,8 @@ export async function generateMetadata(
   };
 }
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<{ sale?: string; brand?: string; category?: string }> }) {
-  const { sale, brand, category } = await searchParams;
+export default async function ShopPage({ searchParams }: { searchParams: Promise<{ sale?: string; brand?: string; category?: string; q?: string }> }) {
+  const { sale, brand, category, q } = await searchParams;
 
   if (brand) redirect(`/shop/brand/${brandToSlug(brand)}`);
   if (sale === '1') redirect(`/shop/sale${category ? `?category=${encodeURIComponent(category)}` : ''}`);
@@ -67,7 +67,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         {/* Заголовок, хлібні крихти і блок «Про категорію» рендерить сам
             ShopClient від обраної категорії — і на сервері, і при перемиканні */}
         <div style={{ margin: '0 auto', padding: '12px 16px 64px' }} className="mobile-pad">
-          <ShopLoader initialSaleOnly={sale === '1'} initialCategory={category} initialBrand={brand} />
+          <ShopLoader initialSaleOnly={sale === '1'} initialCategory={category} initialBrand={brand} initialSearch={q} />
         </div>
       </div>
       <Footer />

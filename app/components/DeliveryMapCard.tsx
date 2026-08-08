@@ -40,8 +40,11 @@ export default function DeliveryMapCard() {
   return (
     <div ref={ref} className="delivery-map-card" style={{ isolation: 'isolate', willChange: 'opacity' }}>
       <div className="delivery-map-card__visual" style={{
-        position: 'relative', overflow: 'hidden', background: '#0C1930',
-        borderTop: '3px solid #0891B2', borderRadius: '2px 2px 18px 18px', height: '440px',
+        position: 'relative', overflow: 'hidden',
+        // Той самий фірмовий градієнт, що в hero головної та на /opt і /blog —
+        // щоб картка не жила у «своєму» синьому
+        background: 'radial-gradient(560px 300px at 85% -10%, rgba(94,234,212,0.14), transparent 60%), linear-gradient(160deg, #0F172A 0%, #1E3A5F 60%, #123B54 100%)',
+        borderRadius: '20px', height: '440px',
       }}>
       {/* Map — remounted (fresh key) every time it enters view, so the intro animation replays */}
       {visible && (
@@ -50,19 +53,17 @@ export default function DeliveryMapCard() {
           key={mountKey}
           src={lang === 'ru' ? '/images/ukraine-map-animated-ru.svg' : '/images/ukraine-map-animated.svg'}
           alt={lang === 'ru' ? 'Карта доставки по Украине' : 'Карта доставки по Україні'}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(1.4)' }}
         />
       )}
 
-      {/* Duotone tint — matches the warehouse photo's palette: a color-blend wash for the same rich
-          navy hue, plus a touch of screen to lift the brightness closer to the photo card */}
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: '#1E4D8C', mixBlendMode: 'color', opacity: 0.45 }} />
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: '#8FC3F0', mixBlendMode: 'screen', opacity: 0.16 }} />
+      {/* Легкий screen-шар зближує тон мапи з градієнтом підкладки */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: '#7DB8E8', mixBlendMode: 'screen', opacity: 0.24 }} />
 
-      {/* Translucent scrim — mirrors the warehouse card's gradient, just flipped to shade the top */}
+      {/* Translucent scrim — m'якше, ніж було: тільки під заголовком зверху */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'linear-gradient(to bottom, rgba(8,15,30,0.92) 0%, rgba(8,15,30,0.15) 65%)',
+        background: 'linear-gradient(to bottom, rgba(8,15,30,0.7) 0%, rgba(8,15,30,0.04) 55%)',
       }} />
       {/* Mobile only — the subtitle moves to the bottom of the image (still overlaid, not a
           separate block below it), so it needs its own dark scrim there to stay readable;

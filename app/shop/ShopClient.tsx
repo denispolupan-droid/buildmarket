@@ -257,11 +257,13 @@ type Props = {
   initialSaleOnly?: boolean;
   initialCategory?: string;
   initialBrand?: string;
+  /** Пошуковий запит з URL (?q=) — прилітає з пошуку на головній */
+  initialSearch?: string;
   /** SKU вітрини по порядку — товари, закріплені адміном першими на головній. */
   showcaseSkus?: string[];
 };
 
-export default function ShopClient({ products, categories, reviewStats, initialSaleOnly = false, initialCategory, initialBrand, showcaseSkus = [] }: Props) {
+export default function ShopClient({ products, categories, reviewStats, initialSaleOnly = false, initialCategory, initialBrand, initialSearch, showcaseSkus = [] }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const lang = pathname.startsWith('/ru') ? 'ru' as const : 'uk' as const;
@@ -271,8 +273,17 @@ export default function ShopClient({ products, categories, reviewStats, initialS
 
   const [isWholesale,   setIsWholesale]   = useState(false);
   const [showWholesaleModal, setShowWholesaleModal] = useState(false);
-  const [search,       setSearch]       = useState('');
+  const [search,       setSearch]       = useState(initialSearch ?? '');
   const [selCat,       setSelCat]       = useState<string | null>(initialCategory ?? null);
+
+  // ?q= з пошуку на головній. /ru/shop статичний (ISR) і searchParams на
+  // сервері не читає — тому параметр знімаємо на клієнті після маунту.
+  // Ініціалізація useState одразу з location дала б hydration mismatch.
+  useEffect(() => {
+    if (initialSearch) return;
+    const q = new URLSearchParams(window.location.search).get('q');
+    if (q) setSearch(q);
+  }, [initialSearch]);
 
 // Дані обраної категорії для фірмового заголовка, хлібних крихт і блоку
   // «Про категорію». Рахуються з selCat і на сервері при першому рендері
