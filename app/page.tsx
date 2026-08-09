@@ -340,10 +340,10 @@ export default async function Home() {
           <div className="page-container">
             <Reveal>
               <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', marginBottom: '6px' }}>
-                Категорії продукції
+                Швидкий перегляд товарів
               </h2>
               <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '32px' }}>
-                Оберіть категорію для швидкого доступу до магазину або оптового каталогу
+                Оберіть категорію зліва — і подивіться товари з цінами, не залишаючи головну
               </p>
             </Reveal>
             <Reveal delay={80}>

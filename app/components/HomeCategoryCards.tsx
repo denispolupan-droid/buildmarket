@@ -5,6 +5,7 @@ import Reveal from './Reveal';
 import { categoryAccent, categoryIcon } from '../../lib/category-icons';
 import { getCategoryMeta } from '../../lib/category-descriptions';
 import { getCategoryNameRu, getCategoryDescriptionRu } from '../../lib/ru';
+import { HOME_CATEGORY_CARDS } from '../../lib/home-categories';
 import type { Category } from '../../types';
 
 /**
@@ -18,14 +19,18 @@ type Props = {
   max?: number;
 };
 
-export default function HomeCategoryCards({ categories, lang, max = 6 }: Props) {
+export default function HomeCategoryCards({ categories, lang, max = HOME_CATEGORY_CARDS }: Props) {
   const prefix = lang === 'ru' ? '/ru' : '';
-  const roots = categories
+  const allRoots = categories
     .filter(c => !c.parent_slug)
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .slice(0, max);
+    .sort((a, b) => a.sort_order - b.sort_order);
+  const roots = allRoots.slice(0, max);
+  // Решта родин — компактними пігулками під сіткою: з головної доступні ВСІ
+  // категорії, і не виникає враження, що шість карток — весь асортимент.
+  const rest = allRoots.slice(max);
 
   return (
+    <>
     <div className="home-cat-grid">
       {roots.map((c, i) => {
         const accent = categoryAccent(c.slug) ?? 'var(--brand-blue)';
@@ -73,5 +78,36 @@ export default function HomeCategoryCards({ categories, lang, max = 6 }: Props) 
         );
       })}
     </div>
+
+    {rest.length > 0 && (
+      <Reveal delay={120}>
+        <div className="home-cat-rest">
+          {rest.map(c => {
+            const accent = categoryAccent(c.slug) ?? 'var(--brand-blue)';
+            const icon = categoryIcon(c.slug);
+            const name = lang === 'ru' ? getCategoryNameRu(c.slug, c.name) : c.name;
+            return (
+              <Link key={c.slug} href={`${prefix}/shop?category=${c.slug}`} className="home-cat-pill"
+                style={{
+                  // Заливка й межа — у кольорі родини, як у шапках карток вище
+                  background: `color-mix(in srgb, ${accent} 11%, var(--bg-card))`,
+                  borderColor: `color-mix(in srgb, ${accent} 30%, transparent)`,
+                }}>
+                {icon && (
+                  <span className="home-cat-pill__icon" style={{ color: accent }} aria-hidden>
+                    {createElement(icon, { size: 15, strokeWidth: 2 })}
+                  </span>
+                )}
+                {name}
+              </Link>
+            );
+          })}
+          <Link href={`${prefix}/shop`} className="home-cat-pill home-cat-pill--all">
+            {lang === 'ru' ? 'Все категории' : 'Всі категорії'} <ArrowRight size={14} />
+          </Link>
+        </div>
+      </Reveal>
+    )}
+    </>
   );
 }

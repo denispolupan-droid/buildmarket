@@ -344,10 +344,10 @@ export default async function HomeRu() {
           <div className="page-container">
             <Reveal>
               <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', marginBottom: '6px' }}>
-                Категории продукции
+                Быстрый просмотр товаров
               </h2>
               <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '32px' }}>
-                Выберите категорию для быстрого доступа к магазину или оптовому каталогу
+                Выберите категорию слева — и посмотрите товары с ценами, не покидая главную
               </p>
             </Reveal>
             <Reveal delay={80}>

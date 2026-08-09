@@ -785,9 +785,19 @@ body:has(.shop-layout) { overflow-anchor: none; }
    і вся група тримається одним рядом навіть на 320px. aria-label кнопок уже
    описує ціль («По 1 в ряд» / «По 2 в ряд»), тож зміст не губиться. */
 @media (max-width: 380px) {
-  .shop-topbar-actions { gap: 5px; }
-  .shop-mobile-filter-btn { padding: 0 7px; gap: 4px; }
+  .shop-topbar-actions { gap: 4px; }
+  /* Кегль трохи менший — російські підписи («Категории», «Фильтры») довші за
+     українські, і саме на них ряд не вміщався навіть після стиснення відступів. */
+  .shop-mobile-filter-btn { padding: 0 6px; gap: 4px; font-size: 12.5px; }
   .shop-view-toggle { gap: 4px; }
+  /* Лічильник активних фільтрів додає кнопці ~14px — рівно на нього ряд і
+     зривався, щойно вмикали фільтр. Тут бейдж компактніший. */
+  .shop-mobile-filter-badge { min-width: 15px; height: 15px; font-size: 10px; padding: 0 3px; }
+  /* Уся група на 2px нижча — вивільняє останні пікселі ширини й лишає
+     однакову висоту в перемикача, кнопок і акції. */
+  .shop-view-toggle-btn { width: 32px; height: 32px; }
+  .shop-mobile-filter-btn, .shop-sale-btn { height: 32px; }
+  .shop-sale-btn { width: 32px; }
 }
 
 /* Найвужчі екрани (≤340px, iPhone SE і подібні). Тут місця немає навіть після

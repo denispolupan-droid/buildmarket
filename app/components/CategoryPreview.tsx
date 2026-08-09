@@ -257,6 +257,10 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
   const pageEnd = pageStart + visibleProducts.length;
 
   const catHref = isRetail ? `${prefix}/shop/${category?.slug}` : `${prefix}/catalog?category=${category?.slug}`;
+  // Дві кнопки внизу лівої панелі: роздріб веде в магазин завжди, опт —
+  // у каталог для оптовика і на реєстрацію для решти.
+  const shopHref = `${prefix}/shop/${category?.slug}`;
+  const wholesaleHref = isRetail ? `${prefix}/opt` : `${prefix}/catalog?category=${category?.slug}`;
 
   function prev() { setPageIdx(i => Math.max(0, i - 1)); }
   function next() { setPageIdx(i => Math.min(totalPages - 1, i + 1)); }
@@ -306,17 +310,28 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
           })}
         </ul>
 
-        {/* Фіксована кнопка внизу */}
-        <div style={{ padding: '12px 28px 24px', flexShrink: 0 }}>
-          <Link href={catHref} className="btn-primary" style={{
-            display: 'inline-flex', alignItems: 'center', gap: '8px',
-            height: '44px', padding: '0 22px', borderRadius: '10px',
+        {/* Фіксовані кнопки внизу: роздріб і опт. Оптовику друга кнопка веде
+            одразу в каталог, гостю — на реєстрацію: без акаунта оптових цін
+            однаково не побачити, тож посилання прямо в каталог було б глухим. */}
+        {/* Рівні половини: ширина по вмісту робила «Оптом» помітно вужчою
+            за «До магазину», і пара виглядала випадковою. */}
+        <div style={{ padding: '12px 28px 24px', flexShrink: 0, display: 'flex', gap: '10px' }}>
+          <Link href={shopHref} className="btn-primary" style={{
+            flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            height: '44px', padding: '0 12px', borderRadius: '10px',
             background: '#4880B8', color: '#fff', fontSize: '14px', fontWeight: 700,
-            textDecoration: 'none',
+            textDecoration: 'none', whiteSpace: 'nowrap',
           }}>
-            {lang === 'ru'
-              ? (isRetail ? 'Перейти в магазин →' : 'Перейти в каталог →')
-              : (isRetail ? 'Перейти до магазину →' : 'Перейти до каталогу →')}
+            {lang === 'ru' ? 'В магазин →' : 'До магазину →'}
+          </Link>
+          <Link href={wholesaleHref} style={{
+            flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            height: '44px', padding: '0 12px', borderRadius: '10px',
+            border: '1.5px solid var(--border)', background: 'var(--bg-card)',
+            color: 'var(--text-secondary)', fontSize: '14px', fontWeight: 700,
+            textDecoration: 'none', whiteSpace: 'nowrap',
+          }}>
+            {lang === 'ru' ? 'Оптом →' : 'Оптом →'}
           </Link>
         </div>
       </div>

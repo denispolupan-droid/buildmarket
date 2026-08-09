@@ -1,13 +1,18 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { LayoutGrid, Search, X } from 'lucide-react';
+import { GripVertical, LayoutGrid, Search, X } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
 // Тільки чисті функції й типи: lib/showcase тягне supabase у серверній частині,
 // але вона під динамічним import() — у клієнтський бандл не потрапляє.
 import {
   moveShowcaseItem, SHOWCASE_MAX_ITEMS, type ShowcaseSurface,
 } from '../../../lib/showcase';
+import CategoryOrderPanel from './CategoryOrderPanel';
+import { useDragOrder } from './useDragOrder';
+
+/** Вкладки: дві вітрини товарів + порядок категорій на головній */
+type Tab = ShowcaseSurface | 'categories';
 
 type Item = {
   sku: string; name: string; brand: string | null; volume: string | null;
@@ -22,6 +27,9 @@ const SURFACES: { key: ShowcaseSurface; label: string; hint: string }[] = [
 ];
 
 export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
+  const [tab, setTab] = useState<Tab>('shop');
+  // Вкладка категорій не має вітрини товарів — для решти логіки беремо останню
+  // обрану поверхню, щоб стан списків не скидався при перемиканні.
   const [surface, setSurface] = useState<ShowcaseSurface>('shop');
   const [items, setItems]     = useState<Record<ShowcaseSurface, Item[]>>({ shop: [], catalog: [] });
   const [order, setOrder]     = useState<Record<ShowcaseSurface, string[]>>({ shop: [], catalog: [] });
@@ -63,6 +71,8 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
 
   function setCur(next: string[]) { setOrder(o => ({ ...o, [surface]: next })); }
 
+  const { rowProps, rowStyle } = useDragOrder(cur, setCur);
+
   function add(sku: string) {
     if (cur.includes(sku)) return;
     if (cur.length >= SHOWCASE_MAX_ITEMS) { showToast(`Максимум ${SHOWCASE_MAX_ITEMS} позицій`, 'error'); return; }
@@ -99,14 +109,15 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
         Товари, які показуються першими на головній, у заданому тут порядку. Показуємо всі —
         стеля <b>{SHOWCASE_MAX_ITEMS}</b> позицій. Товар без наявності або деактивований покупцю
         не показується, але зі списку не зникає й позначений причиною.
+        {canEdit && <> Порядок міняйте перетягуванням рядка або стрілками.</>}
       </p>
 
-      {/* Вкладки вітрин */}
+      {/* Вкладки: дві вітрини товарів + порядок категорій */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         {SURFACES.map(s => {
-          const active = s.key === surface;
+          const active = tab === s.key;
           return (
-            <button key={s.key} onClick={() => setSurface(s.key)} title={s.hint}
+            <button key={s.key} onClick={() => { setTab(s.key); setSurface(s.key); }} title={s.hint}
               style={{
                 padding: '8px 16px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer',
                 border: `1.5px solid ${active ? '#1E3A5F' : 'var(--border)'}`,
@@ -118,8 +129,18 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
             </button>
           );
         })}
+        <button onClick={() => setTab('categories')} title="Порядок категорій на головній та в сайдбарі"
+          style={{
+            padding: '8px 16px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+            border: `1.5px solid ${tab === 'categories' ? '#1E3A5F' : 'var(--border)'}`,
+            background: tab === 'categories' ? '#1E3A5F' : 'var(--bg-card)',
+            color: tab === 'categories' ? '#fff' : 'var(--text-secondary)',
+          }}>
+          Категорії
+        </button>
       </div>
 
+      {tab === 'categories' ? <CategoryOrderPanel canEdit={canEdit} /> : (
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
           {SURFACES.find(s => s.key === surface)!.hint} · зараз покупець побачить <b>{shownCount}</b> із {cur.length}
@@ -137,11 +158,15 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
               const it = byId.get(sku);
               const hidden = it && !it.visible;
               return (
-                <div key={sku} style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8,
-                  opacity: hidden ? 0.55 : 1,
-                  borderTop: i > 0 ? '1px solid var(--border-light)' : 'none',
-                }}>
+                <div key={sku}
+                  {...(canEdit ? rowProps(i) : {})}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8,
+                    opacity: hidden ? 0.55 : 1,
+                    borderTop: i > 0 ? '1px solid var(--border-light)' : 'none',
+                    ...(canEdit ? rowStyle(i) : {}),
+                  }}>
+                  {canEdit && <GripVertical size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />}
                   <span style={{ width: 26, fontSize: 12, fontWeight: 700, color: '#1E3A5F' }}>
                     {i + 1}.
                   </span>
@@ -221,6 +246,7 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
           </>
         )}
       </div>
+      )}
     </div>
   );
 }

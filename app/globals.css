@@ -620,6 +620,48 @@ input, select { font-family: inherit; }
   grid-template-columns: repeat(3, 1fr);
   gap: 20px;
 }
+/* Решта категорій під сіткою — компактні пігулки: з головної доступні всі
+   родини, а не тільки шість карток. */
+.home-cat-rest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.home-cat-pill {
+  /* Ростуть, доки ряд не заповнить усю ширину — праві краї збігаються з сіткою
+     карток над ними; довші назви отримують більше місця пропорційно тексту. */
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.home-cat-pill:hover {
+  border-color: var(--brand-blue);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+.home-cat-pill__icon { display: inline-flex; flex-shrink: 0; }
+.home-cat-pill--all {
+  background: var(--brand-blue-light);
+  border-color: transparent;
+  color: var(--brand-blue);
+  font-weight: 700;
+}
+.home-cat-pill--all:hover { border-color: var(--brand-blue); }
+
 .home-cat-card__desc {
   display: -webkit-box;
   -webkit-line-clamp: 2;
