@@ -1684,8 +1684,6 @@ input, select { font-family: inherit; }
 .oc-swipe-hint { display: none; }
 /* Елементи «тільки на мобілці» (напр. іконка-дискета замість тексту «Зберегти»). */
 .oc-only-m { display: none; }
-/* Примусовий перенос у панелі фільтрів — потрібен лише на телефоні (див. @media) */
-.oc-filter-break { display: none; }
 /* Картки «Клієнт» і «Доставка» стоять поруч, і в кожної внизу свій блок
    (Оплата / ТТН) з розділювальною лінією. Раніше лінії вирівнювали спільним
    min-height: щойно вміст одного блоку переростав це число, лінія їхала — а
@@ -1864,14 +1862,14 @@ input, select { font-family: inherit; }
   .order-compact-row .oc-ttn { font-size: 12px !important; padding: 2px 9px !important; }
 
   /* Фільтри каналів і фільтри перевізника — різні за суттю зрізи («звідки
-     замовлення» і «ким веземо»), а в потоці кнопок вони зливалися в одну кашу:
-     риска-роздільник між ними лишалася в кінці попереднього рядка й читалась як
-     дефект. Тепер перевізники починають власний рядок, а риска стоїть перед
-     ними — межа груп видно з першого погляду. */
-  .oc-filter-break { display: block; flex-basis: 100%; height: 0; margin: 0; }
+     замовлення» і «ким веземо»), а в потоці кнопок вони зливалися в одну кашу.
+     На широкому екрані їх ділить вертикальна риска, але тут кнопки й так
+     переносяться, і вертикальна риска губилась у кінці рядка. Та сама риска
+     розтягується на всю ширину: вона одночасно ділить групи і змушує
+     перевізників почати власний рядок. */
   .oc-filter-sep {
-    align-self: center !important; width: 2px !important; height: 22px;
-    border-radius: 2px; margin: 0 6px 0 2px !important;
+    flex-basis: 100%; width: auto !important; height: 1px;
+    align-self: stretch !important; margin: 4px 0 2px !important;
   }
 
   /* Картка замовлення на телефоні — СІТКА з явними рядками, не flex-wrap.
@@ -1913,7 +1911,12 @@ input, select { font-family: inherit; }
      тобто на всю ширину праворуч від чекбокса. */
   .order-compact-row .oc-cust { grid-column: 2 / -1; grid-row: 3; min-width: 0; }
   .order-compact-row .oc-ship { display: flex !important; grid-column: 2 / -1; grid-row: 4; gap: 2px 8px; flex-wrap: wrap; }
-  .order-compact-row .oc-track { display: flex !important; grid-column: 2 / -1; grid-row: 5; gap: 4px 8px; flex-wrap: wrap; }
+  /* ТТН і стан посилки — строго в один рядок: номер має фіксовану ширину, а
+     стан («Прибув у відділення», «Очікує в пункті самовивозу») підтискається
+     багатокрапкою. Перенос тут зайвий — повний текст все одно в підказці й у
+     розгорнутій картці, а зайвий рядок множився на всі відправлені замовлення. */
+  .order-compact-row .oc-track { display: flex !important; grid-column: 2 / -1; grid-row: 5; gap: 8px; flex-wrap: nowrap; min-width: 0; }
+  .order-compact-row .oc-track .oc-cstat { min-width: 0; flex: 0 1 auto; }
   /* Ні ТТН, ні статусу перевізника — рядка теж немає, інакше він з'їдав би
      вертикальний проміжок у кожного непроведеного замовлення. */
   .order-compact-row .oc-track:empty { display: none !important; }
