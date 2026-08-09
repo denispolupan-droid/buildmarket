@@ -759,7 +759,9 @@ body:has(.shop-layout) { overflow-anchor: none; }
   .shop-mobile-filter-btn { display: flex; }
   .shop-title { display: none; }
   .shop-topbar { justify-content: flex-start; flex-wrap: wrap; }
-  .shop-topbar-actions { flex-wrap: wrap; row-gap: 8px; gap: 6px; }
+  /* Ряд контролів розтягуємо на всю ширину: селект сортування під ним займає
+     100%, і без цього праві краї не збігались — блок читався кривим. */
+  .shop-topbar-actions { flex-wrap: wrap; row-gap: 8px; gap: 6px; justify-content: space-between; }
   .shop-topbar-actions .shop-sort-select { flex: 1 1 100%; }
   .shop-view-toggle { display: flex; gap: 6px; }
 
