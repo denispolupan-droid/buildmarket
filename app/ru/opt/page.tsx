@@ -102,7 +102,8 @@ export default async function RuOptPage() {
     getBrandLogosCached(),
     getVisibleBrandLogosCached(),
   ]);
-  const brandTiles = mergeVisibleBrands(visibleBrandLogos).slice(0, 12);
+  // Без обрезания: показываем ВСЕ бренды с логотипами — сетка сама добирает ряды
+  const brandTiles = mergeVisibleBrands(visibleBrandLogos);
 
   const faqLd = {
     '@context': 'https://schema.org',

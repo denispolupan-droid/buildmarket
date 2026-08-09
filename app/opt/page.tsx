@@ -114,7 +114,8 @@ export default async function OptPage() {
     getBrandLogosCached(),
     getVisibleBrandLogosCached(),
   ]);
-  const brandTiles = mergeVisibleBrands(visibleBrandLogos).slice(0, 12);
+  // Без обрізання: показуємо ВСІ бренди з логотипами — сітка сама добирає ряди
+  const brandTiles = mergeVisibleBrands(visibleBrandLogos);
 
   const faqLd = {
     '@context': 'https://schema.org',

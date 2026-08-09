@@ -47,11 +47,11 @@ export default function HomeCategoryCards({ categories, lang, max = 6 }: Props) 
             <div style={{
               height: '118px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: `color-mix(in srgb, ${accent} 8%, var(--bg-soft))`,
+              background: `color-mix(in srgb, ${accent} 11%, var(--bg-soft))`,
             }}>
               <span style={{
                 width: '64px', height: '64px', borderRadius: '18px',
-                background: `color-mix(in srgb, ${accent} 14%, transparent)`, color: accent,
+                background: `color-mix(in srgb, ${accent} 18%, transparent)`, color: accent,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }} aria-hidden>
                 {icon && createElement(icon, { size: 32, strokeWidth: 1.75 })}
