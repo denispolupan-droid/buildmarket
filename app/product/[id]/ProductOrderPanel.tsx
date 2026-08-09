@@ -6,6 +6,7 @@ import { ShoppingCart, Check, Bell, Heart } from 'lucide-react';
 import { useCart } from '../../../lib/cart';
 import { useWishlist } from '../../../lib/wishlist';
 import { getSupabaseBrowser } from '../../../lib/supabase-browser';
+import WholesaleNoticeModal from '../../components/WholesaleNoticeModal';
 
 type Props = {
   priceUnit: number;
@@ -223,42 +224,7 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
       )}
 
     {showModal && (
-      <div onClick={() => setShowModal(false)} style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'rgba(0,0,0,0.5)', display: 'flex',
-        alignItems: 'center', justifyContent: 'center', padding: '24px',
-      }}>
-        <div onClick={e => e.stopPropagation()} style={{
-          background: 'var(--bg-card)', borderRadius: '16px',
-          padding: '36px 32px', maxWidth: '420px', width: '100%',
-          textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-        }}>
-          <div style={{ fontSize: '36px', marginBottom: '12px' }}>🏢</div>
-          <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '10px' }}>
-            {t('Ви увійшли як оптовий клієнт', 'Вы вошли как оптовый клиент')}
-          </h2>
-          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '24px' }}>
-            {t('У магазині вказані роздрібні ціни. Для замовлення за вашими цінами перейдіть до оптового каталогу.', 'В магазине указаны розничные цены. Для заказа по вашим ценам перейдите в оптовый каталог.')}
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {/* ?q=SKU — каталог відфільтрує рівно цей товар, а не голий список */}
-            <a href={`${lang === 'ru' ? '/ru' : ''}/catalog?q=${encodeURIComponent(sku)}`} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              height: '44px', borderRadius: '10px', background: '#1E3A5F', color: '#fff',
-              fontSize: '14px', fontWeight: 700, textDecoration: 'none',
-            }}>
-              {t('Відкрити цей товар в оптовому каталозі →', 'Открыть этот товар в оптовом каталоге →')}
-            </a>
-            <button onClick={() => setShowModal(false)} style={{
-              height: '40px', borderRadius: '10px', border: '1px solid var(--border)',
-              background: 'transparent', color: 'var(--text-secondary)',
-              fontSize: '13px', cursor: 'pointer',
-            }}>
-              {t('Залишитись і переглянути магазин', 'Остаться и просматривать магазин')}
-            </button>
-          </div>
-        </div>
-      </div>
+      <WholesaleNoticeModal sku={sku} lang={lang} onClose={() => setShowModal(false)} />
     )}
     </>
   );

@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { NP_BRANCHES } from '../../lib/site';
 
 export default function DeliveryMapCard() {
   const ref = useRef<HTMLDivElement>(null);
@@ -35,7 +37,10 @@ export default function DeliveryMapCard() {
     return () => observer.disconnect();
   }, []);
 
-  const subtitle = lang === 'ru' ? 'Новая Почта · 28 000+ отделений по стране' : 'Нова Пошта · 28 000+ відділень по країні';
+  const branches = NP_BRANCHES.toLocaleString('uk-UA');
+  const subtitle = lang === 'ru'
+    ? `Новая Почта · ${branches}+ отделений по стране`
+    : `Нова Пошта · ${branches}+ відділень по країні`;
 
   return (
     <div ref={ref} className="delivery-map-card" style={{ isolation: 'isolate', willChange: 'opacity' }}>
@@ -44,7 +49,7 @@ export default function DeliveryMapCard() {
         // Той самий фірмовий градієнт, що в hero головної та на /opt і /blog —
         // щоб картка не жила у «своєму» синьому
         background: 'radial-gradient(560px 300px at 85% -10%, rgba(94,234,212,0.14), transparent 60%), linear-gradient(160deg, #0F172A 0%, #1E3A5F 60%, #123B54 100%)',
-        borderRadius: '20px', height: '440px',
+        borderRadius: '20px', height: '360px',
       }}>
       {/* Map — remounted (fresh key) every time it enters view, so the intro animation replays */}
       {visible && (
@@ -82,9 +87,19 @@ export default function DeliveryMapCard() {
             {subtitle}
           </p>
           </div>
-          <p className="delivery-map-card__subtitle--mobile" style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.75)' }}>
-            {subtitle}
-          </p>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '12px' }}>
+            <p className="delivery-map-card__subtitle--mobile" style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.75)' }}>
+              {subtitle}
+            </p>
+            {/* Картка була глухим кутом: найпомітніший блок секції нікуди не вів.
+                Кого зачепила мапа — той хоче умови й строки. */}
+            <Link href={lang === 'ru' ? '/ru/delivery' : '/delivery'} style={{
+              fontSize: '14px', fontWeight: 700, color: '#93C5FD',
+              textDecoration: 'none', whiteSpace: 'nowrap', marginLeft: 'auto',
+            }}>
+              {lang === 'ru' ? 'Условия доставки →' : 'Умови доставки →'}
+            </Link>
+          </div>
         </div>
       </div>
     </div>

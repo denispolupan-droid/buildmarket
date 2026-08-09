@@ -380,12 +380,12 @@ export default async function HomeRu() {
               borderRadius: '20px',
               // Фирменный градиент hero — фото ложится поверх multiply-слоем
               background: 'radial-gradient(560px 300px at 85% -10%, rgba(94,234,212,0.14), transparent 60%), linear-gradient(160deg, #0F172A 0%, #1E3A5F 60%, #123B54 100%)',
-              height: '440px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+              height: '360px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
               isolation: 'isolate', willChange: 'opacity',
             }}>
               <BgFadeImage src="/images/warehouse-quality.webp" style={{
                 position: 'absolute', inset: 0,
-                backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat',
+                backgroundPosition: '22% center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat',
                 filter: 'grayscale(1) contrast(1.2) brightness(1.5)',
               }} />
               <div style={{ position: 'absolute', inset: 0, background: '#0F172A', mixBlendMode: 'multiply', opacity: 0.3 }} />
@@ -396,12 +396,16 @@ export default async function HomeRu() {
                 background: 'linear-gradient(to top, rgba(8,15,30,0.92) 0%, rgba(8,15,30,0.15) 65%)',
               }} />
               <div className="home-warehouse-content" style={{ position: 'relative', padding: '32px 28px' }}>
-                <h2 className="home-warehouse-title" style={{ fontSize: '22px', fontWeight: 800, color: '#fff', marginBottom: '16px', lineHeight: 1.2 }}>
+                {/* Больший отступ под заголовком поднимает строку выше — логотип
+                    FIXLINE на куртке остаётся полностью видимым */}
+                <h2 className="home-warehouse-title" style={{ fontSize: '22px', fontWeight: 800, color: '#fff', marginBottom: '30px', lineHeight: 1.2 }}>
                   Собственный склад и контроль качества
                 </h2>
                 <ul className="home-warehouse-list" style={{ listStyle: 'none', padding: 0, margin: '0 0 22px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {[
-                    'Более 700 товаров постоянно в наличии',
+                    // Цифра из базы (тот же список, что кормит ленту хитов) —
+                    // раньше здесь висело «более 700», которое никто не обновлял.
+                    `${allProducts.length} товаров постоянно в наличии`,
                     'Ответственное хранение и соблюдение условий производителя',
                     'Контроль качества на каждом этапе',
                     'Быстрая комплектация заказов',

@@ -541,6 +541,40 @@ input, select { font-family: inherit; }
   .home-search-row { margin-bottom: 20px; }
 }
 
+/* Пошук на головній. Розміри — у CSS, а не інлайном: інакше медіазапит не
+   зможе звузити поле, і плейсхолдер на телефоні обрізатиметься. */
+.home-search__input {
+  width: 100%;
+  height: 48px;
+  padding: 0 110px 0 44px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+.home-search__btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 36px;
+  padding: 0 18px;
+  border-radius: 9px;
+  border: none;
+  background: var(--brand-blue);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+@media (max-width: 560px) {
+  .home-search__input { padding: 0 88px 0 40px; }
+  .home-search__btn { padding: 0 12px; }
+}
+
 /* Випадашка підказок пошуку на головній */
 .home-search-dd {
   position: absolute;
@@ -613,6 +647,14 @@ input, select { font-family: inherit; }
   gap: 5px;
 }
 .home-search-dd__all:hover { background: var(--bg-soft); }
+
+/* Картка складу: текст тримається лівої половини, щоб логотип FIXLINE на
+   куртці працівника лишався повністю видимим (кадр зсунуто вправо в JSX).
+   На мобільній ширині обмеження знімається — там фото майже не видно. */
+.home-warehouse-content > * { max-width: 62%; }
+@media (max-width: 900px) {
+  .home-warehouse-content > * { max-width: none; }
+}
 
 /* Великі картки категорій на головній (стиль карток блогу) */
 .home-cat-grid {

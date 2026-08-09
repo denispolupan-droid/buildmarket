@@ -29,6 +29,11 @@ export default function HomeSearch({ lang }: { lang: 'uk' | 'ru' }) {
 
   const [q, setQ] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
+  // Довгий плейсхолдер обрізався на телефоні («…артикул»). Скорочуємо його
+  // ПІСЛЯ гідрації: інакше серверний HTML і клієнтський розійшлися б.
+  // Три щаблі: широкий екран → телефон → зовсім вузький (320px), де навіть
+  // скорочений варіант не вміщався (заміряно: 191px тексту в 155px поля).
+  const [size, setSize] = useState<'wide' | 'narrow' | 'tiny'>('wide');
   const [products, setProducts] = useState<SuggestProduct[] | null>(null);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
@@ -45,6 +50,19 @@ export default function HomeSearch({ lang }: { lang: 'uk' | 'ru' }) {
     }
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
+  }, []);
+
+  useEffect(() => {
+    const narrowMq = window.matchMedia('(max-width: 560px)');
+    const tinyMq   = window.matchMedia('(max-width: 345px)');
+    const apply = () => setSize(tinyMq.matches ? 'tiny' : narrowMq.matches ? 'narrow' : 'wide');
+    apply();
+    narrowMq.addEventListener('change', apply);
+    tinyMq.addEventListener('change', apply);
+    return () => {
+      narrowMq.removeEventListener('change', apply);
+      tinyMq.removeEventListener('change', apply);
+    };
   }, []);
 
   const found = useMemo(
@@ -87,25 +105,15 @@ export default function HomeSearch({ lang }: { lang: 'uk' | 'ru' }) {
           onChange={e => { setQ(e.target.value); setOpen(true); }}
           onFocus={() => { setOpen(true); loadIndex().then(d => setProducts(d.products)).catch(() => {}); }}
           onKeyDown={onKeyDown}
-          placeholder={t('Пошук товару, артикулу або бренду…', 'Поиск товара, артикула или бренда…')}
+          placeholder={
+            size === 'tiny'   ? t('Пошук товару', 'Поиск товара')
+          : size === 'narrow' ? t('Пошук товару, артикулу', 'Поиск товара, артикула')
+          :                     t('Пошук товару, артикулу або бренду…', 'Поиск товара, артикула или бренда…')}
           aria-label={t('Пошук товару', 'Поиск товара')}
           autoComplete="off"
-          style={{
-            width: '100%', height: '48px', padding: '0 110px 0 44px',
-            borderRadius: '12px', border: '1px solid var(--border)',
-            background: 'var(--bg-card)', color: 'var(--text-primary)',
-            fontSize: '14px', outline: 'none',
-          }}
+          className="home-search__input"
         />
-        <button
-          type="submit"
-          style={{
-            position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)',
-            height: '36px', padding: '0 18px', borderRadius: '9px', border: 'none',
-            background: 'var(--brand-blue)', color: '#fff',
-            fontSize: '13px', fontWeight: 700, cursor: 'pointer',
-          }}
-        >
+        <button type="submit" className="home-search__btn">
           {t('Знайти', 'Найти')}
         </button>
       </form>

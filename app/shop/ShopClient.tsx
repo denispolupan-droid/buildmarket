@@ -24,6 +24,7 @@ import { getCategoryMetaRu } from '../../lib/category-descriptions-ru';
 import { publishCategoryView } from '../../lib/category-view';
 import { useStickyCompact, suppressStickyCompact } from '../../lib/useStickyCompact';
 import { orderByShowcase, isShowcaseVisible } from '../../lib/showcase';
+import WholesaleNoticeModal from '../components/WholesaleNoticeModal';
 
 // Native `behavior: 'smooth'` has a fixed, fairly snappy browser-controlled duration —
 // this gives the category auto-lift its own slower, eased animation instead. Ease-out
@@ -1381,53 +1382,9 @@ export default function ShopClient({ products, categories, reviewStats, initialS
 
     <ScrollToTop />
 
-    {/* Wholesale block modal */}
+    {/* Wholesale block modal — спільний компонент з превʼю та сторінкою товару */}
     {wholesaleModalSku && (
-      <div
-        onClick={() => setWholesaleModalSku(null)}
-        style={{
-          position: 'fixed', inset: 0, zIndex: 1000,
-          background: 'rgba(0,0,0,0.5)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', padding: '24px',
-        }}
-      >
-        <div
-          onClick={e => e.stopPropagation()}
-          style={{
-            background: 'var(--bg-card)', borderRadius: '16px',
-            padding: '36px 32px', maxWidth: '420px', width: '100%',
-            textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-          }}
-        >
-          <div style={{ fontSize: '36px', marginBottom: '12px' }}>🏢</div>
-          <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '10px' }}>
-            {t('Ви увійшли як оптовий клієнт', 'Вы вошли как оптовый клиент')}
-          </h2>
-          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '24px' }}>
-            {t('У магазині вказані роздрібні ціни. Для замовлення за вашими цінами перейдіть до оптового каталогу.', 'В магазине указаны розничные цены. Для заказа по вашим ценам перейдите в оптовый каталог.')}
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {/* ?q=SKU — каталог відфільтрує рівно цей товар, а не голий список */}
-            <a href={`${lang === 'ru' ? '/ru' : ''}/catalog?q=${encodeURIComponent(wholesaleModalSku)}`} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              height: '44px', borderRadius: '10px', background: '#1E3A5F', color: '#fff',
-              fontSize: '14px', fontWeight: 700, textDecoration: 'none',
-            }}>
-              {t('Відкрити цей товар в оптовому каталозі →', 'Открыть этот товар в оптовом каталоге →')}
-            </a>
-            <button
-              onClick={() => setWholesaleModalSku(null)}
-              style={{
-                height: '40px', borderRadius: '10px', border: '1px solid var(--border)',
-                background: 'transparent', color: 'var(--text-secondary)',
-                fontSize: '13px', cursor: 'pointer',
-              }}
-            >
-              {t('Залишитись і переглянути магазин', 'Остаться и просматривать магазин')}
-            </button>
-          </div>
-        </div>
-      </div>
+      <WholesaleNoticeModal sku={wholesaleModalSku} lang={lang} onClose={() => setWholesaleModalSku(null)} />
     )}
     </>
   );

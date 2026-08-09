@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Heart, Eye, ShoppingCart, Check } from 'lucide-react';
 import ProductImage from './ProductImage';
+import WholesaleNoticeModal from './WholesaleNoticeModal';
 import { RatingBadge } from './StarRating';
 import { getCatIcon, getCatColor, catDescription } from './CategoryCarousel';
 import { getCategoryNameRu } from '../../lib/ru';
@@ -147,8 +148,13 @@ function ProductCard({ product, isRetail, bordered, lang, prefix, rating }: { pr
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product.sku]);
 
-  const priceUnit = isRetail ? (product.stock?.price_retail ?? 0)     : (product.stock?.price_unit ?? 0);
-  const priceOld  = isRetail ? (product.stock?.price_retail_old ?? null) : (product.stock?.price_old  ?? null);
+  const [showWholesaleModal, setShowWholesaleModal] = useState(false);
+  // Роздрібна ціна ВСІМ, зокрема оптовику. Головна кешується однією версією для
+  // всіх відвідувачів, тож оптових цін у цих даних немає й бути не може —
+  // раніше оптовик бачив тут порожнє місце («За запитом»). Свою ціну він
+  // побачить у каталозі, куди ведуть кнопки під описом.
+  const priceUnit = product.stock?.price_retail ?? 0;
+  const priceOld  = product.stock?.price_retail_old ?? null;
   const stockQty  = product.stock?.stock_qty  ?? 0;
   const inStock   = product.stock?.stock_status === 'in_stock' || stockQty > 0;
   const isSale    = priceOld != null && priceUnit > 0 && priceUnit < priceOld;
@@ -157,6 +163,9 @@ function ProductCard({ product, isRetail, bordered, lang, prefix, rating }: { pr
   const displayName = lang === 'ru' ? ((product as { name_ru?: string | null }).name_ru ?? product.name) : product.name;
 
   function handleAddToCart() {
+    // Оптовику роздрібну ціну в кошик класти не можна — ведемо його на цей же
+    // товар в оптовому каталозі, як це вже робить магазин і сторінка товару.
+    if (!isRetail) { setShowWholesaleModal(true); return; }
     addItem({
       sku: product.sku, name: product.name, name_ru: (product as { name_ru?: string | null }).name_ru ?? null,
       brand: product.brand, volume: product.volume,
@@ -213,6 +222,10 @@ function ProductCard({ product, isRetail, bordered, lang, prefix, rating }: { pr
           <Eye size={14} strokeWidth={2} />
         </Link>
       </div>
+
+      {showWholesaleModal && (
+        <WholesaleNoticeModal sku={product.sku} lang={lang} onClose={() => setShowWholesaleModal(false)} />
+      )}
     </div>
   );
 }

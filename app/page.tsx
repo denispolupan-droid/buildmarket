@@ -377,7 +377,7 @@ export default async function Home() {
               borderRadius: '20px',
               // Фірмовий градієнт hero — фото лягає поверх нього multiply-шаром
               background: 'radial-gradient(560px 300px at 85% -10%, rgba(94,234,212,0.14), transparent 60%), linear-gradient(160deg, #0F172A 0%, #1E3A5F 60%, #123B54 100%)',
-              height: '440px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+              height: '360px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
               // Isolates the stacked filter/blend-mode layers below into their own composited
               // layer, pre-flattened before the Reveal wrapper's opacity/translateY transition
               // runs — otherwise the browser has to re-blend all 4 layers on every animation
@@ -387,7 +387,7 @@ export default async function Home() {
               {/* Photo — grayscale поверх фірмового градієнта, тонування в гамі hero */}
               <BgFadeImage src="/images/warehouse-quality.webp" style={{
                 position: 'absolute', inset: 0,
-                backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat',
+                backgroundPosition: '22% center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat',
                 filter: 'grayscale(1) contrast(1.2) brightness(1.5)',
               }} />
               <div style={{ position: 'absolute', inset: 0, background: '#0F172A', mixBlendMode: 'multiply', opacity: 0.3 }} />
@@ -398,12 +398,16 @@ export default async function Home() {
                 background: 'linear-gradient(to top, rgba(8,15,30,0.92) 0%, rgba(8,15,30,0.15) 65%)',
               }} />
               <div className="home-warehouse-content" style={{ position: 'relative', padding: '32px 28px' }}>
-                <h2 className="home-warehouse-title" style={{ fontSize: '22px', fontWeight: 800, color: '#fff', marginBottom: '16px', lineHeight: 1.2 }}>
+                {/* Більший відступ під заголовком: він піднімає рядок вище, і логотип
+                    FIXLINE на куртці лишається повністю видимим */}
+                <h2 className="home-warehouse-title" style={{ fontSize: '22px', fontWeight: 800, color: '#fff', marginBottom: '30px', lineHeight: 1.2 }}>
                   Власний склад та контроль якості
                 </h2>
                 <ul className="home-warehouse-list" style={{ listStyle: 'none', padding: 0, margin: '0 0 22px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {[
-                    'Більше 700 товарів постійно в наявності',
+                    // Цифра з бази (той самий список, що годує стрічку хітів) —
+                    // раніше тут висіло «більше 700», яке ніхто не оновлював.
+                    `${allProducts.length} товарів постійно в наявності`,
                     'Відповідальне зберігання та дотримання умов виробника',
                     'Контроль якості на кожному етапі',
                     'Швидка комплектація замовлень',
