@@ -1186,7 +1186,9 @@ export default function ShopClient({ products, categories, reviewStats, initialS
             </div>
           </div>
           {catInfo?.description && <p className="shop-title-desc">{catInfo.description}</p>}
-          <div className="shop-topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Розкладка — у CSS: інлайновий gap перебивав медіазапити, і на вузьких
+              екранах «Акція» зривалася на власний рядок через 1px. */}
+          <div className="shop-topbar-actions">
             <div className="shop-view-toggle">
               <button
                 className={'shop-view-toggle-btn' + (gridCols === 2 ? ' active' : '')}

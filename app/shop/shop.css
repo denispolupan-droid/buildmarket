@@ -640,6 +640,14 @@ body:has(.shop-layout) { overflow-anchor: none; }
 [data-theme="dark"] .shop-filter-select.active { background: #1E3A5F55; color: #93B8D8; }
 [data-theme="dark"] .shop-topbar button { color: var(--text-secondary); }
 
+/* Група контролів праворуч у шапці магазину. Розміри тут, а не інлайном —
+   інакше медіазапити нижче не мають шансу стиснути ряд на вузьких екранах. */
+.shop-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Mobile filter toggle button */
 .shop-mobile-filter-btn {
   display: none;
@@ -765,6 +773,25 @@ body:has(.shop-layout) { overflow-anchor: none; }
   /* Однакова висота в усієї групи — інакше перемикач вигляду (30px) сидить на
      2px нижче за сусідів і ряд читається неохайно. */
   .shop-view-toggle-btn { width: 34px; height: 34px; }
+}
+
+/* Вузькі телефони (≤380px). Заміряно: групі треба 304px при доступних 303 —
+   «Акція» зривалася на власний рядок. Різати самі відступи не рятує: на 320px
+   і в російській локалі (довші підписи) не вистачає вже десятків пікселів.
+   Тому перемикач вигляду згортається в ОДНУ кнопку — показуємо іконку того
+   режиму, на який перемкне натискання (активну ховаємо). Це вивільняє ~35px,
+   і вся група тримається одним рядом навіть на 320px. aria-label кнопок уже
+   описує ціль («По 1 в ряд» / «По 2 в ряд»), тож зміст не губиться. */
+@media (max-width: 380px) {
+  .shop-topbar-actions { gap: 5px; }
+  .shop-mobile-filter-btn { padding: 0 8px; gap: 4px; }
+  .shop-view-toggle-btn.active { display: none; }
+}
+
+/* Найвужчі екрани (320px). Російські підписи довші за українські («Категории»,
+   «Фильтры»), і групі бракує 5px — тому тут ще на крок стискаємо кнопки. */
+@media (max-width: 340px) {
+  .shop-mobile-filter-btn { padding: 0 6px; font-size: 12.5px; }
 }
 
 @keyframes hint-bounce {
