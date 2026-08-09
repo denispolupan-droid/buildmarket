@@ -19,8 +19,7 @@ export const metadata: Metadata = {
     type: 'website',
   },
 };
-import { Truck, Store, LayoutGrid, CheckCircle, PackageCheck, ShoppingCart, Phone, ArrowRight, ShieldCheck, Tag, MessageCircle } from 'lucide-react';
-import { WHOLESALE_MIN } from '../../lib/site';
+import { Truck, Store, LayoutGrid, CheckCircle, PackageCheck, ShoppingCart, Phone, ArrowRight } from 'lucide-react';
 import { getPublishedPostsCached } from '../../lib/blog-db';
 import { getCategoriesCached, getPreviewProductsCached, getBrandLogosCached, getVisibleBrandLogosCached, getReviewStatsCached, getProductsCached } from '../../lib/supabase';
 import { getShowcaseSkusCached } from '../../lib/showcase-server';
@@ -143,7 +142,7 @@ export default async function HomeRu() {
       {/* Hero — узкая фирменная шапка, как на странице блога */}
       <section style={{
         background: 'radial-gradient(900px 460px at 85% -20%, rgba(94,234,212,0.16), transparent 60%), radial-gradient(700px 420px at -5% 120%, rgba(72,128,184,0.32), transparent 60%), linear-gradient(160deg, #0F172A 0%, #1E3A5F 60%, #123B54 100%)',
-        padding: '56px 0 12px',
+        padding: '56px 0 52px',
       }}>
         <div className="page-container">
           <div className="home-hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '48px', alignItems: 'center' }}>
@@ -180,25 +179,6 @@ export default async function HomeRu() {
             </Reveal>
           </div>
 
-          {/* Преимущества тонкой полосой — минимальная высота: линия впритык к тексту */}
-          <Reveal delay={170}>
-            <div className="home-hero-perks">
-              {[
-                { icon: Store,         title: 'Розница и опт',         text: `от 1 шт · опт от ${WHOLESALE_MIN.toLocaleString('uk-UA')} грн` },
-                { icon: ShieldCheck,   title: 'Прямые поставки',       text: 'без задержек' },
-                { icon: Tag,           title: 'Выгодные цены',         text: 'тарифы для партнёров' },
-                { icon: MessageCircle, title: 'Персональный менеджер', text: 'консультации' },
-              ].map(({ icon: Icon, title, text }) => (
-                <div key={title} style={{ display: 'flex', alignItems: 'center', gap: '12px', whiteSpace: 'nowrap' }}>
-                  <Icon size={20} color="#7DB8E8" strokeWidth={1.75} style={{ flexShrink: 0 }} />
-                  <div style={{ fontSize: '14px', lineHeight: 1.4 }}>
-                    <span style={{ fontWeight: 700, color: '#F1F5F9' }}>{title}</span>
-                    <span style={{ color: 'rgba(255,255,255,0.55)' }}> — {text}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Reveal>
         </div>
       </section>
 
