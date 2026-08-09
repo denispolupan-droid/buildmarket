@@ -22,6 +22,25 @@ export function normalizePhone(raw: string | null | undefined): string | null {
   return null;
 }
 
+/**
+ * «050 123 45 67» — як номер читають і диктують люди. Потрібен адмінці: у списку
+ * замовлень номери приходять від маркетплейсів у трьох різних написаннях, і око
+ * щоразу перечіплялося через «380…» замість звичного нуля.
+ * Незнайомий формат повертаємо як є — краще показати сире значення, ніж зіпсуте.
+ */
+export function phoneLocal(raw: string | null | undefined): string {
+  const norm = normalizePhone(raw);
+  if (!norm) return String(raw ?? '');
+  const d = norm.slice(2);                       // 380XXXXXXXXX → 0XXXXXXXXX
+  return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6, 8)} ${d.slice(8)}`;
+}
+
+/** Той самий номер для буфера обміну — без пробілів, щоб вставлявся в пошук і форми. */
+export function phoneLocalDigits(raw: string | null | undefined): string {
+  const norm = normalizePhone(raw);
+  return norm ? norm.slice(2) : String(raw ?? '');
+}
+
 /** Чи можемо ми взагалі щось надіслати на цей номер. */
 export function isSendablePhone(raw: string | null | undefined): boolean {
   return normalizePhone(raw) !== null;

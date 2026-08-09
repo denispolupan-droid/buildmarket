@@ -21,6 +21,7 @@ type FulfillmentData = OrderFulfillmentInfo & {
   commission_estimate?: number | null;
 };
 import CreateTTNModal from '../components/admin/CreateTTNModal';
+import { phoneLocal, phoneLocalDigits } from '../../lib/notify/phone';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { showConfirm } from '../../lib/confirm';
 import { showToast } from '../../lib/toast';
@@ -426,7 +427,9 @@ export default function AdminOrders({
   // Телефон із рядка: копіюємо, щоб одразу набрати або вставити в пошук.
   const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
   function copyPhone(phone: string) {
-    navigator.clipboard.writeText(phone);
+    // Копіюємо в національному вигляді «0504449875»: саме його чекають пошук у
+    // кабінеті перевізника, форма ТТН і дзвінок — «+380…» доводилось правити руками.
+    navigator.clipboard.writeText(phoneLocalDigits(phone));
     setCopiedPhone(phone);
     setTimeout(() => setCopiedPhone(p => (p === phone ? null : p)), 1500);
   }
@@ -1517,8 +1520,12 @@ export default function AdminOrders({
               );
             })}
             {/* Перевізник. Окремий ряд кнопок був би зайвим рядком у щільній
-                панелі, тож стоять тут же, відділені вертикальною рискою. */}
-            <span aria-hidden style={{ width: '1px', alignSelf: 'stretch', margin: '0 2px', background: 'var(--border)' }} />
+                панелі, тож стоять тут же, відділені вертикальною рискою.
+                На телефоні кнопки й так переносяться, і риска опинялась у кінці
+                рядка як випадковий артефакт — тому там перед нею стоїть примусовий
+                перенос, і група перевізників починає власний рядок з рискою. */}
+            <span aria-hidden className="oc-filter-break" />
+            <span aria-hidden className="oc-filter-sep" style={{ width: '1px', alignSelf: 'stretch', margin: '0 2px', background: 'var(--border)' }} />
             {[
               { value: 'nova',    label: 'НП',      color: '#7C2D12', bg: '#FFF7ED', border: '#FDBA74' },
               { value: 'rozetka', label: 'Rozetka Доставка', color: '#065F46', bg: '#ECFDF5', border: '#6EE7B7' },
@@ -1952,6 +1959,21 @@ export default function AdminOrders({
               : isRzPickup ? 'Rozetka Доставка'
               : 'Нова Пошта';
 
+            /**
+             * Де зараз посилка (з синку перевізника). Один елемент на два місця:
+             * у таблиці він стоїть під статусом замовлення, на телефоні — поруч із
+             * ТТН, якої стосується. Зайвий екземпляр ховає CSS, а не умова в JS,
+             * щоб розмітка лишалась однією і не розповзалася двома копіями.
+             */
+            const carrierNote = order.status === 'shipped' && order.carrier_status_text ? (
+              <span className="oc-cstat"
+                title={order.carrier_status_synced_at ? `${order.carrier_status_text} · оновлено ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : order.carrier_status_text}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', maxWidth: '100%', fontSize: '10px', fontWeight: 500, color: order.carrier_accepted_at ? '#15803D' : '#B45309', overflow: 'hidden', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
+                <Truck size={10} style={{ flexShrink: 0 }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.carrier_status_text}</span>
+              </span>
+            ) : null;
+
             return (
               <div key={order.id} id={`order-${order.id}`} style={{
                 background: isFlashing ? '#F0FDF4' : isUnpaidInvoice ? '#FFFBF0' : 'var(--bg-card)',
@@ -1995,9 +2017,14 @@ export default function AdminOrders({
                       клієнту й доставці. Розмір шрифту — на внутрішніх блоках, щоб
                       мобільне правило .oc-num { font-size: 15px } не роздувало дату. */}
                   <div className="oc-num" style={{ width: '92px', flexShrink: 0, minWidth: 0, fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                    <div>#{order.order_number}</div>
-                    <div className="oc-date" style={{ fontSize: '10.5px', fontWeight: 500, color: 'var(--text-muted)', whiteSpace: 'nowrap', marginTop: '1px' }}>{date}</div>
-                    {mergedBadge}
+                    <div className="oc-numval">#{order.order_number}</div>
+                    {/* Дата і мітка спільної ТТН — одним підблоком: на телефоні .oc-num
+                        стає display:contents, і його діти лягають у власні комірки
+                        сітки. Без обгортки дата й мітка розповзлися б по різних рядках. */}
+                    <div className="oc-numsub">
+                      <div className="oc-date" style={{ fontSize: '10.5px', fontWeight: 500, color: 'var(--text-muted)', whiteSpace: 'nowrap', marginTop: '1px' }}>{date}</div>
+                      {mergedBadge}
+                    </div>
                   </div>
 
                   {/* Мітки доставки на телефоні — поруч із номером, а не окремим
@@ -2077,7 +2104,7 @@ export default function AdminOrders({
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minHeight: '16px' }}>
                       {order.phone && (<>
-                        <span style={{ fontSize: '11.5px', fontWeight: 500, color: 'var(--text-secondary)', letterSpacing: '.01em', whiteSpace: 'nowrap' }}>{order.phone}</span>
+                        <span title={order.phone} style={{ fontSize: '11.5px', fontWeight: 500, color: 'var(--text-secondary)', letterSpacing: '.01em', whiteSpace: 'nowrap' }}>{phoneLocal(order.phone)}</span>
                         {/* Без рамки й фону: кнопка стоїть у кожному рядку, і обведення
                             перетворювало список на решето. Достатньо самої іконки. */}
                         <button
@@ -2104,18 +2131,28 @@ export default function AdminOrders({
                     )}
                   </div>
 
-                  {/* Доставка + ТТН — ТІЛЬКИ на телефоні. На широкому екрані для цього є
-                      власні колонки («Доставка», значок приймання біля статусу), а на
-                      телефоні вони сховані через .oc-hide-m, і номер посилки не було
-                      видно взагалі — доводилось розгортати картку заради одного рядка.
-                      Тап по номеру копіює його: у списку ТТН потрібна саме для того,
-                      щоб вставити в пошук перевізника. */}
+                  {/* Доставка — ТІЛЬКИ на телефоні, двома рядками: «перевізник · адреса»
+                      і нижче «ТТН · де зараз посилка». На широкому екрані для цього є
+                      власні колонки, а на телефоні вони сховані через .oc-hide-m, і
+                      номер посилки не було видно взагалі — доводилось розгортати картку
+                      заради одного рядка. Тап по номеру копіює його: у списку ТТН
+                      потрібна саме для того, щоб вставити в пошук перевізника. */}
                   <div className="oc-only-m oc-ship" style={{ display: 'none', minWidth: 0, alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    {/* Перевізник словом: на телефоні колонка «Доставка» схована, і
+                        зрозуміти, НП це чи Rozetka Доставка, до створення ТТН було ніяк. */}
+                    <span className="oc-carrier" style={{ fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      {carrierLabel}{order.delivery_subtype === 'courier' ? ' · кур.' : ''}
+                    </span>
                     {(order.delivery_type === 'pickup' || order.delivery_city_name || order.delivery_address) && (
-                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {deliveryPlace(order, delivery)}{order.delivery_subtype === 'courier' ? ' · кур.' : ''}
+                      <span style={{ minWidth: 0 }}>
+                        {deliveryPlace(order, delivery)}
                       </span>
                     )}
+                  </div>
+
+                  {/* ТТН і де зараз посилка — окремим рядком під адресою: це вже не
+                      «куди везти», а «як їде», і разом з адресою вони не влазили. */}
+                  <div className="oc-only-m oc-track" style={{ display: 'none', minWidth: 0, alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-secondary)' }}>
                     {order.tracking_number && (
                       <span
                         className="oc-ttn"
@@ -2133,6 +2170,7 @@ export default function AdminOrders({
                         {copiedTtn === order.tracking_number && <Check size={10} strokeWidth={3} />}
                       </span>
                     )}
+                    {carrierNote}
                   </div>
 
                   {/* Доставка трьома рядками: перевізник (+ умови акції), потім місто
@@ -2198,13 +2236,7 @@ export default function AdminOrders({
                       );
                     })()}
                     </div>
-                    {order.status === 'shipped' && order.carrier_status_text && (
-                      <span title={order.carrier_status_synced_at ? `${order.carrier_status_text} · оновлено ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : order.carrier_status_text}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', maxWidth: '100%', fontSize: '10px', fontWeight: 500, color: order.carrier_accepted_at ? '#15803D' : '#B45309', overflow: 'hidden', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
-                        <Truck size={10} style={{ flexShrink: 0 }} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.carrier_status_text}</span>
-                      </span>
-                    )}
+                    {carrierNote}
                   </div>
 
                   {/* Канал */}

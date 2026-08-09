@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizePhone, isSendablePhone } from '../lib/notify/phone';
+import { normalizePhone, isSendablePhone, phoneLocal, phoneLocalDigits } from '../lib/notify/phone';
 
 // Формати взяті з реальної бази: Rozetka пише «380…», Prom «+380…», сайт —
 // «+38 (066) 828-22-90». Провайдеру потрібен один формат, і кожна помилка тут —
@@ -31,5 +31,27 @@ describe('normalizePhone', () => {
   it('isSendablePhone — те саме рішення одним прапорцем', () => {
     expect(isSendablePhone('+38 (050) 444-98-75')).toBe(true);
     expect(isSendablePhone('—')).toBe(false);
+  });
+});
+
+// В адмінці номер і читають очима, і копіюють у пошук перевізника — це два різні
+// формати одного номера, тому й дві функції.
+describe('phoneLocal / phoneLocalDigits', () => {
+  it('усі написання зводяться до звичного «050 444 98 75»', () => {
+    expect(phoneLocal('380504449875')).toBe('050 444 98 75');
+    expect(phoneLocal('+380504449875')).toBe('050 444 98 75');
+    expect(phoneLocal('+38 (050) 444-98-75')).toBe('050 444 98 75');
+    expect(phoneLocal('0504449875')).toBe('050 444 98 75');
+  });
+
+  it('для буфера — самі цифри з нуля', () => {
+    expect(phoneLocalDigits('+380504449875')).toBe('0504449875');
+    expect(phoneLocalDigits('380675967845')).toBe('0675967845');
+  });
+
+  it('нерозпізнане показуємо як є, а не як зіпсутий номер', () => {
+    expect(phoneLocal('телефон уточнити')).toBe('телефон уточнити');
+    expect(phoneLocalDigits('+1 415 555 2671')).toBe('+1 415 555 2671');
+    expect(phoneLocal(null)).toBe('');
   });
 });
