@@ -2000,6 +2000,20 @@ export default function AdminOrders({
                     {mergedBadge}
                   </div>
 
+                  {/* Мітки доставки на телефоні — поруч із номером, а не окремим
+                      рядком над ПІБ: вони стосуються замовлення, а посеред картки
+                      розривали ім'я і телефон. */}
+                  <span className="oc-only-m oc-badges-m" style={{ gap: '4px', flexWrap: 'wrap' }}>
+                    {/* Канал — на телефоні колонка «Канал» схована (.oc-hide-m), і звідки
+                        замовлення, можна було здогадатись хіба що за кольором плашки ТТН,
+                        якої у нових замовлень ще немає. */}
+                    <span title={`Джерело замовлення: ${channel.label}`}
+                      style={{ fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '20px', color: channel.color, background: channel.bg, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
+                      {channel.label}
+                    </span>
+                    {deliveryBadges}
+                  </span>
+
                   {/* Мініатюри товарів: дві вміщуються в рядок без шкоди для решти
                       колонок, тому показуємо перші дві, а на третій і далі лічильник
                       на другій плитці каже, скільки позицій у замовленні всього.
@@ -2058,8 +2072,6 @@ export default function AdminOrders({
                           екрана. На десктопі span не стискається, тож переносу немає. */}
                       <span className="oc-badges" style={{ display: 'flex', gap: '3px', flexShrink: 0, flexWrap: 'wrap' }}>
                         {orderBadges}
-                        {/* На телефоні колонки «Доставка» немає — мітки посилки показуємо тут */}
-                        <span className="oc-only-m" style={{ gap: '3px' }}>{deliveryBadges}</span>
                       </span>
                     </div>
 
@@ -2082,7 +2094,7 @@ export default function AdminOrders({
                     </div>
 
                     {order.items[0] && (
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
+                      <div className="oc-item" style={{ fontSize: '11px', color: 'var(--text-muted)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
                         {order.items[0].is_bonus && <span style={{ marginRight: '4px' }}>🎁</span>}
                         {order.items[0].brand ? `${order.items[0].brand} ` : ''}{order.items[0].name}
                         <span style={{ marginLeft: '4px' }}>×{order.items[0].qty}</span>
@@ -2106,6 +2118,7 @@ export default function AdminOrders({
                     )}
                     {order.tracking_number && (
                       <span
+                        className="oc-ttn"
                         onClick={e => { e.stopPropagation(); copyTtn(order.tracking_number!); }}
                         title={`${isRzPickup ? 'Rozetka Доставка' : 'Нова Пошта'} · ${order.tracking_number} — натисніть, щоб скопіювати`}
                         style={{

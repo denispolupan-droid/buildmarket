@@ -1864,12 +1864,12 @@ input, select { font-family: inherit; }
      й шеврон, і кожна картка складалася по-своєму — список читався як набір
      випадкових уламків. Сітка ставить кожен елемент у свою комірку, тож усі
      картки однакові незалежно від довжини тексту:
-       1) чекбокс · № ················· сума · шеврон
-       2)           мітки (SMART, ТОЧКА ROZETKA…)
-       3)           ПІБ · телефон
-       4)           товар
-       5)           статус · статус перевізника
-       6)           місто · ТТН
+       1) чекбокс · № · канал і мітки (SMART…) ····· сума · шеврон
+       2)           ПІБ · телефон · товар (до 2 рядків)
+       3)           статус · статус перевізника
+       4)           місто · ТТН
+     Рядки 3 і 4 зливаються в один, коли статус короткий і ТТН ще немає —
+     див. правило з :has() нижче.
      Колонка 1 — чекбокс, колонка 2 — усе інше, тож ліві краї збігаються. */
   .order-compact-row {
     display: grid !important;
@@ -1893,19 +1893,55 @@ input, select { font-family: inherit; }
   /* Плашка ТТН — до правого краю картки. Номери різної довжини (НП — 14 цифр,
      Rozetka — «RMP-…»), і притиснуті до міста вони стояли сходинками: очима
      доводилось шукати початок кожного. Праворуч у них спільна вертикаль. */
-  .order-compact-row .oc-ship { display: flex !important; grid-column: 2 / -1; grid-row: 4; gap: 8px; }
-  /* margin-left:auto, а не space-between: коли міста немає, плашка лишається
-     сама в рядку — space-between притиснув би її ліворуч. */
-  .order-compact-row .oc-ship > :last-child { margin-left: auto; }
+  .order-compact-row .oc-ship { display: flex !important; grid-column: 2 / -1; grid-row: 4; gap: 6px 8px; flex-wrap: wrap; }
+  /* Місто тримається ЛІВОГО краю (margin-right:auto на першому елементі), а не
+     «останній — праворуч»: коли ТТН немає, місто ставало останнім і від'їжджало
+     вправо — сусідні картки читались сходинками. Плашка ТТН при цьому все одно
+     тисне до правого краю, а якщо разом не влазять — переноситься рядком нижче,
+     і назва відділення більше не обрізається на півслові. */
+  .order-compact-row .oc-ship > :first-child { margin-right: auto; }
+  .order-compact-row .oc-ship > span:first-child { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; }
   /* Статус і статус перевізника — в один рядок, а не стовпчиком: удвох вони
      коротші за ширину екрана, а окремими рядками роздували картку. */
   .oc-status { flex-direction: row !important; align-items: center !important; flex-wrap: wrap; gap: 4px 8px !important; overflow: visible !important; }
+  /* Статус і адреса — в ОДИН рядок, поки обидва короткі: у нових і підтверджених
+     замовлень (їх у роботі найбільше) це «Підтверджено» + «Ізмаїл · Відділення №7»,
+     удвох вони займають півекрана, а стояли двома рядками з п'яти.
+     Зливаємо лише коли в статусі немає тексту перевізника (.oc-status > span) і
+     немає плашки ТТН (.oc-ttn) — інакше довгий «Відправлення прямує до смт.
+     Глеваха» і 14-значний номер тиснули б одне одного і рядків стало б більше,
+     а не менше. Браузер без :has() просто лишає попередній розклад. */
+  .order-compact-row:not(:has(.oc-status > span)):not(:has(.oc-ttn)) .oc-status {
+    grid-column: 2; grid-row: 3; max-width: 46vw;
+  }
+  .order-compact-row:not(:has(.oc-status > span)):not(:has(.oc-ttn)) .oc-ship {
+    grid-column: 3 / -1; grid-row: 3;
+  }
   /* Мітки — власний рядок над ПІБ. Раніше вони стояли в одному рядку з іменем
      і з'їдали його ширину: «SMART ТОЧКА ROZETKA Бондаренко Ан…». */
-  .oc-nameline { display: flex !important; flex-direction: column; align-items: flex-start; gap: 3px; white-space: normal !important; overflow: visible !important; }
+  /* align-items з !important: інлайновий alignItems:'center' (потрібен десктопу,
+     де рядок горизонтальний) інакше перебивав це правило — і в колонці ПІБ
+     виявлялося відцентрованим, тоді як телефон і товар під ним стояли ліворуч. */
+  .oc-nameline { display: flex !important; flex-direction: column; align-items: flex-start !important; gap: 3px; white-space: normal !important; overflow: visible !important; }
+  /* Мітки доставки + канал — у рядку з номером (колонка 3) */
+  .order-compact-row .oc-badges-m {
+    display: flex !important; grid-column: 3; grid-row: 1;
+    justify-self: start; align-items: center; min-width: 0;
+  }
+  /* Дата з колонки 3 переїхала під номер ще раніше — тепер колонка 3 вільна
+     саме під мітки. */
   .oc-badges:not(:empty) { display: flex; flex-wrap: wrap; gap: 4px; }
   .oc-badges > span { margin-right: 0 !important; }
   .oc-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Назва товару — до двох рядків замість багатокрапки. У таблиці на десктопі
+     рядок один і обрізати доводиться, а на телефоні під нею ціла вільна ширина:
+     «Ceresit Клей для плитки CM 11 Plus 25к…» перетворювалось на загадку, хоча
+     саме товар відповідає на питання «що це за замовлення». */
+  .oc-item {
+    white-space: normal !important;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    line-height: 1.35;
+  }
   /* Розгорнуте: «Фінанси | Логістика» на телефоні у 2 колонки давали ~140px — лейбли
      налазили на суми («Собіварт222 ₴»), кнопки/селекти обрізались. Складаємо в стовпчик. */
   .oc-finlog-grid { grid-template-columns: 1fr !important; }
