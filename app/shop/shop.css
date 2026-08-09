@@ -784,14 +784,17 @@ body:has(.shop-layout) { overflow-anchor: none; }
    описує ціль («По 1 в ряд» / «По 2 в ряд»), тож зміст не губиться. */
 @media (max-width: 380px) {
   .shop-topbar-actions { gap: 5px; }
-  .shop-mobile-filter-btn { padding: 0 8px; gap: 4px; }
-  .shop-view-toggle-btn.active { display: none; }
+  .shop-mobile-filter-btn { padding: 0 7px; gap: 4px; }
+  .shop-view-toggle { gap: 4px; }
 }
 
-/* Найвужчі екрани (320px). Російські підписи довші за українські («Категории»,
-   «Фильтры»), і групі бракує 5px — тому тут ще на крок стискаємо кнопки. */
-@media (max-width: 340px) {
+/* Найвужчі екрани (≤340px, iPhone SE і подібні). Тут місця немає навіть після
+   стиснення: перемикач вигляду згортаємо в одну кнопку — показуємо іконку
+   режиму, на який перемкне натискання (активну ховаємо). aria-label кнопок уже
+   описує ціль («По 1 в ряд» / «По 2 в ряд»), тож зміст не губиться. */
+@media (max-width: 350px) {
   .shop-mobile-filter-btn { padding: 0 6px; font-size: 12.5px; }
+  .shop-view-toggle-btn.active { display: none; }
 }
 
 @keyframes hint-bounce {
