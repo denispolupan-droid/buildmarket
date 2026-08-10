@@ -164,7 +164,11 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     alternateName: productFullName,
     sku: product.sku,
     brand: { '@type': 'Brand', name: product.brand },
-    description: product.description ?? undefined,
+    // Повний опис, а не короткий тизер: у структурованих даних Google читає саме
+    // це поле для товарної картки, і 1800 символів про застосування й обмеження
+    // інформативніші за 150 символів анонсу. Короткий лишається там, де він і
+    // потрібен, — у meta description (сніпет усе одно ріжеться на ~160).
+    description: product.description_full ?? product.description ?? undefined,
     image: productImage,
     url: `${BASE}${productPath(product)}`,
     // Товар без ціни (немає рядка product_stock) віддавав offers з price: 0 —
