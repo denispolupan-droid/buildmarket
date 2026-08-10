@@ -89,12 +89,17 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
       {/* KPI */}
       <div className="fin-kpi-row">
         {([
-          { key: 'rev',  label: 'Виручка (факт)',  value: `${fmt(ov.kpi.revenue.value)} ₴`, cur: ov.kpi.revenue.value, prev: ov.kpi.revenue.prev, daily: ov.kpi.revenue.daily, color: 'var(--brand-blue)' },
-          { key: 'prof', label: 'Валовий прибуток', value: `${fmt(ov.kpi.profit.value)} ₴`, cur: ov.kpi.profit.value, prev: ov.kpi.profit.prev, daily: ov.kpi.profit.daily, color: '#15803D' },
-          { key: 'mrg',  label: 'Маржа',            value: ov.kpi.margin.value === null ? '—' : `${ov.kpi.margin.value}%`, cur: ov.kpi.margin.value, prev: ov.kpi.margin.prev, pp: true },
-          { key: 'ord',  label: 'Замовлень',        value: fmt(ov.kpi.orders.value), cur: ov.kpi.orders.value, prev: ov.kpi.orders.prev, daily: ov.kpi.orders.daily, color: 'var(--brand-blue)' },
-          { key: 'chk',  label: 'Середній чек',     value: ov.kpi.avgCheck.value === null ? '—' : `${fmt(ov.kpi.avgCheck.value)} ₴`, cur: ov.kpi.avgCheck.value, prev: ov.kpi.avgCheck.prev },
-        ] as { key: string; label: string; value: string; cur: number | null; prev: number | null; daily?: number[]; color?: string; pp?: boolean }[]).map(k => (
+          { key: 'rev',  label: 'Виручка · факт',  value: `${fmt(ov.kpi.revenue.value)} ₴`, cur: ov.kpi.revenue.value, prev: ov.kpi.revenue.prev, daily: ov.kpi.revenue.daily, color: 'var(--brand-blue)',
+            hint: 'Проведені продажі з обліку: фіксується в момент доставки замовлення' },
+          { key: 'prof', label: 'Валовий прибуток', value: `${fmt(ov.kpi.profit.value)} ₴`, cur: ov.kpi.profit.value, prev: ov.kpi.profit.prev, daily: ov.kpi.profit.daily, color: '#15803D',
+            hint: 'Виручка − собівартість (FIFO) − комісії МП − доставка НП за наш рахунок' },
+          { key: 'mrg',  label: 'Маржа',            value: ov.kpi.margin.value === null ? '—' : `${ov.kpi.margin.value}%`, cur: ov.kpi.margin.value, prev: ov.kpi.margin.prev, pp: true,
+            hint: 'Валовий прибуток ÷ виручка (факт, з доставлених)' },
+          { key: 'ord',  label: 'Замовлень',        value: fmt(ov.kpi.orders.value), cur: ov.kpi.orders.value, prev: ov.kpi.orders.prev, daily: ov.kpi.orders.daily, color: 'var(--brand-blue)',
+            hint: 'Створені за період, без скасованих — включно з ще не відвантаженими' },
+          { key: 'chk',  label: 'Середній чек',     value: ov.kpi.avgCheck.value === null ? '—' : `${fmt(ov.kpi.avgCheck.value)} ₴`, cur: ov.kpi.avgCheck.value, prev: ov.kpi.avgCheck.prev,
+            hint: 'Сума створених замовлень ÷ їх кількість (оцінка до доставки)' },
+        ] as { key: string; label: string; value: string; cur: number | null; prev: number | null; daily?: number[]; color?: string; pp?: boolean; hint: string }[]).map(k => (
           <div key={k.key} className="fin-card fin-kpi">
             <div className="fin-kpi-label">{k.label}</div>
             <div className="fin-kpi-value">{k.value}</div>
@@ -102,6 +107,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
               <TrendBadge cur={k.cur} prev={k.prev} pp={k.pp} />
               <span className="fin-kpi-cmp">{ov.prevLabel}</span>
             </div>
+            <div className="fin-hint">{k.hint}</div>
             {k.daily && <div className="fin-kpi-spark"><Sparkline data={k.daily} color={k.color} id={k.key} /></div>}
           </div>
         ))}
@@ -110,7 +116,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
       {/* Воронка · Динаміка · Потребує уваги */}
       <div className="fin-grid-12" style={{ marginTop: '16px' }}>
         <div className="fin-card" style={{ gridColumn: 'span 4' }}>
-          <div className="fin-card-title">Воронка замовлень</div>
+          <div className="fin-card-title">Воронка замовлень <span className="fin-card-sub">· створені за період</span></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '13px', marginTop: '14px' }}>
             {ov.funnel.map(f => (
               <div key={f.label}>
@@ -135,7 +141,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
 
         <div className="fin-card" style={{ gridColumn: 'span 5' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div className="fin-card-title">Динаміка за період</div>
+            <div className="fin-card-title">Динаміка за період <span className="fin-card-sub">· факт з обліку, по днях доставки</span></div>
             <div style={{ display: 'flex', gap: '14px', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
               <span><span className="fin-dot" style={{ background: 'var(--brand-blue)' }} /> Виручка</span>
               <span><span className="fin-dot" style={{ background: '#15803D' }} /> Прибуток</span>
@@ -147,7 +153,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
         </div>
 
         <div className="fin-card" style={{ gridColumn: 'span 3', padding: '18px' }}>
-          <div className="fin-card-title">Потребує уваги</div>
+          <div className="fin-card-title">Потребує уваги <span className="fin-card-sub">· стан на зараз</span></div>
           <div style={{ display: 'flex', flexDirection: 'column', marginTop: '8px' }}>
             {attention.map((a, i) => (
               <Link key={i} href={a.href} className="fin-attn">
@@ -166,7 +172,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
       {/* Фінанси · Сьогодні */}
       <div className="fin-grid-12" style={{ marginTop: '16px' }}>
         <div className="fin-card" style={{ gridColumn: 'span 8' }}>
-          <div className="fin-card-title">Гроші та борги</div>
+          <div className="fin-card-title">Гроші та борги <span className="fin-card-sub">· залишки з проводок обліку, станом на зараз</span></div>
           <div className="fin-money-grid">
             <div>
               <div className="fin-kpi-label">На рахунках</div>
@@ -193,7 +199,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
 
         <div className="fin-card" style={{ gridColumn: 'span 4' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <div className="fin-card-title">Сьогодні</div>
+            <div className="fin-card-title">Сьогодні <span className="fin-card-sub">· за Києвом</span></div>
           </div>
           <div className="fin-today-grid">
             {[
@@ -214,7 +220,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
 
       {/* Канали */}
       <div className="fin-card" style={{ marginTop: '16px' }}>
-        <div className="fin-card-title">Канали продажів · за період</div>
+        <div className="fin-card-title">Канали продажів <span className="fin-card-sub">· сума створених замовлень за період (оцінка до доставки)</span></div>
         <div className="fin-chan-grid">
           {ov.channels.map(c => (
             <div key={c.code} className="fin-chan">
@@ -233,7 +239,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
       <div className="fin-grid-12" style={{ marginTop: '16px' }}>
         <div className="fin-card" style={{ gridColumn: 'span 6' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <div className="fin-card-title">Топ клієнти за виручкою</div>
+            <div className="fin-card-title">Топ клієнти <span className="fin-card-sub">· за сумами замовлень періоду</span></div>
             <Link href="/admin/finance/settlements" style={{ fontSize: '12px', color: 'var(--brand-blue)', textDecoration: 'none', fontWeight: 600 }}>всі клієнти →</Link>
           </div>
           <table className="fin-table">
@@ -253,7 +259,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
 
         <div className="fin-card" style={{ gridColumn: 'span 6' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <div className="fin-card-title">Топ товари за виручкою</div>
+            <div className="fin-card-title">Топ товари <span className="fin-card-sub">· за позиціями замовлень періоду</span></div>
             <Link href="/admin/finance/analytics" style={{ fontSize: '12px', color: 'var(--brand-blue)', textDecoration: 'none', fontWeight: 600 }}>ABC-аналіз →</Link>
           </div>
           <table className="fin-table">
