@@ -62,6 +62,30 @@ export function Sparkline({ data, prevData = [], color = 'var(--brand-blue)', id
   );
 }
 
+/**
+ * Bullet-бар для KPI-картки: заливка — поточне значення, темна риска —
+ * попередній період. Обидва в одній шкалі (максимум з двох). Компактніше
+ * і читабельніше за мініграфік; однаковий елемент в усіх картках.
+ */
+export function BulletBar({ cur, prev, prevLabel, color = 'var(--brand-blue)' }: {
+  cur: number | null; prev: number | null; prevLabel?: string; color?: string;
+}) {
+  if (cur === null && prev === null) return null;
+  const base = Math.max(cur ?? 0, prev ?? 0);
+  if (base <= 0) return null;
+  const curPct  = Math.max(0, Math.min(100, ((cur ?? 0) / base) * 100));
+  const prevPct = prev !== null && prev > 0 ? Math.max(0, Math.min(100, (prev / base) * 100)) : null;
+  return (
+    <div>
+      <div className="fin-bullet">
+        <div className="fin-bullet-fill" style={{ width: `${curPct}%`, background: color }} />
+        {prevPct !== null && <div className="fin-bullet-tick" style={{ left: `${prevPct}%` }} />}
+      </div>
+      {prevLabel && <div className="fin-bullet-cap">минулий період: {prevLabel}</div>}
+    </div>
+  );
+}
+
 export function TrendBadge({ cur, prev, suffix = '%', pp = false }: { cur: number | null; prev: number | null; suffix?: string; pp?: boolean }) {
   if (cur === null || prev === null || (!pp && prev === 0)) {
     return <span className="fin-trend muted">— {suffix === '%' ? '' : suffix}</span>;
