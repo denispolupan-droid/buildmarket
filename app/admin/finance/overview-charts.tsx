@@ -86,6 +86,47 @@ export function BulletBar({ cur, prev, prevLabel, color = 'var(--brand-blue)' }:
   );
 }
 
+/**
+ * Стовпчики останніх 6 місяців для KPI-картки (вибір власника, варіант B):
+ * минулі місяці — сірі, поточний — кольоровий; підписи місяців знизу.
+ * null (немає даних, напр. маржа без виручки) — місяць без стовпчика.
+ */
+export function MonthBars({ values, labels, color = 'var(--brand-blue)', format }: {
+  values: (number | null)[]; labels: string[]; color?: string; format?: (v: number) => string;
+}) {
+  const nums = values.filter((v): v is number => v !== null);
+  if (nums.length === 0 || nums.every(v => v === 0)) {
+    return <div style={{ height: 52, display: 'flex', alignItems: 'center', fontSize: 11, color: 'var(--text-muted)' }}>немає даних</div>;
+  }
+  const max = Math.max(...nums, 1);
+  const w = 168, hBar = 40, hLbl = 12, gap = 5;
+  const n = values.length;
+  const barW = (w - gap * (n - 1)) / n;
+  return (
+    <svg width={w} height={hBar + hLbl + 2} aria-hidden="true">
+      {values.map((v, i) => {
+        const x = i * (barW + gap);
+        const isCur = i === n - 1;
+        const hh = v === null || v <= 0 ? 0 : Math.max(2, (v / max) * hBar);
+        return (
+          <g key={i}>
+            {hh > 0 && (
+              <rect x={x} y={hBar - hh} width={barW} height={hh} rx="2"
+                fill={isCur ? color : 'var(--border)'} opacity={isCur ? 0.95 : 1}>
+                {format && v !== null && <title>{`${labels[i]}: ${format(v)}`}</title>}
+              </rect>
+            )}
+            <text x={x + barW / 2} y={hBar + hLbl} textAnchor="middle" fontSize="8.5"
+              fill={isCur ? 'var(--text-primary)' : 'var(--text-muted)'} fontWeight={isCur ? 700 : 400}>
+              {labels[i]}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 export function TrendBadge({ cur, prev, suffix = '%', pp = false }: { cur: number | null; prev: number | null; suffix?: string; pp?: boolean }) {
   if (cur === null || prev === null || (!pp && prev === 0)) {
     return <span className="fin-trend muted">— {suffix === '%' ? '' : suffix}</span>;

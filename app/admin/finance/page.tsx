@@ -4,7 +4,7 @@ import { ChevronRight } from 'lucide-react';
 import FinanceTabs from './FinanceTabs';
 import FinanceActions from './FinanceActions';
 import { getOverview } from './overview-data';
-import { BulletBar, TrendBadge, DualLineChart } from './overview-charts';
+import { MonthBars, TrendBadge, DualLineChart } from './overview-charts';
 
 // «Огляд» — перший екран фінансів у стилі BI (Stripe/Metabase): KPI з
 // порівнянням до попереднього періоду, воронка, динаміка, action-центр.
@@ -89,17 +89,17 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
       {/* KPI */}
       <div className="fin-kpi-row">
         {([
-          { key: 'rev',  label: 'Виручка · факт',  value: `${fmt(ov.kpi.revenue.value)} ₴`, cur: ov.kpi.revenue.value, prev: ov.kpi.revenue.prev, prevFmt: ov.kpi.revenue.prev !== null ? `${fmt(ov.kpi.revenue.prev)} ₴` : undefined, color: 'var(--brand-blue)',
+          { key: 'rev',  label: 'Виручка · факт',  value: `${fmt(ov.kpi.revenue.value)} ₴`, cur: ov.kpi.revenue.value, prev: ov.kpi.revenue.prev, months: ov.monthly.revenue, mFmt: (v: number) => `${fmt(v)} ₴`, color: 'var(--brand-blue)',
             hint: 'Проведені продажі з обліку: фіксується в момент доставки замовлення' },
-          { key: 'prof', label: 'Валовий прибуток', value: `${fmt(ov.kpi.profit.value)} ₴`, cur: ov.kpi.profit.value, prev: ov.kpi.profit.prev, prevFmt: ov.kpi.profit.prev !== null ? `${fmt(ov.kpi.profit.prev)} ₴` : undefined, color: '#15803D',
+          { key: 'prof', label: 'Валовий прибуток', value: `${fmt(ov.kpi.profit.value)} ₴`, cur: ov.kpi.profit.value, prev: ov.kpi.profit.prev, months: ov.monthly.profit, mFmt: (v: number) => `${fmt(v)} ₴`, color: '#15803D',
             hint: 'Виручка − собівартість (FIFO) − комісії МП − доставка НП за наш рахунок' },
-          { key: 'mrg',  label: 'Маржа',            value: ov.kpi.margin.value === null ? '—' : `${ov.kpi.margin.value}%`, cur: ov.kpi.margin.value, prev: ov.kpi.margin.prev, prevFmt: ov.kpi.margin.prev !== null ? `${ov.kpi.margin.prev}%` : undefined, pp: true,
+          { key: 'mrg',  label: 'Маржа',            value: ov.kpi.margin.value === null ? '—' : `${ov.kpi.margin.value}%`, cur: ov.kpi.margin.value, prev: ov.kpi.margin.prev, months: ov.monthly.margin, mFmt: (v: number) => `${v}%`, pp: true,
             hint: 'Валовий прибуток ÷ виручка (факт, з доставлених)' },
-          { key: 'ord',  label: 'Замовлень',        value: fmt(ov.kpi.orders.value), cur: ov.kpi.orders.value, prev: ov.kpi.orders.prev, prevFmt: ov.kpi.orders.prev !== null ? fmt(ov.kpi.orders.prev) : undefined, color: 'var(--brand-blue)',
+          { key: 'ord',  label: 'Замовлень',        value: fmt(ov.kpi.orders.value), cur: ov.kpi.orders.value, prev: ov.kpi.orders.prev, months: ov.monthly.orders, mFmt: (v: number) => fmt(v), color: 'var(--brand-blue)',
             hint: 'Створені за період, без скасованих — включно з ще не відвантаженими' },
-          { key: 'chk',  label: 'Середній чек',     value: ov.kpi.avgCheck.value === null ? '—' : `${fmt(ov.kpi.avgCheck.value)} ₴`, cur: ov.kpi.avgCheck.value, prev: ov.kpi.avgCheck.prev, prevFmt: ov.kpi.avgCheck.prev !== null ? `${fmt(ov.kpi.avgCheck.prev)} ₴` : undefined,
+          { key: 'chk',  label: 'Середній чек',     value: ov.kpi.avgCheck.value === null ? '—' : `${fmt(ov.kpi.avgCheck.value)} ₴`, cur: ov.kpi.avgCheck.value, prev: ov.kpi.avgCheck.prev, months: ov.monthly.avgCheck, mFmt: (v: number) => `${fmt(v)} ₴`,
             hint: 'Сума створених замовлень ÷ їх кількість (оцінка до доставки)' },
-        ] as { key: string; label: string; value: string; cur: number | null; prev: number | null; prevFmt?: string; color?: string; pp?: boolean; hint: string }[]).map(k => (
+        ] as { key: string; label: string; value: string; cur: number | null; prev: number | null; months: (number | null)[]; mFmt: (v: number) => string; color?: string; pp?: boolean; hint: string }[]).map(k => (
           <div key={k.key} className="fin-card fin-kpi">
             <div className="fin-kpi-label">{k.label}</div>
             <div className="fin-kpi-value">{k.value}</div>
@@ -107,8 +107,8 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
               <TrendBadge cur={k.cur} prev={k.prev} pp={k.pp} />
               <span className="fin-kpi-cmp">{ov.prevLabel}</span>
             </div>
-            <div className="fin-kpi-spark" title="Заливка — поточний період; риска — попередній">
-              <BulletBar cur={k.cur} prev={k.prev} prevLabel={k.prevFmt} color={k.color} />
+            <div className="fin-kpi-spark" title="Останні 6 місяців; кольоровий — поточний">
+              <MonthBars values={k.months} labels={ov.monthly.labels} color={k.color} format={k.mFmt} />
             </div>
             <div className="fin-hint">{k.hint}</div>
           </div>

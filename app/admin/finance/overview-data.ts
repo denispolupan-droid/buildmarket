@@ -31,6 +31,16 @@ export type OverviewData = {
     orders: KpiSeries;    // к-ть замовлень (когорта періоду, без скасованих)
     avgCheck: { value: number | null; prev: number | null };
   };
+  /* Останні 6 місяців (старіший → поточний) для стовпчиків у KPI-картках —
+     не залежить від обраного пресета періоду */
+  monthly: {
+    labels: string[];
+    revenue: number[];
+    profit: number[];
+    orders: number[];
+    margin: (number | null)[];
+    avgCheck: (number | null)[];
+  };
   funnel: { label: string; count: number; amount: number }[];
   conversion: number | null;           // створено → доставлено, %
   accounts: { monobank: number; novapay: number; cash: number; total: number };
@@ -111,7 +121,17 @@ export async function getOverview(p?: string): Promise<OverviewData & { preset: 
   }
   const prevDayIdx = new Map(prevDays.map((d, i) => [d, i]));
 
-  const [ledgerRows, orderRows, balRows, arRows, agingRows, apRows, lowStockRows, attnRows, promBal, rozetkaBal, todayRows, payToday] = await Promise.all([
+  // Вікно помісячних стовпчиків: 6 календарних місяців включно з поточним
+  const monthlyFrom = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const monthlyFromStr = dstr(monthlyFrom);
+  const monthlyFromIso = monthlyFrom.toISOString();
+  const monthKeys: string[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+
+  const [ledgerRows, orderRows, balRows, arRows, agingRows, apRows, lowStockRows, attnRows, promBal, rozetkaBal, todayRows, monthlyLedger, monthlyOrders, payToday] = await Promise.all([
     // 1. Леджер за поточний + попередній період (для дельт) — щоденні ряди
     fetchAllRows<{ business_date: string; account_type: string; doc_type: string | null; amount: number }>((f, t) => {
       let q = db.from('money_entries')
@@ -152,6 +172,20 @@ export async function getOverview(p?: string): Promise<OverviewData & { preset: 
     db.from('orders').select('total_price, created_at, shipped_at, status')
       .or(`created_at.gte.${today.iso},shipped_at.gte.${today.iso}`)
       .then(r => r.data ?? []),
+    // Помісячні агрегати за 6 місяців (для стовпчиків KPI) — окремо від
+    // періодних вибірок, щоб не залежати від пресета
+    fetchAllRows<{ business_date: string; account_type: string; doc_type: string | null; amount: number }>((f, t) => db
+      .from('money_entries')
+      .select('business_date, account_type, doc_type, amount')
+      .in('account_type', ['revenue', 'cogs', 'marketplace_fee', 'logistics'])
+      .gte('business_date', monthlyFromStr)
+      .range(f, t)),
+    fetchAllRows<{ created_at: string; total_price: number }>((f, t) => db
+      .from('orders')
+      .select('created_at, total_price')
+      .neq('status', 'cancelled')
+      .gte('created_at', monthlyFromIso)
+      .range(f, t)),
     // 9. Оплати клієнтів сьогодні (кредит рахунку customer)
     db.from('money_entries')
       .select('amount, txn_id')
@@ -292,6 +326,36 @@ export async function getOverview(p?: string): Promise<OverviewData & { preset: 
 
   const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 1000) / 10 : null);
 
+  // ── Помісячні агрегати (6 міс.) для стовпчиків KPI ─────────────────────────
+  const mIdx = new Map(monthKeys.map((k, i) => [k, i]));
+  const mRev = new Array(6).fill(0), mCogs = new Array(6).fill(0), mFee = new Array(6).fill(0), mDeliv = new Array(6).fill(0);
+  for (const r of monthlyLedger) {
+    const i = mIdx.get(r.business_date.slice(0, 7));
+    if (i === undefined) continue;
+    const amt = Number(r.amount);
+    if (r.account_type === 'revenue') mRev[i] += -amt;
+    else if (r.account_type === 'cogs') mCogs[i] += amt;
+    else if (r.account_type === 'marketplace_fee') mFee[i] += amt;
+    else if (r.account_type === 'logistics' && r.doc_type === 'delivery_cost') mDeliv[i] += amt;
+  }
+  const mProfit = mRev.map((v, i) => v - mCogs[i] - mFee[i] - mDeliv[i]);
+  const mOrd = new Array(6).fill(0), mOrdSum = new Array(6).fill(0);
+  for (const o of monthlyOrders) {
+    // created_at → київський місяць
+    const key = new Date(o.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/Kyiv' }).slice(0, 7);
+    const i = mIdx.get(key);
+    if (i === undefined) continue;
+    mOrd[i] += 1; mOrdSum[i] += Number(o.total_price ?? 0);
+  }
+  const monthly = {
+    labels: monthKeys.map(k => UA_MONTHS[Number(k.slice(5, 7)) - 1]),
+    revenue: mRev,
+    profit: mProfit,
+    orders: mOrd,
+    margin: mRev.map((v, i) => pct(mProfit[i], v)),
+    avgCheck: mOrd.map((n, i) => (n > 0 ? Math.round(mOrdSum[i] / n) : null)),
+  };
+
   return {
     preset, periodLabel,
     prevLabel: 'до попереднього періоду',
@@ -308,6 +372,7 @@ export async function getOverview(p?: string): Promise<OverviewData & { preset: 
         prev:  prevOrders.length ? Math.round(sum(prevOrders) / prevOrders.length) : null,
       },
     },
+    monthly,
     funnel, conversion,
     accounts,
     mp: { prom: promBal, rozetka: rozetkaBal },
