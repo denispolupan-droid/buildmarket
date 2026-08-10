@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { resolveDeliverySubtype } from '../../../lib/np-postomat';
 import { X, Search, MapPin, Loader2, Package, CreditCard, Truck, Banknote } from 'lucide-react';
 
 type Settlement = { Ref: string; Present: string; MainDescription: string; Area: string; RegionsDescription: string };
@@ -98,9 +99,15 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
 
   // У БД адресна доставка зберігається як 'address' (Prom/Rozetka) або 'courier'/'doors' —
   // усе це модалка трактує як кур'єрську доставку до дверей.
+  // Тип видачі беремо не лише з поля: Prom не розрізняє поштомат і відділення —
+  // обидва приїжджають як 'warehouse', а «Поштомат №8771» лишається тільки в
+  // тексті адреси. Модалка через це відкривалась на вкладці «Відділення», і
+  // накладну виписували не туди, куди замовляв покупець. Перевірка тексту
+  // рятує і старі замовлення в базі — без переімпорту.
+  const resolvedSubtype = resolveDeliverySubtype(order.delivery_subtype, order.delivery_address);
   const initialSubtype: 'warehouse' | 'postomat' | 'courier' =
-    order.delivery_subtype === 'postomat' ? 'postomat'
-    : (order.delivery_subtype === 'courier' || order.delivery_subtype === 'address' || order.delivery_subtype === 'doors') ? 'courier'
+    resolvedSubtype === 'postomat' ? 'postomat'
+    : (resolvedSubtype === 'courier' || resolvedSubtype === 'address' || resolvedSubtype === 'doors') ? 'courier'
     : 'warehouse';
   const [deliverySubtype, setDeliverySubtype] = useState<'warehouse' | 'postomat' | 'courier'>(initialSubtype);
   const isPostomat = deliverySubtype === 'postomat';

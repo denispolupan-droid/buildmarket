@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { resolveDeliverySubtype } from './np-postomat';
 
 const PROM_BASE = 'https://my.prom.ua/api/v1';
 
@@ -308,7 +309,10 @@ export function promOrderToOurFormat(order: PromOrder) {
     phone:            rcp?.phone ?? order.phone ?? order.client_phone ?? '',
     email:            order.email ?? order.client_email ?? '',
     delivery_type:    deliveryType,
-    delivery_subtype: deliverySubtype,
+    // Prom не розрізняє поштомат і відділення — обидва приїжджають як
+    // «warehouse», а слово «Поштомат» лишається тільки в рядку адреси. Через це
+    // накладну виписували на відділення, куди покупець не замовляв.
+    delivery_subtype: resolveDeliverySubtype(deliverySubtype, deliveryAddress),
     delivery_address: deliveryAddress,
     delivery_city_ref:      deliveryCityRef,
     delivery_city_name:     deliveryCityName,
