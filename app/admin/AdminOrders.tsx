@@ -1285,6 +1285,45 @@ export default function AdminOrders({
     setTtnSaving(null);
   }
 
+  /**
+   * Заміна номера у вже виписаній накладній. Окремо від saveTTN, бо це інша
+   * операція: разом із номером сервер скидає стан старої посилки (статус
+   * перевізника, приймання, дату відправки) і переписує номер у непроведеній РН.
+   * Стару накладну в НП це не чіпає — якщо вона жива, її треба видалити кошиком
+   * до заміни, інакше в кабінеті лишиться зайва посилка.
+   */
+  async function replaceTTN(id: string) {
+    const order = orders.find(o => o.id === id);
+    const next = (ttnValues[id] ?? '').trim();
+    if (!order || !next) return;
+    const ok = await showConfirm(
+      `Замінити ТТН ${order.tracking_number} → ${next}?\n\n` +
+      'Статус перевізника і дата відправки будуть скинуті під нову посилку, номер оновиться в накладній обліку та поїде в кабінет маркетплейсу.\n\n' +
+      'Стару накладну в Новій Пошті це НЕ видаляє.',
+      { confirmLabel: 'Замінити' },
+    );
+    if (!ok) return;
+
+    setTtnSaving(id);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}/replace-ttn`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ttn: next }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(`Помилка: ${data.error}`); return; }
+      setOrders(prev => prev.map(o => o.id === id
+        ? { ...o, tracking_number: next, carrier_status_text: null, carrier_accepted_at: null }
+        : o));
+      showToast(data.pushErrors?.length
+        ? `ТТН замінено, але кабінет не оновився: ${data.pushErrors.join('; ')}`
+        : 'ТТН замінено і передано в кабінет');
+    } finally {
+      setTtnSaving(null);
+    }
+  }
+
   async function addToRegistry(orderId: string, ttn: string) {
     if (registryAdded.has(ttn)) return;
     setRegistryAdding(orderId);
@@ -3486,11 +3525,24 @@ export default function AdminOrders({
                               placeholder="59000000000000"
                               style={{ width: '100%', height: '32px', paddingLeft: '26px', paddingRight: '8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
                           </div>
-                          <button onClick={() => saveTTN(order.id)} disabled={ttnSaving === order.id || !!order.tracking_number}
-                            title="Зберегти ТТН" className="oc-ttn-save"
-                            style={{ height: '32px', padding: '0 12px', borderRadius: '7px', background: '#1E3A5F', color: '#fff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: (ttnSaving === order.id || !!order.tracking_number) ? 'default' : 'pointer', opacity: (ttnSaving === order.id || !!order.tracking_number) ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', flexShrink: 0 }}>
-                            {ttnSaving === order.id ? '...' : <><Save size={14} className="oc-only-m" /><span className="oc-hide-m">Зберегти</span></>}
-                          </button>
+                          {(() => {
+                            // Кнопка одна, робіт дві: поки ТТН немає — «Зберегти»,
+                            // коли номер уже виписаний і в полі стоїть інший —
+                            // «Замінити» (постачальник не передав посилку, накладну
+                            // перевиписали). Раніше при наявній ТТН кнопка була
+                            // мертва, і замінити номер було нічим.
+                            const typed = (ttnValues[order.id] ?? '').trim();
+                            const isReplace = !!order.tracking_number && !!typed && typed !== order.tracking_number;
+                            const busy = ttnSaving === order.id;
+                            const disabled = busy || !typed || (!!order.tracking_number && !isReplace);
+                            return (
+                              <button onClick={() => (isReplace ? replaceTTN(order.id) : saveTTN(order.id))} disabled={disabled}
+                                title={isReplace ? 'Замінити ТТН на нову' : 'Зберегти ТТН'} className="oc-ttn-save"
+                                style={{ height: '32px', padding: '0 12px', borderRadius: '7px', background: isReplace ? '#B45309' : '#1E3A5F', color: '#fff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', flexShrink: 0 }}>
+                                {busy ? '...' : <><Save size={14} className="oc-only-m" /><span className="oc-hide-m">{isReplace ? 'Замінити' : 'Зберегти'}</span></>}
+                              </button>
+                            );
+                          })()}
                           {(() => {
                             const hasTtn = !!order.tracking_number;
                             return (
@@ -3776,6 +3828,10 @@ export default function AdminOrders({
                       shipped:        { icon: '📦', label: 'Відправлено' },
                       delivered:      { icon: '🏠', label: 'Доставлено' },
                       cancelled:      { icon: '❌', label: 'Скасовано' },
+                      // Не статус замовлення, а подія в його житті: накладну
+                      // перевиписали. У таймлайні вона важлива — інакше зміна
+                      // номера й дати відправки виглядає як загадка.
+                      ttn_replaced:   { icon: '🔁', label: 'ТТН замінено' },
                     };
                     const RANK: Record<string, number> = {
                       new: 0, confirmed: 1, awaiting_stock: 2, picking: 3, shipped: 4, delivered: 5,
