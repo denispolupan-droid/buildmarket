@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -40,6 +41,9 @@ export async function PATCH(req: NextRequest) {
 
     const { error } = await db.from('product_stock').update(update).in('sku', skus);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    // Ціни на вітрині живуть у кеші з тегом 'products'. Без скидання нова ціна
+    // з'являлась лише коли протухне TTL — до хвилини після збереження.
+    revalidateTag('products', 'max');
     return NextResponse.json({ ok: true, updated: skus.length });
   }
 
@@ -71,6 +75,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (errors.length > 0) return NextResponse.json({ error: errors.join('; ') }, { status: 500 });
+    revalidateTag('products', 'max');
     return NextResponse.json({ ok: true, updated: batch.length });
   }
 

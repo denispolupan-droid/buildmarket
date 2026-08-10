@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { createDocument, confirmDocument, maybeAutoClose } from '../../../../../../lib/accounting/documents';
@@ -258,6 +259,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       });
     }
   }
+
+  // Прихід міняє залишки і собівартість, а вітрина читає їх із кешу з тегом
+  // 'products'. Без скидання товар ще до хвилини після оприбуткування показувався
+  // як «немає в наявності».
+  revalidateTag('products', 'max');
 
   return NextResponse.json({ ok: true, receiptId: receipt.id, draft: false });
 }
