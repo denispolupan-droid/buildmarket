@@ -22,6 +22,7 @@ type FulfillmentData = OrderFulfillmentInfo & {
 };
 import CreateTTNModal from '../components/admin/CreateTTNModal';
 import { phoneLocal, phoneLocalDigits } from '../../lib/notify/phone';
+import { storageDaysLeft, returnTrackingLabel, type ReturnTracking } from '../../lib/np-return-tracking';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { showConfirm } from '../../lib/confirm';
 import { showToast } from '../../lib/toast';
@@ -95,6 +96,7 @@ type Order = {
   mp_refund_status:   string | null;
   np_return_ref:      string | null;
   np_return_number:   string | null;
+  np_return_tracking: ReturnTracking | null;
   fulfillment_mode:   string | null;
   confirmed_at:       string | null;
   shipped_at:         string | null;
@@ -1952,7 +1954,13 @@ export default function AdminOrders({
                     ? { t: '↩ забрано', c: '#15803D', bg: '#F0FDF4', b: '#BBF7D0', title: 'Повернення забрано з пошти' }
                     : rs === 'abandoned'
                     ? { t: '↩ залишено', c: '#64748B', bg: '#F8FAFC', b: '#E2E8F0', title: 'Вирішено не забирати (повернення дорожче за товар)' }
-                    : { t: '↩ забрати?', c: '#C2410C', bg: '#FFF7ED', b: '#FDBA74', title: `Замовлення скасоване, але посилку вже прийняла ${isRzPickup ? 'Rozetka Доставка' : 'НП'} — вона їде назад${order.carrier_status_text ? ` (зараз: «${order.carrier_status_text}»)` : ''}. Відкрийте замовлення і вирішіть: забрати з пошти чи залишити.` };
+                    // «Зараз» беремо з руху ЗВОРОТНОЇ накладної, якщо він відомий:
+                    // статус старої після відмови застигає і про поточне місце
+                    // нічого не каже.
+                    : { t: '↩ забрати?', c: '#C2410C', bg: '#FFF7ED', b: '#FDBA74', title: `Замовлення скасоване, але посилку вже прийняла ${isRzPickup ? 'Rozetka Доставка' : 'НП'} — вона їде назад${
+                        order.np_return_tracking ? ` (зараз: ${returnTrackingLabel(order.np_return_tracking, new Date())})`
+                        : order.carrier_status_text ? ` (зараз: «${order.carrier_status_text}»)` : ''
+                      }. Відкрийте замовлення і вирішіть: забрати з пошти чи залишити.` };
                   return <span title={s.title} style={{ ...rowBadge, color: s.c, background: s.bg, borderColor: s.b }}>{s.t}</span>;
                 })()}
               </>
@@ -2366,6 +2374,27 @@ export default function AdminOrders({
                         <span style={{ fontWeight: 700 }}>↩ Замовлення скасоване, а посилка вже в дорозі назад</span>
                         {order.tracking_number && <span> · ТТН {order.tracking_number}</span>}
                         {order.carrier_status_text && <span> · {isRzPickup ? 'Rozetka' : 'НП'}: «{order.carrier_status_text}»</span>}
+                        {/* Де посилка ЗАРАЗ. Статус вище стосується накладної «туди»,
+                            яка після відмови застигає назавжди; назад посилка їде
+                            новою накладною, і саме її рух відповідає на питання
+                            «чи вже приїхала і скільки в мене часу її забрати». */}
+                        {(() => {
+                          const rt = order.np_return_tracking;
+                          if (!rt) return null;
+                          const days = storageDaysLeft(rt, new Date());
+                          const hot = days !== null && days <= 2;
+                          return (
+                            <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontWeight: 600 }}>
+                              <Truck size={13} style={{ flexShrink: 0 }} />
+                              <span>Зворотна ТТН {rt.ttn} · {returnTrackingLabel(rt, new Date())}</span>
+                              {hot && (
+                                <span style={{ fontSize: '11px', fontWeight: 700, padding: '1px 7px', borderRadius: '20px', color: '#B91C1C', background: '#FEF2F2', border: '1px solid #FCA5A5' }}>
+                                  {days < 0 ? 'зберігання вже платне' : days === 0 ? 'останній день' : `${days} дн до платного`}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap' }}>
                           {rs === null && <>
                             <span>Посилка повертається {isRzPickup ? 'у наше відділення відправлення' : 'на відділення'}. Вирішіть:</span>

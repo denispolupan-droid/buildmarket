@@ -4,6 +4,7 @@ import { setRozetkaOrderStatus, getRozetkaOrderStatusInfo } from './rozetka-api'
 import { ROZETKA_DELIVERY_TYPE } from './rozetka-delivery';
 import { rozetkaDeliveryPhase } from './rozetka-delivery-status';
 import { groupByTracking } from './delivery-tracking';
+import { pickReturnTtn, buildReturnTracking } from './np-return-tracking';
 import { completeShipmentByTtn, allOrderSalesPosted, settleLegacyCommission } from './accounting/completion';
 import { recordTxn } from './accounting/money';
 import { notifyCustomer } from './notify/send';
@@ -86,6 +87,11 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
   const ordersByTtn = groupByTracking(npOrders);
   const ttns = [...ordersByTtn.keys()];
 
+  // Номер зворотної накладної → замовлення, яких вона стосується. Збираємо в
+  // основному циклі, а трекаємо одним запитом після нього: окремих накладних
+  // мало, а зайвий виклик на кожну — зайва секунда в кроні.
+  const returnTtnOrders = new Map<string, string[]>();
+
   for (let i = 0; i < ttns.length; i += CHUNK) {
     const ttnChunk = ttns.slice(i, i + CHUNK);
     const chunk = ttnChunk.flatMap(t => ordersByTtn.get(t) ?? []);
@@ -139,6 +145,16 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
             .in('id', docOrders.map(o => o.id)),
         );
       }
+
+      // Посилка, яку не забрали, їде назад НЕ цією накладною: НП створює нову «на
+      // підставі» (CargoReturn), а стара назавжди застигає у «Відмова від
+      // отримання». Запам'ятовуємо номер зворотної — рух саме по ній відповідає
+      // на питання «де посилка зараз».
+      const returnTtn = pickReturnTtn(doc);
+      if (returnTtn) returnTtnOrders.set(returnTtn, [
+        ...(returnTtnOrders.get(returnTtn) ?? []),
+        ...docOrders.map(o => o.id),
+      ]);
 
       for (const order of docOrders) {
         // Скасовані відстежуємо ТІЛЬКИ заради тексту статусу (посилка їде назад).
@@ -255,6 +271,45 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
             console.error('[sync-delivery-status] rozetka status 3 push failed:', err),
           );
         }
+      }
+    }
+  }
+
+  // ── Де зараз посилка, що їде назад ───────────────────────────────────────
+  // Стара накладна після відмови застигла, тому питаємо рух зворотної. Разом із
+  // місцем зберігаємо дату, до якої зберігання безкоштовне: після неї НП починає
+  // рахувати гроші, а забуте повернення дорожчає мовчки.
+  if (returnTtnOrders.size) {
+    const returnTtns = [...returnTtnOrders.keys()];
+    for (let i = 0; i < returnTtns.length; i += CHUNK) {
+      const part = returnTtns.slice(i, i + CHUNK);
+      try {
+        const res = await fetch('https://api.novaposhta.ua/v2.0/json/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            apiKey: process.env.NOVA_POSHTA_API_KEY,
+            modelName: 'TrackingDocument',
+            calledMethod: 'getStatusDocuments',
+            methodProperties: { Documents: part.map(n => ({ DocumentNumber: n })) },
+          }),
+        });
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (!data.success) continue;
+        const now = new Date().toISOString();
+        for (const doc of (data.data ?? [])) {
+          const ids = returnTtnOrders.get(String(doc.Number));
+          if (!ids?.length) continue;
+          const tracking = buildReturnTracking(doc, now);
+          if (!tracking) continue;
+          await serviceClient
+            .from('orders')
+            .update({ np_return_tracking: tracking, np_return_ttn: tracking.ttn })
+            .in('id', ids);
+        }
+      } catch (err) {
+        console.error('[sync-delivery-status] return tracking failed:', err);
       }
     }
   }
