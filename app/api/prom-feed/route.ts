@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/db-paginate';
 import { promPrice, promPriceFromBase, resolveMarkup, promCommissionOf, type PromPlan } from '@/lib/marketplace-pricing';
+import { mpDescription, mpDescriptionRu } from '@/lib/marketplace-description';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -295,7 +296,7 @@ export async function GET(request: NextRequest) {
       // ВАЖЛИВО: вимкнені (on_prom=false) товари НЕ прибираємо з фіда, а віддаємо з
       // available="false" + залишком 0 — зникнення оффера з фіда Prom трактує як «немає
       // даних» і лишає оголошення в останньому стані. Фід — єдине джерело правди.
-      .select('sku, name, name_ru, brand, category_slug, volume, description, description_full, description_ru, description_full_ru, image, keywords, keywords_ru, min_order, prom_portal_url, prom_markup_pct, on_prom')
+      .select('sku, name, name_ru, brand, category_slug, volume, description, description_full, description_ru, description_full_ru, description_mp, description_mp_ru, image, keywords, keywords_ru, min_order, prom_portal_url, prom_markup_pct, on_prom')
       .eq('is_active', true)
       .order('sort_order')
       .range(f, t)),
@@ -431,16 +432,12 @@ export async function GET(request: NextRequest) {
       const fullNameRu = nameRu ? promName(nameRu) : null;
 
       // ── Descriptions ───────────────────────────────────────────────────────
-      // Ukrainian: prefer full text, fall back to short
-      const descUk = x(
-        (p as { description_full?: string | null }).description_full
-        ?? p.description
-        ?? `${p.brand} ${p.name} — будівельна хімія.`,
-      );
+      // Власний текст для маркетплейсу (див. lib/marketplace-description): на
+      // сайті лишається повний опис, сюди йде інший — щоб сторінки не були
+      // дублями одна одної. Фолбэк — повний, поки MP-опис не згенеровано.
+      const descUk = x(mpDescription(p) || `${p.brand} ${p.name} — будівельна хімія.`);
       // Russian: our translated text stops Prom's auto-translation from overwriting it
-      const descRuSource = (p as { description_full_ru?: string | null }).description_full_ru
-        ?? (p as { description_ru?: string | null }).description_ru
-        ?? null;
+      const descRuSource = mpDescriptionRu(p) || null;
       const descRu = descRuSource ? x(descRuSource) : null;
 
       const img = imageUrl(p);

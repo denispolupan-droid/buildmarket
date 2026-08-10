@@ -4,6 +4,7 @@ import { formatForRozetka, toRozetkaVolume } from '../../../../lib/rozetka-name'
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { getSmartTariff } from '../../../../lib/rozetka-smart';
 import { rozetkaPrice } from '../../../../lib/marketplace-pricing';
+import { mpDescription, mpDescriptionRu } from '../../../../lib/marketplace-description';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://fixline.com.ua';
 const SHOP_NAME = 'Fixline';
@@ -37,6 +38,7 @@ export async function GET() {
     image: string | null; color: string | null; volume: string | null;
     description: string | null; description_full: string | null;
     description_ru: string | null; description_full_ru: string | null;
+    description_mp: string | null; description_mp_ru: string | null;
     stock: Stock | Stock[] | null;
     characteristics: Char[] | null;
   };
@@ -55,6 +57,7 @@ export async function GET() {
       sku, name, rozetka_name, brand, category_slug, image, color, volume,
       on_rozetka, rozetka_markup_pct, rozetka_smart,
       description, description_full, description_ru, description_full_ru,
+      description_mp, description_mp_ru,
       stock:product_stock(price_retail, price_cost, price_old, stock_qty, stock_status),
       characteristics:product_characteristics(label, value, sort_order)
     `).eq('is_active', true).order('sort_order').range(from, to)),
@@ -133,8 +136,12 @@ export async function GET() {
       : null;
 
     const productUrl = `${SITE_URL}/shop/${p.category_slug}`;
-    const descUa = p.description_full || p.description || '';
-    const descRu = p.description_full_ru || p.description_ru || '';
+    // Опис для маркетплейсу — власний, не той, що на сайті: однаковий текст
+    // Google склеює й показує авторитетнішу сторінку (їхню), а хвіст про магазин
+    // і доставку Rozetka блокує як згадку стороннього ресурсу. Поки MP-опису в
+    // товара немає — віддаємо повний, бо картка без тексту гірша за дубль.
+    const descUa = mpDescription(p);
+    const descRu = mpDescriptionRu(p);
 
     const chars: Char[] = [...(p.characteristics || [])]
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
