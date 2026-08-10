@@ -16,7 +16,7 @@ const db = createClient(
 
 export type Preset = 'cur_month' | 'prev_month' | 'quarter' | 'ytd';
 
-export type KpiSeries = { value: number; prev: number | null; daily: number[] };
+export type KpiSeries = { value: number; prev: number | null; daily: number[]; prevDaily: number[] };
 
 export type OverviewData = {
   periodLabel: string;
@@ -103,6 +103,13 @@ export async function getOverview(p?: string): Promise<OverviewData & { preset: 
     if (days.length > 370) break;
   }
   const dayIdx = new Map(days.map((d, i) => [d, i]));
+  // Дні попереднього періоду — для «привида» в спарклайнах (накопичення)
+  const prevDays: string[] = [];
+  for (let d = new Date(prevFrom); d < periodFrom; d.setDate(d.getDate() + 1)) {
+    prevDays.push(dstr(d));
+    if (prevDays.length > 370) break;
+  }
+  const prevDayIdx = new Map(prevDays.map((d, i) => [d, i]));
 
   const [ledgerRows, orderRows, balRows, arRows, agingRows, apRows, lowStockRows, attnRows, promBal, rozetkaBal, todayRows, payToday] = await Promise.all([
     // 1. Леджер за поточний + попередній період (для дельт) — щоденні ряди
@@ -158,6 +165,8 @@ export async function getOverview(p?: string): Promise<OverviewData & { preset: 
   // ── Леджер: щоденні ряди поточного періоду + суми попереднього ────────────
   const revDaily = new Array(days.length).fill(0);
   const profDaily = new Array(days.length).fill(0);
+  const prevRevDaily = new Array(prevDays.length).fill(0);
+  const prevProfDaily = new Array(prevDays.length).fill(0);
   let curRev = 0, curCogs = 0, curFee = 0, curDeliv = 0;
   let prevRev = 0, prevCogs = 0, prevFee = 0, prevDeliv = 0;
   for (const r of ledgerRows) {
@@ -179,6 +188,8 @@ export async function getOverview(p?: string): Promise<OverviewData & { preset: 
       if (r.account_type === 'cogs') prevCogs += amt;
       else if (r.account_type === 'marketplace_fee') prevFee += amt;
       else if (isDeliveryCost) prevDeliv += amt;
+      const i = prevDayIdx.get(r.business_date);
+      if (i !== undefined) { prevRevDaily[i] += rev; prevProfDaily[i] += rev - cost; }
     }
   }
   const curProfit  = curRev - curCogs - curFee - curDeliv;
@@ -192,6 +203,11 @@ export async function getOverview(p?: string): Promise<OverviewData & { preset: 
   for (const o of curOrders) {
     const i = dayIdx.get(String(o.created_at).slice(0, 10));
     if (i !== undefined) ordDaily[i] += 1;
+  }
+  const prevOrdDaily = new Array(prevDays.length).fill(0);
+  for (const o of prevOrders) {
+    const i = prevDayIdx.get(String(o.created_at).slice(0, 10));
+    if (i !== undefined) prevOrdDaily[i] += 1;
   }
   const sum = (arr: { total_price: number }[]) => arr.reduce((s, o) => s + Number(o.total_price ?? 0), 0);
   const curOrdSum = sum(curOrders);
@@ -283,10 +299,10 @@ export async function getOverview(p?: string): Promise<OverviewData & { preset: 
     to: dstr(periodTo ? new Date(periodTo.getTime() - 86400000) : now),
     dayLabels: days.map(d => String(Number(d.slice(8, 10)))),
     kpi: {
-      revenue:  { value: curRev, prev: prevRev, daily: revDaily },
-      profit:   { value: curProfit, prev: prevProfit, daily: profDaily },
+      revenue:  { value: curRev, prev: prevRev, daily: revDaily, prevDaily: prevRevDaily },
+      profit:   { value: curProfit, prev: prevProfit, daily: profDaily, prevDaily: prevProfDaily },
       margin:   { value: pct(curProfit, curRev), prev: pct(prevProfit, prevRev) },
-      orders:   { value: curOrders.length, prev: prevOrders.length, daily: ordDaily },
+      orders:   { value: curOrders.length, prev: prevOrders.length, daily: ordDaily, prevDaily: prevOrdDaily },
       avgCheck: {
         value: curOrders.length ? Math.round(curOrdSum / curOrders.length) : null,
         prev:  prevOrders.length ? Math.round(sum(prevOrders) / prevOrders.length) : null,

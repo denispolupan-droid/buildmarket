@@ -13,24 +13,51 @@ function scale(data: number[], w: number, h: number, pad = 2): string {
     .join(' ');
 }
 
-export function Sparkline({ data, color = 'var(--brand-blue)', id }: { data: number[]; color?: string; id: string }) {
-  const w = 130, h = 38;
-  if (data.length < 2 || data.every(v => v === 0)) {
+/**
+ * Спарклайн-накопичення: кольорова лінія — накопичений підсумок поточного
+ * періоду, сірий пунктир-«привид» — накопичення попереднього періоду тієї ж
+ * довжини. Одна шкала і спільна вісь днів: одразу видно темп проти минулого
+ * періоду і де ми зараз (крапка на кінці). Щоденні «пилки» тут нечитабельні —
+ * тому саме накопичення (рішення власника: «графіки в картках неінформативні»).
+ */
+export function Sparkline({ data, prevData = [], color = 'var(--brand-blue)', id }: { data: number[]; prevData?: number[]; color?: string; id: string }) {
+  const w = 150, h = 44, pad = 3;
+  const cum = (arr: number[]) => { let s = 0; return arr.map(v => (s += v)); };
+  const a = cum(data);
+  const b = cum(prevData);
+  const aTotal = a.length ? a[a.length - 1] : 0;
+  const bTotal = b.length ? b[b.length - 1] : 0;
+  if ((a.length < 2 || aTotal === 0) && (b.length < 2 || bTotal === 0)) {
     return <svg width={w} height={h} aria-hidden="true"><line x1="2" y1={h - 6} x2={w - 2} y2={h - 6} stroke="var(--border)" strokeWidth="1.5" /></svg>;
   }
-  const pts = scale(data, w, h);
-  const first = pts.split(' ')[0];
-  const last = pts.split(' ').pop();
+  // Спільна вісь X (довжина періодів) і спільна шкала Y
+  const n = Math.max(a.length, b.length, 2);
+  const max = Math.max(aTotal, bTotal, 1);
+  const min = Math.min(0, ...a, ...b);
+  const span = max - min || 1;
+  const x = (i: number) => pad + (i / (n - 1)) * (w - pad * 2);
+  const y = (v: number) => h - pad - ((v - min) / span) * (h - pad * 2);
+  const line = (arr: number[]) => arr.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const lastX = a.length ? x(a.length - 1) : pad;
+  const lastY = a.length ? y(a[a.length - 1]) : h - pad;
   return (
     <svg width={w} height={h} aria-hidden="true">
       <defs>
         <linearGradient id={`sp-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.22" />
+          <stop offset="0%" stopColor={color} stopOpacity="0.16" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
-      <polygon points={`${first!.split(',')[0]},${h} ${pts} ${last!.split(',')[0]},${h}`} fill={`url(#sp-${id})`} />
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+      {b.length > 1 && (
+        <polyline points={line(b)} fill="none" stroke="var(--border)" strokeWidth="1.6" strokeDasharray="3 3" strokeLinejoin="round" />
+      )}
+      {a.length > 1 && (
+        <>
+          <polygon points={`${x(0)},${h - pad} ${line(a)} ${lastX},${h - pad}`} fill={`url(#sp-${id})`} />
+          <polyline points={line(a)} fill="none" stroke={color} strokeWidth="1.9" strokeLinejoin="round" strokeLinecap="round" />
+          <circle cx={lastX} cy={lastY} r="2.6" fill={color} />
+        </>
+      )}
     </svg>
   );
 }

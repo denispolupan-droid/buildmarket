@@ -89,17 +89,17 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
       {/* KPI */}
       <div className="fin-kpi-row">
         {([
-          { key: 'rev',  label: 'Виручка · факт',  value: `${fmt(ov.kpi.revenue.value)} ₴`, cur: ov.kpi.revenue.value, prev: ov.kpi.revenue.prev, daily: ov.kpi.revenue.daily, color: 'var(--brand-blue)',
+          { key: 'rev',  label: 'Виручка · факт',  value: `${fmt(ov.kpi.revenue.value)} ₴`, cur: ov.kpi.revenue.value, prev: ov.kpi.revenue.prev, daily: ov.kpi.revenue.daily, prevDaily: ov.kpi.revenue.prevDaily, color: 'var(--brand-blue)',
             hint: 'Проведені продажі з обліку: фіксується в момент доставки замовлення' },
-          { key: 'prof', label: 'Валовий прибуток', value: `${fmt(ov.kpi.profit.value)} ₴`, cur: ov.kpi.profit.value, prev: ov.kpi.profit.prev, daily: ov.kpi.profit.daily, color: '#15803D',
+          { key: 'prof', label: 'Валовий прибуток', value: `${fmt(ov.kpi.profit.value)} ₴`, cur: ov.kpi.profit.value, prev: ov.kpi.profit.prev, daily: ov.kpi.profit.daily, prevDaily: ov.kpi.profit.prevDaily, color: '#15803D',
             hint: 'Виручка − собівартість (FIFO) − комісії МП − доставка НП за наш рахунок' },
           { key: 'mrg',  label: 'Маржа',            value: ov.kpi.margin.value === null ? '—' : `${ov.kpi.margin.value}%`, cur: ov.kpi.margin.value, prev: ov.kpi.margin.prev, pp: true,
             hint: 'Валовий прибуток ÷ виручка (факт, з доставлених)' },
-          { key: 'ord',  label: 'Замовлень',        value: fmt(ov.kpi.orders.value), cur: ov.kpi.orders.value, prev: ov.kpi.orders.prev, daily: ov.kpi.orders.daily, color: 'var(--brand-blue)',
+          { key: 'ord',  label: 'Замовлень',        value: fmt(ov.kpi.orders.value), cur: ov.kpi.orders.value, prev: ov.kpi.orders.prev, daily: ov.kpi.orders.daily, prevDaily: ov.kpi.orders.prevDaily, color: 'var(--brand-blue)',
             hint: 'Створені за період, без скасованих — включно з ще не відвантаженими' },
           { key: 'chk',  label: 'Середній чек',     value: ov.kpi.avgCheck.value === null ? '—' : `${fmt(ov.kpi.avgCheck.value)} ₴`, cur: ov.kpi.avgCheck.value, prev: ov.kpi.avgCheck.prev,
             hint: 'Сума створених замовлень ÷ їх кількість (оцінка до доставки)' },
-        ] as { key: string; label: string; value: string; cur: number | null; prev: number | null; daily?: number[]; color?: string; pp?: boolean; hint: string }[]).map(k => (
+        ] as { key: string; label: string; value: string; cur: number | null; prev: number | null; daily?: number[]; prevDaily?: number[]; color?: string; pp?: boolean; hint: string }[]).map(k => (
           <div key={k.key} className="fin-card fin-kpi">
             <div className="fin-kpi-label">{k.label}</div>
             <div className="fin-kpi-value">{k.value}</div>
@@ -108,7 +108,11 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
               <span className="fin-kpi-cmp">{ov.prevLabel}</span>
             </div>
             <div className="fin-hint">{k.hint}</div>
-            {k.daily && <div className="fin-kpi-spark"><Sparkline data={k.daily} color={k.color} id={k.key} /></div>}
+            {k.daily && (
+              <div className="fin-kpi-spark" title="Накопичення за період; сірий пунктир — попередній період">
+                <Sparkline data={k.daily} prevData={k.prevDaily} color={k.color} id={k.key} />
+              </div>
+            )}
           </div>
         ))}
       </div>
