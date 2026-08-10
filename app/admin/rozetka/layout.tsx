@@ -5,6 +5,7 @@ const TABS = [
   { href: '/admin/rozetka/products',    label: 'Товари'  },
   { href: '/admin/rozetka/commissions', label: 'Комісії' },
   { href: '/admin/rozetka/audit',       label: 'Аудит'   },
+  { href: '/admin/rozetka/moderation',  label: 'Модерація' },
 ];
 
 export default function RozetkaLayout({ children }: { children: React.ReactNode }) {
