@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/review-requests",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/rozetka-moderation-watch",
+      "schedule": "30 7 * * *"
     }
   ]
 }
