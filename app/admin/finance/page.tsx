@@ -105,7 +105,10 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
             <div className="fin-kpi-value">{k.value}</div>
             <div className="fin-kpi-foot">
               <TrendBadge cur={k.cur} prev={k.prev} pp={k.pp} />
-              <span className="fin-kpi-cmp">{ov.prevLabel}</span>
+              <span className="fin-kpi-cmp">
+                {/* для маржі «+N п.п.» неочевидно — показуємо, звідки куди */}
+                {k.pp && k.prev !== null && k.cur !== null ? `було ${k.prev}% → стало ${k.cur}%` : ov.prevLabel}
+              </span>
             </div>
             <div className="fin-kpi-spark" title="Останні 6 місяців; кольоровий — поточний">
               <MonthBars values={k.months} labels={ov.monthly.labels} color={k.color} format={k.mFmt} />
