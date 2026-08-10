@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
-import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../../lib/rozetka-api';
+import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, getRozetkaOrderStatusInfo } from '../../../../../../lib/rozetka-api';
 import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
 import { setPromTTN } from '../../../../../../lib/prom-api';
 
@@ -75,11 +75,21 @@ export async function POST(
     try {
       const rozStatus = ourStatusToRozetkaStatus('shipped');
       if (rozStatus) {
-        const cabinet = (order.rozetka_data ?? {}) as Record<string, unknown>;
-        await setRozetkaOrderStatusChained(order.rozetka_order_id as number, rozStatus, {
-          ttn,
-          currentStatus: typeof cabinet.status === 'number' ? cabinet.status : null,
-        });
+        // Статус беремо живий, а не з rozetka_data: коли накладну видаляють,
+        // Rozetka сама переводить замовлення в «Некоректна ТТН» (15), а в нашому
+        // кеші лишається старий. Саме на цьому пуш і мовчав — драбина будувалася
+        // від вигаданої точки.
+        const live = await getRozetkaOrderStatusInfo(order.rozetka_order_id as number).catch(() => null);
+        if (live?.ttn !== ttn) {
+          await setRozetkaOrderStatusChained(order.rozetka_order_id as number, rozStatus, {
+            ttn,
+            currentStatus: live?.status ?? null,
+            // Номер міняється при незмінному статусі — без цього прапорця пуш
+            // або пропускається, або тихо не доїжджає (PUT з тим самим статусом
+            // Rozetka приймає, але ТТН не оновлює).
+            forceTtn: true,
+          });
+        }
       }
     } catch (e) {
       pushErrors.push(`Rozetka: ${(e as Error).message}`);

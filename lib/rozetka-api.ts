@@ -272,20 +272,46 @@ function isStatusTransitionError(err: unknown): boolean {
 export async function setRozetkaOrderStatusChained(
   orderId: number,
   status: number,
-  opts?: { ttn?: string; comment?: string; currentStatus?: number | null },
+  opts?: { ttn?: string; comment?: string; currentStatus?: number | null; forceTtn?: boolean },
 ): Promise<void> {
   // Уже там, куди йдемо — пушити нічого. Найчастіший випадок повторного пушу.
-  if (opts?.currentStatus === status) return;
-  try {
-    await setRozetkaOrderStatus(orderId, status, opts);
-    return;
-  } catch (err) {
-    if (!isStatusTransitionError(err)) throw err;
+  // Виняток — forceTtn: коли міняється сам номер накладної, статус той самий, а
+  // доїхати номер мусить.
+  if (!opts?.forceTtn && opts?.currentStatus === status) return;
+
+  // PUT із ТИМ САМИМ статусом Rozetka приймає з success: true, але ТТН не міняє —
+  // мовчазний no-op (перевірено на замовленні 902549746). Тому коли треба саме
+  // перевиписати номер на поточному статусі, пряму спробу пропускаємо і одразу
+  // йдемо драбиною: вийти на 26 і повернутись — єдиний спосіб замінити ТТН.
+  const sameStatusTtnRewrite = opts?.forceTtn && opts?.currentStatus === status;
+  if (!sameStatusTtnRewrite) {
+    try {
+      await setRozetkaOrderStatus(orderId, status, opts);
+      return;
+    } catch (err) {
+      if (!isStatusTransitionError(err)) throw err;
+    }
+  }
+
+  {
+    // Кабінет міг піти далі без нас — наприклад, сам перевів замовлення в
+    // «Некоректна ТТН» (15), коли накладну видалили. Збережений у rozetka_data
+    // статус тоді бреше, сходинка драбини відсіюється як «назад», драбина
+    // лишається порожньою — і пуш падає, хоча шлях є. Тому питаємо живий статус.
+    let live: number | null = null;
+    try {
+      live = (await getRozetkaOrderStatusInfo(orderId))?.status ?? null;
+    } catch { /* кабінет міг не відповісти — тоді працюємо з тим, що передали */ }
+    const from = live ?? opts?.currentStatus ?? null;
+
     const ladder = [26, ...(opts?.ttn ? [61] : [])]
       .filter(s => s !== status)
       // Проміжний крок має вести ВПЕРЕД. Інакше «лікування» відкочує кабінет
       // назад — покупець бачить, що замовлення повернулося в обробку.
-      .filter(s => !isRozetkaBackwards(s, opts?.currentStatus));
+      // Виняток — заміна ТТН: там крок назад обов'язковий, іншого способу
+      // переписати номер Rozetka не дає.
+      .filter(s => opts?.forceTtn || !isRozetkaBackwards(s, from));
+    const err = new Error(`Rozetka: не вдалося перевести замовлення ${orderId} у статус ${status}`);
     let lastErr: unknown = err;
     for (const mid of ladder) {
       try {
