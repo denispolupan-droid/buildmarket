@@ -20,6 +20,14 @@ type Props = {
 
 const PAGE_SIZE = 100;
 
+// Колонки з грошима. nowrap обов'язковий: «141.5 ₴» переносило гривню на другий
+// рядок, і сусідні ціни ставали різної висоти — читалося як помилка даних.
+// Бокові відступи менші за решту таблиці, щоб виграна ширина пішла самим числам:
+// таблиця не має горизонтального скролу, зайве просто стиснулося б.
+const moneyCell: React.CSSProperties = {
+  padding: '12px 10px', textAlign: 'right', whiteSpace: 'nowrap',
+};
+
 // SEO-готовність товару: зелений — усе на місці, жовтий — контентні пробіли,
 // червоний — критично (немає опису або фото). Поріг тонкого опису — 800 симв.
 function seoGaps(p: ProductFull): string[] {
@@ -343,8 +351,11 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
       </div>
 
       {/* Table */}
-      <div style={{ background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+      {/* overflow-x: auto, а не hidden: у таблиці 15 колонок і ціни в один рядок,
+          тож на вузькому екрані вона ширша за контейнер. З hidden правий край
+          (статус, SEO, кнопка редагування) просто зникав без жодної підказки. */}
+      <div style={{ background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)', overflowX: 'auto', overflowY: 'hidden' }}>
+        <table style={{ width: '100%', minWidth: '1100px', borderCollapse: 'collapse', fontSize: '14px' }}>
           <thead>
             <tr style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)' }}>
               <th style={{ padding: '12px 12px 12px 16px', width: 36 }}>
@@ -355,13 +366,16 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
                   style={{ cursor: 'pointer', width: 15, height: 15 }}
                 />
               </th>
+              {/* Фото без підпису: колонка впізнається сама, а слово «Фото» над
+                  мініатюрами лише з'їдало б ширину в і без того щільній таблиці. */}
+              <th style={{ padding: '12px 0 12px 4px', width: 52 }} />
               <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>SKU</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Назва</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Бренд</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Категорія</th>
-              <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Опт</th>
-              <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Роздріб</th>
-              <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Дроп</th>
+              <th style={{ ...moneyCell, fontWeight: 600, color: 'var(--text-secondary)' }}>Опт</th>
+              <th style={{ ...moneyCell, fontWeight: 600, color: 'var(--text-secondary)' }}>Роздріб</th>
+              <th style={{ ...moneyCell, fontWeight: 600, color: 'var(--text-secondary)' }}>Дроп</th>
               <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Залишок</th>
               <th title="Хіт" style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)', width: 44 }}>🔥</th>
               <th title="Новинка" style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)', width: 44 }}>✨</th>
@@ -397,6 +411,22 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
                       style={{ cursor: 'pointer', width: 15, height: 15 }}
                     />
                   </td>
+                  {/* Мініатюра: у списку з 819 позицій назви сусідніх фасувань
+                      відрізняються трьома символами, а фото впізнається миттєво.
+                      Заразом видно товари без фото — це критичний SEO-пробіл. */}
+                  <td style={{ padding: '8px 0 8px 4px', width: 52 }}>
+                    <div
+                      title={p.image ? `${p.brand ?? ''} ${p.name}`.trim() : 'Немає фото'}
+                      style={{
+                        width: 40, height: 40, borderRadius: 8, flexShrink: 0,
+                        border: '1px solid var(--border-light)',
+                        background: p.image ? `#fff url("${p.image}") center/cover no-repeat` : 'var(--bg-soft)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                    >
+                      {!p.image && <ImageIcon size={15} color="var(--border)" />}
+                    </div>
+                  </td>
                   <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-secondary)' }}>
                     {p.sku}
                     {!isFilled && (
@@ -413,13 +443,13 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
                   <td style={{ padding: '12px 16px', color: 'var(--text-secondary)', fontSize: '13px' }}>
                     {categoryMap[p.category_slug ?? ''] ?? '—'}
                   </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  <td style={{ ...moneyCell, fontWeight: 600, color: 'var(--text-primary)' }}>
                     {p.stock?.price_unit ? `${p.stock.price_unit} ₴` : '—'}
                   </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  <td style={{ ...moneyCell, fontWeight: 600, color: 'var(--text-primary)' }}>
                     {p.stock?.price_retail ? `${p.stock.price_retail} ₴` : '—'}
                   </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--text-secondary)' }}>
+                  <td style={{ ...moneyCell, color: 'var(--text-secondary)' }}>
                     {p.stock?.price_drop ? `${p.stock.price_drop} ₴` : '—'}
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'right', color: p.stock?.stock_status === 'out_of_stock' ? '#EF4444' : p.stock?.stock_status === 'in_stock' ? '#475569' : '#94A3B8' }}>
