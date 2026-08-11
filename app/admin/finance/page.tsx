@@ -91,8 +91,8 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
       {/* KPI */}
       <div className="fin-kpi-row">
         {([
-          { key: 'rev',  label: 'Виручка · факт',  value: `${fmt(ov.kpi.revenue.value)} ₴`, cur: ov.kpi.revenue.value, prev: ov.kpi.revenue.prev, months: ov.monthly.revenue, mFmt: (v: number) => `${fmt(v)} ₴`, color: 'var(--brand-blue)',
-            hint: 'Проведені продажі з обліку: фіксується в момент доставки замовлення' },
+          { key: 'ordsum', label: 'Замовлення · сума', value: `${fmt(ov.kpi.orderSum.value)} ₴`, cur: ov.kpi.orderSum.value, prev: ov.kpi.orderSum.prev, months: ov.monthly.orderSum, mFmt: (v: number) => `${fmt(v)} ₴`, color: 'var(--brand-blue)',
+            hint: 'Усі підтверджені замовлення, створені за період (без нових і скасованих): в роботі, відвантажені й доставлені. Сума за цінами продажу.' },
           { key: 'prof', label: 'Валовий прибуток', value: `${fmt(ov.kpi.profit.value)} ₴`, cur: ov.kpi.profit.value, prev: ov.kpi.profit.prev, months: ov.monthly.profit, mFmt: (v: number) => `${fmt(v)} ₴`, color: '#15803D',
             hint: 'Виручка − собівартість (FIFO) − комісії МП − доставка НП за наш рахунок' },
           { key: 'mrg',  label: 'Маржа',            value: ov.kpi.margin.value === null ? '—' : `${ov.kpi.margin.value}%`, cur: ov.kpi.margin.value, prev: ov.kpi.margin.prev, months: ov.monthly.margin, mFmt: (v: number) => `${v}%`, pp: true,

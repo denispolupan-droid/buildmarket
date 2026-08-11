@@ -29,6 +29,7 @@ export type OverviewData = {
     profit: KpiSeries;    // валовий факт: revenue - cogs - fee - delivery
     margin: { value: number | null; prev: number | null };
     orders: KpiSeries;    // к-ть замовлень (когорта періоду, без скасованих)
+    orderSum: { value: number; prev: number };  // сума створених замовлень (оцінка до доставки)
     avgCheck: { value: number | null; prev: number | null };
   };
   /* Останні 6 місяців (старіший → поточний) для стовпчиків у KPI-картках —
@@ -38,6 +39,7 @@ export type OverviewData = {
     revenue: number[];
     profit: number[];
     orders: number[];
+    orderSum: number[];
     margin: (number | null)[];
     avgCheck: (number | null)[];
   };
@@ -367,6 +369,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     revenue: mRev,
     profit: mProfit,
     orders: mOrd,
+    orderSum: mOrdSum,
     margin: mRev.map((v, i) => pct(mProfit[i], v)),
     avgCheck: mOrd.map((n, i) => (n > 0 ? Math.round(mOrdSum[i] / n) : null)),
   };
@@ -481,6 +484,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       profit:   { value: curProfit, prev: prevProfit, daily: profDaily, prevDaily: prevProfDaily },
       margin:   { value: pct(curProfit, curRev), prev: pct(prevProfit, prevRev) },
       orders:   { value: curOrders.length, prev: prevOrders.length, daily: ordDaily, prevDaily: prevOrdDaily },
+      orderSum: { value: curOrdSum, prev: sum(prevOrders) },
       avgCheck: {
         value: curOrders.length ? Math.round(curOrdSum / curOrders.length) : null,
         prev:  prevOrders.length ? Math.round(sum(prevOrders) / prevOrders.length) : null,

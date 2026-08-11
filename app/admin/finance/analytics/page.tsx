@@ -86,26 +86,35 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   // Дашборд нижче — оперативна оцінка по замовленнях (вкл. невідвантажені).
   // Ця смужка — точні цифри з проведених документів, ті самі, що у «Звітах».
   const monthStartDate = monthStart.slice(0, 10);
+  // Вікно: попередній період + поточний — щоб картка «Виручка · факт» мала дельту
+  const prevFromDate = prevFrom.toISOString().slice(0, 10);
   let ledgerQuery = db
     .from('money_entries')
-    .select('account_type, amount, doc_type')
+    .select('account_type, amount, doc_type, business_date')
     .in('account_type', ['revenue', 'cogs', 'marketplace_fee', 'logistics'])
-    .gte('business_date', monthStartDate);
+    .gte('business_date', prevFromDate);
   if (periodTo) ledgerQuery = ledgerQuery.lt('business_date', periodTo.toISOString().slice(0, 10));
-  const { data: ledgerRows } = await ledgerQuery;
+  const { data: ledgerAllRows } = await ledgerQuery;
+  const ledgerRows     = (ledgerAllRows ?? []).filter(r => r.business_date >= monthStartDate);
+  const ledgerPrevRows = (ledgerAllRows ?? []).filter(r => r.business_date < monthStartDate);
 
   const ledgerSum = (type: string) =>
-    (ledgerRows ?? []).filter(r => r.account_type === type)
+    ledgerRows.filter(r => r.account_type === type)
       .reduce((s, r) => s + Number(r.amount), 0);
   const ledger = {
     revenue:    -ledgerSum('revenue'),        // кредитовий рахунок → знак мінус
     cogs:        ledgerSum('cogs'),
     commission:  ledgerSum('marketplace_fee'),
     // Доставка НП за наш рахунок (logistics ділиться з landed-cost закупівель → фільтр doc_type)
-    delivery:    (ledgerRows ?? []).filter(r => r.account_type === 'logistics' && r.doc_type === 'delivery_cost')
+    delivery:    ledgerRows.filter(r => r.account_type === 'logistics' && r.doc_type === 'delivery_cost')
                    .reduce((s, r) => s + Number(r.amount), 0),
   };
   const ledgerGross = ledger.revenue - ledger.cogs - ledger.commission - ledger.delivery;
+  const prevLedgerRevenue = -ledgerPrevRows.filter(r => r.account_type === 'revenue')
+    .reduce((s, r) => s + Number(r.amount), 0);
+  const revFactDelta = prevLedgerRevenue > 0
+    ? Math.round((ledger.revenue - prevLedgerRevenue) / prevLedgerRevenue * 100)
+    : null;
 
   // ── Факт по кожному замовленню з леджера: COGS (FIFO, нетто повернень) і комісія МП
   // (включно з доп. зборами типу «Дешева доставка Prom»). Це ті самі числа, що бачить
@@ -238,7 +247,6 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const cur = { revenue: sumRevenue(thisMonthRows), cost: sumCost(thisMonthRows), commission: sumCommission(thisMonthRows), margin: sumMargin(thisMonthRows), count: thisMonthRows.length };
   const prv = { revenue: sumRevenue(prevMonthRows), cost: sumCost(prevMonthRows), commission: sumCommission(prevMonthRows), margin: sumMargin(prevMonthRows), count: prevMonthRows.length };
 
-  const revDelta   = prv.revenue > 0 ? Math.round((cur.revenue - prv.revenue) / prv.revenue * 100) : null;
 
   // ── Воронка угод: знімок «зараз», незалежно від місяця створення ──────────
   // «В дорозі» — відвантажені, ще не доставлені: очікуваний прибуток і комісії
@@ -450,9 +458,9 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
         {[
           {
-            label: `Замовлення · ${curMonthLabel}`, value: `${fmt(cur.revenue)} ₴`, color: 'var(--text-primary)',
-            sub: `${cur.count} замовлень${revDelta !== null ? ` · ${revDelta >= 0 ? '+' : ''}${revDelta}% до попереднього періоду` : ''}`,
-            hint: 'Усі підтверджені замовлення, створені за період (без нових і скасованих): в роботі, відвантажені й доставлені. Сума за цінами продажу.',
+            label: `Виручка · факт · ${curMonthLabel}`, value: `${fmt(ledger.revenue)} ₴`, color: 'var(--text-primary)',
+            sub: revFactDelta !== null ? `${revFactDelta >= 0 ? '+' : ''}${revFactDelta}% до попереднього періоду` : 'попередній період без продажів',
+            hint: 'Проведені продажі з обліку: фіксується в момент доставки замовлення. Сума створених замовлень періоду — на «Огляді».',
           },
           {
             label: 'В роботі · зараз', value: `${fmt(inWork.margin)} ₴`, color: 'var(--text-primary)',
