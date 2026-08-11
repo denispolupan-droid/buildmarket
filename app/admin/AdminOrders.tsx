@@ -243,6 +243,26 @@ export default function AdminOrders({
   // Sync when server re-renders with new sort/filter
   useEffect(() => { setOrders(initialOrders); }, [initialOrders]);
 
+  // Повний текст у підказці для БУДЬ-ЯКОГО обрізаного рядка (…): один делегований
+  // обробник замість ручного title у кожній комірці — покриває й майбутні поля.
+  // Перевірка тільки при наведенні, тому нічого не коштує на рендері. Явно
+  // проставлені title (напр., стан посилки з часом синку) не перебиваються.
+  useEffect(() => {
+    function onOver(e: MouseEvent) {
+      const el = e.target;
+      if (!(el instanceof HTMLElement)) return;
+      if (el.closest('[title]')) return;
+      if (el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1) return;
+      const cs = getComputedStyle(el);
+      const clamped = cs.textOverflow === 'ellipsis' || cs.overflow === 'hidden'
+        || (cs as CSSStyleDeclaration & { webkitLineClamp?: string }).webkitLineClamp !== 'none';
+      const text = el.textContent?.trim();
+      if (clamped && text) el.title = text;
+    }
+    document.addEventListener('mouseover', onOver);
+    return () => document.removeEventListener('mouseover', onOver);
+  }, []);
+
   // Список постачальників для вибору фактичного постачальника відвантаження
   const [suppliersList, setSuppliersList] = useState<{ id: number; name: string }[]>([]);
   useEffect(() => {
