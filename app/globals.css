@@ -2121,8 +2121,11 @@ input, select { font-family: inherit; }
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.fin-kpi-foot { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; }
-.fin-kpi-cmp { font-size: 11px; color: var(--text-muted); }
+/* Підвал KPI строго в один рядок: перенос «до попереднього періоду» зсував
+   графіки в сусідніх картках на різну висоту. Текст підтискається трикрапкою
+   (повний — у title), графіки завжди на одній лінії. */
+.fin-kpi-foot { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; white-space: nowrap; min-width: 0; }
+.fin-kpi-cmp { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; }
 .fin-kpi-spark { margin-top: 8px; }
 
 .fin-trend { font-size: 12.5px; font-weight: 700; white-space: nowrap; }
