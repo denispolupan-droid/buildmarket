@@ -118,7 +118,13 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
       {/* Стадії зараз · Динаміка · Потребує уваги */}
       <div className="fin-grid-12" style={{ marginTop: '16px' }}>
         <div className="fin-card" style={{ gridColumn: 'span 4' }}>
-          <div className="fin-card-title">У роботі <span className="fin-card-sub">· де гроші зараз, знімок стадій</span></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px' }}>
+            <div className="fin-card-title">У роботі <span className="fin-card-sub">· де гроші зараз</span></div>
+            <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
+              title="Разом у всіх живих стадіях">
+              {fmt(ov.pipeline.reduce((s, p) => s + p.count, 0))} · {fmt(ov.pipeline.reduce((s, p) => s + p.sum, 0))} ₴
+            </span>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '13px', marginTop: '14px' }}>
             {(() => {
               const maxSum = Math.max(...ov.pipeline.map(s => s.sum), 1);

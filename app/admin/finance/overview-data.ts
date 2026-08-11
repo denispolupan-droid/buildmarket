@@ -299,13 +299,15 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const pTransitFresh = pTransit.filter(o => (o.shipped_at ?? '') >= d7ago);
   const pTransitStuck = pTransit.filter(o => (o.shipped_at ?? '') < d7ago);
   const payStuck      = pPay.filter(o => o.created_at < d3ago).length;
+  // Порядок — за робочим циклом, як вкладки журналу: нові → підтверджені →
+  // очікують оплати → логістика
   const pipeline = [
     { key: 'new',      label: 'Нові',                     href: '/admin?status=new',             ...stage(pNew, null) },
     { key: 'conf',     label: 'Підтверджені / збираються', href: '/admin?status=confirmed',       ...stage(pConf, null) },
+    { key: 'pay',      label: 'Очікують оплати',           href: '/admin?status=pending_payment', ...stage(pPay, payStuck > 0 ? `${payStuck} довше 3 дн` : null) },
     { key: 'ready',    label: 'До відправки',              href: '/admin?status=ready_to_ship',   ...stage(pReady, null) },
     { key: 'transit',  label: 'В дорозі',                  href: '/admin?status=shipped',         ...stage(pTransitFresh, null) },
     { key: 'transit7', label: 'В дорозі понад 7 дн',       href: '/admin?status=shipped',         tone: 'warn' as const, ...stage(pTransitStuck, null) },
-    { key: 'pay',      label: 'Очікують оплати',           href: '/admin?status=pending_payment', ...stage(pPay, payStuck > 0 ? `${payStuck} довше 3 дн` : null) },
   ];
 
   // ── Викуп: зрілі замовлення періоду (створені понад 10 днів тому) ──────────

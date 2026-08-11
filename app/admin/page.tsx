@@ -10,6 +10,7 @@ import { ROZETKA_DELIVERY_TARIFF_KEY, parseRozetkaDeliveryTariff } from '../../l
 import { PROM_DELIVERY_TARIFF_KEY, parsePromDeliveryTariff } from '../../lib/prom-delivery-fee';
 import { escapeOrTerm } from '../../lib/pg-filter';
 import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
+import { RZ_DELIVERY_TYPE } from '../../lib/rz-delivery';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,11 +19,13 @@ const serviceClient = createClient(
 
 const PAGE_SIZE = 50;
 
+// Порядок — за робочим циклом (рішення власника): нові → підтверджені →
+// очікують оплати → далі логістика і термінальні статуси.
 const STATUS_TABS = [
   { value: '',                label: 'Всі' },
   { value: 'new',             label: 'Нові',            badge: true },
-  { value: 'pending_payment', label: 'Очікує оплати' },
   { value: 'confirmed',       label: 'Підтверджено' },
+  { value: 'pending_payment', label: 'Очікує оплати' },
   { value: 'awaiting_stock',  label: 'Очікуємо товар' },
   { value: 'ready_to_ship',   label: 'До відправки' },
   { value: 'shipped',         label: 'Відправлено' },
@@ -74,8 +77,11 @@ export default async function AdminPage({
       if (channel === 'website') q = q.or('channel_code.is.null,channel_code.eq.website');
       else if (channel)          q = q.eq('channel_code', channel);
       // Самовивіз перевізника не має і не потрапляє в жоден фільтр (як carrierOf у клієнті)
-      if (carrier === 'rozetka')   q = q.eq('delivery_type', ROZETKA_DELIVERY_TYPE);
-      else if (carrier === 'nova') q = q.not('delivery_type', 'in', `(${ROZETKA_DELIVERY_TYPE},pickup)`);
+      // Обидва «Rozetka» — і маркетплейсна доставка в точку видачі, і власний
+      // договір rz-delivery для замовлень сайту: для менеджера це одні й ті самі
+      // точки й один процес здачі, різне лише API накладної.
+      if (carrier === 'rozetka')   q = q.in('delivery_type', [ROZETKA_DELIVERY_TYPE, RZ_DELIVERY_TYPE]);
+      else if (carrier === 'nova') q = q.not('delivery_type', 'in', `(${ROZETKA_DELIVERY_TYPE},${RZ_DELIVERY_TYPE},pickup)`);
     }
     if (search) {
       const term = escapeOrTerm(search);
@@ -241,7 +247,7 @@ export default async function AdminPage({
   }, {});
   const carrierCounts = (channelRows ?? []).reduce<Record<string, number>>((acc, r) => {
     if (r.delivery_type === 'pickup') return acc;
-    const key = r.delivery_type === ROZETKA_DELIVERY_TYPE ? 'rozetka' : 'nova';
+    const key = (r.delivery_type === ROZETKA_DELIVERY_TYPE || r.delivery_type === RZ_DELIVERY_TYPE) ? 'rozetka' : 'nova';
     acc[key] = (acc[key] ?? 0) + 1;
     return acc;
   }, {});
