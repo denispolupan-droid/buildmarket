@@ -70,10 +70,10 @@ export type OverviewData = {
   /* Вікно великого графіка динаміки: останні N днів (7/30/90) незалежно від
      пресета періоду; null = графік живе на щоденних рядах періоду (як досі) */
   chartWindow: { labels: string[]; revenue: number[]; profit: number[] } | null;
-  /* Дані каруселі «Динаміка»: тижні · структура гривні · накопичення до плану */
+  /* Дані каруселі «Динаміка»: тижні · джерела замовлень · накопичення до плану */
   dynamics: {
     weeks: { labels: string[]; revenue: number[]; profit: number[] };
-    structure: { revenue: number; cogs: number; fee: number; delivery: number; profit: number };
+    sources: { code: string; count: number; revenue: number; share: number }[];
     planCum: { labels: string[]; fact: (number | null)[]; plan: number[] | null; monthLabel: string };
   };
   /* План виручки на поточний місяць (app_settings) проти факту з обліку */
@@ -546,24 +546,27 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     wProf[wi] += srcProf[i] ?? 0;
   }
 
-  // Накопичення поточного місяця (незалежно від пресета) — з 6-місячного леджера
+  // Накопичення поточного місяця (незалежно від пресета) — ПРОДАЖІ: сума
+  // створених замовлень по днях (включно з тими, що в дорозі), а не факт
+  // доставлених — рішення власника: до плану йдемо всіма продажами.
   const curMonthKey = kyivToday.slice(0, 7);
-  const dayRev = new Map<number, number>();
-  for (const r of monthlyLedger) {
-    if (!r.business_date.startsWith(curMonthKey) || r.account_type !== 'revenue') continue;
-    const dd = Number(r.business_date.slice(8, 10));
-    dayRev.set(dd, (dayRev.get(dd) ?? 0) - Number(r.amount));
+  const dayOrd = new Map<number, number>();
+  for (const o of monthlyOrders as EstOrder[]) {
+    const k = new Date(o.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/Kyiv' });
+    if (!k.startsWith(curMonthKey)) continue;
+    const dd = Number(k.slice(8, 10));
+    dayOrd.set(dd, (dayOrd.get(dd) ?? 0) + Number(o.total_price ?? 0));
   }
   const cumLabels: string[] = [], cumFact: (number | null)[] = [];
   let cum = 0;
   for (let dd = 1; dd <= daysInMonth; dd++) {
     cumLabels.push(String(dd));
-    if (dd <= daysPassed) { cum += dayRev.get(dd) ?? 0; cumFact.push(Math.round(cum)); }
-    else cumFact.push(null);   // майбутні дні — лінія факту обривається сьогодні
+    if (dd <= daysPassed) { cum += dayOrd.get(dd) ?? 0; cumFact.push(Math.round(cum)); }
+    else cumFact.push(null);   // майбутні дні — лінія обривається сьогодні
   }
   const dynamics = {
     weeks: { labels: wLabels, revenue: wRev.map(Math.round), profit: wProf.map(Math.round) },
-    structure: { revenue: curRev, cogs: curCogs, fee: curFee, delivery: curDeliv, profit: curProfit },
+    sources: channels,
     planCum: {
       labels: cumLabels,
       fact: cumFact,
