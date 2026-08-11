@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
-import { TrendingDown, ShoppingBag, FileText, Clock, Truck, CheckCircle } from 'lucide-react';
 import FinanceTabs from '../FinanceTabs';
+import { DualLineChart } from '../overview-charts';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 
 const db = createClient(
@@ -263,8 +263,6 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     months.push({ label, key, revenue: sumRevenue(mRows), margin: sumMargin(mRows), count: mRows.length });
   }
 
-  const maxRevenue = Math.max(...months.map(m => m.revenue), 1);
-
   // ── Тренд комісій МП по місяцях (факт із леджера): скільки % виручки з'їдає маркетплейс ──
   const feeTrendRows = await fetchAllRows<{ account_type: string; amount: number; counterparty_id: string | null; business_date: string }>((f, t) => db
     .from('money_entries')
@@ -430,7 +428,6 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
       {/* Період дашборда */}
       <div className="fin-period-row" style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Період:</span>
         {[
           { key: 'cur_month',  label: 'Цей місяць' },
           { key: 'prev_month', label: 'Минулий місяць' },
@@ -438,223 +435,142 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           { key: 'ytd',        label: 'Рік' },
         ].map(pr => (
           <Link key={pr.key} href={pr.key === 'cur_month' ? '/admin/finance/analytics' : `/admin/finance/analytics?p=${pr.key}`}
-            style={{ height: '30px', padding: '0 14px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center',
-              fontSize: '12.5px', fontWeight: 600, textDecoration: 'none',
-              border: `1.5px solid ${preset === pr.key ? '#1E3A5F' : 'var(--border)'}`,
-              background: preset === pr.key ? '#1E3A5F' : 'var(--bg-card)',
-              color: preset === pr.key ? '#fff' : 'var(--text-secondary)' }}>
+            className={`fin-pill${preset === pr.key ? ' active' : ''}`}>
             {pr.label}
           </Link>
         ))}
         <a href={`/api/admin/finance/profit-export?from=${monthStartDate}&to=${(periodTo ? new Date(periodTo.getTime() - 86400000) : now).toISOString().slice(0, 10)}`}
-          download
-          style={{ marginLeft: 'auto', height: '30px', padding: '0 14px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', gap: '6px',
-            fontSize: '12.5px', fontWeight: 600, textDecoration: 'none', border: '1.5px solid #BBF7D0', background: '#F0FDF4', color: '#15803D' }}>
+          download className="fin-pill export">
           ↓ Excel · прибуток по угодах
         </a>
       </div>
 
-      {/* Воронка угоди: замовлення за період → в дорозі → доставлено (факт).
+      {/* Воронка угоди: замовлення за період → в роботі → в дорозі → доставлено (факт).
           Одна логіка: «оцінка» = прогноз по замовленнях, «факт» = проводки обліку. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '28px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
         {[
           {
-            label: `Замовлення · ${curMonthLabel}`, value: `${fmt(cur.revenue)} ₴`,
+            label: `Замовлення · ${curMonthLabel}`, value: `${fmt(cur.revenue)} ₴`, color: 'var(--text-primary)',
             sub: `${cur.count} замовлень${revDelta !== null ? ` · ${revDelta >= 0 ? '+' : ''}${revDelta}% до попереднього періоду` : ''}`,
-            hint: 'Усі підтверджені замовлення, створені цього місяця (без нових і скасованих): і ті, що в роботі, і відвантажені, і доставлені. Сума за цінами продажу.',
-            color: '#1E3A5F', bg: '#EFF4FF', icon: ShoppingBag,
+            hint: 'Усі підтверджені замовлення, створені за період (без нових і скасованих): в роботі, відвантажені й доставлені. Сума за цінами продажу.',
           },
           {
-            label: 'В роботі · зараз', value: `${fmt(inWork.margin)} ₴`,
+            label: 'В роботі · зараз', value: `${fmt(inWork.margin)} ₴`, color: 'var(--text-primary)',
             sub: `${inWork.count} замовл. · виручка ${fmt(inWork.revenue)} ₴${inWork.commission > 0 ? ` · комісії −${fmt(inWork.commission)} ₴` : ''}`,
             hint: 'Очікуваний чистий прибуток по підтвердженим, ще не відвантаженим замовленням (оцінка: собівартість за закупівлею, комісії за ставками маркетплейсів).',
-            color: '#6366F1', bg: '#EEF2FF', icon: Clock,
           },
           {
-            label: 'В дорозі · зараз', value: `${fmt(transit.margin)} ₴`,
+            label: 'В дорозі · зараз', value: `${fmt(transit.margin)} ₴`, color: 'var(--text-primary)',
             sub: `${transit.count} замовл. · виручка ${fmt(transit.revenue)} ₴${transit.commission > 0 ? ` · комісії −${fmt(transit.commission)} ₴` : ''}`,
-            hint: 'Очікуваний чистий прибуток по відвантаженим, ще не доставленим посилкам. Проведеться в облік після вручення (Вариант 3: продаж = доставка).',
-            color: '#B45309', bg: '#FEF3C7', icon: Truck,
+            hint: 'Очікуваний чистий прибуток по відвантаженим, ще не доставленим посилкам. Проведеться в облік після вручення (продаж = доставка).',
           },
           {
             label: `Доставлено · факт · ${curMonthLabel}`, value: `${fmt(ledgerGross)} ₴`,
+            color: ledgerGross >= 0 ? '#15803D' : '#DC2626',
             sub: `${factPct}% від виручки · виручка ${fmt(ledger.revenue)} ₴ · комісії −${fmt(ledger.commission)} ₴${ledger.delivery > 0 ? ` · доставка −${fmt(ledger.delivery)} ₴` : ''}`,
             hint: 'Чистий прибуток з бухгалтерських проводок: виручка проведених РН − FIFO-собівартість − комісії маркетплейсів − доставка НП за наш рахунок. Ті самі цифри, що в P&L.',
-            color: ledgerGross >= 0 ? '#15803D' : '#DC2626',
-            bg:    ledgerGross >= 0 ? '#F0FDF4' : '#FEF2F2',
-            icon: CheckCircle,
           },
-        ].map(card => {
-          const Icon = card.icon;
-          return (
-            <div key={card.label} title={card.hint} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-                    {card.label}
-                  </div>
-                  <div style={{ fontSize: '26px', fontWeight: 800, color: card.color, lineHeight: 1 }}>
-                    {card.value}
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
-                    {card.sub}
-                  </div>
-                </div>
-                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: card.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Icon size={18} color={card.color} />
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        ].map(card => (
+          <div key={card.label} className="fin-card fin-kpi">
+            <div className="fin-kpi-label">{card.label}</div>
+            <div className="fin-kpi-value" style={{ color: card.color }}>{card.value}</div>
+            <div className="fin-kpi-cmp" style={{ marginTop: '4px' }}>{card.sub}</div>
+            <div className="fin-hint">{card.hint}</div>
+          </div>
+        ))}
       </div>
 
-      {/* Monthly chart */}
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '24px', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-            Виручка та прибуток по місяцях <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '12px' }}>· за датою створення замовлення</span>
-          </h2>
-          <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: 'var(--text-muted)' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#1E3A5F', display: 'inline-block' }} /> Виручка
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#22C55E', display: 'inline-block' }} /> Прибуток
-            </span>
+      {/* Динаміка 6 місяців + комісії МП */}
+      <div className="fin-grid-12" style={{ marginBottom: '16px' }}>
+        <div className="fin-card" style={{ gridColumn: 'span 7' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="fin-card-title">Виручка та прибуток по місяцях <span className="fin-card-sub">· за датою створення замовлення</span></div>
+            <div style={{ display: 'flex', gap: '14px', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+              <span><span className="fin-dot" style={{ background: 'var(--brand-blue)' }} /> Виручка</span>
+              <span><span className="fin-dot" style={{ background: '#15803D' }} /> Прибуток</span>
+            </div>
+          </div>
+          <div style={{ marginTop: '12px' }}>
+            <DualLineChart a={months.map(m => m.revenue)} b={months.map(m => m.margin)} labels={months.map(m => m.label)} aLabel="Виручка" bLabel="Прибуток" />
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          {months.map(m => (
-            <div key={m.key}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: m.key === `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}` ? 'var(--text-primary)' : 'var(--text-muted)', minWidth: '70px' }}>
-                  {m.label}
-                </span>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '12px' }}>
-                  {m.revenue > 0 ? `${fmt(m.revenue)} ₴` : '—'}
-                  {m.margin > 0 && <span style={{ color: '#22C55E', marginLeft: '8px' }}>+{fmt(m.margin)} ₴</span>}
-                </span>
-              </div>
-              <div style={{ position: 'relative', height: '24px', background: 'var(--bg-soft)', borderRadius: '6px', overflow: 'hidden' }}>
-                {m.revenue > 0 && (
-                  <div style={{
-                    position: 'absolute', left: 0, top: 0, height: '100%',
-                    width: `${Math.max(2, (m.revenue / maxRevenue) * 100)}%`,
-                    background: '#1E3A5F', borderRadius: '6px',
-                    transition: 'width 0.3s ease',
-                  }} />
-                )}
-                {m.margin > 0 && (
-                  <div style={{
-                    position: 'absolute', left: 0, top: 0, height: '100%',
-                    width: `${Math.max(1, (m.margin / maxRevenue) * 100)}%`,
-                    background: '#22C55E', borderRadius: '6px', opacity: 0.85,
-                  }} />
-                )}
-              </div>
-            </div>
-          ))}
+        <div className="fin-card" style={{ gridColumn: 'span 5' }}>
+          <div className="fin-card-title">Комісії маркетплейсів <span className="fin-card-sub">· факт з обліку, % від фактичної виручки</span></div>
+          {feeTrendHasData ? (
+            <table className="fin-table">
+              <tbody>
+                {feeTrend.map(m => (
+                  <tr key={m.label}>
+                    <td className="muted" style={{ width: '70px' }}>{m.label}</td>
+                    <td className="num" style={{ color: m.fee > 0 ? '#C2410C' : 'var(--text-muted)', width: '60px' }}>{m.fee > 0 ? `${m.pct}%` : '—'}</td>
+                    <td className="num">{m.fee > 0 ? `−${fmt(m.fee)} ₴` : ''}</td>
+                    <td className="num muted" style={{ fontWeight: 500 }}>{m.roz > 0 ? `Rozetka ${fmt(m.roz)}` : ''}</td>
+                    <td className="num muted" style={{ fontWeight: 500 }}>{m.prom > 0 ? `Prom ${fmt(m.prom)}` : ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
+          )}
         </div>
       </div>
 
-      {/* Тренд комісій маркетплейсів (факт) */}
-      {feeTrendHasData && (
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px 24px', marginBottom: '24px' }}>
-          <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 14px' }}>
-            Комісії маркетплейсів по місяцях <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '12px' }}>· факт з обліку, % від фактичної виручки</span>
-          </h2>
-          <div className="fin-fee-trend" style={{ display: 'grid', gridTemplateColumns: `repeat(${feeTrend.length}, 1fr)`, gap: '10px' }}>
-            {feeTrend.map(m => (
-              <div key={m.label} style={{ textAlign: 'center', padding: '10px 6px', borderRadius: '10px', background: 'var(--bg-soft)' }}>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>{m.label}</div>
-                <div style={{ fontSize: '17px', fontWeight: 800, color: m.fee > 0 ? '#C2410C' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                  {m.fee > 0 ? `${m.pct}%` : '—'}
-                </div>
-                {m.fee > 0 && (
-                  <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', marginTop: '3px', lineHeight: 1.4 }}>
-                    −{fmt(m.fee)} ₴{m.roz > 0 ? ` · Rozetka ${fmt(m.roz)}` : ''}{m.prom > 0 ? ` · Prom ${fmt(m.prom)}` : ''}
-                  </div>
-                )}
-              </div>
+      {/* Збиткові / тонкі угоди (факт) */}
+      {thinDeals.length > 0 && (
+        <div className="fin-card" style={{ marginBottom: '16px' }}>
+          <div className="fin-card-title">Збиткові та тонкі угоди <span className="fin-card-sub">· доставлені за {curMonthLabel} з чистим прибутком &lt; {THIN_PCT}% — перевірте ціну/комісію</span></div>
+          <div style={{ display: 'flex', flexDirection: 'column', marginTop: '6px' }}>
+            {thinDeals.map(d => (
+              <Link key={d.id} href={`/admin?expand=${d.id}`} className="fin-attn">
+                <span className={`fin-dot big ${d.margin < 0 ? 'red' : 'orange'}`} />
+                <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '12px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-blue)', fontVariantNumeric: 'tabular-nums' }}>#{d.order_number}</span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{CHANNEL_LABELS[d.channel_code ?? 'website'] ?? d.channel_code}</span>
+                  <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>виручка {fmt(d.total_price)} ₴</span>
+                  <span style={{ fontSize: '13px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', width: '110px', textAlign: 'right', color: d.margin < 0 ? '#DC2626' : '#B45309' }}>
+                    {d.margin < 0 ? '' : '+'}{fmt(d.margin)} ₴ · {d.pct}%
+                  </span>
+                </span>
+              </Link>
             ))}
           </div>
         </div>
       )}
 
-      {/* Збиткові / тонкі угоди (факт) */}
-      {thinDeals.length > 0 && (
-        <div style={{ background: 'var(--bg-card)', border: '1px solid #FECACA', borderRadius: '14px', overflow: 'hidden', marginBottom: '24px' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #FECACA', background: '#FEF2F2', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <TrendingDown size={16} color="#DC2626" />
-            <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#DC2626', margin: 0 }}>
-              Збиткові та тонкі угоди — {curMonthLabel}
-            </h2>
-            <span style={{ fontSize: '12px', color: '#B91C1C' }}>· доставлені з чистим прибутком &lt; {THIN_PCT}% (перевірте ціну/комісію)</span>
-          </div>
-          {thinDeals.map(d => (
-            <Link key={d.id} href={`/admin?expand=${d.id}`} className="fin-thin-row" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '10px 20px', borderTop: '1px solid var(--border-light)', textDecoration: 'none' }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-blue)', fontVariantNumeric: 'tabular-nums' }}>#{d.order_number}</span>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)', width: '70px' }}>{CHANNEL_LABELS[d.channel_code ?? 'website'] ?? d.channel_code}</span>
-              <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>виручка {fmt(d.total_price)} ₴</span>
-              <span style={{ fontSize: '13px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', width: '110px', textAlign: 'right', color: d.margin < 0 ? '#DC2626' : '#B45309' }}>
-                {d.margin < 0 ? '' : '+'}{fmt(d.margin)} ₴ · {d.pct}%
-              </span>
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {/* Bottom grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: '20px' }}>
-
-        {/* Top products */}
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
-          <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border)' }}>
-            <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-              Топ товарів за прибутком — {curMonthLabel} <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '12px' }}>· доставлені · ABC: <b style={{ color: '#15803D' }}>A {abcCounts.A}</b> (80% прибутку) / <b style={{ color: '#B45309' }}>B {abcCounts.B}</b> / C {abcCounts.C}</span>
-            </h2>
+      {/* Топ товарів + канали/клієнти */}
+      <div className="fin-grid-12" style={{ marginBottom: '16px' }}>
+        <div className="fin-card" style={{ gridColumn: 'span 8' }}>
+          <div className="fin-card-title">
+            Топ товарів за прибутком <span className="fin-card-sub">· доставлені за {curMonthLabel} · ABC: <b style={{ color: '#15803D' }}>A {abcCounts.A}</b> (80% прибутку) / <b style={{ color: '#B45309' }}>B {abcCounts.B}</b> / C {abcCounts.C}</span>
           </div>
           {topProducts.length === 0 ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-              Немає даних за поточний місяць
-            </div>
+            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних за період</div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-              <thead>
-                <tr style={{ background: 'var(--bg-soft)' }}>
-                  {['Товар', 'К-сть', 'Виручка', 'Собів.', 'Прибуток'].map(h => (
-                    <th key={h} style={{ padding: '8px 16px', textAlign: h === 'Товар' ? 'left' : 'right', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
+            <table className="fin-table">
               <tbody>
-                {topProducts.map((p, i) => (
-                  <tr key={p.sku} style={{ borderTop: '1px solid var(--border-light)', background: i % 2 === 0 ? 'transparent' : 'var(--bg-soft)' }}>
-                    <td style={{ padding: '10px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                        <span title={p.abc === 'A' ? 'Клас A — топ, дає 80% прибутку' : p.abc === 'B' ? 'Клас B — середняк (наступні 15% прибутку)' : 'Клас C — хвіст (5% прибутку або збиткові)'}
-                          style={{ fontSize: '10px', fontWeight: 800, width: '18px', height: '18px', borderRadius: '5px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                            color: p.abc === 'A' ? '#15803D' : p.abc === 'B' ? '#B45309' : 'var(--text-muted)',
-                            background: p.abc === 'A' ? '#DCFCE7' : p.abc === 'B' ? '#FEF3C7' : 'var(--bg-soft)',
-                            border: `1px solid ${p.abc === 'A' ? '#86EFAC' : p.abc === 'B' ? '#FCD34D' : 'var(--border)'}` }}>
-                          {p.abc}
-                        </span>
-                        <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '460px' }}>
-                          {p.brand} {p.name}
-                        </div>
-                      </div>
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'monospace', marginLeft: '25px' }}>{p.sku}</div>
-                    </td>
-                    <td style={{ padding: '10px 16px', textAlign: 'right', color: 'var(--text-secondary)' }}>{p.qty} шт</td>
-                    <td style={{ padding: '10px 16px', textAlign: 'right', color: 'var(--text-primary)', fontWeight: 600 }}>{fmt(p.revenue)} ₴</td>
-                    <td style={{ padding: '10px 16px', textAlign: 'right', color: 'var(--text-secondary)' }}>{fmt(p.cost)} ₴</td>
-                    <td style={{ padding: '10px 16px', textAlign: 'right' }}>
-                      <span style={{ fontWeight: 700, color: p.margin >= 0 ? '#15803D' : '#DC2626' }}>
-                        {p.margin >= 0 ? '+' : ''}{fmt(p.margin)} ₴
+                {topProducts.map(p => (
+                  <tr key={p.sku}>
+                    <td style={{ width: '26px' }}>
+                      <span title={p.abc === 'A' ? 'Клас A — топ, дає 80% прибутку' : p.abc === 'B' ? 'Клас B — середняк (наступні 15% прибутку)' : 'Клас C — хвіст (5% прибутку або збиткові)'}
+                        style={{ fontSize: '10px', fontWeight: 800, width: '18px', height: '18px', borderRadius: '5px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          color: p.abc === 'A' ? '#15803D' : p.abc === 'B' ? '#B45309' : 'var(--text-muted)',
+                          background: p.abc === 'A' ? '#DCFCE7' : p.abc === 'B' ? '#FEF3C7' : 'var(--bg-soft)',
+                          border: `1px solid ${p.abc === 'A' ? '#86EFAC' : p.abc === 'B' ? '#FCD34D' : 'var(--border)'}` }}>
+                        {p.abc}
                       </span>
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{p.margin_pct}%</div>
+                    </td>
+                    <td className="name" style={{ maxWidth: '380px' }}>
+                      {p.brand} {p.name}
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{p.sku}</div>
+                    </td>
+                    <td className="num muted" style={{ fontWeight: 500 }}>{p.qty} шт</td>
+                    <td className="num">{fmt(p.revenue)} ₴</td>
+                    <td className="num muted" style={{ fontWeight: 500 }}>−{fmt(p.cost)} ₴</td>
+                    <td className="num" style={{ color: p.margin >= 0 ? '#15803D' : '#DC2626' }}>
+                      {p.margin >= 0 ? '+' : ''}{fmt(p.margin)} ₴
+                      <span style={{ fontSize: '10.5px', color: 'var(--text-muted)', fontWeight: 500 }}> · {p.margin_pct}%</span>
                     </td>
                   </tr>
                 ))}
@@ -663,116 +579,106 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           )}
         </div>
 
-        {/* Right column: канали + клієнти */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {/* By channel */}
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
-          <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border)' }}>
-            <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>По каналах <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '12px' }}>· доставлені за {curMonthLabel}</span></h2>
+        <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="fin-card">
+            <div className="fin-card-title">По каналах <span className="fin-card-sub">· доставлені за {curMonthLabel}</span></div>
+            {channels.length === 0 ? (
+              <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px' }}>
+                {channels.map(([ch, stats]) => {
+                  const pct = Math.round(stats.revenue / totalRevenue * 100);
+                  return (
+                    <div key={ch}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', marginBottom: '4px' }}>
+                        <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{CHANNEL_LABELS[ch] ?? ch}</span>
+                        <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                          {fmt(stats.revenue)} ₴ <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>({pct}%)</span>
+                        </span>
+                      </div>
+                      <div className="fin-funnel-track"><div className="fin-funnel-fill" style={{ width: `${pct}%` }} /></div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        прибуток <span style={{ color: stats.margin >= 0 ? '#15803D' : '#DC2626', fontWeight: 600 }}>{fmt(stats.margin)} ₴</span> · {stats.count} замовл. · {fmt(stats.count > 0 ? stats.margin / stats.count : 0)} ₴/замовл.
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-          {channels.length === 0 ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-              Немає даних
-            </div>
-          ) : (
-            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {channels.map(([ch, stats]) => {
-                const pct = Math.round(stats.revenue / totalRevenue * 100);
-                return (
-                  <div key={ch}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {CHANNEL_LABELS[ch] ?? ch}
-                      </span>
-                      <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                        {fmt(stats.revenue)} ₴ <span style={{ color: 'var(--text-muted)' }}>({pct}%)</span>
-                      </span>
-                    </div>
-                    <div style={{ height: '8px', background: 'var(--bg-soft)', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: '#1E3A5F', borderRadius: '4px' }} />
-                    </div>
-                    <div style={{ fontSize: '11px', color: stats.margin >= 0 ? '#15803D' : '#DC2626', marginTop: '3px', textAlign: 'right' }}>
-                      прибуток: {fmt(stats.margin)} ₴ · {stats.count} замовл. · {fmt(stats.count > 0 ? stats.margin / stats.count : 0)} ₴/замовлення
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
 
-        {/* Нові vs повторні клієнти (доставлені, факт) */}
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px 20px' }}>
-          <h2 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 12px' }}>
-            Клієнти <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '11.5px' }}>· доставлені</span>
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div>
-              <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Нові клієнти</div>
-              <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                {repeatAgg.new.count} замовл. · <span style={{ color: repeatAgg.new.margin >= 0 ? '#15803D' : '#DC2626' }}>{fmt(repeatAgg.new.margin)} ₴</span>
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Повторні</div>
-              <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                {repeatAgg.repeat.count} замовл. · <span style={{ color: repeatAgg.repeat.margin >= 0 ? '#15803D' : '#DC2626' }}>{fmt(repeatAgg.repeat.margin)} ₴</span>
-              </div>
-            </div>
-            <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-              Частка повторних: <b style={{ color: '#1E3A5F' }}>{repeatShare}%</b>
-            </div>
+          <div className="fin-card">
+            <div className="fin-card-title">Клієнти <span className="fin-card-sub">· доставлені за {curMonthLabel}</span></div>
+            <table className="fin-table">
+              <tbody>
+                <tr>
+                  <td className="muted">Нові</td>
+                  <td className="num">{repeatAgg.new.count} замовл.</td>
+                  <td className="num" style={{ color: repeatAgg.new.margin >= 0 ? '#15803D' : '#DC2626' }}>{fmt(repeatAgg.new.margin)} ₴</td>
+                </tr>
+                <tr>
+                  <td className="muted">Повторні</td>
+                  <td className="num">{repeatAgg.repeat.count} замовл.</td>
+                  <td className="num" style={{ color: repeatAgg.repeat.margin >= 0 ? '#15803D' : '#DC2626' }}>{fmt(repeatAgg.repeat.margin)} ₴</td>
+                </tr>
+                <tr>
+                  <td className="muted">Частка повторних</td>
+                  <td className="num" colSpan={2} style={{ color: 'var(--brand-blue)' }}>{repeatShare}%</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
-        </div>{/* /right column */}
       </div>
 
       {/* Прибуток по брендах і постачальниках — факт (доставлені за період) */}
-      <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '24px' }}>
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
-          <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border)' }}>
-            <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-              Прибуток по брендах <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '12px' }}>· доставлені за {curMonthLabel}, з урахуванням комісій</span>
-            </h2>
-          </div>
+      <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div className="fin-card">
+          <div className="fin-card-title">Прибуток по брендах <span className="fin-card-sub">· доставлені за {curMonthLabel}, з урахуванням комісій</span></div>
           {brands.length === 0 ? (
-            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
-          ) : brands.map(([brand, s]) => {
-            const pctB = s.revenue > 0 ? Math.round((s.margin / s.revenue) * 100) : 0;
-            return (
-              <div key={brand} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '9px 20px', borderTop: '1px solid var(--border-light)' }}>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{brand}</span>
-                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{s.qty} шт · {fmt(s.revenue)} ₴</span>
-                <span style={{ fontSize: '13px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', width: '110px', textAlign: 'right', color: s.margin >= 0 ? '#15803D' : '#DC2626' }}>
-                  {s.margin >= 0 ? '+' : ''}{fmt(s.margin)} ₴ · {pctB}%
-                </span>
-              </div>
-            );
-          })}
+            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
+          ) : (
+            <table className="fin-table">
+              <tbody>
+                {brands.map(([brand, s]) => {
+                  const pctB = s.revenue > 0 ? Math.round((s.margin / s.revenue) * 100) : 0;
+                  return (
+                    <tr key={brand}>
+                      <td className="name">{brand}</td>
+                      <td className="num muted" style={{ fontWeight: 500 }}>{s.qty} шт · {fmt(s.revenue)} ₴</td>
+                      <td className="num" style={{ width: '110px', color: s.margin >= 0 ? '#15803D' : '#DC2626' }}>
+                        {s.margin >= 0 ? '+' : ''}{fmt(s.margin)} ₴ · {pctB}%
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
 
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
-          <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border)' }}>
-            <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-              Валовий прибуток по постачальниках <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '12px' }}>· доставлені за {curMonthLabel}, до комісій</span>
-            </h2>
-          </div>
+        <div className="fin-card">
+          <div className="fin-card-title">Валовий прибуток по постачальниках <span className="fin-card-sub">· доставлені за {curMonthLabel}, до комісій</span></div>
           {suppliers.length === 0 ? (
-            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
-          ) : suppliers.map(s => {
-            const pctS = s.revenue > 0 ? Math.round((s.margin / s.revenue) * 100) : 0;
-            return (
-              <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '9px 20px', borderTop: '1px solid var(--border-light)' }}>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {s.key === 'own' ? '🏭 ' : '📦 '}{s.name}
-                </span>
-                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{s.qty} шт · {fmt(s.revenue)} ₴</span>
-                <span style={{ fontSize: '13px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', width: '110px', textAlign: 'right', color: s.margin >= 0 ? '#15803D' : '#DC2626' }}>
-                  {s.margin >= 0 ? '+' : ''}{fmt(s.margin)} ₴ · {pctS}%
-                </span>
-              </div>
-            );
-          })}
+            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
+          ) : (
+            <table className="fin-table">
+              <tbody>
+                {suppliers.map(s => {
+                  const pctS = s.revenue > 0 ? Math.round((s.margin / s.revenue) * 100) : 0;
+                  return (
+                    <tr key={s.key}>
+                      <td className="name">{s.name}</td>
+                      <td className="num muted" style={{ fontWeight: 500 }}>{s.qty} шт · {fmt(s.revenue)} ₴</td>
+                      <td className="num" style={{ width: '110px', color: s.margin >= 0 ? '#15803D' : '#DC2626' }}>
+                        {s.margin >= 0 ? '+' : ''}{fmt(s.margin)} ₴ · {pctS}%
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>
