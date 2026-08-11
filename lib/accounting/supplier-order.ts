@@ -93,8 +93,8 @@ export async function sendSupplierOrder(input: SendSupplierOrderInput): Promise<
   // Строим Excel
   const xlsx = buildSupplierExcel(template, input);
 
-  // Отправляем
-  await resend.emails.send({
+  // Отправляем. SDK Resend НЕ кидає виняток на помилку API — повертає {data, error}.
+  const { error: sendErr } = await resend.emails.send({
     from:    `FIXLINE <orders@fixline.com.ua>`,
     to:      supplierEmail,
     subject: `Заказ #${input.order_number} от BuildMarket`,
@@ -104,6 +104,7 @@ export async function sendSupplierOrder(input: SendSupplierOrderInput): Promise<
       content:  xlsx.toString('base64'),
     }],
   });
+  if (sendErr) throw new Error(sendErr.message || JSON.stringify(sendErr));
 }
 
 // ── Построение Excel ──────────────────────────────────────────────────────────

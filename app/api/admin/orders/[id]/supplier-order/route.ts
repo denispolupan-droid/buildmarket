@@ -142,17 +142,19 @@ export async function POST(
     supplierInfoMap.set(supplierId, { id: supplierId, name: 'Постачальник', email: overrideEmail, notes: null });
   }
 
-  const results: { supplier_name: string; emailed: boolean }[] = [];
+  const results: { supplier_name: string; emailed: boolean; error?: string }[] = [];
 
   for (const [supplierId, { items: supplierItems, supplierSkus }] of bySupplier) {
     const supplier = supplierInfoMap.get(supplierId);
     if (!supplier) continue;
 
     let emailed = false;
+    let sendError: string | undefined;
     const toEmail = overrideEmail || supplier.email || extractEmail(supplier.notes ?? '');
     if (toEmail) {
       try {
-        await resend.emails.send({
+        // SDK Resend НЕ кидає виняток на помилку API — повертає {data, error}.
+        const { error: sendErr } = await resend.emails.send({
           from: FROM,
           to:   toEmail,
           subject: `Замовлення від ${fromName} — #${order.order_number}`,
@@ -173,13 +175,15 @@ export async function POST(
             })),
           }),
         });
+        if (sendErr) throw new Error(sendErr.message || JSON.stringify(sendErr));
         emailed = true;
       } catch (err) {
         console.error('[supplier-order] email failed:', err);
+        sendError = err instanceof Error ? err.message : String(err);
       }
     }
 
-    results.push({ supplier_name: supplier.name, emailed });
+    results.push({ supplier_name: supplier.name, emailed, ...(sendError && { error: sendError }) });
   }
 
   if (results.some(r => r.emailed)) {

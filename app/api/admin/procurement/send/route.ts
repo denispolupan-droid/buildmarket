@@ -217,13 +217,15 @@ export async function POST(req: NextRequest) {
           </div>`;
       }
 
-      await resend.emails.send({
+      // SDK Resend НЕ кидає виняток на помилку API — повертає {data, error}.
+      const { error: sendErr } = await resend.emails.send({
         from:    `${fromName} <${fromEmail}>`,
         to:      [supplierEmail],
         subject,
         replyTo: fromEmail,
         html,
       });
+      if (sendErr) throw new Error(sendErr.message || JSON.stringify(sendErr));
 
       // Оновлюємо email_sent_at; procurement_status міняємо на 'sent' тільки якщо замовлення ще не пройшло далі
       const STATUSES_PAST_SENT = ['confirmed_by_supplier', 'partially_received', 'received', 'invoiced', 'paid'];

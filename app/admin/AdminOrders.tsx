@@ -380,7 +380,7 @@ export default function AdminOrders({
   const [supplierQueueDone,    setSupplierQueueDone]    = useState(false);
   // Масова відправка: замовлення згруповані по постачальнику → один лист на постачальника
   type BulkGroup = { supplierId: number | null; supplierName: string; orderNumbers: number[]; email: string; contacts: ContactEntry[] };
-  type BulkResult = { supplierName: string; emailed: boolean; orderNumbers: number[] };
+  type BulkResult = { supplierName: string; emailed: boolean; orderNumbers: number[]; error?: string };
   const [bulkGroups,   setBulkGroups]   = useState<BulkGroup[] | null>(null);
   const [bulkOrderIds, setBulkOrderIds] = useState<string[]>([]);
   const [bulkComment,  setBulkComment]  = useState('');
@@ -674,17 +674,20 @@ export default function AdminOrders({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderIds: bulkOrderIds, comment: bulkComment || undefined, senderEmail: chosenSender || undefined, emailOverrides }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      const results: BulkResult[] = (data.results ?? []).map((r: { supplier_name: string; emailed: boolean; order_numbers: number[] }) =>
-        ({ supplierName: r.supplier_name, emailed: r.emailed, orderNumbers: r.order_numbers ?? [] }));
-      setBulkResults(results);
+      const results: BulkResult[] = (data.results ?? []).map((r: { supplier_name: string; emailed: boolean; order_numbers: number[]; error?: string }) =>
+        ({ supplierName: r.supplier_name, emailed: r.emailed, orderNumbers: r.order_numbers ?? [], error: r.error }));
+      // Порожній results при 200 = жодна позиція не змапилась на постачальника —
+      // без цього рядка модалка показувала порожній екран «успіху».
+      setBulkResults(results.length ? results : [{ supplierName: '—', emailed: false, orderNumbers: [], error: 'Сервер не знайшов жодного постачальника для цих замовлень' }]);
       const sentIds: string[] = data.sent_order_ids ?? [];
       if (sentIds.length) {
         const sentAt = new Date().toISOString();
         setOrders(prev => prev.map(o => sentIds.includes(o.id) ? { ...o, supplier_sent_at: sentAt } : o));
       }
-    } catch {
-      setBulkResults([{ supplierName: '—', emailed: false, orderNumbers: [] }]);
+    } catch (err) {
+      setBulkResults([{ supplierName: '—', emailed: false, orderNumbers: [], error: `Запит не пройшов (${err instanceof Error ? err.message : 'мережа'}) — спробуйте ще раз` }]);
     } finally {
       setBulkSending(false);
     }
@@ -702,16 +705,27 @@ export default function AdminOrders({
     const item = supplierQueue[supplierQueueIdx];
     setSupplierQueueSending(true);
     try {
-      await fetch(`/api/admin/orders/${item.orderId}/supplier-order`, {
+      const res = await fetch(`/api/admin/orders/${item.orderId}/supplier-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ overrideEmail: item.email || undefined, comment: item.comment || undefined, senderEmail: chosenSender || undefined }),
       });
+      // Раніше відповідь не читалась і UI показував успіх навіть коли Resend
+      // відхилив лист — тепер невдала відправка лишає замовлення в черзі з помилкою.
+      const data = res.ok ? await res.json() : { results: [] };
+      const failed = (data.results ?? []).filter((r: { emailed: boolean; error?: string }) => !r.emailed);
+      if (!res.ok || failed.length) {
+        const reason = failed[0]?.error ?? (res.ok ? 'немає email постачальника' : `HTTP ${res.status}`);
+        showToast(`Лист не відправлено: ${reason}`, 'error', 6000);
+        advanceSupplierQueue();
+        return;
+      }
       const sentAt = new Date().toISOString();
       setOrders(prev => prev.map(o => o.id === item.orderId ? { ...o, supplier_sent_at: sentAt } : o));
       setSupplierQueueDone(true);
       setTimeout(() => advanceSupplierQueue(), 1400);
     } catch {
+      showToast('Лист не відправлено: мережева помилка', 'error', 6000);
       advanceSupplierQueue();
     } finally {
       setSupplierQueueSending(false);
@@ -4170,7 +4184,7 @@ export default function AdminOrders({
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '13px', fontWeight: 700, color: r.emailed ? '#15803D' : '#B91C1C' }}>{r.supplierName}</div>
                         <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-                          {r.emailed ? 'Відправлено' : 'Не відправлено (немає email)'} · {r.orderNumbers.map(n => `#${n}`).join(', ')}
+                          {r.emailed ? 'Відправлено' : (r.error ? `Не відправлено: ${r.error}` : 'Не відправлено (немає email)')}{r.orderNumbers.length > 0 && ` · ${r.orderNumbers.map(n => `#${n}`).join(', ')}`}
                         </div>
                       </div>
                     </div>

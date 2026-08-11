@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const results: { supplier_id: number; supplier_name: string; emailed: boolean; order_numbers: number[] }[] = [];
+  const results: { supplier_id: number; supplier_name: string; emailed: boolean; order_numbers: number[]; error?: string }[] = [];
   const emailedSupplierIds = new Set<number>();
 
   for (const [supplierId, lines] of bySupplier) {
@@ -144,6 +144,7 @@ export async function POST(req: NextRequest) {
       || extractEmail(supplier.notes ?? '');
     const orderNums = [...new Set(lines.map(l => l.orderNumber))].sort((a, b) => a - b);
     let emailed = false;
+    let sendError: string | undefined;
 
     if (toEmail && toEmail.includes('@')) {
       // Групуємо позиції по замовленню для відображення
@@ -218,21 +219,25 @@ export async function POST(req: NextRequest) {
 
       const toName = supplier.contact_name || supplier.name;
       try {
-        await resend.emails.send({
+        // SDK Resend НЕ кидає виняток на помилку API — повертає {data, error}.
+        // Без перевірки error відхилений лист виглядав як «✅ відправлено».
+        const { error: sendErr } = await resend.emails.send({
           from: FROM,
           to: toEmail,
           subject: `Замовлення від ${fromName} — ${numsLabel}`,
           html,
           ...(!anonymize && toName !== supplier.name && { replyTo: `${toName} <${fromEmail}>` }),
         });
+        if (sendErr) throw new Error(sendErr.message || JSON.stringify(sendErr));
         emailed = true;
         emailedSupplierIds.add(supplierId);
       } catch (err) {
         console.error('[bulk-supplier-order] email failed:', err);
+        sendError = err instanceof Error ? err.message : String(err);
       }
     }
 
-    results.push({ supplier_id: supplierId, supplier_name: supplier.name, emailed, order_numbers: orderNums });
+    results.push({ supplier_id: supplierId, supplier_name: supplier.name, emailed, order_numbers: orderNums, ...(sendError && { error: sendError }) });
   }
 
   // Позначаємо замовлення як відправлені постачальнику + фіксуємо постачальника
