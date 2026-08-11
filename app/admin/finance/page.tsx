@@ -93,10 +93,10 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
         {([
           { key: 'ordsum', label: 'Замовлення · сума', value: `${fmt(ov.kpi.orderSum.value)} ₴`, cur: ov.kpi.orderSum.value, prev: ov.kpi.orderSum.prev, months: ov.monthly.orderSum, mFmt: (v: number) => `${fmt(v)} ₴`, color: 'var(--brand-blue)',
             hint: 'Усі підтверджені замовлення, створені за період (без нових і скасованих): в роботі, відвантажені й доставлені. Сума за цінами продажу.' },
-          { key: 'prof', label: 'Валовий прибуток', value: `${fmt(ov.kpi.profit.value)} ₴`, cur: ov.kpi.profit.value, prev: ov.kpi.profit.prev, months: ov.monthly.profit, mFmt: (v: number) => `${fmt(v)} ₴`, color: '#15803D',
-            hint: 'Виручка − собівартість (FIFO) − комісії МП − доставка НП за наш рахунок' },
+          { key: 'prof', label: 'Валовий прибуток', value: `${fmt(ov.kpi.profitEst.value)} ₴`, cur: ov.kpi.profitEst.value, prev: ov.kpi.profitEst.prev, months: ov.monthly.profitEst, mFmt: (v: number) => `${fmt(v)} ₴`, color: '#15803D',
+            hint: 'По всіх замовленнях періоду — та сама база, що «Замовлення · сума»: доставлені за фактом обліку (FIFO, комісії МП), ще не доставлені — оцінка за закупівельною ціною і ставками комісій. Точний факт — в «Аналітиці».' },
           { key: 'mrg',  label: 'Маржа',            value: ov.kpi.margin.value === null ? '—' : `${ov.kpi.margin.value}%`, cur: ov.kpi.margin.value, prev: ov.kpi.margin.prev, months: ov.monthly.margin, mFmt: (v: number) => `${v}%`, pp: true,
-            hint: 'Валовий прибуток ÷ виручка (факт, з доставлених)' },
+            hint: 'Валовий прибуток ÷ сума замовлень періоду (та сама база — всі замовлення)' },
           { key: 'ord',  label: 'Замовлень',        value: fmt(ov.kpi.orders.value), cur: ov.kpi.orders.value, prev: ov.kpi.orders.prev, months: ov.monthly.orders, mFmt: (v: number) => fmt(v), color: 'var(--brand-blue)',
             hint: 'Створені за період, без скасованих — включно з ще не відвантаженими' },
           { key: 'chk',  label: 'Середній чек',     value: ov.kpi.avgCheck.value === null ? '—' : `${fmt(ov.kpi.avgCheck.value)} ₴`, cur: ov.kpi.avgCheck.value, prev: ov.kpi.avgCheck.prev, months: ov.monthly.avgCheck, mFmt: (v: number) => `${fmt(v)} ₴`,

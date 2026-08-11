@@ -26,8 +26,11 @@ export type OverviewData = {
   dayLabels: string[];    // підписи днів періоду ('1', '5'…)
   kpi: {
     revenue: KpiSeries;   // факт з леджера
-    profit: KpiSeries;    // валовий факт: revenue - cogs - fee - delivery
-    margin: { value: number | null; prev: number | null };
+    profit: KpiSeries;    // валовий факт: revenue - cogs - fee - delivery (для графіка динаміки)
+    /* Очікуваний валовий прибуток по ВСІХ замовленнях періоду (та сама база,
+       що «Замовлення · сума»): доставлені — факт з леджера, решта — оцінка */
+    profitEst: { value: number; prev: number };
+    margin: { value: number | null; prev: number | null };      // від оцінки (profitEst / orderSum)
     orders: KpiSeries;    // к-ть замовлень (когорта періоду, без скасованих)
     orderSum: { value: number; prev: number };  // сума створених замовлень (оцінка до доставки)
     avgCheck: { value: number | null; prev: number | null };
@@ -38,6 +41,7 @@ export type OverviewData = {
     labels: string[];
     revenue: number[];
     profit: number[];
+    profitEst: number[];
     orders: number[];
     orderSum: number[];
     margin: (number | null)[];
@@ -192,9 +196,11 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       .in('account_type', ['revenue', 'cogs', 'marketplace_fee', 'logistics'])
       .gte('business_date', monthlyFromStr)
       .range(f, t)),
-    fetchAllRows<{ created_at: string; total_price: number }>((f, t) => db
+    // items/channel потрібні для очікуваного прибутку по місяцях (profitEst)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client
+    fetchAllRows<any>((f, t) => db
       .from('orders')
-      .select('created_at, total_price')
+      .select('id, created_at, total_price, channel_code, items')
       .neq('status', 'cancelled')
       .gte('created_at', monthlyFromIso)
       .range(f, t)),
@@ -310,6 +316,66 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
 
   const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 1000) / 10 : null);
 
+  // ── Очікуваний валовий прибуток по замовленнях (та сама база, що orderSum:
+  // усі створені за період, без скасованих). Доставлені — факт із проводок
+  // (COGS FIFO + комісії, включно з доп. зборами), ще не доставлені — оцінка:
+  // поточна закупівельна ціна + ставки комісій категорій (як в Аналітиці).
+  type EstOrder = { id: string; channel_code: string | null; total_price: number; created_at: string; items: { sku: string; qty: number; price: number }[] | null };
+  const estById = new Map<string, EstOrder>();
+  for (const o of [...orderRows, ...monthlyOrders] as EstOrder[]) estById.set(o.id, o);
+  const estIds  = [...estById.keys()];
+  const estSkus = [...new Set([...estById.values()].flatMap(o => (o.items ?? []).map(i => i.sku)))];
+  const chunk = <T,>(arr: T[], n: number): T[][] => {
+    const out: T[][] = [];
+    for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+    return out;
+  };
+  const [stockCostRows, prodCatRows, commSettings, perOrderRows] = await Promise.all([
+    Promise.all(chunk(estSkus, 200).map(c => db.from('product_stock').select('sku, price_cost').in('sku', c).then(r => r.data ?? []))).then(a => a.flat()),
+    Promise.all(chunk(estSkus, 200).map(c => db.from('products').select('sku, categories(prom_commission_pct, prom_commission_pct_econom, rozetka_commission_pct)').in('sku', c).then(r => r.data ?? []))).then(a => a.flat()),
+    db.from('app_settings').select('key, value').in('key', ['prom_plan', 'prom_commission_pct', 'rozetka_commission_pct']).then(r => r.data ?? []),
+    Promise.all(chunk(estIds, 150).map(c => db.from('money_entries').select('order_id, account_type, amount').in('account_type', ['cogs', 'marketplace_fee']).in('order_id', c).then(r => r.data ?? []))).then(a => a.flat()),
+  ]);
+  const commCfg = Object.fromEntries(commSettings.map(s => [s.key, s.value]));
+  // Дефолти — як у prom-sync/completion, щоб оцінка не розходилась із фактом
+  const promPlan     = (commCfg.prom_plan ?? 'single') as 'single' | 'econom';
+  const promFallback = parseFloat(commCfg.prom_commission_pct ?? '3');
+  const rozFallback  = parseFloat(commCfg.rozetka_commission_pct ?? '15');
+  const ratesBySku = new Map<string, { prom: number; rozetka: number }>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- embedded relation
+  for (const p of prodCatRows as any[]) {
+    const promRaw = promPlan === 'econom' ? p.categories?.prom_commission_pct_econom : p.categories?.prom_commission_pct;
+    const promPct = parseFloat(String(promRaw));
+    const rozPct  = parseFloat(String(p.categories?.rozetka_commission_pct));
+    ratesBySku.set(p.sku, {
+      prom:    Number.isFinite(promPct) ? promPct : promFallback,
+      rozetka: Number.isFinite(rozPct)  ? rozPct  : rozFallback,
+    });
+  }
+  const costBySku = new Map(stockCostRows.map(r => [r.sku as string, Number(r.price_cost ?? 0)]));
+  const factCogs = new Map<string, number>();
+  const factFee  = new Map<string, number>();
+  for (const e of perOrderRows as { order_id: string; account_type: string; amount: number }[]) {
+    const m = e.account_type === 'cogs' ? factCogs : factFee;
+    m.set(e.order_id, (m.get(e.order_id) ?? 0) + Number(e.amount));
+  }
+  const orderMargin = (o: EstOrder): number => {
+    const items = o.items ?? [];
+    const cost = factCogs.has(o.id)
+      ? factCogs.get(o.id)!
+      : items.reduce((s, i) => s + (costBySku.get(i.sku) ?? 0) * Number(i.qty ?? 0), 0);
+    const ch = o.channel_code === 'prom' || o.channel_code === 'rozetka' ? o.channel_code : null;
+    const fee = factFee.has(o.id)
+      ? factFee.get(o.id)!
+      : ch
+      ? items.reduce((s, i) => s + Number(i.price ?? 0) * Number(i.qty ?? 0) * ((ratesBySku.get(i.sku)?.[ch] ?? 0) / 100), 0)
+      : 0;
+    return Number(o.total_price ?? 0) - cost - fee;
+  };
+  const curProfitEst  = (curOrders as EstOrder[]).reduce((s, o) => s + orderMargin(o), 0);
+  const prevProfitEst = (prevOrders as EstOrder[]).reduce((s, o) => s + orderMargin(o), 0);
+  const prevOrdSum    = sum(prevOrders);
+
   // ── Помісячні агрегати (6 міс.) для стовпчиків KPI ─────────────────────────
   const mIdx = new Map(monthKeys.map((k, i) => [k, i]));
   const mRev = new Array(6).fill(0), mCogs = new Array(6).fill(0), mFee = new Array(6).fill(0), mDeliv = new Array(6).fill(0);
@@ -323,21 +389,23 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     else if (r.account_type === 'logistics' && r.doc_type === 'delivery_cost') mDeliv[i] += amt;
   }
   const mProfit = mRev.map((v, i) => v - mCogs[i] - mFee[i] - mDeliv[i]);
-  const mOrd = new Array(6).fill(0), mOrdSum = new Array(6).fill(0);
-  for (const o of monthlyOrders) {
+  const mOrd = new Array(6).fill(0), mOrdSum = new Array(6).fill(0), mProfitEst = new Array(6).fill(0);
+  for (const o of monthlyOrders as EstOrder[]) {
     // created_at → київський місяць
     const key = new Date(o.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/Kyiv' }).slice(0, 7);
     const i = mIdx.get(key);
     if (i === undefined) continue;
-    mOrd[i] += 1; mOrdSum[i] += Number(o.total_price ?? 0);
+    mOrd[i] += 1; mOrdSum[i] += Number(o.total_price ?? 0); mProfitEst[i] += orderMargin(o);
   }
   const monthly = {
     labels: monthKeys.map(k => UA_MONTHS[Number(k.slice(5, 7)) - 1]),
     revenue: mRev,
     profit: mProfit,
+    profitEst: mProfitEst,
     orders: mOrd,
     orderSum: mOrdSum,
-    margin: mRev.map((v, i) => pct(mProfit[i], v)),
+    // Маржа — від тієї самої бази, що «Замовлення · сума»: очікуваний прибуток ÷ сума замовлень
+    margin: mOrdSum.map((v, i) => pct(mProfitEst[i], v)),
     avgCheck: mOrd.map((n, i) => (n > 0 ? Math.round(mOrdSum[i] / n) : null)),
   };
 
@@ -409,9 +477,10 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     kpi: {
       revenue:  { value: curRev, prev: prevRev, daily: revDaily, prevDaily: prevRevDaily },
       profit:   { value: curProfit, prev: prevProfit, daily: profDaily, prevDaily: prevProfDaily },
-      margin:   { value: pct(curProfit, curRev), prev: pct(prevProfit, prevRev) },
+      profitEst: { value: curProfitEst, prev: prevProfitEst },
+      margin:   { value: pct(curProfitEst, curOrdSum), prev: pct(prevProfitEst, prevOrdSum) },
       orders:   { value: curOrders.length, prev: prevOrders.length, daily: ordDaily, prevDaily: prevOrdDaily },
-      orderSum: { value: curOrdSum, prev: sum(prevOrders) },
+      orderSum: { value: curOrdSum, prev: prevOrdSum },
       avgCheck: {
         value: curOrders.length ? Math.round(curOrdSum / curOrders.length) : null,
         prev:  prevOrders.length ? Math.round(sum(prevOrders) / prevOrders.length) : null,
