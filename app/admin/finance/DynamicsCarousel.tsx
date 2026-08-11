@@ -33,55 +33,64 @@ function fmt(n: number) {
   return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
 }
 
-/* ── Тижні: щільні парні стовпчики + пунктирні лінії тренду ──────────────── */
+/* ── Тижні: дві панелі зі своїми шкалами (виручка ↑ / прибуток ↓) ─────────
+   Одна шкала ховала прибуток біля нуля поруч із виручкою; окрема нижня
+   панель робить його рельєф видимим. Тижні стоять щільно (крок ≤ 64px,
+   блок центрується), стовпчики тонкі, поверх — пунктирний тренд. */
 function WeekBars({ w }: { w: Dynamics['weeks'] }) {
-  const W = 760, H = 230, padL = 46, padB = 22, padT = 12, padR = 8;
-  const iw = W - padL - padR, ih = H - padT - padB;
+  const W = 760, H = 264, padL = 46, padR = 8;
+  const iw = W - padL - padR;
   const n = Math.max(w.labels.length, 1);
-  const maxV = Math.max(...w.revenue, ...w.profit, 1);
-  const minV = Math.min(0, ...w.profit);
-  const span = maxV - minV || 1;
-  const y = (v: number) => padT + ih - ((v - minV) / span) * ih;
-  const y0 = y(0);
-  const groupW = iw / n;
-  const barW = Math.min(46, groupW * 0.42);
-  const cx = (i: number) => padL + groupW * i + groupW / 2;
+  const groupW = Math.min(64, iw / n);
+  const blockX = padL + (iw - groupW * n) / 2;
+  const barW = Math.min(22, groupW * 0.42);
+  const cx = (i: number) => blockX + groupW * i + groupW / 2;
   const fmtAxis = (v: number) => (Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v)));
-  // Пунктирний тренд: лінія через вершини стовпчиків кожної серії
-  const trend = (vals: number[], dx: number) => vals.map((v, i) => `${(cx(i) + dx).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+
+  // Панелі: [top, height, значення, колір, підпис]
+  const maxRev = Math.max(...w.revenue, 1);
+  const maxProf = Math.max(...w.profit, 1);
+  const minProf = Math.min(0, ...w.profit);
+  const panels = [
+    { top: 16, h: 128, min: 0, max: maxRev, vals: w.revenue, color: () => 'var(--brand-blue)', trend: 'var(--brand-blue)', label: 'Виручка' },
+    { top: 168, h: 72, min: minProf, max: maxProf, vals: w.profit, color: (v: number) => (v >= 0 ? '#15803D' : '#DC2626'), trend: '#15803D', label: 'Прибуток' },
+  ];
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }} role="img" aria-label="Виручка і прибуток по тижнях">
-      {[0, 1, 2, 3].map(i => {
-        const v = minV + (span * i) / 3;
+      {panels.map(pn => {
+        const span = pn.max - pn.min || 1;
+        const y = (v: number) => pn.top + pn.h - ((v - pn.min) / span) * pn.h;
+        const y0 = y(Math.max(0, pn.min));
+        const ticks = pn.h > 100 ? [0, 1, 2] : [0, 1];
         return (
-          <g key={i}>
-            <line x1={padL} y1={y(v)} x2={W - padR} y2={y(v)} stroke="var(--border-light, var(--border))" strokeWidth="1" strokeDasharray={Math.abs(v) < 1 ? undefined : '3 4'} />
-            <text x={padL - 8} y={y(v) + 3.5} textAnchor="end" fontSize="10.5" fill="var(--text-muted)">{fmtAxis(v)}</text>
+          <g key={pn.label}>
+            <text x={padL} y={pn.top - 5} fontSize="10.5" fontWeight="700" fill={pn.trend} opacity="0.85">{pn.label}</text>
+            {ticks.map(t => {
+              const v = pn.min + (span * t) / ticks[ticks.length - 1];
+              return (
+                <g key={t}>
+                  <line x1={padL} y1={y(v)} x2={W - padR} y2={y(v)} stroke="var(--border-light, var(--border))" strokeWidth="1" strokeDasharray={Math.abs(v) < 1 ? undefined : '3 4'} />
+                  <text x={padL - 8} y={y(v) + 3.5} textAnchor="end" fontSize="10" fill="var(--text-muted)">{fmtAxis(v)}</text>
+                </g>
+              );
+            })}
+            {pn.vals.map((v, i) => (
+              <rect key={i} x={cx(i) - barW / 2} y={v >= 0 ? y(v) : y(0)} width={barW}
+                height={Math.max(2, Math.abs(y(v) - y0))} rx="2.5" fill={pn.color(v)} opacity="0.9">
+                <title>{`Тиждень з ${w.labels[i]}: ${pn.label.toLowerCase()} ${fmt(v)} ₴`}</title>
+              </rect>
+            ))}
+            {n > 1 && (
+              <polyline points={pn.vals.map((v, i) => `${cx(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')}
+                fill="none" stroke={pn.trend} strokeWidth="1.4" strokeDasharray="4 4" opacity="0.6" />
+            )}
           </g>
         );
       })}
-      {w.labels.map((l, i) => {
-        const c = cx(i);
-        const rv = w.revenue[i] ?? 0;
-        const pv = w.profit[i] ?? 0;
-        return (
-          <g key={i}>
-            <rect x={c - barW - 1} y={y(Math.max(rv, 0))} width={barW} height={Math.max(2, Math.abs(y(rv) - y0))} rx="3" fill="var(--brand-blue)" opacity="0.9">
-              <title>{`Тиждень з ${l}: виручка ${fmt(rv)} ₴`}</title>
-            </rect>
-            <rect x={c + 1} y={pv >= 0 ? y(pv) : y0} width={barW} height={Math.max(2, Math.abs(y(pv) - y0))} rx="3" fill={pv >= 0 ? '#15803D' : '#DC2626'} opacity="0.9">
-              <title>{`Тиждень з ${l}: прибуток ${fmt(pv)} ₴`}</title>
-            </rect>
-            <text x={c} y={H - 6} textAnchor="middle" fontSize="10.5" fill="var(--text-muted)">{l}</text>
-          </g>
-        );
-      })}
-      {n > 1 && (
-        <>
-          <polyline points={trend(w.revenue, -(barW / 2 + 1))} fill="none" stroke="var(--brand-blue)" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.65" />
-          <polyline points={trend(w.profit, barW / 2 + 1)} fill="none" stroke="#15803D" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.65" />
-        </>
-      )}
+      {w.labels.map((l, i) => (
+        <text key={i} x={cx(i)} y={H - 6} textAnchor="middle" fontSize="10.5" fill="var(--text-muted)">{l}</text>
+      ))}
     </svg>
   );
 }
@@ -202,12 +211,6 @@ export default function DynamicsCarousel({ data }: { data: Dynamics }) {
             {s.label}
           </button>
         ))}
-        {slide === 'weeks' && (
-          <span style={{ display: 'flex', gap: '14px', fontSize: '11.5px', color: 'var(--text-secondary)', marginLeft: 'auto' }}>
-            <span><span className="fin-dot" style={{ background: 'var(--brand-blue)' }} /> Виручка</span>
-            <span><span className="fin-dot" style={{ background: '#15803D' }} /> Прибуток</span>
-          </span>
-        )}
         {slide === 'plan' && (
           <span style={{ display: 'flex', gap: '14px', fontSize: '11.5px', color: 'var(--text-secondary)', marginLeft: 'auto' }}>
             <span><span className="fin-dot" style={{ background: 'var(--brand-blue)' }} /> Продажі</span>
