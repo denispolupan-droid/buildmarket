@@ -2199,3 +2199,20 @@ input, select { font-family: inherit; }
   transform: translateX(-1px);
 }
 .fin-bullet-cap { font-size: 10.5px; color: var(--text-muted); margin-top: 5px; text-align: right; }
+
+/* Стан посилки під статусом замовлення (десктопна таблиця): до трьох рядків
+   замість багатокрапки — у колонці «Статус» під плашкою є вільна висота
+   (рядок таблиці все одно вищий через клієнта/товар), і «Відправлення прямує
+   до м. Миколаїв» читається з містом. Ширина колонки та сама. Мобільний
+   екземпляр (.oc-track) лишається в один рядок — там перенос роздував би
+   картку кожного відправленого замовлення (свідоме рішення вище).
+   !important — бо перебиваємо інлайнові nowrap/ellipsis спільного елемента. */
+.oc-status .oc-cstat { align-items: flex-start !important; }
+.oc-status .oc-cstat svg { margin-top: 1px; }
+.oc-status .oc-cstat > span {
+  white-space: normal !important;
+  text-overflow: clip !important;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
