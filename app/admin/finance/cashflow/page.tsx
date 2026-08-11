@@ -43,15 +43,19 @@ export default async function CashflowPage({
 
   // ── 2. Opening balance = sum of all entries BEFORE period start ───────────────
   //    Пагінація критична: вся історія до періоду майже завжди > 1000 → без range()
-  //    вхідний залишок мовчки занижувався.
-  const prevEntries = await fetchAllRows<{ amount: number }>((f, t) => db
+  //    вхідний залишок мовчки занижувався. Розбивка по рахунках потрібна, щоб
+  //    фільтр «Каса»/«Банк» показував коректний вхідний залишок САМЕ рахунку.
+  const prevEntries = await fetchAllRows<{ amount: number; account_type: string }>((f, t) => db
     .from('money_entries')
-    .select('amount')
+    .select('amount, account_type')
     .in('account_type', ['cash', 'bank', 'acquiring'])
     .lt('business_date', from)
     .range(f, t));
 
-  const openingBalance = prevEntries.reduce((s: number, e: { amount: number }) => s + Number(e.amount), 0);
+  const openingByAccount = { cash: 0, bank: 0, acquiring: 0 };
+  for (const e of prevEntries) {
+    openingByAccount[e.account_type as keyof typeof openingByAccount] += Number(e.amount);
+  }
 
   // ── 3. Doc numbers ─────────────────────────────────────────────────────────
   const docIds = [...new Set((rawEntries ?? []).map(e => e.doc_id).filter(Boolean))] as string[];
@@ -162,7 +166,7 @@ export default async function CashflowPage({
 
       <CashflowClient
         entries={entries}
-        openingBalance={openingBalance}
+        openingByAccount={openingByAccount}
         defaultFrom={from}
         defaultTo={to}
       />
