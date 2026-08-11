@@ -39,7 +39,7 @@ export default function ReservationSettings({ initialTtlDays }: Props) {
   }
 
   return (
-    <div style={{ marginTop: '32px', padding: '20px 24px', background: 'var(--bg-soft)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+    <div style={{ padding: '20px 24px', background: 'var(--bg-soft)', borderRadius: '12px', border: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
         <Clock size={16} color="var(--brand-blue)" />
         <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>

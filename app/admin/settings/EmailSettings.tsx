@@ -84,7 +84,7 @@ export default function EmailSettings({ initialFromEmail, initialFromName, initi
   }
 
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '24px', marginTop: '24px' }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
         <Mail size={18} color="#1E3A5F" />
         <div>
