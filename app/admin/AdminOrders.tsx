@@ -836,22 +836,32 @@ export default function AdminOrders({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandOrderId]);
 
-  // Pre-load current registry TTNs so button shows correct state on mount
+  // Pre-load registry TTNs so the button and the green dot in the TTN chip show
+  // correct state on mount. Три останні реєстри, не один: журнал показує
+  // відправки за кілька днів, а реєстр НП створюється щодня — з одним листом
+  // крапка «в реєстрі» зникала б у вчорашніх ТТН.
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch('/api/admin/registers');
         const data = await res.json();
-        const sheets = data.sheets ?? [];
+        const sheets = (data.sheets ?? []).slice(0, 3);
         if (sheets.length === 0) return;
-        const ref = sheets[0].Ref;
-        const res2 = await fetch(`/api/admin/registers?ref=${ref}`);
-        const data2 = await res2.json();
-        const ttns: string[] = (data2.ttns ?? []).map((t: { ttn: string }) => t.ttn);
-        if (ttns.length > 0) setRegistryAdded(new Set(ttns));
+        // Послідовно, не Promise.all: НП ріже паралельний бурст запитів
+        // («To many requests»), і прелоад мовчки повертав нуль ТТН.
+        const ttns: string[] = [];
+        for (const s of sheets as { Ref: string }[]) {
+          try {
+            const r = await fetch(`/api/admin/registers?ref=${s.Ref}`);
+            const d = await r.json();
+            ttns.push(...(d.ttns ?? []).map((t: { ttn: string }) => t.ttn));
+          } catch { /* пропускаємо лист */ }
+        }
+        // Мердж, не заміна: частковий список не стирає вже відоме
+        if (ttns.length > 0) setRegistryAdded(prev => new Set([...prev, ...ttns]));
       } catch { /* silent */ }
     })();
-   
+
   }, []);
 
   async function openSupplierPO(order: Order) {
@@ -2039,6 +2049,10 @@ export default function AdminOrders({
               : isRzPickup ? 'Rozetka Доставка'
               : 'Нова Пошта';
 
+            // ТТН вже в реєстрі НП → тиха зелена крапка в чипі номера, щоб у журналі
+            // було видно без відкриття картки, кого ще не додано в реєстр.
+            const inRegistry = !!order.tracking_number && registryAdded.has(order.tracking_number);
+
             /**
              * Де зараз посилка (з синку перевізника). Один елемент на два місця:
              * у таблиці він стоїть під статусом замовлення, на телефоні — поруч із
@@ -2237,7 +2251,7 @@ export default function AdminOrders({
                       <span
                         className="oc-ttn"
                         onClick={e => { e.stopPropagation(); copyTtn(order.tracking_number!); }}
-                        title={`${isRzPickup ? 'Rozetka Доставка' : 'Нова Пошта'} · ${order.tracking_number} — натисніть, щоб скопіювати`}
+                        title={`${isRzPickup ? 'Rozetka Доставка' : 'Нова Пошта'} · ${order.tracking_number}${inRegistry ? ' · вже в реєстрі НП' : ''} — натисніть, щоб скопіювати`}
                         style={{
                           flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '4px',
                           padding: '1px 7px', borderRadius: '20px', fontWeight: 700, letterSpacing: '.02em',
@@ -2247,6 +2261,7 @@ export default function AdminOrders({
                         }}>
                         <Truck size={10} style={{ flexShrink: 0 }} />
                         {isRzPickup ? 'Rozetka' : 'НП'} {order.tracking_number}
+                        {inRegistry && <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#16A34A', flexShrink: 0 }} />}
                         {copiedTtn === order.tracking_number && <Check size={10} strokeWidth={3} />}
                       </span>
                     )}
@@ -2274,7 +2289,7 @@ export default function AdminOrders({
                       {order.tracking_number && (
                         <span
                           onClick={e => { e.stopPropagation(); copyTtn(order.tracking_number!); }}
-                          title={`${carrierLabel} · ${order.tracking_number} — натисніть, щоб скопіювати`}
+                          title={`${carrierLabel} · ${order.tracking_number}${inRegistry ? ' · вже в реєстрі НП' : ''} — натисніть, щоб скопіювати`}
                           style={{
                             display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer',
                             padding: '0 6px', borderRadius: '20px', fontSize: '10.5px', fontWeight: 700, letterSpacing: '.02em',
@@ -2284,6 +2299,7 @@ export default function AdminOrders({
                           }}>
                           <Truck size={9} style={{ flexShrink: 0 }} />
                           <span style={{ whiteSpace: 'nowrap' }}>{order.tracking_number}</span>
+                          {inRegistry && <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#16A34A', flexShrink: 0 }} />}
                           {copiedTtn === order.tracking_number && <Check size={9} strokeWidth={3} />}
                         </span>
                       )}
