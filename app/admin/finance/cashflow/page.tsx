@@ -2,8 +2,6 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { Banknote } from 'lucide-react';
 import FinanceTabs from '../FinanceTabs';
 import CashflowClient, { type CashflowEntry } from './CashflowClient';
 
@@ -157,12 +155,7 @@ export default async function CashflowPage({
 
       <FinanceTabs />
 
-      {/* Quick link to cash register */}
-      <div style={{ margin: '18px 0 20px' }}>
-        <Link href="/admin/finance/cashflow/cash" className="fin-pill" style={{ gap: '7px' }}>
-          <Banknote size={14} /> Касова книга →
-        </Link>
-      </div>
+      <div style={{ height: '20px' }} />
 
       <CashflowClient
         entries={entries}

@@ -2216,3 +2216,6 @@ input, select { font-family: inherit; }
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
+
+/* Другий рядок навігації фінансів: екрани активної теми (Гроші/Борги/Звітність) */
+.fin-subtabs { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }

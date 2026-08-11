@@ -65,7 +65,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const ordersFromDate = new Date(Math.min(sixAgo.getTime(), prevFrom.getTime()));
   const orders = await fetchAllRows<any>((f, t) => db
     .from('orders')
-    .select('id, order_number, status, total_price, created_at, channel_code, items, customer_id, phone')
+    .select('id, order_number, status, total_price, created_at, channel_code, items, customer_id, phone, contact, company')
     .not('status', 'in', '(new,cancelled)')
     .gte('created_at', ordersFromDate.toISOString())
     .order('created_at', { ascending: false })
@@ -325,6 +325,38 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     brandStats[brand].qty     += s.qty;
   }
   const brands = Object.entries(brandStats).sort((a, b) => b[1].margin - a[1].margin).slice(0, 8);
+
+  // ── Валовий прибуток за кореневими категоріями (та сама база, що бренди) ──
+  const { data: allCats } = await db.from('categories').select('slug, name, parent_slug');
+  const catBySlug = new Map((allCats ?? []).map(c => [c.slug as string, c]));
+  const rootCatName = (slug: string | null | undefined): string => {
+    let cur = slug ? catBySlug.get(slug) : undefined;
+    for (let i = 0; cur?.parent_slug && i < 6; i++) cur = catBySlug.get(cur.parent_slug) ?? cur;
+    return (cur?.name as string) ?? '— без категорії —';
+  };
+  const catStats: Record<string, { revenue: number; margin: number; qty: number }> = {};
+  for (const [sku, s] of Object.entries(skuStats)) {
+    const cat = rootCatName(prodMap.get(sku)?.category_slug);
+    if (!catStats[cat]) catStats[cat] = { revenue: 0, margin: 0, qty: 0 };
+    catStats[cat].revenue += s.revenue;
+    catStats[cat].margin  += s.revenue - s.cost;
+    catStats[cat].qty     += s.qty;
+  }
+  const categories = Object.entries(catStats).sort((a, b) => b[1].margin - a[1].margin).slice(0, 8);
+  const catTotalMargin = categories.reduce((s, [, c]) => s + Math.max(0, c.margin), 0);
+
+  // ── Топ клієнти за прибутком (факт: доставлені за період) ──
+  const clientStats = new Map<string, { name: string; revenue: number; margin: number; orders: number }>();
+  for (const r of deliveredMonthRows) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ro = r as any;
+    const name = String(ro.company || ro.contact || ro.phone || '—').trim();
+    const key = ro.customer_id || name.toLowerCase();
+    const c = clientStats.get(key) ?? { name, revenue: 0, margin: 0, orders: 0 };
+    c.revenue += r.total_price; c.margin += r.margin; c.orders += 1;
+    clientStats.set(key, c);
+  }
+  const topClients = [...clientStats.values()].sort((a, b) => b.margin - a.margin).slice(0, 8);
 
   // ── Валовий прибуток по постачальниках (факт: рядки проведених РН періоду) ──
   // supplier_id є лише в dropship-рядків; null = відвантаження з нашого складу.
@@ -636,6 +668,60 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      {/* Категорії і топ клієнти — факт (доставлені за період) */}
+      <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+        <div className="fin-card">
+          <div className="fin-card-title">Валовий прибуток за категоріями <span className="fin-card-sub">· доставлені за {curMonthLabel}, з урахуванням комісій</span></div>
+          {categories.length === 0 ? (
+            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '11px', marginTop: '14px' }}>
+              {categories.map(([name, c]) => {
+                const share = catTotalMargin > 0 ? Math.round(Math.max(0, c.margin) / catTotalMargin * 1000) / 10 : 0;
+                return (
+                  <div key={name}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', marginBottom: '4px', gap: '10px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{name}</span>
+                      <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: c.margin >= 0 ? 'var(--text-primary)' : '#DC2626' }}>
+                        {c.margin >= 0 ? '' : '−'}{fmt(Math.abs(c.margin))} ₴
+                        <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {share}%</span>
+                      </span>
+                    </div>
+                    <div className="fin-funnel-track">
+                      <div className="fin-funnel-fill" style={{ width: `${Math.max(2, share)}%`, background: c.margin >= 0 ? undefined : '#DC2626' }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="fin-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div className="fin-card-title">Топ клієнти за прибутком <span className="fin-card-sub">· доставлені за {curMonthLabel}</span></div>
+            <Link href="/admin/finance/settlements" style={{ fontSize: '12px', color: 'var(--brand-blue)', textDecoration: 'none', fontWeight: 600 }}>всі клієнти →</Link>
+          </div>
+          {topClients.length === 0 ? (
+            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
+          ) : (
+            <table className="fin-table">
+              <tbody>
+                {topClients.map(c => (
+                  <tr key={c.name}>
+                    <td className="name">{c.name}</td>
+                    <td className="num muted" style={{ fontWeight: 500 }}>{c.orders} зам. · {fmt(c.revenue)} ₴</td>
+                    <td className="num" style={{ width: '100px', color: c.margin >= 0 ? '#15803D' : '#DC2626' }}>
+                      {c.margin >= 0 ? '+' : ''}{fmt(c.margin)} ₴
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 

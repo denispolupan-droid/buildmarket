@@ -59,14 +59,9 @@ export type OverviewData = {
     paidCount: number; paidSum: number; avgCheck: number | null;
   };
   channels: { code: string; count: number; revenue: number; share: number }[];
-  topClients: { name: string; revenue: number; orders: number; share: number }[];
-  topProducts: { sku: string; name: string; qty: number; revenue: number }[];
   /* Вікно великого графіка динаміки: останні N днів (7/30/90) незалежно від
      пресета періоду; null = графік живе на щоденних рядах періоду (як досі) */
   chartWindow: { labels: string[]; revenue: number[]; profit: number[] } | null;
-  /* Валовий прибуток за кореневими категоріями (факт: рядки проведених РН
-     періоду, до комісій МП) */
-  categoryMargin: { name: string; revenue: number; margin: number; share: number }[];
   /* План виручки на поточний місяць (app_settings) проти факту з обліку */
   plan: {
     value: number | null;      // план, ₴ (null = не задано)
@@ -288,34 +283,6 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     .map(([code, c]) => ({ code, ...c, share: curOrdSum ? Math.round(c.revenue / curOrdSum * 1000) / 10 : 0 }))
     .sort((a, b) => b.revenue - a.revenue);
 
-  // Топ клієнти (по виручці когорти; ключ — компанія/контакт/телефон)
-  const clMap = new Map<string, { name: string; revenue: number; orders: number }>();
-  for (const o of curOrders) {
-    const name = (o.company || o.contact || o.phone || '—').trim();
-    const key = o.customer_id || name.toLowerCase();
-    const c = clMap.get(key) ?? { name, revenue: 0, orders: 0 };
-    c.revenue += Number(o.total_price ?? 0); c.orders += 1;
-    clMap.set(key, c);
-  }
-  const topClients = [...clMap.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 5)
-    .map(c => ({ ...c, share: curOrdSum ? Math.round(c.revenue / curOrdSum * 1000) / 10 : 0 }));
-
-  // Топ товари (по виручці позицій когорти)
-  const skuMap = new Map<string, { qty: number; revenue: number }>();
-  for (const o of curOrders) {
-    for (const it of (o.items ?? []) as { sku: string; qty: number; price: number }[]) {
-      const s = skuMap.get(it.sku) ?? { qty: 0, revenue: 0 };
-      s.qty += Number(it.qty ?? 0); s.revenue += Number(it.qty ?? 0) * Number(it.price ?? 0);
-      skuMap.set(it.sku, s);
-    }
-  }
-  const topSkus = [...skuMap.entries()].sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 5);
-  const { data: prodNames } = topSkus.length
-    ? await db.from('products').select('sku, name').in('sku', topSkus.map(([sku]) => sku))
-    : { data: [] as { sku: string; name: string }[] };
-  const nameBySku = new Map((prodNames ?? []).map(p => [p.sku, p.name]));
-  const topProducts = topSkus.map(([sku, s]) => ({ sku, name: nameBySku.get(sku) ?? sku, ...s }));
-
   // ── Сьогодні (окрема вибірка — не залежить від обраного періоду) ──────────
   const todayAll = todayRows as { total_price: number; created_at: string; shipped_at: string | null; status: string }[];
   const todayOrders = todayAll.filter(o => o.created_at >= today.iso && o.status !== 'cancelled');
@@ -382,8 +349,8 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     for (let d = new Date(start), i = 0; i < chartDays; d.setDate(d.getDate() + 1), i++) chartWinDays.push(dstr(d));
   }
 
-  // ── Другий батч: вікно графіка, маржа за категоріями, план ─────────────────
-  const [chartLedger, marginLines, allCats, planRow] = await Promise.all([
+  // ── Другий батч: вікно графіка, план ───────────────────────────────────────
+  const [chartLedger, planRow] = await Promise.all([
     chartDays
       ? fetchAllRows<{ business_date: string; account_type: string; doc_type: string | null; amount: number }>((f, t) => db
           .from('money_entries')
@@ -392,18 +359,6 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
           .gte('business_date', chartWinDays[0])
           .range(f, t))
       : Promise.resolve([] as { business_date: string; account_type: string; doc_type: string | null; amount: number }[]),
-    // Рядки проведених РН періоду (inner-join фільтр по шапці) — для маржі за категоріями
-    fetchAllRows<{ sku: string; qty: number; price: number; cost_price: number }>((f, t) => {
-      let q = db.from('acc_document_lines')
-        .select('sku, qty, price, cost_price, acc_documents!inner(doc_type, status, doc_date, reversal_of)')
-        .eq('acc_documents.doc_type', 'sale')
-        .eq('acc_documents.status', 'confirmed')
-        .is('acc_documents.reversal_of', null)
-        .gte('acc_documents.doc_date', fromStr);
-      if (periodTo) q = q.lt('acc_documents.doc_date', endStr);
-      return q.range(f, t);
-    }),
-    db.from('categories').select('slug, name, parent_slug').then(r => r.data ?? []),
     db.from('app_settings').select('value').eq('key', 'finance_month_plan').maybeSingle().then(r => r.data),
   ]);
 
@@ -429,34 +384,6 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       profit: cwProf,
     };
   }
-
-  // ── Валовий прибуток за кореневими категоріями ─────────────────────────────
-  const catBySlug = new Map((allCats as { slug: string; name: string; parent_slug: string | null }[]).map(c => [c.slug, c]));
-  const rootOf = (slug: string | null): string => {
-    let cur = slug ? catBySlug.get(slug) : undefined;
-    for (let i = 0; cur?.parent_slug && i < 6; i++) cur = catBySlug.get(cur.parent_slug) ?? cur;
-    return cur?.name ?? '— без категорії —';
-  };
-  const marginSkus = [...new Set(marginLines.map(l => l.sku))];
-  const skuCat = new Map<string, string | null>();
-  for (let i = 0; i < marginSkus.length; i += 200) {
-    const { data: prods } = await db.from('products').select('sku, category_slug').in('sku', marginSkus.slice(i, i + 200));
-    for (const pr of prods ?? []) skuCat.set(pr.sku, pr.category_slug);
-  }
-  const catAgg = new Map<string, { revenue: number; margin: number }>();
-  for (const l of marginLines) {
-    const name = rootOf(skuCat.get(l.sku) ?? null);
-    const a = catAgg.get(name) ?? { revenue: 0, margin: 0 };
-    const rev = Number(l.price ?? 0) * Number(l.qty ?? 0);
-    a.revenue += rev;
-    a.margin  += rev - Number(l.cost_price ?? 0) * Number(l.qty ?? 0);
-    catAgg.set(name, a);
-  }
-  const catTotalMargin = [...catAgg.values()].reduce((s, a) => s + Math.max(0, a.margin), 0);
-  const categoryMargin = [...catAgg.entries()]
-    .map(([name, a]) => ({ name, ...a, share: catTotalMargin > 0 ? Math.round(Math.max(0, a.margin) / catTotalMargin * 1000) / 10 : 0 }))
-    .sort((a, b) => b.margin - a.margin)
-    .slice(0, 8);
 
   // ── План виручки на поточний місяць ────────────────────────────────────────
   const kyivToday = today.ymd;                        // YYYY-MM-DD за Києвом
@@ -513,7 +440,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       paidSum,
       avgCheck: todayOrders.length ? Math.round(sum(todayOrders) / todayOrders.length) : null,
     },
-    channels, topClients, topProducts,
-    chartWindow, categoryMargin, plan,
+    channels,
+    chartWindow, plan,
   };
 }

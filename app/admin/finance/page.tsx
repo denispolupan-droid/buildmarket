@@ -252,92 +252,29 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
         </div>
       </div>
 
-      {/* Маржа за категоріями · План на місяць */}
+      {/* Канали · План. Деталі (топи, категорії, бренди) — в «Аналітиці»:
+          «Огляд» тримає лише загальну картину (рішення власника). */}
       <div className="fin-grid-12" style={{ marginTop: '16px' }}>
         <div className="fin-card" style={{ gridColumn: 'span 8' }}>
-          <div className="fin-card-title">Валовий прибуток за категоріями <span className="fin-card-sub">· факт з проведених РН за {ov.periodLabel}, до комісій МП</span></div>
-          {ov.categoryMargin.length === 0 ? (
-            <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає проведених продажів за період</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '11px', marginTop: '14px' }}>
-              {ov.categoryMargin.map(c => (
-                <div key={c.name}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', marginBottom: '4px' }}>
-                    <span style={{ color: 'var(--text-secondary)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{c.name}</span>
-                    <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: c.margin >= 0 ? 'var(--text-primary)' : '#DC2626' }}>
-                      {c.margin >= 0 ? '' : '−'}{fmt(Math.abs(c.margin))} ₴
-                      <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {c.share}% · виручка {fmt(c.revenue)} ₴</span>
-                    </span>
-                  </div>
-                  <div className="fin-funnel-track">
-                    <div className="fin-funnel-fill" style={{ width: `${Math.max(2, c.share)}%`, background: c.margin >= 0 ? undefined : '#DC2626' }} />
-                  </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div className="fin-card-title">Канали продажів <span className="fin-card-sub">· сума створених замовлень за період (оцінка до доставки)</span></div>
+            <Link href="/admin/finance/analytics" style={{ fontSize: '12px', color: 'var(--brand-blue)', textDecoration: 'none', fontWeight: 600 }}>деталі в Аналітиці →</Link>
+          </div>
+          <div className="fin-chan-grid">
+            {ov.channels.map(c => (
+              <div key={c.code} className="fin-chan">
+                <div className="fin-kpi-label">{CHANNEL_LABELS[c.code] ?? c.code}</div>
+                <div style={{ fontSize: '19px', fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(c.revenue)} ₴</div>
+                <div className="fin-money-sub">{c.count} зам. · {c.share}%</div>
+                <div className="fin-funnel-track" style={{ marginTop: '6px' }}>
+                  <div className="fin-funnel-fill" style={{ width: `${Math.max(2, c.share)}%` }} />
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ))}
+          </div>
         </div>
 
         <PlanCard plan={ov.plan} />
-      </div>
-
-      {/* Канали */}
-      <div className="fin-card" style={{ marginTop: '16px' }}>
-        <div className="fin-card-title">Канали продажів <span className="fin-card-sub">· сума створених замовлень за період (оцінка до доставки)</span></div>
-        <div className="fin-chan-grid">
-          {ov.channels.map(c => (
-            <div key={c.code} className="fin-chan">
-              <div className="fin-kpi-label">{CHANNEL_LABELS[c.code] ?? c.code}</div>
-              <div style={{ fontSize: '19px', fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(c.revenue)} ₴</div>
-              <div className="fin-money-sub">{c.count} зам. · {c.share}%</div>
-              <div className="fin-funnel-track" style={{ marginTop: '6px' }}>
-                <div className="fin-funnel-fill" style={{ width: `${Math.max(2, c.share)}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Топи */}
-      <div className="fin-grid-12" style={{ marginTop: '16px' }}>
-        <div className="fin-card" style={{ gridColumn: 'span 6' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <div className="fin-card-title">Топ клієнти <span className="fin-card-sub">· за сумами замовлень періоду</span></div>
-            <Link href="/admin/finance/settlements" style={{ fontSize: '12px', color: 'var(--brand-blue)', textDecoration: 'none', fontWeight: 600 }}>всі клієнти →</Link>
-          </div>
-          <table className="fin-table">
-            <tbody>
-              {ov.topClients.map(c => (
-                <tr key={c.name}>
-                  <td className="name">{c.name}</td>
-                  <td className="num">{fmt(c.revenue)} ₴</td>
-                  <td className="num muted">{c.share}%</td>
-                  <td className="num muted">{c.orders} зам.</td>
-                </tr>
-              ))}
-              {ov.topClients.length === 0 && <tr><td className="muted">Немає даних за період</td></tr>}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="fin-card" style={{ gridColumn: 'span 6' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <div className="fin-card-title">Топ товари <span className="fin-card-sub">· за позиціями замовлень періоду</span></div>
-            <Link href="/admin/finance/analytics" style={{ fontSize: '12px', color: 'var(--brand-blue)', textDecoration: 'none', fontWeight: 600 }}>ABC-аналіз →</Link>
-          </div>
-          <table className="fin-table">
-            <tbody>
-              {ov.topProducts.map(t => (
-                <tr key={t.sku}>
-                  <td className="name">{t.name}</td>
-                  <td className="num">{fmt(t.revenue)} ₴</td>
-                  <td className="num muted">{fmt(t.qty)} шт</td>
-                </tr>
-              ))}
-              {ov.topProducts.length === 0 && <tr><td className="muted">Немає даних за період</td></tr>}
-            </tbody>
-          </table>
-        </div>
       </div>
 
     </div>
