@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import { Pencil } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
 
-// Віджет «План на місяць»: план виручки з app_settings проти факту з обліку
-// + прогноз за поточним темпом. Редагування — олівець → інпут → Enter.
+// «План на місяць» — повноширинний прогрес-бар (рішення власника): факт
+// виручки проти плану з app_settings, риска — скільки місяця вже минуло
+// (заливка лівіше риски = темп відстає), праворуч прогноз за поточним темпом.
+// Редагування — олівець → інпут → Enter.
 
 function fmt(n: number) {
   return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
@@ -41,25 +43,28 @@ export default function PlanCard({ plan }: {
     }
   }
 
-  const donePct    = plan.value ? Math.min(100, Math.round(plan.fact / plan.value * 100)) : null;
-  const paceOk     = plan.value ? plan.forecast >= plan.value : null;
-  const timePct    = Math.round(plan.daysPassed / plan.daysInMonth * 100);
+  const donePct = plan.value ? Math.min(100, Math.round(plan.fact / plan.value * 100)) : null;
+  const paceOk  = plan.value ? plan.forecast >= plan.value : null;
+  const timePct = Math.round(plan.daysPassed / plan.daysInMonth * 100);
 
   return (
-    <div className="fin-card" style={{ gridColumn: 'span 4' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+    <div className="fin-card" style={{ marginTop: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
         <div className="fin-card-title">План на місяць <span className="fin-card-sub">· виручка · {plan.monthLabel}</span></div>
-        {!editing && (
-          <button onClick={() => { setDraft(plan.value != null ? String(plan.value) : ''); setEditing(true); }}
-            title="Змінити план"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '2px' }}>
-            <Pencil size={13} />
-          </button>
+        {!editing && plan.value != null && (
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: '8px', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)' }}>{fmt(plan.fact)} ₴</span>
+            <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>з {fmt(plan.value)} ₴ · {donePct}%</span>
+            <button onClick={() => { setDraft(String(plan.value)); setEditing(true); }} title="Змінити план"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '2px', alignSelf: 'center' }}>
+              <Pencil size={13} />
+            </button>
+          </span>
         )}
       </div>
 
       {editing ? (
-        <div style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center', maxWidth: '420px' }}>
           <input
             autoFocus type="text" inputMode="numeric" value={draft}
             onChange={e => setDraft(e.target.value)}
@@ -73,25 +78,29 @@ export default function PlanCard({ plan }: {
           </button>
         </div>
       ) : plan.value == null ? (
-        <div style={{ marginTop: '12px', fontSize: '13px', color: 'var(--text-muted)' }}>
+        <div style={{ marginTop: '10px', fontSize: '13px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
           План не задано — натисніть олівець і введіть цільову виручку на місяць.
+          <button onClick={() => { setDraft(''); setEditing(true); }} title="Задати план"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '2px' }}>
+            <Pencil size={13} />
+          </button>
         </div>
       ) : (
         <>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '10px' }}>
-            <span style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(plan.fact)} ₴</span>
-            <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>з {fmt(plan.value)} ₴ · {donePct}%</span>
-          </div>
-          <div className="fin-funnel-track" style={{ marginTop: '8px', position: 'relative' }}>
-            <div className="fin-funnel-fill" style={{ width: `${Math.max(2, donePct ?? 0)}%` }} />
-            {/* риска: скільки місяця вже минуло — якщо заливка лівіше за риску, темп відстає */}
+          <div className="fin-funnel-track" style={{ marginTop: '12px', position: 'relative', height: '12px', borderRadius: '7px' }}>
+            <div className="fin-funnel-fill" style={{ width: `${Math.max(1, donePct ?? 0)}%`, borderRadius: '7px' }} />
+            {/* риска: скільки місяця вже минуло — заливка лівіше риски = темп відстає */}
             <div title={`Минуло ${plan.daysPassed} з ${plan.daysInMonth} днів (${timePct}%)`}
-              style={{ position: 'absolute', top: '-3px', bottom: '-3px', left: `${timePct}%`, width: '2px', background: 'var(--text-primary)', opacity: 0.5, borderRadius: '1px' }} />
+              style={{ position: 'absolute', top: '-4px', bottom: '-4px', left: `${timePct}%`, width: '2px', background: 'var(--text-primary)', opacity: 0.55, borderRadius: '1px' }} />
           </div>
-          <div className="fin-hint" style={{ marginTop: '9px' }}>
-            Прогноз за поточним темпом: <b style={{ color: paceOk ? '#15803D' : '#DC2626' }}>{fmt(plan.forecast)} ₴</b>
-            {paceOk ? ' — план виконується' : ` — не вистачає ${fmt(plan.value - plan.forecast)} ₴`}
-            {' · '}минуло {plan.daysPassed}/{plan.daysInMonth} дн.
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginTop: '8px', flexWrap: 'wrap' }}>
+            <span className="fin-hint" style={{ marginTop: 0 }}>
+              Риска — скільки місяця минуло ({plan.daysPassed}/{plan.daysInMonth} дн., {timePct}%): заливка лівіше риски = темп відстає.
+            </span>
+            <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+              Прогноз за темпом: <b style={{ color: paceOk ? '#15803D' : '#DC2626' }}>{fmt(plan.forecast)} ₴</b>
+              {paceOk ? ' — план виконується' : ` — не вистачає ${fmt(plan.value - plan.forecast)} ₴`}
+            </span>
           </div>
         </>
       )}

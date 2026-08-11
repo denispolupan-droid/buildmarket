@@ -19,11 +19,6 @@ const db = createClient(
 
 export const dynamic = 'force-dynamic';
 
-const CHANNEL_LABELS: Record<string, string> = {
-  website: 'Сайт', prom: 'Prom.ua', rozetka: 'Rozetka', b2b: 'Опт (B2B)',
-  phone: 'Телефон', retail: 'Роздріб', dropship: 'Дроп', other: 'Інше',
-};
-
 function fmt(n: number) {
   return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
 }
@@ -261,30 +256,9 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
         </div>
       </div>
 
-      {/* Канали · План. Деталі (топи, категорії, бренди) — в «Аналітиці»:
-          «Огляд» тримає лише загальну картину (рішення власника). */}
-      <div className="fin-grid-12" style={{ marginTop: '16px' }}>
-        <div className="fin-card" style={{ gridColumn: 'span 8' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <div className="fin-card-title">Канали продажів <span className="fin-card-sub">· сума створених замовлень за період (оцінка до доставки)</span></div>
-            <Link href="/admin/finance/analytics" style={{ fontSize: '12px', color: 'var(--brand-blue)', textDecoration: 'none', fontWeight: 600 }}>деталі в Аналітиці →</Link>
-          </div>
-          <div className="fin-chan-grid">
-            {ov.channels.map(c => (
-              <div key={c.code} className="fin-chan">
-                <div className="fin-kpi-label">{CHANNEL_LABELS[c.code] ?? c.code}</div>
-                <div style={{ fontSize: '19px', fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(c.revenue)} ₴</div>
-                <div className="fin-money-sub">{c.count} зам. · {c.share}%</div>
-                <div className="fin-funnel-track" style={{ marginTop: '6px' }}>
-                  <div className="fin-funnel-fill" style={{ width: `${Math.max(2, c.share)}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <PlanCard plan={ov.plan} />
-      </div>
+      {/* План на місяць — прогрес-бар на всю ширину. Канали звідси прибрані:
+          їх показує «Джерела» в каруселі динаміки, деталі — в «Аналітиці». */}
+      <PlanCard plan={ov.plan} />
 
     </div>
   );
