@@ -427,7 +427,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       <FinanceTabs />
 
       {/* Період дашборда */}
-      <div className="fin-period-row" style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="fin-period-row" style={{ display: 'flex', gap: '8px', margin: '18px 0 16px', alignItems: 'center', flexWrap: 'wrap' }}>
         {[
           { key: 'cur_month',  label: 'Цей місяць' },
           { key: 'prev_month', label: 'Минулий місяць' },
