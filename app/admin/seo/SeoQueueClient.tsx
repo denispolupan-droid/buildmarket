@@ -69,8 +69,9 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
     return counts;
   }, [withGaps]);
 
-  // Кнопка запускає ЄДИНИЙ рушій, що заповнює ВЕСЬ контент (опис, keywords,
-  // характеристики, FAQ, рос. назва + переклади). Придатні — усі з будь-яким
+  // Кнопка запускає ЄДИНИЙ рушій (lib/catalog-enricher): AI генерує комплект
+  // картки, але ЗАПИСУЮТЬСЯ лише пробіли — наявний контент і ручні значення
+  // не перезаписуються (див. applyContent). Придатні — усі з будь-яким
   // пробілом, крім фото (його завантажують вручну).
   const enrichable = useMemo(
     () => visible.filter(i => i.gaps.thinDesc || i.gaps.noFaq || i.gaps.ruDesc || i.gaps.noRu || i.gaps.noKeywords || i.gaps.noChars || i.gaps.missingRequired),
@@ -568,7 +569,7 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
         </span>
         {!running ? (
           <button onClick={start} disabled={!selectedEnrichable.length || !faqTableReady} style={{ ...btnPrimary, opacity: selectedEnrichable.length && faqTableReady ? 1 : 0.5 }}>
-            ▶ Згенерувати повну картку
+            ▶ Заповнити пробіли
           </button>
         ) : (
           <button onClick={() => abortRef.current?.abort()} style={btnDanger}>■ Зупинити</button>
@@ -663,7 +664,7 @@ export default function SeoQueueClient({ items, faqTableReady }: { items: QueueI
       </div>
 
       <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 12 }}>
-        Тут генерується ВЕСЬ контент картки одним рушієм: опис, keywords, характеристики, FAQ і рос. назва — одразу двома мовами (укр + рос). Та сама генерація доступна кнопкою в картці товару (для одного товару). Фото — вручну.
+        Заповнюються лише пробіли: тонкий опис, порожні keywords, відсутні обов&apos;язкові характеристики, FAQ без перекладу, порожня рос. назва — одразу двома мовами (укр + рос). Наявний контент і ручні значення не перезаписуються. Та сама генерація доступна кнопкою в картці товару. Фото — вручну.
       </p>
     </div>
   );
