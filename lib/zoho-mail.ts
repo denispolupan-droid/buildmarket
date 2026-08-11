@@ -67,6 +67,41 @@ export async function getAccountId(): Promise<string> {
   return accountId;
 }
 
+// Адреси, з яких Zoho дозволяє відправляти цьому акаунту: основна скринька плюс
+// email-аліаси (orders@budmag.biz.ua). Список беремо в самого Zoho, а не з
+// app_settings — це єдине джерело правди, довільний FROM він однаково відхилить.
+export type ZohoSender = { email: string; name: string; isDefault: boolean };
+
+export async function getSendAddresses(): Promise<ZohoSender[]> {
+  const token = await getAccessToken();
+  const res = await fetch(`${ZOHO_MAIL}/accounts`, {
+    headers: { Authorization: `Zoho-oauthtoken ${token}` },
+  });
+  const data = await res.json();
+  const acc = data?.data?.[0];
+  const details = acc?.sendMailDetails as
+    | { fromAddress?: string; displayName?: string; status?: boolean }[]
+    | undefined;
+
+  // Фільтруємо по status, а НЕ по validated: у Zoho validated=false стоїть навіть
+  // на робочих аліасах (це про зовнішній SMTP), тому по ньому відсіювалось усе.
+  const primary = String(acc?.primaryEmailAddress ?? process.env.ADMIN_EMAIL ?? '').toLowerCase();
+  const list = (details ?? [])
+    .filter(d => d.fromAddress?.includes('@') && d.status !== false)
+    .map(d => ({
+      email:     d.fromAddress!.trim(),
+      name:      (d.displayName ?? '').trim(),
+      isDefault: d.fromAddress!.trim().toLowerCase() === primary,
+    }));
+
+  // Якщо Zoho чомусь не віддав список — лишаємо основну адресу, щоб відправка
+  // не зламалась зовсім.
+  if (!list.length && process.env.ADMIN_EMAIL) {
+    return [{ email: process.env.ADMIN_EMAIL, name: '', isDefault: true }];
+  }
+  return list;
+}
+
 export async function zohoFetch(path: string, options: RequestInit = {}) {
   const token = await getAccessToken();
   const res = await fetch(`${ZOHO_MAIL}${path}`, {

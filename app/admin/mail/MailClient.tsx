@@ -18,6 +18,7 @@ type Message = {
   folderId?: string;
 };
 type MessageContent = Message & { content: string };
+type Sender = { email: string; name: string; isDefault: boolean; signature?: string };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -75,6 +76,18 @@ function formatAddress(raw: string) {
   return decoded;
 }
 
+function emailsIn(raw: string): string[] {
+  return decodeHtml(raw ?? '').match(/[^\s<>,;"]+@[^\s<>,;"]+/g) ?? [];
+}
+
+// Відповідаємо з тієї ж адреси, на яку лист прийшов: писали на orders@budmag —
+// відповідь піде від BudMag, а не від FIXLINE.
+function pickFrom(senders: Sender[], onBehalf?: string): string {
+  const targets = emailsIn(onBehalf ?? '').map(e => e.toLowerCase());
+  const hit = senders.find(s => targets.includes(s.email.toLowerCase()));
+  return hit?.email ?? senders.find(s => s.isDefault)?.email ?? senders[0]?.email ?? '';
+}
+
 function formatDate(ts: string) {
   if (!ts) return '';
   const d = new Date(Number(ts));
@@ -87,20 +100,30 @@ function formatDate(ts: string) {
 
 // ── Compose modal ─────────────────────────────────────────────────────────────
 
-function ComposeModal({ onClose, replyTo }: { onClose: () => void; replyTo?: { to: string; subject: string; replyToMsgId?: string } }) {
+function ComposeModal({ onClose, replyTo, senders }: {
+  onClose: () => void;
+  replyTo?: { to: string; subject: string; onBehalf?: string; replyToMsgId?: string };
+  senders: Sender[];
+}) {
   const [to,      setTo]      = useState(replyTo?.to ?? '');
   const [subject, setSubject] = useState(replyTo ? `Re: ${replyTo.subject.replace(/^Re:\s*/i, '')}` : '');
   const [body,    setBody]    = useState('');
+  const [from,    setFrom]    = useState(() => pickFrom(senders, replyTo?.onBehalf));
   const [sending, setSending] = useState(false);
   const [error,   setError]   = useState('');
+
+  // Підпис не тримаємо в тексті листа — інакше при зміні відправника він або
+  // дублюється, або губиться. Додаємо його один раз при відправці.
+  const signature = senders.find(s => s.email === from)?.signature?.trim() ?? '';
 
   async function send() {
     if (!to || !subject || !body) { setError('Заповніть усі поля'); return; }
     setSending(true); setError('');
+    const full = signature ? `${body}\n\n${signature}` : body;
     const res = await fetch('/api/admin/mail/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to, subject, content: body.replace(/\n/g, '<br>') }),
+      body: JSON.stringify({ to, subject, from, content: full.replace(/\n/g, '<br>') }),
     });
     const data = await res.json();
     if (!res.ok) { setError(data.error ?? 'Помилка відправки'); setSending(false); return; }
@@ -119,6 +142,19 @@ function ComposeModal({ onClose, replyTo }: { onClose: () => void; replyTo?: { t
           </button>
         </div>
         <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {senders.length > 1 && (
+            <select
+              value={from}
+              onChange={e => setFrom(e.target.value)}
+              style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '14px', outline: 'none', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+            >
+              {senders.map(s => (
+                <option key={s.email} value={s.email}>
+                  {s.name ? `${s.name} <${s.email}>` : s.email}
+                </option>
+              ))}
+            </select>
+          )}
           <input
             placeholder="Кому"
             value={to}
@@ -138,6 +174,11 @@ function ComposeModal({ onClose, replyTo }: { onClose: () => void; replyTo?: { t
             rows={10}
             style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '14px', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
           />
+          {signature && (
+            <div style={{ padding: '9px 12px', borderRadius: '8px', background: 'var(--bg-soft)', border: '1px dashed var(--border)', fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+              {signature}
+            </div>
+          )}
           {error && <div style={{ color: '#EF4444', fontSize: '13px' }}>{error}</div>}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
@@ -165,7 +206,8 @@ export default function MailClient() {
   const [loading,     setLoading]     = useState(false);
   const [msgLoading,  setMsgLoading]  = useState(false);
   const [compose,     setCompose]     = useState(false);
-  const [replyData,   setReplyData]   = useState<{ to: string; subject: string } | undefined>();
+  const [replyData,   setReplyData]   = useState<{ to: string; subject: string; onBehalf?: string } | undefined>();
+  const [senders,     setSenders]     = useState<Sender[]>([]);
   const [error,       setError]       = useState('');
 
   // Check connection status
@@ -174,6 +216,15 @@ export default function MailClient() {
       .then(r => r.json())
       .then(d => setConnected(d.connected));
   }, []);
+
+  // Дозволені адреси відправника (основна + аліаси)
+  useEffect(() => {
+    if (!connected) return;
+    fetch('/api/admin/mail/senders')
+      .then(r => r.json())
+      .then(d => setSenders(Array.isArray(d.senders) ? d.senders : []))
+      .catch(() => setSenders([]));
+  }, [connected]);
 
   // Load folders when connected
   useEffect(() => {
@@ -389,7 +440,7 @@ export default function MailClient() {
                   <div><b>Дата:</b> {new Date(Number(selMessage.sentDateInGMT)).toLocaleString('uk-UA')}</div>
                 </div>
                 <button
-                  onClick={() => { setReplyData({ to: selMessage.fromAddress, subject: selMessage.subject }); setCompose(true); }}
+                  onClick={() => { setReplyData({ to: selMessage.fromAddress, subject: selMessage.subject, onBehalf: selMessage.toAddress }); setCompose(true); }}
                   style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-soft)', cursor: 'pointer', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}
                 >
                   <Reply size={14} /> Відповісти
@@ -427,6 +478,7 @@ export default function MailClient() {
       {compose && (
         <ComposeModal
           replyTo={replyData}
+          senders={senders}
           onClose={() => { setCompose(false); setReplyData(undefined); }}
         />
       )}

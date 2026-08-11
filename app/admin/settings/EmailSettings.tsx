@@ -1,10 +1,11 @@
 ﻿'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Check, Loader2, Mail, Plus, X } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
 
 export type Sender = { name: string; email: string; anonymize?: boolean };
+type MailSender = { email: string; name: string };
 
 type Props = {
   initialFromEmail:    string;
@@ -14,6 +15,7 @@ type Props = {
   initialContactPhone: string;
   initialExtraSenders: Sender[];
   initialDefaultSender: string;
+  initialSignatures:   Record<string, string>;
 };
 
 const inp: React.CSSProperties = {
@@ -26,7 +28,7 @@ const lbl: React.CSSProperties = {
   display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em',
 };
 
-export default function EmailSettings({ initialFromEmail, initialFromName, initialAdminEmail, initialContactName, initialContactPhone, initialExtraSenders, initialDefaultSender }: Props) {
+export default function EmailSettings({ initialFromEmail, initialFromName, initialAdminEmail, initialContactName, initialContactPhone, initialExtraSenders, initialDefaultSender, initialSignatures }: Props) {
   const [fromEmail,     setFromEmail]     = useState(initialFromEmail);
   const [fromName,      setFromName]      = useState(initialFromName);
   const [adminEmail,    setAdminEmail]    = useState(initialAdminEmail);
@@ -35,8 +37,18 @@ export default function EmailSettings({ initialFromEmail, initialFromName, initi
   const [extraSenders,  setExtraSenders]  = useState<Sender[]>(initialExtraSenders ?? []);
   // Яка з адрес підставляється у вікні відправки постачальнику. Порожньо = основна.
   const [defaultSender, setDefaultSender] = useState(initialDefaultSender ?? '');
+  const [signatures,  setSignatures]  = useState<Record<string, string>>(initialSignatures ?? {});
+  // Адреси, з яких реально можна писати в розділі «Пошта» — беремо з Zoho.
+  const [mailSenders, setMailSenders] = useState<MailSender[]>([]);
   const [saving,      setSaving]      = useState(false);
   const [saved,       setSaved]       = useState(false);
+
+  useEffect(() => {
+    fetch('/api/admin/mail/senders')
+      .then(r => r.json())
+      .then(d => setMailSenders(Array.isArray(d.senders) ? d.senders : []))
+      .catch(() => setMailSenders([]));
+  }, []);
 
   async function handleSave() {
     // Валідація додаткових відправників: email обов'язковий і коректний
@@ -58,6 +70,9 @@ export default function EmailSettings({ initialFromEmail, initialFromName, initi
           extra_senders:         JSON.stringify(cleaned),
           // Адресу, яку щойно прибрали зі списку, за замовчуванням не лишаємо.
           orders_default_sender: cleaned.some(s => s.email === defaultSender) ? defaultSender : '',
+          mail_signatures: JSON.stringify(
+            Object.fromEntries(Object.entries(signatures).filter(([, v]) => v.trim())),
+          ),
         }),
       });
       const data = await res.json();
@@ -141,6 +156,34 @@ export default function EmailSettings({ initialFromEmail, initialFromName, initi
                       onChange={() => setDefaultSender(s.email)} />
                     Підставляти за замовчуванням
                   </label>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Підписи для розділу «Пошта» — свій для кожної адреси відправника */}
+        <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>Підписи в листах</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '10px', lineHeight: 1.5 }}>
+            Додається в кінець листа при відправці з розділу «Пошта». Для кожної адреси — свій текст.
+          </div>
+          {mailSenders.length === 0 ? (
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              Адреси не завантажились — перевір підключення Zoho в розділі «Пошта»
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {mailSenders.map(s => (
+                <div key={s.email}>
+                  <label style={lbl}>{s.name ? `${s.name} — ${s.email}` : s.email}</label>
+                  <textarea
+                    value={signatures[s.email] ?? ''}
+                    onChange={e => setSignatures(prev => ({ ...prev, [s.email]: e.target.value }))}
+                    rows={4}
+                    placeholder={'З повагою,\nFIXLINE\n+380...'}
+                    style={{ ...inp, height: 'auto', padding: '9px 12px', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }}
+                  />
                 </div>
               ))}
             </div>
