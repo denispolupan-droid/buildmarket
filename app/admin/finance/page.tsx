@@ -4,8 +4,9 @@ import { ChevronRight } from 'lucide-react';
 import FinanceTabs from './FinanceTabs';
 import FinanceActions from './FinanceActions';
 import PlanCard from './PlanCard';
+import DynamicsCarousel from './DynamicsCarousel';
 import { getOverview } from './overview-data';
-import { MonthBars, TrendBadge, DualLineChart } from './overview-charts';
+import { MonthBars, TrendBadge } from './overview-charts';
 
 // «Огляд» — перший екран фінансів у стилі BI (Stripe/Metabase): KPI з
 // порівнянням до попереднього періоду, воронка, динаміка, action-центр.
@@ -164,43 +165,33 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
         <div className="fin-card" style={{ gridColumn: 'span 5' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <div className="fin-card-title">
-              {ov.chartWindow ? `Динаміка · ${chartDays} днів` : 'Динаміка за період'} <span className="fin-card-sub">· факт з обліку, по днях доставки</span>
+              {ov.chartWindow ? `Динаміка · ${chartDays} днів` : 'Динаміка за період'} <span className="fin-card-sub">· факт з обліку</span>
             </div>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              {/* Вікно графіка незалежно від пресета періоду: Період / 7 / 30 / 90 днів */}
-              <div style={{ display: 'flex', gap: '3px' }}>
-                {[
-                  { d: undefined, label: 'Період' },
-                  { d: 7,  label: '7д' },
-                  { d: 30, label: '30д' },
-                  { d: 90, label: '90д' },
-                ].map(w => {
-                  const params = new URLSearchParams();
-                  if (p) params.set('p', p);
-                  if (w.d) params.set('d', String(w.d));
-                  const qs = params.toString();
-                  const active = (w.d ?? undefined) === chartDays;
-                  return (
-                    <Link key={w.label} href={`/admin/finance${qs ? `?${qs}` : ''}`}
-                      style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, textDecoration: 'none',
-                        color: active ? '#fff' : 'var(--text-secondary)', background: active ? '#1E3A5F' : 'var(--bg-soft)' }}>
-                      {w.label}
-                    </Link>
-                  );
-                })}
-              </div>
-              <div style={{ display: 'flex', gap: '14px', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
-                <span><span className="fin-dot" style={{ background: 'var(--brand-blue)' }} /> Виручка</span>
-                <span><span className="fin-dot" style={{ background: '#15803D' }} /> Прибуток</span>
-              </div>
+            {/* Вікно даних для «Тижнів» незалежно від пресета: Період / 7 / 30 / 90 днів */}
+            <div style={{ display: 'flex', gap: '3px' }}>
+              {[
+                { d: undefined, label: 'Період' },
+                { d: 7,  label: '7д' },
+                { d: 30, label: '30д' },
+                { d: 90, label: '90д' },
+              ].map(w => {
+                const params = new URLSearchParams();
+                if (p) params.set('p', p);
+                if (w.d) params.set('d', String(w.d));
+                const qs = params.toString();
+                const active = (w.d ?? undefined) === chartDays;
+                return (
+                  <Link key={w.label} href={`/admin/finance${qs ? `?${qs}` : ''}`}
+                    style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, textDecoration: 'none',
+                      color: active ? '#fff' : 'var(--text-secondary)', background: active ? '#1E3A5F' : 'var(--bg-soft)' }}>
+                    {w.label}
+                  </Link>
+                );
+              })}
             </div>
           </div>
-          <div style={{ marginTop: '12px' }}>
-            <DualLineChart
-              a={ov.chartWindow ? ov.chartWindow.revenue : ov.kpi.revenue.daily}
-              b={ov.chartWindow ? ov.chartWindow.profit : ov.kpi.profit.daily}
-              labels={ov.chartWindow ? ov.chartWindow.labels : ov.dayLabels}
-              aLabel="Виручка" bLabel="Прибуток" />
+          <div style={{ marginTop: '10px' }}>
+            <DynamicsCarousel data={ov.dynamics} />
           </div>
         </div>
 

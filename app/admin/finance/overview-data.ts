@@ -70,6 +70,12 @@ export type OverviewData = {
   /* Вікно великого графіка динаміки: останні N днів (7/30/90) незалежно від
      пресета періоду; null = графік живе на щоденних рядах періоду (як досі) */
   chartWindow: { labels: string[]; revenue: number[]; profit: number[] } | null;
+  /* Дані каруселі «Динаміка»: тижні · структура гривні · накопичення до плану */
+  dynamics: {
+    weeks: { labels: string[]; revenue: number[]; profit: number[] };
+    structure: { revenue: number; cogs: number; fee: number; delivery: number; profit: number };
+    planCum: { labels: string[]; fact: (number | null)[]; plan: number[] | null; monthLabel: string };
+  };
   /* План виручки на поточний місяць (app_settings) проти факту з обліку */
   plan: {
     value: number | null;      // план, ₴ (null = не задано)
@@ -516,6 +522,56 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     monthLabel: `${UA_MONTHS[Number(kyivToday.slice(5, 7)) - 1]} ${kyivToday.slice(0, 4)}`,
   };
 
+  // ── Карусель «Динаміка»: тижні · структура гривні · накопичення до плану ──
+  // Тижні: активний ряд (вікно 7/30/90 або період) групуємо по календарних
+  // тижнях (пн–нд) — щоденна «пилка» по днях доставки нечитабельна.
+  const srcDays = chartDays ? chartWinDays : days;
+  const srcRev  = chartWindow ? chartWindow.revenue : revDaily;
+  const srcProf = chartWindow ? chartWindow.profit : profDaily;
+  const weekIdx = new Map<string, number>();
+  const wLabels: string[] = [], wRev: number[] = [], wProf: number[] = [];
+  for (let i = 0; i < srcDays.length; i++) {
+    const d = new Date(`${srcDays[i]}T00:00:00Z`);
+    const monday = new Date(d);
+    monday.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+    const key = monday.toISOString().slice(0, 10);
+    let wi = weekIdx.get(key);
+    if (wi === undefined) {
+      wi = wLabels.length;
+      weekIdx.set(key, wi);
+      wLabels.push(`${String(monday.getUTCDate()).padStart(2, '0')}.${String(monday.getUTCMonth() + 1).padStart(2, '0')}`);
+      wRev.push(0); wProf.push(0);
+    }
+    wRev[wi] += srcRev[i] ?? 0;
+    wProf[wi] += srcProf[i] ?? 0;
+  }
+
+  // Накопичення поточного місяця (незалежно від пресета) — з 6-місячного леджера
+  const curMonthKey = kyivToday.slice(0, 7);
+  const dayRev = new Map<number, number>();
+  for (const r of monthlyLedger) {
+    if (!r.business_date.startsWith(curMonthKey) || r.account_type !== 'revenue') continue;
+    const dd = Number(r.business_date.slice(8, 10));
+    dayRev.set(dd, (dayRev.get(dd) ?? 0) - Number(r.amount));
+  }
+  const cumLabels: string[] = [], cumFact: (number | null)[] = [];
+  let cum = 0;
+  for (let dd = 1; dd <= daysInMonth; dd++) {
+    cumLabels.push(String(dd));
+    if (dd <= daysPassed) { cum += dayRev.get(dd) ?? 0; cumFact.push(Math.round(cum)); }
+    else cumFact.push(null);   // майбутні дні — лінія факту обривається сьогодні
+  }
+  const dynamics = {
+    weeks: { labels: wLabels, revenue: wRev.map(Math.round), profit: wProf.map(Math.round) },
+    structure: { revenue: curRev, cogs: curCogs, fee: curFee, delivery: curDeliv, profit: curProfit },
+    planCum: {
+      labels: cumLabels,
+      fact: cumFact,
+      plan: plan.value ? cumLabels.map((_, i) => Math.round(plan.value! / daysInMonth * (i + 1))) : null,
+      monthLabel: plan.monthLabel,
+    },
+  };
+
   return {
     preset, periodLabel,
     prevLabel: 'до попереднього періоду',
@@ -558,6 +614,6 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       avgCheck: todayOrders.length ? Math.round(sum(todayOrders) / todayOrders.length) : null,
     },
     channels,
-    chartWindow, plan,
+    chartWindow, plan, dynamics,
   };
 }
