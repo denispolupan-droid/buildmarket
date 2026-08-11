@@ -2049,9 +2049,12 @@ export default function AdminOrders({
               : isRzPickup ? 'Rozetka Доставка'
               : 'Нова Пошта';
 
-            // ТТН вже в реєстрі НП → тиха зелена крапка в чипі номера, щоб у журналі
-            // було видно без відкриття картки, кого ще не додано в реєстр.
-            const inRegistry = !!order.tracking_number && registryAdded.has(order.tracking_number);
+            // ТТН вже в реєстрі НП → тиха зелена крапка в чипі номера. Показуємо
+            // ЛИШЕ поки замовлення «До відправки» (ТТН створена, НП ще не прийняла):
+            // саме тут треба бачити, кого ще не додано в реєстр. Після приймання
+            // перевізником питання закрите — крапка стає шумом і зникає.
+            const inRegistry = order.status === 'shipped' && !order.carrier_accepted_at
+              && !!order.tracking_number && registryAdded.has(order.tracking_number);
 
             /**
              * Де зараз посилка (з синку перевізника). Один елемент на два місця:
