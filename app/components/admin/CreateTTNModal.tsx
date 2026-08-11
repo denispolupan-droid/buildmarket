@@ -231,7 +231,19 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
               const wh = filtered.find(w => w.Number === num);
               if (wh) { setSelectedWH(wh); setWhQuery(wh.Description); }
               else setWhQuery(num);
+              return;
             }
+            // У селах відділення без «№» в адресі: «Пункт приймання-видачі (до 30 кг):
+            // вул. Шкільна, 1-А» — парсити нема чого, і автопідбір мовчки не спрацьовував.
+            const candidates = isPostomat ? filtered : filtered.filter(w => !w.Description.toLowerCase().includes('поштомат'));
+            // Пункт у населеному пункті один — вибір однозначний
+            if (candidates.length === 1) { setSelectedWH(candidates[0]); setWhQuery(candidates[0].Description); return; }
+            // Кілька пунктів: Prom/Rozetka вставляють опис відділення НП в адресу
+            // дослівно (з точністю до пробілів) — матчимо нормалізовані рядки
+            const norm = (s: string) => s.toLowerCase().replace(/\s+/g, '');
+            const addr = norm(order.delivery_address ?? '');
+            const byDesc = candidates.filter(w => addr.includes(norm(w.Description)));
+            if (byDesc.length === 1) { setSelectedWH(byDesc[0]); setWhQuery(byDesc[0].Description); }
           }).finally(() => setWhLoading(false));
       })
       .finally(() => setCityLoading(false));
