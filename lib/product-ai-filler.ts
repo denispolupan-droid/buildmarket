@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
+import { generateMpUA, translateMpRU } from './marketplace-description-gen';
+import { isMpDescriptionClean } from './marketplace-description';
 import {
   generateUA, translateRU, applyContent, getCategoryLabels,
   type GenProduct, type GeneratedRU, type CategoryLabelSpec,
@@ -30,6 +32,8 @@ export type FillFields = {
   description_full?: boolean;
   keywords?: boolean;
   characteristics?: boolean;
+  /** Окремий текст для фідів Rozetka/Prom (products.description_mp) */
+  description_mp?: boolean;
 };
 
 const DEFAULT_FIELDS: Required<FillFields> = {
@@ -37,6 +41,10 @@ const DEFAULT_FIELDS: Required<FillFields> = {
   description_full: true,
   keywords: true,
   characteristics: true,
+  // Вимкнено за замовчуванням: опис для маркетплейсу пишеться іншою парою
+  // моделей і живе своїм життям — «дожим» картки під пошуковий запит його
+  // стосуватися не повинен.
+  description_mp: false,
 };
 
 // Opus-генерація важча за Sonnet; 4 паралельно тримає невеликі пачки < бюджету
@@ -102,6 +110,32 @@ async function fillOne(
     hasChars: !!chars?.length,
     hasFaq: !!faq?.length,
   });
+
+  // Опис для маркетплейсів — окремий текст і окрема пара моделей (Sonnet пише,
+  // Haiku перекладає): на сайті лишається повний опис, у фід іде свій, інакше
+  // сторінки дублюють одна одну. Генеруємо лише на явний запит — у «дожимі» під
+  // пошуковий запит йому робити нічого.
+  if (f.description_mp || force) {
+    const { data: charRows } = await supabase
+      .from('product_characteristics')
+      .select('label, value, sort_order')
+      .eq('product_sku', product.sku)
+      .order('sort_order');
+    const mpUa = await generateMpUA(
+      {
+        sku: product.sku, name: product.name, brand: product.brand,
+        chars: (charRows ?? []).map(c => ({ label: c.label as string, value: c.value as string })),
+      },
+      categoryName,
+    );
+    // Текст зі згадкою магазину Rozetka блокує — краще не записати нічого, ніж
+    // отримати відмову модерації за власним підписом.
+    if (!isMpDescriptionClean(mpUa)) throw new Error('MP-опис містить згадки магазину');
+    const mpRu = await translateMpRU(mpUa);
+    await supabase.from('products')
+      .update({ description_mp: mpUa, description_mp_ru: isMpDescriptionClean(mpRu) ? mpRu : null })
+      .eq('sku', product.sku);
+  }
 }
 
 export async function* fillProducts(

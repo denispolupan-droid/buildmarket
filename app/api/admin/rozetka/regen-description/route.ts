@@ -12,7 +12,7 @@ const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPAB
 /** Скільки товарів обробляємо за один виклик — щоб не впертися в ліміт часу роута. */
 const MAX_BATCH = 20;
 
-type Result = { sku: string; ok: boolean; length?: number; error?: string };
+type Result = { sku: string; ok: boolean; length?: number; error?: string; ua?: string; ru?: string };
 
 /**
  * Перегенерувати опис для маркетплейсу і записати в products.description_mp.
@@ -67,7 +67,9 @@ export async function POST(request: NextRequest) {
       const { error: uerr } = await db.from('products')
         .update({ description_mp: ua, description_mp_ru: ru }).eq('sku', p.sku);
       if (uerr) throw uerr;
-      return { sku: p.sku, ok: true, length: ua.length, ...(slips.length ? { error: `слова не тією мовою: ${slips.join(', ')}` } : {}) };
+      // Тексти повертаємо: картку товара цим же роутом і наповнюємо, щоб не
+      // перезавантажувати сторінку заради двох полів.
+      return { sku: p.sku, ok: true, length: ua.length, ua, ru, ...(slips.length ? { error: `слова не тією мовою: ${slips.join(', ')}` } : {}) };
     } catch (e) {
       return { sku: p.sku, ok: false, error: (e as Error).message };
     }

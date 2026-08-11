@@ -26,6 +26,9 @@ export type Product = {
   description_ru: string | null;
   description_full: string | null;
   description_full_ru: string | null;
+  /** Окремий опис для фідів Rozetka/Prom — щоб картка маркетплейса не дублювала сайт */
+  description_mp: string | null;
+  description_mp_ru: string | null;
   image: string | null;
   nl1: string | null;
   nl2: string | null;

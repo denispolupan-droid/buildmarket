@@ -18,6 +18,7 @@ export type FillFields = {
   description_full: boolean;
   keywords: boolean;
   characteristics: boolean;
+  description_mp: boolean;
 };
 
 type Props = {
@@ -32,6 +33,7 @@ const FIELD_LABELS: { key: keyof FillFields; label: string; hint: string }[] = [
   { key: 'description_full', label: 'Повний опис',     hint: 'description_full UA + RU' },
   { key: 'keywords',         label: 'Ключові слова',   hint: 'keywords UA + RU для SEO і Prom' },
   { key: 'characteristics',  label: 'Характеристики',  hint: 'таблиця параметрів — основа фільтрів' },
+  { key: 'description_mp',   label: 'Опис для маркетплейсів', hint: 'description_mp UA + RU — окремий текст у фіди Rozetka/Prom, щоб не дублювати сайт' },
 ];
 
 export default function AiFillModal({ skus, products, onClose, onDone }: Props) {
@@ -45,6 +47,10 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
     description_full: true,
     keywords:         true,
     characteristics:  false, // off by default — protect manual edits
+    // Теж вимкнено: текст для маркетплейсу вже згенеровано на весь каталог, і
+    // перегенерувати його разом із сайтовим контентом — зайві гроші й зайва
+    // заявка на модерацію Rozetka.
+    description_mp:   false,
   });
   // «Повністю переписати»: регенерувати ВЕСЬ контент, навіть уже заповнений
   // (включно з FAQ і рос. назвою). Ігнорує вибір полів нижче.

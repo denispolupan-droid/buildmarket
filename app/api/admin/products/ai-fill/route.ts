@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 
   const { skus, fields, force, targetQuery } = await req.json() as {
     skus: string[];
-    fields?: { description?: boolean; description_full?: boolean; keywords?: boolean; characteristics?: boolean };
+    fields?: { description?: boolean; description_full?: boolean; keywords?: boolean; characteristics?: boolean; description_mp?: boolean };
     force?: boolean;
     /** «Дожим» із розділу SEO: контент цілиться в цей пошуковий запит */
     targetQuery?: string;

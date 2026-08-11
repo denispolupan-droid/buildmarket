@@ -177,6 +177,10 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
   const [descriptionRu, setDescriptionRu] = useState(product?.description_ru ?? '');
   const [descriptionFull, setDescriptionFull] = useState(product?.description_full ?? '');
   const [descriptionFullRu, setDescriptionFullRu] = useState(product?.description_full_ru ?? '');
+  const [descriptionMp, setDescriptionMp] = useState(product?.description_mp ?? '');
+  const [descriptionMpRu, setDescriptionMpRu] = useState(product?.description_mp_ru ?? '');
+  const [mpGenerating, setMpGenerating] = useState(false);
+  const [mpError, setMpError] = useState('');
   const [isActive, setIsActive] = useState(product?.is_active ?? true);
   const [isHit, setIsHit] = useState(product?.is_hit ?? false);
   const [isNewBadge, setIsNewBadge] = useState(product?.is_new ?? false);
@@ -478,6 +482,37 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
     }
   }
 
+  /**
+   * Згенерувати опис для маркетплейсів цим товаром. Зве той самий роут, що й
+   * кнопка «Перегенерувати опис» у розділі модерації Rozetka: генерація одна на
+   * весь проєкт (Sonnet пише, Haiku перекладає), і другої копії їй не потрібно.
+   * Текст роут і пише в базу, і повертає — щоб поля заповнились без перезавантаження.
+   */
+  async function generateMp() {
+    if (!product?.sku) { setMpError('Спочатку збережіть товар — генерація працює по артикулу'); return; }
+    setMpGenerating(true);
+    setMpError('');
+    try {
+      const res = await fetch('/api/admin/rozetka/regen-description', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skus: [product.sku] }),
+      });
+      const data = await res.json();
+      const r = data.results?.[0];
+      if (!res.ok || !r?.ok) { setMpError(data.error ?? r?.error ?? 'Не вдалося згенерувати'); return; }
+      setDescriptionMp(r.ua ?? '');
+      setDescriptionMpRu(r.ru ?? '');
+      // Роут уже записав текст у базу — попередження про мовні огріхи лишається
+      // єдиним, що варто показати очима.
+      if (r.error) setMpError(r.error);
+    } catch (e) {
+      setMpError((e as Error).message);
+    } finally {
+      setMpGenerating(false);
+    }
+  }
+
   async function handleSave() {
     if (!isNew && !sku.trim()) { showToast('SKU обов\'язковий', 'error'); return; }
     if (!name.trim()) { showToast('Назва обов\'язкова', 'error'); return; }
@@ -515,6 +550,8 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             description_ru: descriptionRu || null,
             description_full: descriptionFull || null,
             description_full_ru: descriptionFullRu || null,
+            description_mp: descriptionMp || null,
+            description_mp_ru: descriptionMpRu || null,
             is_active: isActive,
             is_hit: isHit,
             is_new: isNewBadge,
@@ -723,6 +760,57 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
               rows={5}
               style={{ ...inputStyle, height: 'auto', padding: '12px 14px', resize: 'vertical' }}
             />
+          </div>
+        </div>
+
+        {/* Опис для маркетплейсів — окремий текст, який іде у фіди Rozetka і Prom.
+            Тримаємо його поруч із сайтовим саме тому, що плутати їх не можна:
+            однаковий текст Google склеює й показує карточку маркетплейса замість
+            нашої сторінки, а згадки магазину й доставки Rozetka блокує. */}
+        <div style={{ marginTop: '20px', paddingTop: '18px', borderTop: '1px solid var(--border-light)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Опис для маркетплейсів</h3>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              іде у фіди Rozetka і Prom замість сайтового; порожній — поїде повний опис
+            </span>
+            <button
+              onClick={generateMp}
+              disabled={mpGenerating}
+              title="Згенерувати текст для маркетплейсів (Sonnet пише, Haiku перекладає)"
+              style={{
+                marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '8px 14px', borderRadius: '8px', border: '1px solid #E0E7FF',
+                background: '#EEF2FF', fontSize: '13px', fontWeight: 600, color: '#4F46E5',
+                cursor: mpGenerating ? 'wait' : 'pointer', opacity: mpGenerating ? 0.7 : 1,
+              }}
+            >
+              {mpGenerating ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+              {mpGenerating ? 'Генерую…' : 'Згенерувати'}
+            </button>
+          </div>
+          {mpError && (
+            <div style={{ marginBottom: '10px', fontSize: '12.5px', color: '#B91C1C' }}>{mpError}</div>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div>
+              <label style={labelStyle}>Маркетплейс (укр)</label>
+              <textarea
+                value={descriptionMp}
+                onChange={e => setDescriptionMp(e.target.value)}
+                rows={5}
+                placeholder="Текст від характеристик і застосування, без згадок магазину, доставки й посилань"
+                style={{ ...inputStyle, height: 'auto', padding: '12px 14px', resize: 'vertical' }}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Маркетплейс (рус)</label>
+              <textarea
+                value={descriptionMpRu}
+                onChange={e => setDescriptionMpRu(e.target.value)}
+                rows={5}
+                style={{ ...inputStyle, height: 'auto', padding: '12px 14px', resize: 'vertical' }}
+              />
+            </div>
           </div>
         </div>
 
