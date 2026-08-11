@@ -39,7 +39,7 @@ function fmt(n: number) {
    блок центрується), стовпчики тонкі, поверх — пунктирний тренд. */
 function WeekBars({ w }: { w: Dynamics['weeks'] }) {
   // W ≈ реальній ширині картки → масштаб ~1:1, шрифти і стовпчики не міліють
-  const W = 560, H = 396, padL = 44, padR = 6;
+  const W = 560, H = 258, padL = 44, padR = 6;
   const iw = W - padL - padR;
   const n = Math.max(w.labels.length, 1);
   const groupW = Math.min(68, iw / n);
@@ -53,8 +53,8 @@ function WeekBars({ w }: { w: Dynamics['weeks'] }) {
   const maxProf = Math.max(...w.profit, 1);
   const minProf = Math.min(0, ...w.profit);
   const panels = [
-    { top: 20, h: 196, min: 0, max: maxRev, vals: w.revenue, color: () => 'var(--brand-blue)', trend: 'var(--brand-blue)', label: 'Виручка' },
-    { top: 258, h: 112, min: minProf, max: maxProf, vals: w.profit, color: (v: number) => (v >= 0 ? '#15803D' : '#DC2626'), trend: '#15803D', label: 'Прибуток' },
+    { top: 16, h: 128, min: 0, max: maxRev, vals: w.revenue, color: () => 'var(--brand-blue)', trend: 'var(--brand-blue)', label: 'Виручка' },
+    { top: 172, h: 62, min: minProf, max: maxProf, vals: w.profit, color: (v: number) => (v >= 0 ? '#15803D' : '#DC2626'), trend: '#15803D', label: 'Прибуток' },
   ];
 
   return (
@@ -104,17 +104,17 @@ function SourcesDonut({ sources }: { sources: Dynamics['sources'] }) {
   if (total <= 0) {
     return <div style={{ height: 230, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Немає замовлень за період</div>;
   }
-  const R = 96, SW = 36, C = 2 * Math.PI * R;
+  const R = 80, SW = 30, C = 2 * Math.PI * R;
   let acc = 0;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '30px', minHeight: 340, flexWrap: 'wrap' }}>
-      <svg width="270" height="270" viewBox="0 0 270 270" role="img" aria-label="Джерела замовлень">
-        <g transform="rotate(-90 135 135)">
+    <div style={{ display: 'flex', alignItems: 'center', gap: '30px', minHeight: 224, flexWrap: 'wrap' }}>
+      <svg width="224" height="224" viewBox="0 0 224 224" role="img" aria-label="Джерела замовлень">
+        <g transform="rotate(-90 112 112)">
           {parts.map(s => {
             const meta = SOURCE_META[s.code] ?? SOURCE_META.other;
             const frac = s.revenue / total;
             const seg = (
-              <circle key={s.code} cx="135" cy="135" r={R} fill="none" stroke={meta.color} strokeWidth={SW}
+              <circle key={s.code} cx="112" cy="112" r={R} fill="none" stroke={meta.color} strokeWidth={SW}
                 strokeDasharray={`${Math.max(0, frac * C - 2)} ${C}`} strokeDashoffset={-acc * C}>
                 <title>{`${meta.label}: ${fmt(s.revenue)} ₴ (${Math.round(frac * 100)}%) · ${s.count} зам.`}</title>
               </circle>
@@ -123,10 +123,10 @@ function SourcesDonut({ sources }: { sources: Dynamics['sources'] }) {
             return seg;
           })}
         </g>
-        <text x="135" y="129" textAnchor="middle" fontSize="26" fontWeight="800" fill="var(--text-primary)" style={{ fontVariantNumeric: 'tabular-nums' }}>
+        <text x="112" y="107" textAnchor="middle" fontSize="23" fontWeight="800" fill="var(--text-primary)" style={{ fontVariantNumeric: 'tabular-nums' }}>
           {totalCount}
         </text>
-        <text x="135" y="149" textAnchor="middle" fontSize="12" fill="var(--text-muted)">замовлень</text>
+        <text x="112" y="126" textAnchor="middle" fontSize="11.5" fill="var(--text-muted)">замовлень</text>
       </svg>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', minWidth: 0 }}>
         <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
@@ -151,7 +151,7 @@ function SourcesDonut({ sources }: { sources: Dynamics['sources'] }) {
 
 /* ── Накопичення продажів місяця проти рівномірного темпу плану ──────────── */
 function PlanCumChart({ p }: { p: Dynamics['planCum'] }) {
-  const W = 560, H = 340, padL = 48, padB = 22, padT = 12, padR = 8;
+  const W = 560, H = 232, padL = 48, padB = 22, padT = 10, padR = 8;
   const iw = W - padL - padR, ih = H - padT - padB;
   const factVals = p.fact.filter((v): v is number => v !== null);
   const maxV = Math.max(...factVals, ...(p.plan ?? [0]), 1);
