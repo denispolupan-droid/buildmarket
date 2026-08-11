@@ -94,7 +94,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
           { key: 'ordsum', label: 'Замовлення · сума', value: `${fmt(ov.kpi.orderSum.value)} ₴`, cur: ov.kpi.orderSum.value, prev: ov.kpi.orderSum.prev, months: ov.monthly.orderSum, mFmt: (v: number) => `${fmt(v)} ₴`, color: 'var(--brand-blue)',
             hint: 'Усі підтверджені замовлення, створені за період (без нових і скасованих): в роботі, відвантажені й доставлені. Сума за цінами продажу.' },
           { key: 'prof', label: 'Валовий прибуток', value: `${fmt(ov.kpi.profitEst.value)} ₴`, cur: ov.kpi.profitEst.value, prev: ov.kpi.profitEst.prev, months: ov.monthly.profitEst, mFmt: (v: number) => `${fmt(v)} ₴`, color: '#15803D',
-            hint: 'База — всі замовлення періоду: доставлені за фактом обліку, недоставлені — оцінка (закупівля + комісії МП). Точний факт — в «Аналітиці».' },
+            hint: 'Сума замовлень мінус собівартість і комісії маркетплейсів. База — всі замовлення періоду: доставлені за фактом обліку, недоставлені — оцінка. Точний факт — в «Аналітиці».' },
           { key: 'mrg',  label: 'Маржа',            value: ov.kpi.margin.value === null ? '—' : `${ov.kpi.margin.value}%`, cur: ov.kpi.margin.value, prev: ov.kpi.margin.prev, months: ov.monthly.margin, mFmt: (v: number) => `${v}%`, pp: true,
             hint: 'Валовий прибуток ÷ сума замовлень періоду (та сама база — всі замовлення)' },
           { key: 'ord',  label: 'Замовлень',        value: fmt(ov.kpi.orders.value), cur: ov.kpi.orders.value, prev: ov.kpi.orders.prev, months: ov.monthly.orders, mFmt: (v: number) => fmt(v), color: 'var(--brand-blue)',
