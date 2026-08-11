@@ -44,8 +44,6 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
     balance: Number(c.balance),
   }));
 
-  const maxFunnel = Math.max(ov.funnel[0]?.count ?? 0, 1);
-
   const attention: { tone: 'red' | 'orange' | 'green'; text: string; sub: string; href: string }[] = [];
   if (ov.ar.overdueCount > 0) attention.push({ tone: 'red', text: `${ov.ar.overdueCount} прострочених оплат`, sub: `Сума: ${fmt(ov.ar.overdueSum)} ₴`, href: '/admin/finance/aging' });
   if (ov.attention.pendingPayment.count > 0) attention.push({ tone: 'orange', text: `${ov.attention.pendingPayment.count} замовлень очікують оплати`, sub: `Сума: ${fmt(ov.attention.pendingPayment.sum)} ₴`, href: '/admin' });
@@ -117,30 +115,39 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
         ))}
       </div>
 
-      {/* Воронка · Динаміка · Потребує уваги */}
+      {/* Стадії зараз · Динаміка · Потребує уваги */}
       <div className="fin-grid-12" style={{ marginTop: '16px' }}>
         <div className="fin-card" style={{ gridColumn: 'span 4' }}>
-          <div className="fin-card-title">Воронка замовлень <span className="fin-card-sub">· створені за період</span></div>
+          <div className="fin-card-title">У роботі <span className="fin-card-sub">· де гроші зараз, знімок стадій</span></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '13px', marginTop: '14px' }}>
-            {ov.funnel.map(f => (
-              <div key={f.label}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', marginBottom: '4px' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>{f.label}</span>
-                  <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                    {f.count}<span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {fmt(f.amount)} ₴</span>
-                  </span>
-                </div>
-                <div className="fin-funnel-track">
-                  <div className="fin-funnel-fill" style={{ width: `${Math.max(2, Math.round(f.count / maxFunnel * 100))}%` }} />
-                </div>
-              </div>
-            ))}
+            {(() => {
+              const maxSum = Math.max(...ov.pipeline.map(s => s.sum), 1);
+              return ov.pipeline.map(s => (
+                <Link key={s.key} href={s.href} style={{ textDecoration: 'none', display: 'block' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', marginBottom: '4px', gap: '8px' }}>
+                    <span style={{ color: 'var(--text-secondary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                      {s.count}<span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {fmt(s.sum)} ₴</span>
+                      {s.stuck && <span style={{ color: '#B45309', fontWeight: 600, marginLeft: '6px' }}>● {s.stuck}</span>}
+                    </span>
+                  </div>
+                  <div className="fin-funnel-track">
+                    <div className="fin-funnel-fill" style={{ width: `${Math.max(2, Math.round(s.sum / maxSum * 100))}%` }} />
+                  </div>
+                </Link>
+              ));
+            })()}
           </div>
-          {ov.conversion !== null && (
-            <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-              Конверсія в доставку: <b style={{ color: 'var(--text-primary)' }}>{ov.conversion}%</b>
-            </div>
-          )}
+          <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)', fontSize: '12.5px', color: 'var(--text-secondary)' }}
+            title="Тільки зрілі замовлення періоду (створені понад 10 днів тому): доставлені проти скасованих після відправки. Ті, що ще в дорозі, не рахуються.">
+            {ov.buyout.pct === null ? (
+              <>Викуп: завершених замовлень за період ще немає</>
+            ) : (
+              <>Викуп завершених за період: <b style={{ color: ov.buyout.pct >= 90 ? '#15803D' : '#B45309' }}>{ov.buyout.pct}%</b>
+                {ov.buyout.refused > 0 && <span style={{ color: '#DC2626' }}> · відмов {ov.buyout.refused} на {fmt(ov.buyout.refusedSum)} ₴</span>}
+              </>
+            )}
+          </div>
         </div>
 
         <div className="fin-card" style={{ gridColumn: 'span 5' }}>

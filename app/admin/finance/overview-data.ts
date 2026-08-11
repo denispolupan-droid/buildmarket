@@ -47,8 +47,12 @@ export type OverviewData = {
     margin: (number | null)[];
     avgCheck: (number | null)[];
   };
-  funnel: { label: string; count: number; amount: number }[];
-  conversion: number | null;           // створено → доставлено, %
+  /* Знімок «де гроші зараз»: замовлення по живих стадіях, незалежно від
+     періоду (замінив когортну воронку — та змішувала дозрівання зі втратами) */
+  pipeline: { key: string; label: string; count: number; sum: number; stuck: string | null; href: string }[];
+  /* Викуп по зрілих замовленнях періоду (створені понад 10 днів тому,
+     встигли завершитись): доставлено vs відмова/повернення після відправки */
+  buyout: { delivered: number; refused: number; refusedSum: number; pct: number | null };
   accounts: { monobank: number; novapay: number; cash: number; total: number };
   mp: { prom: number; rozetka: number };
   ar: { total: number; overdueCount: number; overdueSum: number };
@@ -147,7 +151,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
   }
 
-  const [ledgerRows, orderRows, balRows, arRows, agingRows, apRows, lowStockRows, attnRows, promBal, rozetkaBal, todayRows, monthlyLedger, monthlyOrders, payToday] = await Promise.all([
+  const [ledgerRows, orderRows, balRows, arRows, agingRows, apRows, lowStockRows, attnRows, promBal, rozetkaBal, todayRows, monthlyLedger, monthlyOrders, payToday, pipelineRows, refusedRows] = await Promise.all([
     // 1. Леджер за поточний + попередній період (для дельт) — щоденні ряди
     fetchAllRows<{ business_date: string; account_type: string; doc_type: string | null; amount: number }>((f, t) => {
       let q = db.from('money_entries')
@@ -212,6 +216,22 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       .lt('amount', 0)
       .eq('business_date', today.ymd)
       .then(r => r.data ?? []),
+    // 10. Знімок живих стадій «де гроші зараз» (незалежно від періоду)
+    fetchAllRows<{ status: string; total_price: number; shipped_at: string | null; carrier_accepted_at: string | null; created_at: string }>((f, t) => db
+      .from('orders')
+      .select('status, total_price, shipped_at, carrier_accepted_at, created_at')
+      .in('status', ['new', 'pending_payment', 'confirmed', 'awaiting_stock', 'picking', 'shipped'])
+      .range(f, t)),
+    // 11. Відмови для «викупу»: скасовані ПІСЛЯ відправки замовлення періоду
+    fetchAllRows<{ total_price: number; created_at: string }>((f, t) => {
+      let q = db.from('orders')
+        .select('total_price, created_at')
+        .eq('status', 'cancelled')
+        .not('shipped_at', 'is', null)
+        .gte('created_at', periodFrom.toISOString());
+      if (periodTo) q = q.lt('created_at', periodTo.toISOString());
+      return q.range(f, t);
+    }),
   ]);
 
   // ── Леджер: щоденні ряди поточного періоду + суми попереднього ────────────
@@ -263,19 +283,41 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   }
   const sum = (arr: { total_price: number }[]) => arr.reduce((s, o) => s + Number(o.total_price ?? 0), 0);
   const curOrdSum = sum(curOrders);
-  // «Оплачено» — остання стадія: більшість продажів — накладений платіж,
-  // гроші приходять ПІСЛЯ доставки, тож до відправлення стадія була б брехлива
-  const paid = curOrders.filter(o => o.payment_confirmed || Number(o.amount_paid ?? 0) > 0);
-  const confirmed = curOrders.filter(o => o.confirmed_at || !['new', 'pending_payment'].includes(o.status));
-  const funnel = [
-    { label: 'Створено',    count: curOrders.length, amount: curOrdSum },
-    { label: 'Підтверджено', count: confirmed.length, amount: sum(confirmed) },
-    { label: 'Відправлено', count: curOrders.filter(o => o.shipped_at).length, amount: sum(curOrders.filter(o => o.shipped_at)) },
-    { label: 'Доставлено',  count: curOrders.filter(o => o.delivered_at).length, amount: sum(curOrders.filter(o => o.delivered_at)) },
-    { label: 'Оплачено',    count: paid.length, amount: sum(paid) },
+
+  // ── Знімок «де гроші зараз»: живі стадії + маркери застряглого ─────────────
+  const d7ago = new Date(now.getTime() - 7 * 86400000).toISOString();
+  const d3ago = new Date(now.getTime() - 3 * 86400000).toISOString();
+  const stage = (rows: typeof pipelineRows, stuck: string | null) =>
+    ({ count: rows.length, sum: sum(rows), stuck });
+  const pNew     = pipelineRows.filter(o => o.status === 'new');
+  const pConf    = pipelineRows.filter(o => ['confirmed', 'awaiting_stock', 'picking'].includes(o.status));
+  const pReady   = pipelineRows.filter(o => o.status === 'shipped' && !o.carrier_accepted_at);
+  const pTransit = pipelineRows.filter(o => o.status === 'shipped' && o.carrier_accepted_at);
+  const pPay     = pipelineRows.filter(o => o.status === 'pending_payment');
+  const transitStuck = pTransit.filter(o => (o.shipped_at ?? '') < d7ago).length;
+  const payStuck     = pPay.filter(o => o.created_at < d3ago).length;
+  const pipeline = [
+    { key: 'new',     label: 'Нові',                     href: '/admin?status=new',             ...stage(pNew, null) },
+    { key: 'conf',    label: 'Підтверджені / збираються', href: '/admin?status=confirmed',       ...stage(pConf, null) },
+    { key: 'ready',   label: 'До відправки',              href: '/admin?status=ready_to_ship',   ...stage(pReady, null) },
+    { key: 'transit', label: 'В дорозі',                  href: '/admin?status=shipped',         ...stage(pTransit, transitStuck > 0 ? `${transitStuck} довше 7 дн` : null) },
+    { key: 'pay',     label: 'Очікують оплати',           href: '/admin?status=pending_payment', ...stage(pPay, payStuck > 0 ? `${payStuck} довше 3 дн` : null) },
   ];
-  const delivered = funnel.find(f => f.label === 'Доставлено')!;
-  const conversion = curOrders.length ? Math.round(delivered.count / curOrders.length * 1000) / 10 : null;
+
+  // ── Викуп: зрілі замовлення періоду (створені понад 10 днів тому) ──────────
+  // «Відмова» = скасоване ПІСЛЯ відправки (невикуп/повернення). Ще не
+  // завершені (в дорозі) у знаменник не входять.
+  const maturityCutoff = new Date(now.getTime() - 10 * 86400000).toISOString();
+  const maturedDelivered = curOrders.filter(o => o.delivered_at && o.created_at <= maturityCutoff).length;
+  const maturedRefused   = refusedRows.filter(o => o.created_at <= maturityCutoff);
+  const buyout = {
+    delivered: maturedDelivered,
+    refused: maturedRefused.length,
+    refusedSum: sum(maturedRefused),
+    pct: maturedDelivered + maturedRefused.length > 0
+      ? Math.round(maturedDelivered / (maturedDelivered + maturedRefused.length) * 1000) / 10
+      : null,
+  };
 
   // Канали
   const chMap = new Map<string, { count: number; revenue: number }>();
@@ -487,7 +529,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       },
     },
     monthly,
-    funnel, conversion,
+    pipeline, buyout,
     accounts,
     mp: { prom: promBal, rozetka: rozetkaBal },
     ar: {
