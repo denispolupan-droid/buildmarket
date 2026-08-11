@@ -3,6 +3,8 @@ import { notifyCustomerStatus } from './telegram';
 import { setRozetkaOrderStatus, getRozetkaOrderStatusInfo } from './rozetka-api';
 import { ROZETKA_DELIVERY_TYPE } from './rozetka-delivery';
 import { rozetkaDeliveryPhase } from './rozetka-delivery-status';
+import { RZ_DELIVERY_TYPE, rzPhase, rzCarrierAccepted } from './rz-delivery';
+import { rzTrackStatuses } from './rz-delivery-api';
 import { groupByTracking } from './delivery-tracking';
 import { pickReturnTtn, buildReturnTracking } from './np-return-tracking';
 import { completeShipmentByTtn, allOrderSalesPosted, settleLegacyCommission } from './accounting/completion';
@@ -31,7 +33,7 @@ const NOT_HANDED_OVER_CODE = '1';
 // русі посилки. Перевірено на живому трекінгу (замовлення #26071048).
 const ARRIVED_CODE = '7';
 
-export type DeliverySyncResult = { updated: number; accepted: number; checked: number; np: number; rozetka: number };
+export type DeliverySyncResult = { updated: number; accepted: number; checked: number; np: number; rozetka: number; rzOwn: number };
 
 /** actor — хто ініціював синк (`cron:…` або `admin:email`); іде у created_by проводок. */
 export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncResult> {
@@ -53,7 +55,7 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
   const returnWindow = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const { data: orders, error } = await serviceClient
     .from('orders')
-    .select('id, status, tracking_number, carrier_accepted_at, channel_code, rozetka_order_id, delivery_type, telegram_chat_id, order_number, flags, phone')
+    .select('id, status, tracking_number, carrier_accepted_at, channel_code, rozetka_order_id, delivery_type, telegram_chat_id, order_number, flags, phone, rz_payment_fee, rz_delivery_cost, rz_delivery_payer')
     .or([
       'status.eq.shipped',
       'and(status.eq.cancelled,carrier_accepted_at.not.is.null)',
@@ -62,14 +64,20 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
     .not('tracking_number', 'is', null);
 
   if (error || !orders?.length) {
-    return { updated: 0, accepted: 0, checked: 0, np: 0, rozetka: 0 };
+    return { updated: 0, accepted: 0, checked: 0, np: 0, rozetka: 0, rzOwn: 0 };
   }
 
   // Доставка в точки видачі Rozetka має свої номери («RMP-…») і власне джерело
   // руху посилки — питати про них Нову Пошту безглуздо (вона їх просто не знає,
   // і замовлення назавжди лишалося б у «shipped», а продаж — непроведеним).
-  const npOrders = orders.filter(o => o.delivery_type !== ROZETKA_DELIVERY_TYPE);
+  // Третій перевізник — «ROZETKA Доставка» власного договору (замовлення сайту).
+  // Номер у неї свій, і Нова Пошта про нього не знає так само, як про «RMP-…»,
+  // тому з npOrders він теж має бути виключений — інакше замовлення назавжди
+  // застрягне у «shipped» з непроведеним продажем.
+  const npOrders = orders.filter(o =>
+    o.delivery_type !== ROZETKA_DELIVERY_TYPE && o.delivery_type !== RZ_DELIVERY_TYPE);
   const rzOrders = orders.filter(o => o.delivery_type === ROZETKA_DELIVERY_TYPE);
+  const rzOwnOrders = orders.filter(o => o.delivery_type === RZ_DELIVERY_TYPE);
 
   // NP API allows up to 100 documents per request
   const CHUNK = 100;
@@ -369,5 +377,117 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
     if (o.telegram_chat_id) notifyCustomerStatus(o.telegram_chat_id, o.order_number, 'delivered');
   }
 
-  return { updated, accepted, checked: orders.length, np: npOrders.length, rozetka: rzOrders.length };
+  // ── «ROZETKA Доставка» власного договору (замовлення сайту) ──────────────
+  // На відміну від маркетплейсної гілки вище, тут є нормальний трекінг: статуси
+  // питаються пачкою по номерах ЕН (до 100 за запит, чанкінг усередині
+  // rzTrackStatuses). Замовлення Rozetka тут немає взагалі — це наші власні,
+  // тому жодних пушів статусу в маркетплейс.
+  if (rzOwnOrders.length) {
+    const byTtn = groupByTracking(rzOwnOrders);
+    let tracks: Awaited<ReturnType<typeof rzTrackStatuses>> = [];
+    try {
+      tracks = await rzTrackStatuses([...byTtn.keys()]);
+    } catch (err) {
+      console.error('[sync-delivery-status] rz-delivery statuses failed:', err);
+    }
+
+    for (const track of tracks) {
+      const trackOrders = byTtn.get(track.track_id) ?? [];
+      if (!trackOrders.length) continue;
+      const code  = track.last_status?.status;
+      const phase = rzPhase(code);
+      const now   = new Date().toISOString();
+
+      for (const o of trackOrders) {
+        const patch: Record<string, unknown> = {
+          carrier_status_text:      track.last_status?.status_name ?? code ?? null,
+          carrier_status_synced_at: now,
+        };
+        if (rzCarrierAccepted(code) && !o.carrier_accepted_at) {
+          patch.carrier_accepted_at = now;
+          accepted++;
+        }
+        await serviceClient.from('orders').update(patch).eq('id', o.id);
+
+        // Скасовані відстежуємо лише заради тексту: посилка їде назад, і жодних
+        // проводок по ній бути не може.
+        if (o.status === 'cancelled') continue;
+
+        if (patch.carrier_accepted_at) {
+          notifyCustomer({
+            orderId: o.id, phone: o.phone, event: 'shipped',
+            ctx: { orderNumber: o.order_number, trackingNumber: o.tracking_number as string, carrier: 'rozetka' },
+          }).catch((err: unknown) => console.error('[sync-delivery-status] rz notify shipped failed:', o.id, err));
+        }
+
+        // Посилка чекає в точці видачі — момент, коли покупцю справді є що сказати.
+        // Повтори столбить сам notifyCustomer, тому прапорця в замовленні не треба.
+        if (phase === 'at_point') {
+          notifyCustomer({
+            orderId: o.id, phone: o.phone, event: 'arrived',
+            ctx: { orderNumber: o.order_number, carrier: 'rozetka' },
+          }).catch((err: unknown) => console.error('[sync-delivery-status] rz notify arrived failed:', o.id, err));
+        }
+
+        if (phase !== 'delivered') continue;
+
+        try {
+          await completeShipmentByTtn(o.tracking_number as string, actor);
+          await settleLegacyCommission(o.id, actor);
+        } catch (err) {
+          console.error('[sync-delivery-status] rz-delivery completeShipment failed:', o.id, err);
+          continue;
+        }
+
+        // Комісію за переказ післяплати Rozetka утримує з ПРОДАВЦЯ — це наша
+        // витрата навіть тоді, коли саму доставку оплатив покупець. Ключ по ЕН:
+        // при об'єднаній посилці проводка має бути одна.
+        const fee = Number(o.rz_payment_fee) || 0;
+        if (fee > 0) {
+          try {
+            await recordTxn({
+              debitAccount: 'logistics', creditAccount: 'supplier', creditParty: 'rz:delivery',
+              amount: fee, docType: 'delivery_cost', orderId: o.id,
+              description: `Комісія за переказ післяплати ROZETKA (ЕН ${o.tracking_number})`,
+              idempotencyKey: `rz-payment-fee:${o.tracking_number}`,
+              createdBy: actor,
+            });
+          } catch (err) {
+            console.error('[sync-delivery-status] rz payment fee failed:', o.tracking_number, err);
+          }
+        }
+
+        // Доставка за наш рахунок — зараз не наш кейс (платить отримувач), але
+        // умову доставки міняють у кабінеті, а не в коді, тож перевіряємо явно.
+        const shipCost = Number(o.rz_delivery_cost) || 0;
+        if (o.rz_delivery_payer === 'sender' && shipCost > 0) {
+          try {
+            await recordTxn({
+              debitAccount: 'logistics', creditAccount: 'supplier', creditParty: 'rz:delivery',
+              amount: shipCost, docType: 'delivery_cost', orderId: o.id,
+              description: `Доставка ROZETKA за наш рахунок (ЕН ${o.tracking_number})`,
+              idempotencyKey: `rz-delivery:${o.tracking_number}`,
+              createdBy: actor,
+            });
+          } catch (err) {
+            console.error('[sync-delivery-status] rz delivery cost failed:', o.tracking_number, err);
+          }
+        }
+
+        if (!(await allOrderSalesPosted(o.id))) continue;
+
+        await serviceClient
+          .from('orders')
+          .update({ status: 'delivered', delivered_at: new Date().toISOString() })
+          .eq('id', o.id);
+        updated++;
+        if (o.telegram_chat_id) notifyCustomerStatus(o.telegram_chat_id, o.order_number, 'delivered');
+      }
+    }
+  }
+
+  return {
+    updated, accepted, checked: orders.length,
+    np: npOrders.length, rozetka: rzOrders.length, rzOwn: rzOwnOrders.length,
+  };
 }

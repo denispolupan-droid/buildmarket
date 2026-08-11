@@ -32,6 +32,7 @@ const DELIVERY_LABEL: Record<string, string> = {
   kharkiv: 'Доставка по Харкову',
   pickup:  'Самовивіз',
   rozetka_delivery: 'Точка видачі Rozetka',
+  rz_delivery: 'Точка видачі ROZETKA',
 };
 
 const PAYMENT_LABEL: Record<string, string> = {

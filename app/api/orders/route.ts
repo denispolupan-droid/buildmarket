@@ -10,6 +10,9 @@ import { findOrCreateCustomerForOrder } from '../../../lib/customers';
 import { repriceItems, applyPromoCode, type RepriceItem, type PriceRow, type PromoCodeRow } from '../../../lib/pricing';
 import type { CartItem } from '../../../types';
 import { getMonoAcquiringToken } from '../../../lib/mono-config';
+import { RZ_DELIVERY_TYPE } from '../../../lib/rz-delivery';
+import { getRzSender, isRzDeliveryEnabled } from '../../../lib/rz-delivery-api';
+import { cartWeightKg } from '../../../lib/parcel-weight';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -56,6 +59,31 @@ export async function POST(req: NextRequest) {
     if (!Number.isInteger(q) || q <= 0 || q > 100000)
       return NextResponse.json({ error: 'Некоректна кількість товару' }, { status: 400 });
     skus.push(it.sku);
+  }
+
+  // «ROZETKA Доставка»: точка видачі обов'язкова, і посилка має влізти в ліміт
+  // НАШОГО складу здачі. Чекаут це вже фільтрує, але тіло запиту приходить з
+  // браузера, а ціна помилки асиметрична: тут покупець ще бачить зрозумілий
+  // текст і може обрати НП, а при створенні накладної замовлення вже оплачене.
+  if (deliveryType === RZ_DELIVERY_TYPE) {
+    // Рубільник перевіряємо і тут: сторінку кошика могли відкрити ДО того, як
+    // доставку вимкнули, і вона так і лишиться з живою опцією у вкладці.
+    if (!await isRzDeliveryEnabled())
+      return NextResponse.json({ error: 'ROZETKA Доставка тимчасово недоступна. Оберіть Нову Пошту.' }, { status: 400 });
+    if (!deliveryWarehouseRef || !deliveryCityRef)
+      return NextResponse.json({ error: 'Оберіть точку видачі ROZETKA' }, { status: 400 });
+    const limit = (await getRzSender())?.weight_limit_kg ?? null;
+    if (limit != null) {
+      const { data: vols } = await admin.from('products').select('sku, volume').in('sku', skus);
+      const volBySku = new Map((vols ?? []).map(v => [v.sku, v.volume as string | null]));
+      const weightKg = cartWeightKg(
+        rawItems.map(it => ({ volume: volBySku.get(String(it.sku)) ?? null, qty: Number(it.qty) })),
+      );
+      if (weightKg > limit)
+        return NextResponse.json({
+          error: `Замовлення важче за ${limit} кг — ROZETKA Доставка недоступна. Оберіть Нову Пошту.`,
+        }, { status: 400 });
+    }
   }
 
   const { data: priceRows, error: priceErr } = await admin

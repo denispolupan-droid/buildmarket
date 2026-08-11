@@ -1,26 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
+import { parseWeightKg } from '../../../../lib/parcel-weight';
+
+// Розбір фасування живе в lib/parcel-weight: ту саму вагу тепер рахує і чекаут
+// (ліміт точки видачі ROZETKA), і серверна перевірка замовлення. Дві копії
+// регулярки розійшлися б при першій же новій одиниці виміру.
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
-
-function parseWeightKg(volume: string | null): number {
-  if (!volume) return 0;
-  // Normalize: comma → dot, collapse spaces, remove space between digits and unit
-  const v = volume.trim().replace(',', '.').replace(/\s+/g, ' ').replace(/(\d)\s+(кг|г|л|мл)/i, '$1$2');
-  const m = v.match(/^([\d.]+)\s*(кг|г|л|мл|kg|g|l|ml)$/i);
-  if (!m) return 0;
-  const n = parseFloat(m[1]);
-  const u = m[2].toLowerCase();
-  if (u === 'кг' || u === 'kg')  return n;
-  if (u === 'г'  || u === 'g')   return n / 1000;
-  if (u === 'л'  || u === 'l')   return n;        // 1 л ≈ 1 кг
-  if (u === 'мл' || u === 'ml')  return n / 1000;
-  return 0;
-}
 
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer();

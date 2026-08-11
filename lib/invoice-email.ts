@@ -264,6 +264,7 @@ const DELIVERY_LABELS: Record<string, string> = {
   kharkiv: 'Доставка по Харкову та області',
   pickup: 'Самовивіз зі складу',
   rozetka_delivery: 'Точка видачі Rozetka',
+  rz_delivery: 'Точка видачі ROZETKA',
 };
 
 const PAYMENT_LABELS: Record<string, string> = {

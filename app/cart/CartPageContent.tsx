@@ -12,12 +12,18 @@ import { getStoredUtm, clearUtm } from '../../lib/utm';
 import { trackBeginCheckout, trackPurchase } from '../../lib/analytics';
 import ProductImage from '../components/ProductImage';
 import NovaPoshtaSelect from '../components/NovaPoshtaSelect';
+import RzDeliverySelect from '../components/RzDeliverySelect';
+import { cartWeightKg } from '../../lib/parcel-weight';
+import { RZ_DELIVERY_TYPE } from '../../lib/rz-delivery';
 
 type Lang = 'uk' | 'ru';
 
 const T = {
   uk: {
     deliveryNova: 'Нова Пошта',
+    deliveryRz: 'ROZETKA Доставка',
+    deliveryRzSub: 'Точки видачі ROZETKA',
+    errRzPoint: 'Оберіть місто та точку видачі ROZETKA',
     payCard: 'Оплата карткою онлайн',
     payCodLabel: 'Накладний платіж (оплата при отриманні)',
     payInvoiceLabel: 'Безготівковий розрахунок по рахунку (IBAN)',
@@ -85,6 +91,9 @@ const T = {
   },
   ru: {
     deliveryNova: 'Новая Почта',
+    deliveryRz: 'ROZETKA Доставка',
+    deliveryRzSub: 'Точки выдачи ROZETKA',
+    errRzPoint: 'Выберите город и точку выдачи ROZETKA',
     payCard: 'Оплата картой онлайн',
     payCodLabel: 'Наложенный платёж (оплата при получении)',
     payInvoiceLabel: 'Безналичный расчёт по счёту (IBAN)',
@@ -227,10 +236,6 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     setQtyInputs(prev => { const n = { ...prev }; delete n[sku]; return n; });
   }
 
-  const DELIVERY_OPTIONS = [
-    { value: 'nova', label: tr.deliveryNova },
-  ];
-
   const PAYMENT_OPTIONS_RETAIL = [
     { value: 'card',    label: tr.payCard,         sub: 'Visa · Mastercard · Apple Pay · Google Pay' },
     { value: 'cod',     label: tr.payCodLabel,     sub: null },
@@ -322,6 +327,43 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   const [novaCityRef,       setNovaCityRef]       = useState('');
   const [novaCityName,      setNovaCityName]      = useState('');
   const [novaWarehouseRef,  setNovaWarehouseRef]  = useState('');
+  const [rzCityId,          setRzCityId]          = useState('');
+  const [rzCityName,        setRzCityName]        = useState('');
+  const [rzDepId,           setRzDepId]           = useState('');
+  const [rzDepLabel,        setRzDepLabel]        = useState('');
+  // null — конфіг ще не приїхав; опцію не малюємо, доки не знаємо, чи вона жива
+  const [rzConfig, setRzConfig] = useState<{ enabled: boolean; maxWeightKg: number | null } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/rz-delivery/config')
+      .then(r => r.json())
+      .then((d: { enabled?: boolean; maxWeightKg?: number | null }) =>
+        setRzConfig({ enabled: Boolean(d.enabled), maxWeightKg: d.maxWeightKg ?? null }))
+      .catch(() => setRzConfig({ enabled: false, maxWeightKg: null }));
+  }, []);
+
+  // Вага замовлення — з фасування товару (products.volume). Потрібна ДО вибору
+  // доставки: точки видачі Rozetka мають ліміт ваги, і наш склад здачі теж.
+  const orderWeightKg = cartWeightKg(items);
+  const rzAvailable = Boolean(
+    rzConfig?.enabled && (rzConfig.maxWeightKg == null || orderWeightKg <= rzConfig.maxWeightKg),
+  );
+
+  const DELIVERY_OPTIONS = [
+    { value: 'nova', label: tr.deliveryNova, sub: null as string | null },
+    ...(rzAvailable ? [{ value: RZ_DELIVERY_TYPE, label: tr.deliveryRz, sub: tr.deliveryRzSub }] : []),
+  ];
+
+  // Спосіб міг прийти з минулого замовлення (підстановка вище) або перестати
+  // підходити після правки кількості — тоді вибір треба зняти, інакше в списку
+  // не лишиться жодної опції і секція доставки виглядатиме порожньою.
+  useEffect(() => {
+    if (delivery === RZ_DELIVERY_TYPE && rzConfig && !rzAvailable) {
+      setDelivery('');
+      setRzCityId(''); setRzCityName(''); setRzDepId(''); setRzDepLabel('');
+    }
+  }, [delivery, rzAvailable, rzConfig]);
+
   const [payment,   setPayment]   = useState('');
   const [comment,     setComment]     = useState('');
   const [commentOpen, setCommentOpen] = useState(false);
@@ -339,13 +381,14 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     if (delivery === 'nova' && !novaSubtype) e.add('novaSubtype');
     if (delivery === 'nova' && (novaSubtype === 'warehouse' || novaSubtype === 'postomat') && !novaWarehouseRef) e.add('address');
     if (delivery === 'nova' && novaSubtype === 'courier' && !address.trim()) e.add('address');
+    if (delivery === RZ_DELIVERY_TYPE && !rzDepId) e.add('rzPoint');
     if (!payment)         e.add('payment');
     setErrors(e);
     return e;
   }
 
   function scrollToFirstError(errs: Set<string>) {
-    const priority = ['company', 'lastName', 'firstName', 'phone', 'email', 'delivery', 'novaSubtype', 'address', 'payment'];
+    const priority = ['company', 'lastName', 'firstName', 'phone', 'email', 'delivery', 'novaSubtype', 'address', 'rzPoint', 'payment'];
     for (const key of priority) {
       if (errs.has(key)) {
         const el = document.getElementById(`field-${key}`);
@@ -412,10 +455,16 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
           phone, email,
           deliveryType: delivery,
           deliverySubtype: delivery === 'nova' ? novaSubtype : null,
-          deliveryAddress: address || null,
-          deliveryCityRef: delivery === 'nova' && novaCityRef ? novaCityRef : null,
-          deliveryCityName: delivery === 'nova' && novaCityName ? novaCityName : null,
-          deliveryWarehouseRef: delivery === 'nova' && (novaSubtype === 'warehouse' || novaSubtype === 'postomat') && novaWarehouseRef ? novaWarehouseRef : null,
+          deliveryAddress: (delivery === RZ_DELIVERY_TYPE ? rzDepLabel : address) || null,
+          // Ідентифікатори точок ROZETKA — uuid, а не Ref НП; лягають у ті самі
+          // колонки, бо роль однакова, а перевізника видно по delivery_type.
+          deliveryCityRef: delivery === 'nova' ? (novaCityRef || null)
+            : delivery === RZ_DELIVERY_TYPE ? (rzCityId || null) : null,
+          deliveryCityName: delivery === 'nova' ? (novaCityName || null)
+            : delivery === RZ_DELIVERY_TYPE ? (rzCityName || null) : null,
+          deliveryWarehouseRef: delivery === 'nova'
+            ? ((novaSubtype === 'warehouse' || novaSubtype === 'postomat') && novaWarehouseRef ? novaWarehouseRef : null)
+            : delivery === RZ_DELIVERY_TYPE ? (rzDepId || null) : null,
           paymentType: payment,
           comment: [comment, noCallback ? '⛔ Не передзвонювати для підтвердження' : ''].filter(Boolean).join('\n') || null,
           items,
@@ -565,7 +614,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               </Section>
 
               {/* Delivery */}
-              <div id="field-delivery" /><div id="field-novaSubtype" /><div id="field-address" />
+              <div id="field-delivery" /><div id="field-novaSubtype" /><div id="field-address" /><div id="field-rzPoint" />
               <Section icon={Truck} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {DELIVERY_OPTIONS.filter(opt => !delivery || delivery === opt.value).map(opt => (
@@ -586,7 +635,10 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                           {delivery === opt.value && <Check size={10} color="#fff" strokeWidth={3} />}
                         </div>
                         <input type="radio" name="delivery" value={opt.value} checked={delivery === opt.value} onChange={() => { setDelivery(opt.value); setErrors(s => { const n = new Set(s); n.delete('delivery'); return n; }); }} style={{ display: 'none' }} />
-                        <span style={{ fontSize: '14px', fontWeight: delivery === opt.value ? 600 : 500, color: 'var(--text-primary)', flex: 1 }}>{opt.label}</span>
+                        <span style={{ fontSize: '14px', fontWeight: delivery === opt.value ? 600 : 500, color: 'var(--text-primary)', flex: 1 }}>
+                          {opt.label}
+                          {opt.sub && <span style={{ display: 'block', fontSize: '12px', fontWeight: 400, color: 'var(--text-secondary)', marginTop: '2px' }}>{opt.sub}</span>}
+                        </span>
                         {delivery === opt.value && (
                           <button
                             onClick={e => { e.preventDefault(); setDelivery(''); setAddress(''); setNovaSubtype(''); }}
@@ -647,6 +699,23 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                         </div>
                       )}
 
+                      {/* ROZETKA Доставка — точка видачі */}
+                      {opt.value === RZ_DELIVERY_TYPE && delivery === RZ_DELIVERY_TYPE && (
+                        <div style={{ marginTop: '10px', paddingLeft: '14px' }}>
+                          <RzDeliverySelect
+                            weightKg={orderWeightKg}
+                            lang={lang}
+                            onCityChange={setRzCityName}
+                            onCityIdChange={setRzCityId}
+                            onDepartmentChange={setRzDepLabel}
+                            onDepartmentIdChange={id => {
+                              setRzDepId(id);
+                              if (id) setErrors(s => { const n = new Set(s); n.delete('rzPoint'); return n; });
+                            }}
+                          />
+                        </div>
+                      )}
+
                       {/* Kharkiv delivery address */}
                       {opt.value === 'kharkiv' && delivery === 'kharkiv' && (
                         <div style={{ marginTop: '10px', paddingLeft: '14px' }}>
@@ -665,6 +734,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                 {errors.has('delivery') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errDelivery}</p>}
                 {errors.has('novaSubtype') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errNovaSubtype}</p>}
                 {errors.has('address') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errAddress}</p>}
+                {errors.has('rzPoint') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errRzPoint}</p>}
               </Section>
 
               {/* Payment */}

@@ -8,6 +8,7 @@ import { usePathname } from 'next/navigation';
 
 const TABS = [
   { href: '/admin/settings',              label: 'Нова Пошта', exact: true },
+  { href: '/admin/settings/rz-delivery',  label: 'ROZETKA Доставка' },
   { href: '/admin/settings/mail',         label: 'Пошта' },
   { href: '/admin/settings/reservations', label: 'Резерв' },
   { href: '/admin/settings/marketplaces', label: 'Маркетплейси' },

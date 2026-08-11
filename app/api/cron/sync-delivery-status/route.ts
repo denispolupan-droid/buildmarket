@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncDeliveryStatuses } from '../../../../lib/delivery-sync';
+import { checkRzBalanceAlert } from '../../../../lib/rz-delivery-api';
 
 // Щогодинний синк руху посилок. Сама логіка — у lib/delivery-sync (її ж викликає
 // кнопка «Синхронізувати НП» в адмінці), тут лишається тільки авторизація крона
@@ -11,6 +12,10 @@ export async function GET(req: NextRequest) {
   }
 
   const result = await syncDeliveryStatuses('cron:sync-delivery-status');
+
+  // Логістичний баланс ROZETKA Доставки: борг блокує створення накладних мовчки,
+  // тому перевіряємо тим самим кроном. Сам виклик помилок не кидає.
+  await checkRzBalanceAlert();
 
   // Also run abandoned cart reminders (piggybacked on this daily cron)
   try {

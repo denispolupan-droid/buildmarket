@@ -33,11 +33,13 @@ import ReturnOrderModal from '../components/admin/ReturnOrderModal';
 import NpReturnModal from '../components/admin/NpReturnModal';
 import { rozetkaStatusLabel, isRozetkaAhead } from '../../lib/rozetka-status';
 import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
+import { RZ_DELIVERY_TYPE } from '../../lib/rz-delivery';
 import { deliveryPlace } from '../../lib/delivery-label';
 import { marketplacePaymentMethod } from '../../lib/payment-method';
 import { estimateMarketplaceDeliveryFee, splitFeeByRevenue, type MarketplaceFeeTariffs } from '../../lib/marketplace-delivery-fee';
 import { isPromCheapDelivery, computePromDeliveryFee } from '../../lib/prom-delivery-fee';
 import RozetkaDeliveryTtnModal from '../components/admin/RozetkaDeliveryTtnModal';
+import RzDeliveryTtnModal from '../components/admin/RzDeliveryTtnModal';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number; is_bonus?: boolean; supplier_sku?: string };
 
@@ -134,6 +136,9 @@ const DELIVERY_LABEL: Record<string, string> = {
   nova: 'Нова Пошта', nova_poshta: 'Нова Пошта', kharkiv: 'Харків і область', pickup: 'Самовивіз',
   // Точки видачі Rozetka: накладна оформлюється власним API Rozetka, не НП
   rozetka_delivery: 'Rozetka Доставка',
+  // Ті самі фізичні точки, але наш власний договір з rz-delivery (замовлення сайту).
+  // Назви навмисно різні: за ними менеджер розуміє, ЯКИМ API робити накладну.
+  rz_delivery: 'ROZETKA Доставка (сайт)',
 };
 
 // Спільний вигляд міток рядка (SMART, ТОЧКА, ⛓, повернення…). Раніше кожна
@@ -417,6 +422,14 @@ export default function AdminOrders({
   }, []);
   const [ttnModalOrder,  setTtnModalOrder]  = useState<Order | null>(null);
   const [rzTtnModal,     setRzTtnModal]     = useState<Order | null>(null);
+  // Накладна власного договору «ROZETKA Доставки» (замовлення сайту) — окреме
+  // вікно й окремий роут, щоб не плутати з маркетплейсним rzTtnModal вище
+  const [rzOwnTtnModal,  setRzOwnTtnModal]  = useState<Order | null>(null);
+  const [rzLabelBusy,    setRzLabelBusy]    = useState<string | null>(null);
+  const [rzRegBusy,      setRzRegBusy]      = useState<string | null>(null);
+  // Останній реєстр, у який щось клали в цій сесії — щоб кнопка друку з'явилася
+  // одразу після додавання, а не вимагала окремого екрана реєстрів
+  const [rzReception,    setRzReception]    = useState<number | null>(null);
   const [creatingPo,     setCreatingPo]     = useState<string | null>(null);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -1424,6 +1437,117 @@ export default function AdminOrders({
     else showToast(`Додано в реєстр: ${added.length}`);
   }
 
+  /**
+   * Етикетка «ROZETKA Доставки». API віддає PDF у base64 — розгортаємо в blob і
+   * відкриваємо у вкладці: data:-URL на PDF Chrome блокує, а зберігати файл на
+   * диск заради одного друку зайве.
+   */
+  async function printRzLabel(id: string) {
+    setRzLabelBusy(id);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}/rz-ttn?label=1`);
+      const data = await res.json();
+      if (!res.ok || !data.label) { showToast(data.error ?? 'Не вдалося отримати етикетку', 'error'); return; }
+      openPdfBase64(data.label);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Збій мережі', 'error');
+    } finally {
+      setRzLabelBusy(null);
+    }
+  }
+
+  /** PDF з base64 у нову вкладку: data:-URL на PDF Chrome блокує. */
+  function openPdfBase64(b64: string) {
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
+
+  /** Додати ЕН у сьогоднішній реєстр (сервер сам створить його за потреби). */
+  async function addRzToReception(orderId: string) {
+    setRzRegBusy(orderId);
+    try {
+      const res = await fetch('/api/admin/rz-delivery/reception', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderIds: [orderId] }),
+      });
+      const d = await res.json();
+      if (!res.ok || d.error) { showToast(d.error ?? 'Не вдалося додати в реєстр', 'error', 6000); return; }
+      setRzReception(d.receptionId);
+      const rejected = (d.rejected as string[] | undefined)?.length ?? 0;
+      showToast(
+        rejected
+          ? `Реєстр №${d.receptionId}: додано ${d.added}, відхилено ${rejected}`
+          : `Додано в реєстр №${d.receptionId}`,
+        rejected ? 'error' : 'success', 5000,
+      );
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Збій мережі', 'error');
+    } finally {
+      setRzRegBusy(null);
+    }
+  }
+
+  /**
+   * Заборона видачі: посилка вже в дорозі/в точці, а замовлення не потрібне.
+   * Статус замовлення не чіпаємо — рух назад веде крон доставки.
+   */
+  async function returnRzTrack(orderId: string) {
+    const reason = prompt('Причина повернення (побачить Rozetka):', 'Замовлення скасовано покупцем');
+    if (!reason?.trim()) return;
+    setRzRegBusy(orderId);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/rz-return`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+      const d = await res.json();
+      if (!res.ok || d.error) { showToast(d.error ?? 'Не вдалося оформити повернення', 'error', 6000); return; }
+      showToast('Повернення оформлено — рух посилки підхопить синк', 'success', 5000);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Збій мережі', 'error');
+    } finally {
+      setRzRegBusy(null);
+    }
+  }
+
+  /** Друкована форма реєстру: API віддає або base64, або посилання. */
+  async function printRzReception(id: number) {
+    try {
+      const res = await fetch(`/api/admin/rz-delivery/reception?print=${id}`);
+      const d = await res.json();
+      if (!res.ok || d.error) { showToast(d.error ?? 'Не вдалося отримати реєстр', 'error', 6000); return; }
+      if (d.base64) openPdfBase64(d.base64);
+      else if (d.url) window.open(d.url, '_blank');
+      else showToast('Rozetka не повернула документ реєстру', 'error');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Збій мережі', 'error');
+    }
+  }
+
+  /**
+   * Видалення ЕН «ROZETKA Доставки». На відміну від НП-кнопки, номер із
+   * замовлення прибирає СЕРВЕР і лише коли накладної в Rozetka справді не
+   * стало — тому тут просто відображаємо результат, а не чистимо наперед.
+   */
+  async function deleteRzTtn(id: string) {
+    if (!confirm('Видалити ЕН у Rozetka і прибрати номер із замовлення?')) return;
+    setTtnDeleting(id);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}/rz-ttn`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || data.error) { showToast(data.error ?? 'Не вдалося видалити ЕН', 'error', 6000); return; }
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, tracking_number: null } : o));
+      setTtnValues(prev => { const n = { ...prev }; delete n[id]; return n; });
+      showToast('ЕН видалена', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Збій мережі', 'error');
+    } finally {
+      setTtnDeleting(null);
+    }
+  }
+
   async function deleteTTN(id: string) {
     if (!confirm('Видалити ТТН з бази та з кабінету Нової Пошти?')) return;
     setTtnDeleting(id);
@@ -2047,6 +2171,7 @@ export default function AdminOrders({
             // сказано першим рядком колонки, і окрема мітка не потрібна.
             const carrierLabel = order.delivery_type === 'pickup' ? 'Самовивіз'
               : isRzPickup ? 'Rozetka Доставка'
+              : order.delivery_type === RZ_DELIVERY_TYPE ? 'ROZETKA Доставка'
               : 'Нова Пошта';
 
             // ТТН вже в реєстрі НП → тиха зелена крапка в чипі номера. Показуємо
@@ -3597,7 +3722,9 @@ export default function AdminOrders({
                       {/* Для точок видачі Rozetka накладну виписує Rozetka («RMP-…»),
                           Нова Пошта до неї стосунку не має — заголовок мусить це знати */}
                       <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        {isRzPickup ? 'Накладна Rozetka' : 'ТТН Нової Пошти'}
+                        {isRzPickup ? 'Накладна Rozetka'
+                          : order.delivery_type === RZ_DELIVERY_TYPE ? 'ЕН ROZETKA Доставки'
+                          : 'ТТН Нової Пошти'}
                       </div>
                       {(order.delivery_type === 'nova' || order.delivery_type === 'nova_poshta') ? (
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -3680,6 +3807,65 @@ export default function AdminOrders({
                               <button onClick={() => setRzTtnModal(order)}
                                 style={{ marginTop: '8px', height: '34px', padding: '0 14px', borderRadius: '9px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>
                                 Створити накладну Rozetka
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      ) : order.delivery_type === RZ_DELIVERY_TYPE ? (
+                        // Власний договір із rz-delivery: точку видачі покупець обрав
+                        // у чекауті, від нас — лише габарити. Етикетку друкує сама
+                        // Rozetka (PDF), ТТН Нової Пошти тут не існує в принципі.
+                        <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--text-secondary)', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '9px', padding: '10px 12px' }}>
+                          <div style={{ fontWeight: 700, color: '#15803D' }}>ROZETKA Доставка</div>
+                          {order.tracking_number ? (
+                            <>
+                              <div style={{ marginTop: '4px' }}>ЕН: <strong>{order.tracking_number}</strong></div>
+                              <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                                <button onClick={() => printRzLabel(order.id)} disabled={rzLabelBusy === order.id}
+                                  style={{ height: '32px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
+                                  {rzLabelBusy === order.id ? '…' : 'Етикетка PDF'}
+                                </button>
+                                {!order.carrier_accepted_at && (
+                                  <button onClick={() => addRzToReception(order.id)} disabled={rzRegBusy === order.id}
+                                    title="Додати ЕН у сьогоднішній реєстр здачі"
+                                    style={{ height: '32px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzRegBusy === order.id ? 'wait' : 'pointer' }}>
+                                    {rzRegBusy === order.id ? '…' : 'У реєстр'}
+                                  </button>
+                                )}
+                                {rzReception != null && (
+                                  <button onClick={() => printRzReception(rzReception)}
+                                    title="Друкована форма реєстру"
+                                    style={{ height: '32px', padding: '0 10px', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+                                    Реєстр №{rzReception}
+                                  </button>
+                                )}
+                                {/* Поки перевізник не прийняв — накладну ще можна прибрати;
+                                    після приймання роут відмовить і запропонує повернення */}
+                                {!order.carrier_accepted_at && (
+                                  <button onClick={() => deleteRzTtn(order.id)} disabled={ttnDeleting === order.id}
+                                    title="Видалити ЕН у Rozetka і прибрати номер із замовлення"
+                                    style={{ height: '32px', width: '32px', borderRadius: '9px', flexShrink: 0, background: '#FEF2F2', color: '#DC2626', border: '1.5px solid #FECACA', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: ttnDeleting === order.id ? 0.5 : 1 }}>
+                                    {ttnDeleting === order.id ? '…' : <Trash2 size={14} />}
+                                  </button>
+                                )}
+                                {/* Після приймання видалити ЕН уже не можна — лишається
+                                    заборонити видачу, інакше посилка лежатиме в точці
+                                    до кінця безкоштовного зберігання і почне коштувати */}
+                                {order.carrier_accepted_at && order.status !== 'delivered' && (
+                                  <button onClick={() => returnRzTrack(order.id)} disabled={rzRegBusy === order.id}
+                                    title="Заборонити видачу і повернути посилку"
+                                    style={{ height: '32px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #FDE68A', background: '#FFFBEB', color: '#B45309', fontSize: '12px', fontWeight: 700, cursor: rzRegBusy === order.id ? 'wait' : 'pointer' }}>
+                                    {rzRegBusy === order.id ? '…' : 'Повернення'}
+                                  </button>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div style={{ marginTop: '3px' }}>Точку видачі покупець обрав сам — потрібні лише габарити.</div>
+                              <button onClick={() => setRzOwnTtnModal(order)}
+                                style={{ marginTop: '8px', height: '34px', padding: '0 14px', borderRadius: '9px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>
+                                Створити ЕН ROZETKA
                               </button>
                             </>
                           )}
@@ -4376,6 +4562,21 @@ export default function AdminOrders({
             setOrders(prev => prev.map(o => o.id === orderId ? { ...o, tracking_number: ttn } : o));
             setTtnModalOrder(null);
             await finishTtnFlow([orderId]);
+          }}
+        />
+      )}
+
+      {rzOwnTtnModal && (
+        <RzDeliveryTtnModal
+          order={{ id: rzOwnTtnModal.id, order_number: rzOwnTtnModal.order_number, items: rzOwnTtnModal.items.map(i => ({ sku: i.sku, qty: i.qty, name: i.name })) }}
+          onClose={() => setRzOwnTtnModal(null)}
+          onCreated={ttn => {
+            const orderId = rzOwnTtnModal.id;
+            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, tracking_number: ttn } : o));
+            setTtnValues(prev => ({ ...prev, [orderId]: ttn }));
+            setRzOwnTtnModal(null);
+            showToast(`ЕН ROZETKA створена: ${ttn}`, 'success', 5000);
+            void finishTtnFlow([orderId]);
           }}
         />
       )}
