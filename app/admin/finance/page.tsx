@@ -122,20 +122,25 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
           <div style={{ display: 'flex', flexDirection: 'column', gap: '13px', marginTop: '14px' }}>
             {(() => {
               const maxSum = Math.max(...ov.pipeline.map(s => s.sum), 1);
-              return ov.pipeline.map(s => (
-                <Link key={s.key} href={s.href} style={{ textDecoration: 'none', display: 'block' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', marginBottom: '4px', gap: '8px' }}>
-                    <span style={{ color: 'var(--text-secondary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
-                    <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                      {s.count}<span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {fmt(s.sum)} ₴</span>
-                      {s.stuck && <span style={{ color: '#B45309', fontWeight: 600, marginLeft: '6px' }}>● {s.stuck}</span>}
-                    </span>
-                  </div>
-                  <div className="fin-funnel-track">
-                    <div className="fin-funnel-fill" style={{ width: `${Math.max(2, Math.round(s.sum / maxSum * 100))}%` }} />
-                  </div>
-                </Link>
-              ));
+              return ov.pipeline.map(s => {
+                const warn = s.tone === 'warn' && s.count > 0;
+                return (
+                  <Link key={s.key} href={s.href} style={{ textDecoration: 'none', display: 'block' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', marginBottom: '4px', gap: '8px' }}>
+                      <span style={{ color: warn ? '#B45309' : 'var(--text-secondary)', fontWeight: warn ? 600 : 400, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {warn && <span className="fin-dot orange" />}{s.label}
+                      </span>
+                      <span style={{ fontWeight: 700, color: warn ? '#B45309' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                        {s.count}<span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {fmt(s.sum)} ₴</span>
+                        {s.stuck && <span style={{ color: '#B45309', fontWeight: 600, marginLeft: '6px' }}>● {s.stuck}</span>}
+                      </span>
+                    </div>
+                    <div className="fin-funnel-track">
+                      <div className="fin-funnel-fill" style={{ width: `${Math.max(2, Math.round(s.sum / maxSum * 100))}%`, background: warn ? '#EA8A00' : undefined }} />
+                    </div>
+                  </Link>
+                );
+              });
             })()}
           </div>
           <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)', fontSize: '12.5px', color: 'var(--text-secondary)' }}

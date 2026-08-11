@@ -49,7 +49,7 @@ export type OverviewData = {
   };
   /* Знімок «де гроші зараз»: замовлення по живих стадіях, незалежно від
      періоду (замінив когортну воронку — та змішувала дозрівання зі втратами) */
-  pipeline: { key: string; label: string; count: number; sum: number; stuck: string | null; href: string }[];
+  pipeline: { key: string; label: string; count: number; sum: number; stuck: string | null; href: string; tone?: 'warn' }[];
   /* Викуп по зрілих замовленнях періоду (створені понад 10 днів тому,
      встигли завершитись): доставлено vs відмова/повернення після відправки */
   buyout: { delivered: number; refused: number; refusedSum: number; pct: number | null };
@@ -294,14 +294,18 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const pReady   = pipelineRows.filter(o => o.status === 'shipped' && !o.carrier_accepted_at);
   const pTransit = pipelineRows.filter(o => o.status === 'shipped' && o.carrier_accepted_at);
   const pPay     = pipelineRows.filter(o => o.status === 'pending_payment');
-  const transitStuck = pTransit.filter(o => (o.shipped_at ?? '') < d7ago).length;
-  const payStuck     = pPay.filter(o => o.created_at < d3ago).length;
+  // «В дорозі понад 7 дн» — окремий рядок (рішення власника): довга доставка —
+  // це вже не рух, а сигнал перевірити посилку/завершити замовлення.
+  const pTransitFresh = pTransit.filter(o => (o.shipped_at ?? '') >= d7ago);
+  const pTransitStuck = pTransit.filter(o => (o.shipped_at ?? '') < d7ago);
+  const payStuck      = pPay.filter(o => o.created_at < d3ago).length;
   const pipeline = [
-    { key: 'new',     label: 'Нові',                     href: '/admin?status=new',             ...stage(pNew, null) },
-    { key: 'conf',    label: 'Підтверджені / збираються', href: '/admin?status=confirmed',       ...stage(pConf, null) },
-    { key: 'ready',   label: 'До відправки',              href: '/admin?status=ready_to_ship',   ...stage(pReady, null) },
-    { key: 'transit', label: 'В дорозі',                  href: '/admin?status=shipped',         ...stage(pTransit, transitStuck > 0 ? `${transitStuck} довше 7 дн` : null) },
-    { key: 'pay',     label: 'Очікують оплати',           href: '/admin?status=pending_payment', ...stage(pPay, payStuck > 0 ? `${payStuck} довше 3 дн` : null) },
+    { key: 'new',      label: 'Нові',                     href: '/admin?status=new',             ...stage(pNew, null) },
+    { key: 'conf',     label: 'Підтверджені / збираються', href: '/admin?status=confirmed',       ...stage(pConf, null) },
+    { key: 'ready',    label: 'До відправки',              href: '/admin?status=ready_to_ship',   ...stage(pReady, null) },
+    { key: 'transit',  label: 'В дорозі',                  href: '/admin?status=shipped',         ...stage(pTransitFresh, null) },
+    { key: 'transit7', label: 'В дорозі понад 7 дн',       href: '/admin?status=shipped',         tone: 'warn' as const, ...stage(pTransitStuck, null) },
+    { key: 'pay',      label: 'Очікують оплати',           href: '/admin?status=pending_payment', ...stage(pPay, payStuck > 0 ? `${payStuck} довше 3 дн` : null) },
   ];
 
   // ── Викуп: зрілі замовлення періоду (створені понад 10 днів тому) ──────────
