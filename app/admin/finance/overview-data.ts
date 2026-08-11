@@ -59,6 +59,21 @@ export type OverviewData = {
   channels: { code: string; count: number; revenue: number; share: number }[];
   topClients: { name: string; revenue: number; orders: number; share: number }[];
   topProducts: { sku: string; name: string; qty: number; revenue: number }[];
+  /* Вікно великого графіка динаміки: останні N днів (7/30/90) незалежно від
+     пресета періоду; null = графік живе на щоденних рядах періоду (як досі) */
+  chartWindow: { labels: string[]; revenue: number[]; profit: number[] } | null;
+  /* Валовий прибуток за кореневими категоріями (факт: рядки проведених РН
+     періоду, до комісій МП) */
+  categoryMargin: { name: string; revenue: number; margin: number; share: number }[];
+  /* План виручки на поточний місяць (app_settings) проти факту з обліку */
+  plan: {
+    value: number | null;      // план, ₴ (null = не задано)
+    fact: number;              // факт виручки поточного місяця з леджера
+    forecast: number;          // прогноз на місяць за поточним темпом
+    daysPassed: number;
+    daysInMonth: number;
+    monthLabel: string;
+  };
 };
 
 const UA_MONTHS = ['Січ','Лют','Бер','Кві','Тра','Чер','Лип','Серп','Вер','Жов','Лис','Гру'];
@@ -99,7 +114,7 @@ export function resolvePeriod(p?: string) {
   return { now, preset, periodFrom, periodTo, periodEnd, prevFrom, periodLabel };
 }
 
-export async function getOverview(p?: string): Promise<OverviewData & { preset: Preset }> {
+export async function getOverview(p?: string, chartDays?: number): Promise<OverviewData & { preset: Preset }> {
   const { now, preset, periodFrom, periodTo, periodEnd, prevFrom, periodLabel } = resolvePeriod(p);
   const fromStr = dstr(periodFrom);
   const endStr  = dstr(periodEnd);      // ексклюзивна межа для prev/поділу
@@ -356,6 +371,105 @@ export async function getOverview(p?: string): Promise<OverviewData & { preset: 
     avgCheck: mOrd.map((n, i) => (n > 0 ? Math.round(mOrdSum[i] / n) : null)),
   };
 
+  // ── Вікно 7/30/90 днів для великого графіка (незалежно від пресета) ────────
+  const chartWinDays: string[] = [];
+  if (chartDays) {
+    const start = new Date(now);
+    start.setDate(start.getDate() - (chartDays - 1));
+    for (let d = new Date(start), i = 0; i < chartDays; d.setDate(d.getDate() + 1), i++) chartWinDays.push(dstr(d));
+  }
+
+  // ── Другий батч: вікно графіка, маржа за категоріями, план ─────────────────
+  const [chartLedger, marginLines, allCats, planRow] = await Promise.all([
+    chartDays
+      ? fetchAllRows<{ business_date: string; account_type: string; doc_type: string | null; amount: number }>((f, t) => db
+          .from('money_entries')
+          .select('business_date, account_type, doc_type, amount')
+          .in('account_type', ['revenue', 'cogs', 'marketplace_fee', 'logistics'])
+          .gte('business_date', chartWinDays[0])
+          .range(f, t))
+      : Promise.resolve([] as { business_date: string; account_type: string; doc_type: string | null; amount: number }[]),
+    // Рядки проведених РН періоду (inner-join фільтр по шапці) — для маржі за категоріями
+    fetchAllRows<{ sku: string; qty: number; price: number; cost_price: number }>((f, t) => {
+      let q = db.from('acc_document_lines')
+        .select('sku, qty, price, cost_price, acc_documents!inner(doc_type, status, doc_date, reversal_of)')
+        .eq('acc_documents.doc_type', 'sale')
+        .eq('acc_documents.status', 'confirmed')
+        .is('acc_documents.reversal_of', null)
+        .gte('acc_documents.doc_date', fromStr);
+      if (periodTo) q = q.lt('acc_documents.doc_date', endStr);
+      return q.range(f, t);
+    }),
+    db.from('categories').select('slug, name, parent_slug').then(r => r.data ?? []),
+    db.from('app_settings').select('value').eq('key', 'finance_month_plan').maybeSingle().then(r => r.data),
+  ]);
+
+  let chartWindow: OverviewData['chartWindow'] = null;
+  if (chartDays) {
+    const cwIdx = new Map(chartWinDays.map((d, i) => [d, i]));
+    const cwRev = new Array(chartWinDays.length).fill(0);
+    const cwProf = new Array(chartWinDays.length).fill(0);
+    for (const r of chartLedger) {
+      const i = cwIdx.get(r.business_date);
+      if (i === undefined) continue;
+      const amt = Number(r.amount);
+      const isDeliveryCost = r.account_type === 'logistics' && r.doc_type === 'delivery_cost';
+      if (r.account_type === 'logistics' && !isDeliveryCost) continue;
+      const rev  = r.account_type === 'revenue' ? -amt : 0;
+      const cost = r.account_type === 'cogs' || r.account_type === 'marketplace_fee' || isDeliveryCost ? amt : 0;
+      cwRev[i] += rev; cwProf[i] += rev - cost;
+    }
+    chartWindow = {
+      // «7» днів підписуємо всі, довші вікна — день місяця
+      labels: chartWinDays.map(d => String(Number(d.slice(8, 10)))),
+      revenue: cwRev,
+      profit: cwProf,
+    };
+  }
+
+  // ── Валовий прибуток за кореневими категоріями ─────────────────────────────
+  const catBySlug = new Map((allCats as { slug: string; name: string; parent_slug: string | null }[]).map(c => [c.slug, c]));
+  const rootOf = (slug: string | null): string => {
+    let cur = slug ? catBySlug.get(slug) : undefined;
+    for (let i = 0; cur?.parent_slug && i < 6; i++) cur = catBySlug.get(cur.parent_slug) ?? cur;
+    return cur?.name ?? '— без категорії —';
+  };
+  const marginSkus = [...new Set(marginLines.map(l => l.sku))];
+  const skuCat = new Map<string, string | null>();
+  for (let i = 0; i < marginSkus.length; i += 200) {
+    const { data: prods } = await db.from('products').select('sku, category_slug').in('sku', marginSkus.slice(i, i + 200));
+    for (const pr of prods ?? []) skuCat.set(pr.sku, pr.category_slug);
+  }
+  const catAgg = new Map<string, { revenue: number; margin: number }>();
+  for (const l of marginLines) {
+    const name = rootOf(skuCat.get(l.sku) ?? null);
+    const a = catAgg.get(name) ?? { revenue: 0, margin: 0 };
+    const rev = Number(l.price ?? 0) * Number(l.qty ?? 0);
+    a.revenue += rev;
+    a.margin  += rev - Number(l.cost_price ?? 0) * Number(l.qty ?? 0);
+    catAgg.set(name, a);
+  }
+  const catTotalMargin = [...catAgg.values()].reduce((s, a) => s + Math.max(0, a.margin), 0);
+  const categoryMargin = [...catAgg.entries()]
+    .map(([name, a]) => ({ name, ...a, share: catTotalMargin > 0 ? Math.round(Math.max(0, a.margin) / catTotalMargin * 1000) / 10 : 0 }))
+    .sort((a, b) => b.margin - a.margin)
+    .slice(0, 8);
+
+  // ── План виручки на поточний місяць ────────────────────────────────────────
+  const kyivToday = today.ymd;                        // YYYY-MM-DD за Києвом
+  const daysPassed = Number(kyivToday.slice(8, 10));
+  const daysInMonth = new Date(Number(kyivToday.slice(0, 4)), Number(kyivToday.slice(5, 7)), 0).getDate();
+  const monthFact = mRev[5];                          // поточний місяць із помісячних агрегатів
+  const planValue = planRow?.value != null && planRow.value !== '' ? Number(planRow.value) : null;
+  const plan = {
+    value: Number.isFinite(planValue as number) ? planValue : null,
+    fact: monthFact,
+    forecast: daysPassed > 0 ? Math.round(monthFact / daysPassed * daysInMonth) : monthFact,
+    daysPassed,
+    daysInMonth,
+    monthLabel: `${UA_MONTHS[Number(kyivToday.slice(5, 7)) - 1]} ${kyivToday.slice(0, 4)}`,
+  };
+
   return {
     preset, periodLabel,
     prevLabel: 'до попереднього періоду',
@@ -396,5 +510,6 @@ export async function getOverview(p?: string): Promise<OverviewData & { preset: 
       avgCheck: todayOrders.length ? Math.round(sum(todayOrders) / todayOrders.length) : null,
     },
     channels, topClients, topProducts,
+    chartWindow, categoryMargin, plan,
   };
 }

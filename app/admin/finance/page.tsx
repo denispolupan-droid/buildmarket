@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import FinanceTabs from './FinanceTabs';
 import FinanceActions from './FinanceActions';
+import PlanCard from './PlanCard';
 import { getOverview } from './overview-data';
 import { MonthBars, TrendBadge, DualLineChart } from './overview-charts';
 
@@ -26,10 +27,11 @@ function fmt(n: number) {
   return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
 }
 
-export default async function FinanceOverviewPage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
-  const { p } = await searchParams;
+export default async function FinanceOverviewPage({ searchParams }: { searchParams: Promise<{ p?: string; d?: string }> }) {
+  const { p, d } = await searchParams;
+  const chartDays = [7, 30, 90].includes(Number(d)) ? Number(d) : undefined;
   const [ov, arContracts] = await Promise.all([
-    getOverview(p),
+    getOverview(p, chartDays),
     db.from('ar_balances')
       .select('contract_id, contract_number, customer_id, customer_name, balance')
       .eq('contract_status', 'active')
@@ -142,15 +144,45 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
         </div>
 
         <div className="fin-card" style={{ gridColumn: 'span 5' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div className="fin-card-title">Динаміка за період <span className="fin-card-sub">· факт з обліку, по днях доставки</span></div>
-            <div style={{ display: 'flex', gap: '14px', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
-              <span><span className="fin-dot" style={{ background: 'var(--brand-blue)' }} /> Виручка</span>
-              <span><span className="fin-dot" style={{ background: '#15803D' }} /> Прибуток</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <div className="fin-card-title">
+              {ov.chartWindow ? `Динаміка · ${chartDays} днів` : 'Динаміка за період'} <span className="fin-card-sub">· факт з обліку, по днях доставки</span>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              {/* Вікно графіка незалежно від пресета періоду: Період / 7 / 30 / 90 днів */}
+              <div style={{ display: 'flex', gap: '3px' }}>
+                {[
+                  { d: undefined, label: 'Період' },
+                  { d: 7,  label: '7д' },
+                  { d: 30, label: '30д' },
+                  { d: 90, label: '90д' },
+                ].map(w => {
+                  const params = new URLSearchParams();
+                  if (p) params.set('p', p);
+                  if (w.d) params.set('d', String(w.d));
+                  const qs = params.toString();
+                  const active = (w.d ?? undefined) === chartDays;
+                  return (
+                    <Link key={w.label} href={`/admin/finance${qs ? `?${qs}` : ''}`}
+                      style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, textDecoration: 'none',
+                        color: active ? '#fff' : 'var(--text-secondary)', background: active ? '#1E3A5F' : 'var(--bg-soft)' }}>
+                      {w.label}
+                    </Link>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: '14px', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                <span><span className="fin-dot" style={{ background: 'var(--brand-blue)' }} /> Виручка</span>
+                <span><span className="fin-dot" style={{ background: '#15803D' }} /> Прибуток</span>
+              </div>
             </div>
           </div>
           <div style={{ marginTop: '12px' }}>
-            <DualLineChart a={ov.kpi.revenue.daily} b={ov.kpi.profit.daily} labels={ov.dayLabels} aLabel="Виручка" bLabel="Прибуток" />
+            <DualLineChart
+              a={ov.chartWindow ? ov.chartWindow.revenue : ov.kpi.revenue.daily}
+              b={ov.chartWindow ? ov.chartWindow.profit : ov.kpi.profit.daily}
+              labels={ov.chartWindow ? ov.chartWindow.labels : ov.dayLabels}
+              aLabel="Виручка" bLabel="Прибуток" />
           </div>
         </div>
 
@@ -218,6 +250,35 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Маржа за категоріями · План на місяць */}
+      <div className="fin-grid-12" style={{ marginTop: '16px' }}>
+        <div className="fin-card" style={{ gridColumn: 'span 8' }}>
+          <div className="fin-card-title">Валовий прибуток за категоріями <span className="fin-card-sub">· факт з проведених РН за {ov.periodLabel}, до комісій МП</span></div>
+          {ov.categoryMargin.length === 0 ? (
+            <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає проведених продажів за період</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '11px', marginTop: '14px' }}>
+              {ov.categoryMargin.map(c => (
+                <div key={c.name}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', marginBottom: '4px' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{c.name}</span>
+                    <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: c.margin >= 0 ? 'var(--text-primary)' : '#DC2626' }}>
+                      {c.margin >= 0 ? '' : '−'}{fmt(Math.abs(c.margin))} ₴
+                      <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {c.share}% · виручка {fmt(c.revenue)} ₴</span>
+                    </span>
+                  </div>
+                  <div className="fin-funnel-track">
+                    <div className="fin-funnel-fill" style={{ width: `${Math.max(2, c.share)}%`, background: c.margin >= 0 ? undefined : '#DC2626' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <PlanCard plan={ov.plan} />
       </div>
 
       {/* Канали */}
