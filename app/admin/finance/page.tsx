@@ -250,23 +250,20 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                   { label: 'Rozetka', color: '#15803D', bal: ov.mp.rozetka, transit: ov.mpTransit.rozetka },
                 ].map(m => (
                   <div key={m.label} title={`Комісії в дорозі −${fmt(m.transit)} ₴ спишуться при доставці → прогноз ${fmt(m.bal - m.transit)} ₴`}
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '12px', gap: '8px', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '12px', gap: '8px', flexWrap: 'wrap', minWidth: 0 }}>
                     <span style={{ color: m.color, fontWeight: 600 }}>{m.label}</span>
-                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>{fmt(m.bal)}</span>
-                      <span style={{ color: 'var(--text-muted)' }}> → </span>
-                      <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{fmt(m.bal - m.transit)} ₴</span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right', marginLeft: 'auto' }}>
+                      <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{fmt(m.bal)} →</span>{' '}
+                      <span style={{ fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{fmt(m.bal - m.transit)} ₴</span>
                     </span>
                   </div>
                 ))}
               </div>
+              {/* Звичайний перенос: місце внизу колонки є, а трикрапка з'їдала суму */}
               {(ov.mpTransit.prom + ov.mpTransit.rozetka) > 0 && (
-                <div className="fin-money-sub" title="Комісії по відвантажених, ще не доставлених посилках — площадка спише їх при доставці"
-                  style={{ display: 'flex', gap: '4px', minWidth: 0, alignItems: 'baseline' }}>
-                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
-                    в дорозі комісій <span style={{ color: '#B45309', fontWeight: 600 }}>−{fmt(ov.mpTransit.prom + ov.mpTransit.rozetka)} ₴</span>
-                  </span>
-                  <Link href="/admin/finance/marketplace-balance" style={{ color: 'var(--text-muted)', flexShrink: 0 }}>· деталі →</Link>
+                <div className="fin-money-sub" title="Комісії по відвантажених, ще не доставлених посилках — площадка спише їх при доставці">
+                  в дорозі комісій <span style={{ color: '#B45309', fontWeight: 600, whiteSpace: 'nowrap' }}>−{fmt(ov.mpTransit.prom + ov.mpTransit.rozetka)} ₴</span>
+                  {' · '}<Link href="/admin/finance/marketplace-balance" style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>деталі →</Link>
                 </div>
               )}
             </div>
