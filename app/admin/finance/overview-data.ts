@@ -77,13 +77,12 @@ export type OverviewData = {
     yesterday: { orders: number; revenue: number; shipped: number; paidSum: number };
   };
   channels: { code: string; count: number; revenue: number; share: number }[];
-  /* Вікно великого графіка динаміки: останні N днів (7/30/90) незалежно від
-     пресета періоду; null = графік живе на щоденних рядах періоду (як досі) */
-  chartWindow: { labels: string[]; revenue: number[]; profit: number[] } | null;
-  /* Дані каруселі «Динаміка»: тижні · джерела замовлень · накопичення до плану */
+  /* Дані каруселі «Динаміка»: дні · джерела замовлень · накопичення до плану.
+     Вікно 7/30/90 днів (chartDays) міняє вісь незалежно від пресета періоду */
   dynamics: {
-    /* null = майбутній день (вісь докладена до кінця місяця, стовпчика немає) */
-    daily: { labels: string[]; revenue: (number | null)[]; profit: (number | null)[] };
+    /* Продажі по днях СТВОРЕННЯ (без скасованих, вкл. в дорозі); прибуток —
+       очікуваний. null = майбутній день (вісь докладена до кінця місяця) */
+    daily: { labels: string[]; revenue: (number | null)[]; profit: (number | null)[]; counts: number[] };
     /* Джерела з деталями: сер. чек, очікуваний прибуток каналу (та сама
        методика, що KPI «Прибуток») і виручка попереднього періоду для дельти */
     sources: { code: string; count: number; revenue: number; share: number; avgCheck: number; profit: number; margin: number | null; prevRevenue: number }[];
@@ -514,41 +513,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     for (let d = new Date(start), i = 0; i < chartDays; d.setDate(d.getDate() + 1), i++) chartWinDays.push(dstr(d));
   }
 
-  // ── Другий батч: вікно графіка, план ───────────────────────────────────────
-  const [chartLedger, planRow] = await Promise.all([
-    chartDays
-      ? fetchAllRows<{ business_date: string; account_type: string; doc_type: string | null; amount: number }>((f, t) => db
-          .from('money_entries')
-          .select('business_date, account_type, doc_type, amount')
-          .in('account_type', ['revenue', 'cogs', 'marketplace_fee', 'logistics'])
-          .gte('business_date', chartWinDays[0])
-          .range(f, t))
-      : Promise.resolve([] as { business_date: string; account_type: string; doc_type: string | null; amount: number }[]),
-    db.from('app_settings').select('value').eq('key', 'finance_month_plan').maybeSingle().then(r => r.data),
-  ]);
-
-  let chartWindow: OverviewData['chartWindow'] = null;
-  if (chartDays) {
-    const cwIdx = new Map(chartWinDays.map((d, i) => [d, i]));
-    const cwRev = new Array(chartWinDays.length).fill(0);
-    const cwProf = new Array(chartWinDays.length).fill(0);
-    for (const r of chartLedger) {
-      const i = cwIdx.get(r.business_date);
-      if (i === undefined) continue;
-      const amt = Number(r.amount);
-      const isDeliveryCost = r.account_type === 'logistics' && r.doc_type === 'delivery_cost';
-      if (r.account_type === 'logistics' && !isDeliveryCost) continue;
-      const rev  = r.account_type === 'revenue' ? -amt : 0;
-      const cost = r.account_type === 'cogs' || r.account_type === 'marketplace_fee' || isDeliveryCost ? amt : 0;
-      cwRev[i] += rev; cwProf[i] += rev - cost;
-    }
-    chartWindow = {
-      // «7» днів підписуємо всі, довші вікна — день місяця
-      labels: chartWinDays.map(d => String(Number(d.slice(8, 10)))),
-      revenue: cwRev,
-      profit: cwProf,
-    };
-  }
+  const planRow = await db.from('app_settings').select('value').eq('key', 'finance_month_plan').maybeSingle().then(r => r.data);
 
   // ── План виручки на поточний місяць ────────────────────────────────────────
   const kyivToday = today.ymd;                        // YYYY-MM-DD за Києвом
@@ -566,21 +531,34 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   };
 
   // ── Карусель «Динаміка»: дні · джерела · накопичення до плану ─────────────
-  // Дні: активний ряд (вікно 7/30/90 або період) по днях як є — картка
-  // широка (span 8), щоденні стовпчики читаються; згладжування — в компоненті.
+  // Дні: СТВОРЕНІ замовлення по днях (без скасованих, включно з тими, що
+  // в дорозі) — та сама база, що KPI «Замовлення · сума» і слайд «План».
+  // Прибуток — очікуваний (orderMargin): доставлені — факт з проводок,
+  // решта — оцінка. Раніше тут був факт з обліку по днях доставки — дні
+  // без вручень стояли порожніми, хоч замовлення надходили.
   const srcDays = chartDays ? chartWinDays : days;
-  const srcRev  = chartWindow ? chartWindow.revenue : revDaily;
-  const srcProf = chartWindow ? chartWindow.profit : profDaily;
+  const dIdx = new Map(srcDays.map((d, i) => [d, i]));
   const dLabels = srcDays.map(d => `${d.slice(8, 10)}.${d.slice(5, 7)}`);
-  const dRev: (number | null)[]  = srcRev.map(Math.round);
-  const dProf: (number | null)[] = srcProf.map(Math.round);
+  const dRev: (number | null)[]  = new Array(srcDays.length).fill(0);
+  const dProf: (number | null)[] = new Array(srcDays.length).fill(0);
+  const dCnt: number[] = new Array(srcDays.length).fill(0);
+  // estById = замовлення періоду+попереднього ∪ 6 місяців — покриває і 90д
+  for (const o of estById.values()) {
+    const k = new Date(o.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/Kyiv' });
+    const i = dIdx.get(k);
+    if (i === undefined) continue;
+    dRev[i]  = (dRev[i] ?? 0) + Number(o.total_price ?? 0);
+    dProf[i] = (dProf[i] ?? 0) + orderMargin(o);
+    dCnt[i] += 1;
+  }
+  for (let i = 0; i < dRev.length; i++) { dRev[i] = Math.round(dRev[i]!); dProf[i] = Math.round(dProf[i]!); }
   // Пресет «поточний місяць»: докладаємо вісь до кінця місяця, щоб рамка
   // була весь місяць — майбутні дні порожні (null), стовпчиків немає
   if (!chartDays && preset === 'cur_month') {
     const dim = new Date(Number(fromStr.slice(0, 4)), Number(fromStr.slice(5, 7)), 0).getDate();
     for (let dd = srcDays.length + 1; dd <= dim; dd++) {
       dLabels.push(`${String(dd).padStart(2, '0')}.${fromStr.slice(5, 7)}`);
-      dRev.push(null); dProf.push(null);
+      dRev.push(null); dProf.push(null); dCnt.push(0);
     }
   }
 
@@ -603,7 +581,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     else cumFact.push(null);   // майбутні дні — лінія обривається сьогодні
   }
   const dynamics = {
-    daily: { labels: dLabels, revenue: dRev, profit: dProf },
+    daily: { labels: dLabels, revenue: dRev, profit: dProf, counts: dCnt },
     sources: sourcesDetailed,
     planCum: {
       labels: cumLabels,
@@ -655,6 +633,6 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       yesterday: { orders: yOrders.length, revenue: sum(yOrders), shipped: yShipped, paidSum: yPaidSum },
     },
     channels,
-    chartWindow, plan, dynamics,
+    plan, dynamics,
   };
 }

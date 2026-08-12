@@ -153,7 +153,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
         <div className="fin-card" style={{ gridColumn: 'span 8' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <div className="fin-card-title">
-              {ov.chartWindow ? `Динаміка · ${chartDays} днів` : 'Динаміка за період'} <span className="fin-card-sub">· факт з обліку</span>
+              {chartDays ? `Динаміка · ${chartDays} днів` : 'Динаміка за період'} <span className="fin-card-sub">· створені замовлення</span>
             </div>
             {/* Вікно даних для «Тижнів» незалежно від пресета: Період / 7 / 30 / 90 днів */}
             <div style={{ display: 'flex', gap: '3px' }}>

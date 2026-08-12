@@ -10,7 +10,7 @@ import { useState } from 'react';
 // Все — власний SVG, без бібліотек.
 
 type Dynamics = {
-  daily: { labels: string[]; revenue: (number | null)[]; profit: (number | null)[] };
+  daily: { labels: string[]; revenue: (number | null)[]; profit: (number | null)[]; counts: number[] };
   sources: { code: string; count: number; revenue: number; share: number; avgCheck: number; profit: number; margin: number | null; prevRevenue: number }[];
   planCum: { labels: string[]; fact: (number | null)[]; plan: number[] | null; monthLabel: string };
 };
@@ -67,12 +67,13 @@ function DayBars({ d }: { d: Dynamics['daily'] }) {
   const maxProf = Math.max(...profVals, 1);
   const minProf = Math.min(0, ...profVals);
   const panels = [
-    { top: 16, h: 128, min: 0, max: maxRev, vals: revVals, color: () => 'var(--brand-blue)', trend: 'var(--brand-blue)', label: 'Виручка' },
-    { top: 172, h: 62, min: minProf, max: maxProf, vals: profVals, color: (v: number) => (v >= 0 ? '#15803D' : '#DC2626'), trend: '#15803D', label: 'Прибуток' },
+    { top: 16, h: 128, min: 0, max: maxRev, vals: revVals, color: () => 'var(--brand-blue)', trend: 'var(--brand-blue)', label: 'Продажі', tip: (i: number, v: number) => `${d.labels[i]}: продажі ${fmt(v)} ₴ · ${d.counts[i]} зам.` },
+    { top: 172, h: 62, min: minProf, max: maxProf, vals: profVals, color: (v: number) => (v >= 0 ? '#15803D' : '#DC2626'), trend: '#15803D', label: 'Прибуток · очік.', tip: (i: number, v: number) => `${d.labels[i]}: очікуваний прибуток ${fmt(v)} ₴` },
   ];
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }} role="img" aria-label="Виручка і прибуток по днях">
+    <div>
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }} role="img" aria-label="Продажі і очікуваний прибуток по днях">
       {panels.map(pn => {
         const span = pn.max - pn.min || 1;
         const y = (v: number) => pn.top + pn.h - ((v - pn.min) / span) * pn.h;
@@ -94,7 +95,7 @@ function DayBars({ d }: { d: Dynamics['daily'] }) {
             {pn.vals.map((v, i) => (
               <rect key={i} x={cx(i) - barW / 2} y={v >= 0 ? y(v) : y(0)} width={barW}
                 height={Math.max(1.5, Math.abs(y(v) - y0))} rx={Math.min(2.5, barW / 3)} fill={pn.color(v)} opacity="0.9">
-                <title>{`${d.labels[i]}: ${pn.label.toLowerCase()} ${fmt(v)} ₴`}</title>
+                <title>{pn.tip(i, v)}</title>
               </rect>
             ))}
             {n > 1 && (
@@ -114,6 +115,11 @@ function DayBars({ d }: { d: Dynamics['daily'] }) {
         ) : null;
       })}
     </svg>
+    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+      Сума створених замовлень за день (без скасованих, вкл. ті, що в дорозі).
+      Прибуток — очікуваний: по доставлених факт з обліку, по решті оцінка.
+    </div>
+    </div>
   );
 }
 
