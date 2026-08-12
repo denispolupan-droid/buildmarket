@@ -2011,8 +2011,8 @@ export default function AdminOrders({
           {/* Порожня комірка під мініатюру товару — щоб заголовки не з'їхали з колонок */}
           {/* 94px = дві плитки по 44 + 6 проміжку */}
           <span style={{ width: '94px', flexShrink: 0, marginLeft: '8px' }}>Товар</span>
-          <span style={{ width: '84px', flexShrink: 0, textAlign: 'right', paddingRight: '24px', boxSizing: 'border-box' }}>Сума</span>
           <span style={{ flex: '0 1 calc(50% - 266px)', minWidth: 0 }}>Клієнт</span>
+          <span style={{ width: '84px', flexShrink: 0, textAlign: 'right', paddingRight: '24px', boxSizing: 'border-box' }}>Сума</span>
           <span style={{ flex: 1, minWidth: '200px', overflow: 'hidden', whiteSpace: 'nowrap' }}>Доставка</span>
           {/* 118px — рівно як у комірки статусу в рядку (.oc-status). Було 104,
               і заголовок стояв на 14px правіше за плашку під ним. */}
@@ -2307,18 +2307,6 @@ export default function AdminOrders({
                     );
                   })()}
 
-                  {/* Сума (+ маркер промокоду) — перед клієнтом, рішення власника;
-                      правий паддінг = повітря до контактів, цифри ближче до фото */}
-                  <span style={{ width: '84px', flexShrink: 0, fontSize: '13px', fontWeight: 800, color: 'var(--brand-blue)', textAlign: 'right', display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', paddingRight: '24px', boxSizing: 'border-box' }}>
-                    {order.promo_code && (
-                      <Tag size={12} style={{ color: '#B45309', flexShrink: 0 }}
-                        aria-label={`Промокод ${order.promo_code}`} />
-                    )}
-                    <span title={order.promo_code ? `Промокод ${order.promo_code} · знижка −${Number(order.promo_discount ?? 0).toFixed(2)} ₴ (сума вже з урахуванням)` : undefined}>
-                      {order.total_price.toFixed(0)} ₴
-                    </span>
-                  </span>
-
                   {/* Клієнт: ПІБ із мітками замовлення, під ним телефон із кнопкою
                       копіювання, далі товар. Телефон окремим рядком, бо в парі з ПІБ
                       вони билися за ширину, а копіювати номер треба часто — і на
@@ -2366,6 +2354,17 @@ export default function AdminOrders({
                       </div>
                     )}
                   </div>
+
+                  {/* Сума (+ маркер промокоду) — між клієнтом і доставкою */}
+                  <span style={{ width: '84px', flexShrink: 0, fontSize: '13px', fontWeight: 800, color: 'var(--brand-blue)', textAlign: 'right', display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', paddingRight: '24px', boxSizing: 'border-box' }}>
+                    {order.promo_code && (
+                      <Tag size={12} style={{ color: '#B45309', flexShrink: 0 }}
+                        aria-label={`Промокод ${order.promo_code}`} />
+                    )}
+                    <span title={order.promo_code ? `Промокод ${order.promo_code} · знижка −${Number(order.promo_discount ?? 0).toFixed(2)} ₴ (сума вже з урахуванням)` : undefined}>
+                      {order.total_price.toFixed(0)} ₴
+                    </span>
+                  </span>
 
                   {/* Доставка — ТІЛЬКИ на телефоні, двома рядками: «перевізник · адреса»
                       і нижче «ТТН · де зараз посилка». На широкому екрані для цього є
