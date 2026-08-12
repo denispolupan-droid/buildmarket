@@ -14,6 +14,7 @@ export function buildVidatkovaHtml(params: {
   sellerName: string;
   sellerEdrpou: string;
   sellerAddress: string;
+  sellerCity?: string;
   sellerBank: string;
   sellerIban: string;
   buyerName: string;
@@ -26,7 +27,7 @@ export function buildVidatkovaHtml(params: {
 }): string {
   const {
     docNumber, docDate, lines, total,
-    sellerName, sellerEdrpou, sellerAddress, sellerBank, sellerIban,
+    sellerName, sellerEdrpou, sellerAddress, sellerCity, sellerBank, sellerIban,
     buyerName, buyerPhone, buyerEdrpou, buyerAddress, orderNumber, signatoryName = '', printUrl,
   } = params;
 
@@ -57,6 +58,7 @@ export function buildVidatkovaHtml(params: {
   <div style="font-size:17px;font-weight:700;margin-bottom:4px">
     Видаткова накладна № ${docNumber} від ${date}
   </div>
+  ${sellerCity ? `<div style="font-size:11px;color:#555;margin-bottom:2px">Місце складання: ${sellerCity}</div>` : ''}
   ${orderNumber ? `<div style="font-size:11px;color:#555;margin-bottom:6px">Підстава: замовлення №${orderNumber}</div>` : ''}
   <hr style="border:none;border-top:2px solid #1E3A5F;margin-bottom:14px">
 

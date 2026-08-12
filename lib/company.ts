@@ -21,6 +21,8 @@ export const SELLER = {
   name:      clean(process.env.BANK_RECIPIENT, 'ФОП Buildmarket'),
   edrpou:    clean(process.env.BANK_EDRPOU,    '3198107136'),
   address:   clean(process.env.BANK_ADDRESS,   ''),
+  // Місце складання первинних документів (вимога до реквізитів накладної)
+  city:      clean(process.env.SELLER_CITY,    'м. Харків'),
   bank:      clean(process.env.BANK_NAME,      'АТ «ПриватБанк»'),
   iban:      clean(process.env.BANK_IBAN,      'UA803220010000026000370117963'),
   signatory: clean(process.env.SIGNATORY_NAME, ''),

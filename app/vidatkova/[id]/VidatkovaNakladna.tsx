@@ -14,7 +14,7 @@ type PrintLine = { sku: string; name: string; qty: number; price: number };
 
 export default function VidatkovaNakladna({
   docId, docNumber, docDate, lines, total,
-  sellerName, sellerEdrpou, sellerAddress, sellerBank, sellerIban,
+  sellerName, sellerEdrpou, sellerAddress, sellerCity, sellerBank, sellerIban,
   buyerName, buyerPhone, buyerEdrpou, buyerAddress, orderNumber, signatoryName,
   defaultEmail, isStaff = false,
 }: {
@@ -26,6 +26,7 @@ export default function VidatkovaNakladna({
   sellerName: string;
   sellerEdrpou: string;
   sellerAddress: string;
+  sellerCity?: string;
   sellerBank: string;
   sellerIban: string;
   buyerName: string;
@@ -252,6 +253,11 @@ export default function VidatkovaNakladna({
           <div style={{ fontSize: '17px', fontWeight: 700, color: '#111', marginBottom: '4px' }}>
             Видаткова накладна № {docNumber} від {date}
           </div>
+          {sellerCity && (
+            <div style={{ fontSize: '11px', color: '#555', marginBottom: '2px' }}>
+              Місце складання: {sellerCity}
+            </div>
+          )}
           {orderNumber && (
             <div style={{ fontSize: '11px', color: '#555', marginBottom: '6px' }}>
               Підстава: замовлення №{orderNumber}

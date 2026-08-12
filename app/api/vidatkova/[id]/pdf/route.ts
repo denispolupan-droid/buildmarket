@@ -52,6 +52,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     sellerName:   SELLER.name,
     sellerEdrpou: SELLER.edrpou,
     sellerAddress: SELLER.address,
+    sellerCity:    SELLER.city,
     sellerBank:   SELLER.bank,
     sellerIban:   SELLER.iban,
     buyerName:    buyer.name,

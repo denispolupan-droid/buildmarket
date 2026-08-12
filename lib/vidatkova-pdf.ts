@@ -20,6 +20,7 @@ export async function buildVidatkovaPdf(params: {
   sellerName: string;
   sellerEdrpou: string;
   sellerAddress: string;
+  sellerCity?: string;
   sellerBank: string;
   sellerIban: string;
   buyerName: string;
@@ -31,7 +32,7 @@ export async function buildVidatkovaPdf(params: {
 }): Promise<Buffer> {
   const {
     docNumber, docDate, lines, total,
-    sellerName, sellerEdrpou, sellerAddress, sellerBank, sellerIban,
+    sellerName, sellerEdrpou, sellerAddress, sellerCity, sellerBank, sellerIban,
     buyerName, buyerPhone, buyerEdrpou, buyerAddress, orderNumber, signatoryName = '',
   } = params;
 
@@ -72,6 +73,10 @@ export async function buildVidatkovaPdf(params: {
     doc.font('B').fontSize(14).fillColor('#111111')
        .text(`Видаткова накладна № ${docNumber} від ${date}`, ML, y, { width: CW, lineBreak: false });
     y += 18;
+    if (sellerCity) {
+      doc.font('R').fontSize(9).fillColor('#555555').text(`Місце складання: ${sellerCity}`, ML, y, { lineBreak: false });
+      y += 13;
+    }
     if (orderNumber) {
       doc.font('R').fontSize(9).fillColor('#555555').text(`Підстава: замовлення №${orderNumber}`, ML, y, { lineBreak: false });
       y += 13;
