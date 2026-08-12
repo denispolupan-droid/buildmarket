@@ -214,25 +214,70 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
           <div className="fin-money-grid">
             <div>
               <div className="fin-kpi-label">На рахунках</div>
-              <div className="fin-money-val">{fmt(ov.accounts.total)} ₴</div>
-              <div className="fin-money-sub">Mono {fmt(ov.accounts.monobank)} · NovaPay {fmt(ov.accounts.novapay)} · Каса {fmt(ov.accounts.cash)}</div>
+              <div className="fin-money-val" style={{ color: ov.accounts.total >= 0 ? '#15803D' : '#DC2626' }}>{fmt(ov.accounts.total)} ₴</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '6px' }}>
+                {[
+                  { label: 'Mono',    v: ov.accounts.monobank },
+                  { label: 'NovaPay', v: ov.accounts.novapay },
+                  { label: 'Каса',    v: ov.accounts.cash },
+                ].map(a => (
+                  <div key={a.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{a.label}</span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: a.v < 0 ? '#DC2626' : 'var(--text-primary)' }}>{fmt(a.v)} ₴</span>
+                  </div>
+                ))}
+              </div>
             </div>
             <div>
-              <div className="fin-kpi-label">Дебіторка</div>
+              <div className="fin-kpi-label">Дебіторка · нам винні</div>
               <div className="fin-money-val">{fmt(ov.ar.total)} ₴</div>
-              <div className="fin-money-sub">{ov.ar.overdueCount > 0 ? `прострочено ${fmt(ov.ar.overdueSum)} ₴` : 'без прострочень'}</div>
+              <div className="fin-money-sub" style={ov.ar.overdueCount > 0 ? { color: '#DC2626', fontWeight: 600 } : undefined}>
+                {ov.ar.overdueCount > 0 ? `● прострочено ${fmt(ov.ar.overdueSum)} ₴` : 'без прострочень'}
+              </div>
+              <div className="fin-money-sub"><Link href="/admin/finance/settlements" style={{ color: 'var(--text-muted)' }}>клієнти →</Link></div>
             </div>
             <div>
-              <div className="fin-kpi-label">Кредиторка</div>
-              <div className="fin-money-val">{fmt(ov.ap.total)} ₴</div>
+              <div className="fin-kpi-label">Кредиторка · ми винні</div>
+              <div className="fin-money-val" style={{ color: ov.ap.total > 0 ? '#B45309' : undefined }}>{fmt(ov.ap.total)} ₴</div>
               <div className="fin-money-sub"><Link href="/admin/finance/payables" style={{ color: 'var(--text-muted)' }}>постачальники →</Link></div>
             </div>
             <div>
               <div className="fin-kpi-label">Баланс маркетплейсів</div>
               <div className="fin-money-val">{fmt(ov.mp.prom + ov.mp.rozetka)} ₴</div>
-              <div className="fin-money-sub">Prom {fmt(ov.mp.prom)} · Rozetka {fmt(ov.mp.rozetka)}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '6px' }}>
+                {[
+                  { label: 'Prom',    color: '#C2410C', bal: ov.mp.prom,    transit: ov.mpTransit.prom },
+                  { label: 'Rozetka', color: '#15803D', bal: ov.mp.rozetka, transit: ov.mpTransit.rozetka },
+                ].map(m => (
+                  <div key={m.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
+                    <span style={{ color: m.color, fontWeight: 600 }}>{m.label}</span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {fmt(m.bal)} ₴{m.transit > 0 && <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · їде +{fmt(m.transit)}</span>}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {(ov.mpTransit.prom + ov.mpTransit.rozetka) > 0 && (
+                <div className="fin-money-sub" title="Поточний баланс + сума замовлень, що зараз в дорозі (до вирахування комісій)">
+                  після доставок ≈ <b style={{ color: '#15803D' }}>{fmt(ov.mp.prom + ov.mp.rozetka + ov.mpTransit.prom + ov.mpTransit.rozetka)} ₴</b>
+                </div>
+              )}
             </div>
           </div>
+          {(() => {
+            const net = ov.accounts.total + ov.mp.prom + ov.mp.rozetka + ov.ar.total - ov.ap.total;
+            return (
+              <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}
+                title="Рахунки + баланси маркетплейсів + дебіторка − кредиторка">
+                <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                  Чиста позиція <span style={{ color: 'var(--text-muted)' }}>· рахунки + МП + нам винні − ми винні</span>
+                </span>
+                <span style={{ fontSize: '14px', fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: net >= 0 ? '#15803D' : '#DC2626' }}>
+                  {net >= 0 ? '' : '−'}{fmt(Math.abs(net))} ₴
+                </span>
+              </div>
+            );
+          })()}
         </div>
 
         <div className="fin-card" style={{ gridColumn: 'span 4' }}>

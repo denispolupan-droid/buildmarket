@@ -55,6 +55,9 @@ export type OverviewData = {
   buyout: { delivered: number; refused: number; refusedSum: number; pct: number | null };
   accounts: { monobank: number; novapay: number; cash: number; total: number };
   mp: { prom: number; rozetka: number };
+  /* Суми замовлень, що зараз їдуть, по каналах МП (до комісій) — для
+     «планованого залишку» балансу маркетплейса після доставок */
+  mpTransit: { prom: number; rozetka: number };
   ar: { total: number; overdueCount: number; overdueSum: number };
   ap: { total: number };
   lowStockCount: number;
@@ -223,9 +226,9 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       .eq('business_date', today.ymd)
       .then(r => r.data ?? []),
     // 10. Знімок живих стадій «де гроші зараз» (незалежно від періоду)
-    fetchAllRows<{ status: string; total_price: number; shipped_at: string | null; carrier_accepted_at: string | null; created_at: string }>((f, t) => db
+    fetchAllRows<{ status: string; total_price: number; shipped_at: string | null; carrier_accepted_at: string | null; created_at: string; channel_code: string | null }>((f, t) => db
       .from('orders')
-      .select('status, total_price, shipped_at, carrier_accepted_at, created_at')
+      .select('status, total_price, shipped_at, carrier_accepted_at, created_at, channel_code')
       .in('status', ['new', 'pending_payment', 'confirmed', 'awaiting_stock', 'picking', 'shipped'])
       .range(f, t)),
     // 11. Відмови для «викупу»: скасовані ПІСЛЯ відправки замовлення періоду
@@ -304,6 +307,10 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   // це вже не рух, а сигнал перевірити посилку/завершити замовлення.
   const pTransitFresh = pTransit.filter(o => (o.shipped_at ?? '') >= d7ago);
   const pTransitStuck = pTransit.filter(o => (o.shipped_at ?? '') < d7ago);
+  const mpTransit = {
+    prom:    sum(pTransit.filter(o => o.channel_code === 'prom')),
+    rozetka: sum(pTransit.filter(o => o.channel_code === 'rozetka')),
+  };
   const payStuck      = pPay.filter(o => o.created_at < d3ago).length;
   // Порядок — за робочим циклом, як вкладки журналу: нові → підтверджені →
   // очікують оплати → логістика
@@ -597,6 +604,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     pipeline, buyout,
     accounts,
     mp: { prom: promBal, rozetka: rozetkaBal },
+    mpTransit,
     ar: {
       total: arTotal,
       overdueCount: overdue.length,
