@@ -181,21 +181,24 @@ export default async function AdminPage({
     if (row.image) productThumbs[row.sku] = row.image;
   }
 
-  // Load confirmed sale docs + shipped quantities for orders on this page
+  // Load sale docs (+чернетки — щоб РН можна було друкувати одразу після
+  // відвантаження, не чекаючи доставки/проведення) + shipped quantities
   const orderIds = (orders ?? []).map(o => o.id);
   const { data: allDocsRaw } = orderIds.length
     ? await serviceClient
         .from('acc_documents')
-        .select('id, order_id, doc_number, doc_type, reversal_of')
+        .select('id, order_id, doc_number, doc_type, reversal_of, status')
         .in('order_id', orderIds)
         .in('doc_type', ['sale', 'return_in'])
-        .eq('status', 'confirmed')
-    : { data: [] as { id: string; order_id: string; doc_number: string; doc_type: string; reversal_of: string | null }[] };
+        .in('status', ['confirmed', 'draft'])
+    : { data: [] as { id: string; order_id: string; doc_number: string; doc_type: string; reversal_of: string | null; status: string }[] };
 
   const saleDocsRaw = (allDocsRaw ?? []).filter(d => d.doc_type === 'sale');
-  const returnDocsRaw = (allDocsRaw ?? []).filter(d => d.doc_type === 'return_in' && !d.reversal_of);
+  const returnDocsRaw = (allDocsRaw ?? []).filter(d => d.doc_type === 'return_in' && !d.reversal_of && d.status === 'confirmed');
 
-  const saleDocIds = (saleDocsRaw ?? []).map(d => d.id);
+  // Відвантажені кількості — ЛИШЕ з проведених РН (чернетки сюди не входять,
+  // щоб не міняти семантику кнопки «Відвантажити»)
+  const saleDocIds = (saleDocsRaw ?? []).filter(d => d.status === 'confirmed').map(d => d.id);
   const { data: saleLines } = saleDocIds.length
     ? await serviceClient
         .from('acc_document_lines')
@@ -203,10 +206,10 @@ export default async function AdminPage({
         .in('document_id', saleDocIds)
     : { data: [] as { document_id: string; sku: string; qty: number }[] };
 
-  const initialSaleDocs: Record<string, { id: string; number: string }[]> = {};
+  const initialSaleDocs: Record<string, { id: string; number: string; status: string }[]> = {};
   for (const doc of saleDocsRaw ?? []) {
     if (!initialSaleDocs[doc.order_id]) initialSaleDocs[doc.order_id] = [];
-    initialSaleDocs[doc.order_id].push({ id: doc.id, number: doc.doc_number });
+    initialSaleDocs[doc.order_id].push({ id: doc.id, number: doc.doc_number, status: doc.status });
   }
 
   const initialReturnDocs: Record<string, { id: string; number: string }[]> = {};

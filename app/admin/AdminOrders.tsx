@@ -214,7 +214,7 @@ interface AdminOrdersProps {
   rozetkaCommissionPct?: number;
   /** Тарифи зборів за доставку (Smart / точка видачі / «дешева доставка») для оцінки економіки. */
   feeTariffs?: MarketplaceFeeTariffs;
-  initialSaleDocs?: Record<string, { id: string; number: string }[]>;
+  initialSaleDocs?: Record<string, { id: string; number: string; status?: string }[]>;
   initialReturnDocs?: Record<string, { id: string; number: string }[]>;
   initialShippedQty?: Record<string, Record<string, number>>;
 }
@@ -436,7 +436,7 @@ export default function AdminOrders({
   const [flashId,    setFlashId]    = useState<string | null>(null);
   const [sourceOverrides, setSourceOverrides] = useState<Record<string, Record<string, 'own' | 'dropship'>>>({});
   const [shipping,      setShipping]      = useState<string | null>(null);
-  const [saleDocMap,    setSaleDocMap]    = useState<Record<string, { id: string; number: string }[]>>(initialSaleDocs);
+  const [saleDocMap,    setSaleDocMap]    = useState<Record<string, { id: string; number: string; status?: string }[]>>(initialSaleDocs);
   const [shippedQtyMap, setShippedQtyMap] = useState<Record<string, Record<string, number>>>(initialShippedQty);
   type ShipModalItem = { sku: string; name: string; brand: string; orderQty: number; shippedQty: number; shipQty: number };
   const [shipModal, setShipModal] = useState<{ orderId: string; items: ShipModalItem[]; ttn: string; isProm: boolean } | null>(null);
@@ -1012,7 +1012,7 @@ export default function AdminOrders({
       if (data.sale_doc_id) {
         setSaleDocMap(prev => ({
           ...prev,
-          [orderId]: [...(prev[orderId] ?? []), { id: data.sale_doc_id, number: data.sale_doc_number ?? '' }],
+          [orderId]: [...(prev[orderId] ?? []), { id: data.sale_doc_id, number: data.sale_doc_number ?? '', status: 'draft' }],
         }));
         if (data.shipped_items) {
           setShippedQtyMap(prev => {
@@ -1077,7 +1077,7 @@ export default function AdminOrders({
         if (data.sale_doc_id) {
           setSaleDocMap(prev => ({
             ...prev,
-            [orderId]: [...(prev[orderId] ?? []), { id: data.sale_doc_id, number: data.sale_doc_number ?? '' }],
+            [orderId]: [...(prev[orderId] ?? []), { id: data.sale_doc_id, number: data.sale_doc_number ?? '', status: 'draft' }],
           }));
         }
         if (data.shipped_items) {
@@ -4061,9 +4061,12 @@ export default function AdminOrders({
                                       </div>
                                       {rnDocs.map(doc => (
                                         <a key={doc.id} href={`/vidatkova/${doc.id}`} target="_blank" rel="noopener noreferrer"
-                                          title="Видаткова накладна — відкрити та роздрукувати"
+                                          title={doc.status === 'draft'
+                                            ? 'Видаткова накладна (чернетка — проведеться при доставці; номер і дата вже фінальні, можна друкувати)'
+                                            : 'Видаткова накладна — відкрити та роздрукувати'}
                                           style={{ fontSize: '11.5px', color: '#1E3A5F', fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                           <Printer size={11} /> {doc.number}
+                                          {doc.status === 'draft' && <span style={{ fontSize: '10px', fontWeight: 500, color: 'var(--text-muted)' }}>· до проведення</span>}
                                         </a>
                                       ))}
                                       {retDocs.map(doc => (
