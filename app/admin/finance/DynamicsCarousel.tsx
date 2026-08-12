@@ -48,7 +48,11 @@ function DayBars({ d }: { d: Dynamics['daily'] }) {
   const barW = Math.max(2.5, Math.min(24, groupW * 0.66));
   const cx = (i: number) => blockX + groupW * i + groupW / 2;
   const fmtAxis = (v: number) => (Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v)));
-  const labelEvery = Math.max(1, Math.ceil(n / 13));
+  // Підписи: кожен день номером, поки влазить (крок ≥15px); перший день і
+  // 1-ші числа місяців — повним «ДД.ММ», щоб місяць не губився
+  const labelEvery = groupW >= 15 ? 1 : Math.ceil(15 / groupW);
+  const monthStart = (i: number) => i === 0 || d.labels[i].slice(0, 2) === '01';
+  const nearMonthStart = (i: number) => (i > 0 && monthStart(i - 1)) || (i < n - 1 && monthStart(i + 1));
   const filled = d.revenue.filter((v): v is number => v !== null).length; // хвіст масиву — майбутні null-дні
   // Тренд: ≤10 точок — по вершинах, довше — ковзне середнє за 7 днів
   const smooth = (vals: number[]) => (filled <= 10 ? vals : vals.map((_, i) => {
@@ -100,9 +104,15 @@ function DayBars({ d }: { d: Dynamics['daily'] }) {
           </g>
         );
       })}
-      {d.labels.map((l, i) => ((n - 1 - i) % labelEvery === 0 ? (
-        <text key={i} x={cx(i)} y={H - 6} textAnchor="middle" fontSize="10.5" fill="var(--text-muted)">{l}</text>
-      ) : null))}
+      {d.labels.map((l, i) => {
+        const ms = monthStart(i);
+        const show = ms || (labelEvery === 1 ? true : ((n - 1 - i) % labelEvery === 0 && !nearMonthStart(i)));
+        return show ? (
+          <text key={i} x={cx(i)} y={H - 6} textAnchor="middle" fontSize={ms ? '10.5' : '10'} fontWeight={ms ? 600 : 400} fill="var(--text-muted)">
+            {ms ? l : String(Number(l.slice(0, 2)))}
+          </text>
+        ) : null;
+      })}
     </svg>
   );
 }
