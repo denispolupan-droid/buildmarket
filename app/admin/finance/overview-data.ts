@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '../../../lib/db-paginate';
 import { getMarketplaceBalance } from '../../../lib/accounting/money';
 import { loadInTransitCommission } from '../../../lib/accounting/marketplace-transit';
+import { getMonoLiveBalance } from '../../../lib/mono-balance';
 
 // Дані для «Огляду» фінансів (BI-дашборд). Усі гроші рахуються тут, на
 // сервері, з тих самих джерел, що й наявні звіти:
@@ -55,6 +56,8 @@ export type OverviewData = {
      встигли завершитись): доставлено vs відмова/повернення після відправки */
   buyout: { delivered: number; refused: number; refusedSum: number; pct: number | null };
   accounts: { monobank: number; novapay: number; cash: number; total: number };
+  /* Живий залишок Monobank (client-info, кеш 90 с); null = API недоступний */
+  monoLive: { total: number; fetchedAt: string } | null;
   mp: { prom: number; rozetka: number };
   /* Комісії «в дорозі» по каналах МП (спишуться при доставці): прогноз
      балансу = поточний − ця сума. Та сама логіка, що екран «Маркетплейси» */
@@ -311,12 +314,15 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   // це вже не рух, а сигнал перевірити посилку/завершити замовлення.
   const pTransitFresh = pTransit.filter(o => (o.shipped_at ?? '') >= d7ago);
   const pTransitStuck = pTransit.filter(o => (o.shipped_at ?? '') < d7ago);
-  // Комісії «в дорозі» — та сама функція, що на екрані «Маркетплейси»
-  const [promTransit, rozetkaTransit] = await Promise.all([
+  // Комісії «в дорозі» — та сама функція, що на екрані «Маркетплейси»;
+  // живий залишок Mono — паралельно (кешований client-info)
+  const [promTransit, rozetkaTransit, monoLiveRaw] = await Promise.all([
     loadInTransitCommission('prom'),
     loadInTransitCommission('rozetka'),
+    getMonoLiveBalance(),
   ]);
   const mpTransit = { prom: promTransit.total, rozetka: rozetkaTransit.total };
+  const monoLive = monoLiveRaw ? { total: monoLiveRaw.total, fetchedAt: monoLiveRaw.fetchedAt } : null;
   const payStuck      = pPay.filter(o => o.created_at < d3ago).length;
   // Порядок — за робочим циклом, як вкладки журналу: нові → підтверджені →
   // очікують оплати → логістика
@@ -615,6 +621,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     monthly,
     pipeline, buyout,
     accounts,
+    monoLive,
     mp: { prom: promBal, rozetka: rozetkaBal },
     mpTransit,
     ar: {

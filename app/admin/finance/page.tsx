@@ -214,19 +214,39 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
           <div className="fin-money-grid">
             <div>
               <div className="fin-kpi-label">На рахунках</div>
-              <div className="fin-money-val" style={{ color: ov.accounts.total >= 0 ? '#15803D' : '#DC2626' }}>{fmt(ov.accounts.total)} ₴</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '6px' }}>
-                {[
-                  { label: 'Mono',    v: ov.accounts.monobank },
-                  { label: 'NovaPay', v: ov.accounts.novapay },
-                  { label: 'Каса',    v: ov.accounts.cash },
-                ].map(a => (
-                  <div key={a.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>{a.label}</span>
-                    <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: a.v < 0 ? '#DC2626' : 'var(--text-primary)' }}>{fmt(a.v)} ₴</span>
-                  </div>
-                ))}
-              </div>
+              {(() => {
+                // Живий Mono (банк API) + обліковий НоваПей (зібраний COD у дорозі) + каса.
+                // Фолбек без API — суто обліковий залишок, як раніше.
+                const monoShown = ov.monoLive ? ov.monoLive.total : ov.accounts.monobank;
+                const shownTotal = monoShown + ov.accounts.novapay + ov.accounts.cash;
+                const gap = ov.monoLive ? Math.round((ov.monoLive.total - ov.accounts.monobank) * 100) / 100 : null;
+                return (
+                  <>
+                    <div className="fin-money-val" style={{ color: shownTotal >= 0 ? '#15803D' : '#DC2626' }}
+                      title={ov.monoLive ? `Живий Mono ${fmt(monoShown)} + НоваПей (обліковий, COD у дорозі) ${fmt(ov.accounts.novapay)} + каса ${fmt(ov.accounts.cash)}` : 'Обліковий залишок (Mono API недоступний)'}>
+                      {fmt(shownTotal)} ₴
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '6px' }}>
+                      {[
+                        { label: ov.monoLive ? 'Mono · живий' : 'Mono · за обліком', v: monoShown,
+                          title: ov.monoLive ? `Залишок з API Monobank станом на ${new Date(ov.monoLive.fetchedAt).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}` : undefined },
+                        { label: 'НоваПей · в дорозі', v: ov.accounts.novapay, title: 'Зібраний накладений платіж, який НоваПей ще не виплатила на рахунок (за обліком)' },
+                        { label: 'Каса', v: ov.accounts.cash },
+                      ].map(a => (
+                        <div key={a.label} title={a.title} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
+                          <span style={{ color: 'var(--text-muted)' }}>{a.label}</span>
+                          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: a.v < 0 ? '#DC2626' : 'var(--text-primary)' }}>{fmt(a.v)} ₴</span>
+                        </div>
+                      ))}
+                    </div>
+                    {gap !== null && Math.abs(gap) > 1 && (
+                      <div className="fin-money-sub" title={`Живий залишок Mono ${fmt(ov.monoLive!.total)} ₴ проти облікового ${fmt(ov.accounts.monobank)} ₴ — частина банківських рухів не заведена в облік`}>
+                        розрив з обліком: <span style={{ color: '#B45309', fontWeight: 600 }}>{gap > 0 ? '+' : ''}{fmt(gap)} ₴</span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
             <div>
               <div className="fin-kpi-label">Дебіторка · нам винні</div>
@@ -269,7 +289,9 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
             </div>
           </div>
           {(() => {
-            const net = ov.accounts.total + ov.mp.prom + ov.mp.rozetka + ov.ar.total - ov.ap.total;
+            // Та сама база, що показана вище: живий Mono (якщо API доступний) + обліковий решти
+            const moneyShown = (ov.monoLive ? ov.monoLive.total : ov.accounts.monobank) + ov.accounts.novapay + ov.accounts.cash;
+            const net = moneyShown + ov.mp.prom + ov.mp.rozetka + ov.ar.total - ov.ap.total;
             return (
               <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}
                 title="Рахунки + баланси маркетплейсів + дебіторка − кредиторка">
