@@ -12,7 +12,7 @@ import { useState } from 'react';
 
 type Dynamics = {
   weeks: { labels: string[]; revenue: number[]; profit: number[] };
-  sources: { code: string; count: number; revenue: number; share: number }[];
+  sources: { code: string; count: number; revenue: number; share: number; avgCheck: number; profit: number; margin: number | null; prevRevenue: number }[];
   planCum: { labels: string[]; fact: (number | null)[]; plan: number[] | null; monthLabel: string };
 };
 
@@ -96,19 +96,29 @@ function WeekBars({ w }: { w: Dynamics['weeks'] }) {
   );
 }
 
-/* ── Джерела замовлень: кругова по каналах (суми створених за період) ────── */
+/* ── Джерела замовлень: кругова + таблиця деталей по каналах ──────────────
+   Праворуч від донату — сер. чек, очікуваний прибуток каналу (методика KPI
+   «Прибуток») і дельта виручки проти попереднього періоду тієї ж довжини. */
 function SourcesDonut({ sources }: { sources: Dynamics['sources'] }) {
   const parts = sources.filter(s => s.revenue > 0);
   const total = parts.reduce((a, s) => a + s.revenue, 0);
   const totalCount = parts.reduce((a, s) => a + s.count, 0);
+  const totalProfit = parts.reduce((a, s) => a + s.profit, 0);
   if (total <= 0) {
     return <div style={{ height: 230, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Немає замовлень за період</div>;
   }
   const R = 80, SW = 30, C = 2 * Math.PI * R;
   let acc = 0;
+  const th: React.CSSProperties = { fontSize: '10.5px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'right', padding: '0 0 6px 18px', whiteSpace: 'nowrap' };
+  const td: React.CSSProperties = { fontSize: '12.5px', textAlign: 'right', padding: '4px 0 4px 18px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: 'var(--text-primary)' };
+  const delta = (s: Dynamics['sources'][number]) => {
+    if (s.prevRevenue <= 0) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
+    const d = Math.round((s.revenue - s.prevRevenue) / s.prevRevenue * 100);
+    return <span style={{ color: d >= 0 ? '#15803D' : '#DC2626', fontWeight: 600 }}>{d >= 0 ? '+' : ''}{d}%</span>;
+  };
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '46px', minHeight: 224, flexWrap: 'wrap', paddingLeft: '14px' }}>
-      <svg width="224" height="224" viewBox="0 0 224 224" role="img" aria-label="Джерела замовлень">
+    <div style={{ display: 'flex', alignItems: 'center', gap: '40px', minHeight: 224, flexWrap: 'wrap', paddingLeft: '10px' }}>
+      <svg width="224" height="224" viewBox="0 0 224 224" role="img" aria-label="Джерела замовлень" style={{ flexShrink: 0 }}>
         <g transform="rotate(-90 112 112)">
           {parts.map(s => {
             const meta = SOURCE_META[s.code] ?? SOURCE_META.other;
@@ -128,22 +138,52 @@ function SourcesDonut({ sources }: { sources: Dynamics['sources'] }) {
         </text>
         <text x="112" y="126" textAnchor="middle" fontSize="11.5" fill="var(--text-muted)">замовлень</text>
       </svg>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', minWidth: 0 }}>
-        <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-          Сума замовлень: <b style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(total)} ₴</b>
-        </div>
-        {parts.map(s => {
-          const meta = SOURCE_META[s.code] ?? SOURCE_META.other;
-          return (
-            <div key={s.code} style={{ display: 'flex', alignItems: 'baseline', gap: '7px', fontSize: '12.5px' }}>
-              <span style={{ width: 9, height: 9, borderRadius: '50%', background: meta.color, flexShrink: 0, alignSelf: 'center' }} />
-              <span style={{ color: 'var(--text-secondary)' }}>{meta.label}</span>
-              <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                {fmt(s.revenue)} ₴ <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>· {Math.round(s.revenue / total * 100)}% · {s.count} зам.</span>
-              </span>
-            </div>
-          );
-        })}
+      <div style={{ minWidth: 0, overflowX: 'auto' }}>
+        <table style={{ borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={{ ...th, textAlign: 'left', padding: '0 0 6px' }}>Канал</th>
+              <th style={th}>Сума</th>
+              <th style={th}>Частка</th>
+              <th style={th}>Зам.</th>
+              <th style={th} title="Середній чек каналу за період">Сер. чек</th>
+              <th style={th} title="Очікуваний валовий прибуток: доставлені — факт з обліку, решта — оцінка (як у KPI «Прибуток»)">Прибуток</th>
+              <th style={th} title="Виручка каналу проти попереднього періоду тієї ж довжини">vs попер.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {parts.map(s => {
+              const meta = SOURCE_META[s.code] ?? SOURCE_META.other;
+              return (
+                <tr key={s.code} style={{ borderTop: '1px solid var(--border-light, var(--border))' }}>
+                  <td style={{ ...td, textAlign: 'left', padding: '4px 0' }}>
+                    <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: meta.color, marginRight: '7px', verticalAlign: 'baseline' }} />
+                    <span style={{ color: 'var(--text-secondary)' }}>{meta.label}</span>
+                  </td>
+                  <td style={{ ...td, fontWeight: 700 }}>{fmt(s.revenue)} ₴</td>
+                  <td style={{ ...td, color: 'var(--text-muted)' }}>{Math.round(s.revenue / total * 100)}%</td>
+                  <td style={td}>{s.count}</td>
+                  <td style={td}>{fmt(s.avgCheck)} ₴</td>
+                  <td style={{ ...td, color: s.profit >= 0 ? '#15803D' : '#DC2626', fontWeight: 600 }}>
+                    {fmt(s.profit)} ₴{s.margin !== null && <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {Math.round(s.margin)}%</span>}
+                  </td>
+                  <td style={td}>{delta(s)}</td>
+                </tr>
+              );
+            })}
+            <tr style={{ borderTop: '1px solid var(--border)' }}>
+              <td style={{ ...td, textAlign: 'left', padding: '5px 0', color: 'var(--text-secondary)', fontWeight: 600 }}>Разом</td>
+              <td style={{ ...td, fontWeight: 800 }}>{fmt(total)} ₴</td>
+              <td style={{ ...td, color: 'var(--text-muted)' }}>100%</td>
+              <td style={{ ...td, fontWeight: 700 }}>{totalCount}</td>
+              <td style={td}>{fmt(totalCount ? Math.round(total / totalCount) : 0)} ₴</td>
+              <td style={{ ...td, color: totalProfit >= 0 ? '#15803D' : '#DC2626', fontWeight: 700 }}>
+                {fmt(totalProfit)} ₴<span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {Math.round(totalProfit / total * 100)}%</span>
+              </td>
+              <td style={td} />
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   );

@@ -83,7 +83,9 @@ export type OverviewData = {
   /* Дані каруселі «Динаміка»: тижні · джерела замовлень · накопичення до плану */
   dynamics: {
     weeks: { labels: string[]; revenue: number[]; profit: number[] };
-    sources: { code: string; count: number; revenue: number; share: number }[];
+    /* Джерела з деталями: сер. чек, очікуваний прибуток каналу (та сама
+       методика, що KPI «Прибуток») і виручка попереднього періоду для дельти */
+    sources: { code: string; count: number; revenue: number; share: number; avgCheck: number; profit: number; margin: number | null; prevRevenue: number }[];
     planCum: { labels: string[]; fact: (number | null)[]; plan: number[] | null; monthLabel: string };
   };
   /* План виручки на поточний місяць (app_settings) проти факту з обліку */
@@ -451,6 +453,25 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const prevProfitEst = (prevOrders as EstOrder[]).reduce((s, o) => s + orderMargin(o), 0);
   const prevOrdSum    = sum(prevOrders);
 
+  // Деталі по каналах для слайда «Джерела» (прибуток — тим же orderMargin)
+  const chProfit = new Map<string, number>();
+  for (const o of curOrders as EstOrder[]) {
+    const code = o.channel_code || 'other';
+    chProfit.set(code, (chProfit.get(code) ?? 0) + orderMargin(o));
+  }
+  const prevChRev = new Map<string, number>();
+  for (const o of prevOrders as EstOrder[]) {
+    const code = o.channel_code || 'other';
+    prevChRev.set(code, (prevChRev.get(code) ?? 0) + Number(o.total_price ?? 0));
+  }
+  const sourcesDetailed = channels.map(c => ({
+    ...c,
+    avgCheck: c.count ? Math.round(c.revenue / c.count) : 0,
+    profit: Math.round(chProfit.get(c.code) ?? 0),
+    margin: pct(chProfit.get(c.code) ?? 0, c.revenue),
+    prevRevenue: Math.round(prevChRev.get(c.code) ?? 0),
+  }));
+
   // ── Помісячні агрегати (6 міс.) для стовпчиків KPI ─────────────────────────
   const mIdx = new Map(monthKeys.map((k, i) => [k, i]));
   const mRev = new Array(6).fill(0), mCogs = new Array(6).fill(0), mFee = new Array(6).fill(0), mDeliv = new Array(6).fill(0);
@@ -587,7 +608,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   }
   const dynamics = {
     weeks: { labels: wLabels, revenue: wRev.map(Math.round), profit: wProf.map(Math.round) },
-    sources: channels,
+    sources: sourcesDetailed,
     planCum: {
       labels: cumLabels,
       fact: cumFact,
