@@ -10,7 +10,7 @@ import { useState } from 'react';
 // Все — власний SVG, без бібліотек.
 
 type Dynamics = {
-  daily: { labels: string[]; revenue: number[]; profit: number[] };
+  daily: { labels: string[]; revenue: (number | null)[]; profit: (number | null)[] };
   sources: { code: string; count: number; revenue: number; share: number; avgCheck: number; profit: number; margin: number | null; prevRevenue: number }[];
   planCum: { labels: string[]; fact: (number | null)[]; plan: number[] | null; monthLabel: string };
 };
@@ -42,25 +42,29 @@ function DayBars({ d }: { d: Dynamics['daily'] }) {
   const W = 900, H = 258, padL = 44, padR = 6;
   const iw = W - padL - padR;
   const n = Math.max(d.labels.length, 1);
-  const groupW = Math.min(84, iw / n);
+  // Крок щільний (кап 34px) — дні стоять поруч, місяць влазить цілком
+  const groupW = Math.min(34, iw / n);
   const blockX = padL + (iw - groupW * n) / 2;
-  const barW = Math.max(2.5, Math.min(30, groupW * 0.6));
+  const barW = Math.max(2.5, Math.min(24, groupW * 0.66));
   const cx = (i: number) => blockX + groupW * i + groupW / 2;
   const fmtAxis = (v: number) => (Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v)));
   const labelEvery = Math.max(1, Math.ceil(n / 13));
+  const filled = d.revenue.filter((v): v is number => v !== null).length; // хвіст масиву — майбутні null-дні
   // Тренд: ≤10 точок — по вершинах, довше — ковзне середнє за 7 днів
-  const smooth = (vals: number[]) => (n <= 10 ? vals : vals.map((_, i) => {
+  const smooth = (vals: number[]) => (filled <= 10 ? vals : vals.map((_, i) => {
     const from = Math.max(0, i - 6);
     return vals.slice(from, i + 1).reduce((s, v) => s + v, 0) / (i + 1 - from);
   }));
 
+  const revVals  = d.revenue.slice(0, filled).map(v => v ?? 0);
+  const profVals = d.profit.slice(0, filled).map(v => v ?? 0);
   // Панелі: [top, height, значення, колір, підпис]
-  const maxRev = Math.max(...d.revenue, 1);
-  const maxProf = Math.max(...d.profit, 1);
-  const minProf = Math.min(0, ...d.profit);
+  const maxRev = Math.max(...revVals, 1);
+  const maxProf = Math.max(...profVals, 1);
+  const minProf = Math.min(0, ...profVals);
   const panels = [
-    { top: 16, h: 128, min: 0, max: maxRev, vals: d.revenue, color: () => 'var(--brand-blue)', trend: 'var(--brand-blue)', label: 'Виручка' },
-    { top: 172, h: 62, min: minProf, max: maxProf, vals: d.profit, color: (v: number) => (v >= 0 ? '#15803D' : '#DC2626'), trend: '#15803D', label: 'Прибуток' },
+    { top: 16, h: 128, min: 0, max: maxRev, vals: revVals, color: () => 'var(--brand-blue)', trend: 'var(--brand-blue)', label: 'Виручка' },
+    { top: 172, h: 62, min: minProf, max: maxProf, vals: profVals, color: (v: number) => (v >= 0 ? '#15803D' : '#DC2626'), trend: '#15803D', label: 'Прибуток' },
   ];
 
   return (

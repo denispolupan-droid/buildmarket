@@ -82,7 +82,8 @@ export type OverviewData = {
   chartWindow: { labels: string[]; revenue: number[]; profit: number[] } | null;
   /* Дані каруселі «Динаміка»: тижні · джерела замовлень · накопичення до плану */
   dynamics: {
-    daily: { labels: string[]; revenue: number[]; profit: number[] };
+    /* null = майбутній день (вісь докладена до кінця місяця, стовпчика немає) */
+    daily: { labels: string[]; revenue: (number | null)[]; profit: (number | null)[] };
     /* Джерела з деталями: сер. чек, очікуваний прибуток каналу (та сама
        методика, що KPI «Прибуток») і виручка попереднього періоду для дельти */
     sources: { code: string; count: number; revenue: number; share: number; avgCheck: number; profit: number; margin: number | null; prevRevenue: number }[];
@@ -571,6 +572,17 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const srcRev  = chartWindow ? chartWindow.revenue : revDaily;
   const srcProf = chartWindow ? chartWindow.profit : profDaily;
   const dLabels = srcDays.map(d => `${d.slice(8, 10)}.${d.slice(5, 7)}`);
+  const dRev: (number | null)[]  = srcRev.map(Math.round);
+  const dProf: (number | null)[] = srcProf.map(Math.round);
+  // Пресет «поточний місяць»: докладаємо вісь до кінця місяця, щоб рамка
+  // була весь місяць — майбутні дні порожні (null), стовпчиків немає
+  if (!chartDays && preset === 'cur_month') {
+    const dim = new Date(Number(fromStr.slice(0, 4)), Number(fromStr.slice(5, 7)), 0).getDate();
+    for (let dd = srcDays.length + 1; dd <= dim; dd++) {
+      dLabels.push(`${String(dd).padStart(2, '0')}.${fromStr.slice(5, 7)}`);
+      dRev.push(null); dProf.push(null);
+    }
+  }
 
   // Накопичення поточного місяця (незалежно від пресета) — ПРОДАЖІ: сума
   // створених замовлень по днях (включно з тими, що в дорозі), а не факт
@@ -591,7 +603,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     else cumFact.push(null);   // майбутні дні — лінія обривається сьогодні
   }
   const dynamics = {
-    daily: { labels: dLabels, revenue: srcRev.map(Math.round), profit: srcProf.map(Math.round) },
+    daily: { labels: dLabels, revenue: dRev, profit: dProf },
     sources: sourcesDetailed,
     planCum: {
       labels: cumLabels,
