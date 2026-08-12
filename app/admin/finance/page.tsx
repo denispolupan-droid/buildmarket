@@ -249,17 +249,22 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                   { label: 'Prom',    color: '#C2410C', bal: ov.mp.prom,    transit: ov.mpTransit.prom },
                   { label: 'Rozetka', color: '#15803D', bal: ov.mp.rozetka, transit: ov.mpTransit.rozetka },
                 ].map(m => (
-                  <div key={m.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
+                  <div key={m.label} title={`Комісії в дорозі −${fmt(m.transit)} ₴ спишуться при доставці → прогноз ${fmt(m.bal - m.transit)} ₴`}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '12px', gap: '8px', whiteSpace: 'nowrap' }}>
                     <span style={{ color: m.color, fontWeight: 600 }}>{m.label}</span>
-                    <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {fmt(m.bal)} ₴{m.transit > 0 && <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · їде +{fmt(m.transit)}</span>}
+                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>{fmt(m.bal)}</span>
+                      <span style={{ color: 'var(--text-muted)' }}> → </span>
+                      <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{fmt(m.bal - m.transit)} ₴</span>
                     </span>
                   </div>
                 ))}
               </div>
               {(ov.mpTransit.prom + ov.mpTransit.rozetka) > 0 && (
-                <div className="fin-money-sub" title="Поточний баланс + сума замовлень, що зараз в дорозі (до вирахування комісій)">
-                  після доставок ≈ <b style={{ color: '#15803D' }}>{fmt(ov.mp.prom + ov.mp.rozetka + ov.mpTransit.prom + ov.mpTransit.rozetka)} ₴</b>
+                <div className="fin-money-sub" title="Комісії по відвантажених, ще не доставлених посилках — площадка спише їх при доставці"
+                  style={{ whiteSpace: 'nowrap' }}>
+                  в дорозі комісій <span style={{ color: '#B45309', fontWeight: 600 }}>−{fmt(ov.mpTransit.prom + ov.mpTransit.rozetka)} ₴</span>
+                  {' · '}<Link href="/admin/finance/marketplace-balance" style={{ color: 'var(--text-muted)' }}>деталі →</Link>
                 </div>
               )}
             </div>

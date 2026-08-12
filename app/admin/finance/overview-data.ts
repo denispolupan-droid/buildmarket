@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '../../../lib/db-paginate';
 import { getMarketplaceBalance } from '../../../lib/accounting/money';
+import { loadInTransitCommission } from '../../../lib/accounting/marketplace-transit';
 
 // Дані для «Огляду» фінансів (BI-дашборд). Усі гроші рахуються тут, на
 // сервері, з тих самих джерел, що й наявні звіти:
@@ -55,8 +56,8 @@ export type OverviewData = {
   buyout: { delivered: number; refused: number; refusedSum: number; pct: number | null };
   accounts: { monobank: number; novapay: number; cash: number; total: number };
   mp: { prom: number; rozetka: number };
-  /* Суми замовлень, що зараз їдуть, по каналах МП (до комісій) — для
-     «планованого залишку» балансу маркетплейса після доставок */
+  /* Комісії «в дорозі» по каналах МП (спишуться при доставці): прогноз
+     балансу = поточний − ця сума. Та сама логіка, що екран «Маркетплейси» */
   mpTransit: { prom: number; rozetka: number };
   ar: { total: number; overdueCount: number; overdueSum: number };
   ap: { total: number };
@@ -307,10 +308,12 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   // це вже не рух, а сигнал перевірити посилку/завершити замовлення.
   const pTransitFresh = pTransit.filter(o => (o.shipped_at ?? '') >= d7ago);
   const pTransitStuck = pTransit.filter(o => (o.shipped_at ?? '') < d7ago);
-  const mpTransit = {
-    prom:    sum(pTransit.filter(o => o.channel_code === 'prom')),
-    rozetka: sum(pTransit.filter(o => o.channel_code === 'rozetka')),
-  };
+  // Комісії «в дорозі» — та сама функція, що на екрані «Маркетплейси»
+  const [promTransit, rozetkaTransit] = await Promise.all([
+    loadInTransitCommission('prom'),
+    loadInTransitCommission('rozetka'),
+  ]);
+  const mpTransit = { prom: promTransit.total, rozetka: rozetkaTransit.total };
   const payStuck      = pPay.filter(o => o.created_at < d3ago).length;
   // Порядок — за робочим циклом, як вкладки журналу: нові → підтверджені →
   // очікують оплати → логістика
