@@ -290,13 +290,13 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
           </div>
           <div className="fin-today-grid">
             {[
-              { label: 'Замовлень',    value: fmt(ov.today.orders) },
-              { label: 'Виручка',      value: `${fmt(ov.today.revenue)} ₴` },
-              { label: 'Відправлено',  value: fmt(ov.today.shipped) },
-              { label: 'Оплат',        value: `${ov.today.paidCount} · ${fmt(ov.today.paidSum)} ₴` },
-              { label: 'Середній чек', value: ov.today.avgCheck === null ? '—' : `${fmt(ov.today.avgCheck)} ₴` },
+              { label: 'Нових замовлень', value: fmt(ov.today.orders), hint: 'Створені сьогодні (без скасованих)' },
+              { label: 'Виручка',      value: `${fmt(ov.today.revenue)} ₴`, hint: 'Сума створених сьогодні замовлень' },
+              { label: 'Відправлено',  value: fmt(ov.today.shipped), hint: 'Посилок відправлено сьогодні — включно зі створеними в попередні дні' },
+              { label: 'Оплат',        value: `${ov.today.paidCount} · ${fmt(ov.today.paidSum)} ₴`, hint: 'Оплати клієнтів, що надійшли сьогодні' },
+              { label: 'Середній чек', value: ov.today.avgCheck === null ? '—' : `${fmt(ov.today.avgCheck)} ₴`, hint: 'По створених сьогодні замовленнях' },
             ].map(s => (
-              <div key={s.label} className="fin-today-cell">
+              <div key={s.label} className="fin-today-cell" title={s.hint}>
                 <div className="fin-today-val">{s.value}</div>
                 <div className="fin-kpi-label" style={{ marginTop: '2px' }}>{s.label}</div>
               </div>
