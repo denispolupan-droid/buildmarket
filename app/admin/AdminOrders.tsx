@@ -2011,6 +2011,7 @@ export default function AdminOrders({
           {/* Порожня комірка під мініатюру товару — щоб заголовки не з'їхали з колонок */}
           {/* 94px = дві плитки по 44 + 6 проміжку */}
           <span style={{ width: '94px', flexShrink: 0, marginLeft: '8px' }} />
+          <span style={{ width: '84px', flexShrink: 0, textAlign: 'right', paddingRight: '10px', boxSizing: 'border-box' }}>Сума</span>
           <span style={{ flex: '0 1 calc(50% - 266px)', minWidth: 0 }}>Клієнт / Товар</span>
           <span style={{ flex: 1, minWidth: '200px', overflow: 'hidden', whiteSpace: 'nowrap' }}>Доставка</span>
           {/* 118px — рівно як у комірки статусу в рядку (.oc-status). Було 104,
@@ -2020,7 +2021,6 @@ export default function AdminOrders({
           <span style={{ width: '64px', flexShrink: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>Відпр.</span>
           <span style={{ width: '46px', flexShrink: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>Опл.</span>
           <span style={{ width: '34px', flexShrink: 0, textAlign: 'center', overflow: 'hidden', whiteSpace: 'nowrap' }}>Дзв.</span>
-          <span style={{ width: '84px', flexShrink: 0, textAlign: 'right' }}>Сума</span>
           <div style={{ width: '14px', flexShrink: 0 }} />
         </div>
       )}
@@ -2307,6 +2307,17 @@ export default function AdminOrders({
                     );
                   })()}
 
+                  {/* Сума (+ маркер промокоду) — перед клієнтом, рішення власника */}
+                  <span style={{ width: '84px', flexShrink: 0, fontSize: '13px', fontWeight: 800, color: 'var(--brand-blue)', textAlign: 'right', display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', paddingRight: '10px', boxSizing: 'border-box' }}>
+                    {order.promo_code && (
+                      <Tag size={12} style={{ color: '#B45309', flexShrink: 0 }}
+                        aria-label={`Промокод ${order.promo_code}`} />
+                    )}
+                    <span title={order.promo_code ? `Промокод ${order.promo_code} · знижка −${Number(order.promo_discount ?? 0).toFixed(2)} ₴ (сума вже з урахуванням)` : undefined}>
+                      {order.total_price.toFixed(0)} ₴
+                    </span>
+                  </span>
+
                   {/* Клієнт: ПІБ із мітками замовлення, під ним телефон із кнопкою
                       копіювання, далі товар. Телефон окремим рядком, бо в парі з ПІБ
                       вони билися за ширину, а копіювати номер треба часто — і на
@@ -2521,16 +2532,6 @@ export default function AdminOrders({
                     )}
                   </div>
 
-                  {/* Сума (+ маркер промокоду) */}
-                  <span style={{ width: '84px', flexShrink: 0, fontSize: '13px', fontWeight: 800, color: 'var(--brand-blue)', textAlign: 'right', display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
-                    {order.promo_code && (
-                      <Tag size={12} style={{ color: '#B45309', flexShrink: 0 }}
-                        aria-label={`Промокод ${order.promo_code}`} />
-                    )}
-                    <span title={order.promo_code ? `Промокод ${order.promo_code} · знижка −${Number(order.promo_discount ?? 0).toFixed(2)} ₴ (сума вже з урахуванням)` : undefined}>
-                      {order.total_price.toFixed(0)} ₴
-                    </span>
-                  </span>
                   {isExpanded
                     ? <ChevronUp size={14} color="#94A3B8" style={{ flexShrink: 0 }} />
                     : <ChevronDown size={14} color="#94A3B8" style={{ flexShrink: 0 }} />
