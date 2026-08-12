@@ -220,7 +220,6 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                 const monoShown = ov.monoLive ? ov.monoLive.total : ov.accounts.monobank;
                 const npShown = ov.novapayLive ? ov.novapayLive.available : ov.accounts.novapay;
                 const shownTotal = monoShown + npShown + ov.accounts.cash;
-                const gap = ov.monoLive ? Math.round((ov.monoLive.total - ov.accounts.monobank) * 100) / 100 : null;
                 return (
                   <>
                     <div className="fin-money-val" style={{ color: shownTotal >= 0 ? '#15803D' : '#DC2626' }}
@@ -243,11 +242,6 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                         </div>
                       ))}
                     </div>
-                    {gap !== null && Math.abs(gap) > 1 && (
-                      <div className="fin-money-sub" title={`Живий залишок Mono ${fmt(ov.monoLive!.total)} ₴ проти облікового ${fmt(ov.accounts.monobank)} ₴ — частина банківських рухів не заведена в облік`}>
-                        розрив з обліком: <span style={{ color: '#B45309', fontWeight: 600 }}>{gap > 0 ? '+' : ''}{fmt(gap)} ₴</span>
-                      </div>
-                    )}
                   </>
                 );
               })()}
