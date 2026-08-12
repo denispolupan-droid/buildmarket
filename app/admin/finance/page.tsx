@@ -215,22 +215,26 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
             <div>
               <div className="fin-kpi-label">На рахунках</div>
               {(() => {
-                // Живий Mono (банк API) + обліковий НоваПей (зібраний COD у дорозі) + каса.
-                // Фолбек без API — суто обліковий залишок, як раніше.
+                // Живі залишки з банківських API (Mono client-info, NovaPay Business);
+                // фолбек без API — обліковий залишок, як раніше.
                 const monoShown = ov.monoLive ? ov.monoLive.total : ov.accounts.monobank;
-                const shownTotal = monoShown + ov.accounts.novapay + ov.accounts.cash;
+                const npShown = ov.novapayLive ? ov.novapayLive.available : ov.accounts.novapay;
+                const shownTotal = monoShown + npShown + ov.accounts.cash;
                 const gap = ov.monoLive ? Math.round((ov.monoLive.total - ov.accounts.monobank) * 100) / 100 : null;
                 return (
                   <>
                     <div className="fin-money-val" style={{ color: shownTotal >= 0 ? '#15803D' : '#DC2626' }}
-                      title={ov.monoLive ? `Живий Mono ${fmt(monoShown)} + НоваПей (обліковий, COD у дорозі) ${fmt(ov.accounts.novapay)} + каса ${fmt(ov.accounts.cash)}` : 'Обліковий залишок (Mono API недоступний)'}>
+                      title={`Mono ${fmt(monoShown)} + НоваПей ${fmt(npShown)} + каса ${fmt(ov.accounts.cash)}`}>
                       {fmt(shownTotal)} ₴
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '6px' }}>
                       {[
                         { label: ov.monoLive ? 'Mono · живий' : 'Mono · за обліком', v: monoShown,
                           title: ov.monoLive ? `Залишок з API Monobank станом на ${new Date(ov.monoLive.fetchedAt).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}` : undefined },
-                        { label: 'НоваПей · в дорозі', v: ov.accounts.novapay, title: 'Зібраний накладений платіж, який НоваПей ще не виплатила на рахунок (за обліком)' },
+                        { label: ov.novapayLive ? 'НоваПей · живий' : 'НоваПей · в дорозі', v: npShown,
+                          title: ov.novapayLive
+                            ? `Доступний залишок рахунку NovaPay станом на ${new Date(ov.novapayLive.fetchedAt).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })} · за обліком у дорозі: ${fmt(ov.accounts.novapay)} ₴`
+                            : 'Зібраний накладений платіж, який НоваПей ще не виплатила на рахунок (за обліком)' },
                         { label: 'Каса', v: ov.accounts.cash },
                       ].map(a => (
                         <div key={a.label} title={a.title} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
@@ -289,8 +293,10 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
             </div>
           </div>
           {(() => {
-            // Та сама база, що показана вище: живий Mono (якщо API доступний) + обліковий решти
-            const moneyShown = (ov.monoLive ? ov.monoLive.total : ov.accounts.monobank) + ov.accounts.novapay + ov.accounts.cash;
+            // Та сама база, що показана вище: живі залишки (якщо API доступні) + облік
+            const moneyShown = (ov.monoLive ? ov.monoLive.total : ov.accounts.monobank)
+              + (ov.novapayLive ? ov.novapayLive.available : ov.accounts.novapay)
+              + ov.accounts.cash;
             const net = moneyShown + ov.mp.prom + ov.mp.rozetka + ov.ar.total - ov.ap.total;
             return (
               <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}

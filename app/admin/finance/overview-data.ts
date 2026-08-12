@@ -3,6 +3,7 @@ import { fetchAllRows } from '../../../lib/db-paginate';
 import { getMarketplaceBalance } from '../../../lib/accounting/money';
 import { loadInTransitCommission } from '../../../lib/accounting/marketplace-transit';
 import { getMonoLiveBalance } from '../../../lib/mono-balance';
+import { getNovapayLiveBalance } from '../../../lib/novapay-api';
 
 // Дані для «Огляду» фінансів (BI-дашборд). Усі гроші рахуються тут, на
 // сервері, з тих самих джерел, що й наявні звіти:
@@ -58,6 +59,8 @@ export type OverviewData = {
   accounts: { monobank: number; novapay: number; cash: number; total: number };
   /* Живий залишок Monobank (client-info, кеш 90 с); null = API недоступний */
   monoLive: { total: number; fetchedAt: string } | null;
+  /* Живий залишок NovaPay (Business API, кеш 120 с); null = не налаштовано/недоступно */
+  novapayLive: { available: number; fetchedAt: string } | null;
   mp: { prom: number; rozetka: number };
   /* Комісії «в дорозі» по каналах МП (спишуться при доставці): прогноз
      балансу = поточний − ця сума. Та сама логіка, що екран «Маркетплейси» */
@@ -316,13 +319,15 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const pTransitStuck = pTransit.filter(o => (o.shipped_at ?? '') < d7ago);
   // Комісії «в дорозі» — та сама функція, що на екрані «Маркетплейси»;
   // живий залишок Mono — паралельно (кешований client-info)
-  const [promTransit, rozetkaTransit, monoLiveRaw] = await Promise.all([
+  const [promTransit, rozetkaTransit, monoLiveRaw, novapayLiveRaw] = await Promise.all([
     loadInTransitCommission('prom'),
     loadInTransitCommission('rozetka'),
     getMonoLiveBalance(),
+    getNovapayLiveBalance(),
   ]);
   const mpTransit = { prom: promTransit.total, rozetka: rozetkaTransit.total };
   const monoLive = monoLiveRaw ? { total: monoLiveRaw.total, fetchedAt: monoLiveRaw.fetchedAt } : null;
+  const novapayLive = novapayLiveRaw ? { available: novapayLiveRaw.available, fetchedAt: novapayLiveRaw.fetchedAt } : null;
   const payStuck      = pPay.filter(o => o.created_at < d3ago).length;
   // Порядок — за робочим циклом, як вкладки журналу: нові → підтверджені →
   // очікують оплати → логістика
@@ -622,6 +627,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     pipeline, buyout,
     accounts,
     monoLive,
+    novapayLive,
     mp: { prom: promBal, rozetka: rozetkaBal },
     mpTransit,
     ar: {
