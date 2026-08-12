@@ -2,16 +2,15 @@
 
 import { useState } from 'react';
 
-// Карусель «Динаміка» на «Огляді»: три погляди в одному вікні (рішення
-// власника — щоденна лінія по днях доставки була нечитабельною «пилкою»).
-//   Тижні   — стовпчики виручки/прибутку по тижнях + пунктирні лінії тренду
-//   Джерела — кругова: звідки замовлення (канали, кольори — як у журналі)
+// Карусель «Динаміка» на «Огляді»: три погляди в одному вікні.
+//   Дні     — щоденні стовпчики виручки/прибутку + тренд (ковзне середнє)
+//   Джерела — кругова + таблиця деталей по каналах (кольори — як у журналі)
 //   План    — накопичення ПРОДАЖІВ місяця (створені, вкл. в дорозі) проти
 //             рівномірного темпу плану
 // Все — власний SVG, без бібліотек.
 
 type Dynamics = {
-  weeks: { labels: string[]; revenue: number[]; profit: number[] };
+  daily: { labels: string[]; revenue: number[]; profit: number[] };
   sources: { code: string; count: number; revenue: number; share: number; avgCheck: number; profit: number; margin: number | null; prevRevenue: number }[];
   planCum: { labels: string[]; fact: (number | null)[]; plan: number[] | null; monthLabel: string };
 };
@@ -33,37 +32,45 @@ function fmt(n: number) {
   return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
 }
 
-/* ── Тижні: дві панелі зі своїми шкалами (виручка ↑ / прибуток ↓) ─────────
+/* ── Дні: дві панелі зі своїми шкалами (виручка ↑ / прибуток ↓) ───────────
    Одна шкала ховала прибуток біля нуля поруч із виручкою; окрема нижня
-   панель робить його рельєф видимим. Тижні стоять щільно (крок ≤ 64px,
-   блок центрується), стовпчики тонкі, поверх — пунктирний тренд. */
-function WeekBars({ w }: { w: Dynamics['weeks'] }) {
+   панель робить його рельєф видимим. Стовпчики щоденні (картка широка);
+   пунктирний тренд для довгих вікон — 7-денне ковзне середнє, інакше
+   з'єднання вершин знову давало б «пилку». */
+function DayBars({ d }: { d: Dynamics['daily'] }) {
   // W ≈ реальній ширині картки (span 8) → масштаб ~1:1, шрифти і стовпчики не міліють
   const W = 900, H = 258, padL = 44, padR = 6;
   const iw = W - padL - padR;
-  const n = Math.max(w.labels.length, 1);
+  const n = Math.max(d.labels.length, 1);
   const groupW = Math.min(84, iw / n);
   const blockX = padL + (iw - groupW * n) / 2;
-  const barW = Math.min(30, groupW * 0.44);
+  const barW = Math.max(2.5, Math.min(30, groupW * 0.6));
   const cx = (i: number) => blockX + groupW * i + groupW / 2;
   const fmtAxis = (v: number) => (Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v)));
+  const labelEvery = Math.max(1, Math.ceil(n / 13));
+  // Тренд: ≤10 точок — по вершинах, довше — ковзне середнє за 7 днів
+  const smooth = (vals: number[]) => (n <= 10 ? vals : vals.map((_, i) => {
+    const from = Math.max(0, i - 6);
+    return vals.slice(from, i + 1).reduce((s, v) => s + v, 0) / (i + 1 - from);
+  }));
 
   // Панелі: [top, height, значення, колір, підпис]
-  const maxRev = Math.max(...w.revenue, 1);
-  const maxProf = Math.max(...w.profit, 1);
-  const minProf = Math.min(0, ...w.profit);
+  const maxRev = Math.max(...d.revenue, 1);
+  const maxProf = Math.max(...d.profit, 1);
+  const minProf = Math.min(0, ...d.profit);
   const panels = [
-    { top: 16, h: 128, min: 0, max: maxRev, vals: w.revenue, color: () => 'var(--brand-blue)', trend: 'var(--brand-blue)', label: 'Виручка' },
-    { top: 172, h: 62, min: minProf, max: maxProf, vals: w.profit, color: (v: number) => (v >= 0 ? '#15803D' : '#DC2626'), trend: '#15803D', label: 'Прибуток' },
+    { top: 16, h: 128, min: 0, max: maxRev, vals: d.revenue, color: () => 'var(--brand-blue)', trend: 'var(--brand-blue)', label: 'Виручка' },
+    { top: 172, h: 62, min: minProf, max: maxProf, vals: d.profit, color: (v: number) => (v >= 0 ? '#15803D' : '#DC2626'), trend: '#15803D', label: 'Прибуток' },
   ];
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }} role="img" aria-label="Виручка і прибуток по тижнях">
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }} role="img" aria-label="Виручка і прибуток по днях">
       {panels.map(pn => {
         const span = pn.max - pn.min || 1;
         const y = (v: number) => pn.top + pn.h - ((v - pn.min) / span) * pn.h;
         const y0 = y(Math.max(0, pn.min));
         const ticks = pn.h > 100 ? [0, 1, 2] : [0, 1];
+        const trendVals = smooth(pn.vals);
         return (
           <g key={pn.label}>
             <text x={padL} y={pn.top - 5} fontSize="10.5" fontWeight="700" fill={pn.trend} opacity="0.85">{pn.label}</text>
@@ -78,20 +85,20 @@ function WeekBars({ w }: { w: Dynamics['weeks'] }) {
             })}
             {pn.vals.map((v, i) => (
               <rect key={i} x={cx(i) - barW / 2} y={v >= 0 ? y(v) : y(0)} width={barW}
-                height={Math.max(2, Math.abs(y(v) - y0))} rx="2.5" fill={pn.color(v)} opacity="0.9">
-                <title>{`Тиждень з ${w.labels[i]}: ${pn.label.toLowerCase()} ${fmt(v)} ₴`}</title>
+                height={Math.max(1.5, Math.abs(y(v) - y0))} rx={Math.min(2.5, barW / 3)} fill={pn.color(v)} opacity="0.9">
+                <title>{`${d.labels[i]}: ${pn.label.toLowerCase()} ${fmt(v)} ₴`}</title>
               </rect>
             ))}
             {n > 1 && (
-              <polyline points={pn.vals.map((v, i) => `${cx(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')}
-                fill="none" stroke={pn.trend} strokeWidth="1.4" strokeDasharray="4 4" opacity="0.6" />
+              <polyline points={trendVals.map((v, i) => `${cx(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')}
+                fill="none" stroke={pn.trend} strokeWidth="1.4" strokeDasharray="4 4" opacity="0.55" />
             )}
           </g>
         );
       })}
-      {w.labels.map((l, i) => (
+      {d.labels.map((l, i) => ((n - 1 - i) % labelEvery === 0 ? (
         <text key={i} x={cx(i)} y={H - 6} textAnchor="middle" fontSize="10.5" fill="var(--text-muted)">{l}</text>
-      ))}
+      ) : null))}
     </svg>
   );
 }
@@ -235,13 +242,13 @@ function PlanCumChart({ p }: { p: Dynamics['planCum'] }) {
 }
 
 const SLIDES = [
-  { key: 'weeks', label: 'Тижні' },
+  { key: 'daily', label: 'Дні' },
   { key: 'sources', label: 'Джерела' },
   { key: 'plan', label: 'План' },
 ] as const;
 
 export default function DynamicsCarousel({ data }: { data: Dynamics }) {
-  const [slide, setSlide] = useState<(typeof SLIDES)[number]['key']>('weeks');
+  const [slide, setSlide] = useState<(typeof SLIDES)[number]['key']>('daily');
   return (
     <div>
       <div style={{ display: 'flex', gap: '3px', marginBottom: '10px', alignItems: 'center' }}>
@@ -259,7 +266,7 @@ export default function DynamicsCarousel({ data }: { data: Dynamics }) {
           </span>
         )}
       </div>
-      {slide === 'weeks' && <WeekBars w={data.weeks} />}
+      {slide === 'daily' && <DayBars d={data.daily} />}
       {slide === 'sources' && <SourcesDonut sources={data.sources} />}
       {slide === 'plan' && <PlanCumChart p={data.planCum} />}
     </div>

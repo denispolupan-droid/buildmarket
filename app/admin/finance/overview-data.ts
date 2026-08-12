@@ -82,7 +82,7 @@ export type OverviewData = {
   chartWindow: { labels: string[]; revenue: number[]; profit: number[] } | null;
   /* Дані каруселі «Динаміка»: тижні · джерела замовлень · накопичення до плану */
   dynamics: {
-    weeks: { labels: string[]; revenue: number[]; profit: number[] };
+    daily: { labels: string[]; revenue: number[]; profit: number[] };
     /* Джерела з деталями: сер. чек, очікуваний прибуток каналу (та сама
        методика, що KPI «Прибуток») і виручка попереднього періоду для дельти */
     sources: { code: string; count: number; revenue: number; share: number; avgCheck: number; profit: number; margin: number | null; prevRevenue: number }[];
@@ -564,29 +564,13 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     monthLabel: `${UA_MONTHS[Number(kyivToday.slice(5, 7)) - 1]} ${kyivToday.slice(0, 4)}`,
   };
 
-  // ── Карусель «Динаміка»: тижні · структура гривні · накопичення до плану ──
-  // Тижні: активний ряд (вікно 7/30/90 або період) групуємо по календарних
-  // тижнях (пн–нд) — щоденна «пилка» по днях доставки нечитабельна.
+  // ── Карусель «Динаміка»: дні · джерела · накопичення до плану ─────────────
+  // Дні: активний ряд (вікно 7/30/90 або період) по днях як є — картка
+  // широка (span 8), щоденні стовпчики читаються; згладжування — в компоненті.
   const srcDays = chartDays ? chartWinDays : days;
   const srcRev  = chartWindow ? chartWindow.revenue : revDaily;
   const srcProf = chartWindow ? chartWindow.profit : profDaily;
-  const weekIdx = new Map<string, number>();
-  const wLabels: string[] = [], wRev: number[] = [], wProf: number[] = [];
-  for (let i = 0; i < srcDays.length; i++) {
-    const d = new Date(`${srcDays[i]}T00:00:00Z`);
-    const monday = new Date(d);
-    monday.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
-    const key = monday.toISOString().slice(0, 10);
-    let wi = weekIdx.get(key);
-    if (wi === undefined) {
-      wi = wLabels.length;
-      weekIdx.set(key, wi);
-      wLabels.push(`${String(monday.getUTCDate()).padStart(2, '0')}.${String(monday.getUTCMonth() + 1).padStart(2, '0')}`);
-      wRev.push(0); wProf.push(0);
-    }
-    wRev[wi] += srcRev[i] ?? 0;
-    wProf[wi] += srcProf[i] ?? 0;
-  }
+  const dLabels = srcDays.map(d => `${d.slice(8, 10)}.${d.slice(5, 7)}`);
 
   // Накопичення поточного місяця (незалежно від пресета) — ПРОДАЖІ: сума
   // створених замовлень по днях (включно з тими, що в дорозі), а не факт
@@ -607,7 +591,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     else cumFact.push(null);   // майбутні дні — лінія обривається сьогодні
   }
   const dynamics = {
-    weeks: { labels: wLabels, revenue: wRev.map(Math.round), profit: wProf.map(Math.round) },
+    daily: { labels: dLabels, revenue: srcRev.map(Math.round), profit: srcProf.map(Math.round) },
     sources: sourcesDetailed,
     planCum: {
       labels: cumLabels,
