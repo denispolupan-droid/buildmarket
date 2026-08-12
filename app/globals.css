@@ -1044,8 +1044,6 @@ input, select { font-family: inherit; }
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
-.delivery-map-card__subtitle--mobile { display: none; }
-.delivery-map-card__scrim-bottom-mobile { display: none; }
 
 /* Cart page grid — form on the left spanning both rows, items list and totals/submit
    stacked on the right. Named areas (rather than relying on DOM order + `order`) let the
@@ -1078,13 +1076,10 @@ input, select { font-family: inherit; }
   /* Delivery map card — 440px was sized for the wide desktop card; on a phone screen it
      dominates the viewport and the map graphic (cover-cropped to the same tall aspect)
      loses most of the country outline. Shorter visual area fits the section into view better.
-     The "Нова Пошта" subtitle moves to the bottom of the image (still overlaid on it, not a
-     separate block below) — it was too close under the title otherwise at this height. */
+     Рядок з цифрами перевізників тепер завжди внизу картинки (див. DeliveryMapCard),
+     тож окремих мобільних перемикачів для нього більше немає. */
   .delivery-map-card { height: auto !important; }
   .delivery-map-card__visual { height: 220px !important; }
-  .delivery-map-card__subtitle--desktop { display: none !important; }
-  .delivery-map-card__subtitle--mobile { display: block; }
-  .delivery-map-card__scrim-bottom-mobile { display: block; }
 
   /* Warehouse card — title/list/link sat bottom-anchored (justify-content:flex-end) with a
      dark-at-bottom scrim, matching the desktop layout. On mobile it should read like the map

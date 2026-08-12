@@ -70,25 +70,21 @@ export default function DeliveryMapCard() {
         position: 'absolute', inset: 0, pointerEvents: 'none',
         background: 'linear-gradient(to bottom, rgba(8,15,30,0.7) 0%, rgba(8,15,30,0.04) 55%)',
       }} />
-      {/* Mobile only — the subtitle moves to the bottom of the image (still overlaid, not a
-          separate block below it), so it needs its own dark scrim there to stay readable;
-          the top scrim above is nearly transparent by the bottom of a short mobile card. */}
-      <div className="delivery-map-card__scrim-bottom-mobile" style={{
+      {/* Рядок з цифрами перевізників живе внизу картинки — там єдине місце без
+          міст. Під заголовком він накладався на підписи «Житомир» і «Київ», і
+          два шари дрібного тексту читалися як брак. Знизу потрібен власний
+          затемнювач: верхній до низу картки вже майже прозорий. */}
+      <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
         background: 'linear-gradient(to top, rgba(8,15,30,0.85) 0%, rgba(8,15,30,0) 45%)',
       }} />
 
         <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px 28px' }}>
-          <div>
-          <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
+          <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#fff', margin: 0 }}>
             {lang === 'ru' ? 'Доставляем по всей Украине' : 'Доставляємо по всій Україні'}
           </h2>
-          <p className="delivery-map-card__subtitle--desktop" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
-            {subtitle}
-          </p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '12px' }}>
-            <p className="delivery-map-card__subtitle--mobile" style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.75)' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.75)' }}>
               {subtitle}
             </p>
             {/* Картка була глухим кутом: найпомітніший блок секції нікуди не вів.
