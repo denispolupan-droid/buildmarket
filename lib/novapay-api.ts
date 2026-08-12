@@ -13,10 +13,22 @@ function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/** Декодує XML-сутності відповіді. КРИТИЧНО для ротації: сервер віддає \r у
+ *  сертифікаті як &#xD; — збережене сирим значення ламало наступну автентифікацію. */
+function unesc(s: string): string {
+  return s
+    .replace(/&#x?[dD];/g, '')
+    .replace(/&#13;/g, '')
+    .replace(/&#x?[aA];/g, '\n')
+    .replace(/&#10;/g, '\n')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
 /** Витягує текст першого тега з такою локальною назвою (незалежно від префікса ns) */
 function tag(xml: string, local: string): string | null {
   const m = xml.match(new RegExp(`<(?:\\w+:)?${local}(?:\\s[^>]*)?>([\\s\\S]*?)</(?:\\w+:)?${local}>`));
-  return m ? m[1].trim() : null;
+  return m ? unesc(m[1]).trim() : null;
 }
 
 function tags(xml: string, local: string): string[] {
@@ -42,7 +54,9 @@ async function soapCall(method: string, fields: Record<string, string | number |
       SOAPAction: `http://tempuri.org/IClientAPIService/${method}`,
     },
     body: envelope,
-    signal: AbortSignal.timeout(15000),
+    // NovaPay відповідає повільно (8–30+ с — виміряно); викликається з крону,
+    // тож щедрий таймаут не тримає користувацькі рендери
+    signal: AbortSignal.timeout(60000),
   });
   const text = await res.text();
   if (!res.ok) throw new Error(`NovaPay ${method}: HTTP ${res.status} — ${text.slice(0, 300)}`);
@@ -98,20 +112,22 @@ export type NovapayLiveBalance = {
 };
 
 const CACHE_KEY = 'novapay_balance_cache';
-const TTL_MS = 120_000;
 
-/** Живий баланс рахунків NovaPay з кешем (ротація токена — дорога операція). */
+/**
+ * Баланс NovaPay для сторінок: ЛИШЕ з кешу, без походу в API. NovaPay
+ * відповідає по 8–30+ с на виклик — тримати на цьому рендер не можна.
+ * Кеш наповнює refreshNovapayBalance() з крону.
+ */
 export async function getNovapayLiveBalance(): Promise<NovapayLiveBalance | null> {
   const db = createServiceClient();
-
   const { data: cached } = await db.from('app_settings').select('value').eq('key', CACHE_KEY).maybeSingle();
-  if (cached?.value) {
-    try {
-      const parsed = JSON.parse(cached.value) as NovapayLiveBalance;
-      if (Date.now() - Date.parse(parsed.fetchedAt) < TTL_MS) return parsed;
-    } catch { /* битий кеш */ }
-  }
+  if (!cached?.value) return null;
+  try { return JSON.parse(cached.value) as NovapayLiveBalance; } catch { return null; }
+}
 
+/** Оновлення кешу балансу (кличе крон). Ротація токена всередині authenticate(). */
+export async function refreshNovapayBalance(): Promise<NovapayLiveBalance | null> {
+  const db = createServiceClient();
   try {
     const jwt = await authenticate(db);
 
@@ -147,8 +163,6 @@ export async function getNovapayLiveBalance(): Promise<NovapayLiveBalance | null
     return result;
   } catch (err) {
     console.error('[novapay-balance]', err instanceof Error ? err.message : err);
-    // Протухлий кеш кращий за відсутність цифри
-    if (cached?.value) { try { return JSON.parse(cached.value) as NovapayLiveBalance; } catch { /* ignore */ } }
     return null;
   }
 }
