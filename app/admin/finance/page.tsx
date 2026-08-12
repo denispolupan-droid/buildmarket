@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, ShoppingCart, Truck, Coins, Receipt } from 'lucide-react';
 import FinanceTabs from './FinanceTabs';
 import FinanceActions from './FinanceActions';
 import PlanCard from './PlanCard';
@@ -288,19 +288,41 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <div className="fin-card-title">Сьогодні <span className="fin-card-sub">· за Києвом</span></div>
           </div>
-          <div className="fin-today-grid">
+          {/* Стрічка дня: подія → сьогоднішнє число → «вчора» для контексту */}
+          <div style={{ display: 'flex', flexDirection: 'column', marginTop: '6px' }}>
             {[
-              { label: 'Нових замовлень', value: fmt(ov.today.orders), hint: 'Створені сьогодні (без скасованих)' },
-              { label: 'Виручка',      value: `${fmt(ov.today.revenue)} ₴`, hint: 'Сума створених сьогодні замовлень' },
-              { label: 'Відправлено',  value: fmt(ov.today.shipped), hint: 'Посилок відправлено сьогодні — включно зі створеними в попередні дні' },
-              { label: 'Оплат',        value: `${ov.today.paidCount} · ${fmt(ov.today.paidSum)} ₴`, hint: 'Оплати клієнтів, що надійшли сьогодні' },
-              { label: 'Середній чек', value: ov.today.avgCheck === null ? '—' : `${fmt(ov.today.avgCheck)} ₴`, hint: 'По створених сьогодні замовленнях' },
-            ].map(s => (
-              <div key={s.label} className="fin-today-cell" title={s.hint}>
-                <div className="fin-today-val">{s.value}</div>
-                <div className="fin-kpi-label" style={{ marginTop: '2px' }}>{s.label}</div>
-              </div>
-            ))}
+              { icon: ShoppingCart, tone: '#1E5AA8', bg: '#EFF4FF', label: 'Нових замовлень',
+                value: `${fmt(ov.today.orders)} · ${fmt(ov.today.revenue)} ₴`,
+                sub: `вчора: ${fmt(ov.today.yesterday.orders)} · ${fmt(ov.today.yesterday.revenue)} ₴`,
+                hint: 'Створені сьогодні (без скасованих) і їх сума' },
+              { icon: Truck, tone: '#B45309', bg: '#FEF3C7', label: 'Відправлено посилок',
+                value: fmt(ov.today.shipped),
+                sub: `вчора: ${fmt(ov.today.yesterday.shipped)}`,
+                hint: 'Відправлені сьогодні — включно зі створеними в попередні дні' },
+              { icon: Coins, tone: '#15803D', bg: '#DCFCE7', label: 'Надійшло грошей',
+                value: `${fmt(ov.today.paidSum)} ₴${ov.today.paidCount ? ` · ${ov.today.paidCount} опл.` : ''}`,
+                sub: `вчора: ${fmt(ov.today.yesterday.paidSum)} ₴`,
+                hint: 'Живі оплати від клієнтів за сьогодні (COD НоваПей, картки, банк, каса) — зокрема по замовленнях минулих днів' },
+              { icon: Receipt, tone: '#64748B', bg: '#F1F5F9', label: 'Середній чек',
+                value: ov.today.avgCheck === null ? '—' : `${fmt(ov.today.avgCheck)} ₴`,
+                sub: ov.today.yesterday.orders ? `вчора: ${fmt(Math.round(ov.today.yesterday.revenue / ov.today.yesterday.orders))} ₴` : 'вчора: —',
+                hint: 'По створених сьогодні замовленнях' },
+            ].map(r => {
+              const Icon = r.icon;
+              return (
+                <div key={r.label} title={r.hint}
+                  style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '9px 0', borderBottom: '1px solid var(--border-light)' }}>
+                  <span style={{ width: '32px', height: '32px', borderRadius: '9px', background: r.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon size={15} color={r.tone} />
+                  </span>
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)' }}>{r.label}</span>
+                    <span style={{ display: 'block', fontSize: '15.5px', fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{r.value}</span>
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{r.sub}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

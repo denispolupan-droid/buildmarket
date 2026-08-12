@@ -69,6 +69,8 @@ export type OverviewData = {
   today: {
     orders: number; revenue: number; shipped: number;
     paidCount: number; paidSum: number; avgCheck: number | null;
+    /* Те саме за вчора — контекст для сьогоднішніх цифр */
+    yesterday: { orders: number; revenue: number; shipped: number; paidSum: number };
   };
   channels: { code: string; count: number; revenue: number; share: number }[];
   /* Вікно великого графіка динаміки: останні N днів (7/30/90) незалежно від
@@ -198,9 +200,10 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     db.from('orders').select('status, total_price').in('status', ['pending_payment', 'awaiting_stock']).then(r => r.data ?? []),
     getMarketplaceBalance('prom'),
     getMarketplaceBalance('rozetka'),
-    // Сьогоднішні замовлення/відправлення — незалежно від обраного періоду
+    // Замовлення/відправлення за сьогодні + вчора (для порівняння) —
+    // незалежно від обраного періоду
     db.from('orders').select('total_price, created_at, shipped_at, status')
-      .or(`created_at.gte.${today.iso},shipped_at.gte.${today.iso}`)
+      .or(`created_at.gte.${new Date(Date.parse(today.iso) - 86400000).toISOString()},shipped_at.gte.${new Date(Date.parse(today.iso) - 86400000).toISOString()}`)
       .then(r => r.data ?? []),
     // Помісячні агрегати за 6 місяців (для стовпчиків KPI) — окремо від
     // періодних вибірок, щоб не залежати від пресета
@@ -218,13 +221,13 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       .neq('status', 'cancelled')
       .gte('created_at', monthlyFromIso)
       .range(f, t)),
-    // 9. Оплати клієнтів сьогодні (кредит рахунку customer)
+    // 9. Оплати клієнтів сьогодні + вчора (кредит рахунку customer)
     db.from('money_entries')
-      .select('amount, txn_id')
+      .select('amount, txn_id, business_date')
       .eq('account_type', 'customer')
       .in('doc_type', ['payment', 'customer_payment'])
       .lt('amount', 0)
-      .eq('business_date', today.ymd)
+      .in('business_date', [today.ymd, new Date(Date.parse(`${today.ymd}T12:00:00Z`) - 86400000).toISOString().slice(0, 10)])
       .then(r => r.data ?? []),
     // 10. Знімок живих стадій «де гроші зараз» (незалежно від періоду)
     fetchAllRows<{ status: string; total_price: number; shipped_at: string | null; carrier_accepted_at: string | null; created_at: string; channel_code: string | null }>((f, t) => db
@@ -353,12 +356,18 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     .map(([code, c]) => ({ code, ...c, share: curOrdSum ? Math.round(c.revenue / curOrdSum * 1000) / 10 : 0 }))
     .sort((a, b) => b.revenue - a.revenue);
 
-  // ── Сьогодні (окрема вибірка — не залежить від обраного періоду) ──────────
+  // ── Сьогодні + вчора (окрема вибірка — не залежить від обраного періоду) ──
+  const yIso = new Date(Date.parse(today.iso) - 86400000).toISOString();
   const todayAll = todayRows as { total_price: number; created_at: string; shipped_at: string | null; status: string }[];
   const todayOrders = todayAll.filter(o => o.created_at >= today.iso && o.status !== 'cancelled');
   const shippedToday = todayAll.filter(o => o.shipped_at && o.shipped_at >= today.iso).length;
-  const paidTxns = new Set((payToday as { txn_id: string }[]).map(r => r.txn_id));
-  const paidSum = (payToday as { amount: number }[]).reduce((s, r) => s + Math.abs(Number(r.amount)), 0);
+  const yOrders = todayAll.filter(o => o.created_at >= yIso && o.created_at < today.iso && o.status !== 'cancelled');
+  const yShipped = todayAll.filter(o => o.shipped_at && o.shipped_at >= yIso && o.shipped_at < today.iso).length;
+  const payRows = payToday as { amount: number; txn_id: string; business_date: string }[];
+  const payTodayRows = payRows.filter(r => r.business_date === today.ymd);
+  const paidTxns = new Set(payTodayRows.map(r => r.txn_id));
+  const paidSum = payTodayRows.reduce((s, r) => s + Math.abs(Number(r.amount)), 0);
+  const yPaidSum = payRows.filter(r => r.business_date !== today.ymd).reduce((s, r) => s + Math.abs(Number(r.amount)), 0);
 
   // ── Рахунки, борги, склад ──────────────────────────────────────────────────
   const accounts = { monobank: 0, novapay: 0, cash: 0, total: 0 };
@@ -626,6 +635,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       paidCount: paidTxns.size,
       paidSum,
       avgCheck: todayOrders.length ? Math.round(sum(todayOrders) / todayOrders.length) : null,
+      yesterday: { orders: yOrders.length, revenue: sum(yOrders), shipped: yShipped, paidSum: yPaidSum },
     },
     channels,
     chartWindow, plan, dynamics,
