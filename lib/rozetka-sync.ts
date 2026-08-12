@@ -57,10 +57,12 @@ export async function syncRozetkaOrders() {
   let repushed = 0;
   let refreshed = 0;
 
+  let paidUpdated = 0;
+
   for (const rzOrder of [...orders, ...refreshOnly]) {
     const { data: existing } = await db
       .from('orders')
-      .select('id, status, tracking_number, rozetka_data')
+      .select('id, status, tracking_number, rozetka_data, payment_confirmed, total_price')
       .eq('rozetka_order_id', rzOrder.id)
       .maybeSingle();
 
@@ -72,6 +74,27 @@ export async function syncRozetkaOrders() {
       // а складська операція (резерв / замовлення постачальнику), і режим
       // виконання обирає людина. Тут лише те, що показує плашка.
       const storedData = (existing.rozetka_data ?? {}) as Record<string, unknown>;
+
+      // Пізня оплата (дзеркало prom-sync): передоплата приходить ПІСЛЯ створення
+      // замовлення, а знімок застигав на моменті імпорту — замовлення вічно
+      // висіло «Рахунок / не оплачено», хоча в кабінеті вже 'paid' (живий кейс
+      // #26081055). Тому в кожному прогоні звіряємо живий payment_status.
+      if (!existing.payment_confirmed && rzOrder.payment?.payment_status?.name === 'paid') {
+        storedData.payment = rzOrder.payment;   // щоб patch нижче не затер свіжий знімок
+        const { error: payErr } = await db.from('orders').update({
+          payment_confirmed: true,
+          amount_paid:       existing.total_price,
+          payment_type:      'prepaid',
+          rozetka_data:      storedData,
+        }).eq('id', existing.id);
+        if (payErr) {
+          console.error('[rozetka-sync] late payment update failed:', rzOrder.id, payErr.message);
+        } else {
+          paidUpdated++;
+          console.log(`[rozetka-sync] late payment confirmed for order ${rzOrder.id}`);
+        }
+      }
+
       const liveSmart = Boolean(rzOrder.is_smart);
       const liveTtn = rzOrder.ttn || null;
       const moved = Boolean(storedData.is_smart) !== liveSmart
@@ -224,5 +247,5 @@ export async function syncRozetkaOrders() {
     console.error('[rozetka-sync] ttn-list pull failed:', err);
   }
 
-  return { ok: true, created, skipped, repushed, refreshed, pricedTtns, total: orders.length + refreshOnly.length };
+  return { ok: true, created, skipped, repushed, refreshed, paidUpdated, pricedTtns, total: orders.length + refreshOnly.length };
 }
