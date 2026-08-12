@@ -253,14 +253,10 @@ export default function VidatkovaNakladna({
           <div style={{ fontSize: '17px', fontWeight: 700, color: '#111', marginBottom: '4px' }}>
             Видаткова накладна № {docNumber} від {date}
           </div>
-          {sellerCity && (
-            <div style={{ fontSize: '11px', color: '#555', marginBottom: '2px' }}>
-              Місце складання: {sellerCity}
-            </div>
-          )}
-          {orderNumber && (
+          {(sellerCity || orderNumber) && (
             <div style={{ fontSize: '11px', color: '#555', marginBottom: '6px' }}>
-              Підстава: замовлення №{orderNumber}
+              {[sellerCity && `Місце складання: ${sellerCity}`, orderNumber && `Підстава: замовлення №${orderNumber}`]
+                .filter(Boolean).join(' · ')}
             </div>
           )}
           <hr style={{ border: 'none', borderTop: '2px solid #1E3A5F', marginBottom: '14px' }} />

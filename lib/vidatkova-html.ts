@@ -58,8 +58,7 @@ export function buildVidatkovaHtml(params: {
   <div style="font-size:17px;font-weight:700;margin-bottom:4px">
     Видаткова накладна № ${docNumber} від ${date}
   </div>
-  ${sellerCity ? `<div style="font-size:11px;color:#555;margin-bottom:2px">Місце складання: ${sellerCity}</div>` : ''}
-  ${orderNumber ? `<div style="font-size:11px;color:#555;margin-bottom:6px">Підстава: замовлення №${orderNumber}</div>` : ''}
+  ${sellerCity || orderNumber ? `<div style="font-size:11px;color:#555;margin-bottom:6px">${[sellerCity ? `Місце складання: ${sellerCity}` : null, orderNumber ? `Підстава: замовлення №${orderNumber}` : null].filter(Boolean).join(' · ')}</div>` : ''}
   <hr style="border:none;border-top:2px solid #1E3A5F;margin-bottom:14px">
 
   <table style="border-collapse:collapse;width:100%;margin-bottom:10px;font-size:12px">

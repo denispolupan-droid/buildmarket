@@ -73,12 +73,13 @@ export async function buildVidatkovaPdf(params: {
     doc.font('B').fontSize(14).fillColor('#111111')
        .text(`Видаткова накладна № ${docNumber} від ${date}`, ML, y, { width: CW, lineBreak: false });
     y += 18;
-    if (sellerCity) {
-      doc.font('R').fontSize(9).fillColor('#555555').text(`Місце складання: ${sellerCity}`, ML, y, { lineBreak: false });
-      y += 13;
-    }
-    if (orderNumber) {
-      doc.font('R').fontSize(9).fillColor('#555555').text(`Підстава: замовлення №${orderNumber}`, ML, y, { lineBreak: false });
+    // Місце складання і підстава — одним рядком через «·» (рішення власника)
+    const subtitle = [
+      sellerCity ? `Місце складання: ${sellerCity}` : null,
+      orderNumber ? `Підстава: замовлення №${orderNumber}` : null,
+    ].filter(Boolean).join(' · ');
+    if (subtitle) {
+      doc.font('R').fontSize(9).fillColor('#555555').text(subtitle, ML, y, { lineBreak: false });
       y += 13;
     }
     hline(ML, y, ML + CW, '#1E3A5F', 1.5);
