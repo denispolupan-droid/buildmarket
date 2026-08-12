@@ -250,7 +250,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                   { label: 'Rozetka', color: '#15803D', bal: ov.mp.rozetka, transit: ov.mpTransit.rozetka },
                 ].map(m => (
                   <div key={m.label} title={`Комісії в дорозі −${fmt(m.transit)} ₴ спишуться при доставці → прогноз ${fmt(m.bal - m.transit)} ₴`}
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '12px', gap: '8px', whiteSpace: 'nowrap' }}>
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '12px', gap: '8px', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
                     <span style={{ color: m.color, fontWeight: 600 }}>{m.label}</span>
                     <span style={{ fontVariantNumeric: 'tabular-nums' }}>
                       <span style={{ color: 'var(--text-muted)' }}>{fmt(m.bal)}</span>
@@ -262,9 +262,11 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
               </div>
               {(ov.mpTransit.prom + ov.mpTransit.rozetka) > 0 && (
                 <div className="fin-money-sub" title="Комісії по відвантажених, ще не доставлених посилках — площадка спише їх при доставці"
-                  style={{ whiteSpace: 'nowrap' }}>
-                  в дорозі комісій <span style={{ color: '#B45309', fontWeight: 600 }}>−{fmt(ov.mpTransit.prom + ov.mpTransit.rozetka)} ₴</span>
-                  {' · '}<Link href="/admin/finance/marketplace-balance" style={{ color: 'var(--text-muted)' }}>деталі →</Link>
+                  style={{ display: 'flex', gap: '4px', minWidth: 0, alignItems: 'baseline' }}>
+                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                    в дорозі комісій <span style={{ color: '#B45309', fontWeight: 600 }}>−{fmt(ov.mpTransit.prom + ov.mpTransit.rozetka)} ₴</span>
+                  </span>
+                  <Link href="/admin/finance/marketplace-balance" style={{ color: 'var(--text-muted)', flexShrink: 0 }}>· деталі →</Link>
                 </div>
               )}
             </div>
