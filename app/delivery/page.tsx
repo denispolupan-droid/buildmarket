@@ -89,23 +89,31 @@ export default function DeliveryPage() {
               </ul>
             </div>
 
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <MapPin size={20} color="#4880B8" strokeWidth={2} />
+            {/* Третій спосіб — на всю ширину під двома перевізниками. Не заради
+                симетрії: адресна доставка іншого класу — не масовий перевізник,
+                а домовленість для опту, і широка смуга під картками читається
+                як примітка до них, а не як рівноцінний третій варіант. */}
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px', gridColumn: '1 / -1' }}>
+              <div className="delivery-wide">
+                <div style={{ flex: '1 1 300px', minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <MapPin size={20} color="#4880B8" strokeWidth={2} />
+                    </div>
+                    <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Адресна доставка</h2>
+                  </div>
+                  <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
+                    Для оптових замовлень — доставка власним транспортом або перевізником по Харкову та області.
+                  </p>
                 </div>
-                <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Адресна доставка</h2>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, flex: '1 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {['Доступно для оптових замовлень', 'Вартість і терміни — за домовленістю', 'Усі деталі узгоджує менеджер індивідуально'].map(i => (
+                    <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                      <span style={{ color: '#4880B8', flexShrink: 0, marginTop: '2px' }}>✓</span>{i}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 12px' }}>
-                Для оптових замовлень — доставка власним транспортом або перевізником по Харкову та області.
-              </p>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {['Доступно для оптових замовлень', 'Вартість і терміни — за домовленістю', 'Усі деталі узгоджує менеджер індивідуально'].map(i => (
-                  <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                    <span style={{ color: '#4880B8', flexShrink: 0, marginTop: '2px' }}>✓</span>{i}
-                  </li>
-                ))}
-              </ul>
             </div>
 
           </div>
@@ -152,7 +160,16 @@ export default function DeliveryPage() {
       </div>
       <Footer />
       <style>{`
-        @media (max-width: 640px) { .delivery-grid { grid-template-columns: 1fr !important; } }
+        .delivery-wide { display: flex; gap: 28px; align-items: flex-start; }
+        @media (max-width: 640px) {
+          .delivery-grid { grid-template-columns: 1fr !important; }
+          /* На вузькому екрані широка картка нічим не відрізняється від решти —
+             два стовпці всередині перетворилися б на дві вузькі колонки тексту */
+          .delivery-wide { flex-direction: column; gap: 14px; }
+          /* У колонковому flex flex-basis керує ВИСОТОЮ: 300px залишали
+             всередині картки порожню діру на пів екрана */
+          .delivery-wide > * { flex: 0 0 auto !important; }
+        }
       `}</style>
     </>
   );

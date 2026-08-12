@@ -93,23 +93,31 @@ export default function DeliveryRuPage() {
               </ul>
             </div>
 
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <MapPin size={20} color="#4880B8" strokeWidth={2} />
+            {/* Третий способ — на всю ширину под двумя перевозчиками. Не ради
+                симметрии: адресная доставка другого класса — не массовый
+                перевозчик, а договорённость для опта, и широкая полоса под
+                карточками читается как примечание к ним. */}
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px', gridColumn: '1 / -1' }}>
+              <div className="delivery-wide">
+                <div style={{ flex: '1 1 300px', minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <MapPin size={20} color="#4880B8" strokeWidth={2} />
+                    </div>
+                    <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Адресная доставка</h2>
+                  </div>
+                  <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
+                    Для оптовых заказов — доставка собственным транспортом или перевозчиком по Харькову и области.
+                  </p>
                 </div>
-                <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Адресная доставка</h2>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, flex: '1 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {['Доступно для оптовых заказов', 'Стоимость и сроки — по договорённости', 'Все детали согласовывает менеджер индивидуально'].map(i => (
+                    <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                      <span style={{ color: '#4880B8', flexShrink: 0, marginTop: '2px' }}>✓</span>{i}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 12px' }}>
-                Для оптовых заказов — доставка собственным транспортом или перевозчиком по Харькову и области.
-              </p>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {['Доступно для оптовых заказов', 'Стоимость и сроки — по договорённости', 'Все детали согласовывает менеджер индивидуально'].map(i => (
-                  <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                    <span style={{ color: '#4880B8', flexShrink: 0, marginTop: '2px' }}>✓</span>{i}
-                  </li>
-                ))}
-              </ul>
             </div>
 
           </div>
@@ -156,7 +164,16 @@ export default function DeliveryRuPage() {
       </div>
       <Footer />
       <style>{`
-        @media (max-width: 640px) { .delivery-grid { grid-template-columns: 1fr !important; } }
+        .delivery-wide { display: flex; gap: 28px; align-items: flex-start; }
+        @media (max-width: 640px) {
+          .delivery-grid { grid-template-columns: 1fr !important; }
+          /* На узком экране широкая карточка ничем не отличается от остальных —
+             две колонки внутри превратились бы в две узкие колонки текста */
+          .delivery-wide { flex-direction: column; gap: 14px; }
+          /* У колонковому flex flex-basis керує ВИСОТОЮ: 300px залишали
+             всередині картки порожню діру на пів екрана */
+          .delivery-wide > * { flex: 0 0 auto !important; }
+        }
       `}</style>
     </>
   );
