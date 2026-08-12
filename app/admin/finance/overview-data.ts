@@ -61,6 +61,9 @@ export type OverviewData = {
   monoLive: { total: number; fetchedAt: string } | null;
   /* Живий залишок NovaPay (Business API, кеш 120 с); null = не налаштовано/недоступно */
   novapayLive: { available: number; fetchedAt: string } | null;
+  /* Наложка в дорозі: COD по відправлених, ще не вручених посилках —
+     надійде в НоваПей після вручення */
+  codTransit: number;
   mp: { prom: number; rozetka: number };
   /* Комісії «в дорозі» по каналах МП (спишуться при доставці): прогноз
      балансу = поточний − ця сума. Та сама логіка, що екран «Маркетплейси» */
@@ -236,9 +239,9 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       .in('business_date', [today.ymd, new Date(Date.parse(`${today.ymd}T12:00:00Z`) - 86400000).toISOString().slice(0, 10)])
       .then(r => r.data ?? []),
     // 10. Знімок живих стадій «де гроші зараз» (незалежно від періоду)
-    fetchAllRows<{ status: string; total_price: number; shipped_at: string | null; carrier_accepted_at: string | null; created_at: string; channel_code: string | null }>((f, t) => db
+    fetchAllRows<{ status: string; total_price: number; shipped_at: string | null; carrier_accepted_at: string | null; created_at: string; channel_code: string | null; payment_type: string | null }>((f, t) => db
       .from('orders')
-      .select('status, total_price, shipped_at, carrier_accepted_at, created_at, channel_code')
+      .select('status, total_price, shipped_at, carrier_accepted_at, created_at, channel_code, payment_type')
       .in('status', ['new', 'pending_payment', 'confirmed', 'awaiting_stock', 'picking', 'shipped'])
       .range(f, t)),
     // 11. Відмови для «викупу»: скасовані ПІСЛЯ відправки замовлення періоду
@@ -317,6 +320,8 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   // це вже не рух, а сигнал перевірити посилку/завершити замовлення.
   const pTransitFresh = pTransit.filter(o => (o.shipped_at ?? '') >= d7ago);
   const pTransitStuck = pTransit.filter(o => (o.shipped_at ?? '') < d7ago);
+  // Наложка в дорозі: COD по посилках, що їдуть (Prom/Rozetka COD теж їде через НП)
+  const codTransit = sum(pTransit.filter(o => o.payment_type === 'cod'));
   // Комісії «в дорозі» — та сама функція, що на екрані «Маркетплейси»;
   // живий залишок Mono — паралельно (кешований client-info)
   const [promTransit, rozetkaTransit, monoLiveRaw, novapayLiveRaw] = await Promise.all([
@@ -628,6 +633,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     accounts,
     monoLive,
     novapayLive,
+    codTransit,
     mp: { prom: promBal, rozetka: rozetkaBal },
     mpTransit,
     ar: {

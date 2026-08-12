@@ -242,6 +242,12 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                         </div>
                       ))}
                     </div>
+                    {ov.codTransit > 0 && (
+                      <div className="fin-money-sub"
+                        title="Накладені платежі по відправлених, ще не вручених посилках — надійдуть у НоваПей після вручення. У суму рахунків не входять.">
+                        + наложка в дорозі: <b style={{ color: 'var(--text-primary)' }}>{fmt(ov.codTransit)} ₴</b>
+                      </div>
+                    )}
                   </>
                 );
               })()}
