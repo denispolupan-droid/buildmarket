@@ -242,10 +242,12 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                         </div>
                       ))}
                     </div>
+                    {/* Транзитні гроші — помаранчеві, як усе «в дорозі» в розділі */}
                     {ov.codTransit > 0 && (
-                      <div className="fin-money-sub"
-                        title="Накладені платежі по відправлених, ще не вручених посилках — надійдуть у НоваПей після вручення. У суму рахунків не входять.">
-                        + наложка в дорозі: <b style={{ color: 'var(--text-primary)' }}>{fmt(ov.codTransit)} ₴</b>
+                      <div title="Накладені платежі по відправлених, ще не вручених посилках — надійдуть у НоваПей після вручення. У суму рахунків не входять."
+                        style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px', marginTop: '3px', paddingTop: '5px', borderTop: '1px dashed var(--border)' }}>
+                        <span style={{ color: '#B45309', fontWeight: 600 }}>Наложка в дорозі</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#B45309' }}>+{fmt(ov.codTransit)} ₴</span>
                       </div>
                     )}
                   </>
