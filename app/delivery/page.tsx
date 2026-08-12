@@ -94,7 +94,7 @@ export default function DeliveryPage() {
               {[
                 { icon: Clock,      title: 'Обробка замовлення',  text: 'Замовлення, розміщені до 14:00 у робочі дні, відправляємо в той самий день. Замовлення після 14:00 — наступного робочого дня.' },
                 { icon: Package,    title: 'Упаковка',            text: 'Товар упаковується в картонні коробки з наповнювачем. Для крихких і рідких матеріалів — посилена упаковка без додаткової оплати.' },
-                { icon: CreditCard, title: 'Оплата при отриманні', text: 'Накладений платіж через Нову Пошту — оплачуєте при отриманні посилки. Для оптових клієнтів — передоплата на рахунок або через платіжну систему.' },
+                { icon: CreditCard, title: 'Оплата при отриманні', text: 'Накладений платіж — оплачуєте при отриманні посилки у відділенні перевізника. Для оптових клієнтів — передоплата на рахунок або через платіжну систему.' },
               ].map(({ icon: Icon, title, text }) => (
                 <div key={title} style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
                   <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--border)' }}>

@@ -365,7 +365,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     try {
       const { data: order } = await db
         .from('orders')
-        .select('order_number, contact, company, phone, email, telegram_chat_id, tracking_number')
+        .select('order_number, contact, company, phone, email, telegram_chat_id, tracking_number, delivery_type')
         .eq('id', id)
         .single();
 
@@ -377,12 +377,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         // Both channels, same as on order creation — Telegram when linked, email always
         // (email is the one channel every customer has, so it never gets skipped here).
         if (order.telegram_chat_id && ['confirmed', 'shipped', 'delivered', 'cancelled'].includes(status)) {
-          notifyCustomerStatus(order.telegram_chat_id, order.order_number, status, order.tracking_number);
+          notifyCustomerStatus(order.telegram_chat_id, order.order_number, status, order.tracking_number, order.delivery_type);
         }
         const statusEmailHtml = order.email
           ? buildCustomerStatusEmail({
               orderNumber: order.order_number, contact: order.contact, company: order.company ?? '',
-              status, trackingNumber: order.tracking_number,
+              status, trackingNumber: order.tracking_number, deliveryType: order.delivery_type,
               siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua',
             })
           : null;

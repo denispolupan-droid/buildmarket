@@ -5,6 +5,50 @@
 // давало «Немішаєве · Немішаєве, По…» — половину колонки з'їдав повтор, а
 // корисне (номер відділення) не влізало. Тому місто з початку адреси зрізаємо.
 
+/**
+ * Хто везе і куди йти забирати — для листів і повідомлень покупцю.
+ *
+ * З'явилось не від хорошого життя: «Нова Пошта» була вписана в шаблони листів
+ * шістьма окремими рядками, і перше ж замовлення в точку видачі ROZETKA
+ * повідомило покупцю, що це накладений платіж Нової Пошти. Тому назва
+ * перевізника, посилання на трекінг і слово для місця видачі живуть в одному
+ * місці й беруться з delivery_type.
+ *
+ * Невідомий тип — Нова Пошта: нею їде переважна більшість замовлень, і мовчазний
+ * фолбек на неї гірший рівно в тих випадках, коли новий перевізник забули сюди
+ * додати. Додавай сюди, а не в шаблон.
+ */
+export type CarrierInfo = {
+  /** Назва перевізника в тексті: «Нова Пошта». */
+  name: string;
+  /** Сторінка відстеження або null, якщо публічного трекінгу немає. */
+  trackUrl: string | null;
+  /** Де покупець отримує і платить: «у відділенні Нової Пошти». */
+  place: string;
+};
+
+const NOVA: CarrierInfo = {
+  name: 'Нова Пошта',
+  trackUrl: 'https://novaposhta.ua',
+  place: 'у відділенні Нової Пошти',
+};
+
+const CARRIERS: Record<string, CarrierInfo> = {
+  nova: NOVA,
+  nova_poshta: NOVA,
+  // Наш договір з rz-delivery (замовлення сайту) і маркетплейсна доставка в ті
+  // самі точки — для покупця це одне й те саме місце, тому й текст однаковий.
+  rz_delivery:      { name: 'ROZETKA Доставка', trackUrl: 'https://rozetka.delivery/tracking', place: 'у точці видачі ROZETKA' },
+  rozetka_delivery: { name: 'ROZETKA Доставка', trackUrl: 'https://rozetka.delivery/tracking', place: 'у точці видачі ROZETKA' },
+  ukrposhta:        { name: 'Укрпошта',         trackUrl: 'https://track.ukrposhta.ua',        place: 'у відділенні Укрпошти' },
+  pickup:           { name: 'Самовивіз',        trackUrl: null,                                place: 'на нашому складі' },
+  kharkiv:          { name: 'Доставка по Харкову', trackUrl: null,                             place: 'при отриманні' },
+};
+
+export function carrierInfo(deliveryType?: string | null): CarrierInfo {
+  return CARRIERS[(deliveryType ?? '').trim()] ?? NOVA;
+}
+
 export type DeliveryParts = {
   delivery_type?: string | null;
   delivery_subtype?: string | null;

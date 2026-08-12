@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -94,6 +94,8 @@ type Order = {
   price_type:         string | null;
   discount_pct:       number | null;
   discount_amount:    number | null;
+  promo_code:         string | null;
+  promo_discount:     number | null;
   shipping_supplier_id: number | null;
   mp_refund_status:   string | null;
   np_return_ref:      string | null;
@@ -2519,9 +2521,15 @@ export default function AdminOrders({
                     )}
                   </div>
 
-                  {/* Сума */}
-                  <span style={{ width: '84px', flexShrink: 0, fontSize: '13px', fontWeight: 800, color: 'var(--brand-blue)', textAlign: 'right' }}>
-                    {order.total_price.toFixed(0)} ₴
+                  {/* Сума (+ маркер промокоду) */}
+                  <span style={{ width: '84px', flexShrink: 0, fontSize: '13px', fontWeight: 800, color: 'var(--brand-blue)', textAlign: 'right', display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
+                    {order.promo_code && (
+                      <Tag size={12} style={{ color: '#B45309', flexShrink: 0 }}
+                        aria-label={`Промокод ${order.promo_code}`} />
+                    )}
+                    <span title={order.promo_code ? `Промокод ${order.promo_code} · знижка −${Number(order.promo_discount ?? 0).toFixed(2)} ₴ (сума вже з урахуванням)` : undefined}>
+                      {order.total_price.toFixed(0)} ₴
+                    </span>
                   </span>
                   {isExpanded
                     ? <ChevronUp size={14} color="#94A3B8" style={{ flexShrink: 0 }} />
@@ -2644,6 +2652,12 @@ export default function AdminOrders({
                     <div style={{ flexShrink: 0, minWidth: '120px' }}>
                       <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{Number(order.total_price).toFixed(0)} ₴</div>
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Сума замовлення</div>
+                      {order.promo_code && (
+                        <div title="Знижку вже враховано в сумі замовлення"
+                          style={{ marginTop: '4px', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', borderRadius: '6px', padding: '2px 8px', whiteSpace: 'nowrap' }}>
+                          <Tag size={11} /> {order.promo_code} · −{Number(order.promo_discount ?? 0).toFixed(2)} ₴
+                        </div>
+                      )}
                     </div>
                     <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                     {order.status === 'new' && (() => {

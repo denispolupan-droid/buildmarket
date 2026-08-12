@@ -1,4 +1,5 @@
 import { SITE_URL } from '../site';
+import { carrierInfo } from '../delivery-label';
 
 // Тексти сповіщень покупцю. Окремо від відправки — щоб їх можна було читати,
 // правити й покривати тестами, не заглядаючи в мережевий код.
@@ -23,8 +24,11 @@ export type NotifyContext = {
 // а телефон однаково зробить із домену посилання.
 const shortSite = () => SITE_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
-const carrierName = (c: NotifyContext['carrier']) =>
-  c === 'rozetka' ? 'Rozetka Доставка' : 'Нова Пошта';
+// Назва перевізника — з того самого довідника, що й листи та Telegram
+// (lib/delivery-label). Власна копія рядка тут уже призводила до розбіжності:
+// у SMS «Rozetka Доставка», у листі «Нова Пошта» на тому самому замовленні.
+const carrier = (c: NotifyContext['carrier']) =>
+  carrierInfo(c === 'rozetka' ? 'rz_delivery' : 'nova');
 
 export function buildMessage(event: NotifyEvent, ctx: NotifyContext): string | null {
   switch (event) {
@@ -39,10 +43,12 @@ export function buildMessage(event: NotifyEvent, ctx: NotifyContext): string | n
 
     case 'shipped':
       if (!ctx.trackingNumber) return null;   // без номера повідомлення марне
-      return `FIXLINE: замовлення №${ctx.orderNumber} відправлено. ${carrierName(ctx.carrier)}, ТТН ${ctx.trackingNumber}`;
+      return `FIXLINE: замовлення №${ctx.orderNumber} відправлено. ${carrier(ctx.carrier).name}, ТТН ${ctx.trackingNumber}`;
 
+    // «у відділення Rozetka Доставка» звучало як помилка: у цього перевізника
+    // відділень немає, є точки видачі. Місце бере на себе довідник.
     case 'arrived':
-      return `FIXLINE: замовлення №${ctx.orderNumber} прибуло у відділення ${carrierName(ctx.carrier)}. Чекаємо вас`;
+      return `FIXLINE: замовлення №${ctx.orderNumber} чекає ${carrier(ctx.carrier).place}. Заберіть, будь ласка`;
 
     case 'pickup_reminder':
       return ctx.daysLeft && ctx.daysLeft > 0

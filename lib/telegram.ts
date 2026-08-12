@@ -1,3 +1,5 @@
+import { carrierInfo } from './delivery-label';
+
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID ?? '';
 
@@ -97,10 +99,16 @@ export function notifyCustomerStatus(
   orderNumber: number,
   status: string,
   trackingNumber?: string | null,
+  deliveryType?: string | null,
 ) {
+  // Перевізника не хардкодимо: назва, посилання на трекінг і місце видачі —
+  // з delivery_type (lib/delivery-label). Інакше покупець, який обрав точку
+  // видачі ROZETKA, отримує «ТТН Нова Пошта».
+  const c = carrierInfo(deliveryType);
+  const track = c.trackUrl ? `\nВідстежуйте на ${c.trackUrl.replace(/^https?:\/\//, '')}` : '';
   const messages: Partial<Record<string, string>> = {
     confirmed: `✅ <b>Замовлення №${orderNumber} підтверджено!</b>\nМи підготуємо його до відправки та повідомимо вас.`,
-    shipped:   `📦 <b>Замовлення №${orderNumber} відправлено!</b>\nТТН Нова Пошта: <code>${trackingNumber ?? '—'}</code>\nВідстежуйте на novaposhta.ua`,
+    shipped:   `📦 <b>Замовлення №${orderNumber} відправлено!</b>\n${c.name}, номер: <code>${trackingNumber ?? '—'}</code>${track}`,
     delivered: `🎉 <b>Замовлення №${orderNumber} доставлено!</b>\nДякуємо за покупку. Будемо раді бачити вас знову!\nfixline.com.ua`,
     cancelled: `❌ <b>Замовлення №${orderNumber} скасовано.</b>\nЗ питань: info@fixline.com.ua`,
   };

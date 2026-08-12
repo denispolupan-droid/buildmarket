@@ -357,6 +357,7 @@ export async function POST(req: NextRequest) {
           orderNumber: order.order_number, orderId: order.id,
           company: order.company ?? '', contact: order.contact,
           totalPrice: order.total_price, paymentType: 'card',
+          deliveryType: order.delivery_type ?? null,
           userId: null, invoiceUrl, siteUrl,
         }),
       }).catch(() => {});

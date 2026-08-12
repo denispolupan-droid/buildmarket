@@ -329,6 +329,7 @@ export async function POST(req: NextRequest) {
     html: buildCustomerOrderEmail({
       orderNumber: data.order_number, orderId: data.id,
       company: company ?? '', contact, totalPrice: finalTotal, paymentType,
+      deliveryType,
       userId: user?.id ?? null, invoiceUrl, siteUrl,
       telegramBotUsername: existingChatId ? undefined : process.env.TELEGRAM_BOT_USERNAME,
     }),

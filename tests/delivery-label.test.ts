@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deliveryPlace, shortenWarehouse, stripCityPrefix } from '../lib/delivery-label';
+import { deliveryPlace, shortenWarehouse, stripCityPrefix, carrierInfo } from '../lib/delivery-label';
 
 describe('shortenWarehouse', () => {
   it('відсікає вулицю й ліміт ваги з назви відділення', () => {
@@ -60,5 +60,30 @@ describe('stripCityPrefix', () => {
 
   it('не ламається на регулярочних символах у назві', () => {
     expect(stripCityPrefix('Кам\'янське, Відділення №5', 'Кам\'янське')).toBe('Відділення №5');
+  });
+});
+
+describe('carrierInfo', () => {
+  it('називає перевізника за delivery_type', () => {
+    expect(carrierInfo('nova').name).toBe('Нова Пошта');
+    expect(carrierInfo('nova_poshta').name).toBe('Нова Пошта');
+    expect(carrierInfo('rz_delivery').name).toBe('ROZETKA Доставка');
+    expect(carrierInfo('rozetka_delivery').name).toBe('ROZETKA Доставка');
+  });
+
+  it('місце видачі відрізняється — у ROZETKA немає «відділень»', () => {
+    expect(carrierInfo('nova').place).toBe('у відділенні Нової Пошти');
+    expect(carrierInfo('rz_delivery').place).toBe('у точці видачі ROZETKA');
+  });
+
+  it('де немає публічного трекінгу — там і посилання немає', () => {
+    expect(carrierInfo('rz_delivery').trackUrl).toBe('https://rozetka.delivery/tracking');
+    expect(carrierInfo('pickup').trackUrl).toBeNull();
+  });
+
+  it('невідомий тип — Нова Пошта: нею їде більшість замовлень', () => {
+    expect(carrierInfo('щось нове').name).toBe('Нова Пошта');
+    expect(carrierInfo(null).name).toBe('Нова Пошта');
+    expect(carrierInfo(undefined).name).toBe('Нова Пошта');
   });
 });

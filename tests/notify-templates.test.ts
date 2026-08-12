@@ -28,7 +28,14 @@ describe('buildMessage', () => {
 
   it('точка видачі Rozetka називається своїм імʼям', () => {
     expect(buildMessage('shipped', { orderNumber: 1, trackingNumber: 'RMP-614673528', carrier: 'rozetka' }))
-      .toContain('Rozetka Доставка');
+      .toContain('ROZETKA Доставка');
+  });
+
+  it('«прибуло» називає місце по-різному: відділення в НП, точку видачі в ROZETKA', () => {
+    expect(buildMessage('arrived', { orderNumber: 1, carrier: 'nova' }))
+      .toContain('у відділенні Нової Пошти');
+    expect(buildMessage('arrived', { orderNumber: 1, carrier: 'rozetka' }))
+      .toContain('у точці видачі ROZETKA');
   });
 
   it('без ТТН повідомлення про відправлення не має сенсу — не шлемо', () => {

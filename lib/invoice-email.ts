@@ -1,4 +1,5 @@
 import { SELLER } from './company';
+import { carrierInfo } from './delivery-label';
 
 export type Item = { sku: string; name: string; brand: string; qty: number; price: number };
 
@@ -9,6 +10,8 @@ export type CustomerOrderEmailData = {
   contact: string;
   totalPrice: number;
   paymentType: string;
+  /** delivery_type замовлення — від нього залежить, якого перевізника називати. */
+  deliveryType: string | null;
   userId: string | null;
   invoiceUrl: string;
   siteUrl: string;
@@ -17,6 +20,7 @@ export type CustomerOrderEmailData = {
 
 export function buildCustomerOrderEmail(d: CustomerOrderEmailData): string {
   const date = new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const carrier = carrierInfo(d.deliveryType);
   const isCod  = d.paymentType === 'cod';
   const isCard = d.paymentType === 'card';
   const isGuest = d.userId === null;
@@ -47,9 +51,9 @@ export function buildCustomerOrderEmail(d: CustomerOrderEmailData): string {
     ? `<div style="padding:24px 32px;border-bottom:1px solid #F1F5F9;">
         <div style="background:#F0FDF4;border-radius:12px;padding:20px;border:1px solid #BBF7D0;">
           <div style="font-size:12px;font-weight:700;color:#15803D;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Спосіб оплати</div>
-          <div style="font-size:14px;font-weight:700;color:#0F172A;margin-bottom:6px;">Накладений платіж (Нова Пошта)</div>
+          <div style="font-size:14px;font-weight:700;color:#0F172A;margin-bottom:6px;">Накладений платіж (${carrier.name})</div>
           <div style="font-size:13px;color:#374151;line-height:1.6;">
-            Ви обрали оплату накладеним платежем. <strong>Оплачувати рахунок заздалегідь не потрібно</strong> — оплата здійснюється при отриманні товару у відділенні або кур'єру.
+            Ви обрали оплату накладеним платежем. <strong>Оплачувати рахунок заздалегідь не потрібно</strong> — оплата здійснюється при отриманні товару ${carrier.place}.
           </div>
         </div>
       </div>`
@@ -157,7 +161,7 @@ export function buildCustomerOrderEmail(d: CustomerOrderEmailData): string {
 
     <div style="margin:0 32px 24px;background:#FFFBEB;border-radius:12px;padding:16px 20px;border:1px solid #FDE68A;">
       <div style="font-size:12px;color:#92400E;line-height:1.6;">
-        📦 <strong>Щодо вартості доставки:</strong> ми не формуємо і не несемо відповідальності за вартість доставки. Доставка здійснюється за тарифами перевізника (Нова Пошта) та оплачується отримувачем окремо.
+        📦 <strong>Щодо вартості доставки:</strong> ми не формуємо і не несемо відповідальності за вартість доставки. Доставка здійснюється за тарифами перевізника (${carrier.name}) та оплачується отримувачем окремо.
       </div>
     </div>
 
@@ -178,6 +182,7 @@ export type CustomerStatusEmailData = {
   company: string;
   status: string;
   trackingNumber?: string | null;
+  deliveryType?: string | null;
   siteUrl: string;
 };
 
@@ -190,7 +195,15 @@ const STATUS_EMAIL_CONTENT: Record<string, { emoji: string; title: string; body:
   shipped: {
     emoji: '📦',
     title: 'Замовлення відправлено',
-    body: d => `Замовлення <strong>№${d.orderNumber}</strong> передано перевізнику (Нова Пошта).${d.trackingNumber ? `<br><br>ТТН: <strong>${d.trackingNumber}</strong> — відстежуйте на <a href="https://novaposhta.ua" style="color:#1E3A5F;font-weight:600;">novaposhta.ua</a>` : ''}`,
+    body: d => {
+      const c = carrierInfo(d.deliveryType);
+      const track = d.trackingNumber
+        ? `<br><br>Номер: <strong>${d.trackingNumber}</strong>${c.trackUrl
+            ? ` — відстежуйте на <a href="${c.trackUrl}" style="color:#1E3A5F;font-weight:600;">${c.trackUrl.replace(/^https?:\/\//, '')}</a>`
+            : ''}`
+        : '';
+      return `Замовлення <strong>№${d.orderNumber}</strong> передано перевізнику (${c.name}).${track}`;
+    },
   },
   delivered: {
     emoji: '🎉',

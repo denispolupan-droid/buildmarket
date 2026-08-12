@@ -65,6 +65,7 @@ export function notifyPaidCardOrder(order: PaidCardOrder): void {
       orderNumber: order.order_number, orderId: order.id,
       company: order.company ?? '', contact: order.contact,
       totalPrice: order.total_price, paymentType: 'card',
+      deliveryType: order.delivery_type ?? null,
       userId: null, invoiceUrl: `${siteUrl}/invoice/${order.id}`, siteUrl,
     }),
   }).catch(err => alertAdmin(`Лист про оплату #${order.order_number} не пішов покупцю (${order.email})`, err));
