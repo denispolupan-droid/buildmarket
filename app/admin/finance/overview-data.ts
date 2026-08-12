@@ -82,7 +82,7 @@ export type OverviewData = {
   dynamics: {
     /* Продажі по днях СТВОРЕННЯ (без скасованих, вкл. в дорозі); прибуток —
        очікуваний. null = майбутній день (вісь докладена до кінця місяця) */
-    daily: { labels: string[]; revenue: (number | null)[]; profit: (number | null)[]; counts: number[] };
+    daily: { labels: string[]; dows: string[]; revenue: (number | null)[]; profit: (number | null)[]; counts: number[] };
     /* Джерела з деталями: сер. чек, очікуваний прибуток каналу (та сама
        методика, що KPI «Прибуток») і виручка попереднього періоду для дельти */
     sources: { code: string; count: number; revenue: number; share: number; avgCheck: number; profit: number; margin: number | null; prevRevenue: number }[];
@@ -539,6 +539,8 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const srcDays = chartDays ? chartWinDays : days;
   const dIdx = new Map(srcDays.map((d, i) => [d, i]));
   const dLabels = srcDays.map(d => `${d.slice(8, 10)}.${d.slice(5, 7)}`);
+  const DOW = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+  const dDows = srcDays.map(d => DOW[new Date(`${d}T00:00:00Z`).getUTCDay()]);
   const dRev: (number | null)[]  = new Array(srcDays.length).fill(0);
   const dProf: (number | null)[] = new Array(srcDays.length).fill(0);
   const dCnt: number[] = new Array(srcDays.length).fill(0);
@@ -558,6 +560,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     const dim = new Date(Number(fromStr.slice(0, 4)), Number(fromStr.slice(5, 7)), 0).getDate();
     for (let dd = srcDays.length + 1; dd <= dim; dd++) {
       dLabels.push(`${String(dd).padStart(2, '0')}.${fromStr.slice(5, 7)}`);
+      dDows.push(DOW[new Date(`${fromStr.slice(0, 8)}${String(dd).padStart(2, '0')}T00:00:00Z`).getUTCDay()]);
       dRev.push(null); dProf.push(null); dCnt.push(0);
     }
   }
@@ -581,7 +584,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     else cumFact.push(null);   // майбутні дні — лінія обривається сьогодні
   }
   const dynamics = {
-    daily: { labels: dLabels, revenue: dRev, profit: dProf, counts: dCnt },
+    daily: { labels: dLabels, dows: dDows, revenue: dRev, profit: dProf, counts: dCnt },
     sources: sourcesDetailed,
     planCum: {
       labels: cumLabels,

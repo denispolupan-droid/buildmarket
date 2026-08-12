@@ -10,7 +10,7 @@ import { useState } from 'react';
 // Все — власний SVG, без бібліотек.
 
 type Dynamics = {
-  daily: { labels: string[]; revenue: (number | null)[]; profit: (number | null)[]; counts: number[] };
+  daily: { labels: string[]; dows: string[]; revenue: (number | null)[]; profit: (number | null)[]; counts: number[] };
   sources: { code: string; count: number; revenue: number; share: number; avgCheck: number; profit: number; margin: number | null; prevRevenue: number }[];
   planCum: { labels: string[]; fact: (number | null)[]; plan: number[] | null; monthLabel: string };
 };
@@ -105,19 +105,29 @@ function DayBars({ d }: { d: Dynamics['daily'] }) {
           </g>
         );
       })}
+      {/* Два рядки в тому самому нижньому полі (полотно не росте):
+          дата + день тижня; вихідні — темніші */}
       {d.labels.map((l, i) => {
         const ms = monthStart(i);
         const show = ms || (labelEvery === 1 ? true : ((n - 1 - i) % labelEvery === 0 && !nearMonthStart(i)));
-        return show ? (
-          <text key={i} x={cx(i)} y={H - 6} textAnchor="middle" fontSize={ms ? '10.5' : '10'} fontWeight={ms ? 600 : 400} fill="var(--text-muted)">
-            {ms ? l : String(Number(l.slice(0, 2)))}
-          </text>
-        ) : null;
+        if (!show) return null;
+        const weekend = d.dows[i] === 'Сб' || d.dows[i] === 'Нд';
+        return (
+          <g key={i}>
+            <text x={cx(i)} y={H - 15} textAnchor="middle" fontSize={ms ? '10.5' : '10'} fontWeight={ms ? 600 : 400} fill="var(--text-muted)">
+              {ms ? l : String(Number(l.slice(0, 2)))}
+            </text>
+            <text x={cx(i)} y={H - 4} textAnchor="middle" fontSize="8.5" fontWeight={weekend ? 600 : 400}
+              fill={weekend ? 'var(--text-secondary)' : 'var(--text-muted)'} opacity={weekend ? 1 : 0.75}>
+              {d.dows[i]}
+            </text>
+          </g>
+        );
       })}
     </svg>
-    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-      Сума створених замовлень за день (без скасованих, вкл. ті, що в дорозі).
-      Прибуток — очікуваний: по доставлених факт з обліку, по решті оцінка.
+    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+      title="Продажі — сума створених замовлень за день (без скасованих, включно з тими, що в дорозі). Прибуток — очікуваний: по доставлених факт з обліку, по решті оцінка.">
+      Продажі — створені замовлення за день, вкл. в дорозі · прибуток — очікуваний (факт по доставлених, оцінка по решті)
     </div>
     </div>
   );
