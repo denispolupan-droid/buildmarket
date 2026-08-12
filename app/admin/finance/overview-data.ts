@@ -70,11 +70,6 @@ export type OverviewData = {
   mpTransit: { prom: number; rozetka: number };
   ar: { total: number; overdueCount: number; overdueSum: number };
   ap: { total: number };
-  lowStockCount: number;
-  attention: {
-    pendingPayment: { count: number; sum: number };
-    awaitingStock: { count: number };
-  };
   today: {
     orders: number; revenue: number; shipped: number;
     paidCount: number; paidSum: number; avgCheck: number | null;
@@ -172,7 +167,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
   }
 
-  const [ledgerRows, orderRows, balRows, arRows, agingRows, apRows, lowStockRows, attnRows, promBal, rozetkaBal, todayRows, monthlyLedger, monthlyOrders, payToday, pipelineRows, refusedRows] = await Promise.all([
+  const [ledgerRows, orderRows, balRows, arRows, agingRows, apRows, promBal, rozetkaBal, todayRows, monthlyLedger, monthlyOrders, payToday, pipelineRows, refusedRows] = await Promise.all([
     // 1. Леджер за поточний + попередній період (для дельт) — щоденні ряди
     fetchAllRows<{ business_date: string; account_type: string; doc_type: string | null; amount: number }>((f, t) => {
       let q = db.from('money_entries')
@@ -203,10 +198,6 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     db.from('ar_aging').select('balance, days_overdue').gt('days_overdue', 0).then(r => r.data ?? []),
     // 6. Кредиторка (кеш балансів; від'ємний баланс = ми винні)
     db.from('counterparty_balances').select('balance').eq('account_type', 'supplier').then(r => r.data ?? []),
-    // 7. Низькі залишки складу
-    db.from('stock_balance').select('qty_available, min_reorder_qty').gt('min_reorder_qty', 0).then(r => r.data ?? []),
-    // 8. Поточні статуси, що потребують уваги (незалежно від періоду)
-    db.from('orders').select('status, total_price').in('status', ['pending_payment', 'awaiting_stock']).then(r => r.data ?? []),
     getMarketplaceBalance('prom'),
     getMarketplaceBalance('rozetka'),
     // Замовлення/відправлення за сьогодні + вчора (для порівняння) —
@@ -398,11 +389,6 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const arTotal = (arRows as { balance: number }[]).reduce((s, r) => s + Math.max(0, Number(r.balance)), 0);
   const overdue = agingRows as { balance: number; days_overdue: number }[];
   const apTotal = (apRows as { balance: number }[]).reduce((s, r) => s + Math.max(0, -Number(r.balance)), 0);
-  const lowStockCount = (lowStockRows as { qty_available: number; min_reorder_qty: number }[])
-    .filter(r => Number(r.qty_available) <= Number(r.min_reorder_qty)).length;
-  const attn = attnRows as { status: string; total_price: number }[];
-  const pendingPayment = attn.filter(a => a.status === 'pending_payment');
-
   const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 1000) / 10 : null);
 
   // ── Очікуваний валовий прибуток по замовленнях (та сама база, що orderSum:
@@ -642,11 +628,6 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       overdueSum: overdue.reduce((s, r) => s + Number(r.balance), 0),
     },
     ap: { total: apTotal },
-    lowStockCount,
-    attention: {
-      pendingPayment: { count: pendingPayment.length, sum: pendingPayment.reduce((s, a) => s + Number(a.total_price ?? 0), 0) },
-      awaitingStock: { count: attn.filter(a => a.status === 'awaiting_stock').length },
-    },
     today: {
       orders: todayOrders.length,
       revenue: sum(todayOrders),

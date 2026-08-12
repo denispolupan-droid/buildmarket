@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
-import { ChevronRight, ShoppingCart, Truck, Coins, Receipt } from 'lucide-react';
+import { ShoppingCart, Truck, Coins, Receipt } from 'lucide-react';
 import FinanceTabs from './FinanceTabs';
 import FinanceActions from './FinanceActions';
 import PlanCard from './PlanCard';
@@ -39,13 +39,6 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
     customer_id: c.customer_id, customer_name: c.customer_name,
     balance: Number(c.balance),
   }));
-
-  const attention: { tone: 'red' | 'orange' | 'green'; text: string; sub: string; href: string }[] = [];
-  if (ov.ar.overdueCount > 0) attention.push({ tone: 'red', text: `${ov.ar.overdueCount} прострочених оплат`, sub: `Сума: ${fmt(ov.ar.overdueSum)} ₴`, href: '/admin/finance/aging' });
-  if (ov.attention.pendingPayment.count > 0) attention.push({ tone: 'orange', text: `${ov.attention.pendingPayment.count} замовлень очікують оплати`, sub: `Сума: ${fmt(ov.attention.pendingPayment.sum)} ₴`, href: '/admin' });
-  if (ov.attention.awaitingStock.count > 0) attention.push({ tone: 'orange', text: `${ov.attention.awaitingStock.count} замовлень очікують товар`, sub: 'Перевірте надходження', href: '/admin' });
-  if (ov.lowStockCount > 0) attention.push({ tone: 'orange', text: `Низький залишок: ${ov.lowStockCount} SKU`, sub: 'Нижче точки дозамовлення', href: '/admin/procurement' });
-  if (attention.length === 0) attention.push({ tone: 'green', text: 'Критичних питань немає', sub: 'Борги і залишки в нормі', href: '/admin/finance/aging' });
 
   return (
     <div style={{ padding: '28px 32px 64px', maxWidth: '1400px' }}>
@@ -111,7 +104,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
         ))}
       </div>
 
-      {/* Стадії зараз · Динаміка · Потребує уваги */}
+      {/* Стадії зараз · Динаміка */}
       <div className="fin-grid-12" style={{ marginTop: '16px' }}>
         <div className="fin-card" style={{ gridColumn: 'span 4' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px' }}>
@@ -157,7 +150,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
           </div>
         </div>
 
-        <div className="fin-card" style={{ gridColumn: 'span 5' }}>
+        <div className="fin-card" style={{ gridColumn: 'span 8' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <div className="fin-card-title">
               {ov.chartWindow ? `Динаміка · ${chartDays} днів` : 'Динаміка за період'} <span className="fin-card-sub">· факт з обліку</span>
@@ -187,22 +180,6 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
           </div>
           <div style={{ marginTop: '10px' }}>
             <DynamicsCarousel data={ov.dynamics} />
-          </div>
-        </div>
-
-        <div className="fin-card" style={{ gridColumn: 'span 3', padding: '18px' }}>
-          <div className="fin-card-title">Потребує уваги <span className="fin-card-sub">· стан на зараз</span></div>
-          <div style={{ display: 'flex', flexDirection: 'column', marginTop: '8px' }}>
-            {attention.map((a, i) => (
-              <Link key={i} href={a.href} className="fin-attn">
-                <span className={`fin-dot big ${a.tone}`} />
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{a.text}</span>
-                  <span style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)' }}>{a.sub}</span>
-                </span>
-                <ChevronRight size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-              </Link>
-            ))}
           </div>
         </div>
       </div>

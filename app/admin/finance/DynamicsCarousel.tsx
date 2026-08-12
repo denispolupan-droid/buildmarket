@@ -38,13 +38,13 @@ function fmt(n: number) {
    панель робить його рельєф видимим. Тижні стоять щільно (крок ≤ 64px,
    блок центрується), стовпчики тонкі, поверх — пунктирний тренд. */
 function WeekBars({ w }: { w: Dynamics['weeks'] }) {
-  // W ≈ реальній ширині картки → масштаб ~1:1, шрифти і стовпчики не міліють
-  const W = 560, H = 258, padL = 44, padR = 6;
+  // W ≈ реальній ширині картки (span 8) → масштаб ~1:1, шрифти і стовпчики не міліють
+  const W = 900, H = 258, padL = 44, padR = 6;
   const iw = W - padL - padR;
   const n = Math.max(w.labels.length, 1);
-  const groupW = Math.min(68, iw / n);
+  const groupW = Math.min(84, iw / n);
   const blockX = padL + (iw - groupW * n) / 2;
-  const barW = Math.min(26, groupW * 0.44);
+  const barW = Math.min(30, groupW * 0.44);
   const cx = (i: number) => blockX + groupW * i + groupW / 2;
   const fmtAxis = (v: number) => (Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v)));
 
@@ -107,7 +107,7 @@ function SourcesDonut({ sources }: { sources: Dynamics['sources'] }) {
   const R = 80, SW = 30, C = 2 * Math.PI * R;
   let acc = 0;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '30px', minHeight: 224, flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '46px', minHeight: 224, flexWrap: 'wrap', paddingLeft: '14px' }}>
       <svg width="224" height="224" viewBox="0 0 224 224" role="img" aria-label="Джерела замовлень">
         <g transform="rotate(-90 112 112)">
           {parts.map(s => {
@@ -151,7 +151,7 @@ function SourcesDonut({ sources }: { sources: Dynamics['sources'] }) {
 
 /* ── Накопичення продажів місяця проти рівномірного темпу плану ──────────── */
 function PlanCumChart({ p }: { p: Dynamics['planCum'] }) {
-  const W = 560, H = 232, padL = 48, padB = 22, padT = 10, padR = 8;
+  const W = 900, H = 232, padL = 48, padB = 22, padT = 10, padR = 8;
   const iw = W - padL - padR, ih = H - padT - padB;
   const factVals = p.fact.filter((v): v is number => v !== null);
   const maxV = Math.max(...factVals, ...(p.plan ?? [0]), 1);
