@@ -48,8 +48,8 @@ function DayBars({ d }: { d: Dynamics['daily'] }) {
   const barW = Math.max(2.5, Math.min(24, groupW * 0.66));
   const cx = (i: number) => blockX + groupW * i + groupW / 2;
   const fmtAxis = (v: number) => (Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v)));
-  // Підписи: кожен день номером, поки влазить (крок ≥15px); перший день і
-  // 1-ші числа місяців — повним «ДД.ММ», щоб місяць не губився
+  // Підписи: кожен день номером, поки влазить (крок ≥15px); 1-ші числа
+  // місяців — теж числом, але жирні (маркер межі; місяць видно з періоду)
   const labelEvery = groupW >= 15 ? 1 : Math.ceil(15 / groupW);
   const monthStart = (i: number) => i === 0 || d.labels[i].slice(0, 2) === '01';
   const nearMonthStart = (i: number) => (i > 0 && monthStart(i - 1)) || (i < n - 1 && monthStart(i + 1));
@@ -68,7 +68,8 @@ function DayBars({ d }: { d: Dynamics['daily'] }) {
   const minProf = Math.min(0, ...profVals);
   const panels = [
     { top: 16, h: 128, min: 0, max: maxRev, vals: revVals, color: () => 'var(--brand-blue)', trend: 'var(--brand-blue)', label: 'Продажі', tip: (i: number, v: number) => `${d.labels[i]}: продажі ${fmt(v)} ₴ · ${d.counts[i]} зам.` },
-    { top: 172, h: 62, min: minProf, max: maxProf, vals: profVals, color: (v: number) => (v >= 0 ? '#15803D' : '#DC2626'), trend: '#15803D', label: 'Прибуток · очік.', tip: (i: number, v: number) => `${d.labels[i]}: очікуваний прибуток ${fmt(v)} ₴` },
+    // Нижня межа 222 — лишає ~14px повітря до рядка дат у тому ж полотні
+    { top: 166, h: 56, min: minProf, max: maxProf, vals: profVals, color: (v: number) => (v >= 0 ? '#15803D' : '#DC2626'), trend: '#15803D', label: 'Прибуток · очік.', tip: (i: number, v: number) => `${d.labels[i]}: очікуваний прибуток ${fmt(v)} ₴` },
   ];
 
   return (
@@ -114,8 +115,8 @@ function DayBars({ d }: { d: Dynamics['daily'] }) {
         const weekend = d.dows[i] === 'Сб' || d.dows[i] === 'Нд';
         return (
           <g key={i}>
-            <text x={cx(i)} y={H - 15} textAnchor="middle" fontSize={ms ? '10.5' : '10'} fontWeight={ms ? 600 : 400} fill="var(--text-muted)">
-              {ms ? l : String(Number(l.slice(0, 2)))}
+            <text x={cx(i)} y={H - 14} textAnchor="middle" fontSize="10" fontWeight={ms ? 700 : 400} fill={ms ? 'var(--text-secondary)' : 'var(--text-muted)'}>
+              {String(Number(l.slice(0, 2)))}
             </text>
             <text x={cx(i)} y={H - 4} textAnchor="middle" fontSize="8.5" fontWeight={weekend ? 600 : 400}
               fill={weekend ? 'var(--text-secondary)' : 'var(--text-muted)'} opacity={weekend ? 1 : 0.75}>
