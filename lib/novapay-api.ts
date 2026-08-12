@@ -131,17 +131,23 @@ export async function refreshNovapayBalance(): Promise<NovapayLiveBalance | null
   try {
     const jwt = await authenticate(db);
 
-    // Рахунки: id кешуємо, щоб не смикати список щоразу
+    // Рахунки: підприємство → рахунки (GetAccountsList вимагає client_id);
+    // id кешуємо, щоб не смикати повільні списки щоразу
     let accountIds: number[] = [];
     const cachedIds = await setting(db, 'novapay_account_ids');
     if (cachedIds) {
       try { accountIds = JSON.parse(cachedIds) as number[]; } catch { /* перечитаємо */ }
     }
     if (!accountIds.length) {
-      const listXml = await soapCall('GetAccountsList', { request_ref: crypto.randomUUID(), jwt });
-      accountIds = tags(listXml, 'account_id').map(Number).filter(Number.isFinite);
-      // Фолбек: інколи id лежить у тегу id всередині accounts
-      if (!accountIds.length) accountIds = tags(listXml, 'id').map(Number).filter(Number.isFinite);
+      let clientId = await setting(db, 'novapay_client_id');
+      if (!clientId) {
+        const clientsXml = await soapCall('GetClientsList', { request_ref: crypto.randomUUID(), jwt });
+        clientId = tag(clientsXml, 'id');
+        if (clientId) await db.from('app_settings').upsert({ key: 'novapay_client_id', value: clientId });
+      }
+      if (!clientId) throw new Error('NovaPay: не знайдено підприємства в GetClientsList');
+      const listXml = await soapCall('GetAccountsList', { request_ref: crypto.randomUUID(), jwt, client_id: clientId });
+      accountIds = tags(listXml, 'id').map(Number).filter(Number.isFinite);
       if (accountIds.length) await db.from('app_settings').upsert({ key: 'novapay_account_ids', value: JSON.stringify(accountIds) });
     }
     if (!accountIds.length) throw new Error('NovaPay: не знайдено жодного рахунку в GetAccountsList');
