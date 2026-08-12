@@ -501,7 +501,7 @@ export function buildInvoiceHtml(d: InvoiceData): string {
       ? `<div style="margin:0 32px 24px;background:#F0FDF4;border-radius:12px;padding:20px;border:1px solid #BBF7D0;">
           <div style="font-size:12px;font-weight:700;color:#15803D;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Спосіб оплати</div>
           <div style="font-size:14px;font-weight:600;color:#0F172A;">Оплата при отриманні (накладений платіж)</div>
-          <div style="font-size:12px;color:#64748B;margin-top:4px;">Оплата здійснюється при отриманні товару у відділенні Нової Пошти.</div>
+          <div style="font-size:12px;color:#64748B;margin-top:4px;">Оплата здійснюється при отриманні товару у відділенні перевізника.</div>
         </div>`
       : `<div style="margin:0 32px 24px;background:#EFF4FF;border-radius:12px;padding:20px;">
           <div style="font-size:12px;font-weight:700;color:#1E3A5F;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">Реквізити для оплати</div>
@@ -525,7 +525,7 @@ export function buildInvoiceHtml(d: InvoiceData): string {
     <!-- Delivery note -->
     <div style="margin:0 32px 16px;background:#FFFBEB;border-radius:10px;padding:14px 18px;border:1px solid #FDE68A;">
       <div style="font-size:11px;color:#92400E;line-height:1.6;">
-        📦 Вартість доставки не включена до рахунку. Доставка здійснюється за тарифами Нової Пошти та оплачується отримувачем окремо. Ми не несемо відповідальності за вартість і терміни доставки.
+        📦 Вартість доставки не включена до рахунку. Доставка здійснюється за тарифами перевізника та оплачується отримувачем окремо. Ми не несемо відповідальності за вартість і терміни доставки.
       </div>
     </div>
 

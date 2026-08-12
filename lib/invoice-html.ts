@@ -118,7 +118,7 @@ export function buildInvoiceHtml(params: {
       <div style="margin-top:14px;background:#F0FDFA;border:1px solid #99F6E4;border-radius:8px;padding:12px 16px;
                   font-size:12.5px;color:#0F766E;line-height:1.65;">
         💡 Після оплати повідомте нас, будь ласка, — замовлення, оплачені до <strong>14:00</strong>,
-        відправляємо Новою Поштою того ж дня.
+        відправляємо того ж дня.
       </div>
     </div>
   </div>` : '';

@@ -2,20 +2,21 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
 import { Truck, Clock, MapPin, Package, CreditCard, Phone } from 'lucide-react';
+import { NP_BRANCHES, RZ_POINTS, RZ_CITIES } from '../../../lib/site';
 
 const BASE = 'https://fixline.com.ua';
 
 export const metadata: Metadata = {
   title: 'Условия доставки',
-  description: 'Доставка строительной химии по всей Украине. Новая Почта, адресная доставка. Заказ до 14:00 — отправка в тот же день.',
-  keywords: ['доставка строительная химия', 'Новая Почта стройматериалы', 'условия доставки'],
+  description: `Доставка строительной химии по всей Украине: Новая Почта, ${RZ_POINTS} точек выдачи ROZETKA, адресная доставка. Заказ до 14:00 — отправка в тот же день.`,
+  keywords: ['доставка строительная химия', 'Новая Почта стройматериалы', 'точки выдачи ROZETKA', 'условия доставки'],
   alternates: {
     canonical: `${BASE}/ru/delivery`,
     languages: { 'uk': `${BASE}/delivery`, 'ru': `${BASE}/ru/delivery`, 'x-default': `${BASE}/delivery` },
   },
   openGraph: {
     title: 'Условия доставки — FIXLINE',
-    description: 'Доставка по всей Украине. Новая Почта, адресная доставка. Отправка в день заказа.',
+    description: 'Доставка по всей Украине. Новая Почта, точки выдачи ROZETKA, адресная доставка. Отправка в день заказа.',
     url: `${BASE}/ru/delivery`,
     siteName: 'FIXLINE',
     locale: 'ru_RU',
@@ -63,9 +64,30 @@ export default function DeliveryRuPage() {
                 Доставка до отделения или постамата Новой Почты по всей Украине. Самый быстрый и удобный способ для большинства заказов.
               </p>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {['Доставка 1–2 дня', 'Более 6000 отделений по Украине', 'Отслеживание посылки в реальном времени', 'Наложенный платёж или предоплата'].map(i => (
+                {/* Число отделений — из lib/site: здесь стояло «более 6000», а на
+                    главной 28 000, и страницы противоречили друг другу */}
+                {['Доставка 1–2 дня', `Более ${NP_BRANCHES.toLocaleString('ru-RU')} отделений и почтоматов по Украине`, 'Отслеживание посылки в реальном времени', 'Наложенный платёж или предоплата'].map(i => (
                   <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                     <span style={{ color: '#4880B8', flexShrink: 0, marginTop: '2px' }}>✓</span>{i}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Package size={20} color="#15803D" strokeWidth={2} />
+                </div>
+                <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Точки выдачи ROZETKA</h2>
+              </div>
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 12px' }}>
+                Забираете заказ в магазине или точке выдачи ROZETKA — удобно, если вы и так бываете рядом.
+              </p>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {[`${RZ_POINTS} точек выдачи в ${RZ_CITIES} городах Украины`, 'Наложенный платёж или предоплата', 'Отслеживание посылки на rozetka.delivery', 'Появляется в корзине, если заказ подходит точке по весу'].map(i => (
+                  <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                    <span style={{ color: '#15803D', flexShrink: 0, marginTop: '2px' }}>✓</span>{i}
                   </li>
                 ))}
               </ul>
@@ -99,7 +121,7 @@ export default function DeliveryRuPage() {
               {[
                 { icon: Clock,      title: 'Обработка заказа',   text: 'Заказы, размещённые до 14:00 в рабочие дни, отправляем в тот же день. Заказы после 14:00 — на следующий рабочий день.' },
                 { icon: Package,    title: 'Упаковка',            text: 'Товар упаковывается в картонные коробки с наполнителем. Для хрупких и жидких материалов — усиленная упаковка без дополнительной оплаты.' },
-                { icon: CreditCard, title: 'Оплата при получении', text: 'Наложенный платёж через Новую Почту — оплачиваете при получении посылки. Для оптовых клиентов — предоплата на счёт или через платёжную систему.' },
+                { icon: CreditCard, title: 'Оплата при получении', text: 'Наложенный платёж — оплачиваете при получении посылки в отделении НП или в точке выдачи ROZETKA. Для оптовых клиентов — предоплата на счёт или через платёжную систему.' },
               ].map(({ icon: Icon, title, text }) => (
                 <div key={title} style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
                   <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--border)' }}>

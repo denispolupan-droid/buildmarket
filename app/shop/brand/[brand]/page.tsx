@@ -109,7 +109,7 @@ export default async function ShopBrandPage({ params }: { params: Promise<{ bran
             {brand} — купити в Україні
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '0 0 24px', lineHeight: 1.6 }}>
-            Широкий асортимент продукції {brand} за вигідними цінами. Оптові та роздрібні умови, швидка доставка Новою Поштою по всій Україні.
+            Широкий асортимент продукції {brand} за вигідними цінами. Оптові та роздрібні умови, швидка доставка Новою Поштою або в точки видачі ROZETKA по всій Україні.
           </p>
           <ShopLoader initialBrand={brand} />
           <AllProductsLinks products={allBrandProducts} lang="uk" />

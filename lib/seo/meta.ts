@@ -2,7 +2,11 @@ import type { Metadata } from 'next';
 import type { Category, ProductFull, ProductStockPublic } from '../../types';
 
 // Єдиний модуль генерації метатегів (SEO_SPEC, Фаза 2).
-// Таргетинг національний: «купити в Україні», доставка Нова Пошта.
+// Таргетинг національний: «купити в Україні», доставка Нова Пошта і точки ROZETKA.
+//
+// Рядок доставки тримаємо в тій самій довжині, що й раніше (32 символи): він
+// входить у бюджет description на 160 символів, і кожен зайвий символ ріже
+// УНІКАЛЬНУ частину опису — те єдине, чим сторінки відрізняються одна від одної.
 // Місто в title/description товарів і категорій не зашиваємо.
 
 const BASE = 'https://fixline.com.ua';
@@ -18,7 +22,7 @@ const T = {
     uah: 'грн',
     inStock: 'в наявності',
     onOrder: 'під замовлення',
-    delivery: 'Доставка Новою Поштою по Україні.',
+    delivery: 'Доставка Новою Поштою і ROZETKA.',
     price: 'Ціна',
     goods: 'товарів',
     pricesFromTo: (min: number, max: number) => `ціни від ${min} до ${max} грн`,
@@ -33,7 +37,7 @@ const T = {
     uah: 'грн',
     inStock: 'в наличии',
     onOrder: 'под заказ',
-    delivery: 'Доставка Новой Почтой по Украине.',
+    delivery: 'Доставка Новой Почтой и ROZETKA.',
     price: 'Цена',
     goods: 'товаров',
     pricesFromTo: (min: number, max: number) => `цены от ${min} до ${max} грн`,

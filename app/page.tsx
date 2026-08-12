@@ -149,7 +149,7 @@ export default async function Home() {
               </h1>
               <p style={{ fontSize: '16px', color: '#94A3B8', lineHeight: 1.7, margin: 0, maxWidth: '620px' }}>
                 Герметики, монтажні піни, клеї та ґрунтовки від провідних брендів.
-                Відправка в день замовлення, Нова Пошта по всій Україні.
+                Відправка в день замовлення: Нова Пошта або точки видачі ROZETKA по всій Україні.
               </p>
             </Reveal>
             <Reveal delay={110}>
@@ -216,7 +216,7 @@ export default async function Home() {
               { icon: Store,        title: 'Магазин або Опт',        text: 'Обирайте формат: роздріб від 1 шт або оптові умови для бізнесу', color: '#6366F1' },
               { icon: ShoppingCart, title: 'Оформіть замовлення',     text: 'Додайте товари в кошик або надішліть запит менеджеру',          color: '#4880B8' },
               { icon: Phone,        title: 'Підтвердження',           text: 'Менеджер підтвердить замовлення та узгодить деталі',             color: '#0891B2' },
-              { icon: Truck,        title: 'Доставка Новою Поштою',   text: 'Отримайте замовлення у будь-якому відділенні України',           color: '#D97706' },
+              { icon: Truck,        title: 'Доставка',                text: 'Нова Пошта або точка видачі ROZETKA — у будь-якому місті України', color: '#D97706' },
             ].map(({ icon: Icon, title, text, color }, i) => (
               <Reveal key={title} delay={i * 110}>
                 <div className="home-step-card" style={{

@@ -315,7 +315,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
           <span><Tag size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Категория:</span> <Link href={productCat ? `/ru/shop/${productCat.slug}` : '/ru/shop'} style={{color:'var(--brand-main)'}}>{categoryName}</Link></span>
           <span><BadgeCheck size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Бренд:</span> <Link href={`/ru/shop/brand/${brandToSlug(product.brand)}`} style={{color:'var(--brand-main)'}}>{product.brand}</Link></span>
           <span><Box size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Упаковка:</span> {product.pack_qty} шт</span>
-          <span><Truck size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Доставка:</span> Новая Почта</span>
+          <span><Truck size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Доставка:</span> Новая Почта · ROZETKA</span>
         </div>
 
         <ProductTabs

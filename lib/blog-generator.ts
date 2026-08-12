@@ -270,7 +270,7 @@ export async function generateBlogPost(
     output_config: { format: { type: 'json_schema', schema: OUTPUT_SCHEMA } },
     messages: [{
       role: 'user',
-      content: `Ти — редактор блогу українського інтернет-магазину будівельної хімії FIXLINE (fixline.com.ua, доставка Новою Поштою по всій Україні). Пиши практичні статті для домашніх майстрів і будівельних бригад.
+      content: `Ти — редактор блогу українського інтернет-магазину будівельної хімії FIXLINE (fixline.com.ua, доставка Новою Поштою та в точки видачі ROZETKA по всій Україні). Пиши практичні статті для домашніх майстрів і будівельних бригад.
 
 Напиши статтю на тему: "${topic}"
 ${boostBlock}${linkBlock}

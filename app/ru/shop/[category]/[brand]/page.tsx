@@ -171,7 +171,7 @@ export default async function ShopCategoryBrandRuPage(
             {brandName} — {catNameRu.toLowerCase()}
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '0 0 24px', lineHeight: 1.6 }}>
-            {count} товаров бренда {brandName} в категории «{catNameRu}». Выгодные цены, доставка Новой Почтой по всей Украине.
+            {count} товаров бренда {brandName} в категории «{catNameRu}». Выгодные цены, доставка Новой Почтой или в точки выдачи ROZETKA по всей Украине.
           </p>
 
           <ShopLoader initialCategory={category} initialBrand={brandName} />

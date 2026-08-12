@@ -4,7 +4,7 @@ import { createServiceClient } from '../../../../../../lib/supabase';
 import { resolveOrderFulfillment } from '../../../../../../lib/accounting/fulfillment';
 import { createReservation, getReservationTtlDays, computeExpiresAt } from '../../../../../../lib/accounting/reservations';
 import { createDocument } from '../../../../../../lib/accounting/documents';
-import { notifyAdminStatusChange, notifyCustomerStatus } from '../../../../../../lib/telegram';
+import { notifyCustomerStatus } from '../../../../../../lib/telegram';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../../lib/rozetka-api';
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../../lib/prom-api';
 
@@ -178,15 +178,11 @@ export async function POST(
     await db.from('orders').update({ status: newStatus, fulfillment_mode, confirmed_at: confirmedAt }).eq('id', id);
   }
 
-  // Telegram (best-effort, не впливає на результат)
+  // Telegram клієнту (best-effort): підтвердження йде через цей роут, а не
+  // через загальний PATCH статусу, тож без цього виклику покупець з
+  // прив'язаним ботом не отримував «Замовлення підтверджено».
+  // Адміну зміну статусу не шлемо — рішення власника, він сам її і зробив.
   try {
-    notifyAdminStatusChange(
-      { order_number: order.order_number, contact: order.contact, phone: order.phone },
-      newStatus,
-    );
-    // Клієнту — теж: підтвердження йде через цей роут, а не через загальний
-    // PATCH статусу, тож без цього виклику покупець з прив'язаним ботом
-    // не отримував «Замовлення підтверджено»
     if (order.telegram_chat_id) {
       notifyCustomerStatus(order.telegram_chat_id, order.order_number, newStatus, order.tracking_number, order.delivery_type);
     }

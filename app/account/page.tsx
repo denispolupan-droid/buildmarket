@@ -17,6 +17,7 @@ const serviceClient = createClient(
 import Footer from '../components/Footer';
 import { Package, ShoppingBag, User, MapPin, CreditCard, XCircle, Truck } from 'lucide-react';
 import RepeatOrderButton from './RepeatOrderButton';
+import { carrierInfo, trackHref } from '../../lib/delivery-label';
 
 const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
   new:       { label: 'Нове',         color: '#1E3A5F', bg: '#EFF4FF' },
@@ -295,15 +296,16 @@ export default async function AccountPage({
                           <CreditCard size={12} />
                           {PAYMENT_LABEL[order.payment_type] ?? order.payment_type}
                         </span>
-                        {order.tracking_number && (
-                          <a
-                            href={`https://novaposhta.ua/tracking/?cargo_number=${order.tracking_number}`}
-                            target="_blank" rel="noopener noreferrer"
-                            style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#4880B8', fontWeight: 600, textDecoration: 'none' }}
-                          >
-                            🚚 ТТН: {order.tracking_number}
-                          </a>
-                        )}
+                        {/* Посилання на трекінг СВОГО перевізника: раніше будь-який
+                            номер вів у Нову Пошту, і накладна ROZETKA там не знаходилась */}
+                        {order.tracking_number && (() => {
+                          const href = trackHref(order.delivery_type, order.tracking_number);
+                          const label = `🚚 ${carrierInfo(order.delivery_type).name}: ${order.tracking_number}`;
+                          const style = { display: 'flex', alignItems: 'center', gap: '5px', color: '#4880B8', fontWeight: 600, textDecoration: 'none' } as const;
+                          return href
+                            ? <a href={href} target="_blank" rel="noopener noreferrer" style={style}>{label}</a>
+                            : <span style={{ ...style, color: 'var(--text-secondary)' }}>{label}</span>;
+                        })()}
                       </div>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
                         <RepeatOrderButton items={order.items as OrderItem[]} />

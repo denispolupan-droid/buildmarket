@@ -14,3 +14,11 @@ export const WHOLESALE_MIN = 3000;
 // звідки вона взялася і чи ще актуальна.
 // Звірено: 2026-08-09, за даними Нової Пошти.
 export const NP_BRANCHES = 28000;
+
+// Точки видачі ROZETKA — другий перевізник сайту. На відміну від НП, цифру можна
+// не оцінювати, а порахувати: GET /api/department?carrier=<Rozetka> віддає
+// total_count. Тримаємо тут із датою, щоб у розмітці не з'явився черговий
+// «понад 600», який ніхто не перевірить.
+// Звірено: 2026-08-12, GET https://rz-delivery.rozetka.ua/api/department.
+export const RZ_POINTS = 619;
+export const RZ_CITIES = 261;

@@ -49,6 +49,17 @@ export function carrierInfo(deliveryType?: string | null): CarrierInfo {
   return CARRIERS[(deliveryType ?? '').trim()] ?? NOVA;
 }
 
+/**
+ * Посилання на конкретну посилку. НП уміє глибокий лінк із номером у query,
+ * ROZETKA — ні (форма на сторінці), тому туди ведемо просто на трекінг. Номер
+ * підставляти навмання не можна: непрацюючий лінк гірший за його відсутність.
+ */
+export function trackHref(deliveryType: string | null | undefined, trackingNumber?: string | null): string | null {
+  const c = carrierInfo(deliveryType);
+  if (!c.trackUrl || !trackingNumber) return c.trackUrl;
+  return c === NOVA ? `${c.trackUrl}/tracking/?cargo_number=${encodeURIComponent(trackingNumber)}` : c.trackUrl;
+}
+
 export type DeliveryParts = {
   delivery_type?: string | null;
   delivery_subtype?: string | null;

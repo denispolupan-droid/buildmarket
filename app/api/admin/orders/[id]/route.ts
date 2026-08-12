@@ -5,7 +5,7 @@ import { createServiceClient } from '../../../../../lib/supabase';
 import { reverseDropshipLedgerExtras, syncSaleDraftLines } from '../../../../../lib/accounting/dropship';
 import { cancelDocument } from '../../../../../lib/accounting/documents';
 import { releaseReservation } from '../../../../../lib/accounting/reservations';
-import { notifyAdminStatusChange, notifyCustomerStatus } from '../../../../../lib/telegram';
+import { notifyCustomerStatus } from '../../../../../lib/telegram';
 import { buildCustomerStatusEmail } from '../../../../../lib/invoice-email';
 import { recordCustomerPayment, recordShipment } from '../../../../../lib/accounting/money';
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/prom-api';
@@ -370,10 +370,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         .single();
 
       if (order) {
-        notifyAdminStatusChange(
-          { order_number: order.order_number, contact: order.contact, phone: order.phone },
-          status,
-        );
         // Both channels, same as on order creation — Telegram when linked, email always
         // (email is the one channel every customer has, so it never gets skipped here).
         if (order.telegram_chat_id && ['confirmed', 'shipped', 'delivered', 'cancelled'].includes(status)) {

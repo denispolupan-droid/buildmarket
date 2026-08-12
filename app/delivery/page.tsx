@@ -2,15 +2,16 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../components/Footer';
 import { Truck, Clock, MapPin, Package, CreditCard, Phone } from 'lucide-react';
+import { NP_BRANCHES, RZ_POINTS, RZ_CITIES } from '../../lib/site';
 
 export const metadata: Metadata = {
   title: 'Умови доставки',
-  description: 'Доставка будівельної хімії по всій Україні. Нова Пошта, адресна доставка. Замовлення до 14:00 — відправка в той самий день.',
-  keywords: ['доставка будівельна хімія', 'Нова Пошта будматеріали', 'доставка строительная химия Украина', 'умови доставки'],
+  description: `Доставка будівельної хімії по всій Україні: Нова Пошта, ${RZ_POINTS} точок видачі ROZETKA, адресна доставка. Замовлення до 14:00 — відправка в той самий день.`,
+  keywords: ['доставка будівельна хімія', 'Нова Пошта будматеріали', 'точки видачі ROZETKA', 'доставка строительная химия Украина', 'умови доставки'],
   alternates: { canonical: 'https://fixline.com.ua/delivery', languages: { 'uk': 'https://fixline.com.ua/delivery', 'ru': 'https://fixline.com.ua/ru/delivery', 'x-default': 'https://fixline.com.ua/delivery' } },
   openGraph: {
     title: 'Умови доставки — FIXLINE',
-    description: 'Доставка по всій Україні. Нова Пошта, адресна доставка. Відправка в день замовлення.',
+    description: 'Доставка по всій Україні. Нова Пошта, точки видачі ROZETKA, адресна доставка. Відправка в день замовлення.',
     url: 'https://fixline.com.ua/delivery',
     siteName: 'FIXLINE',
     locale: 'uk_UA',
@@ -58,9 +59,31 @@ export default function DeliveryPage() {
                 Доставка до відділення або поштомату Нової Пошти по всій Україні. Найшвидший і найзручніший спосіб для більшості замовлень.
               </p>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {['Доставка 1–2 дні', 'Понад 6000 відділень по Україні', 'Відстеження посилки в реальному часі', 'Накладений платіж або передоплата'].map(i => (
+                {/* Кількість відділень — з lib/site (одна цифра на весь сайт):
+                    тут стояло «понад 6000», а на головній 28 000, і сторінки
+                    суперечили одна одній */}
+                {['Доставка 1–2 дні', `Понад ${NP_BRANCHES.toLocaleString('uk-UA')} відділень і поштоматів по Україні`, 'Відстеження посилки в реальному часі', 'Накладений платіж або передоплата'].map(i => (
                   <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                     <span style={{ color: '#4880B8', flexShrink: 0, marginTop: '2px' }}>✓</span>{i}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Package size={20} color="#15803D" strokeWidth={2} />
+                </div>
+                <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Точки видачі ROZETKA</h2>
+              </div>
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 12px' }}>
+                Забираєте замовлення у магазині або точці видачі ROZETKA — зручно, якщо ви й так буваєте поруч.
+              </p>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {[`${RZ_POINTS} точок видачі у ${RZ_CITIES} містах України`, 'Накладений платіж або передоплата', 'Відстеження посилки на rozetka.delivery', 'З\'являється в кошику, якщо замовлення підходить точці за вагою'].map(i => (
+                  <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                    <span style={{ color: '#15803D', flexShrink: 0, marginTop: '2px' }}>✓</span>{i}
                   </li>
                 ))}
               </ul>
@@ -94,7 +117,7 @@ export default function DeliveryPage() {
               {[
                 { icon: Clock,      title: 'Обробка замовлення',  text: 'Замовлення, розміщені до 14:00 у робочі дні, відправляємо в той самий день. Замовлення після 14:00 — наступного робочого дня.' },
                 { icon: Package,    title: 'Упаковка',            text: 'Товар упаковується в картонні коробки з наповнювачем. Для крихких і рідких матеріалів — посилена упаковка без додаткової оплати.' },
-                { icon: CreditCard, title: 'Оплата при отриманні', text: 'Накладений платіж — оплачуєте при отриманні посилки у відділенні перевізника. Для оптових клієнтів — передоплата на рахунок або через платіжну систему.' },
+                { icon: CreditCard, title: 'Оплата при отриманні', text: 'Накладений платіж — оплачуєте при отриманні посилки у відділенні НП або в точці видачі ROZETKA. Для оптових клієнтів — передоплата на рахунок або через платіжну систему.' },
               ].map(({ icon: Icon, title, text }) => (
                 <div key={title} style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
                   <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--border)' }}>

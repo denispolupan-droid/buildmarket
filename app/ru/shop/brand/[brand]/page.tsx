@@ -109,7 +109,7 @@ export default async function ShopBrandRuPage({ params }: { params: Promise<{ br
             {brand} — купить на Украине
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '0 0 24px', lineHeight: 1.6 }}>
-            Широкий ассортимент продукции {brand} по выгодным ценам. Оптовые и розничные условия, быстрая доставка Новой Почтой по всей Украине.
+            Широкий ассортимент продукции {brand} по выгодным ценам. Оптовые и розничные условия, быстрая доставка Новой Почтой или в точки выдачи ROZETKA по всей Украине.
           </p>
           <ShopLoader initialBrand={brand} />
           <AllProductsLinks products={allBrandProducts} lang="ru" />

@@ -9,14 +9,6 @@ function escTg(s: unknown): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-const STATUS_UA: Record<string, string> = {
-  new: 'Нове',
-  confirmed: 'Підтверджено',
-  shipped: 'Відправлено',
-  delivered: 'Доставлено',
-  cancelled: 'Скасовано',
-};
-
 export async function sendTelegram(chatId: string | number, text: string): Promise<void> {
   if (!TOKEN || !chatId) return;
   try {
@@ -49,18 +41,6 @@ export function notifyAdminNewOrder(order: {
   sendTelegram(
     ADMIN_CHAT_ID,
     `🛒 <b>Нове замовлення №${order.order_number}</b>\n👤 ${escTg(order.contact)}${company}\n📱 ${escTg(order.phone)}\n💰 ${order.total_price} грн (${payment})${city}`,
-  );
-}
-
-export function notifyAdminStatusChange(order: {
-  order_number: number;
-  contact: string;
-  phone: string;
-}, newStatus: string) {
-  if (!ADMIN_CHAT_ID) return;
-  sendTelegram(
-    ADMIN_CHAT_ID,
-    `🔄 <b>Замовлення №${order.order_number}</b> → ${STATUS_UA[newStatus] ?? newStatus}\n👤 ${escTg(order.contact)} | ${escTg(order.phone)}`,
   );
 }
 

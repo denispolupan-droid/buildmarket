@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deliveryPlace, shortenWarehouse, stripCityPrefix, carrierInfo } from '../lib/delivery-label';
+import { deliveryPlace, shortenWarehouse, stripCityPrefix, carrierInfo, trackHref } from '../lib/delivery-label';
 
 describe('shortenWarehouse', () => {
   it('відсікає вулицю й ліміт ваги з назви відділення', () => {
@@ -85,5 +85,22 @@ describe('carrierInfo', () => {
     expect(carrierInfo('щось нове').name).toBe('Нова Пошта');
     expect(carrierInfo(null).name).toBe('Нова Пошта');
     expect(carrierInfo(undefined).name).toBe('Нова Пошта');
+  });
+});
+
+describe('trackHref', () => {
+  it('НП уміє глибокий лінк із номером', () => {
+    expect(trackHref('nova', '20451504982066'))
+      .toBe('https://novaposhta.ua/tracking/?cargo_number=20451504982066');
+  });
+
+  it('ROZETKA — тільки сторінка трекінгу: номер у query вона не приймає, '
+   + 'а непрацюючий лінк гірший за його відсутність', () => {
+    expect(trackHref('rz_delivery', '101000000001')).toBe('https://rozetka.delivery/tracking');
+  });
+
+  it('без номера — сторінка перевізника, без перевізника з трекінгом — null', () => {
+    expect(trackHref('nova', null)).toBe('https://novaposhta.ua');
+    expect(trackHref('pickup', '123')).toBeNull();
   });
 });

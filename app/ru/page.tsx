@@ -153,7 +153,7 @@ export default async function HomeRu() {
               </h1>
               <p style={{ fontSize: '16px', color: '#94A3B8', lineHeight: 1.7, margin: 0, maxWidth: '620px' }}>
                 Герметики, монтажные пены, клеи и грунтовки от ведущих брендов.
-                Отправка в день заказа, Новая Почта по всей Украине.
+                Отправка в день заказа: Новая Почта или точки выдачи ROZETKA по всей Украине.
               </p>
             </Reveal>
             <Reveal delay={110}>
@@ -220,7 +220,7 @@ export default async function HomeRu() {
               { icon: Store,        title: 'Магазин или Опт',        text: 'Выбирайте формат: розница от 1 шт или оптовые условия для бизнеса', color: '#6366F1' },
               { icon: ShoppingCart, title: 'Оформите заказ',          text: 'Добавьте товары в корзину или отправьте запрос менеджеру',            color: '#4880B8' },
               { icon: Phone,        title: 'Подтверждение',           text: 'Менеджер подтвердит заказ и согласует детали',                        color: '#0891B2' },
-              { icon: Truck,        title: 'Доставка Новой Почтой',   text: 'Получите заказ в любом отделении Украины',                            color: '#D97706' },
+              { icon: Truck,        title: 'Доставка',                text: 'Новая Почта или точка выдачи ROZETKA — в любом городе Украины',       color: '#D97706' },
             ].map(({ icon: Icon, title, text, color }, i) => (
               <Reveal key={title} delay={i * 110}>
                 <div className="home-step-card" style={{
