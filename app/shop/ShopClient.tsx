@@ -7,7 +7,6 @@ import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 import Link from 'next/link';
 import { Plus, Minus, Heart, ShoppingCart, ChevronDown, Check, SlidersHorizontal, LayoutList, Grid2x2, Rows2, X, SearchX } from 'lucide-react';
 import { CATEGORY_ICONS, CATEGORY_COLORS, categoryAccent } from '../../lib/category-icons';
-import CategoryIconBackdrop from '../components/CategoryIconBackdrop';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import ProductImage from '../components/ProductImage';
 import { RatingBadge } from '../components/StarRating';
@@ -1172,7 +1171,6 @@ export default function ShopClient({ products, categories, reviewStats, initialS
           className="shop-topbar"
           style={(() => { const a = categoryAccent(selCat, catInfo?.parentSlug); return a ? ({ '--cat-accent': a } as React.CSSProperties) : undefined; })()}
         >
-          <CategoryIconBackdrop slug={selCat} parentSlug={catInfo?.parentSlug} />
           <div className="shop-title-wrap">
             {catInfo && (
               <span className="eyebrow" style={{ fontSize: '11px' }}>

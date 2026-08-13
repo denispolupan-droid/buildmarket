@@ -1247,26 +1247,6 @@ input, select { font-family: inherit; }
 .eyebrow.on-dark { color: var(--brand-teal-bright); } /* лише на темній підкладці */
 .eyebrow.alt     { color: var(--brand-teal-dark); }   /* друга барва на світлій */
 
-/* Декоративна стрічка з іконок категорії у смузі заголовка (/shop, /catalog).
-   Іконки фірмово-сині й тануть зліва направо — від щільного до прозорого
-   (той самий напрямок, що й градієнт підкладки). Батько має position:relative
-   і overflow:hidden; контент смуги піднято над стрічкою (z-index: 1). */
-.cat-icon-backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  display: flex;
-  align-items: center;
-  gap: 34px;
-  padding-left: 16px;
-  color: var(--cat-accent, var(--brand-blue));
-  opacity: 0.13;
-  pointer-events: none;
-  -webkit-mask-image: linear-gradient(100deg, #000 0%, transparent 78%);
-  mask-image: linear-gradient(100deg, #000 0%, transparent 78%);
-}
-.cat-icon-backdrop svg { flex-shrink: 0; }
-[data-theme="dark"] .cat-icon-backdrop { opacity: 0.2; }
 
 /* «Нитка» розкритої гілки сайдбара: замість сірої лінії — тонкий вертикальний
    градієнт у кольорі родини (--cat-accent з інлайну), що тане донизу — той

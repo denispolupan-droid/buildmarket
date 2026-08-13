@@ -4,7 +4,6 @@ import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallba
 import { usePathname } from 'next/navigation';
 import { Upload, Heart, Eye, ShoppingCart, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2, X, SearchX } from 'lucide-react';
 import { CATEGORY_ICONS, CATEGORY_COLORS, categoryAccent } from '../../lib/category-icons';
-import CategoryIconBackdrop from '../components/CategoryIconBackdrop';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import Link from 'next/link';
 import ProductImage from '../components/ProductImage';
@@ -941,7 +940,6 @@ export default function CatalogClient({ products, categories, reviewStats, initi
               className="catalog-title-row"
               style={(() => { const a = categoryAccent(selCat, categories.find(c => c.slug === selCat)?.parent_slug); return a ? ({ '--cat-accent': a } as React.CSSProperties) : undefined; })()}
             >
-              <CategoryIconBackdrop slug={selCat} parentSlug={categories.find(c => c.slug === selCat)?.parent_slug} />
               <div>
                 {selCat && <span className="eyebrow" style={{ fontSize: '11px' }}>{catalogTitle}</span>}
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
