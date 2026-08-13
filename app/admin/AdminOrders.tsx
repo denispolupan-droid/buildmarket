@@ -422,6 +422,13 @@ export default function AdminOrders({
   const [registryAdding, setRegistryAdding] = useState<string | null>(null);
   const [registryAdded,  setRegistryAdded]  = useState<Set<string>>(new Set());
   const [registryBulkLoading, setRegistryBulkLoading] = useState(false);
+  // Модалка вибору реєстру: якщо за сьогодні вже є відкриті реєстри — питаємо,
+  // додати в один із них чи створити новий (живий випадок: друге додавання
+  // за день мовчки плодило другий реєстр)
+  const [registryPick, setRegistryPick] = useState<{
+    items: { orderId: string; ttn: string; orderNumber: number }[];
+    sheets: { Ref: string; Number: string; DateTime: string; Count?: string }[];
+  } | null>(null);
   const [invoiceCfg,     setInvoiceCfg]     = useState<Order | null>(null);
   type ContactEntry = { name: string; email: string; note?: string };
   type SupplierQItem = { orderId: string; orderNumber: number; supplierName: string; supplierId: number | null; email: string; contacts: ContactEntry[]; comment: string };
@@ -1410,58 +1417,67 @@ export default function AdminOrders({
     }
   }
 
-  async function addToRegistry(orderId: string, ttn: string) {
-    if (registryAdded.has(ttn)) return;
-    setRegistryAdding(orderId);
+  /** Спільний крок обох шляхів (одиночного і масового): якщо за сьогодні вже є
+   *  реєстри — відкриваємо вибір «в існуючий чи новий», інакше одразу створюємо
+   *  новий. Живий випадок: друге додавання за день мовчки плодило другий реєстр. */
+  async function openRegistryPicker(items: { orderId: string; ttn: string; orderNumber: number }[]) {
+    if (items.length === 0) return;
+    let sheets: { Ref: string; Number: string; DateTime: string; Count?: string; Printed?: string }[] = [];
     try {
-      const res = await fetch('/api/admin/registers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ttnNumber: ttn, registerRef: null }),
-      });
-      if (res.ok) {
-        setRegistryAdded(prev => new Set([...prev, ttn]));
-      } else {
-        const data = await res.json();
-        alert(data.error ?? 'Помилка додавання в реєстр');
-      }
-    } catch { alert('Мережева помилка'); }
-    finally { setRegistryAdding(null); }
+      const res = await fetch('/api/admin/registers');
+      const data = await res.json();
+      const now = new Date();
+      const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      // Лише сьогоднішні і не роздруковані: у закритий реєстр НП вставку відхилить
+      sheets = (data.sheets ?? []).filter((s: { DateTime?: string; Printed?: string }) =>
+        String(s.DateTime ?? '').startsWith(ymd) && String(s.Printed ?? '0') !== '1');
+    } catch { /* список не отримали — просто створимо новий */ }
+    if (sheets.length === 0) { await runRegistryAdd(items, null); return; }
+    setRegistryPick({ items, sheets });
   }
 
-  // Групове додавання виділених замовлень у реєстр НП (по їх ТТН, які ще не в реєстрі).
-  // Створюємо ОКРЕМИЙ НОВИЙ реєстр під цю партію: перший POST з registerRef:null створює
-  // реєстр і повертає ref, який протягуємо на решту (інакше кожен POST плодив би свій реєстр).
-  // НЕ переused існуючий sheets[0] — він може бути вже роздрукований/закритий, і НП відхилить
-  // вставку («Реєстр вже роздруковано»).
-  async function bulkAddToRegistry() {
-    const sel = orders.filter(o => selectedIds.has(o.id) && o.tracking_number && !registryAdded.has(o.tracking_number));
-    if (sel.length === 0) return;
-    setRegistryBulkLoading(true);
+  /** Додавання ТТН у реєстр НП: ref — обраний реєстр, null — створити новий
+   *  (перший успішний POST створює реєстр і повертає ref, який протягуємо на
+   *  решту, інакше кожен POST плодив би свій). */
+  async function runRegistryAdd(items: { orderId: string; ttn: string; orderNumber: number }[], ref: string | null) {
+    setRegistryPick(null);
+    if (items.length === 1) setRegistryAdding(items[0].orderId); else setRegistryBulkLoading(true);
 
-    let ref: string | null = null;
     const added: string[] = [];
     const errors: string[] = [];
-    for (const o of sel) {
+    for (const it of items) {
       try {
         const res = await fetch('/api/admin/registers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ttnNumber: o.tracking_number, registerRef: ref }),
+          body: JSON.stringify({ ttnNumber: it.ttn, registerRef: ref }),
         });
         const data: { ref?: string; error?: string } = await res.json().catch(() => ({}));
         if (res.ok) {
-          added.push(o.tracking_number!);
-          if (!ref && data.ref) ref = data.ref; // перший успішний створив реєстр — решту в нього
+          added.push(it.ttn);
+          if (!ref && data.ref) ref = data.ref;
         } else {
-          errors.push(`#${o.order_number}: ${data.error ?? res.status}`);
+          errors.push(`#${it.orderNumber}: ${data.error ?? res.status}`);
         }
-      } catch { errors.push(`#${o.order_number}: мережа`); }
+      } catch { errors.push(`#${it.orderNumber}: мережа`); }
     }
     if (added.length) setRegistryAdded(prev => new Set([...prev, ...added]));
+    setRegistryAdding(null);
     setRegistryBulkLoading(false);
     if (errors.length) alert(`Додано в реєстр: ${added.length}. Не вдалося: ${errors.length}\n${errors.join('\n')}`);
-    else showToast(`Додано в реєстр: ${added.length}`);
+    else if (added.length) showToast(`Додано в реєстр: ${added.length}`);
+  }
+
+  async function addToRegistry(orderId: string, ttn: string) {
+    if (registryAdded.has(ttn)) return;
+    const order = orders.find(o => o.id === orderId);
+    await openRegistryPicker([{ orderId, ttn, orderNumber: order?.order_number ?? 0 }]);
+  }
+
+  // Групове додавання виділених замовлень у реєстр НП (по їх ТТН, які ще не в реєстрі)
+  async function bulkAddToRegistry() {
+    const sel = orders.filter(o => selectedIds.has(o.id) && o.tracking_number && !registryAdded.has(o.tracking_number));
+    await openRegistryPicker(sel.map(o => ({ orderId: o.id, ttn: o.tracking_number!, orderNumber: o.order_number })));
   }
 
   /**
@@ -4722,6 +4738,45 @@ export default function AdminOrders({
           </div>
         );
       })()}
+
+      {/* Вибір реєстру НП: сьогодні вже є відкриті — в який додати чи створити новий */}
+      {registryPick && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="adm-modal-box" style={{ background: '#fff', borderRadius: '16px', padding: '24px', width: '420px', maxWidth: '96vw', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px', color: '#1E3A5F' }}>
+              Реєстр НП · {registryPick.items.length} ТТН
+            </div>
+            <div style={{ fontSize: '12.5px', color: '#6B7280', marginBottom: '16px', lineHeight: 1.5 }}>
+              За сьогодні вже є {registryPick.sheets.length === 1 ? 'відкритий реєстр' : 'відкриті реєстри'} — додати туди чи створити новий?
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+              {registryPick.sheets.map(s => (
+                <button key={s.Ref}
+                  onClick={() => runRegistryAdd(registryPick.items, s.Ref)}
+                  style={{ minHeight: '38px', padding: '8px 14px', textAlign: 'left', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13.5px', fontWeight: 600, cursor: 'pointer' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#1E3A5F'; e.currentTarget.style.background = '#EFF6FF'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-card)'; }}>
+                  Реєстр №{s.Number}
+                  <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
+                    {' · '}{s.DateTime?.slice(11, 16) ?? ''}{s.Count != null && ` · ${s.Count} відпр.`}
+                  </span>
+                </button>
+              ))}
+              <button
+                onClick={() => runRegistryAdd(registryPick.items, null)}
+                style={{ minHeight: '38px', padding: '8px 14px', textAlign: 'left', borderRadius: '9px', border: '1.5px dashed var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '13.5px', fontWeight: 600, cursor: 'pointer' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#1E3A5F'; e.currentTarget.style.color = '#1E3A5F'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}>
+                + Створити новий реєстр
+              </button>
+            </div>
+            <button onClick={() => setRegistryPick(null)}
+              style={{ width: '100%', height: '36px', borderRadius: '9px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+              Скасувати
+            </button>
+          </div>
+        </div>
+      )}
 
       {shipModal && (() => {
         const updateQty = (sku: string, val: number) =>
