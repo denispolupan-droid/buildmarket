@@ -170,6 +170,31 @@ const STATUS_RANK: Record<string, number> = {
  * Наш статус змінюється тільки штатним роутом (резерви, документи), тож плашка
  * лише показує, що менеджер уже зробив у кабінеті, і нічого не перемикає.
  */
+/** Коментар покупця в блоці «Оплата»: затиснутий до 4 рядків, щоб не розтягував
+ *  картки; коли текст реально обрізаний — кнопка «Показати весь» / «Згорнути». */
+function ClampedComment({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const [clamped, setClamped] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open && ref.current) setClamped(ref.current.scrollHeight > ref.current.clientHeight + 1);
+  }, [text, open]);
+  return (
+    <div>
+      <div ref={ref} style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic', whiteSpace: 'pre-line', wordBreak: 'break-word',
+        ...(open ? {} : { display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }) }}>
+        «{text}»
+      </div>
+      {(clamped || open) && (
+        <button onClick={() => setOpen(o => !o)}
+          style={{ marginTop: '3px', padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: 600, color: 'var(--brand-blue)' }}>
+          {open ? 'Згорнути' : 'Показати весь'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function rozetkaCabinet(order: Order): { label: string; ahead: boolean; at: string | null } | null {
   if (order.channel_code !== 'rozetka') return null;
   const raw = order.rozetka_data?.status;
@@ -3461,13 +3486,15 @@ export default function AdminOrders({
                       </div>{/* /oc-card-body */}
                       {/* Оплата — притиснута до низу картки; спільна висота з блоком ТТН (.oc-card-footer) тримає розділювачі обох карток на одній лінії */}
                       <div className="oc-card-footer">
-                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Оплата</div>
                       {/* Два стовпці: оплата ліворуч, коментар покупця праворуч
-                          (рішення власника). На вузькому екрані переносяться. */}
+                          (рішення власника). Заголовки «Оплата» і «Коментар» — на одній
+                          лінії: кожен усередині свого стовпця. На вузькому екрані
+                          стовпці переносяться. */}
                       <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                       {/* Оплата — за шириною вмісту, без розтягування: порожнє місце
                           праворуч від чіпа заповнює коментар */}
                       <div style={{ flex: '0 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Оплата</div>
                       {/* Чим саме платив покупець на площадці. Наш payment_type знає лише
                           грубий тип (cod / prepaid), а «Пром-оплата» чи «Оплата під час
                           отримання» лежать у сирому payload маркетплейсу. */}
@@ -3682,7 +3709,7 @@ export default function AdminOrders({
                         return displayComment ? (
                           <div style={{ flex: '1 1 160px', minWidth: '140px', borderLeft: '1px solid var(--border-light)', paddingLeft: '14px' }}>
                             <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Коментар</div>
-                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic', whiteSpace: 'pre-line', wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>«{displayComment}»</div>
+                            <ClampedComment text={displayComment} />
                           </div>
                         ) : null;
                       })()}
