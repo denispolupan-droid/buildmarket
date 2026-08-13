@@ -2127,6 +2127,12 @@ export default function AdminOrders({
             // Доставка в точки видачі Rozetka: накладну оформлюємо не в НП, а через Rozetka
             // (номер «RMP-…»). Видно в списку, щоб не почати збирати посилку не тим перевізником.
             const isRzPickup = order.delivery_type === ROZETKA_DELIVERY_TYPE;
+            // Колір плашки з номером — за ФІЗИЧНИМ місцем видачі, а не за тим, чиїм
+            // API виписана накладна. Обидві «Rozetka» їдуть в одні й ті самі точки,
+            // і в списку менеджер зчитує кольором саме це: помаранчеве — Нова Пошта,
+            // зелене — точка видачі. Розрізняти API треба лише там, де від нього
+            // залежить дія (кнопки накладної), і для цього лишається isRzPickup.
+            const isRozetkaPoint = isRzPickup || order.delivery_type === RZ_DELIVERY_TYPE;
             // Акція Prom «Дешева доставка»: покупцю доставка майже безкоштовна, а
             // організацію оплачуємо ми — 10 ₴ від 200 і 30 ₴ від 700 за замовлення.
             // У кабінеті Prom це видно плашкою, у нас замовлення виглядало звичайним.
@@ -2168,7 +2174,7 @@ export default function AdminOrders({
                     // «Зараз» беремо з руху ЗВОРОТНОЇ накладної, якщо він відомий:
                     // статус старої після відмови застигає і про поточне місце
                     // нічого не каже.
-                    : { t: '↩ забрати?', c: '#C2410C', bg: '#FFF7ED', b: '#FDBA74', title: `Замовлення скасоване, але посилку вже прийняла ${isRzPickup ? 'Rozetka Доставка' : 'НП'} — вона їде назад${
+                    : { t: '↩ забрати?', c: '#C2410C', bg: '#FFF7ED', b: '#FDBA74', title: `Замовлення скасоване, але посилку вже прийняла ${isRozetkaPoint ? 'Rozetka Доставка' : 'НП'} — вона їде назад${
                         order.np_return_tracking ? ` (зараз: ${returnTrackingLabel(order.np_return_tracking, new Date())})`
                         : order.carrier_status_text ? ` (зараз: «${order.carrier_status_text}»)` : ''
                       }. Відкрийте замовлення і вирішіть: забрати з пошти чи залишити.` };
@@ -2443,16 +2449,16 @@ export default function AdminOrders({
                       <span
                         className="oc-ttn"
                         onClick={e => { e.stopPropagation(); copyTtn(order.tracking_number!); }}
-                        title={`${isRzPickup ? 'Rozetka Доставка' : 'Нова Пошта'} · ${order.tracking_number}${inRegistry ? ' · вже в реєстрі НП' : ''} — натисніть, щоб скопіювати`}
+                        title={`${carrierLabel} · ${order.tracking_number}${inRegistry ? ' · вже в реєстрі НП' : ''} — натисніть, щоб скопіювати`}
                         style={{
                           flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '4px',
                           padding: '1px 7px', borderRadius: '20px', fontWeight: 700, letterSpacing: '.02em',
-                          color: isRzPickup ? '#065F46' : '#7C2D12',
-                          background: isRzPickup ? '#ECFDF5' : '#FFF7ED',
-                          border: `1px solid ${isRzPickup ? '#6EE7B7' : '#FDBA74'}`,
+                          color: isRozetkaPoint ? '#065F46' : '#7C2D12',
+                          background: isRozetkaPoint ? '#ECFDF5' : '#FFF7ED',
+                          border: `1px solid ${isRozetkaPoint ? '#6EE7B7' : '#FDBA74'}`,
                         }}>
                         <Truck size={10} style={{ flexShrink: 0 }} />
-                        {isRzPickup ? 'Rozetka' : 'НП'} {order.tracking_number}
+                        {isRozetkaPoint ? 'Rozetka' : 'НП'} {order.tracking_number}
                         {inRegistry && <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#16A34A', flexShrink: 0 }} />}
                         {copiedTtn === order.tracking_number && <Check size={10} strokeWidth={3} />}
                       </span>
@@ -2485,9 +2491,9 @@ export default function AdminOrders({
                           style={{
                             display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer',
                             padding: '0 6px', borderRadius: '20px', fontSize: '10.5px', fontWeight: 700, letterSpacing: '.02em',
-                            color: isRzPickup ? '#065F46' : '#7C2D12',
-                            background: isRzPickup ? '#ECFDF5' : '#FFF7ED',
-                            border: `1px solid ${isRzPickup ? '#6EE7B7' : '#FDBA74'}`,
+                            color: isRozetkaPoint ? '#065F46' : '#7C2D12',
+                            background: isRozetkaPoint ? '#ECFDF5' : '#FFF7ED',
+                            border: `1px solid ${isRozetkaPoint ? '#6EE7B7' : '#FDBA74'}`,
                           }}>
                           <Truck size={9} style={{ flexShrink: 0 }} />
                           <span style={{ whiteSpace: 'nowrap' }}>{order.tracking_number}</span>
@@ -2508,7 +2514,7 @@ export default function AdminOrders({
                     </span>
                     {order.status === 'shipped' && order.tracking_number && !order.carrier_status_text && (
                       <span
-                        title={`${order.carrier_accepted_at ? 'Прийнято' : 'Очікує приймання'} ${isRzPickup ? 'Rozetka Доставкою' : 'Новою Поштою'}`}
+                        title={`${order.carrier_accepted_at ? 'Прийнято' : 'Очікує приймання'} ${isRozetkaPoint ? 'Rozetka Доставкою' : 'Новою Поштою'}`}
                         style={{ fontSize: '12px', flexShrink: 0, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
                         {order.carrier_accepted_at ? '✓' : '⏳'}
                       </span>
@@ -2611,7 +2617,7 @@ export default function AdminOrders({
                       <div style={{ borderTop: '1px solid var(--border-light)', background: rs ? 'var(--bg-soft)' : '#FFF7ED', padding: '10px 16px', fontSize: '13px', color: rs ? 'var(--text-secondary)' : '#9A3412', lineHeight: 1.6 }}>
                         <span style={{ fontWeight: 700 }}>↩ Замовлення скасоване, а посилка вже в дорозі назад</span>
                         {order.tracking_number && <span> · ТТН {order.tracking_number}</span>}
-                        {order.carrier_status_text && <span> · {isRzPickup ? 'Rozetka' : 'НП'}: «{order.carrier_status_text}»</span>}
+                        {order.carrier_status_text && <span> · {isRozetkaPoint ? 'Rozetka' : 'НП'}: «{order.carrier_status_text}»</span>}
                         {/* Де посилка ЗАРАЗ. Статус вище стосується накладної «туди»,
                             яка після відмови застигає назавжди; назад посилка їде
                             новою накладною, і саме її рух відповідає на питання
@@ -2635,10 +2641,10 @@ export default function AdminOrders({
                         })()}
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap' }}>
                           {rs === null && <>
-                            <span>Посилка повертається {isRzPickup ? 'у наше відділення відправлення' : 'на відділення'}. Вирішіть:</span>
+                            <span>Посилка повертається {isRozetkaPoint ? 'у наше відділення відправлення' : 'на відділення'}. Вирішіть:</span>
                             <button onClick={() => setReturnState(order.id, 'received')}
                               style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid #BBF7D0', background: '#F0FDF4', color: '#15803D', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>
-                              ✓ Забрав {isRzPickup ? 'посилку' : 'з пошти'}
+                              ✓ Забрав {isRozetkaPoint ? 'посилку' : 'з пошти'}
                             </button>
                             <button onClick={() => setReturnState(order.id, 'abandoned')}
                               title="Коли зворотна доставка дорожча за товар — дешевше залишити посилку на пошті"
@@ -2767,7 +2773,7 @@ export default function AdminOrders({
                       {order.status === 'shipped' && order.tracking_number && (
                         <div title={order.carrier_status_synced_at ? `Оновлено: ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
                           style={{ fontSize: '11px', fontWeight: 600, textAlign: 'center', lineHeight: 1.3, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
-                          {order.carrier_accepted_at ? '✓' : '⏳'} {order.carrier_status_text ?? `${order.carrier_accepted_at ? 'Прийнято' : 'Очікує приймання'} ${isRzPickup ? 'Rozetka' : 'НП'}`}
+                          {order.carrier_accepted_at ? '✓' : '⏳'} {order.carrier_status_text ?? `${order.carrier_accepted_at ? 'Прийнято' : 'Очікує приймання'} ${isRozetkaPoint ? 'Rozetka' : 'НП'}`}
                         </div>
                       )}
                       {(statusEditOpen[order.id] ?? false) && (
@@ -4097,9 +4103,10 @@ export default function AdminOrders({
                                 )}
                                 {/* Повернення посилки НП — окрема, суто логістична дія: клієнт не
                                     забирає, і посилку треба відкликати з відділення, поки НП не
-                                    почала рахувати зберігання. Для точок видачі Rozetka накладна
-                                    не в НП — заявку створювати нікуди. */}
-                                {isAdmin && order.tracking_number && !isRzPickup && ['shipped', 'cancelled'].includes(order.status) && (
+                                    почала рахувати зберігання. Для ОБОХ доставок у точки видачі
+                                    Rozetka накладна не в НП — заявку створювати нікуди, там своя
+                                    кнопка «Повернення» в блоці накладної. */}
+                                {isAdmin && order.tracking_number && !isRozetkaPoint && ['shipped', 'cancelled'].includes(order.status) && (
                                   <button onClick={() => setNpReturnFor({ id: order.id, number: order.order_number })}
                                     title="Створити заявку на повернення в кабінеті Нової Пошти — посилка поїде назад на наше відділення"
                                     style={{ ...btnMuted, color: order.np_return_ref ? '#15803D' : '#B45309' }}>
