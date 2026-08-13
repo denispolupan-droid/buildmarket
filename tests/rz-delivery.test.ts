@@ -57,9 +57,23 @@ describe('rzPhase', () => {
     expect(rzPhase('senderCanceled')).toBe('cancelled');
   });
 
+  it('живий трекінг шле ЧИСЛОВІ id (спека бреше про строковий enum) — '
+   + 'на них фаза теж має працювати (живий випадок: ЕН 101720876706, код 10030)', () => {
+    expect(rzPhase(10010)).toBe('created');     // Заплановано
+    expect(rzPhase(10030)).toBe('accepted');    // Прийнято на доставку
+    expect(rzPhase('10030')).toBe('accepted');  // і рядком теж
+    expect(rzPhase(40040)).toBe('at_point');    // Готово до видачі
+    expect(rzPhase(60030)).toBe('delivered');   // Видано
+    expect(rzPhase(40070)).toBe('returning');   // Вийшов термін зберігання
+    expect(rzPhase(60010)).toBe('cancelled');   // Скасовано
+    expect(rzCarrierAccepted(10030)).toBe(true);
+    expect(rzCarrierAccepted(10020)).toBe(false);
+  });
+
   it('невідомий код — «unknown», а не «в дорозі»: інакше новий статус Rozetka '
    + 'мовчки провів би продаж або оголосив повернення', () => {
     expect(rzPhase('somethingNew')).toBe('unknown');
+    expect(rzPhase(10080)).toBe('unknown');     // «Посилку втрачено» — нічого не проводимо
     expect(rzPhase(null)).toBe('unknown');
   });
 

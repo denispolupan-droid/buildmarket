@@ -173,15 +173,46 @@ const RZ_PHASE: Record<string, RzPhase> = {
   gaveOut:                          'delivered',
   gaveOutPartially:                 'delivered',
   gaveOutForShowcase:               'delivered',
+
+  // ЖИВИЙ трекінг віддає ЧИСЛОВІ id статусів (last_status.status: 10030), хоча
+  // TrackStatusDTO у спеці досі оголошує строковий enum вище. Через це фаза
+  // завжди була 'unknown': carrier_accepted_at не ставився, «відправлено» і
+  // «прибуло» покупцю не йшли (живий випадок — ЕН 101720876706). Числа звірені
+  // з GET /api/track-status (словник груп 100…1400).
+  // 100 «Заплановано до відправки»
+  '10010': 'created',   // Заплановано
+  '10020': 'created',   // Очікується до відправки
+  '10029': 'created',   // Не прийнято за реєстром — посилка ще в нас
+  // 200 «Прийнято на відправку»
+  '10028': 'accepted',  // Прийнято за реєстром
+  '10030': 'accepted',  // Прийнято на доставку
+  // 300 «В дорозі»
+  '10040': 'accepted', '10050': 'accepted', '10070': 'accepted',
+  '20010': 'accepted', '20020': 'accepted', '20030': 'accepted',
+  '30010': 'accepted', '40041': 'accepted',
+  // 400 «Видалено»
+  '10060': 'cancelled', '60010': 'cancelled',
+  // 500 «У відділенні доставки»
+  '40030': 'at_point', '40040': 'at_point', '40080': 'at_point',
+  // 600…1100 — відмови, прострочене зберігання, повернення в дорозі
+  '40050': 'returning', '40060': 'returning', '40070': 'returning',
+  '40045': 'returning', '50010': 'returning', '50011': 'returning',
+  '50012': 'returning', '50013': 'returning', '50015': 'returning',
+  '50021': 'returning', '50030': 'returning', '50020': 'returning',
+  // 1300 «Повернуто» (вже в нас)
+  '60040': 'returning',
+  // 1200 «Видано»
+  '60025': 'delivered', '60030': 'delivered',
+  // 1400 «Посилку втрачено» (10080) навмисно не мапимо: unknown → нічого не проводимо
 };
 
-export function rzPhase(status: string | null | undefined): RzPhase {
-  if (!status) return 'unknown';
-  return RZ_PHASE[status] ?? 'unknown';
+export function rzPhase(status: string | number | null | undefined): RzPhase {
+  if (status == null || status === '') return 'unknown';
+  return RZ_PHASE[String(status)] ?? 'unknown';
 }
 
 /** Перевізник фізично взяв посилку — аналог carrier_accepted_at у НП. */
-export function rzCarrierAccepted(status: string | null | undefined): boolean {
+export function rzCarrierAccepted(status: string | number | null | undefined): boolean {
   const phase = rzPhase(status);
   return phase === 'accepted' || phase === 'at_point' || phase === 'delivered' || phase === 'returning';
 }

@@ -234,7 +234,8 @@ export async function rzCreateTrack(data: RzCreateTrackInput): Promise<RzCreateT
 
 export type RzTrackStatus = {
   track_id: string;
-  last_status: { status: string; status_name: string; date: string };
+  // status: спека оголошує строковий enum, але живий API шле числовий id (10030)
+  last_status: { status: string | number; status_name: string; date: string };
   statuses?: { status: string; status_name: string; date: string }[];
 };
 
