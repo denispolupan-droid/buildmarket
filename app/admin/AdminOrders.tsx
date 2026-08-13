@@ -3462,6 +3462,10 @@ export default function AdminOrders({
                       {/* Оплата — притиснута до низу картки; спільна висота з блоком ТТН (.oc-card-footer) тримає розділювачі обох карток на одній лінії */}
                       <div className="oc-card-footer">
                       <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Оплата</div>
+                      {/* Два стовпці: оплата ліворуч, коментар покупця праворуч
+                          (рішення власника). На вузькому екрані переносяться. */}
+                      <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      <div style={{ flex: '1 1 240px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {/* Чим саме платив покупець на площадці. Наш payment_type знає лише
                           грубий тип (cod / prepaid), а «Пром-оплата» чи «Оплата під час
                           отримання» лежать у сирому payload маркетплейсу. */}
@@ -3667,20 +3671,20 @@ export default function AdminOrders({
                           </div>
                         );
                       })()}
-                      {/* Коментар покупця — тут, а не в картці доставки: там він
-                          наїжджав на блок ТТН (рішення власника) */}
+                      </div>
+                      {/* Коментар покупця — правий стовпець блоку «Оплата»; кламп на
+                          4 рядки, щоб довгий текст не розтягував картки (висота спільна
+                          з «Доставкою»); повний текст дає делегований hover-тултіп */}
                       {(() => {
                         const displayComment = order.comment?.split('\n').filter(line => !line.includes('Не передзвонювати')).join('\n').trim();
                         return displayComment ? (
-                          <div style={{ marginTop: '4px' }}>
+                          <div style={{ flex: '1 1 200px', minWidth: '140px', borderLeft: '1px solid var(--border-light)', paddingLeft: '14px' }}>
                             <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Коментар</div>
-                            {/* Кламп на 2 рядки, щоб довгий коментар не розтягував картки
-                                (їхня висота спільна з сусідньою «Доставкою»); повний текст
-                                підставляє делегований hover-тултіп */}
-                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic', whiteSpace: 'pre-line', wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>«{displayComment}»</div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic', whiteSpace: 'pre-line', wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>«{displayComment}»</div>
                           </div>
                         ) : null;
                       })()}
+                      </div>
                       </div>
                     </div>
                     {/* Доставка / ТТН card */}
