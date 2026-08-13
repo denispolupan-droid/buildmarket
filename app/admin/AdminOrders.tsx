@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -2324,6 +2324,16 @@ export default function AdminOrders({
                       <span className="oc-badges" style={{ display: 'flex', gap: '3px', flexShrink: 0, flexWrap: 'wrap' }}>
                         {orderBadges}
                       </span>
+                      {/* Сигнал «покупець лишив коментар» у згорнутому рядку;
+                          сам текст — у тултіпі і в блоці «Оплата» картки */}
+                      {(() => {
+                        const c = order.comment?.split('\n').filter(l => !l.includes('Не передзвонювати')).join(' ').trim();
+                        return c ? (
+                          <span title={c} aria-label="Коментар покупця" style={{ display: 'inline-flex', flexShrink: 0, color: 'var(--brand-blue)' }}>
+                            <MessageSquare size={13} />
+                          </span>
+                        ) : null;
+                      })()}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minHeight: '16px' }}>
@@ -3664,7 +3674,10 @@ export default function AdminOrders({
                         return displayComment ? (
                           <div style={{ marginTop: '4px' }}>
                             <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Коментар</div>
-                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic', whiteSpace: 'pre-line', wordBreak: 'break-word' }}>«{displayComment}»</div>
+                            {/* Кламп на 2 рядки, щоб довгий коментар не розтягував картки
+                                (їхня висота спільна з сусідньою «Доставкою»); повний текст
+                                підставляє делегований hover-тултіп */}
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic', whiteSpace: 'pre-line', wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>«{displayComment}»</div>
                           </div>
                         ) : null;
                       })()}
