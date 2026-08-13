@@ -13,8 +13,8 @@
  */
 import { createServiceClient } from './supabase';
 import {
-  RZ_API_URL, RZ_CARRIER_ROZETKA,
-  type RzCity, type RzDepartment,
+  RZ_API_URL, RZ_CARRIER_ROZETKA, rzErrorText, rzCodAmount,
+  type RzCity, type RzDepartment, type RzValidationDetail,
 } from './rz-delivery';
 
 export const RZ_TOKEN_KEY   = 'rz_delivery_token';
@@ -91,7 +91,6 @@ export async function getRzBox(): Promise<RzBox> {
   } catch { return RZ_BOX_FALLBACK; }
 }
 
-type RzValidationDetail = { property?: string; constraints?: Record<string, string> };
 type RzEnvelope<T> = {
   statusCode?: number; data?: T;
   message?: string | string[] | Record<string, unknown>;
@@ -101,23 +100,6 @@ type RzEnvelope<T> = {
 
 export class RzError extends Error {
   constructor(message: string, readonly status: number) { super(message); this.name = 'RzError'; }
-}
-
-/**
- * Текст помилки з відповіді. Валідаційні причини лежать окремо, в details, і без
- * них повідомлення «Помилка валідації даних» не каже нічого — а саме воно й
- * приходить при кривому телефоні чи нульовій оголошеній вартості.
- */
-function rzErrorText(body: RzEnvelope<unknown> | null, httpStatus: number): string {
-  const m = body?.message;
-  const head = Array.isArray(m) ? m.filter(Boolean).join('; ')
-    : typeof m === 'string' ? m
-    : (body?.error ?? '');
-  const details = (body?.details ?? [])
-    .map(d => `${d.property ?? ''}: ${Object.values(d.constraints ?? {}).join(', ')}`.trim())
-    .filter(s => s.length > 2);
-  const text = [head, ...details].filter(Boolean).join(' — ');
-  return text || `ROZETKA Доставка: HTTP ${httpStatus}`;
 }
 
 /** Виклик із токеном — для «своїх» операцій (накладні, баланс, етикетки). */
@@ -219,7 +201,10 @@ export type RzCreateTrackInput = {
   type: string;
   places: number;
   delivery_payer: 'sender' | 'receiver';
-  /** Сума післяплати до стягнення з отримувача. Передоплачене замовлення — 0. */
+  /**
+   * Сума післяплати до стягнення з отримувача. Передоплачене замовлення — 0.
+   * Передавай суму замовлення як є — до цілого її зведе rzCreateTrack.
+   */
   cost: number;
   /** Оголошена вартість, строго > 0. */
   insurance_cost: number;
@@ -240,9 +225,10 @@ export type RzCreateTrackResult = {
 
 export async function rzCreateTrack(data: RzCreateTrackInput): Promise<RzCreateTrackResult> {
   const volume = Number(((data.params.length * data.params.width * data.params.height) / 1_000_000).toFixed(6));
+  const body = { ...data, cost: rzCodAmount(data.cost), params: { ...data.params, volume } };
   return rzFetch<RzCreateTrackResult>('/api/track', {
     method: 'POST',
-    body: JSON.stringify({ data: { ...data, params: { ...data.params, volume } } }),
+    body: JSON.stringify({ data: body }),
   });
 }
 

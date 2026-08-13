@@ -185,3 +185,60 @@ export function rzCarrierAccepted(status: string | null | undefined): boolean {
   const phase = rzPhase(status);
   return phase === 'accepted' || phase === 'at_point' || phase === 'delivered' || phase === 'returning';
 }
+
+/**
+ * Сума післяплати — ЛИШЕ ЦІЛЕ ЧИСЛО гривень: «Сума зворотної доставки має бути
+ * цілим числом» (перевірено живим запитом; в OpenAPI поле просто `number`, тож
+ * з доки цього не видно). На замовленні #26081062 із сумою 97.20 накладна через
+ * це не створювалась узагалі.
+ *
+ * Округлюємо, а не відкидаємо дробову частину — так само, як для Нової Пошти
+ * (AfterpaymentOnGoodsCost у /api/admin/create-ttn). Якби один перевізник
+ * округлював вниз, а інший до найближчого, на тому самому замовленні в касі
+ * були б різні суми, і звірка оплат розходилась би по-різному залежно від
+ * доставки. Оголошена вартість (insurance_cost) дробову приймає — не чіпаємо.
+ */
+export const rzCodAmount = (sum: number): number => Math.max(0, Math.round(sum));
+
+export type RzValidationDetail = {
+  property?: string;
+  constraints?: Record<string, string>;
+  /** Вкладені причини: у верхнього вузла constraints порожні, суть — тут. */
+  children?: RzValidationDetail[];
+};
+
+export type RzErrorBody = {
+  message?: string | string[] | Record<string, unknown>;
+  error?: string;
+  details?: RzValidationDetail[];
+};
+
+/**
+ * Текст помилки з відповіді API.
+ *
+ * Причини ВКЛАДЕНІ: у верхнього вузла `data` constraints порожні, а справжня
+ * претензія лежить у children («data.cost → має бути цілим числом»). Перша
+ * версія читала лише верхній рівень і показувала менеджеру «Помилка валідації
+ * даних — data:» — тобто рівно нічого, і причину довелося діставати ручним
+ * запитом до API. Тому обхід рекурсивний, зі шляхом через крапку.
+ */
+export function rzErrorText(body: RzErrorBody | null | undefined, httpStatus: number): string {
+  const m = body?.message;
+  const head = Array.isArray(m) ? m.filter(Boolean).join('; ')
+    : typeof m === 'string' ? m
+    : (body?.error ?? '');
+
+  const reasons: string[] = [];
+  const walk = (list: RzValidationDetail[] | undefined, path: string[]) => {
+    for (const d of list ?? []) {
+      const here = [...path, d.property ?? ''].filter(Boolean);
+      const constraints = Object.values(d.constraints ?? {}).filter(Boolean);
+      if (constraints.length) reasons.push(`${here.join('.')}: ${constraints.join(', ')}`);
+      walk(d.children, here);
+    }
+  };
+  walk(body?.details, []);
+
+  const text = [head, ...reasons].filter(Boolean).join(' — ');
+  return text || `ROZETKA Доставка: HTTP ${httpStatus}`;
+}
