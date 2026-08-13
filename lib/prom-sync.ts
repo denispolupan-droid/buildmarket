@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { getPromOrders, promOrderToOurFormat, ourStatusToPromStatus, setPromOrderStatus, type PromStatus } from './prom-api';
+import { getPromOrders, promOrderToOurFormat, buildPromComment, ourStatusToPromStatus, setPromOrderStatus, type PromStatus } from './prom-api';
 import { computePromCommission } from './prom-commission';
 
 const db = createClient(
@@ -44,7 +44,7 @@ export async function syncPromOrders() {
   for (const promOrder of orders) {
     const { data: existing } = await db
       .from('orders')
-      .select('id, status, payment_confirmed, total_price, prom_data')
+      .select('id, status, payment_confirmed, total_price, comment, prom_data')
       .eq('prom_order_id', promOrder.id)
       .maybeSingle();
 
@@ -65,6 +65,17 @@ export async function syncPromOrders() {
         } else {
           paidUpdated++;
           console.log(`[prom-sync] late payment confirmed for order ${promOrder.id}`);
+        }
+      }
+
+      // Бекфіл коментаря покупця: до фікса client_notes не мапився взагалі,
+      // тож у вже імпортованих замовлень comment порожній. Свій текст менеджера
+      // не перетираємо — дописуємо лише в порожнє поле.
+      if (!existing.comment) {
+        const promComment = buildPromComment(promOrder);
+        if (promComment) {
+          const { error: cErr } = await db.from('orders').update({ comment: promComment }).eq('id', existing.id);
+          if (cErr) console.error('[prom-sync] comment backfill failed:', promOrder.id, cErr.message);
         }
       }
 

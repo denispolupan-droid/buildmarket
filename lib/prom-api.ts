@@ -64,6 +64,10 @@ export interface PromOrder {
   full_price: string;
   price_delivery: string | null;
   comment: string | null;
+  /** Коментар ПОКУПЦЯ до замовлення — Prom кладе його сюди, а не в comment */
+  client_notes?: string | null;
+  /** Прапорець «не передзвонювати» з чекаута Prom */
+  dont_call_customer_back?: boolean;
   number: string | null;
   ttn: string | null;
   products: PromProduct[];
@@ -241,6 +245,18 @@ export function parsePromNumber(s: string | null | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Коментар до замовлення: нотатка покупця (client_notes) + прапорець
+ *  «не передзвонювати» з чекаута. Фраза «Не передзвонювати» — саме та, за
+ *  якою журнал замовлень ставить ✓ у колонці «Дзвінок». */
+export function buildPromComment(order: Pick<PromOrder, 'comment' | 'client_notes' | 'dont_call_customer_back'>): string | null {
+  const note = (order.client_notes ?? order.comment ?? '').trim();
+  const parts = [
+    order.dont_call_customer_back ? 'Не передзвонювати' : null,
+    note || null,
+  ].filter(Boolean);
+  return parts.length ? parts.join('. ') : null;
+}
+
 export function promOrderToOurFormat(order: PromOrder) {
   // Отримувач: delivery_recipient точніший за client_* (той може бути порожній)
   const rcp        = order.delivery_recipient;
@@ -319,7 +335,10 @@ export function promOrderToOurFormat(order: PromOrder) {
     delivery_warehouse_ref: deliveryWarehouseRef,
     payment_type:     paymentType,
     paid,
-    comment:          order.comment ?? null,
+    // Коментар покупця Prom шле в client_notes (comment у payload порожній —
+    // перевірено на живому замовленні 421136171); прапорець «не передзвонювати»
+    // з чекаута зводимо до тієї самої фрази, за якою журнал ставить ✓ у «Дзвінок»
+    comment:          buildPromComment(order),
     items,
     total_price:      totalPrice,
     status:           'new' as const,
