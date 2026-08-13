@@ -205,6 +205,14 @@ const STATUS_EMAIL_CONTENT: Record<string, { emoji: string; title: string; body:
       return `Замовлення <strong>№${d.orderNumber}</strong> передано перевізнику (${c.name}).${track}`;
     },
   },
+  arrived: {
+    emoji: '📍',
+    title: 'Посилка чекає на вас',
+    body: d => {
+      const c = carrierInfo(d.deliveryType);
+      return `Замовлення <strong>№${d.orderNumber}</strong> прибуло — посилка чекає ${c.place}. Будь ласка, заберіть її найближчим часом.`;
+    },
+  },
   delivered: {
     emoji: '🎉',
     title: 'Замовлення доставлено',

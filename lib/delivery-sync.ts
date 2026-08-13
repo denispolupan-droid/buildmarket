@@ -9,7 +9,7 @@ import { groupByTracking } from './delivery-tracking';
 import { pickReturnTtn, buildReturnTracking } from './np-return-tracking';
 import { completeShipmentByTtn, allOrderSalesPosted, settleLegacyCommission } from './accounting/completion';
 import { recordTxn } from './accounting/money';
-import { notifyCustomer } from './notify/send';
+import { notifyParcelEvent } from './notify/parcel';
 
 // Синхронізація руху посилок (НП + точки видачі Rozetka) і супутні проводки.
 // Живе в lib, а не в роуті крона, бо викликається З ДВОХ місць: щогодинний крон
@@ -55,7 +55,7 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
   const returnWindow = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const { data: orders, error } = await serviceClient
     .from('orders')
-    .select('id, status, tracking_number, carrier_accepted_at, channel_code, rozetka_order_id, delivery_type, telegram_chat_id, order_number, flags, phone, rz_payment_fee, rz_delivery_cost, rz_delivery_payer')
+    .select('id, status, tracking_number, carrier_accepted_at, channel_code, rozetka_order_id, delivery_type, telegram_chat_id, order_number, flags, phone, email, contact, company, rz_payment_fee, rz_delivery_cost, rz_delivery_payer')
     .or([
       'status.eq.shipped',
       'and(status.eq.cancelled,carrier_accepted_at.not.is.null)',
@@ -176,15 +176,11 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
         }
 
         // Посилка у відділенні — момент, коли покупцю справді треба щось знати.
-        // Захист від повторів не тут: notifyCustomer столбить подію в базі, тож
-        // цей самий код у кожному прогоні крона не породжує нових повідомлень.
+        // Захист від повторів не тут: notifyParcelEvent столбить кожен канал у
+        // базі, тож цей самий код у кожному прогоні крона не породжує повторів.
         if (code === ARRIVED_CODE) {
-          notifyCustomer({
-            orderId: order.id,
-            phone:   order.phone,
-            event:   'arrived',
-            ctx:     { orderNumber: order.order_number, carrier: 'nova' },
-          }).catch((err: unknown) => console.error('[sync-delivery-status] notify arrived failed:', order.id, err));
+          notifyParcelEvent(order, 'arrived')
+            .catch((err: unknown) => console.error('[sync-delivery-status] notify arrived failed:', order.id, err));
         }
       }
     }
@@ -264,12 +260,8 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
       // Момент «посилка поїхала» для покупця — саме приймання перевізником, а не
       // наш клік «відвантажено»: тут ТТН уже точно існує і вже щось відстежує.
       for (const o of acceptedOrders) {
-        notifyCustomer({
-          orderId: o.id,
-          phone:   o.phone,
-          event:   'shipped',
-          ctx:     { orderNumber: o.order_number, trackingNumber: o.tracking_number, carrier: 'nova' },
-        }).catch((err: unknown) => console.error('[sync-delivery-status] notify shipped failed:', o.id, err));
+        notifyParcelEvent(o, 'shipped')
+          .catch((err: unknown) => console.error('[sync-delivery-status] notify shipped failed:', o.id, err));
       }
 
       // Upgrade Rozetka's status from 61 (scheduled handover) to 3 (handed to delivery service)
@@ -414,19 +406,15 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
         if (o.status === 'cancelled') continue;
 
         if (patch.carrier_accepted_at) {
-          notifyCustomer({
-            orderId: o.id, phone: o.phone, event: 'shipped',
-            ctx: { orderNumber: o.order_number, trackingNumber: o.tracking_number as string, carrier: 'rozetka' },
-          }).catch((err: unknown) => console.error('[sync-delivery-status] rz notify shipped failed:', o.id, err));
+          notifyParcelEvent(o, 'shipped')
+            .catch((err: unknown) => console.error('[sync-delivery-status] rz notify shipped failed:', o.id, err));
         }
 
         // Посилка чекає в точці видачі — момент, коли покупцю справді є що сказати.
-        // Повтори столбить сам notifyCustomer, тому прапорця в замовленні не треба.
+        // Повтори столбить сам notifyParcelEvent, тому прапорця в замовленні не треба.
         if (phase === 'at_point') {
-          notifyCustomer({
-            orderId: o.id, phone: o.phone, event: 'arrived',
-            ctx: { orderNumber: o.order_number, carrier: 'rozetka' },
-          }).catch((err: unknown) => console.error('[sync-delivery-status] rz notify arrived failed:', o.id, err));
+          notifyParcelEvent(o, 'arrived')
+            .catch((err: unknown) => console.error('[sync-delivery-status] rz notify arrived failed:', o.id, err));
         }
 
         if (phase !== 'delivered') continue;

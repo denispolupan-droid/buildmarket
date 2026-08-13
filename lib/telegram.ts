@@ -89,6 +89,9 @@ export function notifyCustomerStatus(
   const messages: Partial<Record<string, string>> = {
     confirmed: `✅ <b>Замовлення №${orderNumber} підтверджено!</b>\nМи підготуємо його до відправки та повідомимо вас.`,
     shipped:   `📦 <b>Замовлення №${orderNumber} відправлено!</b>\n${c.name}, номер: <code>${trackingNumber ?? '—'}</code>${track}`,
+    // Не статус замовлення, а подія трекінгу (посилка чекає на отримувача) —
+    // шле крон доставки через notifyParcelEvent з дедуплікацією
+    arrived:   `📍 <b>Замовлення №${orderNumber} прибуло!</b>\nПосилка чекає ${c.place}. Заберіть її, будь ласка.`,
     delivered: `🎉 <b>Замовлення №${orderNumber} доставлено!</b>\nДякуємо за покупку. Будемо раді бачити вас знову!\nfixline.com.ua`,
     cancelled: `❌ <b>Замовлення №${orderNumber} скасовано.</b>\nЗ питань: info@fixline.com.ua`,
   };
