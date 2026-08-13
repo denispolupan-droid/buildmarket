@@ -3657,6 +3657,17 @@ export default function AdminOrders({
                           </div>
                         );
                       })()}
+                      {/* Коментар покупця — тут, а не в картці доставки: там він
+                          наїжджав на блок ТТН (рішення власника) */}
+                      {(() => {
+                        const displayComment = order.comment?.split('\n').filter(line => !line.includes('Не передзвонювати')).join('\n').trim();
+                        return displayComment ? (
+                          <div style={{ marginTop: '4px' }}>
+                            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Коментар</div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic', whiteSpace: 'pre-line', wordBreak: 'break-word' }}>«{displayComment}»</div>
+                          </div>
+                        ) : null;
+                      })()}
                       </div>
                     </div>
                     {/* Доставка / ТТН card */}
@@ -3912,16 +3923,7 @@ export default function AdminOrders({
                       </div>
                       </div>
 
-                      {(() => {
-                        const displayComment = order.comment?.split('\n').filter(line => !line.includes('Не передзвонювати')).join('\n').trim();
-                        return displayComment ? (
-                          <div>
-                            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Коментар</div>
-                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>«{displayComment}»</div>
-                          </div>
-                        ) : null;
-                      })()}
-
+                      {/* Коментар покупця перенесено в блок «Оплата» лівої картки */}
                       {/* ТТН і «Надіслати постачальнику» перенесено під таблицю товарів (колонка ТТН) */}
 
                     </div>
