@@ -14,8 +14,16 @@
  */
 import { createServiceClient } from './supabase';
 import { rozetkaFetch } from './rozetka-api';
+import { RZ_SENDER_KEY } from './rz-delivery-api';
 
 export const ROZETKA_SENDER_KEY = 'rozetka_delivery_sender';
+
+/** Форма rz_delivery_sender (Налаштування → ROZETKA Доставка) */
+type RzSettingsSender = {
+  city?: string; city_name?: string;
+  department?: string; department_label?: string;
+  last_name?: string; first_name?: string; middle_name?: string; phone?: string;
+};
 
 export type RozetkaSender = {
   type: string;              // 'natural' | 'legal'
@@ -49,27 +57,62 @@ export async function getRozetkaDeliveryTtns(perPage = 100): Promise<RozetkaDeli
   return data.models ?? [];
 }
 
-/** Відправник: явне налаштування, інакше — з останньої створеної накладної. */
+const senderFromTtn = (s: RozetkaSender): RozetkaSender => ({
+  type: s.type ?? 'natural',
+  name: s.name,
+  city: s.city,
+  address: s.address,
+  department: s.department,
+  department_type: s.department_type,
+  phones: s.phones ?? [],
+});
+
+/** Точка здачі з Налаштувань → «ROZETKA Доставка» (department — спільний MDM uuid). */
+export async function getRzSettingsSender(): Promise<RzSettingsSender | null> {
+  const db = createServiceClient();
+  const { data } = await db.from('app_settings').select('value').eq('key', RZ_SENDER_KEY).maybeSingle();
+  if (!data?.value) return null;
+  try { return JSON.parse(data.value as string) as RzSettingsSender; } catch { return null; }
+}
+
+/**
+ * Відправник, за пріоритетом:
+ *  1) явний вибір у модалці МП-накладної (rozetka_delivery_sender) — перевизначення;
+ *  2) точка здачі з Налаштувань → «ROZETKA Доставка» (rz_delivery_sender):
+ *     department — спільний MDM uuid, а от city-довідники в МП і власного
+ *     договору РІЗНІ (перевірено живими uuid: d12cbd6b… проти e1d394d7…),
+ *     тому city/address беремо з історії МП-накладних по тому самому
+ *     відділенню, а ПІБ/телефон — з налаштувань;
+ *  3) остання створена накладна кабінету («як минулого разу»).
+ */
 export async function getRozetkaSender(): Promise<RozetkaSender | null> {
   const db = createServiceClient();
   const { data } = await db.from('app_settings').select('value').eq('key', ROZETKA_SENDER_KEY).maybeSingle();
   if (data?.value) {
-    try { return JSON.parse(data.value as string) as RozetkaSender; } catch { /* впаде на список нижче */ }
+    try { return JSON.parse(data.value as string) as RozetkaSender; } catch { /* впаде на гілки нижче */ }
   }
-  const ttns = await getRozetkaDeliveryTtns(20);
+
+  const [settings, ttns] = await Promise.all([
+    getRzSettingsSender(),
+    getRozetkaDeliveryTtns(100).catch(() => [] as RozetkaDeliveryTtn[]),
+  ]);
+
+  if (settings?.department) {
+    const hist = ttns.find(t => t.sender?.department === settings.department && t.sender?.city)?.sender;
+    if (hist) {
+      const name = [settings.last_name, settings.first_name, settings.middle_name].filter(Boolean).join(' ');
+      return {
+        ...senderFromTtn(hist),
+        ...(name ? { name } : {}),
+        ...(settings.phone ? { phones: [settings.phone] } : {}),
+      };
+    }
+    // Точки з налаштувань ще немає в історії МП-накладних — падаємо на «як минулого разу»
+  }
+
   // ttn-list віддає найсвіжіші першими; беремо перший із заповненим відправником
   const withSender = ttns.find(t => t.sender?.department && t.sender?.city);
-  if (!withSender?.sender) return null;
-  const s = withSender.sender;
-  return {
-    type: s.type ?? 'natural',
-    name: s.name,
-    city: s.city,
-    address: s.address,
-    department: s.department,
-    department_type: s.department_type,
-    phones: s.phones ?? [],
-  };
+  return withSender?.sender ? senderFromTtn(withSender.sender) : null;
 }
 
 /**

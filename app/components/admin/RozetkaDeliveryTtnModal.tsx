@@ -33,6 +33,7 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
   const [places, setPlaces] = useState('1');
   const [sender, setSender] = useState<RzSender | null>(null);
   const [senderOptions, setSenderOptions] = useState<RzSender[]>([]);
+  const [settingsDep, setSettingsDep] = useState<string | null>(null);
   const [senderLoading, setSenderLoading] = useState(true);
   const [senderSaving, setSenderSaving] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -41,7 +42,7 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
   useEffect(() => {
     fetch(`/api/admin/orders/${order.id}/rozetka-delivery-ttn`)
       .then(r => r.json())
-      .then(d => { setSender(d.sender ?? null); setSenderOptions(d.options ?? []); })
+      .then(d => { setSender(d.sender ?? null); setSenderOptions(d.options ?? []); setSettingsDep(d.settingsDepartment ?? null); })
       .catch(() => setSender(null))
       .finally(() => setSenderLoading(false));
   }, [order.id]);
@@ -137,11 +138,17 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
                         title="Вибір запам'ятовується — наступні накладні підуть з цього відділення"
                         style={{ width: '100%', height: '34px', padding: '0 8px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '12.5px', cursor: senderSaving ? 'wait' : 'pointer' }}>
                         {senderOptions.map(o => (
-                          <option key={o.department} value={o.department}>{o.address || o.name}</option>
+                          <option key={o.department} value={o.department}>
+                            {(o.address || o.name) + (o.department === settingsDep ? ' · з налаштувань' : '')}
+                          </option>
                         ))}
                       </select>
                       <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-muted)' }}>
-                        {senderSaving ? 'Зберігаємо…' : `Відправник: ${sender.name}. Вибір діє і для наступних накладних.`}
+                        {senderSaving
+                          ? 'Зберігаємо…'
+                          : sender.department === settingsDep
+                            ? `Відправник: ${sender.name}. Точка — з Налаштувань → «ROZETKA Доставка».`
+                            : `Відправник: ${sender.name}. Ручний вибір — перевизначає точку з налаштувань і діє для наступних накладних.`}
                       </div>
                     </div>
                   )

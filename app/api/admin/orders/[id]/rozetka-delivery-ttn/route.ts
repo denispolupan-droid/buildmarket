@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
-import { createRozetkaDeliveryTtn, getRozetkaSender, getRozetkaSenderOptions, saveRozetkaSender, type RozetkaSender } from '../../../../../../lib/rozetka-delivery-ttn';
+import { createRozetkaDeliveryTtn, getRozetkaSender, getRozetkaSenderOptions, getRzSettingsSender, saveRozetkaSender, ROZETKA_SENDER_KEY, type RozetkaSender } from '../../../../../../lib/rozetka-delivery-ttn';
 import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
 
@@ -20,16 +20,19 @@ export async function GET() {
   if (!user || user.app_metadata?.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
-  const [sender, options] = await Promise.all([
+  const [sender, options, settings] = await Promise.all([
     getRozetkaSender(),
     getRozetkaSenderOptions().catch(() => [] as RozetkaSender[]),
+    getRzSettingsSender().catch(() => null),
   ]);
   // Поточний відправник міг бути з налаштування і не потрапити в історію
   if (sender && !options.some(o => o.department === sender.department)) options.unshift(sender);
-  return NextResponse.json({ sender, options });
+  return NextResponse.json({ sender, options, settingsDepartment: settings?.department ?? null });
 }
 
-/** Обрати відділення відправника: зберігається і діє для всіх наступних накладних. */
+/** Обрати відділення відправника для МП-накладних. Вибір точки, що збігається з
+ *  Налаштуваннями → «ROZETKA Доставка», знімає перевизначення — далі відправник
+ *  «слідує» за налаштуваннями; інша точка зберігається як явний override. */
 export async function PUT(req: NextRequest) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -41,6 +44,14 @@ export async function PUT(req: NextRequest) {
   if (!s?.department || !s?.city || !s?.name) {
     return NextResponse.json({ error: 'Неповні дані відправника' }, { status: 400 });
   }
+
+  const settings = await getRzSettingsSender().catch(() => null);
+  if (settings?.department && settings.department === s.department) {
+    const db = createServiceClient();
+    await db.from('app_settings').delete().eq('key', ROZETKA_SENDER_KEY);
+    return NextResponse.json({ ok: true, mode: 'settings' });
+  }
+
   await saveRozetkaSender({
     type: s.type ?? 'natural',
     name: s.name,
@@ -50,7 +61,7 @@ export async function PUT(req: NextRequest) {
     department_type: s.department_type,
     phones: Array.isArray(s.phones) ? s.phones : [],
   });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, mode: 'override' });
 }
 
 export async function POST(
