@@ -3896,13 +3896,14 @@ export default function AdminOrders({
                         <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--text-secondary)', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '9px', padding: '10px 12px' }}>
                           <div style={{ fontWeight: 700, color: '#15803D' }}>Точка видачі Rozetka</div>
                           {order.tracking_number ? (
-                            <>
-                              <div style={{ marginTop: '4px' }}>ТТН: <strong>{order.tracking_number}</strong></div>
+                            // Кнопка праворуч від номера — рядок один, місце дозволяє
+                            <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                              <div style={{ flexShrink: 0 }}>ТТН: <strong>{order.tracking_number}</strong></div>
                               <button onClick={() => printRzLabel(order.id, true)} disabled={rzLabelBusy === order.id}
-                                style={{ marginTop: '8px', height: '32px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
+                                style={{ marginLeft: 'auto', height: '30px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
                                 {rzLabelBusy === order.id ? '…' : 'Етикетка PDF'}
                               </button>
-                            </>
+                            </div>
                           ) : (
                             <>
                               <div style={{ marginTop: '3px' }}>Адресу отримувача Rozetka візьме із замовлення — потрібні лише габарити.</div>
@@ -3921,8 +3922,10 @@ export default function AdminOrders({
                           <div style={{ fontWeight: 700, color: '#15803D' }}>ROZETKA Доставка</div>
                           {order.tracking_number ? (
                             <>
-                              <div style={{ marginTop: '4px' }}>ЕН: <strong>{order.tracking_number}</strong></div>
-                              <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                              {/* ЕН і кнопки — одним рядком: кнопки праворуч, місце дозволяє */}
+                              <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                              <div style={{ flexShrink: 0 }}>ЕН: <strong>{order.tracking_number}</strong></div>
+                              <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto', flexWrap: 'wrap' }}>
                                 <button onClick={() => printRzLabel(order.id)} disabled={rzLabelBusy === order.id}
                                   style={{ height: '32px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
                                   {rzLabelBusy === order.id ? '…' : 'Етикетка PDF'}
@@ -3960,6 +3963,7 @@ export default function AdminOrders({
                                     {rzRegBusy === order.id ? '…' : 'Повернення'}
                                   </button>
                                 )}
+                              </div>
                               </div>
                             </>
                           ) : (
