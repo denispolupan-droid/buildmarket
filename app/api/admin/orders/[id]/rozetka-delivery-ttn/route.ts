@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
-import { createRozetkaDeliveryTtn, getRozetkaSender, getRozetkaSenderOptions, getRzSettingsSender, saveRozetkaSender, ROZETKA_SENDER_KEY, type RozetkaSender } from '../../../../../../lib/rozetka-delivery-ttn';
+import { createRozetkaDeliveryTtn, getRozetkaSender, getRozetkaSenderOptions, getRozetkaDeliveryTtnPdf, getRzSettingsSender, saveRozetkaSender, ROZETKA_SENDER_KEY, type RozetkaSender } from '../../../../../../lib/rozetka-delivery-ttn';
 import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
 
@@ -13,13 +13,38 @@ import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/comp
  * тому роут навмисно відмовляє всім іншим типам доставки.
  */
 /** Хто буде відправником + з яких відділень можна відправити — ДО створення
- *  накладної. options — різні відділення з останніх накладних кабінету. */
-export async function GET() {
+ *  накладної (options — різні відділення з останніх накладних кабінету).
+ *  ?label=1 — PDF етикетки вже створеної накладної (base64). */
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
+
+  if (new URL(req.url).searchParams.get('label')) {
+    const { id } = await params;
+    const db = createServiceClient();
+    const { data: order } = await db
+      .from('orders')
+      .select('tracking_number, delivery_type')
+      .eq('id', id)
+      .maybeSingle();
+    if (!order?.tracking_number) return NextResponse.json({ error: 'У замовлення немає ТТН' }, { status: 400 });
+    if (order.delivery_type !== ROZETKA_DELIVERY_TYPE) {
+      return NextResponse.json({ error: 'Це не доставка в точку видачі Rozetka' }, { status: 400 });
+    }
+    try {
+      const label = await getRozetkaDeliveryTtnPdf([order.tracking_number]);
+      return NextResponse.json({ label });
+    } catch (err) {
+      return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 502 });
+    }
+  }
+
   const [sender, options, settings] = await Promise.all([
     getRozetkaSender(),
     getRozetkaSenderOptions().catch(() => [] as RozetkaSender[]),

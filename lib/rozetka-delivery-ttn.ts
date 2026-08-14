@@ -13,7 +13,7 @@
  * знадобиться відправляти не з того відділення.
  */
 import { createServiceClient } from './supabase';
-import { rozetkaFetch } from './rozetka-api';
+import { rozetkaFetch, rozetkaFetchRaw } from './rozetka-api';
 import { RZ_SENDER_KEY } from './rz-delivery-api';
 
 export const ROZETKA_SENDER_KEY = 'rozetka_delivery_sender';
@@ -144,6 +144,25 @@ export async function getRozetkaSenderOptions(): Promise<RozetkaSender[]> {
 export async function saveRozetkaSender(sender: RozetkaSender): Promise<void> {
   const db = createServiceClient();
   await db.from('app_settings').upsert({ key: ROZETKA_SENDER_KEY, value: JSON.stringify(sender) });
+}
+
+/**
+ * PDF етикеток по номерах ТТН (RMP-…). POST ttn-print-batch віддає бінарний PDF
+ * (перевірено наживо: %PDF, octet-stream); JSON у відповіді означає помилку.
+ */
+export async function getRozetkaDeliveryTtnPdf(trackNumbers: string[]): Promise<string> {
+  const res = await rozetkaFetchRaw('/delivery-rozetka/ttn-print-batch', {
+    method: 'POST',
+    body: JSON.stringify({ track_numbers: trackNumbers }),
+  });
+  const ct = res.headers.get('content-type') ?? '';
+  if (ct.includes('json')) {
+    const j = await res.json().catch(() => null) as { errors?: { message?: string; description?: string } } | null;
+    throw new Error(`Rozetka не віддала PDF: ${j?.errors?.description ?? j?.errors?.message ?? `HTTP ${res.status}`}`);
+  }
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.subarray(0, 4).toString() !== '%PDF') throw new Error('Rozetka віддала не PDF');
+  return buf.toString('base64');
 }
 
 export type CreateTtnParams = {

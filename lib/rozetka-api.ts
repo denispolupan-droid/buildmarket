@@ -89,6 +89,24 @@ async function fetchWithRetry(url: string, init: RequestInit, tries = 3): Promis
 
 // Експортована: нею користуються модулі-супутники (напр. lib/rozetka-delivery-ttn.ts),
 // щоб не дублювати логін, кеш токена й ретраї мережевих збоїв.
+/** Сирий виклик без розбору JSON-конверта — для бінарних відповідей (PDF етикеток). */
+export async function rozetkaFetchRaw(path: string, init?: RequestInit, _retried = false): Promise<Response> {
+  const token = await getValidToken();
+  const res = await fetchWithRetry(`${ROZETKA_BASE}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
+    },
+  });
+  if (res.status === 401 && !_retried) {
+    await loginAndCacheToken();
+    return rozetkaFetchRaw(path, init, true);
+  }
+  return res;
+}
+
 export async function rozetkaFetch<T>(path: string, init?: RequestInit, _retried = false): Promise<T> {
   const token = await getValidToken();
   const res = await fetchWithRetry(`${ROZETKA_BASE}${path}`, {

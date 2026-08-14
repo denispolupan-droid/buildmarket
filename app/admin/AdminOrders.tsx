@@ -1483,12 +1483,14 @@ export default function AdminOrders({
   /**
    * Етикетка «ROZETKA Доставки». API віддає PDF у base64 — розгортаємо в blob і
    * відкриваємо у вкладці: data:-URL на PDF Chrome блокує, а зберігати файл на
-   * диск заради одного друку зайве.
+   * диск заради одного друку зайве. mp=true — маркетплейсна накладна в точку
+   * видачі (RMP-…, інший роут), false — власний договір rz-delivery.
    */
-  async function printRzLabel(id: string) {
+  async function printRzLabel(id: string, mp = false) {
     setRzLabelBusy(id);
     try {
-      const res = await fetch(`/api/admin/orders/${id}/rz-ttn?label=1`);
+      const path = mp ? 'rozetka-delivery-ttn' : 'rz-ttn';
+      const res = await fetch(`/api/admin/orders/${id}/${path}?label=1`);
       const data = await res.json();
       if (!res.ok || !data.label) { showToast(data.error ?? 'Не вдалося отримати етикетку', 'error'); return; }
       openPdfBase64(data.label);
@@ -3894,7 +3896,13 @@ export default function AdminOrders({
                         <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--text-secondary)', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '9px', padding: '10px 12px' }}>
                           <div style={{ fontWeight: 700, color: '#15803D' }}>Точка видачі Rozetka</div>
                           {order.tracking_number ? (
-                            <div style={{ marginTop: '4px' }}>ТТН: <strong>{order.tracking_number}</strong></div>
+                            <>
+                              <div style={{ marginTop: '4px' }}>ТТН: <strong>{order.tracking_number}</strong></div>
+                              <button onClick={() => printRzLabel(order.id, true)} disabled={rzLabelBusy === order.id}
+                                style={{ marginTop: '8px', height: '32px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
+                                {rzLabelBusy === order.id ? '…' : 'Етикетка PDF'}
+                              </button>
+                            </>
                           ) : (
                             <>
                               <div style={{ marginTop: '3px' }}>Адресу отримувача Rozetka візьме із замовлення — потрібні лише габарити.</div>
