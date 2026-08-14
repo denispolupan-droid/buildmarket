@@ -72,6 +72,37 @@ export async function getRozetkaSender(): Promise<RozetkaSender | null> {
   };
 }
 
+/**
+ * Варіанти відправника для вибору в адмінці: всі РІЗНІ відділення з останніх
+ * накладних кабінету. Інших довідників немає: settings віддає sender:null, а
+ * окремого списку «мої відділення відправки» в API Rozetka не існує. Тож нове
+ * відділення з'являється у виборі після першої накладної з нього в кабінеті.
+ */
+export async function getRozetkaSenderOptions(): Promise<RozetkaSender[]> {
+  const ttns = await getRozetkaDeliveryTtns(100);
+  const byDep = new Map<string, RozetkaSender>();
+  for (const t of ttns) {
+    const s = t.sender;
+    if (!s?.department || !s?.city || byDep.has(s.department)) continue;
+    byDep.set(s.department, {
+      type: s.type ?? 'natural',
+      name: s.name,
+      city: s.city,
+      address: s.address,
+      department: s.department,
+      department_type: s.department_type,
+      phones: s.phones ?? [],
+    });
+  }
+  return [...byDep.values()];
+}
+
+/** Зберегти обраного відправника — далі всі накладні йдуть від нього. */
+export async function saveRozetkaSender(sender: RozetkaSender): Promise<void> {
+  const db = createServiceClient();
+  await db.from('app_settings').upsert({ key: ROZETKA_SENDER_KEY, value: JSON.stringify(sender) });
+}
+
 export type CreateTtnParams = {
   weight: number;   // кг
   length: number;   // см

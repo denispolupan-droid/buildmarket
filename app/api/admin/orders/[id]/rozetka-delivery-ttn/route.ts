@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
-import { createRozetkaDeliveryTtn, getRozetkaSender } from '../../../../../../lib/rozetka-delivery-ttn';
+import { createRozetkaDeliveryTtn, getRozetkaSender, getRozetkaSenderOptions, saveRozetkaSender, type RozetkaSender } from '../../../../../../lib/rozetka-delivery-ttn';
 import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
 
@@ -12,17 +12,45 @@ import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/comp
  * своїм API (розділ Octopus). Посилку з ТТН Нової Пошти точка видачі не прийме,
  * тому роут навмисно відмовляє всім іншим типам доставки.
  */
-/** Хто буде відправником — щоб адмінка показала це ДО створення накладної. */
+/** Хто буде відправником + з яких відділень можна відправити — ДО створення
+ *  накладної. options — різні відділення з останніх накладних кабінету. */
 export async function GET() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
-  const sender = await getRozetkaSender();
-  return NextResponse.json({
-    sender: sender ? { name: sender.name, address: sender.address, phones: sender.phones } : null,
+  const [sender, options] = await Promise.all([
+    getRozetkaSender(),
+    getRozetkaSenderOptions().catch(() => [] as RozetkaSender[]),
+  ]);
+  // Поточний відправник міг бути з налаштування і не потрапити в історію
+  if (sender && !options.some(o => o.department === sender.department)) options.unshift(sender);
+  return NextResponse.json({ sender, options });
+}
+
+/** Обрати відділення відправника: зберігається і діє для всіх наступних накладних. */
+export async function PUT(req: NextRequest) {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || user.app_metadata?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  const body = await req.json().catch(() => ({})) as { sender?: RozetkaSender };
+  const s = body.sender;
+  if (!s?.department || !s?.city || !s?.name) {
+    return NextResponse.json({ error: 'Неповні дані відправника' }, { status: 400 });
+  }
+  await saveRozetkaSender({
+    type: s.type ?? 'natural',
+    name: s.name,
+    city: s.city,
+    address: s.address ?? '',
+    department: s.department,
+    department_type: s.department_type,
+    phones: Array.isArray(s.phones) ? s.phones : [],
   });
+  return NextResponse.json({ ok: true });
 }
 
 export async function POST(

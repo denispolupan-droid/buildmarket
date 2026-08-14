@@ -10,9 +10,15 @@ import { X } from 'lucide-react';
  * її Rozetka бере із самого замовлення. Від нас потрібні лише габарити посилки
  * і місця — те, що ніде більше не зберігається.
  *
- * Відправник не редагується: він береться з останньої створеної накладної, тобто
- * «як минулого разу». Показуємо, щоб було видно, від чийого імені піде відправлення.
+ * Відправник обирається зі списку відділень, з яких уже відправляли (інших
+ * довідників API Rozetka не дає — нове відділення з'являється після першої
+ * накладної з нього в кабінеті). Вибір зберігається і діє для наступних накладних.
  */
+type RzSender = {
+  type?: string; name: string; city: string; address: string;
+  department: string; department_type?: number; phones: string[];
+};
+
 type Props = {
   order: { id: string; order_number: number; items: { sku: string; qty: number; name: string }[] };
   onClose: () => void;
@@ -25,18 +31,37 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
   const [width,  setWidth]  = useState('20');
   const [height, setHeight] = useState('15');
   const [places, setPlaces] = useState('1');
-  const [sender, setSender] = useState<{ name: string; address: string; phones: string[] } | null>(null);
+  const [sender, setSender] = useState<RzSender | null>(null);
+  const [senderOptions, setSenderOptions] = useState<RzSender[]>([]);
   const [senderLoading, setSenderLoading] = useState(true);
+  const [senderSaving, setSenderSaving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     fetch(`/api/admin/orders/${order.id}/rozetka-delivery-ttn`)
       .then(r => r.json())
-      .then(d => setSender(d.sender ?? null))
+      .then(d => { setSender(d.sender ?? null); setSenderOptions(d.options ?? []); })
       .catch(() => setSender(null))
       .finally(() => setSenderLoading(false));
   }, [order.id]);
+
+  /** Вибір відділення: зберігаємо одразу — накладна і всі наступні підуть звідти */
+  async function pickSender(department: string) {
+    const next = senderOptions.find(o => o.department === department);
+    if (!next || next.department === sender?.department) return;
+    setSenderSaving(true); setError('');
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/rozetka-delivery-ttn`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sender: next }),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.error ?? 'Не вдалося зберегти відправника'); return; }
+      setSender(next);
+    } catch { setError('Збій мережі при збереженні відправника'); }
+    finally { setSenderSaving(false); }
+  }
 
   // Вага рахується з карток товарів тим самим роутом, що й для Нової Пошти
   useEffect(() => {
@@ -101,7 +126,26 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
             {senderLoading
               ? <div style={{ marginTop: '6px' }}>Завантажуємо відправника…</div>
               : sender
-                ? <div style={{ marginTop: '6px' }}>Відправник: <strong>{sender.name}</strong>, {sender.address}</div>
+                ? senderOptions.length > 1
+                  ? (
+                    <div style={{ marginTop: '8px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
+                        Відділення відправника
+                      </div>
+                      <select value={sender.department} disabled={senderSaving}
+                        onChange={e => pickSender(e.target.value)}
+                        title="Вибір запам'ятовується — наступні накладні підуть з цього відділення"
+                        style={{ width: '100%', height: '34px', padding: '0 8px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '12.5px', cursor: senderSaving ? 'wait' : 'pointer' }}>
+                        {senderOptions.map(o => (
+                          <option key={o.department} value={o.department}>{o.address || o.name}</option>
+                        ))}
+                      </select>
+                      <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                        {senderSaving ? 'Зберігаємо…' : `Відправник: ${sender.name}. Вибір діє і для наступних накладних.`}
+                      </div>
+                    </div>
+                  )
+                  : <div style={{ marginTop: '6px' }}>Відправник: <strong>{sender.name}</strong>, {sender.address}</div>
                 : <div style={{ marginTop: '6px', color: '#B45309' }}>Відправника не знайдено — створіть одну накладну в кабінеті Rozetka, далі братимемо дані звідти.</div>}
           </div>
 
@@ -125,8 +169,8 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
             style={{ flex: 1, height: '42px', borderRadius: '10px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             Скасувати
           </button>
-          <button onClick={submit} disabled={busy || !sender}
-            style={{ flex: 2, height: '42px', borderRadius: '10px', border: 'none', background: busy || !sender ? '#94A3B8' : '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: busy || !sender ? 'default' : 'pointer' }}>
+          <button onClick={submit} disabled={busy || !sender || senderSaving}
+            style={{ flex: 2, height: '42px', borderRadius: '10px', border: 'none', background: busy || !sender || senderSaving ? '#94A3B8' : '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: busy || !sender || senderSaving ? 'default' : 'pointer' }}>
             {busy ? 'Створюємо…' : 'Створити накладну'}
           </button>
         </div>
