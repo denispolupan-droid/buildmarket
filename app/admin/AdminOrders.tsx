@@ -460,6 +460,7 @@ export default function AdminOrders({
   // вікно й окремий роут, щоб не плутати з маркетплейсним rzTtnModal вище
   const [rzOwnTtnModal,  setRzOwnTtnModal]  = useState<Order | null>(null);
   const [rzLabelBusy,    setRzLabelBusy]    = useState<string | null>(null);
+  const [bulkPrinting,   setBulkPrinting]   = useState(false);
   const [rzRegBusy,      setRzRegBusy]      = useState<string | null>(null);
   // Останній реєстр, у який щось клали в цій сесії — щоб кнопка друку з'явилася
   // одразу після додавання, а не вимагала окремого екрана реєстрів
@@ -1481,15 +1482,15 @@ export default function AdminOrders({
   }
 
   /**
-   * Етикетка «ROZETKA Доставки». API віддає PDF у base64 — розгортаємо в blob і
-   * відкриваємо у вкладці: data:-URL на PDF Chrome блокує, а зберігати файл на
-   * диск заради одного друку зайве. mp=true — маркетплейсна накладна в точку
-   * видачі (RMP-…, інший роут), false — власний договір rz-delivery.
+   * Етикетка PDF по накладній: всі перевізники віддають base64 через `?label=1`
+   * на своєму роуті — 'ttn' (НП, маркування 100×100), 'rz-ttn' (власний договір
+   * rz-delivery), 'rozetka-delivery-ttn' (МП-накладні в точки видачі, RMP-…).
+   * PDF розгортаємо в blob і відкриваємо у вкладці: data:-URL на PDF Chrome
+   * блокує, а зберігати файл на диск заради одного друку зайве.
    */
-  async function printRzLabel(id: string, mp = false) {
+  async function printLabel(id: string, path: 'ttn' | 'rz-ttn' | 'rozetka-delivery-ttn') {
     setRzLabelBusy(id);
     try {
-      const path = mp ? 'rozetka-delivery-ttn' : 'rz-ttn';
       const res = await fetch(`/api/admin/orders/${id}/${path}?label=1`);
       const data = await res.json();
       if (!res.ok || !data.label) { showToast(data.error ?? 'Не вдалося отримати етикетку', 'error'); return; }
@@ -1498,6 +1499,32 @@ export default function AdminOrders({
       showToast(err instanceof Error ? err.message : 'Збій мережі', 'error');
     } finally {
       setRzLabelBusy(null);
+    }
+  }
+
+  /**
+   * Групова печатка етикеток по виділених замовленнях: сервер збирає PDF-и всіх
+   * трьох перевізників (НП + обидва типи Rozetka) і склеює в один документ —
+   * одна вкладка, один друк. Замовлення без накладної просто пропускаються.
+   */
+  async function bulkPrintLabels() {
+    const ids = orders.filter(o => selectedIds.has(o.id) && o.tracking_number).map(o => o.id);
+    if (!ids.length) return;
+    setBulkPrinting(true);
+    try {
+      const res = await fetch('/api/admin/orders/print-labels', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderIds: ids }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.label) { showToast(data.error ?? 'Не вдалося отримати етикетки', 'error', 6000); return; }
+      openPdfBase64(data.label);
+      const errs = (data.errors as string[] | undefined) ?? [];
+      if (errs.length) showToast(`Частина етикеток не надрукована — ${errs.join('; ')}`, 'error', 8000);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Збій мережі', 'error');
+    } finally {
+      setBulkPrinting(false);
     }
   }
 
@@ -1708,6 +1735,24 @@ export default function AdminOrders({
             }}>
               <Truck size={14} /> Об&apos;єднати в ТТН
             </button>
+            {(() => {
+              // Друкуємо лише те, на що існує етикетка: НП і обидва типи Rozetka
+              const printable = orders.filter(o => selectedIds.has(o.id) && o.tracking_number
+                && ['nova', 'nova_poshta', 'rozetka_delivery', RZ_DELIVERY_TYPE].includes(o.delivery_type ?? ''));
+              if (printable.length === 0) return null;
+              return (
+                <button onClick={bulkPrintLabels} disabled={bulkPrinting}
+                  title="Один PDF з етикетками всіх виділених накладних — НП і Rozetka разом"
+                  style={{
+                    height: '34px', padding: '0 16px', borderRadius: '8px',
+                    border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)',
+                    color: '#fff', fontSize: '13px', fontWeight: 600, cursor: bulkPrinting ? 'wait' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '6px', opacity: bulkPrinting ? 0.6 : 1,
+                  }}>
+                  <Printer size={14} /> {bulkPrinting ? 'Готую PDF…' : `Друк ТТН (${printable.length})`}
+                </button>
+              );
+            })()}
             {(() => {
               const addable = orders.filter(o => selectedIds.has(o.id) && o.tracking_number && !registryAdded.has(o.tracking_number));
               const selCount = orders.filter(o => selectedIds.has(o.id)).length;
@@ -3882,6 +3927,16 @@ export default function AdminOrders({
                             );
                           })()}
                           {order.tracking_number && (
+                            <button onClick={() => printLabel(order.id, 'ttn')} disabled={rzLabelBusy === order.id}
+                              title="Друк етикетки НП 100×100 (PDF)"
+                              style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
+                                background: 'var(--brand-blue-light)', color: 'var(--brand-blue)',
+                                border: '1.5px solid #C7D7F5', cursor: rzLabelBusy === order.id ? 'wait' : 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {rzLabelBusy === order.id ? '…' : <Printer size={14} />}
+                            </button>
+                          )}
+                          {order.tracking_number && (
                             <button onClick={() => deleteTTN(order.id)} disabled={ttnDeleting === order.id}
                               title="Видалити ТТН з бази та з НП"
                               style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0, background: '#FEF2F2', color: '#DC2626', border: '1.5px solid #FECACA', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: ttnDeleting === order.id ? 0.5 : 1 }}>
@@ -3899,7 +3954,7 @@ export default function AdminOrders({
                             // Кнопка праворуч від номера — рядок один, місце дозволяє
                             <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                               <div style={{ flexShrink: 0 }}>ТТН: <strong>{order.tracking_number}</strong></div>
-                              <button onClick={() => printRzLabel(order.id, true)} disabled={rzLabelBusy === order.id}
+                              <button onClick={() => printLabel(order.id, 'rozetka-delivery-ttn')} disabled={rzLabelBusy === order.id}
                                 style={{ marginLeft: 'auto', height: '30px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
                                 {rzLabelBusy === order.id ? '…' : 'Етикетка PDF'}
                               </button>
@@ -3926,7 +3981,7 @@ export default function AdminOrders({
                               <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                               <div style={{ flexShrink: 0 }}>ЕН: <strong>{order.tracking_number}</strong></div>
                               <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto', flexWrap: 'wrap' }}>
-                                <button onClick={() => printRzLabel(order.id)} disabled={rzLabelBusy === order.id}
+                                <button onClick={() => printLabel(order.id, 'rz-ttn')} disabled={rzLabelBusy === order.id}
                                   style={{ height: '32px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
                                   {rzLabelBusy === order.id ? '…' : 'Етикетка PDF'}
                                 </button>

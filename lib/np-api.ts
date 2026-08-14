@@ -44,6 +44,24 @@ export async function getNpApiKey(): Promise<string> {
 export const npError = (res: NpResponse<unknown>, fallback: string) =>
   res.errors?.filter(Boolean).join('; ') || fallback;
 
+/**
+ * PDF маркування 100×100 для списку ТТН одним документом (сторінка на ТТН).
+ * Друкована форма живе не в api.novaposhta.ua, а на my.novaposhta.ua; кілька
+ * номерів передаються ПОВТОРЕННЯМ сегмента orders[] (перевірено наживо: кома
+ * всередині одного сегмента дає порожню відповідь). На чужу/неіснуючу ТТН НП
+ * віддає HTML-сторінку замість PDF — тому перевірка магічних байтів.
+ */
+export async function npMarkingPdf(apiKey: string, ttns: string[]): Promise<Buffer> {
+  if (!apiKey) throw new Error('API ключ НП не налаштовано');
+  const segs = ttns.map(t => `orders[]/${encodeURIComponent(t)}`).join('/');
+  const res = await fetch(`https://my.novaposhta.ua/orders/printMarking100x100/${segs}/type/pdf/apiKey/${apiKey}`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (!res.ok || buf.subarray(0, 4).toString() !== '%PDF') {
+    throw new Error('НП не віддала етикетки — перевірте, що ТТН створені під ключем із Налаштувань');
+  }
+  return buf;
+}
+
 // НП валідує текстові коментарі (Note у заявках) жорсткіше, ніж описано в доках.
 // Перевірено живими викликами по неіснуючій ТТН, щоб нічого не створити:
 // «Note is incorrect» дають латинські літери, «#» і «:»; кирилиця, цифри, пробіл
