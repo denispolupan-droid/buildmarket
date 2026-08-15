@@ -11,6 +11,7 @@ import { PROM_DELIVERY_TARIFF_KEY, parsePromDeliveryTariff } from '../../lib/pro
 import { escapeOrTerm } from '../../lib/pg-filter';
 import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
 import { RZ_DELIVERY_TYPE } from '../../lib/rz-delivery';
+import { PAYMENT_METHOD_ORDER, type PaymentMethodCode } from '../../lib/payment-method';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -36,7 +37,7 @@ const STATUS_TABS = [
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; status?: string; expand?: string; dateFrom?: string; dateTo?: string; sortBy?: string; sortDir?: string; q?: string; channel?: string; carrier?: string }>;
+  searchParams: Promise<{ page?: string; status?: string; expand?: string; dateFrom?: string; dateTo?: string; sortBy?: string; sortDir?: string; q?: string; channel?: string; carrier?: string; pay?: string }>;
 }) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -46,10 +47,15 @@ export default async function AdminPage({
   const {
     page: pageStr, status: statusParam, expand: expandOrderId, dateFrom, dateTo,
     sortBy: sortByParam, sortDir: sortDirParam, q: qParam, channel: channelParam, carrier: carrierParam,
+    pay: payParam,
   } = await searchParams;
   const search  = (qParam ?? '').trim();
   const channel = channelParam ?? '';
   const carrier = carrierParam ?? '';
+  // Форма оплати — код із generated-колонки orders.payment_method_code
+  // (див. міграцію 099). Фільтрувати по payment_type не можна: у частини
+  // замовлень маркетплейсів він розходиться з фактичним способом оплати.
+  const pay = PAYMENT_METHOD_ORDER.includes(payParam as PaymentMethodCode) ? payParam! : '';
   const SORT_COLS: Record<string, string> = { created_at: 'created_at', total_price: 'total_price', order_number: 'order_number' };
   const sortBy  = SORT_COLS[sortByParam ?? ''] ?? 'created_at';
   const sortAsc = sortDirParam === 'asc';
@@ -67,12 +73,12 @@ export default async function AdminPage({
    * лежало на другій сторінці. Ця ж функція накладається і на вибірку для
    * лічильників, щоб цифри на вкладках збігалися зі списком.
    */
-  function applyOrderFilters<T>(query: T, opts?: { ignoreChannelCarrier?: boolean }): T {
+  function applyOrderFilters<T>(query: T, opts?: { ignoreFacets?: boolean }): T {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q = query as any;
     if (dateFrom) q = q.gte('created_at', `${dateFrom}T00:00:00`);
     if (dateTo)   q = q.lte('created_at', `${dateTo}T23:59:59`);
-    if (!opts?.ignoreChannelCarrier) {
+    if (!opts?.ignoreFacets) {
       // Замовлення з сайту історично лежать і як 'website', і як NULL
       if (channel === 'website') q = q.or('channel_code.is.null,channel_code.eq.website');
       else if (channel)          q = q.eq('channel_code', channel);
@@ -82,6 +88,7 @@ export default async function AdminPage({
       // точки й один процес здачі, різне лише API накладної.
       if (carrier === 'rozetka')   q = q.in('delivery_type', [ROZETKA_DELIVERY_TYPE, RZ_DELIVERY_TYPE]);
       else if (carrier === 'nova') q = q.not('delivery_type', 'in', `(${ROZETKA_DELIVERY_TYPE},${RZ_DELIVERY_TYPE},pickup)`);
+      if (pay) q = q.eq('payment_method_code', pay);
     }
     if (search) {
       const term = escapeOrTerm(search);
@@ -105,19 +112,32 @@ export default async function AdminPage({
     return q as T;
   }
 
-  let query = applyOrderFilters(
+  /**
+   * Вкладка статусу. Винесена окремо від applyOrderFilters, бо накладається не
+   * тільки на список, а й на фасетні лічильники чіпів — інакше на вкладці
+   * «Підтверджено 4» чіпи показували «Rozetka 92 · Не оплачені 86», тобто
+   * цифри з усієї бази замість поточного зрізу.
+   *
+   * «Готово до відправки» = відвантажені, яких НП ще НЕ прийняла; «Відправлено»
+   * = вже прийняті НП. Розрізняємо за carrier_accepted_at, щоб одне замовлення
+   * не потрапляло у дві вкладки одночасно.
+   */
+  function applyStatusFilter<T>(query: T): T {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q = query as any;
+    if (status === 'ready_to_ship') q = q.eq('status', 'shipped').is('carrier_accepted_at', null);
+    else if (status === 'shipped')  q = q.eq('status', 'shipped').not('carrier_accepted_at', 'is', null);
+    else if (status) q = q.eq('status', status);
+    return q as T;
+  }
+
+  const query = applyStatusFilter(applyOrderFilters(
     serviceClient
       .from('orders')
       .select('*', { count: 'exact' })
       .order(sortBy, { ascending: sortAsc })
       .range(from, to),
-  );
-
-  // «Готово до відправки» = відвантажені, яких НП ще НЕ прийняла; «Відправлено» = вже прийняті НП.
-  // Розрізняємо їх за carrier_accepted_at, щоб один заказ не потрапляв у дві вкладки одночасно.
-  if (status === 'ready_to_ship') query = query.eq('status', 'shipped').is('carrier_accepted_at', null);
-  else if (status === 'shipped')  query = query.eq('status', 'shipped').not('carrier_accepted_at', 'is', null);
-  else if (status) query = query.eq('status', status);
+  ));
 
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
@@ -135,14 +155,15 @@ export default async function AdminPage({
       .in('doc_type', ['receipt', 'stock_in'])
       .eq('status', 'confirmed')
       .gte('confirmed_at', oneDayAgo),
-    // Лічильники каналів і перевізників — БЕЗ власного фільтра (класична фасетна
-    // логіка): інакше, ставши на «Rozetka», всі інші канали показали б нуль і
-    // перемкнутися між ними було б неможливо.
-    fetchAllRows<{ channel_code: string | null; delivery_type: string | null }>((f, t) =>
-      applyOrderFilters(
-        serviceClient.from('orders').select('channel_code, delivery_type'),
-        { ignoreChannelCarrier: true },
-      ).range(f, t),
+    // Лічильники каналів, перевізників і оплати рахуються по ПОТОЧНІЙ вкладці
+    // статусу (і по даті/пошуку), але БЕЗ фільтрів самих чіпів — класична
+    // фасетна логіка: інакше, ставши на «Rozetka», всі інші канали показали б
+    // нуль і перемкнутися між ними було б неможливо.
+    fetchAllRows<{ channel_code: string | null; delivery_type: string | null; payment_method_code: string | null }>((f, t) =>
+      applyStatusFilter(applyOrderFilters(
+        serviceClient.from('orders').select('channel_code, delivery_type, payment_method_code'),
+        { ignoreFacets: true },
+      )).range(f, t),
     ),
     serviceClient.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle(),
     serviceClient.from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle(),
@@ -251,6 +272,11 @@ export default async function AdminPage({
   const carrierCounts = (channelRows ?? []).reduce<Record<string, number>>((acc, r) => {
     if (r.delivery_type === 'pickup') return acc;
     const key = (r.delivery_type === ROZETKA_DELIVERY_TYPE || r.delivery_type === RZ_DELIVERY_TYPE) ? 'rozetka' : 'nova';
+    acc[key] = (acc[key] ?? 0) + 1;
+    return acc;
+  }, {});
+  const payCounts = (channelRows ?? []).reduce<Record<string, number>>((acc, r) => {
+    const key = r.payment_method_code ?? 'other';
     acc[key] = (acc[key] ?? 0) + 1;
     return acc;
   }, {});
@@ -393,7 +419,7 @@ export default async function AdminPage({
         {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
       </p>
 
-      <AdminOrders key={curStatus} initialSearch={search} channelFilter={channel} carrierFilter={carrier} channelCounts={channelCounts} carrierCounts={carrierCounts} totalFound={count ?? 0} productThumbs={productThumbs} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} rozetkaCommissionPct={rozetkaCommissionPct} feeTariffs={feeTariffs} initialSaleDocs={initialSaleDocs} initialReturnDocs={initialReturnDocs} initialShippedQty={initialShippedQty} />
+      <AdminOrders key={curStatus} initialSearch={search} channelFilter={channel} carrierFilter={carrier} payFilter={pay} channelCounts={channelCounts} carrierCounts={carrierCounts} payCounts={payCounts} totalFound={count ?? 0} productThumbs={productThumbs} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} rozetkaCommissionPct={rozetkaCommissionPct} feeTariffs={feeTariffs} initialSaleDocs={initialSaleDocs} initialReturnDocs={initialReturnDocs} initialShippedQty={initialShippedQty} />
     </div>
   );
 }

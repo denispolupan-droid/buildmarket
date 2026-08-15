@@ -7,6 +7,46 @@
 //   Rozetka — payment.payment_method_name («Оплата під час отримання товару»)
 //             + payment.payment_type_title («Готівкова»)
 
+/**
+ * Форма оплати одним кодом. Значення рахує БД — generated-колонка
+ * orders.payment_method_code (міграція 099): фільтр списку й лічильники чіпів
+ * беруть одне й те саме поле, тож розійтися вони не можуть.
+ *
+ * Тут лише підписи для UI — щоб назва форми оплати була в одному місці.
+ */
+export type PaymentMethodCode =
+  | 'cod' | 'prom' | 'wallet' | 'card' | 'invoice' | 'cash' | 'deferred' | 'other';
+
+// Підписи короткі навмисне: ряд фільтрів у журналі замовлень і без того має
+// 15 чіпів, а з повними назвами («Накладений платіж», «Apple / Google Pay») він
+// переносився на другий рядок. Повна назва лишається в title при наведенні.
+export const PAYMENT_METHOD_LABEL: Record<PaymentMethodCode, string> = {
+  cod:      'Накладений',
+  prom:     'Пром-оплата',
+  wallet:   'Apple/Google',
+  card:     'Картка',
+  invoice:  'Рахунок',
+  cash:     'Готівка',
+  deferred: 'Відстрочка',
+  other:    'Інше',
+};
+
+export const PAYMENT_METHOD_HINT: Record<PaymentMethodCode, string> = {
+  cod:      'Оплата при отриманні — гроші приходять після доставки',
+  prom:     'Пром-оплата (evopay) на площадці Prom',
+  wallet:   'Apple Pay або Google Pay через Rozetka',
+  card:     'Картка онлайн: Monobank на сайті або Visa/MasterCard у Rozetka',
+  invoice:  'Безготівка: рахунок на сайті/в роздрібі або «Оплата на рахунок продавця» в Rozetka',
+  cash:     'Готівка',
+  deferred: 'Відстрочка платежу',
+  other:    'Форму оплати не вдалося визначити',
+};
+
+/** Порядок чіпів у фільтрі — від найчастішого до рідкісного. */
+export const PAYMENT_METHOD_ORDER: PaymentMethodCode[] = [
+  'cod', 'prom', 'wallet', 'card', 'invoice', 'cash', 'deferred', 'other',
+];
+
 export type PaymentSource = {
   channel_code?: string | null;
   prom_data?: Record<string, unknown> | null;

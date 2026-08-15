@@ -35,7 +35,10 @@ import { rozetkaStatusLabel, isRozetkaAhead } from '../../lib/rozetka-status';
 import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
 import { RZ_DELIVERY_TYPE } from '../../lib/rz-delivery';
 import { deliveryPlace } from '../../lib/delivery-label';
-import { marketplacePaymentMethod } from '../../lib/payment-method';
+import {
+  marketplacePaymentMethod,
+  PAYMENT_METHOD_HINT, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_ORDER,
+} from '../../lib/payment-method';
 import { estimateMarketplaceDeliveryFee, splitFeeByRevenue, type MarketplaceFeeTariffs } from '../../lib/marketplace-delivery-fee';
 import { isPromCheapDelivery, computePromDeliveryFee } from '../../lib/prom-delivery-fee';
 import RozetkaDeliveryTtnModal from '../components/admin/RozetkaDeliveryTtnModal';
@@ -225,12 +228,16 @@ interface AdminOrdersProps {
   dateTo?: string;
   statusCounts?: Record<string, number>;
   currentStatus?: string;
-  /** Пошук і фільтри каналу/перевізника застосовує сервер — сюди приходить чинний стан з URL */
+  /** Пошук і фільтри каналу/перевізника/оплати застосовує сервер — сюди приходить чинний стан з URL */
   initialSearch?: string;
   channelFilter?: string;
   carrierFilter?: string;
+  /** код форми оплати з orders.payment_method_code ('' — без фільтра) */
+  payFilter?: string;
   channelCounts?: Record<string, number>;
   carrierCounts?: Record<string, number>;
+  /** скільки замовлень на кожну форму оплати в поточному зрізі */
+  payCounts?: Record<string, number>;
   /** Скільки замовлень підпадає під чинний зріз у всій базі (не на сторінці) */
   totalFound?: number;
   /** sku першої позиції → шлях до фото, для мініатюри в рядку */
@@ -250,8 +257,9 @@ export default function AdminOrders({
   initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin',
   hasRecentReceipts = false, expandOrderId, dateFrom, dateTo,
   statusCounts = {}, currentStatus = '',
-  initialSearch = '', channelFilter = '', carrierFilter = '',
-  channelCounts = {}, carrierCounts = {}, totalFound = 0, productThumbs = {},
+  initialSearch = '', channelFilter = '', carrierFilter = '', payFilter = '',
+  channelCounts = {}, carrierCounts = {}, payCounts = {},
+  totalFound = 0, productThumbs = {},
   sortBy = 'created_at', sortDir = 'desc',
   promCommissionPct = 3,
   rozetkaCommissionPct = 15,
@@ -1785,7 +1793,7 @@ export default function AdminOrders({
 
         {/* Row 1: Channel filter + sync */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
             {[
               { value: '',         label: 'Всі канали' },
               { value: 'website',  label: 'Магазин' },
@@ -1801,12 +1809,17 @@ export default function AdminOrders({
               const n = ch.value
                 ? (channelCounts[ch.value] ?? 0)
                 : Object.values(channelCounts).reduce((s, c) => s + c, 0);
+              // Порожні канали ховаємо: на вкладці статусу їх буває половина
+              // ряду («Опт 0 · Дроп 0 · Телефон 0»), через що фільтри
+              // переносились на другий рядок. Перемикатись туди все одно нема
+              // на що. «Всі канали» і вибраний чіп лишаються завжди.
+              if (ch.value && !n && !active) return null;
               return (
                 <button
                   key={ch.value}
                   onClick={() => pushFilters({ channel: ch.value })}
                   style={{
-                    height: '30px', padding: '0 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
+                    height: '30px', padding: '0 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
                     border: `1.5px solid ${active ? (cfg?.color ?? '#1E3A5F') : 'var(--border)'}`,
                     background: active ? (cfg?.bg ?? '#EFF4FF') : 'var(--bg-card)',
                     color: active ? (cfg?.color ?? '#1E3A5F') : 'var(--text-secondary)',
@@ -1830,13 +1843,14 @@ export default function AdminOrders({
             ].map(c => {
               const active = carrierFilter === c.value;
               const n = carrierCounts[c.value] ?? 0;
+              if (!n && !active) return null;
               return (
                 <button
                   key={c.value}
                   title={c.value === 'nova' ? 'Відправлення Новою Поштою' : 'Доставка в точки видачі Rozetka (накладна RMP-…)'}
                   onClick={() => pushFilters({ carrier: active ? '' : c.value })}
                   style={{
-                    height: '30px', padding: '0 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
+                    height: '30px', padding: '0 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
                     border: `1.5px solid ${active ? c.border : 'var(--border)'}`,
                     background: active ? c.bg : 'var(--bg-card)',
                     color: active ? c.color : 'var(--text-secondary)',
@@ -1845,6 +1859,30 @@ export default function AdminOrders({
                 >
                   {c.label}
                   <span style={{ marginLeft: '4px', fontSize: '10px', opacity: 0.7 }}>{n}</span>
+                </button>
+              );
+            })}
+            {/* Форма оплати. Показуємо лише ті, що реально є в поточному зрізі
+                (плюс активну) — інакше і без того щільний ряд фільтрів обріс би
+                порожніми «Готівка 0 · Відстрочка 0». */}
+            <span aria-hidden className="oc-filter-sep" style={{ width: '1px', alignSelf: 'stretch', margin: '0 2px', background: 'var(--border)' }} />
+            {PAYMENT_METHOD_ORDER.filter(code => (payCounts[code] ?? 0) > 0 || payFilter === code).map(code => {
+              const active = payFilter === code;
+              return (
+                <button
+                  key={code}
+                  title={PAYMENT_METHOD_HINT[code]}
+                  onClick={() => pushFilters({ pay: active ? '' : code })}
+                  style={{
+                    height: '30px', padding: '0 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
+                    border: `1.5px solid ${active ? '#7C3AED' : 'var(--border)'}`,
+                    background: active ? '#F3E8FF' : 'var(--bg-card)',
+                    color: active ? '#6D28D9' : 'var(--text-secondary)',
+                    cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {PAYMENT_METHOD_LABEL[code]}
+                  <span style={{ marginLeft: '4px', fontSize: '10px', opacity: 0.7 }}>{payCounts[code] ?? 0}</span>
                 </button>
               );
             })}
@@ -1858,7 +1896,7 @@ export default function AdminOrders({
                   onClick={() => setCabinetAheadOnly(v => !v)}
                   title="Замовлення, які в кабінеті Rozetka вже рухнули далі, ніж у нас"
                   style={{
-                    height: '30px', padding: '0 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
+                    height: '30px', padding: '0 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
                     border: `1.5px solid ${cabinetAheadOnly ? '#15803D' : 'var(--border)'}`,
                     background: cabinetAheadOnly ? '#DCFCE7' : 'var(--bg-card)',
                     color: cabinetAheadOnly ? '#15803D' : 'var(--text-secondary)',
@@ -2018,11 +2056,11 @@ export default function AdminOrders({
         </div>
 
         {/* Скільки знайшлося — по всій базі, а не на цій сторінці */}
-        {(initialSearch || channelFilter || carrierFilter) && (
+        {(initialSearch || channelFilter || carrierFilter || payFilter) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', color: 'var(--text-secondary)' }}>
             <span>Знайдено: <strong style={{ color: 'var(--brand-blue)' }}>{totalFound}</strong> у всій базі</span>
             <button
-              onClick={() => { setSearchInput(''); pushFilters({ q: '', channel: '', carrier: '' }); }}
+              onClick={() => { setSearchInput(''); pushFilters({ q: '', channel: '', carrier: '', pay: '' }); }}
               style={{ height: '24px', padding: '0 10px', borderRadius: '20px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer' }}>
               Скинути фільтри
             </button>
@@ -2034,7 +2072,7 @@ export default function AdminOrders({
       {(() => {
         const awaitingCount = orders.filter(o => o.status === 'awaiting_stock').length;
         if (!awaitingCount || !hasRecentReceipts) return null;
-        const isFiltered = channelFilter === '' && carrierFilter === '' && !initialSearch;
+        const isFiltered = channelFilter === '' && carrierFilter === '' && payFilter === '' && !initialSearch;
         return (
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
