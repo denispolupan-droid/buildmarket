@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { checkAdmin } from '../../../../lib/check-admin';
+import { requireStaff } from '../../../../lib/auth-guard';
 import { generateBlogPost, sanitizeArticleHtml } from '../../../../lib/blog-generator';
 import { buildCovers } from '../../../../lib/blog-cover';
+import { logSeoAction } from '../../../../lib/seo-actions';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -36,7 +38,8 @@ export async function GET(req: NextRequest) {
 // Генерація нової статті (чернетка) — єдине місце витрат API, тільки по кнопці.
 // manual: true — порожня чернетка без AI (ручне написання).
 export async function POST(req: NextRequest) {
-  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
   const { topic, focusQuery, mustLink, manual } = await req.json() as {
     topic?: string;
     focusQuery?: string;
@@ -63,6 +66,16 @@ export async function POST(req: NextRequest) {
     const post = await generateBlogPost(topic.trim(), {
       focusQuery: focusQuery?.trim() || undefined,
       mustLink: mustLink?.href?.startsWith('/') ? mustLink : undefined,
+    });
+    // Без цього запису «Стаття під запит» не лишала сліду в журналі — і через
+    // місяць під той самий запит легко було замовити другу статтю.
+    await logSeoAction({
+      page: `/blog/${post.slug}`,
+      action: 'article_new',
+      query: focusQuery?.trim() || topic.trim(),
+      meta: { title: post.title, mustLink: mustLink?.href ?? null },
+      by: auth.user.email ?? null,
+      cost: post.costUsd,
     });
     return NextResponse.json(post);
   } catch (err) {

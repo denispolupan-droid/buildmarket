@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { redirect } from 'next/navigation';
 import type { User } from '@supabase/supabase-js';
 import { createSupabaseServer } from './supabase-server';
 import { getRole, type UserRole } from './user-role';
@@ -39,6 +40,24 @@ export async function requireStaff(...roles: StaffRole[]): Promise<Ok | Err> {
   const role = user.app_metadata?.role as string | undefined;
   if (!role || !allowed.includes(role as StaffRole)) return forbidden();
   return { ok: true, user };
+}
+
+/**
+ * Той самий гейт, але для server-компонентів сторінок: там немає куди повертати
+ * NextResponse, тому недозволена роль просто редіректиться на головну. Потрібен,
+ * щоб сторінки адмінки не робили getUser() + перевірку ролі вручну — саме так
+ * у розділ і заповзали розбіжності («/admin/seo лише admin, а /api/.../gsc —
+ * будь-хто зі staff»).
+ *
+ *   const user = await requireStaffPage('admin');
+ */
+export async function requireStaffPage(...roles: StaffRole[]): Promise<User> {
+  const allowed: StaffRole[] = roles.length ? roles : ['admin'];
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  const role = user?.app_metadata?.role as string | undefined;
+  if (!user || !role || !allowed.includes(role as StaffRole)) redirect('/');
+  return user;
 }
 
 /**

@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { slugify } from './seo/slug';
 import { buildCovers } from './blog-cover';
+import { costOf } from './ai-cost';
 
 // Генерація статей блогу (SEO: інформаційні запити, довгий хвіст).
 // Запускається ТІЛЬКИ вручну з /admin/blog — жодних фонових витрат API.
@@ -117,6 +118,8 @@ export async function boostBlogPost(
   lenBefore: number; lenAfter: number;
   lenRuBefore: number; lenRuAfter: number;
   faqCount: number; linkedSkus: string[]; appendedBlock: boolean;
+  /** фактична вартість генерації, $ — іде в журнал SEO-дій */
+  costUsd: number;
 }> {
   const supabase = db();
 
@@ -239,6 +242,7 @@ ${post.content_html_ru ?? '—'}`,
     faqCount: parsed.faq.length,
     linkedSkus: products.map(p => p.sku),
     appendedBlock,
+    costUsd: costOf(message.model, message.usage),
   };
 }
 
@@ -250,7 +254,7 @@ export async function generateBlogPost(
     /** Обов'язкове внутрішнє посилання (напр., на товар, що дожимається) */
     mustLink?: { href: string; label: string };
   },
-): Promise<{ id: number; slug: string; title: string }> {
+): Promise<{ id: number; slug: string; title: string; costUsd: number }> {
   const supabase = db();
 
   const { data: categories } = await supabase.from('categories').select('slug, name').order('sort_order');
@@ -338,5 +342,5 @@ ${catList}`,
     .select('id, slug, title')
     .single();
   if (error) throw error;
-  return inserted as { id: number; slug: string; title: string };
+  return { ...(inserted as { id: number; slug: string; title: string }), costUsd: costOf(message.model, message.usage) };
 }

@@ -5,6 +5,7 @@ import {
   generateUA, translateRU, applyContent, getCategoryLabels,
   type GenProduct, type GeneratedRU, type CategoryLabelSpec,
 } from './product-content-gen';
+import { CostSink } from './ai-cost';
 
 // Кнопка «AI заповнення» в картці товару — ДРУГИЙ вхід у той самий рушій
 // генерації (lib/product-content-gen), що й розділ SEO. Тут — паралельний пул +
@@ -23,7 +24,7 @@ function db() {
 export type AiFillEvent =
   | { type: 'start'; total: number }
   | { type: 'progress'; sku: string; name: string; done: number; total: number }
-  | { type: 'result'; sku: string; name: string }
+  | { type: 'result'; sku: string; name: string; costUsd: number }
   | { type: 'error'; sku: string; error: string }
   | { type: 'done'; done: number; errors: number };
 
@@ -71,15 +72,16 @@ async function fillOne(
   f: Required<FillFields>,
   force: boolean,
   targetQuery?: string,
+  cost?: CostSink,
 ): Promise<void> {
   const gp: GenProduct = {
     sku: product.sku, name: product.name, name_ru: product.name_ru,
     brand: product.brand, category_slug: product.category_slug, description: product.description,
   };
 
-  const ua = await generateUA(gp, categoryName, categoryLabels, targetQuery);
+  const ua = await generateUA(gp, categoryName, categoryLabels, targetQuery, cost);
   let ru: GeneratedRU | null = null;
-  try { ru = await translateRU(ua); } catch { /* лишиться пробіл «рос. версія», доб'ється в SEO */ }
+  try { ru = await translateRU(ua, cost); } catch { /* лишиться пробіл «рос. версія», доб'ється в SEO */ }
 
   const [{ data: chars }, { data: faq }] = await Promise.all([
     supabase.from('product_characteristics').select('product_sku').eq('product_sku', product.sku).limit(1),
@@ -188,9 +190,12 @@ export async function* fillProducts(
       push({ type: 'progress', sku: product.sku, name: product.name, done, total: products!.length });
       try {
         const categoryName = catName.get(product.category_slug ?? '') ?? product.category_slug ?? '';
-        await fillOne(supabase, product, categoryName, labelsByCat.get(product.category_slug) ?? { required: [], optional: [] }, f, force, targetQuery);
+        // Свій лічильник на кожен товар: воркери йдуть паралельно, спільний
+        // накопичувач змішав би витрати різних карток.
+        const cost = new CostSink();
+        await fillOne(supabase, product, categoryName, labelsByCat.get(product.category_slug) ?? { required: [], optional: [] }, f, force, targetQuery, cost);
         done++;
-        push({ type: 'result', sku: product.sku, name: product.name });
+        push({ type: 'result', sku: product.sku, name: product.name, costUsd: cost.usd });
       } catch (err) {
         errors++;
         push({ type: 'error', sku: product.sku, error: String(err) });

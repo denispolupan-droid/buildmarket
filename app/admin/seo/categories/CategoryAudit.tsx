@@ -1,0 +1,118 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import type { CategoryAuditRow, CategoryAuditGaps } from '../../../../lib/seo/category-audit';
+import { badge, card, chip, hint, TONE, type Tone } from '../ui';
+import HelpBox from '../HelpBox';
+import { HELP_CATEGORIES } from '../help-content';
+
+const GAP_LABELS: { key: keyof CategoryAuditGaps; label: string; tone: Tone; explain: string }[] = [
+  { key: 'staleBrands',   label: 'бренд зник',       tone: 'danger', explain: 'Текст називає бренд, якого в категорії вже немає' },
+  { key: 'noProducts',    label: 'порожня сторінка', tone: 'danger', explain: 'Є текст, але жодного активного товару — сторінка нічого не продає' },
+  { key: 'noMeta',        label: 'немає тексту',     tone: 'danger', explain: 'Є товар, але категорія без курованого опису' },
+  { key: 'deadBlogLink',  label: 'стаття в 404',     tone: 'danger', explain: 'blogSlug вказує на статтю, якої немає — кнопка «Читати статтю» веде в 404' },
+  { key: 'missingBrands', label: 'бренд не згаданий', tone: 'warn',  explain: 'Помітна частка асортименту не потрапила в перелік' },
+  { key: 'noCatalogLine', label: 'немає переліку',   tone: 'warn',   explain: 'У seoText немає речення з асортиментом — текст не привʼязаний до каталогу' },
+  { key: 'thinFaq',       label: 'мало FAQ',         tone: 'info',   explain: 'Менше 4 питань хоча б однією мовою' },
+  { key: 'ruBehind',      label: 'рос. відстає',     tone: 'info',   explain: 'Російська версія коротша за українську або відсутня' },
+];
+
+const hasGap = (row: CategoryAuditRow) => Object.values(row.gaps).some(Boolean);
+
+export default function CategoryAudit({ rows }: { rows: CategoryAuditRow[] }) {
+  const [filter, setFilter] = useState<keyof CategoryAuditGaps | 'any'>('any');
+
+  const withGaps = useMemo(() => rows.filter(hasGap), [rows]);
+  const visible = useMemo(
+    () => (filter === 'any' ? withGaps : withGaps.filter(r => r.gaps[filter])),
+    [withGaps, filter],
+  );
+  const counts = useMemo(() => {
+    const c = {} as Record<keyof CategoryAuditGaps, number>;
+    for (const g of GAP_LABELS) c[g.key] = withGaps.filter(r => r.gaps[g.key]).length;
+    return c;
+  }, [withGaps]);
+
+  return (
+    <div>
+      <HelpBox content={HELP_CATEGORIES} />
+      <p style={{ ...hint, margin: '0 0 14px' }}>
+        Розбіжностей: <b style={{ color: 'var(--text-primary)' }}>{withGaps.length}</b> з {rows.length} категорій.
+        Бренди звіряються лише в реченні з переліком асортименту (тому, де згадано FIXLINE) — так проза
+        на кшталт «конструкційних сталей» не читається як бренд «Сталь».
+      </p>
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+        <button onClick={() => setFilter('any')} style={chip(filter === 'any')}>
+          Усі ({withGaps.length})
+        </button>
+        {GAP_LABELS.filter(g => counts[g.key] > 0).map(g => (
+          <button key={g.key} onClick={() => setFilter(g.key)} title={g.explain} style={chip(filter === g.key)}>
+            {g.label} ({counts[g.key]})
+          </button>
+        ))}
+      </div>
+
+      {visible.length === 0 ? (
+        <div style={{ ...card, textAlign: 'center', padding: '36px 18px' }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-success)' }}>Розбіжностей немає</div>
+          <p style={{ ...hint, margin: '6px 0 0' }}>Текст кожної категорії сходиться з фактичним асортиментом.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {visible.map(row => (
+            <div key={row.slug} style={card}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+                <Link
+                  href={`/shop/${row.slug}`}
+                  target="_blank"
+                  style={{ fontWeight: 600, color: 'var(--text-primary)', textDecoration: 'none' }}
+                >
+                  {row.name}
+                </Link>
+                <code style={{ fontSize: 12, color: 'var(--text-muted)' }}>{row.slug}</code>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>· {row.productCount} товарів</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>· FAQ {row.uaFaq}/{row.ruFaq}</span>
+              </div>
+
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
+                {GAP_LABELS.filter(g => row.gaps[g.key]).map(g => (
+                  <span key={g.key} title={g.explain} style={badge(g.tone)}>{g.label}</span>
+                ))}
+              </div>
+
+              {row.deadBlogSlug && (
+                <div style={line}>
+                  <b style={{ color: TONE.danger }}>Стаття не існує:</b> <code>/blog/{row.deadBlogSlug}</code>{' '}
+                  — приберіть <code>blogSlug</code> або вкажіть наявну статтю
+                </div>
+              )}
+              {row.staleBrands.length > 0 && (
+                <div style={line}>
+                  <b style={{ color: TONE.danger }}>У тексті, але не в каталозі:</b> {row.staleBrands.join(', ')}
+                </div>
+              )}
+              {row.missingBrands.length > 0 && (
+                <div style={line}>
+                  <b style={{ color: TONE.warn }}>Є в каталозі, але не в тексті:</b>{' '}
+                  {row.missingBrands
+                    .map(b => `${b} (${row.actualBrands.find(a => a.brand === b)?.count ?? 0})`)
+                    .join(', ')}
+                </div>
+              )}
+              {row.actualBrands.length > 0 && (
+                <div style={{ ...line, color: 'var(--text-muted)' }}>
+                  Фактично: {row.actualBrands.slice(0, 8).map(b => `${b.brand} (${b.count})`).join(', ')}
+                  {row.actualBrands.length > 8 ? ' …' : ''}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const line: React.CSSProperties = { fontSize: 13, lineHeight: 1.5, color: 'var(--text-secondary)' };

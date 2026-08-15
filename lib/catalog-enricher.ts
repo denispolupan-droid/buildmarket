@@ -4,6 +4,7 @@ import {
   THIN_DESCRIPTION_CHARS, type GenProduct, type GeneratedRU, type CategoryLabelSpec,
 } from './product-content-gen';
 import { loadCharDictionary, normCharKey } from './characteristics';
+import { CostSink } from './ai-cost';
 
 // Розділ SEO (/admin/seo) — головний вхід у ЄДИНИЙ рушій генерації контенту
 // (lib/product-content-gen). Тут лише оркестрація: вибір товарів за пробілами,
@@ -22,7 +23,7 @@ function db() {
 export type EnrichEvent =
   | { type: 'start'; total: number }
   | { type: 'progress'; sku: string; name: string; done: number; total: number }
-  | { type: 'result'; sku: string; description_full: string; faqCount: number; ru: boolean }
+  | { type: 'result'; sku: string; description_full: string; faqCount: number; ru: boolean; costUsd: number }
   | { type: 'error'; sku: string; error: string }
   | { type: 'done'; done: number; errors: number };
 
@@ -99,11 +100,14 @@ export async function* enrichCatalog(opts: {
         brand: product.brand, category_slug: product.category_slug, description: product.description,
       };
 
-      const ua = await generateUA(gp, categoryName, labelsCache.get(product.category_slug) ?? { required: [], optional: [] }, opts.targetQuery);
+      // Лічильник на кожен товар окремо — щоб у прогресі було видно фактичну,
+      // а не прикидочну вартість кожної картки
+      const cost = new CostSink();
+      const ua = await generateUA(gp, categoryName, labelsCache.get(product.category_slug) ?? { required: [], optional: [] }, opts.targetQuery, cost);
 
       // RU — обов'язкова, але не критична: якщо переклад упав, зберігаємо UA
       let ru: GeneratedRU | null = null;
-      try { ru = await translateRU(ua); } catch { /* лишиться пробіл «рос. версія» */ }
+      try { ru = await translateRU(ua, cost); } catch { /* лишиться пробіл «рос. версія» */ }
 
       const res = await applyContent(supabase, gp, ua, ru, {
         // Опис перегенеровуємо лише якщо тонкий (gap-aware); FAQ — якщо немає або без
@@ -117,7 +121,7 @@ export async function* enrichCatalog(opts: {
         hasChars, hasFaq,
       });
 
-      yield { type: 'result', sku: product.sku, description_full: ua.description_full, faqCount: res.faqCount, ru: res.ru };
+      yield { type: 'result', sku: product.sku, description_full: ua.description_full, faqCount: res.faqCount, ru: res.ru, costUsd: cost.usd };
       done++;
     } catch (err) {
       errors++;

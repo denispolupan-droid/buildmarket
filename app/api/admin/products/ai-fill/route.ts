@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
               action: 'product_boost',
               query: targetQuery,
               meta: { sku: event.sku, force: !!force },
+              cost: event.costUsd,
             });
           }
         }

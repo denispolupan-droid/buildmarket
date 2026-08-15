@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
       query: focusQuery,
       meta: { lenBefore: res.lenBefore, lenAfter: res.lenAfter, faq: res.faqCount, skus: res.linkedSkus },
       by: auth.user.email ?? null,
+      cost: res.costUsd,
     });
     return NextResponse.json(res);
   } catch (err) {

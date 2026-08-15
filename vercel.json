@@ -43,6 +43,10 @@
     {
       "path": "/api/cron/rozetka-moderation-watch",
       "schedule": "30 7 * * *"
+    },
+    {
+      "path": "/api/cron/gsc-snapshot",
+      "schedule": "40 6 * * *"
     }
   ]
 }

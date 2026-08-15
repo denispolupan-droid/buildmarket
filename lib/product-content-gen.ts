@@ -1,6 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeCharsDb } from './characteristics';
+import { THIN_DESCRIPTION_CHARS } from './seo/thresholds';
+import type { CostSink } from './ai-cost';
 
 // ЄДИНИЙ рушій генерації контенту картки товару. Обидва входи — розділ SEO
 // (/admin/seo → catalog-enricher) і кнопка в картці (/products → product-ai-filler)
@@ -9,8 +11,10 @@ import { normalizeCharsDb } from './characteristics';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// description_full коротший за цей поріг вважається "тонким" контентом
-export const THIN_DESCRIPTION_CHARS = 800;
+// description_full коротший за цей поріг вважається "тонким" контентом.
+// Саме значення живе в lib/seo/thresholds (модуль без важких залежностей),
+// тут лише реекспорт — щоб наявні імпорти звідси не ламались.
+export { THIN_DESCRIPTION_CHARS };
 
 // Тип клієнта беремо з реального виклику createClient(url, key) — щоб збігався
 // з клієнтами модулів, що передають supabase сюди (інакше TS бачить різні схеми).
@@ -196,6 +200,8 @@ export async function generateUA(
   categoryName: string,
   categoryLabels: CategoryLabelSpec,
   targetQuery?: string,
+  /** необовʼязковий лічильник витрат — заповнює seo_actions.cost_usd */
+  cost?: CostSink,
 ): Promise<GeneratedUA> {
   const msg = await anthropic.messages.create(
     {
@@ -206,6 +212,7 @@ export async function generateUA(
     },
     { timeout: ITEM_TIMEOUT_MS },
   );
+  cost?.add(msg.model, msg.usage);
   const gen = parseStructured<GeneratedUA>(msg);
   const words = gen.description_full.split(/\s+/).filter(Boolean).length;
   if (words < 120) throw new Error(`description too short: ${words} words`);
@@ -213,7 +220,7 @@ export async function generateUA(
 }
 
 /** RU-переклад текстових полів (Haiku). Назву не перекладаємо (name_ru з UA-виклику). */
-export async function translateRU(ua: GeneratedUA): Promise<GeneratedRU> {
+export async function translateRU(ua: GeneratedUA, cost?: CostSink): Promise<GeneratedRU> {
   const msg = await anthropic.messages.create(
     {
       model: 'claude-haiku-4-5-20251001',
@@ -239,6 +246,7 @@ ${ua.faq.map((f, i) => `${i + 1}. Q: ${f.q}\n   A: ${f.a}`).join('\n')}`,
     },
     { timeout: ITEM_TIMEOUT_MS },
   );
+  cost?.add(msg.model, msg.usage);
   const ru = parseStructured<GeneratedRU>(msg);
   if (ru.faq_ru.length !== ua.faq.length) throw new Error(`translate: faq count ${ru.faq_ru.length} != ${ua.faq.length}`);
   return ru;
