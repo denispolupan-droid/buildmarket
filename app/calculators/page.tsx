@@ -6,7 +6,9 @@ import CalculatorsClient from '../components/CalculatorsClient';
 const BASE = 'https://fixline.com.ua';
 
 export const metadata: Metadata = {
-  title: 'Будівельні калькулятори — витрата герметика, піни, ґрунтовки, клею | FIXLINE',
+  // Без « | FIXLINE»: суфікс додає template у app/layout.tsx, інакше в title
+  // виходило «… | FIXLINE | FIXLINE» на 86 символів (Google різав на ~65)
+  title: 'Будівельні калькулятори — витрата герметика, піни, ґрунтовки, клею',
   description: 'Безкоштовні калькулятори витрати будівельної хімії: скільки картриджів герметика на шов, балонів піни на вікна, літрів ґрунтовки на площу, клею на монтаж. Розрахунок за 10 секунд.',
   keywords: ['калькулятор витрати герметика', 'калькулятор монтажної піни', 'розрахунок ґрунтовки на м2', 'витрата фарби калькулятор', 'скільки герметика потрібно на шов', 'калькулятор рідких цвяхів'],
   alternates: { canonical: `${BASE}/calculators`, languages: { 'uk': `${BASE}/calculators`, 'ru': `${BASE}/ru/calculators`, 'x-default': `${BASE}/calculators` } },

@@ -6,7 +6,8 @@ import CalculatorsClient from '../../components/CalculatorsClient';
 const BASE = 'https://fixline.com.ua';
 
 export const metadata: Metadata = {
-  title: 'Строительные калькуляторы — расход герметика, пены, грунтовки, клея | FIXLINE',
+  // Без « | FIXLINE»: суфікс додає template у app/layout.tsx (див. /calculators)
+  title: 'Строительные калькуляторы — расход герметика, пены, грунтовки, клея',
   description: 'Бесплатные калькуляторы расхода строительной химии: сколько картриджей герметика на шов, баллонов пены на окна, литров грунтовки на площадь, клея на монтаж. Расчёт за 10 секунд.',
   keywords: ['калькулятор расхода герметика', 'калькулятор монтажной пены', 'расчет грунтовки на м2', 'расход краски калькулятор', 'сколько герметика нужно на шов', 'калькулятор жидких гвоздей'],
   alternates: { canonical: `${BASE}/ru/calculators`, languages: { 'uk': `${BASE}/calculators`, 'ru': `${BASE}/ru/calculators`, 'x-default': `${BASE}/calculators` } },
