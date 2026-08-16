@@ -6,7 +6,7 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import {
   ShoppingBag, Package, Truck, Store,
-  Settings, BookOpen, Warehouse, BarChart3, Users, Star,
+  Settings, BookOpen, BarChart3, Users, Star,
   MessageSquare, ShoppingCart, Mail, ExternalLink,
   ChevronLeft, ChevronRight, ShoppingBasket, Sparkles, Megaphone,
   Tags, Layers, Menu, X, Search, LayoutGrid,
@@ -43,8 +43,8 @@ const NAV = [
   { href: '/admin/seo',                  label: 'SEO',            icon: Search,         exact: false },
   { href: '/admin/blog',                 label: 'Блог',           icon: BookOpen,       exact: false },
   { href: '/admin/finance',              label: 'Фінанси',        icon: BarChart3,      exact: false },
+  // «Залишки» переїхали вкладками у «Закупівлю» — там же, де їх поповнюють.
   { href: '/admin/accounting/documents', label: 'Облік',          icon: BookOpen,       exact: false },
-  { href: '/admin/accounting/stock',     label: 'Залишки',        icon: Warehouse,      exact: false },
   { href: '/admin/chat',                 label: 'Чати',           icon: MessageSquare,  exact: false },
   { href: '/admin/mail',                 label: 'Пошта',          icon: Mail,           exact: false },
   { href: '/admin/reviews',              label: 'Відгуки',        icon: Star,           exact: false },

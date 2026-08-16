@@ -10,8 +10,7 @@ export default function ProcurementClient({ suppliers }: { suppliers: Supplier[]
   }
 
   return (
-    <button onClick={openNew}
-      style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '38px', padding: '0 18px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+    <button onClick={openNew} className="proc-btn primary">
       <Plus size={15} /> Нове замовлення
     </button>
   );

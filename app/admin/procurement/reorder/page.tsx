@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import Link from 'next/link';
-import { ArrowLeft, ShoppingCart, AlertTriangle, CheckCircle2, Package } from 'lucide-react';
+import { ShoppingCart, CheckCircle2, Package } from 'lucide-react';
+import SectionBar, { plural } from '../SectionBar';
 import ReorderClient from './ReorderClient';
 
 const db = createClient(
@@ -31,14 +31,7 @@ export default async function ReorderPage() {
 
   if (!belowMin.length) {
     return (
-      <div style={{ padding: '28px 32px', maxWidth: '1000px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '32px' }}>
-          <Link href="/admin/accounting/stock" style={{ display: 'flex', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-            <ArrowLeft size={16} />
-          </Link>
-          <AlertTriangle size={18} color="#F59E0B" />
-          <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Що потрібно докупити</h1>
-        </div>
+      <div style={{ maxWidth: '1000px' }}>
         <div style={{ padding: '48px', textAlign: 'center', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
           <CheckCircle2 size={40} color="#15803D" style={{ marginBottom: '12px' }} />
           <div style={{ fontSize: '16px', fontWeight: 700, color: '#15803D', marginBottom: '6px' }}>Всі залишки в нормі</div>
@@ -113,23 +106,11 @@ export default async function ReorderPage() {
     demand:     demandMap[r.sku] ?? null,
   }));
 
+  const n = rows.length;
+
   return (
-    <div style={{ padding: '28px 32px', maxWidth: '1200px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-        <Link href="/admin/accounting/stock" style={{ display: 'flex', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-          <ArrowLeft size={16} />
-        </Link>
-        <AlertTriangle size={18} color="#F59E0B" />
-        <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-          Що потрібно докупити
-        </h1>
-        <span style={{ fontSize: '13px', padding: '2px 10px', borderRadius: '6px', background: '#FEF3C7', color: '#92400E', fontWeight: 700 }}>
-          {rows.length} позицій
-        </span>
-      </div>
-      <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '24px', marginLeft: '28px' }}>
-        Позиції де поточний залишок ≤ мінімального рівня
-      </p>
+    <div style={{ maxWidth: '1200px' }}>
+      <SectionBar count={`${n} ${plural(n, 'позиція', 'позиції', 'позицій')} нижче мінімального залишку`} />
 
       <ReorderClient rows={rows} />
     </div>

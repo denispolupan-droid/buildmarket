@@ -1,6 +1,7 @@
 ﻿import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
-import { ArrowLeft, Package, ChevronRight, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { Package, ChevronRight, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import SectionBar, { plural } from '../SectionBar';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,22 +34,13 @@ export default async function SuppliersStockPage() {
     });
   }
 
+  const n = suppliers?.length ?? 0;
+
   return (
-    <div style={{ padding: '28px 32px', maxWidth: '960px' }}>
+    <div style={{ maxWidth: '960px' }}>
       <style>{`.supplier-row:hover { border-color: #BFDBFE !important; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }`}</style>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <Link href="/admin/accounting/stock" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-          <ArrowLeft size={16} />
-        </Link>
-        <Package size={18} color="#1E3A5F" />
-        <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-          Залишки постачальників
-        </h1>
-        <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-          {suppliers?.length ?? 0} постачальників
-        </span>
-      </div>
+      <SectionBar count={`${n} ${plural(n, 'постачальник', 'постачальники', 'постачальників')}`} />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {(suppliers ?? []).map(supplier => {
@@ -57,7 +49,7 @@ export default async function SuppliersStockPage() {
           const hasError = sync?.error_message;
 
           return (
-            <Link key={supplier.id} href={`/admin/accounting/stock/suppliers/${supplier.id}`}
+            <Link key={supplier.id} href={`/admin/procurement/suppliers/${supplier.id}`}
               style={{ textDecoration: 'none' }}>
               <div className="supplier-row" style={{
                 background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px',

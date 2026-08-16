@@ -1,12 +1,9 @@
 export const dynamic = 'force-dynamic';
 
 import { createClient } from '@supabase/supabase-js';
-import { createSupabaseServer } from '../../../lib/supabase-server';
-import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { ShoppingCart, PackageCheck } from 'lucide-react';
 import ProcurementClient from './ProcurementClient';
 import ProcurementWrapper from './ProcurementWrapper';
+import SectionBar, { plural } from './SectionBar';
 
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
@@ -20,9 +17,7 @@ export default async function ProcurementPage({
 }) {
   const params = await searchParams;
   const initialFilter = params.filter ?? 'all';
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') redirect('/');
+  // Гейт — у layout розділу (requireStaffPage)
 
   const [{ data: pos }, { data: suppliers }, { data: receipts }] = await Promise.all([
     db.from('open_purchase_orders').select('*').limit(200),
@@ -65,32 +60,11 @@ export default async function ProcurementPage({
   }
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: '1200px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Закупівля</h1>
+    <div style={{ maxWidth: '1200px' }}>
+      {/* Заголовок і вкладки — в layout розділу; тут лише дія цього екрана */}
+      <SectionBar count={`${activeOrders.length} ${plural(activeOrders.length, 'активне замовлення', 'активні замовлення', 'активних замовлень')}`}>
         <ProcurementClient suppliers={suppliers ?? []} />
-      </div>
-
-      {/* Sub-section tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-        {[
-          { href: '/admin/procurement',          label: 'Замовлення постачальнику', icon: ShoppingCart,  active: true  },
-          { href: '/admin/procurement/receipts', label: 'Приходи товару',           icon: PackageCheck,  active: false },
-        ].map(tab => (
-          <Link key={tab.href} href={tab.href} style={{
-            display: 'inline-flex', alignItems: 'center', gap: '7px',
-            height: '34px', padding: '0 16px', borderRadius: '8px',
-            textDecoration: 'none', fontSize: '13px', fontWeight: tab.active ? 700 : 500,
-            background: tab.active ? '#1E3A5F' : 'var(--bg-card)',
-            color: tab.active ? '#fff' : 'var(--text-secondary)',
-            border: `1px solid ${tab.active ? '#1E3A5F' : 'var(--border)'}`,
-          }}>
-            <tab.icon size={14} />
-            {tab.label}
-          </Link>
-        ))}
-      </div>
+      </SectionBar>
 
       {/* Stats — 4 однакові картки */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginBottom: '20px' }}>

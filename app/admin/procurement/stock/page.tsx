@@ -1,8 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import Link from 'next/link';
-import { ArrowLeft, Warehouse } from 'lucide-react';
 import OwnStockTable from './OwnStockTable';
 import StockDocButtons from './StockDocButtons';
+import SectionBar, { plural } from '../SectionBar';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,24 +40,13 @@ export default async function OwnStockPage() {
   for (const w of physicalWarehouses ?? []) whMap[w.id] = w.name;
 
   const defaultWarehouseId = physicalIds[0] ?? 0;
+  const n = ownBalance?.length ?? 0;
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: '1400px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <Link href="/admin/accounting/stock" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-          <ArrowLeft size={16} />
-        </Link>
-        <Warehouse size={18} color="#15803D" />
-        <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-          Власний склад
-        </h1>
-        <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-          {ownBalance?.length ?? 0} позицій
-        </span>
-        <div style={{ marginLeft: 'auto' }}>
-          <StockDocButtons />
-        </div>
-      </div>
+    <div style={{ maxWidth: '1400px' }}>
+      <SectionBar count={`${n} ${plural(n, 'позиція', 'позиції', 'позицій')} на складі`}>
+        <StockDocButtons />
+      </SectionBar>
 
       {!ownBalance?.length ? (
         <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px',

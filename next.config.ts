@@ -80,6 +80,17 @@ const nextConfig: NextConfig = {
       },
       { source: '/shop/ridki-tsvyakhy', destination: '/shop/klei-dlya-plytky', permanent: true },
       { source: '/ru/shop/ridki-tsvyakhy', destination: '/ru/shop/klei-dlya-plytky', permanent: true },
+
+      // Залишки переїхали з «Обліку» в «Закупівлю» — це одна робота: подивився,
+      // чого бракує → замовив → оприходував. Адреси лишаємо робочими заради
+      // збережених закладок. permanent: false — це адмінка, не пошуковий трафік,
+      // і 308 назавжди осів би в кеші браузера, якби шлях колись знадобився.
+      { source: '/admin/accounting/stock',               destination: '/admin/procurement/stock',         permanent: false },
+      { source: '/admin/accounting/stock/own',           destination: '/admin/procurement/stock',         permanent: false },
+      { source: '/admin/accounting/stock/reorder',       destination: '/admin/procurement/reorder',       permanent: false },
+      { source: '/admin/accounting/stock/suppliers',     destination: '/admin/procurement/suppliers',     permanent: false },
+      { source: '/admin/accounting/stock/suppliers/:id', destination: '/admin/procurement/suppliers/:id', permanent: false },
+      { source: '/admin/accounting/inventory',           destination: '/admin/procurement/inventory',     permanent: false },
     ];
   },
   async rewrites() {

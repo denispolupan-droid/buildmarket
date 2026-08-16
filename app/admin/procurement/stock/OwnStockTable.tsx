@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronDown, ChevronRight, Loader2, ExternalLink, Search, X, History } from 'lucide-react';
-import SmartDateInput, { parseSmartDate, isoToDisplay } from '../../../../components/SmartDateInput';
+import SmartDateInput, { parseSmartDate, isoToDisplay } from '../../../components/SmartDateInput';
 
 type StockRow = {
   sku: string;

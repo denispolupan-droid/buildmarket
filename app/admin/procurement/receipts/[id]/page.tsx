@@ -128,7 +128,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
     .select('id', { count: 'exact', head: true }).eq('status', 'awaiting_stock');
 
   return (
-    <div style={{ padding: '28px 32px' }}>
+    <div>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
         <Link href="/admin/procurement/receipts" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>

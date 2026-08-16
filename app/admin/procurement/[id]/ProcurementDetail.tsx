@@ -471,8 +471,10 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
 
   const isCancelled = po.status === 'cancelled';
 
+  // compact — це той самий компонент у дровері зі списку, там свій відступ;
+  // на власній сторінці відступ дає layout розділу.
   return (
-    <div style={{ padding: compact ? '16px 20px' : '28px 32px' }}>
+    <div style={{ padding: compact ? '16px 20px' : 0 }}>
 
       {/* Банер "Скасовано" */}
       {isCancelled && (
