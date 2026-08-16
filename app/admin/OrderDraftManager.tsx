@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { X, Minus } from 'lucide-react';
+import { X, Minus, ShoppingBag } from 'lucide-react';
 
 const NewOrderModal = dynamic(() => import('./orders/NewOrderModal'), { ssr: false });
 
@@ -247,10 +247,7 @@ export default function OrderDraftManager() {
 
       {/* ── Tab bar (bottom) ─────────────────────────────────────────────────── */}
       {drafts.length > 0 && (
-        <div style={{
-          position: 'fixed', bottom: 0, left: `${tabLeft}px`, zIndex: 1010,
-          display: 'flex', flexDirection: 'row', alignItems: 'stretch', gap: '2px',
-        }}>
+        <div className="doc-tabs" style={{ left: `${tabLeft}px`, ['--doc-accent' as string]: '#2563EB' }}>
           {tabOrder.map(draft => {
             const isActive    = !draft.minimized && draft.id === topCard?.id;
             const lineCount   = draft.lines.filter(l => l.sku || l.name).length;
@@ -260,54 +257,26 @@ export default function OrderDraftManager() {
 
             return (
               <div key={draft.id} style={{ position: 'relative', alignSelf: 'flex-end', flexShrink: 0 }}>
-                <div
-                  className="order-tab"
-                  style={{
-                    height: '42px', width: '210px',
-                    background: '#1c2a3d',
-                    backdropFilter: 'blur(8px)',
-                    borderRadius: '10px 10px 0 0',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderTop: isActive ? '2px solid #2563EB' : '1px solid rgba(255,255,255,0.06)',
-                    borderBottom: 'none',
-                    display: 'flex', alignItems: 'center',
-                    boxShadow: isActive ? '0 -3px 14px rgba(37,99,235,0.22)' : 'none',
-                    opacity: isActive ? 1 : 0.8,
-                    transition: 'opacity 0.18s, box-shadow 0.18s, border-color 0.18s',
-                    flexShrink: 0, overflow: 'hidden',
-                  }}
-                >
+                <div className={`doc-tab${isActive ? ' active' : ''}`}>
                   <div
+                    className="doc-tab-main"
                     onClick={() => isActive ? minimizeDraft(draft.id) : bringToFront(draft.id)}
-                    style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px 0 12px', height: '100%', cursor: 'pointer' }}
                   >
-                    <span style={{ fontSize: '14px', flexShrink: 0 }}>🛍️</span>
+                    <span className="doc-tab-icon"><ShoppingBag size={15} /></span>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: '12px', fontWeight: isActive ? 700 : 500, color: isActive ? '#E2E8F0' : '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {label}
-                      </div>
+                      <div className="doc-tab-label">{label}</div>
                       {lineCount > 0 && (
-                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.28)', lineHeight: 1 }}>
-                          {lineCount} поз · {fmt(total)} ₴
-                        </div>
+                        <div className="doc-tab-sub">{lineCount} поз · {fmt(total)} ₴</div>
                       )}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', padding: '0 6px 0 0', gap: '2px', flexShrink: 0 }}>
+                  <div className="doc-tab-btns">
                     {!draft.minimized && (
-                      <button
-                        onClick={() => minimizeDraft(draft.id)}
-                        title="Згорнути"
-                        className="order-close-btn"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', display: 'flex', padding: '3px', borderRadius: '4px' }}>
+                      <button onClick={() => minimizeDraft(draft.id)} title="Згорнути" className="doc-tab-btn">
                         <Minus size={11} />
                       </button>
                     )}
-                    <button
-                      onClick={() => closeDraft(draft.id)}
-                      title="Закрити"
-                      className="order-close-btn"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', display: 'flex', padding: '3px', borderRadius: '4px' }}>
+                    <button onClick={() => closeDraft(draft.id)} title="Закрити" className="doc-tab-btn">
                       <X size={12} />
                     </button>
                   </div>
@@ -330,10 +299,6 @@ export default function OrderDraftManager() {
         </div>
       )}
 
-      <style>{`
-        .order-tab:hover { background: #243550 !important; }
-        .order-tab:hover .order-close-btn { color: rgba(255,255,255,0.6) !important; }
-      `}</style>
     </>
   );
 }

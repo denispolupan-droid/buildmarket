@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { X, Minus } from 'lucide-react';
+import { X, Minus, Trash2, ArrowLeftRight } from 'lucide-react';
 import type { StockDocDraft } from './accounting/NewStockDocModal';
 
 const NewStockDocModal = dynamic(() => import('./accounting/NewStockDocModal'), { ssr: false });
@@ -207,63 +207,39 @@ export default function StockDocDraftManager() {
 
       {/* Tab bar */}
       {drafts.length > 0 && (
-        <div style={{
-          position: 'fixed', bottom: 0, left: `${tabLeft}px`, zIndex: 1010,
-          display: 'flex', flexDirection: 'row', alignItems: 'stretch', gap: 2,
-        }}>
+        <div className="doc-tabs" style={{ left: `${tabLeft}px` }}>
           {tabOrder.map(draft => {
             const isActive    = !draft.minimized && draft.id === topCard?.id;
             const isWriteOff  = draft.docType === 'write_off';
             const label       = isWriteOff ? 'Списання' : 'Переміщення';
             const accent      = isWriteOff ? '#DC2626' : '#0EA5E9';
-            const bg          = isWriteOff ? '#2A1414'  : '#0B2030';
-            const bgHover     = isWriteOff ? '#3D1E1E'  : '#112840';
             const isConfirming = confirmClose === draft.id;
 
             return (
               <div key={draft.id} style={{ position: 'relative', alignSelf: 'flex-end', flexShrink: 0 }}>
                 <div
-                  className={`stockdoc-tab stockdoc-tab-${draft.docType}`}
-                  data-hover-bg={bgHover}
-                  style={{
-                    height: 42, width: 210,
-                    background: bg,
-                    borderRadius: '10px 10px 0 0',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderTop: isActive ? `2px solid ${accent}` : '1px solid rgba(255,255,255,0.06)',
-                    borderBottom: 'none',
-                    display: 'flex', alignItems: 'center',
-                    boxShadow: isActive ? `0 -3px 14px ${accent}40` : 'none',
-                    opacity: isActive ? 1 : 0.8,
-                    transition: 'opacity 0.18s, box-shadow 0.18s',
-                    overflow: 'hidden', flexShrink: 0,
-                  }}
+                  className={`doc-tab${isActive ? ' active' : ''}`}
+                  style={{ ['--doc-accent' as string]: accent }}
                 >
                   <div
+                    className="doc-tab-main"
                     onClick={() => isActive ? minimizeDraft(draft.id) : bringToFront(draft.id)}
-                    style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '0 4px 0 12px', height: '100%', cursor: 'pointer' }}
                   >
-                    <span style={{ fontSize: 14, flexShrink: 0 }}>{isWriteOff ? '🗑️' : '↔️'}</span>
+                    <span className="doc-tab-icon">{isWriteOff ? <Trash2 size={15} /> : <ArrowLeftRight size={15} />}</span>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: isActive ? 700 : 500, color: isActive ? '#E2E8F0' : '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {label}
-                      </div>
+                      <div className="doc-tab-label">{label}</div>
                       {draft.lines.length > 0 && (
-                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', lineHeight: 1 }}>
-                          {draft.lines.length} поз.
-                        </div>
+                        <div className="doc-tab-sub">{draft.lines.length} поз.</div>
                       )}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', padding: '0 6px 0 0', gap: 2, flexShrink: 0 }}>
+                  <div className="doc-tab-btns">
                     {!draft.minimized && (
-                      <button onClick={() => minimizeDraft(draft.id)} title="Згорнути" className="stockdoc-close-btn"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', display: 'flex', padding: 3, borderRadius: 4 }}>
+                      <button onClick={() => minimizeDraft(draft.id)} title="Згорнути" className="doc-tab-btn">
                         <Minus size={11} />
                       </button>
                     )}
-                    <button onClick={() => closeDraft(draft.id)} title="Закрити" className="stockdoc-close-btn"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', display: 'flex', padding: 3, borderRadius: 4 }}>
+                    <button onClick={() => closeDraft(draft.id)} title="Закрити" className="doc-tab-btn">
                       <X size={12} />
                     </button>
                   </div>
@@ -289,11 +265,6 @@ export default function StockDocDraftManager() {
         </div>
       )}
 
-      <style>{`
-        .stockdoc-tab-write_off:hover { background: #3D1E1E !important; }
-        .stockdoc-tab-transfer:hover  { background: #112840 !important; }
-        .stockdoc-tab:hover .stockdoc-close-btn { color: rgba(255,255,255,0.6) !important; }
-      `}</style>
     </>
   );
 }

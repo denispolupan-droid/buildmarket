@@ -15,7 +15,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { X, Minus } from 'lucide-react';
+import { X, Minus, ClipboardList } from 'lucide-react';
 
 const NewPOModal = dynamic(() => import('./procurement/NewPOModal'), { ssr: false });
 
@@ -293,10 +293,7 @@ export default function PoDraftManager() {
 
       {/* в”Ђв”Ђ РўР°Р±-Р±Р°СЂ РІРЅРёР·Сѓ: РІСЃС– С‡РµСЂРЅРµС‚РєРё (РІС–РґРєСЂРёС‚С– + Р·РіРѕСЂРЅСѓС‚С–) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */}
       {drafts.length > 0 && (
-        <div style={{
-          position: 'fixed', bottom: 0, left: `${SIDEBAR_W}px`, zIndex: 1010,
-          display: 'flex', flexDirection: 'row', alignItems: 'stretch', gap: '2px',
-        }}>
+        <div className="doc-tabs" style={{ left: `${SIDEBAR_W}px`, ['--doc-accent' as string]: '#4880B8' }}>
           {tabOrder.map(draft => {
             const isActive     = !draft.minimized;
             const supplierName = draft.suppliers.find(s => s.id === draft.supplierId)?.name ?? '';
@@ -305,53 +302,30 @@ export default function PoDraftManager() {
 
             const isConfirming = confirmClose === draft.id;
 
-            const tabStyle: React.CSSProperties = {
-              height: '42px',
-              width:  '210px',
-              background: '#323848',
-              backdropFilter: 'blur(8px)',
-              borderRadius: '10px 10px 0 0',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderTop: isActive ? '2px solid #4880B8' : '1px solid rgba(255,255,255,0.06)',
-              borderBottom: 'none',
-              display: 'flex', alignItems: 'center',
-              boxShadow: isActive ? '0 -3px 14px rgba(72,128,184,0.2)' : 'none',
-              opacity: isActive ? 1 : 0.8,
-              transition: 'opacity 0.18s, box-shadow 0.18s, border-color 0.18s',
-              flexShrink: 0,
-              overflow: 'hidden',
-            };
-
             return (
               <div key={draft.id} style={{ position: 'relative', alignSelf: 'flex-end', flexShrink: 0 }}>
 
 
-                <div className="po-tab" style={{ ...tabStyle, alignSelf: undefined }}>
+                <div className={`doc-tab${isActive ? ' active' : ''}`}>
                   <div
+                    className="doc-tab-main"
                     onClick={() => isActive ? minimizeDraft(draft.id) : bringToFront(draft.id)}
-                    style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px 0 12px', height: '100%', cursor: 'pointer' }}
                   >
-                    <span className="po-dot" style={{ opacity: isActive ? 1 : 0.6, flexShrink: 0 }} />
+                    <span className="doc-tab-icon"><ClipboardList size={15} /></span>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: '12px', fontWeight: isActive ? 700 : 500, color: isActive ? '#E2E8F0' : '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {supplierName || 'Нове замовлення'}
-                      </div>
+                      <div className="doc-tab-label">{supplierName || 'Нове замовлення'}</div>
                       {filledLines > 0 && (
-                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.28)', lineHeight: 1 }}>
-                          {filledLines} поз · {fmt(total)} ₴
-                        </div>
+                        <div className="doc-tab-sub">{filledLines} поз · {fmt(total)} ₴</div>
                       )}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', padding: '0 6px 0 0', gap: '2px', flexShrink: 0 }}>
+                  <div className="doc-tab-btns">
                     {!draft.minimized && (
-                      <button onClick={() => minimizeDraft(draft.id)} title="Згорнути" className="po-close-btn"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', display: 'flex', padding: '3px', borderRadius: '4px' }}>
+                      <button onClick={() => minimizeDraft(draft.id)} title="Згорнути" className="doc-tab-btn">
                         <Minus size={11} />
                       </button>
                     )}
-                    <button onClick={() => closeDraft(draft.id)} title="Закрити" className="po-close-btn"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', display: 'flex', padding: '3px', borderRadius: '4px' }}>
+                    <button onClick={() => closeDraft(draft.id)} title="Закрити" className="doc-tab-btn">
                       <X size={12} />
                     </button>
                   </div>
@@ -400,10 +374,6 @@ export default function PoDraftManager() {
       )}
 
       <style>{`
-        @keyframes po-pulse-anim { 0%,100%{opacity:1} 50%{opacity:0.3} }
-        .po-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#F59E0B; animation:po-pulse-anim 2s ease-in-out infinite; }
-        .po-tab:hover { background: #424d64 !important; }
-        .po-tab:hover .po-close-btn { color: rgba(255,255,255,0.6) !important; }
         .po-bg-edge:hover { background: var(--bg-card) !important; }
       `}</style>
     </>
