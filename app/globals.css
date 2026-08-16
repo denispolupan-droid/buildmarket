@@ -2197,3 +2197,44 @@ input, select { font-family: inherit; }
 
 /* Другий рядок навігації фінансів: екрани активної теми (Гроші/Борги/Звітність) */
 .fin-subtabs { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+
+/* ── «Усі товари розділу»: покажчик, згрупований за брендом ─────────────────
+   Блок існує заради внутрішніх посилань для краулера (див. AllProductsLinks),
+   але людина, яка його розгорнула, має мати змогу щось у ньому знайти. Групи
+   розкладаємо колонками через CSS columns: так вони течуть природно й жодна
+   не розривається навпіл. */
+.apl-cols {
+  margin-top: 14px;
+  columns: 4 240px;
+  column-gap: 30px;
+}
+/* Групи навмисне НЕ заборонено розривати: у «Фарбах» в одного бренду 158
+   позицій, і з break-inside:avoid він займав цілу колонку, а сусідні лишались
+   майже порожніми — блок розтягувався до 4300px. Тепер довгі групи перетікають
+   між колонками, а від осиротілого заголовка внизу колонки боронить
+   break-after на самому заголовку. */
+.apl-group { margin: 0 0 16px; }
+.apl-brand {
+  break-after: avoid;
+  page-break-after: avoid;    /* Safari досі розуміє лише стару властивість */
+  display: flex; align-items: baseline; gap: 7px;
+  font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-primary);
+  margin: 0 0 6px; padding-bottom: 5px;
+  border-bottom: 1px solid var(--border);
+}
+.apl-count { font-size: 10.5px; font-weight: 600; color: var(--text-muted); letter-spacing: 0; }
+.apl-list { list-style: none; margin: 0; padding: 0; }
+.apl-row {
+  display: grid; grid-template-columns: 1fr auto; gap: 10px;
+  align-items: baseline; padding: 2px 0;
+  font-size: 12.5px; line-height: 1.5;
+}
+/* Не синя: суцільна стіна посилань нечитабельна, а вони тут усі до одного */
+.apl-link { color: var(--text-secondary); text-decoration: none; }
+.apl-link:hover, .apl-link:focus-visible { color: var(--brand-main); text-decoration: underline; }
+.apl-price { color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+@media (max-width: 640px) {
+  .apl-cols { columns: 1; }
+}
