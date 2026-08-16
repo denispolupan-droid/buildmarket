@@ -2253,6 +2253,25 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
 .doc-tab:hover .doc-tab-btn { color: rgba(255,255,255,0.6); }
 .doc-tab-btn:hover { background: rgba(255,255,255,0.14); color: #fff; }
 
+/* Підтвердження закриття чернетки. Три менеджери з чотирьох показували його
+   як плашку над своєю вкладкою — унизу зліва, де питання про втрату даних
+   легко не помітити. Тепер у всіх по центру з затемненням, як було лише в
+   замовленні постачальнику. */
+.doc-confirm-overlay {
+  position: fixed; inset: 0; z-index: 1050;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+}
+.doc-confirm {
+  width: 360px; padding: 26px 30px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+}
+.doc-confirm-title { font-size: 16px; font-weight: 800; color: var(--text-primary); margin-bottom: 8px; }
+.doc-confirm-text { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 22px; }
+.doc-confirm-btns { display: flex; gap: 10px; }
+.doc-confirm-btns .proc-btn { flex: 1; justify-content: center; height: 38px; }
+
 /* ── Закупівля: спільний рядок «скільки на екрані + дії» ────────────────────
    Заголовок і вкладки малює layout розділу, тож сторінкам лишається тільки
    контекст зліва і кнопки справа. Раніше кожен екран мав власний h1 зі
@@ -2281,6 +2300,10 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
 .proc-btn.danger { border-color: #FCA5A5; background: #FEF2F2; color: #B91C1C; }
 .proc-btn.danger:hover { border-color: #DC2626; color: #991B1B; }
 .proc-btn:disabled { opacity: 0.55; cursor: default; }
+/* Компактний варіант — для дій усередині таблиць і рядків форми */
+.proc-btn.sm { height: 28px; padding: 0 10px; font-size: 12px; border-radius: 7px; }
+/* Стан «вже збережено»: підтверджує дію, не запрошує натиснути ще раз */
+.proc-btn.done { border-color: #86EFAC; background: #F0FDF4; color: #15803D; }
 
 /* ── «Усі товари розділу»: покажчик, згрупований за брендом ─────────────────
    Блок існує заради внутрішніх посилань для краулера (див. AllProductsLinks),

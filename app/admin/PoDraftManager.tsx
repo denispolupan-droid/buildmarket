@@ -15,6 +15,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import DraftCloseConfirm from './DraftCloseConfirm';
 import { X, Minus, ClipboardList } from 'lucide-react';
 
 const NewPOModal = dynamic(() => import('./procurement/NewPOModal'), { ssr: false });
@@ -339,38 +340,10 @@ export default function PoDraftManager() {
 
       {/* ── Центрований діалог підтвердження закриття ───────────────────────────── */}
       {confirmClose && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 1050,
-          background: 'rgba(0,0,0,0.55)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <div style={{
-            background: 'var(--bg-card)', borderRadius: '16px',
-            padding: '28px 32px', width: '340px',
-            boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
-            border: '1px solid var(--border)',
-          }}>
-            <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
-              Закрити без збереження?
-            </div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: 1.5 }}>
-              Незбережені дані чернетки будуть видалені назавжди.
-              Щоб зберегти — натисніть «Скасувати» і збережіть як чернетку.
-            </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button
-                onClick={() => setConfirmClose(null)}
-                style={{ flex: 1, height: '38px', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
-                Скасувати
-              </button>
-              <button
-                onClick={() => closeDraft(confirmClose, true)}
-                style={{ flex: 1, height: '38px', borderRadius: '9px', border: 'none', background: '#DC2626', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
-                Так, закрити
-              </button>
-            </div>
-          </div>
-        </div>
+        <DraftCloseConfirm
+          onCancel={() => setConfirmClose(null)}
+          onConfirm={() => closeDraft(confirmClose, true)}
+        />
       )}
 
       <style>{`

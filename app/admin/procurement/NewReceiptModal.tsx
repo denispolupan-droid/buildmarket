@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Minus, Upload, Loader2, Trash2, AlertCircle, Copy } from 'lucide-react';
+import { X, Minus, Upload, Loader2, Trash2, AlertCircle, Copy, List, Save, Check, Gift, Truck } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
@@ -104,7 +104,7 @@ function parseExcel(buffer: ArrayBuffer): { sku: string; name: string; qty: numb
   return result;
 }
 
-// Grid: Артикул | Найменування | Зам. | Факт | Закупка | Сума | 🎁 | ⧉ | Del
+// Grid: Артикул | Найменування | Зам. | Факт | Закупка | Сума | бонус | копія | Del
 const COLS = '90px 1.5fr 66px 76px 100px 88px 24px 24px 24px';
 
 export default function NewReceiptModal({
@@ -530,11 +530,11 @@ export default function NewReceiptModal({
             <div style={{ display: 'grid', gridTemplateColumns: COLS, padding: '8px 12px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', gap: '8px', alignItems: 'center' }}>
               <span>Артикул</span>
               <span>Найменування</span>
-              <span style={{ textAlign: 'right', color: '#7C3AED' }}>Зам.</span>
+              <span style={{ textAlign: 'right', color: 'var(--brand-blue)' }}>Зам.</span>
               <span style={{ textAlign: 'right' }} title={initialData.poId ? '0 = не отримано (виключити з приходу)' : undefined}>Факт</span>
               <span style={{ textAlign: 'right' }}>Закупка</span>
               <span style={{ textAlign: 'right' }}>Сума</span>
-              <span style={{ textAlign: 'center' }} title="Бонусний товар">🎁</span>
+              <span style={{ textAlign: 'center' }} title="Бонусний товар"><Gift size={12} style={{ verticalAlign: 'middle' }} /></span>
               <span /><span />
             </div>
 
@@ -584,8 +584,8 @@ export default function NewReceiptModal({
                     {/* Замовлено (read-only) */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                       {line.ordered_qty != null ? (
-                        <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: '#7C3AED',
-                          background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: '6px',
+                        <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: 'var(--brand-blue)',
+                          background: '#EFF4FF', border: '1px solid #C7D8F0', borderRadius: '6px',
                           padding: '3px 8px', width: '100%', boxSizing: 'border-box' }}>
                           {line.ordered_qty}
                         </div>
@@ -630,8 +630,8 @@ export default function NewReceiptModal({
 
                     {/* Bonus toggle */}
                     <button onClick={() => toggleBonus(idx)} title={line.is_bonus ? 'Скасувати бонус' : 'Бонусний товар'}
-                      style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: line.is_bonus ? '#FEF3C7' : 'none', border: line.is_bonus ? '1px solid #FCD34D' : '1px solid transparent', borderRadius: '5px', cursor: 'pointer', fontSize: '13px', height: '24px', width: '24px', padding: 0 }}>
-                      🎁
+                      style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: line.is_bonus ? '#FEF3C7' : 'none', border: line.is_bonus ? '1px solid #FCD34D' : '1px solid transparent', borderRadius: '5px', cursor: 'pointer', color: line.is_bonus ? '#B45309' : 'var(--text-muted)', height: '24px', width: '24px', padding: 0 }}>
+                      <Gift size={13} />
                     </button>
 
                     {/* Copy line */}
@@ -656,8 +656,8 @@ export default function NewReceiptModal({
               <button onClick={addLine} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#1E3A5F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}>
                 + Додати рядок
               </button>
-              <button onClick={() => setShowPicker(true)} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#7C3AED', background: 'none', border: '1px solid #DDD6FE', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, padding: '3px 8px' }}>
-                ⋯ З каталогу
+              <button onClick={() => setShowPicker(true)} className="proc-btn sm">
+                <List size={13} /> З каталогу
               </button>
             </div>
 
@@ -669,15 +669,15 @@ export default function NewReceiptModal({
           </div>
 
           {/* ── Додаткові витрати — всередині body, скролиться разом ── */}
-          <div style={{ border: '1px solid #DDD6FE', borderRadius: '10px', overflow: 'hidden' }}>
-            <div style={{ padding: '8px 12px', background: showLC ? '#F5F3FF' : '#FAFBFF', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
+            <div style={{ padding: '8px 12px', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <button onClick={() => { setShowLC(v => !v); if (!showLC && landedCosts.length === 0) addLC(); }}
-                style={{ fontSize: '13px', fontWeight: 600, color: showLC ? '#7C3AED' : 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                📦 Додаткові витрати {lcTotal > 0 ? `· ${fmt(lcTotal)} ₴` : ''}
+                style={{ fontSize: '13px', fontWeight: 600, color: showLC ? 'var(--brand-blue)' : 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Truck size={14} /> Додаткові витрати {lcTotal > 0 ? `· ${fmt(lcTotal)} ₴` : ''}
                 <span style={{ fontSize: '10px' }}>{showLC ? '▲' : '▼'}</span>
               </button>
               {showLC && <>
-                <button onClick={addLC} style={{ fontSize: '12px', color: '#7C3AED', background: 'none', border: '1px solid #DDD6FE', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, padding: '3px 10px' }}>
+                <button onClick={addLC} className="proc-btn sm">
                   + Додати
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginLeft: 'auto' }}>
@@ -692,7 +692,7 @@ export default function NewReceiptModal({
               </>}
             </div>
             {showLC && (
-              <div style={{ borderTop: '1px solid #DDD6FE', background: '#FAFBFF', display: 'flex', flexDirection: 'column', gap: '6px', padding: '8px 12px' }}>
+              <div style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-soft)', display: 'flex', flexDirection: 'column', gap: '6px', padding: '8px 12px' }}>
                 {landedCosts.map((lc, i) => (
                   <div key={i} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                     <select value={lc.cost_type} onChange={e => setLCField(i, 'cost_type', e.target.value)}
@@ -709,8 +709,8 @@ export default function NewReceiptModal({
                     </div>
                     <select value={lc.payment_method} onChange={e => setLCField(i, 'payment_method', e.target.value as 'cash' | 'bank')}
                       style={{ ...sinp, fontSize: '12px', cursor: 'pointer', flex: '0 0 120px' }}>
-                      <option value="bank">🏦 Банк</option>
-                      <option value="cash">💵 Готівка</option>
+                      <option value="bank">Банк</option>
+                      <option value="cash">Готівка</option>
                     </select>
                     <button onClick={() => setLandedCosts(prev => prev.filter((_, idx) => idx !== i))}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', display: 'flex', padding: 0, alignItems: 'center', flexShrink: 0 }}>
@@ -731,12 +731,14 @@ export default function NewReceiptModal({
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={() => handleSave(false)} disabled={saving}
-              style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: '1.5px solid var(--border)', background: savedAsDraft ? '#F0FDF4' : 'var(--bg-card)', color: savedAsDraft ? '#15803D' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: saving ? 0.6 : 1 }}>
-              {savedAsDraft ? '✅ Збережено' : '💾 Чернетка'}
+              className={`proc-btn${savedAsDraft ? ' done' : ''}`} style={{ height: '38px' }}>
+              {savedAsDraft ? <><Check size={14} /> Збережено</> : <><Save size={14} /> Чернетка</>}
             </button>
             <button onClick={() => handleSave(true)} disabled={saving}
-              style={{ height: '38px', padding: '0 22px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: saving ? 0.7 : 1 }}>
-              {saving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Проводимо...</> : initialData.poId ? '📦 Провести прихід' : '✅ Провести'}
+              className="proc-btn primary" style={{ height: '38px', padding: '0 20px' }}>
+              {saving
+                ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Проводимо...</>
+                : <><Check size={14} /> {initialData.poId ? 'Провести прихід' : 'Провести'}</>}
             </button>
           </div>
         </div>

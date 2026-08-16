@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import DraftCloseConfirm from './DraftCloseConfirm';
 import { X, Minus, Trash2, ArrowLeftRight } from 'lucide-react';
 import type { StockDocDraft } from './accounting/NewStockDocModal';
 
@@ -246,18 +247,10 @@ export default function StockDocDraftManager() {
                 </div>
 
                 {isConfirming && (
-                  <div style={{
-                    position: 'absolute', bottom: 46, left: 0, width: 280,
-                    background: 'var(--bg-card)', borderRadius: 12, padding: '16px 18px',
-                    boxShadow: '0 12px 40px rgba(0,0,0,0.35)', border: '1px solid var(--border)', zIndex: 10,
-                  }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>Закрити без збереження?</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14, lineHeight: 1.4 }}>Незбережені дані будуть видалені.</div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => setConfirmClose(null)} style={{ flex: 1, height: 34, borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Скасувати</button>
-                      <button onClick={() => closeDraft(draft.id, true)} style={{ flex: 1, height: 34, borderRadius: 8, border: 'none', background: '#DC2626', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Закрити</button>
-                    </div>
-                  </div>
+                  <DraftCloseConfirm
+                    onCancel={() => setConfirmClose(null)}
+                    onConfirm={() => closeDraft(draft.id, true)}
+                  />
                 )}
               </div>
             );

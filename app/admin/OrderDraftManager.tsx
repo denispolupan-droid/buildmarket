@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import DraftCloseConfirm from './DraftCloseConfirm';
 import { X, Minus, ShoppingBag } from 'lucide-react';
 
 const NewOrderModal = dynamic(() => import('./orders/NewOrderModal'), { ssr: false });
@@ -284,14 +285,10 @@ export default function OrderDraftManager() {
 
                 {/* Confirm-close popup above tab */}
                 {isConfirming && (
-                  <div style={{ position: 'absolute', bottom: '46px', left: 0, width: '280px', background: 'var(--bg-card)', borderRadius: '12px', padding: '16px 18px', boxShadow: '0 12px 40px rgba(0,0,0,0.35)', border: '1px solid var(--border)', zIndex: 10 }}>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>Закрити без збереження?</div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px', lineHeight: 1.4 }}>Незбережені дані будуть видалені.</div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={() => setConfirmClose(null)} style={{ flex: 1, height: '34px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Скасувати</button>
-                      <button onClick={() => closeDraft(draft.id, true)} style={{ flex: 1, height: '34px', borderRadius: '8px', border: 'none', background: '#DC2626', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>Закрити</button>
-                    </div>
-                  </div>
+                  <DraftCloseConfirm
+                    onCancel={() => setConfirmClose(null)}
+                    onConfirm={() => closeDraft(draft.id, true)}
+                  />
                 )}
               </div>
             );
