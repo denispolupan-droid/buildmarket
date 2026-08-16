@@ -13,7 +13,7 @@ export default function PromLayout({ children }: { children: React.ReactNode }) 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <MarketplaceTabs
-        logo="prom"
+        active="prom"
         activeBg="rgba(124,58,237,0.1)"
         activeText="#6D28D9"
         tabs={TABS}

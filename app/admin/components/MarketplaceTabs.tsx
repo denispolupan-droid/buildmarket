@@ -38,15 +38,25 @@ function RozetkaLogo() {
 
 interface Tab   { href: string; label: string }
 interface Props {
-  logo:        'prom' | 'rozetka';
+  /** на якій площадці ми зараз — вона підсвічена в перемикачі */
+  active:      'prom' | 'rozetka';
   activeBg:    string;   // soft rgba for active tab background
   activeText:  string;   // darker solid color for active tab text
   tabs:        Tab[];
 }
 
+// Обидві площадки живуть під одним пунктом сайдбара «Маркетплейси», тож
+// перемикач між ними — тут, зліва від вкладок самої площадки. Адреси
+// лишились ті самі (/admin/prom, /admin/rozetka): закладки, посилання з
+// картки товару і з телеграм-алерта модерації працюють як працювали.
+const MARKETS = [
+  { key: 'prom'    as const, href: '/admin/prom',    logo: <PromLogo /> },
+  { key: 'rozetka' as const, href: '/admin/rozetka', logo: <RozetkaLogo /> },
+];
+
 /* ── Component ──────────────────────────────────────────────────────────────── */
 
-export default function MarketplaceTabs({ logo, activeBg, activeText, tabs }: Props) {
+export default function MarketplaceTabs({ active, activeBg, activeText, tabs }: Props) {
   const pathname = usePathname();
 
   const activeHref =
@@ -80,6 +90,16 @@ export default function MarketplaceTabs({ logo, activeBg, activeText, tabs }: Pr
           font-weight: 600;
           transform: translateY(-1px);
         }
+        /* Перемикач площадок: неактивна приглушена, але клікабельна */
+        .mkswitch {
+          display: inline-flex; align-items: center;
+          padding: 3px 9px; border-radius: 9px;
+          text-decoration: none;
+          transition: opacity 0.18s ease, background 0.18s ease;
+        }
+        .mkswitch--off { opacity: 0.42; filter: grayscale(1); }
+        .mkswitch--off:hover { opacity: 0.85; filter: grayscale(0); background: rgba(0,0,0,0.05); }
+        .mkswitch--on { background: rgba(0,0,0,0.05); }
       `}</style>
 
       <div style={{
@@ -90,26 +110,36 @@ export default function MarketplaceTabs({ logo, activeBg, activeText, tabs }: Pr
         flexShrink: 0,
       }}>
 
-        {/* Logo */}
+        {/* Перемикач площадок */}
         <div style={{
           display:      'flex',
           alignItems:   'center',
-          paddingRight: 16,
+          gap:          2,
+          paddingRight: 14,
           marginRight:  4,
           borderRight:  '1px solid rgba(0,0,0,0.1)',
         }}>
-          {logo === 'prom' ? <PromLogo /> : <RozetkaLogo />}
+          {MARKETS.map(m => (
+            <Link
+              key={m.key}
+              href={m.href}
+              title={m.key === 'prom' ? 'Prom.ua' : 'Rozetka'}
+              className={`mkswitch mkswitch--${m.key === active ? 'on' : 'off'}`}
+            >
+              {m.logo}
+            </Link>
+          ))}
         </div>
 
         {/* Tabs */}
         {tabs.map(t => {
-          const active = t.href === activeHref;
+          const isActive = t.href === activeHref;
           return (
             <Link
               key={t.href}
               href={t.href}
-              className={`mktab${active ? ' mktab--active' : ''}`}
-              style={active ? { background: activeBg, color: activeText } : undefined}
+              className={`mktab${isActive ? ' mktab--active' : ''}`}
+              style={isActive ? { background: activeBg, color: activeText } : undefined}
             >
               {t.label}
             </Link>

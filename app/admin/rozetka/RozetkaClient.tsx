@@ -136,7 +136,9 @@ export default function RozetkaClient({ feedUrl, hasApiKey: initialHasApiKey, ma
     { href: '/admin/rozetka/products',    label: 'Товари',      desc: 'Увімкнути/вимкнути, наценки, ціни',                color: '#0EA5E9' },
     { href: '/admin/rozetka/commissions', label: 'Комісії',     desc: 'Комісії та категорії Rozetka по категоріях',        color: '#8B5CF6' },
     { href: '/admin/rozetka/audit',       label: 'Аудит назв',  desc: 'Перевірити відповідність назв вимогам Rozetka',     color: '#F59E0B' },
-    { href: '/admin/rozetka/orders',      label: 'Замовлення',  desc: 'Синхронізація замовлень з Rozetka',                 color: '#10B981' },
+    // Окремого екрана замовлень Rozetka більше немає: він дублював журнал і не
+    // мав входу з навігації. Ведемо в журнал, відфільтрований по каналу.
+    { href: '/admin?channel=rozetka',     label: 'Замовлення',  desc: 'Замовлення з Rozetka в журналі',                    color: '#10B981' },
   ];
 
   return (

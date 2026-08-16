@@ -36,8 +36,10 @@ const NAV = [
   { href: '/admin/suppliers',            label: 'Постачальники',  icon: Truck,          exact: false },
   { href: '/admin/partners',             label: 'Контрагенти',    icon: Users,          exact: false },
   { href: '/admin/procurement',          label: 'Закупівля',      icon: ShoppingCart,   exact: false },
-  { href: '/admin/prom',                 label: 'Prom.ua',        icon: ShoppingBasket, exact: false },
-  { href: '/admin/rozetka',              label: 'Rozetka',        icon: SocketIcon as typeof Store, exact: false },
+  // Обидві площадки під одним пунктом; перемикач Prom/Rozetka — усередині
+  // розділу (MarketplaceTabs). Адреси лишились ті самі, тому закладки й
+  // посилання з телеграм-алертів працюють.
+  { href: '/admin/prom',                 label: 'Маркетплейси',   icon: ShoppingBasket, exact: false },
   { href: '/admin/seo',                  label: 'SEO',            icon: Search,         exact: false },
   { href: '/admin/blog',                 label: 'Блог',           icon: BookOpen,       exact: false },
   { href: '/admin/finance',              label: 'Фінанси',        icon: BarChart3,      exact: false },
@@ -227,6 +229,8 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Пан
             ? (pathname === '/admin' || pathname.startsWith('/admin/orders') || pathname.startsWith('/admin/dispatch'))
             : href === '/admin/partners'
             ? (pathname.startsWith('/admin/partners') || pathname.startsWith('/admin/contracts'))
+            : href === '/admin/prom'
+            ? (pathname.startsWith('/admin/prom') || pathname.startsWith('/admin/rozetka'))
             : exact ? pathname === href : pathname.startsWith(href);
 
           const badgeCount =

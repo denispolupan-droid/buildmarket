@@ -12,7 +12,7 @@ export default function RozetkaLayout({ children }: { children: React.ReactNode 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <MarketplaceTabs
-        logo="rozetka"
+        active="rozetka"
         activeBg="rgba(0,160,70,0.1)"
         activeText="#15803D"
         tabs={TABS}
