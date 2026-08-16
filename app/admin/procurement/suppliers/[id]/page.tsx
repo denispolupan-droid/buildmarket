@@ -76,16 +76,16 @@ export default async function SupplierStockPage({ params }: { params: Promise<{ 
         <SyncButton supplierId={supplierId} />
       </div>
 
-      {/* Stats */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+      {/* Показники — той самий словник, що у «Фінансах» */}
+      <div className="fin-kpi-row cols-3" style={{ marginBottom: '16px' }}>
         {[
-          { label: 'В наявності', value: inStock,  color: '#15803D', bg: '#F0FDF4' },
-          { label: 'Під замовлення', value: onOrder,  color: '#B45309', bg: '#FEF3C7' },
-          { label: 'Відсутній', value: outStock, color: '#DC2626', bg: '#FEF2F2' },
+          { label: 'В наявності',    value: inStock,  dot: 'green'  },
+          { label: 'Під замовлення', value: onOrder,  dot: 'orange' },
+          { label: 'Відсутній',      value: outStock, dot: 'red'    },
         ].map(s => (
-          <div key={s.label} style={{ padding: '12px 20px', borderRadius: '10px', background: s.bg }}>
-            <div style={{ fontSize: '22px', fontWeight: 800, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: '12px', color: s.color, opacity: 0.8 }}>{s.label}</div>
+          <div key={s.label} className="fin-card fin-kpi">
+            <div className="fin-kpi-label"><span className={`fin-dot ${s.dot}`} />{s.label}</div>
+            <div className="fin-kpi-value">{s.value}</div>
           </div>
         ))}
       </div>

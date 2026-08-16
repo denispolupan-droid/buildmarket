@@ -66,48 +66,57 @@ export default async function ProcurementPage({
         <ProcurementClient suppliers={suppliers ?? []} />
       </SectionBar>
 
-      {/* Stats — 4 однакові картки */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginBottom: '20px' }}>
-
-        {/* Чернетки */}
-        <StatCard href="/admin/procurement?filter=draft" accent="#94A3B8">
-          <StatLeft count={totalDrafts} label="Чернетки" color="#64748B" />
-          <StatItems items={draftOrders.slice(-4).reverse().map(p => ({
+      {/* Показники — той самий словник, що у «Фінансах» (.fin-card/.fin-kpi) */}
+      <div className="fin-kpi-row cols-4" style={{ marginBottom: '16px' }}>
+        <StatCard
+          href="/admin/procurement?filter=draft"
+          dot="muted"
+          label="Чернетки"
+          value={totalDrafts}
+          foot={amountDrafts > 0 ? `${fmt(amountDrafts)} ₴` : null}
+          rows={draftOrders.slice(-4).reverse().map(p => ({
             name: p.supplier_name ?? '—',
             sub:  fmtDate(p.doc_date),
             amt:  p.total_cost ? fmt(Number(p.total_cost)) + ' ₴' : null,
-          }))} />
-        </StatCard>
+          }))}
+        />
 
-        {/* Очікуємо товар */}
-        <StatCard href="/admin/procurement?filter=pending" accent="#4880B8">
-          <StatLeft count={totalPending} label="Очікуємо товар" color="#1E3A5F" />
-          <StatItems items={pendingOrders.slice(-4).reverse().map(p => ({
+        <StatCard
+          href="/admin/procurement?filter=pending"
+          dot="blue"
+          label="Очікуємо товар"
+          value={totalPending}
+          foot={amountPending > 0 ? `${fmt(amountPending)} ₴` : null}
+          rows={pendingOrders.slice(-4).reverse().map(p => ({
             name: p.supplier_name ?? '—',
             sub:  fmtDate(p.expected_date ?? p.doc_date),
             amt:  p.total_cost ? fmt(Number(p.total_cost)) + ' ₴' : null,
-          }))} />
-        </StatCard>
+          }))}
+        />
 
-        {/* Отримано, не оплачено */}
-        <StatCard href="/admin/procurement?filter=received" accent="#D97706">
-          <StatLeft count={totalReceived} label="Отримано, не оплачено" color="#D97706" />
-          <StatItems items={receivedOrders.slice(-4).reverse().map(p => ({
+        <StatCard
+          href="/admin/procurement?filter=received"
+          dot="orange"
+          label="Отримано, не оплачено"
+          value={totalReceived}
+          foot={amountReceived > 0 ? `${fmt(amountReceived)} ₴` : null}
+          rows={receivedOrders.slice(-4).reverse().map(p => ({
             name: p.supplier_name ?? '—',
             sub:  fmtDate(p.doc_date),
             amt:  p.total_cost ? fmt(Number(p.total_cost)) + ' ₴' : null,
-          }))} />
-        </StatCard>
+          }))}
+        />
 
-        {/* Загальна сума */}
-        <StatCard accent="#7C3AED">
-          <StatLeft label="Загальна сума" color="#7C3AED" amount={`${fmt(totalAmount)} ₴`} />
-          <StatItems items={[
-            amountDrafts   > 0 ? { name: 'Чернетки',  sub: `${totalDrafts} замовл.`,   amt: fmt(amountDrafts)   + ' ₴' } : null,
-            amountPending  > 0 ? { name: 'Очікуємо',  sub: `${totalPending} замовл.`,  amt: fmt(amountPending)  + ' ₴' } : null,
+        <StatCard
+          label="Загальна сума"
+          value={`${fmt(totalAmount)} ₴`}
+          foot={`${activeOrders.length} ${plural(activeOrders.length, 'замовлення', 'замовлення', 'замовлень')} в роботі`}
+          rows={[
+            amountDrafts   > 0 ? { name: 'Чернетки',    sub: `${totalDrafts} замовл.`,   amt: fmt(amountDrafts)   + ' ₴' } : null,
+            amountPending  > 0 ? { name: 'Очікуємо',    sub: `${totalPending} замовл.`,  amt: fmt(amountPending)  + ' ₴' } : null,
             amountReceived > 0 ? { name: 'Не оплачено', sub: `${totalReceived} замовл.`, amt: fmt(amountReceived) + ' ₴' } : null,
-          ].filter(Boolean) as { name: string; sub: string; amt: string | null }[]} />
-        </StatCard>
+          ].filter(Boolean) as StatRow[]}
+        />
       </div>
 
       {/* Table */}
@@ -119,70 +128,51 @@ export default async function ProcurementPage({
   );
 }
 
-// ── Допоміжні компоненти карток ───────────────────────────────────────────────
+// ── Картка-показник ───────────────────────────────────────────────────────────
+// Розкладка як у «Фінансах»: підпис капсом → велика цифра → підвал → деталі.
+// Стан позначає крапка біля підпису, а не кольорова рамка й кольорова цифра:
+// чотири різнокольорові картки в ряд читались як чотири різні за важливістю,
+// хоча це просто стадії одного процесу.
 
-function StatCard({ children, href, accent }: {
-  children: React.ReactNode;
-  href?: string;
-  accent: string;
+type StatRow = { name: string; sub: string; amt: string | null };
+
+function StatCard({ href, dot, label, value, foot, rows }: {
+  href?:  string;
+  dot?:   'muted' | 'blue' | 'orange';
+  label:  string;
+  value:  React.ReactNode;
+  foot?:  string | null;
+  rows:   StatRow[];
 }) {
-  const inner = (
-    <div style={{
-      padding: '14px 16px', borderRadius: '10px',
-      background: 'var(--bg-card)', border: '1px solid var(--border)',
-      borderLeft: `3px solid ${accent}`,
-      display: 'flex', gap: '12px', minHeight: '100px',
-      height: '100%', boxSizing: 'border-box',
-    }}>
-      {children}
-    </div>
+  const dotColor = dot === 'orange' ? '#EA8A00' : dot === 'blue' ? 'var(--brand-blue)' : '#94A3B8';
+
+  const body = (
+    <>
+      <div className="fin-kpi-label">
+        {dot && <span className="fin-dot" style={{ background: dotColor }} />}
+        {label}
+      </div>
+      <div className="fin-kpi-value">{value}</div>
+      {foot && <div className="fin-kpi-foot"><span className="fin-kpi-cmp">{foot}</span></div>}
+      {rows.length > 0 && (
+        <table className="fin-table">
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i}>
+                <td className="name">
+                  {r.name}
+                  {r.sub && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {r.sub}</span>}
+                </td>
+                {r.amt && <td className="num">{r.amt}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </>
   );
+
   return href
-    ? <a href={href} style={{ textDecoration: 'none', display: 'block' }}>{inner}</a>
-    : <div>{inner}</div>;
-}
-
-function StatLeft({ count, label, color, amount }: {
-  count?: number; label: string; color: string; amount?: string;
-}) {
-  return (
-    <div style={{ flexShrink: 0, width: '100px' }}>
-      {amount
-        ? <div style={{ fontSize: '20px', fontWeight: 800, color, lineHeight: 1.1 }}>{amount}</div>
-        : <div style={{ fontSize: '26px', fontWeight: 800, color, lineHeight: 1 }}>{count}</div>
-      }
-      <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', lineHeight: 1.3 }}>{label}</div>
-    </div>
-  );
-}
-
-function StatItems({ items }: { items: { name: string; sub: string; amt: string | null }[] }) {
-  if (!items.length) return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>—</span>
-    </div>
-  );
-  return (
-    <div style={{
-      flex: 1, borderLeft: '1px solid var(--border)', paddingLeft: '12px',
-      display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '5px',
-      overflow: 'hidden',
-    }}>
-      {items.map((item, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: '4px', minWidth: 0 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {item.name}
-            </div>
-            {item.sub && (
-              <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{item.sub}</div>
-            )}
-          </div>
-          {item.amt && (
-            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', flexShrink: 0 }}>{item.amt}</div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
+    ? <a href={href} className="fin-card fin-kpi">{body}</a>
+    : <div className="fin-card fin-kpi">{body}</div>;
 }

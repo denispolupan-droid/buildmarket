@@ -2085,7 +2085,15 @@ input, select { font-family: inherit; }
 .fin-grid-12 { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
 
 .fin-kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+/* Не в кожному розділі рівно п'ять показників — «Закупівля» має 4 і 3. */
+.fin-kpi-row.cols-4 { grid-template-columns: repeat(4, 1fr); }
+.fin-kpi-row.cols-3 { grid-template-columns: repeat(3, 1fr); }
 .fin-kpi { position: relative; padding: 18px 20px; }
+/* Картка-лічильник, що веде у відфільтрований список. Підкреслення й синій
+   колір посилання зіпсували б цифру, тож успадковуємо текст, а клікабельність
+   показуємо рамкою на ховері. */
+a.fin-kpi { display: block; text-decoration: none; color: inherit; }
+a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
 .fin-kpi-label {
   font-size: 11.5px; font-weight: 600; letter-spacing: 0.05em;
   text-transform: uppercase; color: var(--text-muted);

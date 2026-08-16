@@ -97,15 +97,16 @@ export default function ReceiptsWrapper({ rows }: { rows: Receipt[] }) {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '12px', marginBottom: '20px' }}>
+      <div className="fin-kpi-row cols-3" style={{ marginBottom: '16px' }}>
         {[
-          { label: 'Всього приходів',    value: filtered.length,            suffix: 'шт', color: 'var(--brand-blue)', accent: '#4880B8' },
-          { label: 'Сума закупівель',    value: `${fmt(totalCost)} ₴`,     suffix: '',   color: '#16A34A',           accent: '#16A34A' },
-          { label: 'Landed Cost всього', value: `${fmt(totalLanded)} ₴`,   suffix: '',   color: '#7C3AED',           accent: '#7C3AED' },
+          { label: 'Всього приходів',    value: String(filtered.length), foot: 'документів за фільтром' },
+          { label: 'Сума закупівель',    value: `${fmt(totalCost)} ₴`,   foot: 'за цінами постачальників' },
+          { label: 'Landed Cost всього', value: `${fmt(totalLanded)} ₴`, foot: 'доставка, мито й інші витрати' },
         ].map(s => (
-          <div key={s.label} style={{ padding: '14px 18px', borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: `3px solid ${s.accent}` }}>
-            <div style={{ fontSize: '22px', fontWeight: 800, color: s.color }}>{s.value} <span style={{ fontSize: '13px', fontWeight: 500 }}>{s.suffix}</span></div>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{s.label}</div>
+          <div key={s.label} className="fin-card fin-kpi">
+            <div className="fin-kpi-label">{s.label}</div>
+            <div className="fin-kpi-value">{s.value}</div>
+            <div className="fin-kpi-foot"><span className="fin-kpi-cmp">{s.foot}</span></div>
           </div>
         ))}
       </div>
