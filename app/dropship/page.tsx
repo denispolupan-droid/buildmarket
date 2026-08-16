@@ -161,7 +161,10 @@ export default async function DropshipPage() {
     getBrandLogosCached(),
     getVisibleBrandLogosCached(),
   ]);
-  const brandTiles = mergeVisibleBrands(visibleBrandLogos).slice(0, 12);
+  // Без обрізання до 12: заголовок обіцяє «Бренди, які ви продаєте», а показувати
+  // дропшиперу неповний асортимент — вводити в оману. На /opt той самий блок і
+  // так виводить усі бренди.
+  const brandTiles = mergeVisibleBrands(visibleBrandLogos);
 
   const faqLd = {
     '@context': 'https://schema.org',

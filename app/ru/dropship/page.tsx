@@ -164,7 +164,8 @@ export default async function RuDropshipPage() {
     getBrandLogosCached(),
     getVisibleBrandLogosCached(),
   ]);
-  const brandTiles = mergeVisibleBrands(visibleBrandLogos).slice(0, 12);
+  // Без обрезания до 12 — см. комментарий в app/dropship/page.tsx
+  const brandTiles = mergeVisibleBrands(visibleBrandLogos);
 
   const faqLd = {
     '@context': 'https://schema.org',
