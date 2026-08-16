@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { X, Minus, Search, Trash2, Send, AlertCircle } from 'lucide-react';
+import DocPanelHeader, { useDocPanelSize } from '../DocPanelHeader';
+import { Save } from 'lucide-react';
 import { getSupabaseBrowser } from '../../../lib/supabase-browser';
 
 export type StockDocType = 'write_off' | 'transfer';
@@ -52,6 +54,7 @@ type Props = {
 export default function NewStockDocModal({
   initialData, warehouses, zIndex, onMinimize, onClose, onDraftChange, onSubmitted,
 }: Props) {
+  const [maximized, toggleSize] = useDocPanelSize();
   const [warehouseId,   setWarehouseId]   = useState(initialData.warehouseId || warehouses[0]?.id || 0);
   const [toWarehouseId, setToWarehouseId] = useState<number | null>(initialData.toWarehouseId);
   const [docDate,       setDocDate]       = useState(initialData.docDate);
@@ -179,35 +182,15 @@ export default function NewStockDocModal({
 
   return (
     <>
-      <div style={{
-        position: 'fixed', top: 0, left: '240px', bottom: '42px', zIndex,
-        width: 'min(880px, 65vw)',
-        display: 'flex', flexDirection: 'column',
-        background: 'var(--bg-card)',
-        boxShadow: '8px 0 32px rgba(0,0,0,0.22)',
-        borderRight: '1px solid var(--border)',
-        borderBottom: '1px solid var(--border)',
-      }}>
+      <div className={`doc-panel${maximized ? ' max' : ''}`} style={{ zIndex }}>
         {/* Header */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '16px 24px', borderBottom: '1px solid var(--border)',
-          background: 'var(--bg-card)', flexShrink: 0,
-        }}>
-          <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>{title}</div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={onMinimize} title="Згорнути" style={{
-              width: 28, height: 28, borderRadius: 7, border: '1.5px solid var(--border)',
-              background: 'var(--bg-soft)', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)',
-            }}><Minus size={13} /></button>
-            <button onClick={onClose} title="Закрити" style={{
-              width: 28, height: 28, borderRadius: 7, border: '1.5px solid var(--border)',
-              background: 'var(--bg-soft)', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)',
-            }}><X size={13} /></button>
-          </div>
-        </div>
+        <DocPanelHeader
+          title={title}
+          maximized={maximized}
+          onToggleSize={toggleSize}
+          onMinimize={onMinimize}
+          onClose={onClose}
+        />
 
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
@@ -334,24 +317,15 @@ export default function NewStockDocModal({
           <button
             onClick={() => handleSave(false)}
             disabled={saving || lines.length === 0}
-            style={{
-              height: 38, padding: '0 18px', borderRadius: 9, fontSize: 13, fontWeight: 600,
-              border: '1.5px solid var(--border)', background: 'var(--bg-soft)',
-              color: 'var(--text-secondary)', cursor: 'pointer',
-              opacity: saving || lines.length === 0 ? 0.5 : 1,
-            }}
-          >Чернетка</button>
+            className="proc-btn" style={{ height: 38 }}
+          >
+            <Save size={14} /> Чернетка
+          </button>
+          {/* Списання незворотне, тож головна дія тут червона, а не синя */}
           <button
             onClick={() => handleSave(true)}
             disabled={saving || lines.length === 0}
-            style={{
-              height: 38, padding: '0 22px', borderRadius: 9, fontSize: 13, fontWeight: 700,
-              border: 'none',
-              background: isTransfer ? '#075985' : '#7F1D1D',
-              color: '#fff', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 7,
-              opacity: saving || lines.length === 0 ? 0.5 : 1,
-            }}
+            className={`proc-btn ${isTransfer ? 'primary' : 'danger'}`} style={{ height: 38, padding: '0 20px' }}
           >
             <Send size={13} />
             {saving ? 'Зберігаємо...' : 'Провести'}

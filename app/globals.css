@@ -2253,6 +2253,44 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
 .doc-tab:hover .doc-tab-btn { color: rgba(255,255,255,0.6); }
 .doc-tab-btn:hover { background: rgba(255,255,255,0.14); color: #fff; }
 
+/* ── Панель документа (прихід, замовлення, списання, переміщення) ───────────
+   Чотири модалки відкривались на різну ширину: замовлення постачальнику на
+   min(1040px, 74vw), складський документ на min(880px, 65vw), прихід — на всю
+   сторону. Одна геометрія на всіх, а ширину обирає користувач кнопкою
+   «розгорнути» в шапці (стан запам'ятовується). */
+.doc-panel {
+  position: fixed; top: 0; left: 240px; bottom: 42px;
+  width: min(1040px, 74vw);
+  display: flex; flex-direction: column;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 8px 0 32px rgba(0,0,0,0.22);
+  transition: width 0.16s ease-out;
+}
+/* Розгорнута — до правого краю. width:auto, щоб right взяв гору над width. */
+.doc-panel.max { right: 0; width: auto; }
+
+.doc-panel-head {
+  flex-shrink: 0;
+  padding: 16px 24px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.doc-panel-title { font-size: 16px; font-weight: 800; color: var(--text-primary); }
+.doc-panel-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.doc-panel-btns { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.doc-panel-btn {
+  display: flex; padding: 5px; border: none; border-radius: 6px;
+  background: none; cursor: pointer; color: var(--text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+.doc-panel-btn:hover { background: var(--bg-soft); color: var(--text-primary); }
+.doc-panel-body { flex: 1; overflow-y: auto; }
+/* Прихід скролить панель цілком, а шапку й підвал тримає липкими — у нього
+   довга таблиця рядків, і окремий скрол-контейнер обрізав би підказки. */
+.doc-panel.scroll { display: block; overflow-y: auto; }
+.doc-panel.scroll .doc-panel-head { position: sticky; top: 0; z-index: 20; background: var(--bg-card); }
+
 /* Підтвердження закриття чернетки. Три менеджери з чотирьох показували його
    як плашку над своєю вкладкою — унизу зліва, де питання про втрату даних
    легко не помітити. Тепер у всіх по центру з затемненням, як було лише в

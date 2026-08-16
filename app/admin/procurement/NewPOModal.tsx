@@ -2,6 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { X, Upload, Loader2, Trash2, Plus, AlertCircle, Minus } from 'lucide-react';
+import DocPanelHeader, { useDocPanelSize } from '../DocPanelHeader';
+import { List, Save, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 
@@ -148,6 +150,7 @@ type Props = {
 };
 
 export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onClose, onDraftChange, onSubmitted }: Props) {
+  const [maximized, toggleSize] = useDocPanelSize();
   const router  = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -489,19 +492,17 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
     )}
 
     {/* Side panel ЛІВОРУЧ — після sidebar (220px) */}
-    <div className="po-panel-enter" style={{ position: 'fixed', top: 0, left: '240px', bottom: '42px', zIndex, width: 'min(1040px, 74vw)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', boxShadow: '8px 0 32px rgba(0,0,0,0.22)', borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+    <div className={`po-panel-enter doc-panel${maximized ? ' max' : ''}`} style={{ zIndex }}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
         {/* Header */}
-        <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
-            Нове замовлення постачальнику
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <button onClick={onMinimize} title="Згорнути" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px', borderRadius: '6px' }}><Minus size={18} /></button>
-            <button onClick={onClose} title="Закрити" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px', borderRadius: '6px' }}><X size={18} /></button>
-          </div>
-        </div>
+        <DocPanelHeader
+          title="Нове замовлення постачальнику"
+          maximized={maximized}
+          onToggleSize={toggleSize}
+          onMinimize={onMinimize}
+          onClose={onClose}
+        />
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
@@ -672,9 +673,8 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
                   style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#1E3A5F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}>
                   <Plus size={13} /> Додати рядок
                 </button>
-                <button onClick={() => setShowPicker(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#7C3AED', background: 'none', border: '1px solid #DDD6FE', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, padding: '3px 8px' }}>
-                  ⋯ З каталогу
+                <button onClick={() => setShowPicker(true)} className="proc-btn sm">
+                  <List size={13} /> З каталогу
                 </button>
               </div>
               <span />
@@ -696,13 +696,13 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
           </div>
 
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={() => save(false)} disabled={saving}
-              style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: saving ? 0.6 : 1 }}>
-              💾 Чернетка
+            <button onClick={() => save(false)} disabled={saving} className="proc-btn" style={{ height: '38px' }}>
+              <Save size={14} /> Чернетка
             </button>
-            <button onClick={() => save(true)} disabled={saving}
-              style={{ height: '38px', padding: '0 22px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: saving ? 0.7 : 1 }}>
-              {saving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Збереження...</> : '✅ Провести'}
+            <button onClick={() => save(true)} disabled={saving} className="proc-btn primary" style={{ height: '38px', padding: '0 20px' }}>
+              {saving
+                ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Збереження...</>
+                : <><Check size={14} /> Провести</>}
             </button>
           </div>
         </div>

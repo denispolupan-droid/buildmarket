@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Minus, Upload, Loader2, Trash2, AlertCircle, Copy, List, Save, Check, Gift, Truck } from 'lucide-react';
+import DocPanelHeader, { useDocPanelSize } from '../DocPanelHeader';
 import { showToast } from '../../../lib/toast';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
@@ -111,6 +112,7 @@ export default function NewReceiptModal({
   initialData, warehouses, suppliers,
   zIndex = 1003, onMinimize, onClose, onDraftChange, onSubmitted,
 }: Props) {
+  const [maximized, toggleSize] = useDocPanelSize();
   const router  = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -427,25 +429,19 @@ export default function NewReceiptModal({
 
       {/* Panel — весь модаль скролиться, header/footer sticky */}
       <div
-        className="receipt-panel-enter"
+        className={`receipt-panel-enter doc-panel scroll${maximized ? ' max' : ''}`}
         ref={bodyRef}
-        style={{ position: 'fixed', top: 0, left: '240px', right: 0, bottom: '42px', zIndex, overflowY: 'auto', background: 'var(--bg-card)', boxShadow: '8px 0 32px rgba(0,0,0,0.22)', borderBottom: '1px solid var(--border)' }}
+        style={{ zIndex }}
       >
         {/* ── Header sticky ── */}
-        <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--bg-card)', padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
-              {initialData.poId ? `Прихід за ${initialData.poDocNumber ?? 'ЗП'}` : 'Новий прихід товару'}
-            </div>
-            {initialData.poId && (
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Перевірте фактичні кількості, ціни закупки та встановіть ціни продажу</div>
-            )}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <button onClick={onMinimize} title="Згорнути" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px', borderRadius: '6px' }}><Minus size={18} /></button>
-            <button onClick={onClose}    title="Закрити"  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px', borderRadius: '6px' }}><X size={18} /></button>
-          </div>
-        </div>
+        <DocPanelHeader
+          title={initialData.poId ? `Прихід за ${initialData.poDocNumber ?? 'ЗП'}` : 'Новий прихід товару'}
+          subtitle={initialData.poId ? 'Перевірте фактичні кількості, ціни закупки та встановіть ціни продажу' : undefined}
+          maximized={maximized}
+          onToggleSize={toggleSize}
+          onMinimize={onMinimize}
+          onClose={onClose}
+        />
 
         {/* ── Scrollable body ── */}
         <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>

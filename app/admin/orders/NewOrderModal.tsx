@@ -6,6 +6,7 @@ import {
   Printer, ChevronDown, CheckSquare, Package, Send, Warehouse, RefreshCw, Info,
   Gift, LayoutGrid,
 } from 'lucide-react';
+import DocPanelHeader, { useDocPanelSize } from '../DocPanelHeader';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import dynamic from 'next/dynamic';
@@ -155,6 +156,7 @@ type Props = {
 export default function NewOrderModal({
   initialData, zIndex = 1003, onMinimize, onClose, onDraftChange, onSubmitted,
 }: Props) {
+  const [maximized, toggleSize] = useDocPanelSize();
   const router  = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -743,33 +745,19 @@ export default function NewOrderModal({
     <>
       {/* ── Side panel ───────────────────────────────────────────────────── */}
       <div
-        className="order-panel-enter"
-        style={{
-          position: 'fixed', top: 0, left: '240px', bottom: '42px', zIndex,
-          width: 'min(980px, 72vw)',
-          display: 'flex', flexDirection: 'column',
-          background: 'var(--bg-card)',
-          boxShadow: '8px 0 32px rgba(0,0,0,0.22)',
-          borderRight: '1px solid var(--border)',
-          borderBottom: '1px solid var(--border)',
-        }}
+        className={`order-panel-enter doc-panel${maximized ? ' max' : ''}`}
+        style={{ zIndex }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
           {/* Header */}
-          <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-            <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
-              Нове замовлення покупця
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <button onClick={onMinimize} title="Згорнути" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px', borderRadius: '6px' }}>
-                <Minus size={18} />
-              </button>
-              <button onClick={onClose} title="Закрити" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px', borderRadius: '6px' }}>
-                <X size={18} />
-              </button>
-            </div>
-          </div>
+          <DocPanelHeader
+            title="Нове замовлення покупця"
+            maximized={maximized}
+            onToggleSize={toggleSize}
+            onMinimize={onMinimize}
+            onClose={onClose}
+          />
 
           {/* Scrollable body */}
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
