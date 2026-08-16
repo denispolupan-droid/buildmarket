@@ -49,6 +49,9 @@ function SocialLink({ href, title, children }: { href: string; title: string; ch
 }
 
 const serviceLinks = [
+  // Оптовий напрям стоїть першим: на /opt вело лише одне контентне посилання з
+  // усього сайту, хоча саме він — посадкова для комерційних оптових запитів.
+  { labelUk: 'Будівельна хімія оптом', labelRu: 'Строительная химия оптом', hrefUk: '/opt',      hrefRu: '/ru/opt' },
   { labelUk: "Про компанію",        labelRu: 'О компании',               hrefUk: '/about',    hrefRu: '/ru/about' },
   { labelUk: "Зв'яжіться з нами",   labelRu: 'Свяжитесь с нами',         hrefUk: '/contacts', hrefRu: '/ru/contacts' },
   { labelUk: 'Умови доставки',      labelRu: 'Условия доставки',          hrefUk: '/delivery', hrefRu: '/ru/delivery' },

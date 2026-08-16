@@ -281,7 +281,8 @@ export default async function HomeRu() {
                 icon: LayoutGrid, color: '#6366F1', title: 'Оптовый каталог',
                 text: 'Для дилеров, подрядчиков и магазинов. Оптовые цены и персональные условия для вашего бизнеса.',
                 items: ['Оптовые цены', 'Персональные тарифы', 'Табличный каталог', 'Счета-фактуры'],
-                href: '/ru/login?next=/catalog', cta: 'Оптовый каталог',
+                // Ведёт на /ru/opt, а не сразу в /login?next=/catalog — см. app/page.tsx
+                href: '/ru/opt', cta: 'Узнать больше',
               },
               {
                 icon: PackageCheck, color: '#0891B2', title: 'Дропшиппинг',

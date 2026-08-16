@@ -57,6 +57,27 @@ const steps = [
   { n: '04', icon: Truck,     title: 'Заказ и отгрузка',        text: `Минимальная сумма — ${WHOLESALE_MIN} грн. Отправляем Новой почтой по всей Украине.` },
 ];
 
+// Факты те же, что на /delivery — она единственный источник правды о доставке.
+// Города названы не ради ключевых слов, а потому что это первое, что спрашивает
+// оптовик: откуда отгружают и когда приедет.
+const logistics = [
+  {
+    icon: Clock,
+    title: 'Отгружаем из Харькова',
+    text: 'Заказ до 14:00 в рабочий день отправляем в тот же день. Для крупных оптовых партий условия и способ доставки менеджер согласовывает отдельно.',
+  },
+  {
+    icon: Truck,
+    title: 'Новая Почта — 1–2 дня',
+    text: 'Киев, Львов, Одесса, Днепр, Запорожье и ещё более 28 000 отделений и почтоматов по всей Украине. Наложенный платёж или предоплата.',
+  },
+  {
+    icon: Store,
+    title: 'Точки выдачи ROZETKA',
+    text: '619 точек в 261 городе Украины — если удобнее забрать самому. Отслеживание посылки на rozetka.delivery.',
+  },
+];
+
 const benefits = [
   { icon: Tags,        title: 'Цена закреплена за аккаунтом',  text: 'Оптовая цена видна сразу в каталоге — без прайсов в почте и переписки с менеджером.' },
   { icon: Boxes,       title: 'Остатки в реальном времени',    text: 'Склад синхронизируется с поставщиками автоматически, поэтому наличие соответствует фактическому.' },
@@ -281,6 +302,41 @@ export default async function RuOptPage() {
                 </Reveal>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* ===== Логистика — см. комментарий в app/opt/page.tsx ===== */}
+        <section style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border)', padding: '72px 0' }}>
+          <div className="page-container">
+            <Reveal>
+              <div style={{ textAlign: 'center', maxWidth: '620px', margin: '0 auto 48px' }}>
+                <span className="eyebrow">Логистика</span>
+                <h2 style={{ fontSize: 'clamp(24px, 3vw, 34px)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.3, margin: '12px 0 0', letterSpacing: '-0.5px' }}>
+                  Откуда и за сколько едет заказ
+                </h2>
+              </div>
+            </Reveal>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="opt-benefits">
+              {logistics.map(({ icon: Icon, title, text }, i) => (
+                <Reveal key={title} delay={i * 70}>
+                  <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '18px', padding: '26px', height: '100%' }}>
+                    <div style={{ width: '42px', height: '42px', borderRadius: '11px', background: 'var(--brand-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+                      <Icon size={20} color="var(--brand-blue)" strokeWidth={1.75} />
+                    </div>
+                    <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px' }}>{title}</h3>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{text}</p>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+            <Reveal delay={220}>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', margin: '28px 0 0' }}>
+                Полные условия и тарифы — на странице{' '}
+                <Link href="/ru/delivery" style={{ color: 'var(--brand-blue)', fontWeight: 600, textDecoration: 'none' }}>
+                  условий доставки
+                </Link>.
+              </p>
+            </Reveal>
           </div>
         </section>
 

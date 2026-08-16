@@ -69,6 +69,27 @@ const steps = [
   { n: '04', icon: Truck,     title: 'Замовлення й відвантаження', text: `Мінімальна сума — ${WHOLESALE_MIN} грн. Відправляємо Новою поштою по всій Україні.` },
 ];
 
+// Факти взяті зі сторінки /delivery — вона єдине джерело правди про доставку.
+// Міста названі не заради ключових слів, а тому що це перше, що питає оптовик:
+// звідки відвантажують і коли приїде.
+const logistics = [
+  {
+    icon: Clock,
+    title: 'Відвантажуємо з Харкова',
+    text: 'Замовлення до 14:00 у робочий день відправляємо того ж дня. Для великих оптових партій умови й спосіб доставки менеджер узгоджує окремо.',
+  },
+  {
+    icon: Truck,
+    title: 'Нова Пошта — 1–2 дні',
+    text: 'Київ, Львів, Одеса, Дніпро, Запоріжжя та ще понад 28 000 відділень і поштоматів по всій Україні. Накладений платіж або передоплата.',
+  },
+  {
+    icon: Store,
+    title: 'Точки видачі ROZETKA',
+    text: '619 точок у 261 місті України — якщо зручніше забрати самому. Відстеження посилки на rozetka.delivery.',
+  },
+];
+
 const benefits = [
   { icon: Tags,        title: 'Ціна закріплена за акаунтом', text: 'Оптова ціна видно одразу в каталозі — без прайсів у пошті й листування з менеджером.' },
   { icon: Boxes,       title: 'Залишки в реальному часі',    text: 'Склад синхронізується з постачальниками автоматично, тож наявність відповідає фактичній.' },
@@ -293,6 +314,47 @@ export default async function OptPage() {
                 </Reveal>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* ===== Логістика =====
+            Сторінка не відповідала на перше питання оптовика — звідки і за
+            скільки їде товар. У пошуку це видно як «будівельна хімія львів
+            оптом» (50 показів за 90 днів, позиція 23–39): попит на опт із
+            привʼязкою до міста є, а слова «Львів», «Київ», «Харків» на
+            сторінці не було жодного. Факти тут ті самі, що на /delivery —
+            єдине джерело правди про доставку. */}
+        <section style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border)', padding: '72px 0' }}>
+          <div className="page-container">
+            <Reveal>
+              <div style={{ textAlign: 'center', maxWidth: '620px', margin: '0 auto 48px' }}>
+                <span className="eyebrow">Логістика</span>
+                <h2 style={{ fontSize: 'clamp(24px, 3vw, 34px)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.3, margin: '12px 0 0', letterSpacing: '-0.5px' }}>
+                  Звідки й за скільки їде замовлення
+                </h2>
+              </div>
+            </Reveal>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="opt-benefits">
+              {logistics.map(({ icon: Icon, title, text }, i) => (
+                <Reveal key={title} delay={i * 70}>
+                  <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '18px', padding: '26px', height: '100%' }}>
+                    <div style={{ width: '42px', height: '42px', borderRadius: '11px', background: 'var(--brand-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+                      <Icon size={20} color="var(--brand-blue)" strokeWidth={1.75} />
+                    </div>
+                    <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px' }}>{title}</h3>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{text}</p>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+            <Reveal delay={220}>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', margin: '28px 0 0' }}>
+                Повні умови й тарифи — на сторінці{' '}
+                <Link href="/delivery" style={{ color: 'var(--brand-blue)', fontWeight: 600, textDecoration: 'none' }}>
+                  умов доставки
+                </Link>.
+              </p>
+            </Reveal>
           </div>
         </section>
 
