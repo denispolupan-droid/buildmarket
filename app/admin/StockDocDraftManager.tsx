@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import DraftCloseConfirm from './DraftCloseConfirm';
+import { DRAFT_KEYS, draftCount } from './draft-tab-offset';
 import { X, Minus, Trash2, ArrowLeftRight } from 'lucide-react';
 import type { StockDocDraft } from './accounting/NewStockDocModal';
 
@@ -36,6 +37,9 @@ export default function StockDocDraftManager() {
 
   useEffect(() => {
     setDrafts(loadDrafts());
+    setPoDraftCount(draftCount(DRAFT_KEYS.po));
+    setReceiptDraftCount(draftCount(DRAFT_KEYS.receipt));
+    setOrderDraftCount(draftCount(DRAFT_KEYS.order));
     setMounted(true);
     fetch('/api/admin/procurement/receipt-meta')
       .then(r => r.ok ? r.json() : { warehouses: [] })
@@ -213,7 +217,7 @@ export default function StockDocDraftManager() {
             const isActive    = !draft.minimized && draft.id === topCard?.id;
             const isWriteOff  = draft.docType === 'write_off';
             const label       = isWriteOff ? 'Списання' : 'Переміщення';
-            const accent      = isWriteOff ? '#DC2626' : '#0EA5E9';
+            const accent      = isWriteOff ? '#FCA5A5' : '#7DD3FC';
             const isConfirming = confirmClose === draft.id;
 
             return (

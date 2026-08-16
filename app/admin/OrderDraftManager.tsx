@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import DraftCloseConfirm from './DraftCloseConfirm';
+import { DRAFT_KEYS, draftCount } from './draft-tab-offset';
 import { X, Minus, ShoppingBag } from 'lucide-react';
 
 const NewOrderModal = dynamic(() => import('./orders/NewOrderModal'), { ssr: false });
@@ -68,7 +69,12 @@ export default function OrderDraftManager() {
   const [poDraftCount,      setPoDraftCount]      = useState(0);
   const [receiptDraftCount, setReceiptDraftCount] = useState(0);
 
-  useEffect(() => { setDrafts(loadDrafts()); setMounted(true); }, []);
+  useEffect(() => {
+    setDrafts(loadDrafts());
+    setPoDraftCount(draftCount(DRAFT_KEYS.po));
+    setReceiptDraftCount(draftCount(DRAFT_KEYS.receipt));
+    setMounted(true);
+  }, []);
 
   // Minimize all order drafts when PO or Receipt panel activates
   useEffect(() => {
@@ -248,7 +254,7 @@ export default function OrderDraftManager() {
 
       {/* ── Tab bar (bottom) ─────────────────────────────────────────────────── */}
       {drafts.length > 0 && (
-        <div className="doc-tabs" style={{ left: `${tabLeft}px`, ['--doc-accent' as string]: '#2563EB' }}>
+        <div className="doc-tabs" style={{ left: `${tabLeft}px`, ['--doc-accent' as string]: '#A5B4FC' }}>
           {tabOrder.map(draft => {
             const isActive    = !draft.minimized && draft.id === topCard?.id;
             const lineCount   = draft.lines.filter(l => l.sku || l.name).length;

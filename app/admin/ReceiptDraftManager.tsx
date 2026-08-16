@@ -10,6 +10,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import DraftCloseConfirm from './DraftCloseConfirm';
+import { DRAFT_KEYS, draftCount } from './draft-tab-offset';
 import { X, Minus, PackagePlus } from 'lucide-react';
 
 export type ReceiptLine = {
@@ -71,6 +72,7 @@ export default function ReceiptDraftManager() {
 
   useEffect(() => {
     setDrafts(loadDrafts());
+    setPoDraftCount(draftCount(DRAFT_KEYS.po));
     setMounted(true);
 
     // Load warehouses & suppliers via admin API (needs service role)
@@ -296,7 +298,7 @@ export default function ReceiptDraftManager() {
 
       {/* Tab bar */}
       {drafts.length > 0 && (
-        <div className="doc-tabs" style={{ left: `${tabLeft}px`, ['--doc-accent' as string]: '#15803D' }}>
+        <div className="doc-tabs" style={{ left: `${tabLeft}px`, ['--doc-accent' as string]: '#4ADE80' }}>
           {tabOrder.map(draft => {
             const isActive   = !draft.minimized && draft.id === topCard?.id;
             const lineCount  = draft.lines.length;

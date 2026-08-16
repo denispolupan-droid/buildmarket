@@ -294,7 +294,7 @@ export default function PoDraftManager() {
 
       {/* в”Ђв”Ђ РўР°Р±-Р±Р°СЂ РІРЅРёР·Сѓ: РІСЃС– С‡РµСЂРЅРµС‚РєРё (РІС–РґРєСЂРёС‚С– + Р·РіРѕСЂРЅСѓС‚С–) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */}
       {drafts.length > 0 && (
-        <div className="doc-tabs" style={{ left: `${SIDEBAR_W}px`, ['--doc-accent' as string]: '#4880B8' }}>
+        <div className="doc-tabs" style={{ left: `${SIDEBAR_W}px`, ['--doc-accent' as string]: '#5EEAD4' }}>
           {tabOrder.map(draft => {
             const isActive     = !draft.minimized;
             const supplierName = draft.suppliers.find(s => s.id === draft.supplierId)?.name ?? '';
