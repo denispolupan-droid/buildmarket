@@ -9,6 +9,7 @@ import ReceiptActionsMenu from '../../[id]/ReceiptActionsMenu';
 import LandedCostHeaderButton from './LandedCostHeaderButton';
 import EditPricesButton from './EditPricesButton';
 import ReceiptPaymentPanel from './ReceiptPaymentPanel';
+import { procurementPaymentOr } from '../../../../../lib/accounting/procurement-payments';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,7 +62,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
     isStandalone
       ? db.from('money_entries')
           .select('created_at, amount, doc_type, account_type, meta, txn_id')
-          .eq('doc_id', id)
+          .or(procurementPaymentOr(id))
           .in('account_type', ['supplier', 'bank', 'cash', 'acquiring'])
           .in('doc_type', ['supplier_payment', 'supplier_payment_reversal'])
           .order('created_at')

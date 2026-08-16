@@ -6,6 +6,7 @@ import DocChain from './DocChain';
 import AdditionalReceiptButton from './AdditionalReceiptButton';
 import AdjustmentButton from './AdjustmentButton';
 import EditDraftButton from './EditDraftButton';
+import { procurementPaymentOr } from '../../../../lib/accounting/procurement-payments';
 
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
@@ -45,7 +46,7 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
       .eq('parent_doc_id', id).eq('status', 'confirmed').in('doc_type', ['receipt', 'stock_in']),
     db.from('money_entries')
       .select('created_at, amount, doc_type, description, account_type, meta, txn_id')
-      .eq('doc_id', id)
+      .or(procurementPaymentOr(id))
       .in('account_type', ['supplier', 'bank', 'cash', 'acquiring'])
       .in('doc_type', ['supplier_payment', 'supplier_payment_reversal'])
       .order('created_at'),

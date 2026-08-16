@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { recordTxn } from '../../../../../../lib/accounting/money';
+import { procurementPaymentOr } from '../../../../../../lib/accounting/procurement-payments';
 
 const db = createServiceClient();
 
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { data: entries } = await db
     .from('money_entries')
     .select('amount, account_type, doc_type, txn_id')
-    .eq('doc_id', id)
+    .or(procurementPaymentOr(id))
     .in('doc_type', ['supplier_payment'])
     .order('created_at', { ascending: true });
 

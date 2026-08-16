@@ -3,6 +3,7 @@ import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { recordTxn } from '../../../../../../lib/accounting/money';
 import { createPaymentVoucher, maybeAutoClose } from '../../../../../../lib/accounting/documents';
+import { procurementPaymentOr, netPaidToSupplier } from '../../../../../../lib/accounting/procurement-payments';
 
 const db = createServiceClient();
 
@@ -75,13 +76,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Обчислюємо загальну суму оплат
   const { data: entries } = await db
     .from('money_entries')
-    .select('amount')
-    .eq('doc_id', id)
-    .eq('doc_type', 'supplier_payment')
-    .eq('account_type', 'supplier')
-    .gt('amount', 0);
+    .select('amount, doc_type, account_type')
+    .or(procurementPaymentOr(id))
+    .in('doc_type', ['supplier_payment', 'supplier_payment_reversal'])
+    .eq('account_type', 'supplier');
 
-  const totalPaid = (entries ?? []).reduce((s, e) => s + Number(e.amount), 0);
+  const totalPaid = netPaidToSupplier(entries ?? []);
   const invoiceAmt = Number(doc.supplier_invoice_amount ?? doc.total_cost ?? 0);
   const isFullyPaid = invoiceAmt > 0 && totalPaid >= invoiceAmt * 0.999; // 0.1% tolerance
 
