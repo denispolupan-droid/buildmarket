@@ -541,7 +541,9 @@ export default function AdminOrders({
   const [itemsExpanded,    setItemsExpanded]    = useState<Record<string, boolean>>({});
   // Позиція свайпу стрічки карток (Клієнт/Оплата) на мобілці — для стрілок ‹ / ›
   const [cardSwipe,        setCardSwipe]        = useState<Record<string, 'start' | 'mid' | 'end'>>({});
-  const [itemImages,       setItemImages]       = useState<Record<string, Record<string, string | null>>>({});
+  // sku → мініатюра і слаг: слаг потрібен, щоб вести на сторінку товару в
+  // магазині без зайвого 308 із SKU-адреси на ЧПУ
+  const [itemProducts,     setItemProducts]     = useState<Record<string, Record<string, { image: string | null; slug: string | null }>>>({});
   const [payFormSaving,    setPayFormSaving]    = useState<Record<string, boolean>>({});
   const [payRemoving,      setPayRemoving]      = useState<string | null>(null);
 
@@ -863,18 +865,20 @@ export default function AdminOrders({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedId]);
 
-  // Мініатюри фото товарів — підвантажуємо шляхи з products по SKU при розкритті
+  // Мініатюри фото і слаги товарів — підвантажуємо з products по SKU при розкритті
   useEffect(() => {
-    if (!expandedId || itemImages[expandedId]) return;
+    if (!expandedId || itemProducts[expandedId]) return;
     const ord = orders.find(o => o.id === expandedId);
     const skus = ((ord?.items ?? []) as OrderItem[]).map(i => i.sku).filter(Boolean);
     if (skus.length === 0) return;
     (async () => {
       const sb = getSupabaseBrowser();
-      const { data } = await sb.from('products').select('sku, image').in('sku', skus);
-      const map: Record<string, string | null> = {};
-      (data ?? []).forEach((p: { sku: string; image: string | null }) => { map[p.sku] = p.image; });
-      setItemImages(prev => ({ ...prev, [expandedId]: map }));
+      const { data } = await sb.from('products').select('sku, image, slug').in('sku', skus);
+      const map: Record<string, { image: string | null; slug: string | null }> = {};
+      (data ?? []).forEach((p: { sku: string; image: string | null; slug: string | null }) => {
+        map[p.sku] = { image: p.image, slug: p.slug };
+      });
+      setItemProducts(prev => ({ ...prev, [expandedId]: map }));
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedId]);
@@ -3017,16 +3021,21 @@ export default function AdminOrders({
                                     const srcBorder = isMixed
                                       ? effectiveSrc === 'own' ? '2px solid #86EFAC' : '2px solid #BFDBFE'
                                       : undefined;
+                                    // Сторінка товару в магазині: слаг, якщо він уже підвантажився,
+                                    // інакше SKU — /product/<sku> сам 308-редіректить на ЧПУ.
+                                    const slug = itemProducts[order.id]?.[item.sku]?.slug;
+                                    const shopUrl = `/product/${encodeURIComponent(slug || item.sku)}`;
                                     return (
                                       <tr key={item.sku} style={{ borderBottom: '1px solid var(--border-light)' }}>
                                         {/* Назва — мініатюра + назва зверху жирнішим, код нижче */}
                                         <td className="oc-col-name" style={{ padding: '10px 0', maxWidth: 0, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3, verticalAlign: 'middle' }}>
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                                             {(() => {
-                                              const img = itemImages[order.id]?.[item.sku];
+                                              const img = itemProducts[order.id]?.[item.sku]?.image;
+                                              // Фото — в адмінку (редагувати), назва — у магазин (як бачить покупець)
                                               return (
                                                 <a href={`/admin/products/${encodeURIComponent(item.sku)}`} target="_blank" rel="noopener noreferrer"
-                                                  onClick={e => e.stopPropagation()} title="Відкрити картку товару"
+                                                  onClick={e => e.stopPropagation()} title="Відкрити картку товару в адмінці"
                                                   style={{ width: '40px', height: '40px', borderRadius: '8px', flexShrink: 0, border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                   background: img ? `#fff url("${img}") center/cover no-repeat` : '#fff' }}>
                                                   {!img && <Package size={16} color="var(--text-muted)" />}
@@ -3034,9 +3043,9 @@ export default function AdminOrders({
                                               );
                                             })()}
                                             <div style={{ minWidth: 0 }}>
-                                              <a href={`/admin/products/${encodeURIComponent(item.sku)}`} target="_blank" rel="noopener noreferrer"
+                                              <a href={shopUrl} target="_blank" rel="noopener noreferrer"
                                                 onClick={e => e.stopPropagation()}
-                                                title="Відкрити картку товару"
+                                                title="Відкрити товар у магазині"
                                                 style={{ color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, lineHeight: 1.35, letterSpacing: '-0.006em', textDecoration: 'none' }}
                                                 onMouseEnter={e => { e.currentTarget.style.color = 'var(--brand-blue)'; e.currentTarget.style.textDecoration = 'underline'; }}
                                                 onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.textDecoration = 'none'; }}>{item.name}</a>
