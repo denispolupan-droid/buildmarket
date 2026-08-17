@@ -2398,11 +2398,28 @@ export default function AdminOrders({
             // потрапить у пачку. Тому позначаємо весь рядок.
             const isPicked = selectedIds.has(order.id);
 
+            /**
+             * «Терміново» і «проблемний» позначались значком 18×18 біля ПІБ —
+             * на списку в 50 рядків він не читався. Підсвічуємо рядок цілком,
+             * але делікатно: ледь помітний відтінок плюс смуга зліва, як у
+             * неоплаченого рахунку. Насиченим лишається лише сам значок.
+             */
+            const flags = order.flags ?? [];
+            // Рамка по периметру насиченим кольором кричала на весь список,
+            // тож акцент лише зліва, а контур — світлий.
+            const rowTone = flags.includes('urgent')
+              ? { bg: '#FEF6F6', bgOpen: '#FDEDED', bar: '#DC2626', edge: '#FADBDB' }
+              : flags.includes('problem')
+                ? { bg: '#FFFCF3', bgOpen: '#FEF7E6', bar: '#F59E0B', edge: '#FBE7BF' }
+                : isUnpaidInvoice
+                  ? { bg: '#FFFBF0', bgOpen: '#FEF9EC', bar: '#FCD34D', edge: '#FDE8B0' }
+                  : null;
+
             return (
               <div key={order.id} id={`order-${order.id}`} style={{
-                background: isFlashing ? '#F0FDF4' : isPicked ? 'var(--brand-teal-light)' : isUnpaidInvoice ? '#FFFBF0' : 'var(--bg-card)',
-                border: `1px solid ${isFlashing ? '#86EFAC' : isPicked ? 'var(--brand-teal)' : isExpanded ? 'var(--brand-blue)' : isUnpaidInvoice ? '#FCD34D' : 'var(--border-light)'}`,
-                borderLeft: isPicked ? '4px solid var(--brand-teal)' : undefined,
+                background: isFlashing ? '#F0FDF4' : isPicked ? 'var(--brand-teal-light)' : rowTone?.bg ?? 'var(--bg-card)',
+                border: `1px solid ${isFlashing ? '#86EFAC' : isPicked ? 'var(--brand-teal)' : isExpanded ? 'var(--brand-blue)' : rowTone?.edge ?? 'var(--border-light)'}`,
+                borderLeft: isPicked ? '4px solid var(--brand-teal)' : rowTone ? `4px solid ${rowTone.bar}` : undefined,
                 borderRadius: '14px', overflow: 'hidden',
                 boxShadow: isExpanded ? '0 6px 20px rgba(16,24,40,0.12)' : isFlashing ? '0 0 0 3px #BBF7D0' : isPicked ? '0 2px 10px rgba(61,191,184,0.25)' : '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06)',
                 opacity: expandedId && !isExpanded ? 0.35 : 1,
@@ -2423,8 +2440,8 @@ export default function AdminOrders({
                     background: isPicked
                       ? 'var(--brand-teal-light)'
                       : isExpanded
-                        ? (isUnpaidInvoice ? '#FEF9EC' : 'var(--bg-soft)')
-                        : (isUnpaidInvoice ? '#FFFBF0' : 'var(--bg-card)'),
+                        ? (rowTone?.bgOpen ?? 'var(--bg-soft)')
+                        : (rowTone?.bg ?? 'var(--bg-card)'),
                   }}
                 >
                   <div
