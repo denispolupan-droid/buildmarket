@@ -191,12 +191,21 @@ export async function refreshNovapayBalance(): Promise<NovapayLiveBalance | null
     }
     if (!accountIds.length) throw new Error('NovaPay: не знайдено жодного рахунку в GetAccountsList');
 
-    let available = 0, projected = 0;
+    let available = 0, projected = 0, okAccounts = 0;
     for (const id of accountIds) {
       const xml = await soapCall('GetAccountRest', { request_ref: crypto.randomUUID(), jwt, account_id: id });
       if (tag(xml, 'result') === 'error') continue;
       available += Number(tag(xml, 'available_balance') ?? 0);
       projected += Number(tag(xml, 'projected_balance') ?? tag(xml, 'available_balance') ?? 0);
+      okAccounts++;
+    }
+
+    // Жоден рахунок не відповів — це збій, а не нульовий залишок. Раніше такий
+    // прогін клав у кеш «0 ₴», і «Огляд» показував його як живий: нуль на
+    // рахунку виглядає достовірніше за стару цифру, хоча насправді це порожнеча.
+    // Живий випадок: підряд із таймаутами НП один виклик віддав саме 0.
+    if (okAccounts === 0) {
+      throw new Error(`NovaPay: жоден із ${accountIds.length} рахунків не віддав залишок`);
     }
 
     const result: NovapayLiveBalance = {
