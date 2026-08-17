@@ -22,7 +22,7 @@
     },
     {
       "path": "/api/cron/novapay-balance",
-      "schedule": "*/10 * * * *"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/sync-suppliers",

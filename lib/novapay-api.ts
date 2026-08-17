@@ -72,19 +72,12 @@ async function setting(db: Db, key: string): Promise<string | null> {
 }
 
 /**
- * JWT-автентифікація з ротацією. КРИТИЧНО: новий refresh_token/сертифікат
- * пишуться в app_settings ОДРАЗУ після відповіді — до будь-якого використання jwt.
+ * Одна спроба автентифікації конкретним токеном. Повертає jwt і те, що НП
+ * видала на заміну; нічого не зберігає — рішення про запис ухвалює викликач.
  */
-async function authenticate(db: Db): Promise<string> {
-  const [login, refreshToken, certificate] = await Promise.all([
-    setting(db, 'novapay_login'),
-    setting(db, 'novapay_refresh_token'),
-    setting(db, 'novapay_certificate'),
-  ]);
-  if (!login || !refreshToken || !certificate) {
-    throw new Error('NovaPay: креденшали не налаштовані (novapay_login / novapay_refresh_token / novapay_certificate в app_settings)');
-  }
-
+async function authOnce(login: string, refreshToken: string, certificate: string): Promise<{
+  jwt: string; newToken: string | null; newCert: string | null;
+}> {
   const xml = await soapCall('UserAuthenticationJWT', {
     request_ref: crypto.randomUUID(),
     refresh_token: refreshToken,
@@ -92,17 +85,63 @@ async function authenticate(db: Db): Promise<string> {
     public_certificate: certificate,
   });
 
-  const result = tag(xml, 'result');
   const jwt = tag(xml, 'jwt');
-  const newToken = tag(xml, 'refresh_token');
-  const newCert = tag(xml, 'public_certificate');
-  if (result === 'error' || !jwt) {
+  if (tag(xml, 'result') === 'error' || !jwt) {
     throw new Error(`NovaPay auth failed: ${tag(xml, 'error') ?? tag(xml, 'error_description') ?? xml.slice(0, 300)}`);
   }
-  // Ротація: зберігаємо новий ланцюжок ПЕРШИМ ділом
-  if (newToken) await db.from('app_settings').upsert({ key: 'novapay_refresh_token', value: newToken });
-  if (newCert) await db.from('app_settings').upsert({ key: 'novapay_certificate', value: newCert });
-  return jwt;
+  return { jwt, newToken: tag(xml, 'refresh_token'), newCert: tag(xml, 'public_certificate') };
+}
+
+/**
+ * JWT-автентифікація з ротацією. КРИТИЧНО: новий refresh_token/сертифікат
+ * пишуться в app_settings ОДРАЗУ після відповіді — до будь-якого використання jwt.
+ *
+ * Токен одноразовий, тож ланцюжок рветься від будь-якої втрати відповіді: НП
+ * уже видала наступний, а ми його не записали (процес прибили, мережа впала) —
+ * і далі кожен виклик отримує «Refresh token does not apply to login», доки
+ * людина не перевипустить токен у кабінеті. Двічі за добу саме так і сталось.
+ * Тому попередній токен зберігаємо і пробуємо ним, якщо поточний відкинуто:
+ * якщо ротація насправді не відбулась, ланцюжок відновлюється сам.
+ */
+async function authenticate(db: Db): Promise<string> {
+  const [login, refreshToken, certificate, prevToken, prevCert] = await Promise.all([
+    setting(db, 'novapay_login'),
+    setting(db, 'novapay_refresh_token'),
+    setting(db, 'novapay_certificate'),
+    setting(db, 'novapay_refresh_token_prev'),
+    setting(db, 'novapay_certificate_prev'),
+  ]);
+  if (!login || !refreshToken || !certificate) {
+    throw new Error('NovaPay: креденшали не налаштовані (novapay_login / novapay_refresh_token / novapay_certificate в app_settings)');
+  }
+
+  let res: { jwt: string; newToken: string | null; newCert: string | null };
+  let usedToken = refreshToken;
+  let usedCert  = certificate;
+  try {
+    res = await authOnce(login, refreshToken, certificate);
+  } catch (err) {
+    const rejected = err instanceof Error && err.message.includes('Refresh token does not apply');
+    if (!rejected || !prevToken) throw err;
+    console.warn('[novapay] поточний токен відкинуто — пробуємо попередній');
+    usedToken = prevToken;
+    usedCert  = prevCert || certificate;
+    res = await authOnce(login, prevToken, usedCert);
+  }
+
+  // Ротація: зберігаємо новий ланцюжок ПЕРШИМ ділом, а той, яким щойно
+  // скористались, лишаємо запасним — саме він рятує при втраченій відповіді.
+  // Порядок важливий: спершу запасний, потім новий. Якщо процес обірветься між
+  // цими двома записами, запасний уже на місці — а не навпаки.
+  if (res.newToken) {
+    await db.from('app_settings').upsert({ key: 'novapay_refresh_token_prev', value: usedToken });
+    await db.from('app_settings').upsert({ key: 'novapay_refresh_token',      value: res.newToken });
+  }
+  if (res.newCert) {
+    await db.from('app_settings').upsert({ key: 'novapay_certificate_prev', value: usedCert });
+    await db.from('app_settings').upsert({ key: 'novapay_certificate',      value: res.newCert });
+  }
+  return res.jwt;
 }
 
 export type NovapayLiveBalance = {
