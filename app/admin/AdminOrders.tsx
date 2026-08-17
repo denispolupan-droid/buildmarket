@@ -137,6 +137,13 @@ const STATUSES = [
   { value: 'cancelled',      label: 'Скасовано',       color: '#DC2626', bg: '#FEE2E2' },
 ];
 
+// Режим виконання, обраний при проведенні — ним підписуємо замкнений вибір джерела
+const FULFILLMENT_LABEL: Record<string, string> = {
+  supplier: 'з боку постачальника',
+  own:      'зі свого складу',
+  mixed:    'змішано',
+};
+
 const DELIVERY_LABEL: Record<string, string> = {
   nova: 'Нова Пошта', nova_poshta: 'Нова Пошта', kharkiv: 'Харків і область', pickup: 'Самовивіз',
   // Точки видачі Rozetka: накладна оформлюється власним API Rozetka, не НП
@@ -3079,6 +3086,17 @@ export default function AdminOrders({
                                             <select
                                               value={effectiveSrc ?? planSrc.fulfillment_type}
                                               disabled={order.fulfillment_mode !== null || order.status !== 'new'}
+                                              // Замкнений селект без пояснення читається як поломка —
+                                              // кажемо, чому саме він замкнений.
+                                              title={
+                                                order.fulfillment_mode !== null
+                                                  ? `Замовлення вже проведено (${FULFILLMENT_LABEL[order.fulfillment_mode] ?? order.fulfillment_mode}) — джерело зафіксоване разом із резервами й замовленнями постачальнику, після проведення воно не змінюється`
+                                                  : order.status !== 'new'
+                                                    ? `Джерело обирається до проведення, поки замовлення в статусі «Нове» (зараз — «${STATUSES.find(s => s.value === order.status)?.label ?? order.status}»)`
+                                                    : (planSrc.available_own ?? 0) >= item.qty
+                                                      ? 'Звідки відвантажуємо цю позицію'
+                                                      : `На власному складі немає потрібної кількості (є ${planSrc.available_own ?? 0}, треба ${item.qty}) — лишається постачальник`
+                                              }
                                               onChange={e => setSourceOverrides(prev => ({
                                                 ...prev,
                                                 [order.id]: { ...(prev[order.id] ?? {}), [item.sku]: e.target.value as 'own' | 'dropship' },
