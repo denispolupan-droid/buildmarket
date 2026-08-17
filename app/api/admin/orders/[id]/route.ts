@@ -219,6 +219,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
+  // Наложка: платить клієнт при отриманні, тож дата погашення від відстрочки
+  // тут не має сенсу — інакше замовлення висіло б у прострочених боргах.
+  if (payment_type === 'cod') {
+    try {
+      await db.from('orders').update({ payment_due_date: null }).eq('id', id);
+    } catch (err) {
+      console.error('[payment_type change] accounting:', err);
+    }
+  }
+
   // ── Оплата підтверджена → записуємо в леджер ─────────────────────────────
   if (payment_confirmed === true) {
     try {

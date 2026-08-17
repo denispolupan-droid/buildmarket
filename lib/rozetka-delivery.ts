@@ -17,17 +17,28 @@
  *     «Відділення № (ЖК Ok'Land)».
  *
  * Ознаку беремо з delivery_service_id: він числовий і стабільний, на відміну від
- * delivery_service_name, яке Rozetka може переписати. 1 — ROZETKA Delivery,
- * 5 — Нова Пошта, 4 — Meest.
+ * delivery_service_name, яке Rozetka може переписати. 5 — Нова Пошта, 4 — Meest,
+ * 43660 — поштомати НП.
+ *
+ * Своїх ідентифікаторів у Rozetka виявилось кілька: 1 («ROZETKA Delivery») і
+ * 56214 («Rozetka Delivery (Партнерські відділення)»). Про другий ми не знали,
+ * і такі замовлення падали в 'courier' — картка писала «Доставка не Нова Пошта»
+ * й пропонувала оформити ТТН НП на посилку, яку точка видачі не прийме. Тому
+ * список, а не одне число, плюс запасна перевірка за назвою: якщо Rozetka
+ * заведе ще один id, замовлення не поїде знову в НП.
  */
 
-export const ROZETKA_DELIVERY_SERVICE_ID = 1;
+export const ROZETKA_DELIVERY_SERVICE_IDS = [1, 56214];
 
 /** Наш delivery_type для таких замовлень. Свій, а не 'courier': на 'courier' зав'язана логіка НП. */
 export const ROZETKA_DELIVERY_TYPE = 'rozetka_delivery';
 
-export function isRozetkaDelivery(delivery: { delivery_service_id?: number | null } | null | undefined): boolean {
-  return delivery?.delivery_service_id === ROZETKA_DELIVERY_SERVICE_ID;
+export function isRozetkaDelivery(
+  delivery: { delivery_service_id?: number | null; delivery_service_name?: string | null } | null | undefined,
+): boolean {
+  if (!delivery) return false;
+  if (delivery.delivery_service_id != null && ROZETKA_DELIVERY_SERVICE_IDS.includes(delivery.delivery_service_id)) return true;
+  return (delivery.delivery_service_name ?? '').toLowerCase().includes('rozetka delivery');
 }
 
 /**

@@ -42,6 +42,22 @@ describe('isRozetkaDelivery', () => {
     // та сама назва, але інша служба — не наш випадок
     expect(isRozetkaDelivery({ delivery_service_id: 4 })).toBe(false);
   });
+
+  // Живе замовлення 903433151 (17.08.2026): та сама доставка Rozetka, але id 56214.
+  // Ми знали лише 1, тож замовлення падало в 'courier' — картка писала «Доставка
+  // не Нова Пошта» й пропонувала ТТН НП на посилку для точки видачі Rozetka.
+  it('впізнає партнерські відділення (id 56214)', () => {
+    expect(isRozetkaDelivery({
+      delivery_service_id: 56214,
+      delivery_service_name: 'Rozetka Delivery (Партнерські відділення)',
+    })).toBe(true);
+  });
+
+  it('запасна ознака — назва: якщо Rozetka заведе ще один id, замовлення не поїде в НП', () => {
+    expect(isRozetkaDelivery({ delivery_service_id: 99999, delivery_service_name: 'Rozetka Delivery (нова точка)' })).toBe(true);
+    // але Нову Пошту назвою не ловимо
+    expect(isRozetkaDelivery({ delivery_service_id: 99999, delivery_service_name: 'Нова Пошта' })).toBe(false);
+  });
 });
 
 describe('rozetkaPickupAddress', () => {
