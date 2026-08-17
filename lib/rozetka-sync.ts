@@ -3,6 +3,7 @@ import { getRozetkaOrders, rozetkaOrderToOurFormat, ourStatusToRozetkaStatus, se
 import { computeRozetkaCommission } from './rozetka-commission';
 import { getRozetkaDeliveryTtns } from './rozetka-delivery-ttn';
 import { ROZETKA_DELIVERY_TYPE } from './rozetka-delivery';
+import { alertAdmin } from './alert';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -121,6 +122,38 @@ export async function syncRozetkaOrders() {
       // Самолікування пушу — лише для замовлень «в обробці». Для груп 2/3 ми їх
       // сюди й не тягнули б, якби не плашка: допушувати статус у виконане чи
       // скасоване замовлення безглуздо, а драбина статусів там усе одно відіб'ється.
+      // Скасування: у мапі статусів воно null (потрібна конкретна причина зі
+      // списку), тож загальне самолікування нижче його не бачило — замовлення,
+      // чиє скасування не доїхало, лишалось у кабінеті «в обробці», і покупець
+      // бачив його активним (живий кейс 903252921 висів так двоє діб). Причину
+      // беремо збережену в момент скасування.
+      if (existing.status === 'cancelled' && rzOrder.status_group === 1 && !refreshOnlyIds.has(rzOrder.id)) {
+        const reason = storedData._cancel_reason;
+        if (typeof reason === 'number') {
+          try {
+            await setRozetkaOrderStatusChained(rzOrder.id, reason, { currentStatus: rzOrder.status });
+            repushed++;
+            console.log(`[rozetka-sync] re-pushed cancel ${reason} for order ${rzOrder.id} (was ${rzOrder.status})`);
+          } catch (err) {
+            console.error('[rozetka-sync] cancel re-push failed:', rzOrder.id, err);
+            alertAdmin(
+              `Rozetka: скасування замовлення ${rzOrder.id} не приймається`,
+              `Причина ${reason}. ${err instanceof Error ? err.message : String(err)}`,
+            );
+          }
+        } else {
+          // Скасовано до того, як ми почали зберігати причину, або через шлях
+          // без неї. Самі підібрати не можемо — список дозволених переходів
+          // Rozetka не віддає, а кожна вдала спроба реально скасує замовлення.
+          alertAdmin(
+            `Rozetka: замовлення ${rzOrder.id} скасоване у нас, але активне в кабінеті`,
+            'Причина скасування не збережена — скасуйте вручну в кабінеті або перескасуйте замовлення в адмінці.',
+          );
+        }
+        skipped++;
+        continue;
+      }
+
       const desired = refreshOnlyIds.has(rzOrder.id) ? null : ourStatusToRozetkaStatus(existing.status);
       const lagging = desired != null && (REPUSH_FROM[desired] ?? []).includes(rzOrder.status);
       if (lagging && !(desired === 61 && !existing.tracking_number)) {

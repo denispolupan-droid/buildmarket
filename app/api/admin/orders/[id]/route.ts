@@ -442,13 +442,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         const rozStatus = status === 'cancelled'
           ? (typeof rozetka_cancel_reason === 'number' ? rozetka_cancel_reason : null)
           : ourStatusToRozetkaStatus(status);
+
+        // Причину зберігаємо ДО пушу. Без неї повторити скасування не було чим:
+        // у мапі статусів cancelled → null, тож самолікування в кроні його не
+        // бачило, і замовлення, чиє скасування не доїхало, місяцями висіло в
+        // кабінеті як «в обробці» (живий кейс 903252921).
+        if (status === 'cancelled' && typeof rozetka_cancel_reason === 'number') {
+          const { data: cur } = await db.from('orders').select('rozetka_data').eq('id', id).maybeSingle();
+          await db.from('orders').update({
+            rozetka_data: { ...((cur?.rozetka_data ?? {}) as Record<string, unknown>), _cancel_reason: rozetka_cancel_reason },
+          }).eq('id', id);
+        }
+
         if (rozStatus) {
           // status 3 (shipped) requires ttn — include it when already known, either from this
           // same request or a previously saved tracking_number.
           const ttn = (update.tracking_number as string | undefined) ?? (rozOrder.tracking_number as string | null) ?? undefined;
-          setRozetkaOrderStatusChained(Number(rozOrder.rozetka_order_id), rozStatus, ttn ? { ttn } : undefined).catch(err =>
-            console.error('[rozetka] setRozetkaOrderStatus failed:', err),
-          );
+          setRozetkaOrderStatusChained(Number(rozOrder.rozetka_order_id), rozStatus, ttn ? { ttn } : undefined).catch(err => {
+            console.error('[rozetka] setRozetkaOrderStatus failed:', err);
+            // Скасування, яке не доїхало, покупець бачить як активне замовлення —
+            // мовчати про це не можна. Решта статусів самолікується в кроні.
+            if (status === 'cancelled') {
+              alertAdmin(
+                `Rozetka: скасування замовлення ${rozOrder.rozetka_order_id} не доїхало`,
+                err instanceof Error ? err.message : String(err),
+              );
+            }
+          });
         }
       }
     } catch (err) {
