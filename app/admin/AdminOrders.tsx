@@ -2393,12 +2393,18 @@ export default function AdminOrders({
               </span>
             ) : null;
 
+            // Вибір під групову дію (друк, реєстр, об'єднання) було видно лише
+            // по галочці зліва — на довгому списку легко втратити, що саме
+            // потрапить у пачку. Тому позначаємо весь рядок.
+            const isPicked = selectedIds.has(order.id);
+
             return (
               <div key={order.id} id={`order-${order.id}`} style={{
-                background: isFlashing ? '#F0FDF4' : isUnpaidInvoice ? '#FFFBF0' : 'var(--bg-card)',
-                border: `1px solid ${isFlashing ? '#86EFAC' : isExpanded ? 'var(--brand-blue)' : isUnpaidInvoice ? '#FCD34D' : 'var(--border-light)'}`,
+                background: isFlashing ? '#F0FDF4' : isPicked ? 'var(--brand-teal-light)' : isUnpaidInvoice ? '#FFFBF0' : 'var(--bg-card)',
+                border: `1px solid ${isFlashing ? '#86EFAC' : isPicked ? 'var(--brand-teal)' : isExpanded ? 'var(--brand-blue)' : isUnpaidInvoice ? '#FCD34D' : 'var(--border-light)'}`,
+                borderLeft: isPicked ? '4px solid var(--brand-teal)' : undefined,
                 borderRadius: '14px', overflow: 'hidden',
-                boxShadow: isExpanded ? '0 6px 20px rgba(16,24,40,0.12)' : isFlashing ? '0 0 0 3px #BBF7D0' : '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06)',
+                boxShadow: isExpanded ? '0 6px 20px rgba(16,24,40,0.12)' : isFlashing ? '0 0 0 3px #BBF7D0' : isPicked ? '0 2px 10px rgba(61,191,184,0.25)' : '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06)',
                 opacity: expandedId && !isExpanded ? 0.35 : 1,
                 transition: 'box-shadow 0.3s, border-color 0.3s, opacity 0.15s, background 0.3s',
               }}>
@@ -2414,9 +2420,11 @@ export default function AdminOrders({
                     // комірка не переносить текст — усюди nowrap + ellipsis, максимум
                     // три рядки (ПІБ / телефон / товар).
                     padding: '9px 16px', minHeight: '70px', boxSizing: 'border-box', cursor: 'pointer',
-                    background: isExpanded
-                      ? (isUnpaidInvoice ? '#FEF9EC' : 'var(--bg-soft)')
-                      : (isUnpaidInvoice ? '#FFFBF0' : 'var(--bg-card)'),
+                    background: isPicked
+                      ? 'var(--brand-teal-light)'
+                      : isExpanded
+                        ? (isUnpaidInvoice ? '#FEF9EC' : 'var(--bg-soft)')
+                        : (isUnpaidInvoice ? '#FFFBF0' : 'var(--bg-card)'),
                   }}
                 >
                   <div
@@ -2523,9 +2531,17 @@ export default function AdminOrders({
                           сам текст — у тултіпі і в блоці «Оплата» картки */}
                       {(() => {
                         const c = order.comment?.split('\n').filter(l => !l.includes('Не передзвонювати')).join(' ').trim();
+                        // Контурна іконка в ряду тексту губилась — коментар покупця
+                        // пропускали. Заливка тим самим бурштином, що й решта
+                        // «прочитай мене» в журналі, плюс сам текст поруч.
                         return c ? (
-                          <span title={c} aria-label="Коментар покупця" style={{ display: 'inline-flex', flexShrink: 0, color: 'var(--brand-blue)' }}>
-                            <MessageSquare size={13} />
+                          <span title={c} aria-label="Коментар покупця" className="oc-note"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexShrink: 1, minWidth: 0,
+                              padding: '1px 7px 1px 5px', borderRadius: '20px', maxWidth: '260px',
+                              background: '#FEF3C7', border: '1px solid #FCD34D', color: '#92400E',
+                              fontSize: '11px', fontWeight: 600, lineHeight: 1.5 }}>
+                            <MessageSquare size={12} style={{ flexShrink: 0 }} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c}</span>
                           </span>
                         ) : null;
                       })()}
