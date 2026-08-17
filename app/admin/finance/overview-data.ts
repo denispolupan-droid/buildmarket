@@ -57,10 +57,14 @@ export type OverviewData = {
      встигли завершитись): доставлено vs відмова/повернення після відправки */
   buyout: { delivered: number; refused: number; refusedSum: number; pct: number | null };
   accounts: { monobank: number; novapay: number; cash: number; total: number };
-  /* Живий залишок Monobank (client-info, кеш 90 с); null = API недоступний */
+  /* Живий залишок Monobank (client-info, кеш 90 с); null = API недоступний або кеш протух */
   monoLive: { total: number; fetchedAt: string } | null;
-  /* Живий залишок NovaPay (Business API, кеш 120 с); null = не налаштовано/недоступно */
+  /* Живий залишок NovaPay (Business API, кеш оновлює крон); null = не налаштовано,
+     недоступно або кеш протух */
   novapayLive: { available: number; fetchedAt: string } | null;
+  /* Кеш є, але старий — інтеграція зламалась. ISO останнього успішного
+     оновлення, щоб екран міг сказати «не оновлюється з …», а не мовчати. */
+  liveStale: { mono: string | null; novapay: string | null };
   /* Наложка в дорозі: COD по відправлених, ще не вручених посилках —
      надійде в НоваПей після вручення */
   codTransit: number;
@@ -324,8 +328,23 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     getNovapayLiveBalance(),
   ]);
   const mpTransit = { prom: promTransit.total, rozetka: rozetkaTransit.total };
-  const monoLive = monoLiveRaw ? { total: monoLiveRaw.total, fetchedAt: monoLiveRaw.fetchedAt } : null;
-  const novapayLive = novapayLiveRaw ? { available: novapayLiveRaw.available, fetchedAt: novapayLiveRaw.fetchedAt } : null;
+  // Кеш вважаємо живим, поки він свіжий. Крон ходить кожні 10 хв, тож усе
+  // старше двох годин означає зламану інтеграцію — а показана як «жива»
+  // стара цифра гірша за її відсутність: саме так залишок NovaPay від 12.08
+  // п'ять днів висів на «Огляді» з міткою «живий».
+  const LIVE_MAX_AGE_MS = 2 * 60 * 60 * 1000;
+  const isFresh = (iso: string) => {
+    const t = new Date(iso).getTime();
+    return Number.isFinite(t) && Date.now() - t < LIVE_MAX_AGE_MS;
+  };
+  const monoFresh    = monoLiveRaw    ? isFresh(monoLiveRaw.fetchedAt)    : false;
+  const novapayFresh = novapayLiveRaw ? isFresh(novapayLiveRaw.fetchedAt) : false;
+  const monoLive    = monoLiveRaw    && monoFresh    ? { total: monoLiveRaw.total, fetchedAt: monoLiveRaw.fetchedAt } : null;
+  const novapayLive = novapayLiveRaw && novapayFresh ? { available: novapayLiveRaw.available, fetchedAt: novapayLiveRaw.fetchedAt } : null;
+  const liveStale = {
+    mono:    monoLiveRaw    && !monoFresh    ? monoLiveRaw.fetchedAt    : null,
+    novapay: novapayLiveRaw && !novapayFresh ? novapayLiveRaw.fetchedAt : null,
+  };
   const payStuck      = pPay.filter(o => o.created_at < d3ago).length;
   // Порядок — за робочим циклом, як вкладки журналу: нові → підтверджені →
   // очікують оплати → логістика
@@ -617,6 +636,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     accounts,
     monoLive,
     novapayLive,
+    liveStale,
     codTransit,
     mp: { prom: promBal, rozetka: rozetkaBal },
     mpTransit,

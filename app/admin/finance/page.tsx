@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
-import { ShoppingCart, Truck, Coins, Receipt } from 'lucide-react';
+import { ShoppingCart, Truck, Coins, Receipt, AlertTriangle } from 'lucide-react';
 import FinanceTabs from './FinanceTabs';
 import FinanceActions from './FinanceActions';
 import PlanCard from './PlanCard';
@@ -21,6 +21,15 @@ export const dynamic = 'force-dynamic';
 
 function fmt(n: number) {
   return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
+}
+
+/** Дата останнього успішного оновлення живого залишку — «12.08» або «12.08, 18:34» за сьогодні. */
+function staleLabel(iso: string): string {
+  const d = new Date(iso);
+  const sameDay = d.toDateString() === new Date().toDateString();
+  return sameDay
+    ? d.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' });
 }
 
 export default async function FinanceOverviewPage({ searchParams }: { searchParams: Promise<{ p?: string; d?: string }> }) {
@@ -205,16 +214,29 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '6px' }}>
                       {[
-                        { label: ov.monoLive ? 'Mono · живий' : 'Mono · за обліком', v: monoShown,
-                          title: ov.monoLive ? `Залишок з API Monobank станом на ${new Date(ov.monoLive.fetchedAt).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}` : undefined },
-                        { label: ov.novapayLive ? 'НоваПей · живий' : 'НоваПей · в дорозі', v: npShown,
+                        { label: ov.monoLive ? 'Mono · живий' : ov.liveStale.mono ? 'Mono' : 'Mono · за обліком', v: monoShown,
+                          stale: ov.liveStale.mono,
+                          title: ov.monoLive
+                            ? `Залишок з API Monobank станом на ${new Date(ov.monoLive.fetchedAt).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}`
+                            : ov.liveStale.mono
+                              ? `Живий залишок Monobank не оновлюється з ${staleLabel(ov.liveStale.mono)} — показано обліковий`
+                              : undefined },
+                        { label: ov.novapayLive ? 'НоваПей · живий' : ov.liveStale.novapay ? 'НоваПей' : 'НоваПей · в дорозі', v: npShown,
+                          stale: ov.liveStale.novapay,
                           title: ov.novapayLive
                             ? `Доступний залишок рахунку NovaPay станом на ${new Date(ov.novapayLive.fetchedAt).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })} · за обліком у дорозі: ${fmt(ov.accounts.novapay)} ₴`
-                            : 'Зібраний накладений платіж, який НоваПей ще не виплатила на рахунок (за обліком)' },
-                        { label: 'Каса', v: ov.accounts.cash },
+                            : ov.liveStale.novapay
+                              ? `Живий залишок NovaPay не оновлюється з ${staleLabel(ov.liveStale.novapay)} — показано обліковий «в дорозі». Перевірте креденшали novapay_* в app_settings.`
+                              : 'Зібраний накладений платіж, який НоваПей ще не виплатила на рахунок (за обліком)' },
+                        { label: 'Каса', v: ov.accounts.cash, stale: null },
                       ].map(a => (
                         <div key={a.label} title={a.title} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
-                          <span style={{ color: 'var(--text-muted)' }}>{a.label}</span>
+                          <span style={{ color: a.stale ? '#B45309' : 'var(--text-muted)', fontWeight: a.stale ? 700 : undefined, minWidth: 0, whiteSpace: 'nowrap' }}>
+                            {a.label}
+                            {/* Мовчазно зламану інтеграцію не видно тижнями, тож кажемо прямо.
+                                Коротко — рядок вузький, подробиці в підказці. */}
+                            {a.stale && <AlertTriangle size={11} color="#B45309" style={{ verticalAlign: '-1px', marginLeft: 4 }} />}
+                          </span>
                           <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: a.v < 0 ? '#DC2626' : 'var(--text-primary)' }}>{fmt(a.v)} ₴</span>
                         </div>
                       ))}
