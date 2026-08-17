@@ -2552,9 +2552,12 @@ export default function AdminOrders({
                         // пропускали. Заливка тим самим бурштином, що й решта
                         // «прочитай мене» в журналі, плюс сам текст поруч.
                         return c ? (
+                          // flexShrink набагато більший за ПІБ: обидва мали 1, і при
+                          // довгому коментарі вони ділили ширину пропорційно — від
+                          // «Дмитро Петренко» лишалось «Дм…». Тепер місце віддає чіп.
                           <span title={c} aria-label="Коментар покупця" className="oc-note"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexShrink: 1, minWidth: 0,
-                              padding: '1px 7px 1px 5px', borderRadius: '20px', maxWidth: '260px',
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexShrink: 100, minWidth: 0,
+                              padding: '1px 7px 1px 5px', borderRadius: '20px', maxWidth: '220px',
                               background: '#FEF3C7', border: '1px solid #FCD34D', color: '#92400E',
                               fontSize: '11px', fontWeight: 600, lineHeight: 1.5 }}>
                             <MessageSquare size={12} style={{ flexShrink: 0 }} />
