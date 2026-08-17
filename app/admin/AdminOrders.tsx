@@ -137,12 +137,11 @@ const STATUSES = [
   { value: 'cancelled',      label: 'Скасовано',       color: '#DC2626', bg: '#FEE2E2' },
 ];
 
-// Режим виконання, обраний при проведенні — ним підписуємо замкнений вибір джерела
-const FULFILLMENT_LABEL: Record<string, string> = {
-  supplier: 'з боку постачальника',
-  own:      'зі свого складу',
-  mixed:    'змішано',
-};
+// Джерело відвантаження можна переграти, доки замовлення не пішло в збирання:
+// після проведення ще лишається час вирішити, чим відвантажувати. Той самий
+// перелік перевіряє й API (fulfillment-source) — тут лише щоб не показувати
+// активний селект там, де сервер усе одно відмовить.
+const SOURCE_EDITABLE_STATUSES = ['new', 'confirmed', 'awaiting_stock'];
 
 const DELIVERY_LABEL: Record<string, string> = {
   nova: 'Нова Пошта', nova_poshta: 'Нова Пошта', kharkiv: 'Харків і область', pickup: 'Самовивіз',
@@ -485,6 +484,8 @@ export default function AdminOrders({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [flashId,    setFlashId]    = useState<string | null>(null);
   const [sourceOverrides, setSourceOverrides] = useState<Record<string, Record<string, 'own' | 'dropship'>>>({});
+  // `${orderId}:${sku}` поки зміна джерела летить на сервер
+  const [savingSource,    setSavingSource]    = useState<string | null>(null);
   const [shipping,      setShipping]      = useState<string | null>(null);
   const [saleDocMap,    setSaleDocMap]    = useState<Record<string, { id: string; number: string; status?: string }[]>>(initialSaleDocs);
   const [shippedQtyMap, setShippedQtyMap] = useState<Record<string, Record<string, number>>>(initialShippedQty);
@@ -825,6 +826,57 @@ export default function AdminOrders({
       setFulfillmentData(prev => ({ ...prev, [orderId]: data }));
     } finally {
       setFulfillmentLoading(prev => { const s = new Set(prev); s.delete(orderId); return s; });
+    }
+  }
+
+  /**
+   * Зміна джерела в уже проведеному замовленні. Сервер перебудовує резерви й
+   * ЗП постачальнику, тож надсилаємо повну картину по всіх позиціях, а не одну
+   * зміну: інакше два швидкі перемикання дали б розбіжність.
+   */
+  async function applySourceChange(order: Order, sku: string, value: 'own' | 'dropship') {
+    const key = `${order.id}:${sku}`;
+    setSavingSource(key);
+    try {
+      const planItems = fulfillmentData[order.id]?.plan?.items ?? [];
+      const overrides = { ...(sourceOverrides[order.id] ?? {}), [sku]: value };
+      const sources: Record<string, 'own' | 'dropship'> = {};
+      for (const it of (order.items ?? []) as OrderItem[]) {
+        sources[it.sku] = overrides[it.sku]
+          ?? (planItems.find(p => p.sku === it.sku)?.fulfillment_type ?? 'dropship');
+      }
+
+      const res = await fetch(`/api/admin/orders/${order.id}/fulfillment-source`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sources }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast(data.error ?? 'Не вдалось змінити джерело', 'error');
+        // Відкочуємо локальний вибір — на сервері нічого не змінилось
+        setSourceOverrides(prev => {
+          const next = { ...(prev[order.id] ?? {}) };
+          delete next[sku];
+          return { ...prev, [order.id]: next };
+        });
+        return;
+      }
+
+      if (data.insufficient?.length) {
+        const miss = data.insufficient.map((i: { sku: string; available: number; requested: number }) =>
+          `${i.sku}: є ${i.available} з ${i.requested}`).join('; ');
+        showToast(`Не вистачило на своєму складі — лишили за постачальником (${miss})`, 'error');
+      } else {
+        showToast('Джерело змінено', 'success');
+      }
+      await refreshFulfillment(order.id);
+      router.refresh();
+    } catch {
+      showToast('Не вдалось змінити джерело', 'error');
+    } finally {
+      setSavingSource(null);
     }
   }
 
@@ -3083,27 +3135,40 @@ export default function AdminOrders({
                                           {fulfillmentLoading.has(order.id) ? (
                                             <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>…</span>
                                           ) : planSrc ? (
+                                            (() => {
+                                            // Джерело міняється, доки замовлення не пішло в збирання:
+                                            // після проведення ще лишається час вирішити, чим відвантажувати
+                                            // (з'явився нюанс у постачальника, приїхав товар на свій склад).
+                                            const srcEditable = SOURCE_EDITABLE_STATUSES.includes(order.status);
+                                            const busy = savingSource === `${order.id}:${item.sku}`;
+                                            return (
                                             <select
                                               value={effectiveSrc ?? planSrc.fulfillment_type}
-                                              disabled={order.fulfillment_mode !== null || order.status !== 'new'}
+                                              disabled={!srcEditable || busy}
                                               // Замкнений селект без пояснення читається як поломка —
                                               // кажемо, чому саме він замкнений.
                                               title={
-                                                order.fulfillment_mode !== null
-                                                  ? `Замовлення вже проведено (${FULFILLMENT_LABEL[order.fulfillment_mode] ?? order.fulfillment_mode}) — джерело зафіксоване разом із резервами й замовленнями постачальнику, після проведення воно не змінюється`
-                                                  : order.status !== 'new'
-                                                    ? `Джерело обирається до проведення, поки замовлення в статусі «Нове» (зараз — «${STATUSES.find(s => s.value === order.status)?.label ?? order.status}»)`
-                                                    : (planSrc.available_own ?? 0) >= item.qty
-                                                      ? 'Звідки відвантажуємо цю позицію'
-                                                      : `На власному складі немає потрібної кількості (є ${planSrc.available_own ?? 0}, треба ${item.qty}) — лишається постачальник`
+                                                !srcEditable
+                                                  ? `Джерело міняється до збирання замовлення (зараз — «${STATUSES.find(s => s.value === order.status)?.label ?? order.status}»)`
+                                                  : (planSrc.available_own ?? 0) >= item.qty
+                                                    ? 'Звідки відвантажуємо цю позицію'
+                                                    : `На власному складі немає потрібної кількості (є ${planSrc.available_own ?? 0}, треба ${item.qty}) — лишається постачальник`
                                               }
-                                              onChange={e => setSourceOverrides(prev => ({
-                                                ...prev,
-                                                [order.id]: { ...(prev[order.id] ?? {}), [item.sku]: e.target.value as 'own' | 'dropship' },
-                                              }))}
+                                              onChange={e => {
+                                                const value = e.target.value as 'own' | 'dropship';
+                                                setSourceOverrides(prev => ({
+                                                  ...prev,
+                                                  [order.id]: { ...(prev[order.id] ?? {}), [item.sku]: value },
+                                                }));
+                                                // Поки замовлення «Нове», вибір застосується при проведенні.
+                                                // Проведене — треба одразу переставити резерви й ЗП.
+                                                if (order.fulfillment_mode !== null) {
+                                                  void applySourceChange(order, item.sku, value);
+                                                }
+                                              }}
                                               style={{ fontSize: '11px', fontWeight: 600, border: '1px solid var(--border)', borderRadius: '6px', padding: '3px 6px', background: 'var(--bg-soft)',
-                                                cursor: order.fulfillment_mode !== null || order.status !== 'new' ? 'default' : 'pointer',
-                                                maxWidth: '90px', opacity: order.fulfillment_mode !== null || order.status !== 'new' ? 0.7 : 1,
+                                                cursor: srcEditable && !busy ? 'pointer' : 'default',
+                                                maxWidth: '90px', opacity: srcEditable && !busy ? 1 : 0.7,
                                                 color: effectiveSrc === 'own' ? '#15803D' : 'var(--brand-blue)' }}
                                             >
                                               <option value="dropship">{supplierName ?? 'Постач.'}</option>
@@ -3111,6 +3176,8 @@ export default function AdminOrders({
                                                 <option value="own">Наш ({planSrc.available_own})</option>
                                               )}
                                             </select>
+                                            );
+                                            })()
                                           ) : (
                                             <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>—</span>
                                           )}
