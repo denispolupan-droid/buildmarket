@@ -22,6 +22,19 @@ describe('variantBaseName', () => {
     expect(variantBaseName('Герметик, 280 мл')).toBe('герметик');
     expect(variantBaseName('Клей, 50 г')).toBe('клей');
   });
+
+  it('штуки й рулони — теж фасовка', () => {
+    expect(variantBaseName('Дюбель Wkret-met 6х40, 100 шт')).toBe('дюбель wkret-met 6х40');
+    expect(variantBaseName('Дюбель Wkret-met 6х40, 200 шт')).toBe('дюбель wkret-met 6х40');
+    expect(variantBaseName('Сітка Masternet 1х50, 2 рулони')).toBe('сітка masternet 1х50');
+    expect(variantBaseName('Сітка Masternet 1х50, 5 рулонів')).toBe('сітка masternet 1х50');
+  });
+
+  it('к-сть у дужках фасовкою не вважається — це частина назви', () => {
+    // «(уп. 1000 шт)» стоїть не в кінці рядка через дужку, тож не відрізається
+    expect(variantBaseName('Шуруп Knauf LN 3 5x11 (уп. 1000 шт)'))
+      .toBe('шуруп knauf ln 3 5x11 (уп. 1000 шт)');
+  });
 });
 
 describe('volumeValue', () => {
@@ -33,6 +46,12 @@ describe('volumeValue', () => {
 
   it('«мм» не читається як «м»: інакше 120 мм важило б 120 000', () => {
     expect(volumeValue('120 мм')).toBeLessThan(volumeValue('10 м'));
+  });
+
+  it('штуки й рулони — рахунок без множника', () => {
+    expect(volumeValue('100 шт')).toBe(100);
+    expect(volumeValue('2 рулони')).toBe(2);
+    expect(volumeValue('5 рулонів')).toBe(5);
   });
 
   it('об\'єм і вага — як раніше', () => {
