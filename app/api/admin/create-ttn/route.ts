@@ -66,6 +66,9 @@ export async function POST(req: NextRequest) {
   } = body;
 
   const resolvedServiceType = serviceType ?? 'WarehouseWarehouse';
+  // Кількість місць: захист від 0/NaN/від'ємного — НП на такому падає з
+  // невиразною помилкою, і менеджер бачить «Помилка створення ТТН».
+  const seatCount = Math.max(1, Math.floor(Number(seatsAmount) || 1));
 
   // API key: app_settings takes priority over env var — same precedence as /api/admin/np-sender,
   // which is what resolved senderRef/senderContactRef/etc. for this same request.
@@ -174,7 +177,7 @@ export async function POST(req: NextRequest) {
     CargoType: 'Cargo',
     Weight: String(weight),
     ServiceType: resolvedServiceType,
-    SeatsAmount: String(seatsAmount),
+    SeatsAmount: String(seatCount),
     Description: description,
     Cost: String(cost),
     CitySender: senderCityRef,
@@ -190,12 +193,16 @@ export async function POST(req: NextRequest) {
   };
 
   if (dimensions?.width && dimensions?.height && dimensions?.length) {
-    ttnPayload.OptionsSeat = [{
+    // НП очікує в OptionsSeat рівно SeatsAmount елементів — по одному на місце.
+    // Один елемент на кілька місць вона приймала як одне, і об'ємна вага
+    // рахувалась по одній коробці замість усіх.
+    const perSeatWeight = Math.round((Number(weight) / seatCount) * 100) / 100;
+    ttnPayload.OptionsSeat = Array.from({ length: seatCount }, () => ({
       volumetricWidth:  String(Math.round(dimensions.width)),
       volumetricHeight: String(Math.round(dimensions.height)),
       volumetricLength: String(Math.round(dimensions.length)),
-      weight:           String(weight),
-    }];
+      weight:           String(perSeatWeight),
+    }));
   }
 
   if (codEnabled && codAmount > 0) {

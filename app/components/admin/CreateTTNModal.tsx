@@ -148,6 +148,12 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   const [weightLines,   setWeightLines]   = useState<WeightLine[]>([]);
   const [weightLoading, setWeightLoading] = useState(false);
   const [seats,         setSeats]         = useState('1');
+  // Місць у відправленні. НП рахує об'ємну вагу по кожному місцю окремо, тож
+  // ділимо загальну вагу порівну — так само, як роут будує OptionsSeat.
+  const seatCount = Math.max(1, Math.floor(Number(seats) || 1));
+  const perSeatWeight = parseFloat(weight) > 0
+    ? Math.round((parseFloat(weight) / seatCount) * 100) / 100
+    : 0;
   const [cost,          setCost]          = useState(String(Math.ceil(order.total_price)));
   const [description,   setDescription]   = useState('Будівельні матеріали');
   const [dimWidth,  setDimWidth]  = useState('');
@@ -338,7 +344,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
         cityRecipientRef: isCourier ? selectedCity.Ref : (selectedWH?.CityRef || selectedCity.Ref),
         recipientAddressRef: isCourier ? '' : selectedWH?.Ref,
         recipientAddress: isCourier ? recipientAddress : undefined,
-        weight: parseFloat(weight), seatsAmount: parseInt(seats) || 1,
+        weight: parseFloat(weight), seatsAmount: seatCount,
         cost: parseFloat(cost) || 0, description,
         serviceType, payerType, paymentMethod,
         codEnabled, codAmount: codEnabled ? parseFloat(codAmount) : 0,
@@ -617,6 +623,20 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
                 <input style={inp} type="number" min="1" step="1" value={seats} onChange={e => setSeats(e.target.value)} />
               </div>
             </div>
+
+            {/* Скільки місць — видно лише в дрібному полі, тож коли їх більше
+                одного, показуємо, що саме поїде в НП: вага ділиться порівну,
+                габарити застосовуються до кожного місця. */}
+            {seatCount > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', padding: '6px 10px',
+                background: '#EFF4FF', border: '1px solid #C7D8F0', borderRadius: '6px', fontSize: '11.5px', color: '#1E3A5F' }}>
+                <Package size={12} style={{ flexShrink: 0 }} />
+                <span>
+                  {seatCount} місця · по {perSeatWeight || '—'} кг на кожне
+                  {isPostomat && ' · габарити нижче застосуються до кожного місця'}
+                </span>
+              </div>
+            )}
 
             {/* Breakdown ваги по товарам */}
             {weightLines.length > 0 && (
