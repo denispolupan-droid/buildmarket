@@ -1823,14 +1823,15 @@ input, select { font-family: inherit; }
   /* Розміри тексту в картці. Базові 10–13px розраховані на таблицю з десятком
      колонок; на телефоні колонок немає, місце звільнилося — і дрібний шрифт
      лишався єдиною причиною, чому картка читається гірше за паперовий чек. */
-  .order-compact-row .oc-num { font-size: 15px !important; }
-  .order-compact-row > span:last-of-type { font-size: 15px !important; }
+  .order-compact-row .oc-numval { font-size: 13.5px !important; }
+  .order-compact-row .oc-date { font-size: 10.5px !important; }
+  .order-compact-row > span:last-of-type { font-size: 13.5px !important; }
   .oc-nameline { font-size: 14px !important; }
   /* Рядок товару: цільовий селектор, а не > div:last-child — мініатюра на телефоні
      обгорнула назву у flex-рядок, і остання дитина .oc-cust тепер обгортка. */
   .oc-cust .oc-item { font-size: 12px !important; }
   .oc-badges > span { font-size: 11px !important; padding: 1px 6px !important; }
-  .oc-status > div > span:first-child { font-size: 12px !important; padding: 3px 10px !important; }
+  .oc-status > div > span:first-child { font-size: 11px !important; padding: 2px 7px !important; }
   .oc-status > span { font-size: 11px !important; }
   .order-compact-row .oc-ship, .order-compact-row .oc-track { font-size: 12px !important; }
   /* Плашка ТТН — саме плашка, тому по імені класу: правило «останній у рядку»
@@ -1855,10 +1856,10 @@ input, select { font-family: inherit; }
      й шеврон, і кожна картка складалася по-своєму — список читався як набір
      випадкових уламків. Сітка ставить кожен елемент у свою комірку, тож усі
      картки однакові незалежно від довжини тексту:
-       1) чекбокс · № ···· статус ····· сума · шеврон
-       2)           дата · канал і мітки (SMART, ДЕШ. ДОСТ.)
-       3)           ПІБ · телефон · товар (до 2 рядків)
-       4)           перевізник · адреса
+       1) чекбокс · № · дата · канал · статус · сума · шеврон
+       2)           ПІБ ····························· телефон
+       3)           фото · товар (до 2 рядків)
+       4)           перевізник · мітки (SMART, ДЕШ. ДОСТ.) · адреса
        5)           ТТН · де зараз посилка
      Порядок читання зверху вниз повторює питання, які до картки ставлять:
      «що це і в якому воно стані» → «звідки і що за замовлення» → «хто клієнт і
@@ -1866,35 +1867,52 @@ input, select { font-family: inherit; }
      Колонка 1 — чекбокс, колонка 2 — усе інше, тож ліві краї збігаються. */
   .order-compact-row {
     display: grid !important;
-    grid-template-columns: 16px auto minmax(0, 1fr) auto 14px !important;
+    /* Шапка рядка — шість комірок в один рядок. Гнучка саме друга (№ + дата):
+       коли статус і сума довгі, підтискається дата — з усього рядка вона
+       найменш критична, а повне значення лишається в підказці. */
+    grid-template-columns: 16px minmax(0, 1fr) auto auto auto 14px !important;
     align-items: center !important;
     /* Щільніше по вертикалі: мініатюра товару додала рядку висоти, і картка
        розповзалася — на екран влазило менше замовлень, ніж до неї. */
-    gap: 3px 8px !important;
+    gap: 3px 6px !important;
     padding: 11px 12px !important;
   }
-  .order-compact-row > div:first-child { grid-column: 1; grid-row: 1; align-self: start; margin-top: 2px; }
-  /* № і дата — у різних рядках сітки, тому спільна обгортка .oc-num розчиняється
-     (display: contents) і її діти стають повноцінними комірками. Інакше дата
-     тягнула б за собою висоту першого рядка і статус висів би посередині. */
-  .order-compact-row .oc-num { display: contents !important; }
-  .order-compact-row .oc-numval { grid-column: 2; grid-row: 1; white-space: nowrap; }
-  .order-compact-row .oc-numsub { grid-column: 2; grid-row: 2; min-width: 0; }
-  .order-compact-row .oc-date { width: auto !important; white-space: nowrap; }
-  /* Статус — одразу за номером: перше питання до рядка списку саме «в якому воно
-     стані», а не «куди їде». */
-  .order-compact-row .oc-status { width: auto !important; grid-column: 3; grid-row: 1; justify-self: start; }
-  .order-compact-row > span:last-of-type { grid-column: 4; grid-row: 1; text-align: right; }
-  .order-compact-row > svg { grid-column: 5; grid-row: 1; }
-  /* Клієнт/товар і два рядки доставки — кожен на власному рядку, у колонці 2..4,
-     тобто на всю ширину праворуч від чекбокса. */
-  .order-compact-row .oc-cust { grid-column: 2 / -1; grid-row: 3; min-width: 0; }
-  .order-compact-row .oc-ship { display: flex !important; grid-column: 2 / -1; grid-row: 4; gap: 2px 8px; flex-wrap: wrap; }
+  .order-compact-row > div:first-child { grid-column: 1; grid-row: 1; }
+  /* № і дата — однією коміркою: удвох вони і є відповідь на «що це за рядок».
+     Номер не стискається, дата підтискається багатокрапкою. */
+  .order-compact-row .oc-num {
+    display: flex !important; align-items: baseline; gap: 6px;
+    grid-column: 2; grid-row: 1; width: auto !important; min-width: 0;
+  }
+  .order-compact-row .oc-numval { white-space: nowrap; flex-shrink: 0; }
+  .order-compact-row .oc-numsub { display: flex; align-items: baseline; gap: 4px; min-width: 0; overflow: hidden; }
+  .order-compact-row .oc-date { width: auto !important; white-space: nowrap; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; margin-top: 0 !important; }
+  /* Мітка спільної ТТН стоїть поруч із датою; коли шапка тісна, підтискається
+     саме вона, а не дата — номери-сусіди все одно перелічені в підказці. */
+  .order-compact-row .oc-numsub > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .order-compact-row .oc-chan-m { grid-column: 3; grid-row: 1; justify-self: start; align-items: center; }
+  .order-compact-row .oc-status { width: auto !important; grid-column: 4; grid-row: 1; justify-self: end; }
+  /* Сума без правого відступу: на десктопі він відсуває її від колонки доставки,
+     на телефоні це просто 24px порожнечі в найтіснішому рядку картки. */
+  .order-compact-row > span:last-of-type { grid-column: 5; grid-row: 1; text-align: right; width: auto !important; padding-right: 0 !important; }
+  .order-compact-row > svg { grid-column: 6; grid-row: 1; }
+  /* Клієнт, товар і два рядки доставки — кожен на власному рядку, від колонки 2
+     до кінця, тобто на всю ширину праворуч від чекбокса. */
+  .order-compact-row .oc-cust {
+    grid-column: 2 / -1; grid-row: 2; min-width: 0;
+    display: flex !important; flex-wrap: wrap; align-items: flex-end; gap: 1px 8px;
+  }
+  /* ПІБ і телефон — в один рядок: телефон має свою ширину, ПІБ забирає решту.
+     Товар із мініатюрою переноситься на власний рядок (flex-basis: 100%). */
+  .order-compact-row .oc-cust > .oc-nameline { flex: 1 1 auto; min-width: 0; }
+  .order-compact-row .oc-cust > .oc-phone { flex: 0 0 auto; }
+  .order-compact-row .oc-cust > .oc-itemline { flex: 1 1 100%; }
+  .order-compact-row .oc-ship { display: flex !important; grid-column: 2 / -1; grid-row: 3; gap: 2px 8px; flex-wrap: wrap; }
   /* ТТН і стан посилки — строго в один рядок: номер має фіксовану ширину, а
      стан («Прибув у відділення», «Очікує в пункті самовивозу») підтискається
      багатокрапкою. Перенос тут зайвий — повний текст все одно в підказці й у
      розгорнутій картці, а зайвий рядок множився на всі відправлені замовлення. */
-  .order-compact-row .oc-track { display: flex !important; grid-column: 2 / -1; grid-row: 5; gap: 8px; flex-wrap: nowrap; min-width: 0; }
+  .order-compact-row .oc-track { display: flex !important; grid-column: 2 / -1; grid-row: 4; gap: 8px; flex-wrap: nowrap; min-width: 0; }
   .order-compact-row .oc-track .oc-cstat { min-width: 0; flex: 0 1 auto; }
   /* Ні ТТН, ні статусу перевізника — рядка теж немає, інакше він з'їдав би
      вертикальний проміжок у кожного непроведеного замовлення. */
@@ -1917,10 +1935,7 @@ input, select { font-family: inherit; }
   /* Канал і мітки доставки — у рядку з датою: обоє відповідають на «звідки це
      замовлення і на яких умовах», і разом з нею читаються однією реплікою.
      До кінця картки (3 / -1), бо «Prom + ДЕШ. ДОСТ.» у вузьку колонку не влазить. */
-  .order-compact-row .oc-badges-m {
-    display: flex !important; grid-column: 3 / -1; grid-row: 2;
-    justify-self: start; align-items: center; min-width: 0;
-  }
+  .oc-date-short { display: inline !important; }
   .oc-badges:not(:empty) { display: flex; flex-wrap: wrap; gap: 4px; }
   .oc-badges > span { margin-right: 0 !important; }
   .oc-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -1786,6 +1786,12 @@ export default function AdminOrders({
   // Пошук, канал і перевізник уже відфільтровані базою (див. applyOrderFilters
   // у app/admin/page.tsx). Тут лишається тільки те, що рахується з rozetka_data
   // у браузері й колонки в базі не має.
+  // Сьогоднішня дата за Києвом — саме за нею в шапці рядка вирішується, показати
+  // час чи день з місяцем. Рахуємо через toLocaleDateString('sv-SE') з явним
+  // поясом: на сервері (UTC) і в браузері (Київ) інакше вийшли б різні рядки і
+  // React лаявся б на розбіжність розмітки.
+  const todayKey = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' });
+
   const filtered = cabinetAheadOnly
     ? orders.filter(o => rozetkaCabinet(o)?.ahead)
     : orders;
@@ -2311,6 +2317,13 @@ export default function AdminOrders({
             const date = new Date(order.created_at).toLocaleString('uk-UA', {
               day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
             });
+            // На телефоні №, дата, канал, статус і сума стоять одним рядком, і повна
+            // дата з часом туди не влазила. Там показуємо короткий варіант: день і
+            // місяць, а час — лише коли замовлення сьогоднішнє (у свіжих потрібен саме він).
+            // Повна дата лишається на десктопі, у підказці й у розгорнутій картці.
+            const dateShort = new Date(order.created_at).toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' }) === todayKey
+              ? new Date(order.created_at).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })
+              : new Date(order.created_at).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' });
             const delivery = DELIVERY_LABEL[order.delivery_type] ?? order.delivery_type;
             const subtype = order.delivery_subtype === 'courier' ? ' — кур\'єр' : order.delivery_subtype === 'warehouse' ? ' — відділення' : '';
             const isCod = order.payment_type === 'cod';
@@ -2533,15 +2546,18 @@ export default function AdminOrders({
                         стає display:contents, і його діти лягають у власні комірки
                         сітки. Без обгортки дата й мітка розповзлися б по різних рядках. */}
                     <div className="oc-numsub">
-                      <div className="oc-date" style={{ fontSize: '10.5px', fontWeight: 500, color: 'var(--text-muted)', whiteSpace: 'nowrap', marginTop: '1px' }}>{date}</div>
+                      <div className="oc-date" title={date} style={{ fontSize: '10.5px', fontWeight: 500, color: 'var(--text-muted)', whiteSpace: 'nowrap', marginTop: '1px' }}>
+                        <span className="oc-hide-m">{date}</span>
+                        <span className="oc-only-m oc-date-short" style={{ display: 'none' }}>{dateShort}</span>
+                      </div>
                       {mergedBadge}
                     </div>
                   </div>
 
-                  {/* Мітки доставки на телефоні — поруч із номером, а не окремим
-                      рядком над ПІБ: вони стосуються замовлення, а посеред картки
-                      розривали ім'я і телефон. */}
-                  <span className="oc-only-m oc-badges-m" style={{ gap: '4px', flexWrap: 'wrap' }}>
+                  {/* Канал на телефоні — у шапці рядка, поруч зі статусом і сумою.
+                      Мітки умов доставки (SMART, дешева доставка) звідси прибрані:
+                      вони про доставку, тому стоять у рядку з перевізником нижче. */}
+                  <span className="oc-only-m oc-chan-m" style={{ gap: '4px' }}>
                     {/* Канал — на телефоні колонка «Канал» схована (.oc-hide-m), і звідки
                         замовлення, можна було здогадатись хіба що за кольором плашки ТТН,
                         якої у нових замовлень ще немає. */}
@@ -2549,7 +2565,6 @@ export default function AdminOrders({
                       style={{ fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '20px', color: channel.color, background: channel.bg, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
                       {channel.label}
                     </span>
-                    {deliveryBadges}
                   </span>
 
                   <ItemThumbs className="oc-hide-m" items={order.items} thumbs={productThumbs}
@@ -2595,7 +2610,7 @@ export default function AdminOrders({
                       })()}
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minHeight: '16px' }}>
+                    <div className="oc-phone" style={{ display: 'flex', alignItems: 'center', gap: '5px', minHeight: '16px' }}>
                       {order.phone && (<>
                         <span title={order.phone} style={{ fontSize: '11.5px', fontWeight: 500, color: 'var(--text-secondary)', letterSpacing: '.01em', whiteSpace: 'nowrap' }}>{phoneLocal(order.phone)}</span>
                         {/* Без рамки й фону: кнопка стоїть у кожному рядку, і обведення
@@ -2614,7 +2629,7 @@ export default function AdminOrders({
                     </div>
 
                     {order.items[0] && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
+                      <div className="oc-itemline" style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
                         {/* Мініатюри на телефоні: колонка з фото там схована (.oc-hide-m),
                             і замовлення доводилось упізнавати з обрізаної назви. Тут під
                             них є вільна ширина, тому плитки менші, але їх більше. */}
@@ -2654,6 +2669,7 @@ export default function AdminOrders({
                     <span className="oc-carrier" style={{ fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       {carrierLabel}{order.delivery_subtype === 'courier' ? ' · кур.' : ''}
                     </span>
+                    <span style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>{deliveryBadges}</span>
                     {(order.delivery_type === 'pickup' || order.delivery_city_name || order.delivery_address) && (
                       <span style={{ minWidth: 0 }}>
                         {deliveryPlace(order, delivery)}
