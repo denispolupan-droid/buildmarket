@@ -154,6 +154,14 @@ export async function syncRozetkaOrders() {
               `${summary}. У нас статус «${existing.status}» — склад не чіпали: перевірте резерв, ЗП постачальнику і ТТН.`,
             );
           }
+        } else if (storedData._items_changed) {
+          // Менеджер привів склад у відповідність — мітку знімаємо. Без цього
+          // вона висіла б у журналі назавжди, і наступне справжнє розходження
+          // по цьому замовленню не показалось би (мітка ставиться лише раз).
+          const { _items_changed, ...rest } = storedData;
+          void _items_changed;
+          await db.from('orders').update({ rozetka_data: rest }).eq('id', existing.id);
+          console.log(`[rozetka-sync] items back in sync, flag cleared for order ${rzOrder.id}`);
         }
       }
 
