@@ -2550,7 +2550,7 @@ export default function AdminOrders({
                         <span className="oc-hide-m">{date}</span>
                         <span className="oc-only-m oc-date-short" style={{ display: 'none' }}>{dateShort}</span>
                       </div>
-                      {mergedBadge}
+                      <span className="oc-hide-m">{mergedBadge}</span>
                     </div>
                   </div>
 
@@ -2634,7 +2634,7 @@ export default function AdminOrders({
                             і замовлення доводилось упізнавати з обрізаної назви. Тут під
                             них є вільна ширина, тому плитки менші, але їх більше. */}
                         <ItemThumbs className="oc-only-m oc-thumbs-m" items={order.items} thumbs={productThumbs}
-                          size={28} max={3} style={{ display: 'none' }} />
+                          size={34} max={3} style={{ display: 'none' }} />
                         <div className="oc-item" style={{ flex: 1, fontSize: '11px', color: 'var(--text-muted)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {order.items[0].is_bonus && <span style={{ marginRight: '4px' }}>🎁</span>}
                         {order.items[0].brand ? `${order.items[0].brand} ` : ''}{order.items[0].name}
@@ -2669,7 +2669,7 @@ export default function AdminOrders({
                     <span className="oc-carrier" style={{ fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       {carrierLabel}{order.delivery_subtype === 'courier' ? ' · кур.' : ''}
                     </span>
-                    <span style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>{deliveryBadges}</span>
+                    <span className="oc-delbadges" style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>{deliveryBadges}</span>
                     {(order.delivery_type === 'pickup' || order.delivery_city_name || order.delivery_address) && (
                       <span style={{ minWidth: 0 }}>
                         {deliveryPlace(order, delivery)}
@@ -2699,6 +2699,7 @@ export default function AdminOrders({
                       </span>
                     )}
                     {carrierNote}
+                    {mergedBadge && <span className="oc-only-m" style={{ display: 'none', flexShrink: 0 }}>{mergedBadge}</span>}
                   </div>
 
                   {/* Доставка трьома рядками: перевізник (+ умови акції), потім місто
