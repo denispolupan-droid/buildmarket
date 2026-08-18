@@ -190,10 +190,20 @@ async function getJwt(db: Db, forceNew = false): Promise<string> {
   return jwt;
 }
 
-/** Помилка «протух jwt» — привід перевидати його, а не падати. */
+/**
+ * Помилка «протух jwt» — привід перевидати його, а не падати.
+ * Живий текст НП саме такий: `<status>logic_error</status><title>User not
+ * logged in. </title>`. Слова «jwt» чи «token» у ньому немає взагалі, тож
+ * перша версія перевірки його не впізнавала і прогін просто падав.
+ */
 function isExpiredJwt(xml: string): boolean {
   const t = `${tag(xml, 'title') ?? ''} ${tag(xml, 'error') ?? ''} ${tag(xml, 'error_description') ?? ''}`.toLowerCase();
-  return t.includes('jwt') || t.includes('token') || t.includes('unauthorized') || t.includes('access denied');
+  return t.includes('not logged in')
+    || t.includes('не авторизов')
+    || t.includes('jwt')
+    || t.includes('token')
+    || t.includes('unauthorized')
+    || t.includes('access denied');
 }
 
 /** Оновлення кешу балансу (кличе крон). */
