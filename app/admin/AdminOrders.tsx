@@ -2419,7 +2419,8 @@ export default function AdminOrders({
                 {isPromCheapDeliv && (
                   <span title={`Замовлення за акцією Prom «Дешева доставка»: покупець платить за доставку символічно, організацію оплачуємо ми${promDeliveryFee > 0 ? ` — ${promDeliveryFee} ₴ за це замовлення` : ''}. Prom списує збір після вручення посилки; невикуп не списується. Збір проводиться автоматично при доставці.`}
                     style={{ ...rowBadge, color: '#7C2D12', background: '#FDBA74', borderColor: '#FB923C' }}>
-                    ДЕШ. ДОСТ.
+                    <span className="oc-hide-m">ДЕШ. ДОСТ.</span>
+                    <span className="oc-only-m" style={{ display: 'none' }}>ДЕШ.</span>
                   </span>
                 )}
               </>
@@ -2567,6 +2568,14 @@ export default function AdminOrders({
                     </span>
                   </span>
 
+                  {/* SMART і «дешева доставка» — у шапці, після статусу: це умови
+                      самого замовлення, і бачити їх треба до того, як відкриєш
+                      картку. Стоять у вільній колонці перед сумою, тож у тісному
+                      рядку місце віддають вони, а не статус чи номер. */}
+                  <span className="oc-only-m oc-delbadges-m" style={{ display: 'none', gap: '4px' }}>
+                    {deliveryBadges}
+                  </span>
+
                   <ItemThumbs className="oc-hide-m" items={order.items} thumbs={productThumbs}
                     size={44} max={2} pad style={{ marginLeft: '8px' }} />
 
@@ -2669,7 +2678,6 @@ export default function AdminOrders({
                     <span className="oc-carrier" style={{ fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       {carrierLabel}{order.delivery_subtype === 'courier' ? ' · кур.' : ''}
                     </span>
-                    <span className="oc-delbadges" style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>{deliveryBadges}</span>
                     {(order.delivery_type === 'pickup' || order.delivery_city_name || order.delivery_address) && (
                       <span style={{ minWidth: 0 }}>
                         {deliveryPlace(order, delivery)}
