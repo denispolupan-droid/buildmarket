@@ -54,9 +54,13 @@ async function soapCall(method: string, fields: Record<string, string | number |
       SOAPAction: `http://tempuri.org/IClientAPIService/${method}`,
     },
     body: envelope,
-    // NovaPay відповідає повільно (8–30+ с — виміряно); викликається з крону,
-    // тож щедрий таймаут не тримає користувацькі рендери
-    signal: AbortSignal.timeout(60000),
+    // NovaPay відповідає повільно (8–60+ с — виміряно), а обрив саме на
+    // автентифікації коштує дорого: НП уже провернула ротацію, і збережений
+    // refresh-токен стає мертвим назавжди. На 60 с ми ловили таймаут двічі за
+    // сім викликів, тож ліміт щедрий — крон нікого не тримає.
+    // 120, а не більше: у найгіршому сценарії (протух jwt) крон робить два
+    // виклики поспіль, і 2×120 ще вкладається в maxDuration=300 роуту.
+    signal: AbortSignal.timeout(120_000),
   });
   const text = await res.text();
   if (!res.ok) throw new Error(`NovaPay ${method}: HTTP ${res.status} — ${text.slice(0, 300)}`);
@@ -164,11 +168,39 @@ export async function getNovapayLiveBalance(): Promise<NovapayLiveBalance | null
   try { return JSON.parse(cached.value) as NovapayLiveBalance; } catch { return null; }
 }
 
-/** Оновлення кешу балансу (кличе крон). Ротація токена всередині authenticate(). */
+const JWT_KEY = 'novapay_jwt';
+
+/**
+ * JWT для запиту: спершу збережений, і лише якщо його немає — нова
+ * автентифікація (а отже й ротація refresh-токена).
+ *
+ * Це головний запобіжник проти втрати ланцюжка. Кожна автентифікація —
+ * одноразова ротація, і якщо відповідь не доїхала (НП відповідає 8–60+ с і
+ * час від часу не встигає), НП уже видала наступний токен, а в нас лишився
+ * мертвий. Тричі за два дні ланцюжок гинув саме так. Поки jwt живий,
+ * ротації не відбувається взагалі — тобто нема чого й губити.
+ */
+async function getJwt(db: Db, forceNew = false): Promise<string> {
+  if (!forceNew) {
+    const cached = await setting(db, JWT_KEY);
+    if (cached) return cached;
+  }
+  const jwt = await authenticate(db);
+  await db.from('app_settings').upsert({ key: JWT_KEY, value: jwt });
+  return jwt;
+}
+
+/** Помилка «протух jwt» — привід перевидати його, а не падати. */
+function isExpiredJwt(xml: string): boolean {
+  const t = `${tag(xml, 'title') ?? ''} ${tag(xml, 'error') ?? ''} ${tag(xml, 'error_description') ?? ''}`.toLowerCase();
+  return t.includes('jwt') || t.includes('token') || t.includes('unauthorized') || t.includes('access denied');
+}
+
+/** Оновлення кешу балансу (кличе крон). */
 export async function refreshNovapayBalance(): Promise<NovapayLiveBalance | null> {
   const db = createServiceClient();
   try {
-    const jwt = await authenticate(db);
+    let jwt = await getJwt(db);
 
     // Рахунки: підприємство → рахунки (GetAccountsList вимагає client_id);
     // id кешуємо, щоб не смикати повільні списки щоразу
@@ -193,7 +225,12 @@ export async function refreshNovapayBalance(): Promise<NovapayLiveBalance | null
 
     let available = 0, projected = 0, okAccounts = 0;
     for (const id of accountIds) {
-      const xml = await soapCall('GetAccountRest', { request_ref: crypto.randomUUID(), jwt, account_id: id });
+      let xml = await soapCall('GetAccountRest', { request_ref: crypto.randomUUID(), jwt, account_id: id });
+      // Збережений jwt протух — перевидаємо один раз і повторюємо запит.
+      if (tag(xml, 'result') === 'error' && isExpiredJwt(xml)) {
+        jwt = await getJwt(db, true);
+        xml = await soapCall('GetAccountRest', { request_ref: crypto.randomUUID(), jwt, account_id: id });
+      }
       if (tag(xml, 'result') === 'error') continue;
       available += Number(tag(xml, 'available_balance') ?? 0);
       projected += Number(tag(xml, 'projected_balance') ?? tag(xml, 'available_balance') ?? 0);
