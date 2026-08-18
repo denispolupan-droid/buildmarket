@@ -3710,6 +3710,20 @@ export default function AdminOrders({
                           ))}
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
+                        {/* Чат кабінету МП — тут, поруч із телефоном: для замовлень
+                            Rozetka/Prom це і є справжній канал зв'язку, бо номер
+                            покупця там часто підмінений. */}
+                        {(order.channel_code === 'rozetka' || order.channel_code === 'prom') && (
+                          <a href={`/admin/chat?order=${order.id}`} target="_blank" rel="noopener noreferrer"
+                            title="Відкрити чат із покупцем у кабінеті маркетплейсу"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '8px', padding: '4px 10px', borderRadius: '7px',
+                              fontSize: '11.5px', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap',
+                              // без цього кнопка розтягується на всю ширину колонки
+                              alignSelf: 'flex-start', width: 'fit-content',
+                              color: '#4338CA', background: '#EEF2FF', border: '1px solid #C7D2FE' }}>
+                            <MessageSquare size={12} /> Чат {order.channel_code === 'prom' ? 'Prom' : 'Rozetka'}
+                          </a>
+                        )}
                         </div>
                       </div>
                       {/* Статистика клієнта + швидкі прапорці */}
@@ -4392,17 +4406,8 @@ export default function AdminOrders({
                                     <span style={{ fontSize: '15px', lineHeight: 1 }}>⚙</span>
                                   </button>
                                 </div>
-                                {/* Листування маркетплейсу ведеться в його кабінеті, а не в
-                                    месенджерах: телефон покупця Rozetka/Prom часто підмінений,
-                                    і писати треба саме в чат замовлення. Ведемо одразу в нього —
-                                    шукати руками серед усіх діалогів довго. */}
-                                {(order.channel_code === 'rozetka' || order.channel_code === 'prom') && (
-                                  <a href={`/admin/chat?order=${order.id}`} target="_blank" rel="noopener noreferrer"
-                                    title="Відкрити чат із покупцем у кабінеті маркетплейсу"
-                                    style={{ ...btnMuted, color: '#4338CA', borderColor: '#C7D2FE', background: '#EEF2FF' }}>
-                                    <MessageSquare size={13} /> Чат {order.channel_code === 'prom' ? 'Prom' : 'Rozetka'}
-                                  </a>
-                                )}
+                                {/* Кнопка чату МП живе в блоці «Клієнт», поруч із телефоном —
+                                    це контакт, а не інструмент друку. */}
                                 <InvoiceMessengerButtons
                                   variant="stacked"
                                   phone={order.phone} contact={order.contact}
