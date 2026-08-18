@@ -11,6 +11,8 @@ import { recordCustomerPayment, recordShipment } from '../../../../../lib/accoun
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/prom-api';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../lib/rozetka-api';
 import { alertAdmin } from '../../../../../lib/alert';
+import { computePromCommission } from '../../../../../lib/prom-commission';
+import { computeRozetkaCommission } from '../../../../../lib/rozetka-commission';
 import { completeOrderDelivery, syncDraftShipmentTracking } from '../../../../../lib/accounting/completion';
 import { notifyCustomer } from '../../../../../lib/notify/send';
 import { checkOrderCredit } from '../../../../../lib/accounting/credit-guard';
@@ -154,6 +156,45 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     } catch (err) {
       alertAdmin(`Синхронізація рядків РН після правки позицій не пройшла (order ${id})`, err);
+    }
+
+    // Знімок комісії МП рахується від складу і застигав на моменті імпорту.
+    // Після правки позицій картка показувала стару суму: у живому #26081097
+    // прибрали товар на 2180 грн, виручка стала 1680, а комісія лишилась 326
+    // (за обидва товари) — і замовлення виглядало збитковим. На проводки це не
+    // впливало (при доставці комісія рахується заново по рядках РН), але
+    // менеджер бачив неправду й ухвалював рішення по ній.
+    try {
+      const { data: ord } = await db
+        .from('orders')
+        .select('channel_code, prom_data, rozetka_data')
+        .eq('id', id)
+        .single();
+      const items = bodyItems
+        .filter((i: { sku?: string }) => i?.sku)
+        .map((i: { sku: string; qty: number; price: number }) => ({ sku: i.sku, qty: Number(i.qty), price: Number(i.price) }));
+
+      if (ord?.channel_code === 'prom') {
+        const [{ data: planRow }, { data: fbRow }] = await Promise.all([
+          db.from('app_settings').select('value').eq('key', 'prom_commission_plan').maybeSingle(),
+          db.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle(),
+        ]);
+        const comm = await computePromCommission(items, {
+          plan: (planRow?.value ?? 'single') as 'single' | 'econom',
+          fallbackPct: parseFloat(fbRow?.value ?? '3'),
+        });
+        await db.from('orders').update({
+          prom_data: { ...((ord.prom_data ?? {}) as Record<string, unknown>), _commission: comm },
+        }).eq('id', id);
+      } else if (ord?.channel_code === 'rozetka') {
+        const { data: fbRow } = await db.from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle();
+        const comm = await computeRozetkaCommission(items, { fallbackPct: parseFloat(fbRow?.value ?? '15') });
+        await db.from('orders').update({
+          rozetka_data: { ...((ord.rozetka_data ?? {}) as Record<string, unknown>), _commission: comm },
+        }).eq('id', id);
+      }
+    } catch (err) {
+      console.error('[order items] commission snapshot refresh failed:', id, err);
     }
   }
 
