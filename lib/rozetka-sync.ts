@@ -4,6 +4,7 @@ import { computeRozetkaCommission } from './rozetka-commission';
 import { getRozetkaDeliveryTtns } from './rozetka-delivery-ttn';
 import { ROZETKA_DELIVERY_TYPE } from './rozetka-delivery';
 import { alertAdmin } from './alert';
+import { itemsDiffer, describeItemsDiff } from './rozetka-items-diff';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -59,11 +60,12 @@ export async function syncRozetkaOrders() {
   let refreshed = 0;
 
   let paidUpdated = 0;
+  let itemsUpdated = 0;
 
   for (const rzOrder of [...orders, ...refreshOnly]) {
     const { data: existing } = await db
       .from('orders')
-      .select('id, status, tracking_number, rozetka_data, payment_confirmed, total_price')
+      .select('id, status, tracking_number, rozetka_data, payment_confirmed, total_price, items')
       .eq('rozetka_order_id', rzOrder.id)
       .maybeSingle();
 
@@ -119,6 +121,42 @@ export async function syncRozetkaOrders() {
         await db.from('orders').update(patch).eq('id', existing.id);
         refreshed++;
       }
+      // ── Правки складу в кабінеті ─────────────────────────────────────────
+      // Rozetka дозволяє редагувати замовлення на своєму боці, а ми склад
+      // писали лише при створенні рядка — тобто правку не бачили взагалі.
+      // Застосовуємо самі ТІЛЬКИ поки замовлення «нове»: там ще немає ні
+      // резервів, ні ЗП постачальнику, ні РН, тож ламатися нема чому. Далі —
+      // лише позначка й алерт: у підтвердженому зміна кількості означає
+      // перерахунок резерву і замовлення постачальнику, і це рішення людини.
+      if (!refreshOnlyIds.has(rzOrder.id)) {
+        const liveItems = rozetkaOrderToOurFormat(rzOrder).items;
+        const ourItems = (existing.items ?? []) as { sku: string; qty: number; price: number }[];
+        if (itemsDiffer(ourItems, liveItems)) {
+          if (existing.status === 'new') {
+            const liveTotal = liveItems.reduce((sum, i) => sum + i.qty * i.price, 0);
+            const comm = await computeRozetkaCommission(liveItems, { fallbackPct });
+            await db.from('orders').update({
+              items:        liveItems,
+              total_price:  liveTotal,
+              // Знімок оновлюємо разом зі складом, інакше різниця лишиться
+              // й наступний прогін застосує те саме ще раз, по колу.
+              rozetka_data: { ...storedData, purchases: rzOrder.purchases, _commission: comm, _items_synced_at: new Date().toISOString() },
+            }).eq('id', existing.id);
+            itemsUpdated++;
+            console.log(`[rozetka-sync] items updated from cabinet for order ${rzOrder.id}`);
+          } else if (!storedData._items_changed) {
+            const summary = describeItemsDiff(ourItems, liveItems);
+            await db.from('orders').update({
+              rozetka_data: { ...storedData, _items_changed: { at: new Date().toISOString(), summary } },
+            }).eq('id', existing.id);
+            alertAdmin(
+              `Rozetka: замовлення ${rzOrder.id} змінили в кабінеті`,
+              `${summary}. У нас статус «${existing.status}» — склад не чіпали: перевірте резерв, ЗП постачальнику і ТТН.`,
+            );
+          }
+        }
+      }
+
       // Самолікування пушу — лише для замовлень «в обробці». Для груп 2/3 ми їх
       // сюди й не тягнули б, якби не плашка: допушувати статус у виконане чи
       // скасоване замовлення безглуздо, а драбина статусів там усе одно відіб'ється.
@@ -280,5 +318,5 @@ export async function syncRozetkaOrders() {
     console.error('[rozetka-sync] ttn-list pull failed:', err);
   }
 
-  return { ok: true, created, skipped, repushed, refreshed, paidUpdated, pricedTtns, total: orders.length + refreshOnly.length };
+  return { ok: true, created, skipped, repushed, refreshed, paidUpdated, itemsUpdated, pricedTtns, total: orders.length + refreshOnly.length };
 }

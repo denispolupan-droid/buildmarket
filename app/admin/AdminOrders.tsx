@@ -2312,6 +2312,18 @@ export default function AdminOrders({
                 {(order.flags ?? []).includes('problem') && (
                   <span title="Проблемний" style={{ ...rowBadge, color: '#B45309', background: '#FEF3C7', borderColor: '#FCD34D' }}>⚠</span>
                 )}
+                {/* Замовлення відредагували в кабінеті МП, а наш склад лишився
+                    старий: чіпати його автоматично не можна, поки висять резерв
+                    і ЗП постачальнику. Мітка з розшифровкою — рішення за людиною. */}
+                {(() => {
+                  const ch = (order.rozetka_data as { _items_changed?: { at: string; summary: string } } | null)?._items_changed;
+                  return ch ? (
+                    <span title={`Змінено в кабінеті Rozetka ${new Date(ch.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}: ${ch.summary}. Наш склад не змінювався — звірте резерв, ЗП постачальнику і ТТН.`}
+                      style={{ ...rowBadge, color: '#9A3412', background: '#FFF7ED', borderColor: '#FDBA74' }}>
+                      ✎ змінено в МП
+                    </span>
+                  ) : null;
+                })()}
                 {order.mp_refund_status && (
                   <span title={`Покупець відкрив повернення — ${order.mp_refund_status}`} style={{ ...rowBadge, color: '#B91C1C', background: '#FEE2E2', borderColor: '#FCA5A5' }}>↩ повернення</span>
                 )}
