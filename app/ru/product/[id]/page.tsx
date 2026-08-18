@@ -55,7 +55,11 @@ function brandToSlug(brand: string): string {
   return brand.trim().toLowerCase().replace(/\s+/g, '-');
 }
 
+// Подпись к фасовке по единице: у лент это размер, а не объём —
+// «Объём: 30 мм» читалось как ошибка данных.
 function volLabel(v: string) {
+  if (/ммs*$/.test(v)) return 'Ширина';
+  if (/dмs*$|s+мs*$/.test(v)) return 'Длина';
   return /кг|г$/.test(v) ? 'Вес' : 'Объём';
 }
 

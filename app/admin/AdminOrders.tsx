@@ -143,6 +143,9 @@ const STATUSES = [
 // активний селект там, де сервер усе одно відмовить.
 const SOURCE_EDITABLE_STATUSES = ['new', 'confirmed', 'awaiting_stock'];
 
+/** Перевізники, яким потрібні місто й відділення (у самовивозу й Харкова їх немає). */
+const DELIVERY_NEEDS_CITY = ['nova', 'rz_delivery', 'rozetka_delivery'];
+
 const DELIVERY_LABEL: Record<string, string> = {
   nova: 'Нова Пошта', nova_poshta: 'Нова Пошта', kharkiv: 'Харків і область', pickup: 'Самовивіз',
   // Точки видачі Rozetka: накладна оформлюється власним API Rozetka, не НП
@@ -1067,9 +1070,11 @@ export default function AdminOrders({
     const f = editDeliveryForm;
     const body: Record<string, unknown> = {
       delivery_type:    f.type,
+      // Підтип (відділення/кур'єр) є лише в НП: у ROZETKA Доставці двері поки
+      // не ввімкнені, там завжди точка видачі.
       delivery_subtype: f.type === 'nova' ? f.subtype : null,
-      delivery_city_name: f.type === 'nova' ? f.cityName || null : null,
-      delivery_address:   f.type === 'nova' ? f.address || null : (f.type === 'kharkiv' ? f.address || null : null),
+      delivery_city_name: DELIVERY_NEEDS_CITY.includes(f.type) ? f.cityName || null : null,
+      delivery_address:   DELIVERY_NEEDS_CITY.includes(f.type) || f.type === 'kharkiv' ? f.address || null : null,
     };
     const res = await fetch(`/api/admin/orders/${orderId}`, {
       method: 'PATCH',
@@ -1081,7 +1086,7 @@ export default function AdminOrders({
         ...o,
         delivery_type:    f.type,
         delivery_subtype: f.type === 'nova' ? f.subtype : null,
-        delivery_city_name: f.type === 'nova' ? f.cityName || null : null,
+        delivery_city_name: DELIVERY_NEEDS_CITY.includes(f.type) ? f.cityName || null : null,
         delivery_address:   f.address || null,
       } : o));
       setEditDeliveryId(null);
@@ -3974,18 +3979,30 @@ export default function AdminOrders({
                             onChange={e => setEditDeliveryForm(p => ({ ...p, type: e.target.value, cityName: '', address: '' }))}
                             style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 6px' }}>
                             <option value="nova">Нова Пошта</option>
+                            {/* Наш власний договір із rz-delivery — накладна через їхнє
+                                API, не через НП. Маркетплейсну 'rozetka_delivery'
+                                показуємо лише замовленням, що прийшли з Rozetka: на
+                                сайтовому замовленні її накладну оформити нічим, там
+                                потрібен rozetka_order_id. */}
+                            <option value="rz_delivery">ROZETKA Доставка</option>
+                            {order.channel_code === 'rozetka' && (
+                              <option value="rozetka_delivery">Rozetka Доставка (МП)</option>
+                            )}
                             <option value="pickup">Самовивіз</option>
                             <option value="kharkiv">Харків і область</option>
                           </select>
-                          {editDeliveryForm.type === 'nova' && (
+                          {DELIVERY_NEEDS_CITY.includes(editDeliveryForm.type) && (
                             <>
-                              <select
-                                value={editDeliveryForm.subtype}
-                                onChange={e => setEditDeliveryForm(p => ({ ...p, subtype: e.target.value }))}
-                                style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 6px' }}>
-                                <option value="warehouse">Відділення</option>
-                                <option value="courier">Кур'єр</option>
-                              </select>
+                              {/* Кур'єр є лише в НП: у ROZETKA Доставці двері поки не ввімкнені */}
+                              {editDeliveryForm.type === 'nova' && (
+                                <select
+                                  value={editDeliveryForm.subtype}
+                                  onChange={e => setEditDeliveryForm(p => ({ ...p, subtype: e.target.value }))}
+                                  style={{ height: '30px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '12px', padding: '0 6px' }}>
+                                  <option value="warehouse">Відділення</option>
+                                  <option value="courier">Кур'єр</option>
+                                </select>
+                              )}
                               <input
                                 value={editDeliveryForm.cityName}
                                 onChange={e => setEditDeliveryForm(p => ({ ...p, cityName: e.target.value }))}

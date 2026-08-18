@@ -56,7 +56,11 @@ function brandToSlug(brand: string): string {
   return brand.trim().toLowerCase().replace(/\s+/g, '-');
 }
 
+// Підпис до фасовки за одиницею: у стрічок це розмір, а не об'єм —
+// «Об'єм: 30 мм» читалось як помилка даних.
 function volLabel(v: string) {
+  if (/ммs*$/.test(v)) return 'Ширина';
+  if (/dмs*$|s+мs*$/.test(v)) return 'Довжина';
   return /кг|г$/.test(v) ? 'Вага' : "Об'єм";
 }
 

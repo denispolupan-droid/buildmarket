@@ -255,9 +255,16 @@ export function categoriesWithProducts(
 // баг — товари просто перестають бачити одне одного.
 const UNIT_RE = 'мм|мл|кг|шт|рулон[а-яіїєґ]*|л|м|г';
 
+// Стрічки підписані парою розмірів: «30 мм х 30 м». Різнитись може будь-який
+// бік — у Knauf Dichtungsband однакова довжина й різна ширина, у Fugendeckstreifen
+// навпаки. Тому пару відрізаємо цілком, інакше половина стрічок не бачила одна
+// одну: базова назва лишалась різною через ширину в середині рядка.
+const DIM_PAIR_RE = /[,–—-]?\s*\d[\d.,]*\s*мм\s*[хx×]\s*\d[\d.,]*\s*м\.?\s*$/i;
+
 /** Базова назва без фасовки в кінці — для групування варіантів одного продукту. */
 export function variantBaseName(name: string): string {
   return collapse(name)
+    .replace(DIM_PAIR_RE, '')
     .replace(new RegExp(`[,–—-]?\\s*\\d[\\d.,]*\\s*(${UNIT_RE})\\.?\\s*$`, 'i'), '')
     .toLowerCase();
 }

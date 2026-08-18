@@ -30,6 +30,30 @@ describe('variantBaseName', () => {
     expect(variantBaseName('Сітка Masternet 1х50, 5 рулонів')).toBe('сітка masternet 1х50');
   });
 
+  // Стрічки підписані парою розмірів, і різнитись може будь-який бік:
+  // у Dichtungsband однакова довжина (30 м) і різна ширина, у Fugendeckstreifen
+  // навпаки. Поки відрізалась лише довжина, перша сімʼя не бачила сама себе.
+  it('пара «ширина х довжина» відрізається цілком', () => {
+    const knauf = [
+      'Стрічка звукоізоляційна Knauf Dichtungsband, 30 мм х 30 м',
+      'Стрічка звукоізоляційна Knauf Dichtungsband, 95 мм х 30 м',
+    ].map(variantBaseName);
+    expect(knauf[0]).toBe('стрічка звукоізоляційна knauf dichtungsband');
+    expect(knauf[0]).toBe(knauf[1]);
+  });
+
+  it('пара без пробілів і коми теж ловиться', () => {
+    expect(variantBaseName('Стрічка малярна HARDEX №572 25мм х 33м')).toBe('стрічка малярна hardex №572');
+  });
+
+  it('розміри бура парою не вважаються — там немає «мм х … м»', () => {
+    expect(variantBaseName('Бур Werk Sds-plus 6х100х160 мм')).toBe('бур werk sds-plus 6х100х');
+    expect(variantBaseName('Бур Werk Sds-plus 8х100х160 мм')).toBe('бур werk sds-plus 8х100х');
+    // різні діаметри не склеюються
+    expect(variantBaseName('Бур Werk Sds-plus 6х100х160 мм'))
+      .not.toBe(variantBaseName('Бур Werk Sds-plus 8х100х160 мм'));
+  });
+
   it('к-сть у дужках фасовкою не вважається — це частина назви', () => {
     // «(уп. 1000 шт)» стоїть не в кінці рядка через дужку, тож не відрізається
     expect(variantBaseName('Шуруп Knauf LN 3 5x11 (уп. 1000 шт)'))
