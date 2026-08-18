@@ -3710,20 +3710,6 @@ export default function AdminOrders({
                           ))}
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
-                        {/* Чат кабінету МП — тут, поруч із телефоном: для замовлень
-                            Rozetka/Prom це і є справжній канал зв'язку, бо номер
-                            покупця там часто підмінений. */}
-                        {(order.channel_code === 'rozetka' || order.channel_code === 'prom') && (
-                          <a href={`/admin/chat?order=${order.id}`} target="_blank" rel="noopener noreferrer"
-                            title="Відкрити чат із покупцем у кабінеті маркетплейсу"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '8px', padding: '4px 10px', borderRadius: '7px',
-                              fontSize: '11.5px', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap',
-                              // без цього кнопка розтягується на всю ширину колонки
-                              alignSelf: 'flex-start', width: 'fit-content',
-                              color: '#4338CA', background: '#EEF2FF', border: '1px solid #C7D2FE' }}>
-                            <MessageSquare size={12} /> Чат {order.channel_code === 'prom' ? 'Prom' : 'Rozetka'}
-                          </a>
-                        )}
                         </div>
                       </div>
                       {/* Статистика клієнта + швидкі прапорці */}
@@ -3749,6 +3735,17 @@ export default function AdminOrders({
                               </button>
                             );
                           })}
+                          {/* Чат кабінету МП — у тому ж ряду, що й прапорці: це теж
+                              статус-рівень картки клієнта, а не інструмент друку. */}
+                          {(order.channel_code === 'rozetka' || order.channel_code === 'prom') && (
+                            <a href={`/admin/chat?order=${order.id}`} target="_blank" rel="noopener noreferrer"
+                              title="Відкрити чат із покупцем у кабінеті маркетплейсу"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 9px', borderRadius: '999px',
+                                fontSize: '11px', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap',
+                                color: '#4338CA', background: '#EEF2FF', border: '1px solid #C7D2FE' }}>
+                              <MessageSquare size={11} /> Чат {order.channel_code === 'prom' ? 'Prom' : 'Rozetka'}
+                            </a>
+                          )}
                         </div>
                       </div>
                       </div>{/* /oc-card-body */}

@@ -194,7 +194,9 @@ export default function MarketplaceChatsClient({ embedded = false, autoOpenOrder
           прямо, інакше екран виглядав би так, ніби кнопка не спрацювала. */}
       {autoOpenMiss && (
         <div style={{ padding: '8px 14px', fontSize: '11px', color: '#92400E', background: '#FFFBEB', borderTop: '1px solid var(--border)' }}>
-          По цьому замовленню листування ще немає — покупець не писав.
+          По цьому замовленню листування ще немає. Написати першим не можна:
+          Rozetka не дає створити чат через API — діалог заводить лише покупець
+          або менеджер у кабінеті маркетплейсу.
         </div>
       )}
       {listErrors.length > 0 && (
