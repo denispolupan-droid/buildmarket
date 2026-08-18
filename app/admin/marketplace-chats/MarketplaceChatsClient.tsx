@@ -54,8 +54,16 @@ function timeAgo(dateStr: string | null): string {
   return `${Math.floor(diff / 86400)} дн`;
 }
 
-export default function MarketplaceChatsClient({ embedded = false }: { embedded?: boolean }) {
+export default function MarketplaceChatsClient({ embedded = false, autoOpenOrderId }: {
+  embedded?: boolean;
+  /** Наш id замовлення: прийшли з картки замовлення — одразу відкриваємо його чат. */
+  autoOpenOrderId?: string | null;
+}) {
   const [items, setItems] = useState<ChatItem[]>([]);
+  // Відкриваємо лише раз: інакше кожне оновлення списку перекидало б менеджера
+  // назад у цей чат, навіть якби він уже читав інший.
+  const autoOpened = useRef(false);
+  const [autoOpenMiss, setAutoOpenMiss] = useState(false);
   const [listLoading, setListLoading] = useState(true);
   const [listErrors, setListErrors] = useState<string[]>([]);
   const [selected, setSelected] = useState<ChatItem | null>(null);
@@ -85,6 +93,17 @@ export default function MarketplaceChatsClient({ embedded = false }: { embedded?
   }, []);
 
   useEffect(() => { void loadList(); }, [loadList]);
+
+  // Перехід із картки замовлення. Шукаємо по нашому id, а не по номеру МП:
+  // номер у чата може бути порожній, а id — точний збіг без здогадок.
+  useEffect(() => {
+    if (!autoOpenOrderId || autoOpened.current || listLoading) return;
+    const chat = items.find(i => i.ourOrderId === autoOpenOrderId);
+    autoOpened.current = true;
+    if (chat) void openChat(chat);
+    else setAutoOpenMiss(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenOrderId, items, listLoading]);
 
   async function openChat(item: ChatItem) {
     setSelected(item);
@@ -171,6 +190,13 @@ export default function MarketplaceChatsClient({ embedded = false }: { embedded?
           );
         })}
       </div>
+      {/* Прийшли з картки, а листування по цьому замовленню ще немає — кажемо
+          прямо, інакше екран виглядав би так, ніби кнопка не спрацювала. */}
+      {autoOpenMiss && (
+        <div style={{ padding: '8px 14px', fontSize: '11px', color: '#92400E', background: '#FFFBEB', borderTop: '1px solid var(--border)' }}>
+          По цьому замовленню листування ще немає — покупець не писав.
+        </div>
+      )}
       {listErrors.length > 0 && (
         <div style={{ padding: '8px 14px', fontSize: '11px', color: '#DC2626', borderTop: '1px solid var(--border)' }}>{listErrors.join(' · ')}</div>
       )}

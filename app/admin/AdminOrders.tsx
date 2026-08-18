@@ -4392,6 +4392,17 @@ export default function AdminOrders({
                                     <span style={{ fontSize: '15px', lineHeight: 1 }}>⚙</span>
                                   </button>
                                 </div>
+                                {/* Листування маркетплейсу ведеться в його кабінеті, а не в
+                                    месенджерах: телефон покупця Rozetka/Prom часто підмінений,
+                                    і писати треба саме в чат замовлення. Ведемо одразу в нього —
+                                    шукати руками серед усіх діалогів довго. */}
+                                {(order.channel_code === 'rozetka' || order.channel_code === 'prom') && (
+                                  <a href={`/admin/chat?order=${order.id}`} target="_blank" rel="noopener noreferrer"
+                                    title="Відкрити чат із покупцем у кабінеті маркетплейсу"
+                                    style={{ ...btnMuted, color: '#4338CA', borderColor: '#C7D2FE', background: '#EEF2FF' }}>
+                                    <MessageSquare size={13} /> Чат {order.channel_code === 'prom' ? 'Prom' : 'Rozetka'}
+                                  </a>
+                                )}
                                 <InvoiceMessengerButtons
                                   variant="stacked"
                                   phone={order.phone} contact={order.contact}

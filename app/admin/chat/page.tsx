@@ -11,9 +11,10 @@ export const metadata = { title: 'Чати | FIXLINE' };
 export default async function AdminChatPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; order?: string }>;
 }) {
-  const { tab } = await searchParams;
+  // order — наш id замовлення: перехід із картки одразу відкриває його чат МП
+  const { tab, order } = await searchParams;
 
   const { data: sessions } = await db
     .from('chat_sessions')
@@ -45,7 +46,8 @@ export default async function AdminChatPage({
     <ChatTabs
       sessions={sessions ?? []}
       lastMessages={lastMessages}
-      initialTab={tab === 'mp' ? 'mp' : 'site'}
+      initialTab={tab === 'mp' || order ? 'mp' : 'site'}
+      autoOpenOrderId={order ?? null}
     />
   );
 }
