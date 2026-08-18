@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import type { CSSProperties } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare } from 'lucide-react';
@@ -203,6 +204,55 @@ function ClampedComment({ text }: { text: string }) {
           {open ? 'Згорнути' : 'Показати весь'}
         </button>
       )}
+    </div>
+  );
+}
+
+/**
+ * Мініатюри товарів у згорнутому рядку журналу. Показуємо перші `max` фото, а
+ * лічильник на останній плитці каже, скільки позицій у замовленні всього.
+ * Некликабельні навмисно: клік по рядку розгортає картку, і промах по мініатюрі
+ * не має відкривати сторонню сторінку.
+ * `pad` добиває ряд порожніми плитками — щоб на десктопі блок клієнта в усіх
+ * рядках починався з тієї самої вертикалі.
+ */
+function ItemThumbs({ items, thumbs, size, max, pad, className, style }: {
+  items: OrderItem[]; thumbs: Record<string, string>; size: number; max: number;
+  pad?: boolean; className?: string; style?: CSSProperties;
+}) {
+  const positions = items.length;
+  const shown = items.slice(0, max);
+  return (
+    <div className={className} style={{ display: 'flex', gap: '6px', flexShrink: 0, ...style }}>
+      {shown.map((item, idx) => {
+        const img = item.sku ? thumbs[item.sku] : undefined;
+        const isLast = idx === shown.length - 1;
+        return (
+          <div key={`${item.sku}-${idx}`} title={`${item.brand ?? ''} ${item.name}`.trim()}
+            style={{
+              width: `${size}px`, height: `${size}px`, flexShrink: 0, position: 'relative',
+              borderRadius: `${Math.round(size / 5)}px`,
+              border: '1px solid var(--border-light)', background: img ? `#fff url("${img}") center/cover no-repeat` : 'var(--bg-soft)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+            {!img && <Package size={Math.round(size * 0.36)} color="var(--border)" />}
+            {isLast && positions > max && (
+              <span title={`Позицій у замовленні: ${positions}`}
+                style={{
+                  position: 'absolute', right: '-5px', bottom: '-5px', minWidth: '15px', height: '15px',
+                  padding: '0 3px', borderRadius: '8px', boxSizing: 'border-box',
+                  background: 'var(--brand-blue)', color: '#fff', border: '1.5px solid var(--bg-card)',
+                  fontSize: '9.5px', fontWeight: 800, lineHeight: '12px', textAlign: 'center',
+                }}>
+                {positions}
+              </span>
+            )}
+          </div>
+        );
+      })}
+      {pad && shown.length < max && Array.from({ length: max - shown.length }).map((_, i) => (
+        <div key={`pad-${i}`} style={{ width: `${size}px`, flexShrink: 0 }} />
+      ))}
     </div>
   );
 }
@@ -2502,47 +2552,8 @@ export default function AdminOrders({
                     {deliveryBadges}
                   </span>
 
-                  {/* Мініатюри товарів: дві вміщуються в рядок без шкоди для решти
-                      колонок, тому показуємо перші дві, а на третій і далі лічильник
-                      на другій плитці каже, скільки позицій у замовленні всього.
-                      Некликабельні навмисно: клік по рядку розгортає картку, і промах
-                      по мініатюрі не має відкривати сторонню сторінку. */}
-                  {(() => {
-                    const positions = order.items.length;
-                    const shown = order.items.slice(0, 2);
-                    return (
-                      <div className="oc-hide-m" style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '8px' }}>
-                        {shown.map((item, idx) => {
-                          const img = item.sku ? productThumbs[item.sku] : undefined;
-                          const isLast = idx === shown.length - 1;
-                          return (
-                            <div key={`${item.sku}-${idx}`} title={`${item.brand ?? ''} ${item.name}`.trim()}
-                              style={{
-                                width: '44px', height: '44px', flexShrink: 0, borderRadius: '9px', position: 'relative',
-                                border: '1px solid var(--border-light)', background: img ? `#fff url("${img}") center/cover no-repeat` : 'var(--bg-soft)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              }}>
-                              {!img && <Package size={16} color="var(--border)" />}
-                              {isLast && positions > 2 && (
-                                <span title={`Позицій у замовленні: ${positions}`}
-                                  style={{
-                                    position: 'absolute', right: '-5px', bottom: '-5px', minWidth: '15px', height: '15px',
-                                    padding: '0 3px', borderRadius: '8px', boxSizing: 'border-box',
-                                    background: 'var(--brand-blue)', color: '#fff', border: '1.5px solid var(--bg-card)',
-                                    fontSize: '9.5px', fontWeight: 800, lineHeight: '12px', textAlign: 'center',
-                                  }}>
-                                  {positions}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })}
-                        {/* Порожнє місце під другу плитку, коли позиція одна — щоб
-                            блок клієнта в усіх рядках починався з тієї самої вертикалі */}
-                        {shown.length < 2 && <div style={{ width: '44px', flexShrink: 0 }} />}
-                      </div>
-                    );
-                  })()}
+                  <ItemThumbs className="oc-hide-m" items={order.items} thumbs={productThumbs}
+                    size={44} max={2} pad style={{ marginLeft: '8px' }} />
 
                   {/* Клієнт: ПІБ із мітками замовлення, під ним телефон із кнопкою
                       копіювання, далі товар. Телефон окремим рядком, бо в парі з ПІБ
@@ -2603,12 +2614,19 @@ export default function AdminOrders({
                     </div>
 
                     {order.items[0] && (
-                      <div className="oc-item" style={{ fontSize: '11px', color: 'var(--text-muted)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
+                        {/* Мініатюри на телефоні: колонка з фото там схована (.oc-hide-m),
+                            і замовлення доводилось упізнавати з обрізаної назви. Тут під
+                            них є вільна ширина, тому плитки менші, але їх більше. */}
+                        <ItemThumbs className="oc-only-m oc-thumbs-m" items={order.items} thumbs={productThumbs}
+                          size={28} max={3} style={{ display: 'none' }} />
+                        <div className="oc-item" style={{ flex: 1, fontSize: '11px', color: 'var(--text-muted)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {order.items[0].is_bonus && <span style={{ marginRight: '4px' }}>🎁</span>}
                         {order.items[0].brand ? `${order.items[0].brand} ` : ''}{order.items[0].name}
                         <span style={{ marginLeft: '4px' }}>×{order.items[0].qty}</span>
                         {order.items.length > 1 && <span style={{ marginLeft: '4px' }}>+{order.items.length - 1}</span>}
                         {order.items.some(i => i.is_bonus) && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#15803D', fontWeight: 600, background: '#F0FDF4', padding: '0 5px', borderRadius: '4px' }}>🎁 бонус</span>}
+                        </div>
                       </div>
                     )}
                   </div>
