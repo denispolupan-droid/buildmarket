@@ -1867,10 +1867,14 @@ input, select { font-family: inherit; }
      Колонка 1 — чекбокс, колонка 2 — усе інше, тож ліві краї збігаються. */
   .order-compact-row {
     display: grid !important;
-    /* Шапка рядка — шість комірок в один рядок. Гнучка саме друга (№ + дата):
-       коли статус і сума довгі, підтискається дата — з усього рядка вона
-       найменш критична, а повне значення лишається в підказці. */
-    grid-template-columns: 16px minmax(0, 1fr) auto auto auto 14px !important;
+    /* Шапка рядка — все в один рядок, притиснуте ліворуч: № · дата · канал ·
+       статус · сума, а вільне місце збирається в порожню колонку перед шевроном.
+       Розтягнута шапка (сума біля правого краю) змушувала очі стрибати через
+       півекрана, хоча читаються ці п'ять значень підряд.
+       Стискається при тісноті друга колонка (№ + дата): у неї номер із nowrap,
+       тож підтискається дата — найменш критичне зі всього рядка, і повне
+       значення лишається в підказці. */
+    grid-template-columns: 16px minmax(0, auto) auto auto auto 1fr 14px !important;
     align-items: center !important;
     /* Щільніше по вертикалі: мініатюра товару додала рядку висоти, і картка
        розповзалася — на екран влазило менше замовлень, ніж до неї. */
@@ -1891,20 +1895,22 @@ input, select { font-family: inherit; }
      саме вона, а не дата — номери-сусіди все одно перелічені в підказці. */
   .order-compact-row .oc-numsub > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .order-compact-row .oc-chan-m { grid-column: 3; grid-row: 1; justify-self: start; align-items: center; }
-  .order-compact-row .oc-status { width: auto !important; grid-column: 4; grid-row: 1; justify-self: end; }
+  .order-compact-row .oc-status { width: auto !important; grid-column: 4; grid-row: 1; justify-self: start; }
   /* Сума без правого відступу: на десктопі він відсуває її від колонки доставки,
      на телефоні це просто 24px порожнечі в найтіснішому рядку картки. */
   .order-compact-row > span:last-of-type { grid-column: 5; grid-row: 1; text-align: right; width: auto !important; padding-right: 0 !important; }
-  .order-compact-row > svg { grid-column: 6; grid-row: 1; }
+  .order-compact-row > svg { grid-column: 7; grid-row: 1; }
   /* Клієнт, товар і два рядки доставки — кожен на власному рядку, від колонки 2
      до кінця, тобто на всю ширину праворуч від чекбокса. */
   .order-compact-row .oc-cust {
     grid-column: 2 / -1; grid-row: 2; min-width: 0;
     display: flex !important; flex-wrap: wrap; align-items: flex-end; gap: 1px 8px;
   }
-  /* ПІБ і телефон — в один рядок: телефон має свою ширину, ПІБ забирає решту.
-     Товар із мініатюрою переноситься на власний рядок (flex-basis: 100%). */
-  .order-compact-row .oc-cust > .oc-nameline { flex: 1 1 auto; min-width: 0; }
+  /* ПІБ і телефон — в один рядок і поруч, а не по краях картки: разом вони і є
+     «хто це». ПІБ бере свою ширину і підтискається багатокрапкою, якщо довгий;
+     телефон іде одразу за ним. Товар із мініатюрою переноситься на власний
+     рядок (flex-basis: 100%). */
+  .order-compact-row .oc-cust > .oc-nameline { flex: 0 1 auto; min-width: 0; }
   .order-compact-row .oc-cust > .oc-phone { flex: 0 0 auto; }
   .order-compact-row .oc-cust > .oc-itemline { flex: 1 1 100%; }
   .order-compact-row .oc-ship { display: flex !important; grid-column: 2 / -1; grid-row: 3; gap: 2px 8px; flex-wrap: wrap; }
