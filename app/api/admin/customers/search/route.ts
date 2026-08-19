@@ -14,6 +14,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  // id — точковий запит: так форма замовлення підтягує прив'язаного клієнта,
+  // коли з чернетки прийшов лише customerId (копія замовлення).
+  const id    = req.nextUrl.searchParams.get('id')?.trim() ?? '';
   const q     = req.nextUrl.searchParams.get('q')?.trim() ?? '';
   const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') ?? '10'), 100);
 
@@ -23,6 +26,15 @@ export async function GET(req: NextRequest) {
     .eq('is_active', true)
     .order('last_order_at', { ascending: false, nullsFirst: false })
     .limit(limit);
+
+  if (id) {
+    const { data } = await serviceClient
+      .from('customers')
+      .select('id, name, company, phone, email, type, price_tier, city')
+      .eq('id', id)
+      .limit(1);
+    return NextResponse.json(data ?? []);
+  }
 
   if (q.length >= 2) {
     query = query.or(

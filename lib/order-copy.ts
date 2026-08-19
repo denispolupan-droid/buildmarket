@@ -12,6 +12,8 @@ export type CopySrcItem = {
 
 export type CopyProduct = ProductPrices & {
   sku: string; name?: string | null; brand?: string | null; matched?: boolean;
+  /** Фасування («25 кг») — з нього рахується вага посилки у формі замовлення. */
+  volume?: string | null;
   /** Артикул, яким шукали: у замовленні може стояти артикул постачальника,
    *  а /api/admin/products/search-skus повертає наш sku (див. supplier_sku_map). */
   input_sku?: string | null;
@@ -20,6 +22,7 @@ export type CopyProduct = ProductPrices & {
 export type CopyLine = {
   sku: string; name: string; brand: string;
   qty: number; price: number; matched: boolean; is_bonus?: boolean;
+  volume?: string | null;
 };
 
 export type CopyResult = {
@@ -79,6 +82,7 @@ export function buildCopyLines(
       name: p.name ?? it.name,
       brand: p.brand ?? it.brand ?? '',
       qty: it.qty,
+      volume: p.volume ?? null,
       // Ціни в каталозі немає взагалі — краще лишити стару, ніж нуль у рахунку.
       price: catalogPrice > 0 ? catalogPrice : (it.is_bonus ? 0 : Number(it.price)),
       matched: true,
@@ -114,9 +118,14 @@ export function describeCopy(res: CopyResult): string | null {
 // як було в оригіналі, і не здогадувався.
 
 export function mapCopyDelivery(deliveryType: string | null | undefined): { delivery: string; kept: boolean } {
-  if (deliveryType === 'nova_poshta') return { delivery: 'nova',    kept: true };
-  if (deliveryType === 'pickup')      return { delivery: 'pickup',  kept: true };
-  if (deliveryType === 'kharkiv')     return { delivery: 'kharkiv', kept: true };
+  if (deliveryType === 'nova_poshta' || deliveryType === 'nova') return { delivery: 'nova',        kept: true };
+  if (deliveryType === 'pickup')                                 return { delivery: 'pickup',      kept: true };
+  if (deliveryType === 'kharkiv')                                return { delivery: 'kharkiv',     kept: true };
+  if (deliveryType === 'rz_delivery')                            return { delivery: 'rz_delivery', kept: true };
+  // Маркетплейсна доставка Rozetka: точки фізично ті самі, тому копію ведемо на
+  // наш договір rz_delivery, але позначаємо — накладну МП по ній не переоформити,
+  // та й точку доведеться вибрати заново (id в кабінеті МП свій).
+  if (deliveryType === 'rozetka_delivery')                       return { delivery: 'rz_delivery', kept: false };
   return { delivery: 'nova', kept: false };
 }
 

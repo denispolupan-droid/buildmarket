@@ -19,6 +19,9 @@ const NewOrderModal = dynamic(() => import('./orders/NewOrderModal'), { ssr: fal
 export interface OrderLine {
   sku: string; name: string; brand: string; qty: number; price: number; matched: boolean;
   is_bonus?: boolean;
+  /** Фасування з каталогу («25 кг», «10 л») — з нього рахується вага посилки,
+   *  без якої не можна показати точки видачі ROZETKA з їхніми лімітами. */
+  volume?: string | null;
 }
 
 export interface OrderDraft {

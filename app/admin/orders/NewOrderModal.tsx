@@ -15,6 +15,9 @@ import type { OrderDraft, OrderLine } from '../OrderDraftManager';
 // Ціна за тарифом — зі спільного модуля: цю ж формулу використовує копіювання
 // замовлення, і другої копії грошової логіки в проекті бути не повинно.
 import { PRICE_TIER_OPTIONS, priceForTier, type ProductPrices } from '../../../lib/price-tier';
+import RzDeliverySelect from '../../components/RzDeliverySelect';
+import { RZ_DELIVERY_TYPE } from '../../../lib/rz-delivery';
+import { cartWeightKg, unweighedCount } from '../../../lib/parcel-weight';
 import { showConfirm } from '../../../lib/confirm';
 
 const ProductPickerModal = dynamic(() => import('../procurement/ProductPickerModal'), { ssr: false });
@@ -48,9 +51,13 @@ const PAYMENT_OPTIONS = [
   { value: 'invoice', label: 'Безготівковий' },
 ];
 const DELIVERY_OPTIONS = [
-  { value: 'pickup',  label: 'Самовивіз' },
-  { value: 'nova',    label: 'Нова Пошта' },
-  { value: 'kharkiv', label: 'Доставка по місту' },
+  { value: 'pickup',         label: 'Самовивіз' },
+  { value: 'nova',           label: 'Нова Пошта' },
+  // Наш власний договір із rz-delivery. НЕ маркетплейсна доставка Rozetka —
+  // ту виписує кабінет МП і лише для замовлень звідти. Точки й ліміти ваги ті
+  // самі, що в чекауті сайту, тому й компонент вибору точки той самий.
+  { value: RZ_DELIVERY_TYPE, label: 'ROZETKA Доставка' },
+  { value: 'kharkiv',        label: 'Доставка по місту' },
 ];
 
 function fmt(n: number) { return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -147,12 +154,35 @@ export default function NewOrderModal({
   const customerRef = useRef<HTMLDivElement>(null);
   const customerTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  // Клієнт, прив'язаний до чернетки (копія замовлення передає лише customerId):
+  // без цього картка контрагента лишалась порожньою, хоча внизу вже світилось
+  // «Прив'язаний», і було незрозуміло, до кого саме замовлення прив'язане.
+  useEffect(() => {
+    if (!customerId || selectedCustomer) return;
+    fetch(`/api/admin/customers/search?id=${customerId}`)
+      .then(r => (r.ok ? r.json() : []))
+      .then((rows: Customer[]) => { if (rows?.[0]) setSelectedCustomer(rows[0]); })
+      .catch(() => { /* картка лишиться порожньою — поля замовлення вже заповнені */ });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerId]);
+
   // ── Customer picker modal ─────────────────────────────────────────────────
   const [showPicker,    setShowPicker]    = useState(false);
   const [pickerQuery,   setPickerQuery]   = useState('');
   const [pickerList,    setPickerList]    = useState<Customer[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
   const pickerTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // Конфіг «ROZETKA Доставки»: чи ввімкнена і яка стеля ваги в нашої точки
+  // здачі (ліміт є в обох кінців — і в точки покупця, і в нашої).
+  const [rzConfig, setRzConfig] = useState<{ enabled: boolean; maxWeightKg: number | null } | null>(null);
+  useEffect(() => {
+    fetch('/api/rz-delivery/config')
+      .then(r => r.json())
+      .then((d: { enabled?: boolean; maxWeightKg?: number | null }) =>
+        setRzConfig({ enabled: Boolean(d.enabled), maxWeightKg: d.maxWeightKg ?? null }))
+      .catch(() => setRzConfig({ enabled: false, maxWeightKg: null }));
+  }, []);
 
   // ── Order fields ──────────────────────────────────────────────────────────
   const [contact,          setContact]          = useState(initialData.contact);
@@ -382,7 +412,7 @@ export default function NewOrderModal({
     if (!res.ok) return raw.map(r => ({ sku: r.sku, name: r.name, brand: '', qty: r.qty, price: r.price, matched: false }));
 
     const data = await res.json();
-    const byInput = new Map<string, { sku: string; name: string; brand: string; price_cost: number | null; price_unit: number | null; matched: boolean }>();
+    const byInput = new Map<string, ProductPrices & { sku: string; name: string; brand: string; volume: string | null; matched: boolean }>();
     for (const p of (data.products ?? [])) byInput.set(p.input_sku, p);
 
     return raw.map(r => {
@@ -394,6 +424,7 @@ export default function NewOrderModal({
         qty:      r.qty,
         price:    r.price || (found ? priceForTier(found, priceTier) : 0),
         matched:  found?.matched ?? false,
+        volume:   found?.volume ?? null,
         is_bonus: false,
       };
     });
@@ -442,6 +473,7 @@ export default function NewOrderModal({
         name:  found.name  ?? l.name,
         brand: found.brand ?? l.brand,
         price: priceForTier(found, priceTier) || found.price_unit || found.price_cost || l.price,
+        volume: found.volume ?? l.volume ?? null,
         matched: true,
       } : l));
     } else {
@@ -507,6 +539,12 @@ export default function NewOrderModal({
   }
 
   // ── Computed ──────────────────────────────────────────────────────────────
+  // Вага — з фасування товару, як у чекауті: у точок видачі ROZETKA свій ліміт,
+  // і показувати ту, яка посилку не прийме, не можна (зірветься вже після оплати).
+  const weighable   = lines.filter(l => l.sku || l.name).map(l => ({ volume: l.volume ?? null, qty: l.qty }));
+  const weightKg    = cartWeightKg(weighable);
+  const unweighed   = unweighedCount(weighable);
+  const rzOverLimit = Boolean(rzConfig?.enabled && rzConfig.maxWeightKg != null && weightKg > rzConfig.maxWeightKg);
   const total       = lines.reduce((s, l) => s + (l.is_bonus ? 0 : l.qty * l.price), 0);
   const filledLines = lines.filter(l => l.sku || l.name).length;
   const warnCount   = lines.filter(l => l.sku && !l.matched && l.sku.length >= 3).length;
@@ -522,11 +560,15 @@ export default function NewOrderModal({
       deliveryType:         delivery,
       deliverySubtype:      delivery === 'nova' ? novaSubtype : null,
       deliveryAddress:      delivery === 'nova' && novaSubtype === 'courier' ? address
+                            : delivery === RZ_DELIVERY_TYPE ? (address || null)
                             : delivery === 'kharkiv' ? address : null,
-      deliveryCityRef:      delivery === 'nova' ? novaCityRef    : null,
-      deliveryCityName:     delivery === 'nova' ? novaCityName   : null,
+      deliveryCityRef:      delivery === 'nova' ? novaCityRef
+                            : delivery === RZ_DELIVERY_TYPE ? (novaCityRef || null) : null,
+      deliveryCityName:     delivery === 'nova' ? novaCityName
+                            : delivery === RZ_DELIVERY_TYPE ? (novaCityName || null) : null,
       deliveryWarehouseRef: delivery === 'nova' && (novaSubtype === 'warehouse' || novaSubtype === 'postomat')
-                            ? novaWarehouseRef : null,
+                            ? novaWarehouseRef
+                            : delivery === RZ_DELIVERY_TYPE ? (novaWarehouseRef || null) : null,
       paymentType:  payment,
       comment:      fullComment,
       items: validLines.map(l => ({
@@ -545,6 +587,11 @@ export default function NewOrderModal({
   async function saveOrder(): Promise<{ id: string; orderNumber: number } | null> {
     if (!contact.trim()) { setError('Вкажіть клієнта'); return null; }
     if (filledLines === 0) { setError('Додайте хоча б один товар'); return null; }
+    // Без id точки видачі накладну ROZETKA не створити, а замовлення дійде до
+    // відправки і там стане — тому не даємо зберегти напівзаповненим.
+    if (delivery === RZ_DELIVERY_TYPE && !novaWarehouseRef) {
+      setError('Виберіть точку видачі ROZETKA'); return null;
+    }
     if (createdOrderId && createdOrderNumber) return { id: createdOrderId, orderNumber: createdOrderNumber };
 
     setActionBusy(true); setSaving(true); setError('');
@@ -1124,6 +1171,35 @@ export default function NewOrderModal({
                     onAddressChange={setAddress}
                   />
                 )}
+              </div>
+            )}
+
+            {/* ROZETKA Доставка — місто й точка видачі. Ідентифікатори лягають у ті
+                самі поля, що й у НП: роль однакова, а перевізника видно по
+                delivery_type — так само зроблено в чекауті сайту. */}
+            {delivery === RZ_DELIVERY_TYPE && (
+              <div>
+                {rzConfig && !rzConfig.enabled && (
+                  <div style={{ padding: '8px 12px', marginBottom: '10px', borderRadius: '8px', background: '#FEF2F2', border: '1px solid #FCA5A5', fontSize: '12px', color: '#B91C1C' }}>
+                    «ROZETKA Доставка» вимкнена в Налаштуваннях — накладну по цьому замовленню створити не вийде.
+                  </div>
+                )}
+                {rzOverLimit && (
+                  <div style={{ padding: '8px 12px', marginBottom: '10px', borderRadius: '8px', background: '#FEF3C7', border: '1px solid #FCD34D', fontSize: '12px', color: '#92400E' }}>
+                    Вага {weightKg} кг перевищує ліміт нашої точки здачі ({rzConfig?.maxWeightKg} кг) — таку посилку не приймуть.
+                  </div>
+                )}
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                  Вага замовлення: <strong style={{ color: 'var(--text-secondary)' }}>{weightKg} кг</strong>
+                  {unweighed > 0 ? ` · ${unweighed} позиц. без фасування, вага неповна` : ''}
+                </div>
+                <RzDeliverySelect
+                  weightKg={weightKg}
+                  onCityChange={setNovaCityName}
+                  onCityIdChange={setNovaCityRef}
+                  onDepartmentChange={setAddress}
+                  onDepartmentIdChange={setNovaWarehouseRef}
+                />
               </div>
             )}
 

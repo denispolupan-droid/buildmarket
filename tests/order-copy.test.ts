@@ -112,10 +112,17 @@ describe('мапінг словників форми', () => {
     expect(mapCopyDelivery('kharkiv')).toEqual({ delivery: 'kharkiv', kept: true });
   });
 
-  it('доставка маркетплейсу в ручному замовленні неможлива — падаємо на НП і позначаємо', () => {
-    expect(mapCopyDelivery('rozetka_delivery')).toEqual({ delivery: 'nova', kept: false });
-    expect(mapCopyDelivery('rz_delivery')).toEqual({ delivery: 'nova', kept: false });
+  it('наш договір ROZETKA Доставки переноситься дослівно', () => {
+    expect(mapCopyDelivery('rz_delivery')).toEqual({ delivery: 'rz_delivery', kept: true });
+  });
+
+  it('маркетплейсна доставка Rozetka веде на наш rz_delivery, але з позначкою', () => {
+    expect(mapCopyDelivery('rozetka_delivery')).toEqual({ delivery: 'rz_delivery', kept: false });
+  });
+
+  it('невідомий тип доставки — НП із позначкою', () => {
     expect(mapCopyDelivery(null)).toEqual({ delivery: 'nova', kept: false });
+    expect(mapCopyDelivery('teleport')).toEqual({ delivery: 'nova', kept: false });
   });
 
   it('оплата: накладений, готівка і безнал — дослівно, решта → безнал із позначкою', () => {
@@ -130,5 +137,16 @@ describe('мапінг словників форми', () => {
     expect(copyComment(26081102)).toBe('Копія замовлення №26081102');
     expect(copyComment(1, ['доставка: Rozetka', null, undefined, 'оплата: картка']))
       .toBe('Копія замовлення №1 · доставка: Rozetka · оплата: картка');
+  });
+});
+
+describe('вага копії', () => {
+  it('фасування переноситься з каталогу — без нього форма не порахує вагу для ROZETKA Доставки', () => {
+    const r = buildCopyLines(
+      [{ sku: 'A', name: 'x', qty: 2, price: 10 }],
+      [{ sku: 'A', name: 'Клей', brand: 'Ceresit', matched: true, price_retail: 100, volume: '25 кг' }],
+      'retail',
+    );
+    expect(r.lines[0].volume).toBe('25 кг');
   });
 });

@@ -13,8 +13,10 @@ export async function POST(req: NextRequest) {
   const db = createServiceClient();
 
   // Step 1: пошук за нашим артикулом (прямий збіг)
+  // volume — фасування («25 кг», «10 л»): з нього рахується вага замовлення, а
+  // вага потрібна для точок видачі ROZETKA (у кожної свій ліміт).
   const { data: directProducts } = await db
-    .from('products').select('sku, name, brand').in('sku', skus);
+    .from('products').select('sku, name, brand, volume').in('sku', skus);
 
   const foundOurSkus = new Set((directProducts ?? []).map(p => p.sku));
 
@@ -37,7 +39,7 @@ export async function POST(req: NextRequest) {
   ];
 
   const { data: allProducts } = allOurSkus.length
-    ? await db.from('products').select('sku, name, brand').in('sku', allOurSkus)
+    ? await db.from('products').select('sku, name, brand, volume').in('sku', allOurSkus)
     : { data: [] };
 
   const { data: stockRows } = allOurSkus.length
@@ -65,6 +67,7 @@ export async function POST(req: NextRequest) {
       sku:             ourSku,
       name:            product?.name          ?? null,
       brand:           product?.brand         ?? null,
+      volume:          product?.volume        ?? null,
       price_cost:      stock?.price_cost      ?? null,
       price_unit:      stock?.price_unit      ?? null,
       price_retail:    stock?.price_retail    ?? null,
