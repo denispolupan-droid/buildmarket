@@ -45,6 +45,11 @@ export interface OrderDraft {
   minimized:        boolean;
   createdAt:        number;
   lastActivated:    number;
+  /** Замовлення вже збережене (друк рахунку, відправка постачальнику зберігають
+   *  його, не закриваючи вікно). Без цього згорнута й розгорнута наново чернетка
+   *  «забувала» про збереження і по «Записати» створювала ДРУГЕ замовлення. */
+  createdOrderId?:     string | null;
+  createdOrderNumber?: number | null;
 }
 
 const SESSION_KEY   = 'admin_order_drafts';

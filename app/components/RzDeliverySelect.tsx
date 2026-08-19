@@ -16,6 +16,11 @@ type Department = { id: string; label: string; schedule: string[]; limitKg: numb
 type Props = {
   weightKg: number;
   lang?: 'uk' | 'ru';
+  /** Уже вибране раніше — щоб після повторного монтування (згорнута й
+   *  розгорнута чернетка замовлення) поля не виглядали порожніми. Тільки
+   *  показ: колбеки звідси не викликаються. */
+  initialCity?: string;
+  initialDepartment?: string;
   onCityChange?: (name: string) => void;
   onCityIdChange?: (id: string) => void;
   onDepartmentChange?: (label: string) => void;
@@ -46,19 +51,19 @@ const RZ_T = {
 } as const;
 
 export default function RzDeliverySelect({
-  weightKg, lang = 'uk',
+  weightKg, lang = 'uk', initialCity = '', initialDepartment = '',
   onCityChange, onCityIdChange, onDepartmentChange, onDepartmentIdChange,
 }: Props) {
   const tr = RZ_T[lang];
 
-  const [cityQuery,   setCityQuery]   = useState('');
+  const [cityQuery,   setCityQuery]   = useState(initialCity);
   const [cities,      setCities]      = useState<City[]>([]);
   const [city,        setCity]        = useState<City | null>(null);
   const [cityOpen,    setCityOpen]    = useState(false);
   const [cityLoading, setCityLoading] = useState(false);
 
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [depQuery,    setDepQuery]    = useState('');
+  const [depQuery,    setDepQuery]    = useState(initialDepartment);
   const [depOpen,     setDepOpen]     = useState(false);
   const [depLoading,  setDepLoading]  = useState(false);
   const [depTotal,    setDepTotal]    = useState(0);

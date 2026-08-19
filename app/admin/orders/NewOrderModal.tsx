@@ -208,8 +208,8 @@ export default function NewOrderModal({
   const [priceTier, setPriceTier] = useState<string>(initialData.priceTier || 'retail');
 
   // ── Saved order state ─────────────────────────────────────────────────────
-  const [createdOrderId,     setCreatedOrderId]     = useState<string | null>(null);
-  const [createdOrderNumber, setCreatedOrderNumber] = useState<number | null>(null);
+  const [createdOrderId,     setCreatedOrderId]     = useState<string | null>(initialData.createdOrderId ?? null);
+  const [createdOrderNumber, setCreatedOrderNumber] = useState<number | null>(initialData.createdOrderNumber ?? null);
 
   // ── Action menu (split-button dropdown) ───────────────────────────────────
   const [actionMenu,  setActionMenu]  = useState(false);
@@ -282,8 +282,16 @@ export default function NewOrderModal({
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  // Reset NP fields when delivery changes
+  // Скидання полів доставки — ТІЛЬКИ коли перевізника реально змінили.
+  // Ефект відпрацьовував і на монтуванні, а вікно чернетки монтується заново
+  // після кожного згортання — введені місто, відділення й адреса обнулялись
+  // самі (і так само губились дані копії замовлення). Порівнюємо з попереднім
+  // значенням, а не «пропускаємо перший запуск»: у dev React викликає ефекти
+  // двічі, і лічильник запусків тут не працює.
+  const prevDelivery = useRef(delivery);
   useEffect(() => {
+    if (prevDelivery.current === delivery) return;
+    prevDelivery.current = delivery;
     setNovaSubtype('');
     setNovaCityRef('');
     setNovaCityName('');
@@ -297,14 +305,20 @@ export default function NewOrderModal({
       customerId, contact, phone, email, company, channelCode, priceTier,
       delivery, novaSubtype, novaCityRef, novaCityName, novaWarehouseRef,
       address, payment, comment, lines,
+      createdOrderId, createdOrderNumber,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId, contact, phone, email, company, channelCode, priceTier,
       delivery, novaSubtype, novaCityRef, novaCityName, novaWarehouseRef,
-      address, payment, comment, lines]);
+      address, payment, comment, lines, createdOrderId, createdOrderNumber]);
 
-  // Re-apply prices when priceTier changes (only for matched lines)
+  // Перепідтягування цін — ТІЛЬКИ коли тариф реально перемкнули.
+  // На монтуванні ефект затирав ручні правки: досить було згорнути й розгорнути
+  // чернетку, щоб виправлена вручну ціна повернулась до прайсової.
+  const prevTier = useRef(priceTier);
   useEffect(() => {
+    if (prevTier.current === priceTier) return;
+    prevTier.current = priceTier;
     const matchedSkus = lines.filter(l => l.matched && l.sku).map(l => l.sku);
     if (!matchedSkus.length) return;
     fetch('/api/admin/products/search-skus', {
@@ -1165,6 +1179,8 @@ export default function NewOrderModal({
                 {novaSubtype && (
                   <NovaPoshtaSelect
                     mode={novaSubtype}
+                    initialCity={novaCityName}
+                    initialAddress={novaSubtype === 'courier' ? address : ''}
                     onCityChange={setNovaCityName}
                     onCityRefChange={setNovaCityRef}
                     onWarehouseRefChange={setNovaWarehouseRef}
@@ -1195,6 +1211,8 @@ export default function NewOrderModal({
                 </div>
                 <RzDeliverySelect
                   weightKg={weightKg}
+                  initialCity={novaCityName}
+                  initialDepartment={address}
                   onCityChange={setNovaCityName}
                   onCityIdChange={setNovaCityRef}
                   onDepartmentChange={setAddress}

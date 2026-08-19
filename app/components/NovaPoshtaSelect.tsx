@@ -22,6 +22,11 @@ type Warehouse = {
 type Props = {
   mode: 'warehouse' | 'courier' | 'postomat';
   lang?: 'uk' | 'ru';
+  /** Уже вибране раніше — щоб після повторного монтування (згорнута й
+   *  розгорнута чернетка замовлення) поля не виглядали порожніми. Тільки
+   *  показ: колбеки звідси не викликаються, значення вже є у батька. */
+  initialCity?: string;
+  initialAddress?: string;
   onCityChange?: (city: string) => void;
   onWarehouseChange?: (warehouse: string) => void;
   onAddressChange?: (address: string) => void;
@@ -69,9 +74,9 @@ async function npRequest(modelName: string, calledMethod: string, methodProperti
   return data.success ? data.data : [];
 }
 
-export default function NovaPoshtaSelect({ mode, lang = 'uk', onCityChange, onWarehouseChange, onAddressChange, onCityRefChange, onWarehouseRefChange }: Props) {
+export default function NovaPoshtaSelect({ mode, lang = 'uk', initialCity = '', initialAddress = '', onCityChange, onWarehouseChange, onAddressChange, onCityRefChange, onWarehouseRefChange }: Props) {
   const tr = NP_T[lang];
-  const [cityQuery,      setCityQuery]      = useState('');
+  const [cityQuery,      setCityQuery]      = useState(initialCity);
   const [settlements,    setSettlements]    = useState<Settlement[]>([]);
   const [selectedCity,   setSelectedCity]   = useState<Settlement | null>(null);
   const [cityDropOpen,   setCityDropOpen]   = useState(false);
@@ -83,7 +88,7 @@ export default function NovaPoshtaSelect({ mode, lang = 'uk', onCityChange, onWa
   const [whDropOpen,     setWhDropOpen]     = useState(false);
   const [whLoading,      setWhLoading]      = useState(false);
 
-  const [courierAddress, setCourierAddress] = useState('');
+  const [courierAddress, setCourierAddress] = useState(initialAddress);
 
   const cityRef = useRef<HTMLDivElement>(null);
   const whRef   = useRef<HTMLDivElement>(null);
