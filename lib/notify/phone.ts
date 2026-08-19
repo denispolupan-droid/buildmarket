@@ -41,6 +41,38 @@ export function phoneLocalDigits(raw: string | null | undefined): string {
   return norm ? norm.slice(2) : String(raw ?? '');
 }
 
+/**
+ * Ввід номера в форму: те, що людина набрала → національні цифри «0XXXXXXXXX».
+ * Приймає будь-яке написання (380…, 38…, +38 (0..), просто 9 цифр) — менеджери
+ * і покупці вставляють номер із кабінету МП, з листа, з месенджера.
+ */
+export function phoneInputDigits(str: string): string {
+  const raw = String(str ?? '').replace(/\D/g, '');
+  if (raw.startsWith('380')) return raw.slice(2);
+  if (raw.startsWith('38'))  return '0' + raw.slice(2);
+  if (raw.startsWith('0'))   return raw;
+  return raw.length ? '0' + raw : '';
+}
+
+/** Ті самі цифри назад у «+38 (050) 671-79-34» — як номер читають люди. */
+export function phoneInputFormat(localDigits: string): string {
+  const d = String(localDigits ?? '').slice(0, 10);
+  if (!d) return '';
+  let r = '+38 (' + d.slice(0, Math.min(3, d.length));
+  if (d.length <= 3) return r;
+  r += ') ' + d.slice(3, Math.min(6, d.length));
+  if (d.length <= 6) return r;
+  r += '-' + d.slice(6, Math.min(8, d.length));
+  if (d.length <= 8) return r;
+  return r + '-' + d.slice(8, 10);
+}
+
+/** Номер набрано повністю (10 національних цифр)? Порожній рядок — не помилка. */
+export function isCompletePhoneInput(str: string): boolean {
+  const d = phoneInputDigits(str);
+  return d.length === 0 || d.length === 10;
+}
+
 /** Чи можемо ми взагалі щось надіслати на цей номер. */
 export function isSendablePhone(raw: string | null | undefined): boolean {
   return normalizePhone(raw) !== null;

@@ -9,6 +9,7 @@ import { WHOLESALE_MIN } from '../../lib/site';
 import { useCart } from '../../lib/cart';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { getStoredUtm, clearUtm } from '../../lib/utm';
+import { phoneInputDigits as getLocalDigits, phoneInputFormat as formatPhone } from '../../lib/notify/phone';
 import { trackBeginCheckout, trackPurchase } from '../../lib/analytics';
 import ProductImage from '../components/ProductImage';
 import NovaPoshtaSelect from '../components/NovaPoshtaSelect';
@@ -160,26 +161,6 @@ const T = {
     promoDiscount: 'Скидка по промокоду',
   },
 } as const;
-
-function getLocalDigits(str: string): string {
-  const raw = str.replace(/\D/g, '');
-  if (raw.startsWith('380')) return raw.slice(2);
-  if (raw.startsWith('38'))  return '0' + raw.slice(2);
-  if (raw.startsWith('0'))   return raw;
-  return raw.length ? '0' + raw : '';
-}
-
-function formatPhone(localDigits: string): string {
-  const d = localDigits.slice(0, 10);
-  if (!d) return '';
-  let r = '+38 (' + d.slice(0, Math.min(3, d.length));
-  if (d.length <= 3) return r;
-  r += ') ' + d.slice(3, Math.min(6, d.length));
-  if (d.length <= 6) return r;
-  r += '-' + d.slice(6, Math.min(8, d.length));
-  if (d.length <= 8) return r;
-  return r + '-' + d.slice(8, 10);
-}
 
 const inputStyle: React.CSSProperties = {
   width: '100%', height: '44px', padding: '0 14px',

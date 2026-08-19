@@ -17,6 +17,10 @@ import type { OrderDraft, OrderLine } from '../OrderDraftManager';
 import { PRICE_TIER_OPTIONS, priceForTier, type ProductPrices } from '../../../lib/price-tier';
 import RzDeliverySelect from '../../components/RzDeliverySelect';
 import { RZ_DELIVERY_TYPE } from '../../../lib/rz-delivery';
+// Маска телефону — та сама, що в кошику сайту: менеджер вставляє номер із
+// кабінету МП («380671234567»), з листа або набирає руками, а в замовленні
+// має лежати один зрозумілий формат.
+import { phoneInputDigits, phoneInputFormat, isCompletePhoneInput } from '../../../lib/notify/phone';
 import { cartWeightKg, unweighedCount } from '../../../lib/parcel-weight';
 import { showConfirm } from '../../../lib/confirm';
 
@@ -186,7 +190,7 @@ export default function NewOrderModal({
 
   // ── Order fields ──────────────────────────────────────────────────────────
   const [contact,          setContact]          = useState(initialData.contact);
-  const [phone,            setPhone]            = useState(initialData.phone);
+  const [phone,            setPhone]            = useState(phoneInputFormat(phoneInputDigits(initialData.phone)));
   const [email,            setEmail]            = useState(initialData.email);
   const [company,          setCompany]          = useState(initialData.company);
   const [channelCode,      setChannelCode]      = useState(initialData.channelCode || 'retail');
@@ -600,6 +604,9 @@ export default function NewOrderModal({
   /** Save order to DB; returns {id, orderNumber} or null on error. Idempotent. */
   async function saveOrder(): Promise<{ id: string; orderNumber: number } | null> {
     if (!contact.trim()) { setError('Вкажіть клієнта'); return null; }
+    // Недобраний номер = замовлення, до якого не додзвонишся і не надішлеш SMS
+    // про посилку. Порожнє поле лишаємо дозволеним: буває самовивіз без телефону.
+    if (!isCompletePhoneInput(phone)) { setError('Номер телефону неповний'); return null; }
     if (filledLines === 0) { setError('Додайте хоча б один товар'); return null; }
     // Без id точки видачі накладну ROZETKA не створити, а замовлення дійде до
     // відправки і там стане — тому не даємо зберегти напівзаповненим.
@@ -904,8 +911,20 @@ export default function NewOrderModal({
                 </div>
                 <div>
                   <label style={lbl}>Телефон</label>
-                  <input value={phone} onChange={e => setPhone(e.target.value)}
-                    placeholder="+380..." style={sinp} />
+                  {/* Ввід як у кошику сайту: що б не вставили (380…, +38…, самі
+                      цифри), у полі одразу «+38 (050) 671-79-34». Backspace
+                      стирає цифру, а не роздільник — інакше з маскою неможливо
+                      виправити помилку в середині номера. */}
+                  <input
+                    value={phone}
+                    onChange={e => setPhone(phoneInputFormat(phoneInputDigits(e.target.value)))}
+                    onKeyDown={e => {
+                      if (e.key !== 'Backspace') return;
+                      e.preventDefault();
+                      setPhone(phoneInputFormat(phoneInputDigits(phone).slice(0, -1)));
+                    }}
+                    placeholder="+38 (0__) ___-__-__"
+                    style={{ ...sinp, borderColor: phone && !isCompletePhoneInput(phone) ? '#FCA5A5' : undefined }} />
                 </div>
                 <div>
                   <label style={lbl}>Компанія</label>
