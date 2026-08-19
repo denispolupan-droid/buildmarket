@@ -1,5 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
+import { after, NextResponse, type NextRequest } from 'next/server';
+import { detectAiBot, detectAiReferral } from './lib/ai-crawlers';
+import { recordAiBotHit, recordAiReferral } from './lib/ai-visits';
 
 // ── Simple in-process rate limiter (resets per cold-start, but enough for basic abuse protection) ──
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -57,8 +59,47 @@ async function legacyProductRedirect(request: NextRequest): Promise<NextResponse
   }
 }
 
+/**
+ * Облік ШІ-трафіку: краулери ChatGPT/Gemini/Perplexity і переходи людей з їхніх
+ * відповідей.
+ *
+ * Чому саме тут. Краулер не виконує JS — жодна клієнтська аналітика його не
+ * бачить, тому єдине місце, де ці візити взагалі існують, — межа запиту.
+ * Запис іде в after(): відповідь користувачу вже пішла, і повільна база не
+ * додає ані мілісекунди до TTFB.
+ */
+function trackAiTraffic(request: NextRequest, pathname: string): void {
+  // Увесь облік — під try/catch, і це не перестраховка. Функція стоїть на
+  // ВХОДІ в proxy, тобто на кожному запиті сайту: виняток тут поклав би не
+  // статистику, а весь сайт разом із головною і товарами. Лічильник відвідувань
+  // такого права не має — при будь-якій несподіванці він мовчки зникає.
+  try {
+    // API і службові шляхи в статистиці лише шум: питання «що читає ШІ» — про
+    // сторінки, а не про внутрішні виклики нашого ж фронтенду.
+    if (pathname.startsWith('/api/') || pathname.startsWith('/_next/')) return;
+
+    const bot = detectAiBot(request.headers.get('user-agent'));
+    if (bot) {
+      after(() => recordAiBotHit(bot, pathname));
+      return;
+    }
+
+    // Живий перехід рахуємо лише коли бота НЕ впізнали: інакше один візит
+    // ChatGPT-User потрапив би в обидва звіти й покази змішалися б з кліками.
+    const source = detectAiReferral(
+      request.headers.get('referer'),
+      request.nextUrl.searchParams.get('utm_source'),
+    );
+    if (source) after(() => recordAiReferral(source, pathname));
+  } catch {
+    // навмисно порожньо — див. коментар вище
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  trackAiTraffic(request, pathname);
 
   const legacyRedirect = await legacyProductRedirect(request);
   if (legacyRedirect) return legacyRedirect;

@@ -14,6 +14,7 @@ const TABS: { href: string; label: string; exact?: boolean; hint: string }[] = [
   { href: '/admin/seo/snippets',   label: 'Сніпети',   hint: 'Втрати CTR і фактичні title/description зі сторінок' },
   { href: '/admin/seo/products',   label: 'Товари',    hint: 'Черга товарів з пробілами контенту' },
   { href: '/admin/seo/categories', label: 'Категорії', hint: 'Текст категорії проти фактичного асортименту' },
+  { href: '/admin/seo/ai',         label: 'ШІ',        hint: 'Візити ШІ-краулерів і переходи з ChatGPT, Perplexity, Gemini' },
   { href: '/admin/seo/log',        label: 'Журнал',    hint: 'Що робили зі сторінками і що це дало' },
   { href: '/admin/seo/guide',      label: 'Довідник',  hint: 'Тижневий цикл, таблиця рішень і довідка по всіх вкладках' },
 ];

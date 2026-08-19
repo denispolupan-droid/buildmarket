@@ -103,6 +103,21 @@ const nextConfig: NextConfig = {
         source: '/img/products/:path*',
         destination: `${R2_PUBLIC_URL}/:path*`,
       },
+
+      // Markdown-версії сторінок для мовних моделей: /product/x.md і /shop/y.md.
+      // Роутом їх не зробити — сегмент із крапкою App Router трактує як частину
+      // імені файлу-конвенції, тому адресу з розширенням розбираємо тут, а
+      // віддає її звичайний Route Handler під /api/md/*.
+      // Розширення саме `.md`: моделі й агенти пробують його першим (llms.txt,
+      // практика Vercel і Stripe), і це не вигадана нами домовленість.
+      {
+        source: '/product/:slug([^/]+)\\.md',
+        destination: '/api/md/product/:slug',
+      },
+      {
+        source: '/shop/:category([^/]+)\\.md',
+        destination: '/api/md/shop/:category',
+      },
     ];
   },
   async headers() {
