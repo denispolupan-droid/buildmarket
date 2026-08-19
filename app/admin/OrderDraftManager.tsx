@@ -116,12 +116,14 @@ export default function OrderDraftManager() {
     window.dispatchEvent(new CustomEvent('order-drafts-changed', { detail: { count: drafts.length } }));
   }, [drafts, mounted]);
 
-  // Open new order draft via event
+  // Open new order draft via event.
+  // detail (необов'язковий) — заготовка полів: так відкривається копія
+  // існуючого замовлення (див. AdminOrders → «Копіювати замовлення»).
   useEffect(() => {
-    function handler() {
+    function handler(e: Event) {
+      const preset = (e as CustomEvent<Partial<OrderDraft> | undefined>).detail;
       const now = Date.now();
       const draft: OrderDraft = {
-        id:               `order_${now}`,
         customerId:       null,
         contact:          '',
         phone:            '',
@@ -138,9 +140,12 @@ export default function OrderDraftManager() {
         payment:          'cash',
         comment:          '',
         lines:            [{ sku: '', name: '', brand: '', qty: 1, price: 0, matched: false }],
-        minimized:        false,
-        createdAt:        now,
-        lastActivated:    now,
+        ...(preset ?? {}),
+        // id і час — завжди наші: інакше копія перезаписала б чернетку-джерело
+        id:            `order_${now}`,
+        minimized:     false,
+        createdAt:     now,
+        lastActivated: now,
       };
       setDrafts(prev => [...prev, draft]);
     }

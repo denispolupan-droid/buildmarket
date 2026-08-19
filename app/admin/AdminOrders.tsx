@@ -23,6 +23,7 @@ type FulfillmentData = OrderFulfillmentInfo & {
 };
 import CreateTTNModal from '../components/admin/CreateTTNModal';
 import { phoneLocal, phoneLocalDigits } from '../../lib/notify/phone';
+import { buildCopyLines, describeCopy, mapCopyDelivery, mapCopyPayment, copyComment, type CopyProduct } from '../../lib/order-copy';
 import { storageDaysLeft, returnTrackingLabel, type ReturnTracking } from '../../lib/np-return-tracking';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { showConfirm } from '../../lib/confirm';
@@ -976,6 +977,74 @@ export default function AdminOrders({
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedId]);
+
+  /**
+   * Копія замовлення: відкриваємо нову чернетку з тим самим клієнтом, доставкою
+   * і складом, але цінами з каталогу на СЬОГОДНІ — суму рахуємо з БД, а не
+   * переносимо збережену (див. lib/order-copy). Що не копіюється: номери й дані
+   * кабінету маркетплейсу, ТТН, оплати, документи, промокод — усе це належить
+   * конкретному замовленню, а не його змісту. Канал копії — «Роздріб»: назад у
+   * кабінет Prom/Rozetka замовлення не заведеш.
+   */
+  const [copying, setCopying] = useState<string | null>(null);
+  const copyOrder = useCallback(async (order: Order) => {
+    setCopying(order.id);
+    try {
+      const items = (order.items ?? []) as OrderItem[];
+      const skus = items.map(i => i.sku).filter(Boolean);
+      let products: CopyProduct[] = [];
+      if (skus.length) {
+        const res = await fetch('/api/admin/products/search-skus', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ skus }),
+        });
+        if (res.ok) products = (await res.json()).products ?? [];
+      }
+      const tier = order.price_type || 'retail';
+      const copy = buildCopyLines(items, products, tier);
+      // Форма ручного замовлення знає лише свої словники доставки й оплати;
+      // те, що в них не лягає (доставка Rozetka, картка, передоплата), дописуємо
+      // в коментар, щоб менеджер бачив, як було в оригіналі.
+      const dlv = mapCopyDelivery(order.delivery_type);
+      const pay = mapCopyPayment(order.payment_type);
+      const place = [order.delivery_city_name, order.delivery_address].filter(Boolean).join(' · ');
+
+      window.dispatchEvent(new CustomEvent('open-order-draft', {
+        detail: {
+          customerId:       order.customer_id,
+          contact:          order.contact,
+          phone:            order.phone,
+          email:            order.email ?? '',
+          company:          order.company ?? '',
+          channelCode:      'retail',
+          priceTier:        tier,
+          delivery:         dlv.delivery,
+          novaSubtype:      dlv.kept ? (order.delivery_subtype ?? '') : '',
+          novaCityRef:      dlv.kept ? (order.delivery_city_ref ?? '') : '',
+          novaCityName:     dlv.kept ? (order.delivery_city_name ?? '') : '',
+          novaWarehouseRef: dlv.kept ? (order.delivery_warehouse_ref ?? '') : '',
+          address:          dlv.kept ? (order.delivery_address ?? '') : '',
+          payment:          pay.payment,
+          comment: copyComment(order.order_number, [
+            dlv.kept ? null : `доставка в оригіналі: ${DELIVERY_LABEL[order.delivery_type] ?? order.delivery_type}${place ? `, ${place}` : ''}`,
+            pay.kept ? null : `оплата в оригіналі: ${PAYMENT_LABEL[order.payment_type] ?? order.payment_type}`,
+          ]),
+          lines:            copy.lines.length ? copy.lines : undefined,
+        },
+      }));
+
+      const note = describeCopy(copy);
+      showToast(
+        note ? `Копія №${order.order_number}: ${note}` : `Копія замовлення №${order.order_number}`,
+        copy.missing.length ? 'warning' : 'success',
+        copy.missing.length ? 6000 : 3500,
+      );
+    } catch {
+      showToast('Не вдалося скопіювати замовлення', 'error');
+    } finally {
+      setCopying(null);
+    }
+  }, []);
 
   // Мініатюри фото і слаги товарів — підвантажуємо з products по SKU при розкритті
   useEffect(() => {
@@ -2361,11 +2430,10 @@ export default function AdminOrders({
             const delivery = DELIVERY_LABEL[order.delivery_type] ?? order.delivery_type;
             const subtype = order.delivery_subtype === 'courier' ? ' — кур\'єр' : order.delivery_subtype === 'warehouse' ? ' — відділення' : '';
             const isCod = order.payment_type === 'cod';
-            const mpNumber = order.channel_code === 'prom'
-              ? (order.prom_data as { id?: number | string } | null)?.id
-              : order.channel_code === 'rozetka'
-                ? (order.rozetka_data as { id?: number | string } | null)?.id
-                : null;
+            // Номер у кабінеті МП беремо з власних колонок, а не з JSON-знімка:
+            // prom_order_id / rozetka_order_id — це те, за чим замовлення шукає
+            // синк, і другої правди з prom_data.id тут заводити не треба.
+            const mpNumber = order.prom_order_id ?? order.rozetka_order_id ?? null;
             const paymentConfirmed = order.payment_confirmed ?? false;
             const noCallback = order.comment?.includes('Не передзвонювати') ?? false;
             const callbackDone = order.callback_done ?? false;
@@ -4399,6 +4467,18 @@ export default function AdminOrders({
                             const btnMuted   = { ...btn, border: '1px solid var(--border-light)', padding: '6px 10px', fontWeight: 500, color: 'var(--text-secondary)' };
                             return (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
+                                {/* Копія замовлення — повтор того самого складу для того самого
+                                    клієнта (постійні клієнти замовляють однакове, а частину
+                                    скасованих замовлень МП доводиться заводити наново вручну).
+                                    Ціни підставляються поточні, тому кнопка не «дублює рахунок»,
+                                    а готує нову чернетку, яку ще можна виправити перед збереженням. */}
+                                <button
+                                  onClick={() => copyOrder(order)}
+                                  disabled={copying === order.id}
+                                  title="Створити нове замовлення з тим самим клієнтом, доставкою і складом. Ціни підставляться поточні; ТТН, оплати й дані кабінету МП не копіюються."
+                                  style={{ ...btn, opacity: copying === order.id ? 0.6 : 1 }}>
+                                  <Copy size={13} /> {copying === order.id ? 'Копіювання...' : 'Копіювати замовлення'}
+                                </button>
                                 {/* Primary CTA for new orders — confirm + optional send-to-supplier */}
                                 {/* «Підтвердити» → блок способу виконання; «Надіслати постачальнику» → під ТТН */}
                                 {(order.status === 'confirmed' || order.status === 'awaiting_stock' || order.status === 'picking') && (() => {

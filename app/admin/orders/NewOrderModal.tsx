@@ -12,6 +12,9 @@ import * as XLSX from 'xlsx';
 import dynamic from 'next/dynamic';
 import NovaPoshtaSelect from '../../components/NovaPoshtaSelect';
 import type { OrderDraft, OrderLine } from '../OrderDraftManager';
+// Ціна за тарифом — зі спільного модуля: цю ж формулу використовує копіювання
+// замовлення, і другої копії грошової логіки в проекті бути не повинно.
+import { PRICE_TIER_OPTIONS, priceForTier, type ProductPrices } from '../../../lib/price-tier';
 import { showConfirm } from '../../../lib/confirm';
 
 const ProductPickerModal = dynamic(() => import('../procurement/ProductPickerModal'), { ssr: false });
@@ -110,31 +113,6 @@ function parseExcel(buffer: ArrayBuffer): { sku: string; name: string; qty: numb
     result.push({ sku, name, qty: isNaN(qty) || qty <= 0 ? 1 : qty, price: isNaN(price) ? 0 : price });
   }
   return result;
-}
-
-// ── Price tier helpers ────────────────────────────────────────────────────────
-const PRICE_TIER_OPTIONS = [
-  { value: 'retail',    label: 'Роздріб' },
-  { value: 'wholesale', label: 'Оптова'  },
-  { value: 'drop',      label: 'Дроп'    },
-  { value: 'cost',      label: 'Закуп'   },
-];
-
-type ProductPrices = {
-  price_retail?:    number | null;
-  price_wholesale?: number | null;
-  price_drop?:      number | null;
-  price_cost?:      number | null;
-  price_unit?:      number | null;
-};
-
-function priceForTier(p: ProductPrices, tier: string): number {
-  const v = tier === 'retail'    ? (p.price_retail    ?? p.price_unit)
-          : tier === 'wholesale' ? (p.price_wholesale ?? p.price_unit)
-          : tier === 'drop'      ? (p.price_drop      ?? p.price_unit)
-          : tier === 'cost'      ? p.price_cost
-          : p.price_unit;
-  return Number(v ?? 0);
 }
 
 // ── Customer type ─────────────────────────────────────────────────────────────
