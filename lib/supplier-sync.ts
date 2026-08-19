@@ -6,6 +6,7 @@
  */
 
 import { XMLParser } from 'fast-xml-parser';
+import { priceFromMarkup, retailNotBelowWholesale, roundRetail, roundHalf } from './price-formula';
 import { fetchAllRows } from './db-paginate';
 import { assertPublicUrl } from './safe-fetch-url';
 import * as XLSX from 'xlsx';
@@ -430,32 +431,31 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
     // keep_price: знижка зменшує собівартість, але ціна продажу рахується від оригіналу
     const priceBase = brandSettings?.keep_price ? row.price_in : priceCost;
 
-    // Рахуємо базові ціни: товар > бренд > постачальник
-    const roundFloor = (v: number) => Math.floor(v);
-    const roundHalf  = (v: number) => Math.round(v * 2) / 2;
-
+    // Рахуємо базові ціни: товар > бренд > постачальник.
+    // Формула й округлення — з lib/price-formula: ту саму лічилку використовує
+    // ручна переоцінка в розділі «Ціни», і другої копії тут бути не повинно.
     const override = productOverrideMap[ourSku];
 
     // Базові ціни (фіксована ціна — найвищий пріоритет)
     const baseRetail = override?.fixed_retail
-      ?? roundFloor(priceBase * (1 + getMarkup(brand, ourSku, 'markup_retail', supplier.markup_retail) / 100));
+      ?? priceFromMarkup(priceBase, getMarkup(brand, ourSku, 'markup_retail', supplier.markup_retail), 'retail');
     const baseUnit   = override?.fixed_wholesale
-      ?? roundHalf(priceBase * (1 + getMarkup(brand, ourSku, 'markup_wholesale', supplier.markup_wholesale) / 100));
+      ?? priceFromMarkup(priceBase, getMarkup(brand, ourSku, 'markup_wholesale', supplier.markup_wholesale), 'wholesale');
     const baseDrop   = override?.fixed_drop
-      ?? roundHalf(priceBase * (1 + getMarkup(brand, ourSku, 'markup_drop', supplier.markup_drop) / 100));
+      ?? priceFromMarkup(priceBase, getMarkup(brand, ourSku, 'markup_drop', supplier.markup_drop), 'drop');
 
     // Акційні ціни
     const promo = !override?.fixed_retail && !override?.fixed_wholesale && !override?.fixed_drop
       ? findPromo(ourSku, brand)
       : null; // якщо є фіксована ціна — акція не застосовується
 
-    let priceRetail = Math.max(baseRetail, baseUnit), priceRetailOld: number | null = null;
+    let priceRetail = retailNotBelowWholesale(baseRetail, baseUnit), priceRetailOld: number | null = null;
     let priceUnit   = baseUnit,                       priceOld: number | null = null;
     let priceDrop   = baseDrop;
 
     if (promo) {
       if (promo.apply_retail) {
-        [priceRetail, priceRetailOld] = applyPromo(priceRetail, promo, roundFloor);
+        [priceRetail, priceRetailOld] = applyPromo(priceRetail, promo, roundRetail);
       }
       if (promo.apply_wholesale) {
         [priceUnit, priceOld] = applyPromo(baseUnit, promo, roundHalf);

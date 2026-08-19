@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
+import { saveProductMarkups, type ProductMarkup } from '../../../../../lib/price-overrides';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +16,13 @@ async function checkAdmin() {
 }
 
 // Single SKU edit: { skus: [sku], price_unit, price_retail, price_drop, price_cost, price_locked }
-// Batch repricing:  { batch: [{ sku, unit, retail, drop }] }
+// Batch repricing:  { batch: [{ sku, unit, retail, drop }], overrides?: [...] }
+//
+// overrides — наценка (або фіксована ціна) на товар у supplier_product_overrides.
+// Без неї переоцінка жила до найближчого синку постачальника: синк рахує ціни
+// від прайса за наценкою постачальника й перезаписує product_stock. Тепер
+// переоцінка змінює саме наценку, і синк відтворює ту саму ціну від нової
+// собівартості (пріоритет у синку: товар > бренд > постачальник).
 export async function PATCH(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -75,8 +82,19 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (errors.length > 0) return NextResponse.json({ error: errors.join('; ') }, { status: 500 });
+
+    // Наценки — після цін: ціна вже правильна на вітрині, а наценка потрібна,
+    // щоб вона такою й лишилась після синку. Помилку тут не ховаємо: без
+    // наценки переоцінка знову проживе до наступного синку.
+    let overridesSaved = 0;
+    if (Array.isArray(body.overrides) && body.overrides.length) {
+      const errs = await saveProductMarkups(db, body.overrides as ProductMarkup[]);
+      if (errs.length) return NextResponse.json({ error: 'Ціни оновлено, але наценки не збереглись: ' + errs.join('; ') }, { status: 500 });
+      overridesSaved = (body.overrides as ProductMarkup[]).length;
+    }
+
     revalidateTag('products', 'max');
-    return NextResponse.json({ ok: true, updated: batch.length });
+    return NextResponse.json({ ok: true, updated: batch.length, overrides: overridesSaved });
   }
 
   return NextResponse.json({ error: 'Invalid body' }, { status: 400 });

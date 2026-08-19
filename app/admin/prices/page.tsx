@@ -19,7 +19,7 @@ export default async function PricesPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) redirect('/');
 
-  const [{ data: stock }, { data: categories }, { data: activePromos }, smartTariff, { data: promPlanRow }] = await Promise.all([
+  const [{ data: stock }, { data: categories }, { data: activePromos }, smartTariff, { data: promPlanRow }, { data: overrides }] = await Promise.all([
     db.from('product_stock')
       .select('sku, price_cost, price_unit, price_retail, price_drop, price_promo, price_wholesale, price_locked, stock_status, stock_qty, updated_at'),
     db.from('categories')
@@ -31,6 +31,10 @@ export default async function PricesPage() {
       .neq('status', 'cancelled'),
     getSmartTariff(),
     db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
+    // Персональні наценки товарів — те, чим переоцінка тепер переживає синк
+    // постачальника. Показуємо їх у таблиці, щоб ціна не виглядала магією.
+    db.from('supplier_product_overrides')
+      .select('our_sku, markup_retail, markup_wholesale, markup_drop, fixed_retail, fixed_wholesale, fixed_drop'),
   ]);
   const promPlan = ((promPlanRow?.value as string | undefined) ?? 'single') as 'single' | 'econom';
 
@@ -81,6 +85,7 @@ export default async function PricesPage() {
       stock={stock ?? []}
       categories={sortedCats}
       promoMap={promoMap}
+      markups={overrides ?? []}
       smartTariff={smartTariff}
       promPlan={promPlan}
     />

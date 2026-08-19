@@ -3,6 +3,18 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Pencil, Check, X, Lock, Unlock, FileSpreadsheet, Printer, ChevronDown, ChevronUp, RotateCcw, Tag } from 'lucide-react';
+// Округлення й наценка — спільні з синком постачальника (lib/price-formula):
+// прев'ю має показувати рівно ту цифру, яку синк потім відтворить із наценки.
+import { roundFor, markupFromPrice } from '../../../lib/price-formula';
+type ProductMarkupRow = {
+  our_sku: string;
+  markup_retail: number | null;
+  markup_wholesale: number | null;
+  markup_drop: number | null;
+  fixed_retail: number | null;
+  fixed_wholesale: number | null;
+  fixed_drop: number | null;
+};
 import { showToast } from '../../../lib/toast';
 import PricesLog from './PricesLog';
 import { promPrice as libPromPrice, promMargin, promCommissionOf, rozetkaPrice as libRozetkaPrice, rozetkaMargin, siteMargin, type PromPlan } from '../../../lib/marketplace-pricing';
@@ -54,6 +66,9 @@ interface Props {
   stock:       Stock[];
   categories:  Category[];
   promoMap:    Record<string, string | null>; // sku → revert_at (null = indefinite)
+  /** Персональні наценки товарів (supplier_product_overrides): саме ними
+   *  переоцінка переживає синк постачальника. */
+  markups:     ProductMarkupRow[];
   smartTariff: SmartBracket[];                // «Умови Smart» Rozetka (для ціни фіда)
   promPlan:    PromPlan;                      // активний план Prom (визначає колонку комісії)
 }
@@ -103,7 +118,25 @@ function marginColor(pct: number) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function PricesClient({ products, stock, categories, promoMap, smartTariff, promPlan }: Props) {
+export default function PricesClient({ products, stock, categories, promoMap, markups, smartTariff, promPlan }: Props) {
+  // sku → наценка/фікс-ціна. Локальний стан, бо після переоцінки й скидання
+  // мітка має змінитись одразу, без перезавантаження сторінки.
+  const [markupMap, setMarkupMap] = useState<Map<string, ProductMarkupRow>>(
+    () => new Map(markups.map(m => [m.our_sku, m])),
+  );
+  const [markupBusy, setMarkupBusy] = useState<string | null>(null);
+
+  async function resetMarkup(sku: string) {
+    setMarkupBusy(sku);
+    try {
+      const res = await fetch('/api/admin/prices/markup?sku=' + encodeURIComponent(sku), { method: 'DELETE' });
+      if (!res.ok) throw new Error(await res.text());
+      setMarkupMap(prev => { const next = new Map(prev); next.delete(sku); return next; });
+      showToast('Наценку знято — ціну рахуватиме наценка постачальника', 'success');
+    } catch {
+      showToast('Не вдалося зняти наценку', 'error');
+    } finally { setMarkupBusy(null); }
+  }
   const stockMap = useMemo(() => new Map(stock.map(s => [s.sku, s])), [stock]);
   const catMap   = useMemo(() => new Map(categories.map(c => [c.slug, c])), [categories]);
 
@@ -349,17 +382,20 @@ export default function PricesClient({ products, stock, categories, promoMap, sm
     const val = parseFloat(repricingValue);
     if (isNaN(val)) return { unit, retail, drop };
 
-    function calc(base: number | null): number | null {
-      if (repricingType === 'multiply_cost') return cost != null ? Math.round(cost * val) : base;
-      if (repricingType === 'increase_pct')  return base != null ? Math.round(base * (1 + val / 100)) : base;
-      if (repricingType === 'fixed')         return Math.round(val);
+    // Округлюємо так само, як синк постачальника: роздріб — вниз до цілого,
+    // опт і дроп — до 0.5. Інакше після першого ж синку ціна «поповзе» на
+    // гривню від тієї, що менеджер бачив у прев'ю.
+    function calc(base: number | null, kind: 'retail' | 'wholesale' | 'drop'): number | null {
+      if (repricingType === 'multiply_cost') return cost != null ? roundFor(kind, cost * val) : base;
+      if (repricingType === 'increase_pct')  return base != null ? roundFor(kind, base * (1 + val / 100)) : base;
+      if (repricingType === 'fixed')         return val;
       return base;
     }
 
     return {
-      unit:   repricingTarget === 'unit'   || repricingTarget === 'all' ? calc(unit)   : unit,
-      retail: repricingTarget === 'retail' || repricingTarget === 'all' ? calc(retail) : retail,
-      drop:   repricingTarget === 'drop'   || repricingTarget === 'all' ? calc(drop)   : drop,
+      unit:   repricingTarget === 'unit'   || repricingTarget === 'all' ? calc(unit,   'wholesale') : unit,
+      retail: repricingTarget === 'retail' || repricingTarget === 'all' ? calc(retail, 'retail')    : retail,
+      drop:   repricingTarget === 'drop'   || repricingTarget === 'all' ? calc(drop,   'drop')      : drop,
     };
   }, [repricingType, repricingValue, repricingTarget]);
 
@@ -413,12 +449,40 @@ export default function PricesClient({ products, stock, categories, promoMap, sm
       const today = new Date().toISOString().split('T')[0];
       const isFuture = repricingEffectiveFrom && repricingEffectiveFrom > today;
 
+      // Наценка на товар — щоб переоцінка пережила синк постачальника. Синк
+      // рахує ціни від прайса за наценкою (товар > бренд > постачальник), тож
+      // зберігаємо саме наценку, а не тільки готову ціну. «Фіксована ціна» лягає
+      // у fixed_*, вона в синку перекриває будь-яку наценку. Акційний режим
+      // наценок не чіпає: акція живе в price_promo і синк її не перезаписує.
+      const overrides = repricingIsPromo ? [] : selectedRows.flatMap(r => {
+        const after = applyFormula(r.cost, r.unit, r.retail, r.drop);
+        const wants = (t: string) => repricingTarget === t || repricingTarget === 'all';
+        const o: Record<string, unknown> = { sku: r.p.sku };
+        let has = false;
+
+        if (repricingType === 'fixed') {
+          if (wants('retail')) { o.fixed_retail    = after.retail; has = true; }
+          if (wants('unit'))   { o.fixed_wholesale = after.unit;   has = true; }
+          if (wants('drop'))   { o.fixed_drop      = after.drop;   has = true; }
+        } else {
+          // Наценка рахується від собівартості — без неї відсоток нема від чого
+          // рахувати, і такий товар лишається з прямо записаною ціною.
+          const mr = wants('retail') ? markupFromPrice(r.cost, after.retail) : null;
+          const mu = wants('unit')   ? markupFromPrice(r.cost, after.unit)   : null;
+          const md = wants('drop')   ? markupFromPrice(r.cost, after.drop)   : null;
+          if (mr != null) { o.markup_retail = mr; o.fixed_retail = null; has = true; }
+          if (mu != null) { o.markup_wholesale = mu; o.fixed_wholesale = null; has = true; }
+          if (md != null) { o.markup_drop = md; o.fixed_drop = null; has = true; }
+        }
+        return has ? [o] : [];
+      });
+
       if (!isFuture) {
         // Apply prices immediately
         const res = await fetch('/api/admin/prices/bulk', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ batch: updates, is_promo: repricingIsPromo }),
+          body: JSON.stringify({ batch: updates, is_promo: repricingIsPromo, overrides }),
         });
         if (!res.ok) throw new Error(await res.text());
         setOverrides(prev => {
@@ -463,10 +527,14 @@ export default function PricesClient({ products, stock, categories, promoMap, sm
         }),
       }).catch(() => {});
 
+      const noMarkup = repricingIsPromo || isFuture ? 0 : updates.length - overrides.length;
       cancelRepricing();
       showToast(isFuture
         ? `Заплановано переоцінку ${updates.length} товарів з ${new Date(repricingEffectiveFrom).toLocaleDateString('uk-UA')}`
-        : `Переоцінено ${updates.length} товарів`, 'success');
+        : noMarkup > 0
+          ? `Переоцінено ${updates.length} товарів · у ${noMarkup} немає собівартості, там ціна протримається до синку постачальника`
+          : `Переоцінено ${updates.length} товарів — наценку збережено, синк її не зіб'є`,
+        noMarkup > 0 ? 'warning' : 'success', noMarkup > 0 ? 6000 : 3500);
     } catch {
       showToast('Помилка переоцінки', 'error');
     } finally {
@@ -1292,6 +1360,33 @@ async function sendEmail(){
                                     +{Math.round(r.retailMrg.uah)} ₴ · {r.retailMrg.pct.toFixed(0)}%
                                   </div>
                                 )}
+                                {/* Персональна наценка/фікс-ціна: саме вона тримає ціну
+                                    після синку постачальника. Без мітки ціна виглядала б
+                                    магією — незрозуміло, чому в цього товару не така
+                                    наценка, як у решти. */}
+                                {(() => {
+                                  const m = markupMap.get(r.p.sku);
+                                  if (!m) return null;
+                                  const label = m.fixed_retail != null
+                                    ? `фікс ${m.fixed_retail} ₴`
+                                    : m.markup_retail != null ? `наценка ${m.markup_retail}%` : null;
+                                  if (!label) return null;
+                                  return (
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                      <span title="Ціна цього товару рахується за власною наценкою, а не за наценкою постачальника"
+                                        style={{ fontSize: 9.5, fontWeight: 700, padding: '0 5px', borderRadius: 5, color: '#3730A3', background: '#EEF2FF', border: '1px solid #C7D2FE', whiteSpace: 'nowrap' }}>
+                                        {label}
+                                      </span>
+                                      <button
+                                        onClick={e => { e.stopPropagation(); resetMarkup(r.p.sku); }}
+                                        disabled={markupBusy === r.p.sku}
+                                        title="Зняти власну наценку — ціну рахуватиме наценка постачальника"
+                                        style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: '#9CA3AF', display: 'inline-flex' }}>
+                                        <X size={11} />
+                                      </button>
+                                    </div>
+                                  );
+                                })()}
                               </td>
                               <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }}>{fmt(r.drop)}</td>
                               <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }} title="Ціна фіда Prom (редагується в розділі «Ціни Prom»)">

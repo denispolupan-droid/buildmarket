@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
+import { markupFromPrice } from '../../../../lib/price-formula';
+import { saveProductMarkups, type ProductMarkup } from '../../../../lib/price-overrides';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -54,6 +56,33 @@ export async function GET(req: NextRequest) {
         const { error } = await db.from('product_stock').update(update).eq('sku', row.sku);
         if (error) errors.push(`${row.sku}: ${error.message}`);
       }));
+    }
+
+    // Наценка — щоб відкладена переоцінка теж пережила синк постачальника
+    // (без неї заплановане підвищення живе до найближчого синку прайса).
+    if (!isPromo) {
+      const skus = snapshot.map(r => r.sku);
+      const costs = new Map<string, number>();
+      for (let i = 0; i < skus.length; i += 300) {
+        const { data } = await db.from('product_stock').select('sku, price_cost').in('sku', skus.slice(i, i + 300));
+        for (const r of data ?? []) if (r.price_cost != null) costs.set(r.sku, Number(r.price_cost));
+      }
+      const markups: ProductMarkup[] = [];
+      for (const row of snapshot) {
+        const cost = costs.get(row.sku);
+        const mr = markupFromPrice(cost, row.after.retail);
+        const mu = markupFromPrice(cost, row.after.unit);
+        const md = markupFromPrice(cost, row.after.drop);
+        if (mr == null && mu == null && md == null) continue;
+        markups.push({
+          sku: row.sku,
+          ...(mr != null && { markup_retail: mr, fixed_retail: null }),
+          ...(mu != null && { markup_wholesale: mu, fixed_wholesale: null }),
+          ...(md != null && { markup_drop: md, fixed_drop: null }),
+        });
+      }
+      const errs = await saveProductMarkups(db, markups);
+      errors.push(...errs);
     }
 
     appliedIds.push(entry.id);
