@@ -2275,6 +2275,40 @@ export default function AdminOrders({
         </div>
       )}
 
+      {/* «Вибрати всі» на телефоні: шапка таблиці там схована (.oc-hide-m), а
+          разом з нею і чекбокс вибору — групові дії (друк етикеток, реєстр НП,
+          об'єднання) з телефона були недоступні взагалі. */}
+      {filtered.length > 0 && (() => {
+        const allIds = filtered.map(o => o.id);
+        const allSelected = allIds.every(id => selectedIds.has(id));
+        const picked = allIds.filter(id => selectedIds.has(id)).length;
+        return (
+          <button
+            className="oc-only-m oc-selectall-m"
+            onClick={() => setSelectedIds(allSelected ? new Set() : new Set(allIds))}
+            style={{
+              display: 'none', alignItems: 'center', gap: '8px', width: '100%',
+              marginBottom: '8px', padding: '9px 12px', borderRadius: '10px',
+              border: `1.5px solid ${picked > 0 ? 'var(--brand-teal)' : 'var(--border)'}`,
+              background: picked > 0 ? 'var(--brand-teal-light)' : 'var(--bg-card)',
+              color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+            }}>
+            <span style={{
+              width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
+              border: `2px solid ${allSelected ? '#3DBFB8' : 'var(--border)'}`,
+              background: allSelected ? '#3DBFB8' : 'var(--bg-card)',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {allSelected && <Check size={9} color="#fff" strokeWidth={3} />}
+            </span>
+            {allSelected ? 'Зняти вибір' : 'Вибрати всі'}
+            <span style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)' }}>
+              {picked > 0 ? `вибрано ${picked} з ${filtered.length}` : `${filtered.length} у списку`}
+            </span>
+          </button>
+        );
+      })()}
+
       {filtered.length === 0 ? (
         <div style={{
           background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px',
@@ -2327,6 +2361,11 @@ export default function AdminOrders({
             const delivery = DELIVERY_LABEL[order.delivery_type] ?? order.delivery_type;
             const subtype = order.delivery_subtype === 'courier' ? ' — кур\'єр' : order.delivery_subtype === 'warehouse' ? ' — відділення' : '';
             const isCod = order.payment_type === 'cod';
+            const mpNumber = order.channel_code === 'prom'
+              ? (order.prom_data as { id?: number | string } | null)?.id
+              : order.channel_code === 'rozetka'
+                ? (order.rozetka_data as { id?: number | string } | null)?.id
+                : null;
             const paymentConfirmed = order.payment_confirmed ?? false;
             const noCallback = order.comment?.includes('Не передзвонювати') ?? false;
             const callbackDone = order.callback_done ?? false;
@@ -2419,8 +2458,7 @@ export default function AdminOrders({
                 {isPromCheapDeliv && (
                   <span title={`Замовлення за акцією Prom «Дешева доставка»: покупець платить за доставку символічно, організацію оплачуємо ми${promDeliveryFee > 0 ? ` — ${promDeliveryFee} ₴ за це замовлення` : ''}. Prom списує збір після вручення посилки; невикуп не списується. Збір проводиться автоматично при доставці.`}
                     style={{ ...rowBadge, color: '#7C2D12', background: '#FDBA74', borderColor: '#FB923C' }}>
-                    <span className="oc-hide-m">ДЕШ. ДОСТ.</span>
-                    <span className="oc-only-m" style={{ display: 'none' }}>ДЕШ.</span>
+                    ДЕШ. ДОСТ.
                   </span>
                 )}
               </>
@@ -2555,25 +2593,38 @@ export default function AdminOrders({
                     </div>
                   </div>
 
-                  {/* Канал на телефоні — у шапці рядка, поруч зі статусом і сумою.
-                      Мітки умов доставки (SMART, дешева доставка) звідси прибрані:
-                      вони про доставку, тому стоять у рядку з перевізником нижче. */}
-                  <span className="oc-only-m oc-chan-m" style={{ gap: '4px' }}>
-                    {/* Канал — на телефоні колонка «Канал» схована (.oc-hide-m), і звідки
-                        замовлення, можна було здогадатись хіба що за кольором плашки ТТН,
-                        якої у нових замовлень ще немає. */}
+                  {/* Другий рядок картки на телефоні — «звідки і на яких умовах»:
+                      джерело, номер замовлення в кабінеті МП, умови доставки
+                      (SMART, дешева доставка) і стан оплати. На десктопі під це
+                      є окремі колонки, а на телефоні воно тіснилось у шапку і
+                      з'їдало ширину номера, дати й статусу. */}
+                  <span className="oc-only-m oc-meta-m" style={{ display: 'none', gap: '5px' }}>
                     <span title={`Джерело замовлення: ${channel.label}`}
                       style={{ fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '20px', color: channel.color, background: channel.bg, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
                       {channel.label}
                     </span>
-                  </span>
-
-                  {/* SMART і «дешева доставка» — у шапці, після статусу: це умови
-                      самого замовлення, і бачити їх треба до того, як відкриєш
-                      картку. Стоять у вільній колонці перед сумою, тож у тісному
-                      рядку місце віддають вони, а не статус чи номер. */}
-                  <span className="oc-only-m oc-delbadges-m" style={{ display: 'none', gap: '4px' }}>
+                    {mpNumber != null && (
+                      <span title={`Номер замовлення в кабінеті ${channel.label} — за ним шукають замовлення в кабінеті й у листуванні`}
+                        style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                        №{mpNumber}
+                      </span>
+                    )}
                     {deliveryBadges}
+                    {/* Оплата: «Наложка» — гроші беремо при врученні, «Оплачено» —
+                        гроші вже в нас, решта — рахунок ще не закритий. */}
+                    <span
+                      title={isCod
+                        ? 'Накладений платіж — покупець платить при отриманні'
+                        : paymentConfirmed ? `Оплату підтверджено (${PAYMENT_LABEL[order.payment_type] ?? order.payment_type})`
+                        : `Оплату ще не підтверджено (${PAYMENT_LABEL[order.payment_type] ?? order.payment_type})`}
+                      style={{
+                        ...rowBadge,
+                        color: isCod ? '#92400E' : paymentConfirmed ? '#15803D' : '#B91C1C',
+                        background: isCod ? '#FEF3C7' : paymentConfirmed ? '#DCFCE7' : '#FEF2F2',
+                        borderColor: isCod ? '#FCD34D' : paymentConfirmed ? '#86EFAC' : '#FCA5A5',
+                      }}>
+                      {isCod ? 'НАЛОЖКА' : paymentConfirmed ? 'ОПЛАЧЕНО' : 'НЕ ОПЛАЧЕНО'}
+                    </span>
                   </span>
 
                   <ItemThumbs className="oc-hide-m" items={order.items} thumbs={productThumbs}
