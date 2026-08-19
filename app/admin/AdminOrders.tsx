@@ -24,6 +24,7 @@ type FulfillmentData = OrderFulfillmentInfo & {
 import CreateTTNModal from '../components/admin/CreateTTNModal';
 import { phoneLocal, phoneLocalDigits } from '../../lib/notify/phone';
 import { buildCopyLines, describeCopy, mapCopyDelivery, mapCopyPayment, copyComment, type CopyProduct } from '../../lib/order-copy';
+import { ttnFollowUpAction } from '../../lib/orders/ttn-followup';
 import { storageDaysLeft, returnTrackingLabel, type ReturnTracking } from '../../lib/np-return-tracking';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { showConfirm } from '../../lib/confirm';
@@ -724,6 +725,16 @@ export default function AdminOrders({
           : o));
         setFulfillmentData(prev => { const n = { ...prev }; delete n[orderId]; return n; });
         loadFulfillment(orderId);
+
+        // ТТН створили ДО підтвердження — тоді відвантаження не спрацювало:
+        // з «нового» замовлення відвантажувати нічого (немає ні резервів, ні
+        // замовлення постачальнику). Тепер, коли статус став підтвердженим,
+        // доводимо справу до кінця тим самим шляхом, що й після створення ТТН.
+        const src = orders.find(o => o.id === orderId);
+        if (src?.tracking_number) {
+          await ttnFollowUp({ ...src, status: data.status, fulfillment_mode: data.fulfillment_mode });
+        }
+
         router.refresh();
       } else {
         setConfirmErrors(prev => ({ ...prev, [orderId]: { error: data?.error ?? 'Помилка підтвердження', insufficient: data?.insufficient } }));
@@ -1434,44 +1445,43 @@ export default function AdminOrders({
    * і ТТН у маркетплейс, тож окремий пуш там був би другим поспіль — і Rozetka
    * відповіла б на нього відмовою переходу.
    */
-  async function finishTtnFlow(ids: string[]) {
-    const targets = orders.filter(o => ids.includes(o.id));
-    const pushOnly: string[] = [];
-
-    // Відвантажити можна лише з тих статусів, які приймає роут відгрузки. Якщо
-    // замовлення вже відвантажене, а накладну переробляють (живий випадок 03.08:
-    // видалили ТТН, змінили кількість, створили нову) — відгрузка не потрібна,
-    // потрібно лише донести новий номер до маркетплейсу. Без цієї перевірки
-    // користувач отримував червоне «Неможливо відвантажити із статусу shipped».
-    const SHIPPABLE = ['confirmed', 'picking', 'awaiting_stock'];
-    for (const o of targets) {
-      if (o.fulfillment_mode === 'supplier' && SHIPPABLE.includes(o.status)) {
+  /**
+   * Що робимо, коли в замовлення з'явилась ТТН (або коли воно нарешті
+   * підтверджене, а ТТН уже була). Дві дії: дропшип-замовлення відвантажуємо,
+   * решті доносимо номер у маркетплейс.
+   *
+   * Приймає САМЕ об'єкт замовлення, а не id: після підтвердження статус у
+   * стані ще старий, і функція, що читає його зі списку, вирішувала б за
+   * застарілими даними — замовлення так і лишалось у «Підтверджено» замість
+   * «До відправки».
+   */
+  async function ttnFollowUp(o: Order) {
+    // Саме рішення — чиста функція під тестами (lib/orders/ttn-followup):
+    // «уже відвантажене повторно не відвантажуємо», «нове — не пушимо в МП»,
+    // «точку видачі Rozetka не пушимо їй же назад» перевіряються там.
+    switch (ttnFollowUpAction(o)) {
+      case 'ship':
         await autoShipDropship(o.id);   // всередині — і статус, і пуш у маркетплейс
-      } else {
-        pushOnly.push(o.id);
-      }
+        return;
+      case 'push-rozetka':
+        await pushTtnToRozetka([o.id]);
+        return;
+      case 'push-prom':
+        try {
+          const res = await fetch(`/api/admin/orders/${o.id}/push-prom-ttn`, { method: 'POST' });
+          const d = await res.json().catch(() => ({}));
+          showToast(d.ok ? 'ТТН надіслано на Prom' : `Prom TTN: ${d.error ?? 'помилка'}`, d.ok ? 'success' : 'error');
+        } catch {
+          showToast('Не вдалося надіслати ТТН на Prom', 'error');
+        }
+        return;
+      default:
+        return;
     }
+  }
 
-    const rozetkaIds = pushOnly.filter(id => {
-      const o = targets.find(t => t.id === id);
-      // Точки видачі виключені: накладну там виписує сама Rozetka своїм API,
-      // тож пушити їй же цей номер назад немає сенсу.
-      return o?.channel_code === 'rozetka' && o.status !== 'new'
-        && o.delivery_type !== 'rozetka_delivery';
-    });
-    if (rozetkaIds.length) await pushTtnToRozetka(rozetkaIds);
-
-    for (const id of pushOnly) {
-      const o = targets.find(t => t.id === id);
-      if (o?.channel_code !== 'prom' || o.status === 'new') continue;
-      try {
-        const res = await fetch(`/api/admin/orders/${id}/push-prom-ttn`, { method: 'POST' });
-        const d = await res.json().catch(() => ({}));
-        showToast(d.ok ? 'ТТН надіслано на Prom' : `Prom TTN: ${d.error ?? 'помилка'}`, d.ok ? 'success' : 'error');
-      } catch {
-        showToast('Не вдалося надіслати ТТН на Prom', 'error');
-      }
-    }
+  async function finishTtnFlow(ids: string[]) {
+    for (const o of orders.filter(o => ids.includes(o.id))) await ttnFollowUp(o);
   }
 
   function openMergeModal() {
