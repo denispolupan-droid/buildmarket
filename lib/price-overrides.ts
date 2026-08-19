@@ -70,10 +70,14 @@ export function buildOverrideRows(
   bySku: Map<string, number[]>,
   now: string,
 ): Record<string, unknown>[] {
-  const rows: Record<string, unknown>[] = [];
+  // Дедуплікація за (постачальник, товар): у supplier_sku_map той самий наш
+  // артикул може бути прив'язаний до двох артикулів постачальника, і Postgres
+  // на такий upsert відповідає «ON CONFLICT DO UPDATE cannot affect row a second
+  // time» — падав увесь пакет наценок.
+  const rows = new Map<string, Record<string, unknown>>();
   for (const item of items) {
-    for (const supplierId of bySku.get(item.sku) ?? []) {
-      rows.push({
+    for (const supplierId of new Set(bySku.get(item.sku) ?? [])) {
+      rows.set(supplierId + ":" + item.sku, {
         supplier_id: supplierId,
         our_sku:     item.sku,
         ...(item.markup_retail    !== undefined && { markup_retail:    item.markup_retail }),
@@ -86,7 +90,7 @@ export function buildOverrideRows(
       });
     }
   }
-  return rows;
+  return [...rows.values()];
 }
 
 /** Товари, яких немає в жодного постачальника: наценку записати нікуди. */

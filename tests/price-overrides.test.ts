@@ -58,3 +58,23 @@ describe('unmappedSkus', () => {
     expect(unmappedSkus(items, bySku)).toEqual(['B', 'C']);
   });
 });
+
+describe('дублікати в мапі постачальника', () => {
+  it('той самий постачальник двічі — один рядок, а не два', () => {
+    // supplier_sku_map може вести два артикули постачальника на один наш SKU;
+    // Postgres на такий upsert падає («cannot affect row a second time»).
+    const rows = buildOverrideRows([{ sku: 'A', markup_retail: 12 }], new Map([['A', [1, 1, 2]]]), NOW);
+    expect(rows).toHaveLength(2);
+    expect(rows.map(r => r.supplier_id).sort()).toEqual([1, 2]);
+  });
+
+  it('один товар двічі в переліку — теж один рядок на постачальника', () => {
+    const rows = buildOverrideRows(
+      [{ sku: 'A', markup_retail: 10 }, { sku: 'A', markup_retail: 12 }],
+      new Map([['A', [1]]]),
+      NOW,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ markup_retail: 12 }); // виграє останній
+  });
+});
