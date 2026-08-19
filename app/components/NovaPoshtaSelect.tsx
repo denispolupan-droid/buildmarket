@@ -23,9 +23,13 @@ type Props = {
   mode: 'warehouse' | 'courier' | 'postomat';
   lang?: 'uk' | 'ru';
   /** Уже вибране раніше — щоб після повторного монтування (згорнута й
-   *  розгорнута чернетка замовлення) поля не виглядали порожніми. Тільки
-   *  показ: колбеки звідси не викликаються, значення вже є у батька. */
+   *  розгорнута чернетка замовлення) вибір відновлювався цілком. Колбеки
+   *  звідси не викликаються: значення вже є у батька.
+   *  Ref міста обов'язковий для відновлення — без нього нічим завантажити
+   *  список відділень, і поле відділення просто зникало з форми. */
   initialCity?: string;
+  initialCityRef?: string;
+  initialWarehouseRef?: string;
   initialAddress?: string;
   onCityChange?: (city: string) => void;
   onWarehouseChange?: (warehouse: string) => void;
@@ -74,7 +78,7 @@ async function npRequest(modelName: string, calledMethod: string, methodProperti
   return data.success ? data.data : [];
 }
 
-export default function NovaPoshtaSelect({ mode, lang = 'uk', initialCity = '', initialAddress = '', onCityChange, onWarehouseChange, onAddressChange, onCityRefChange, onWarehouseRefChange }: Props) {
+export default function NovaPoshtaSelect({ mode, lang = 'uk', initialCity = '', initialCityRef = '', initialWarehouseRef = '', initialAddress = '', onCityChange, onWarehouseChange, onAddressChange, onCityRefChange, onWarehouseRefChange }: Props) {
   const tr = NP_T[lang];
   const [cityQuery,      setCityQuery]      = useState(initialCity);
   const [settlements,    setSettlements]    = useState<Settlement[]>([]);
@@ -102,6 +106,30 @@ export default function NovaPoshtaSelect({ mode, lang = 'uk', initialCity = '', 
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // Відновлення раніше зробленого вибору. Місто беремо з пропсів (Ref + назва),
+  // список відділень тягнемо заново — він у стані компонента, а компонент після
+  // згортання чернетки монтується з нуля. Уже вибране відділення знаходимо в
+  // завантаженому списку за Ref і підставляємо в поле.
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current || !initialCityRef || !initialCity) return;
+    restored.current = true;
+    setSelectedCity({ Ref: initialCityRef, MainDescription: initialCity, Present: initialCity, Area: '', RegionsDescription: '' });
+    if (mode !== 'warehouse' && mode !== 'postomat') return;
+    setWhLoading(true);
+    npRequest('Address', 'getWarehouses', { SettlementRef: initialCityRef, Limit: 500, Page: 1 })
+      .then((data: Warehouse[]) => {
+        const filtered = mode === 'postomat'
+          ? data.filter(w => w.Description.toLowerCase().includes('поштомат'))
+          : data;
+        setWarehouses(filtered);
+        const wh = initialWarehouseRef ? filtered.find(w => w.Ref === initialWarehouseRef) : undefined;
+        if (wh) { setSelectedWH(wh); setWarehouseQuery(wh.Description); }
+      })
+      .finally(() => setWhLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCityRef, initialWarehouseRef, mode]);
 
   const searchCities = useCallback((q: string) => {
     if (q.length < 2) { setSettlements([]); return; }

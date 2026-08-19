@@ -17,9 +17,11 @@ type Props = {
   weightKg: number;
   lang?: 'uk' | 'ru';
   /** Уже вибране раніше — щоб після повторного монтування (згорнута й
-   *  розгорнута чернетка замовлення) поля не виглядали порожніми. Тільки
-   *  показ: колбеки звідси не викликаються. */
+   *  розгорнута чернетка замовлення) вибір відновлювався цілком. Колбеки
+   *  звідси не викликаються. id міста обов'язковий: без нього нічим тягнути
+   *  список точок, і поле вибору точки зникало з форми. */
   initialCity?: string;
+  initialCityId?: string;
   initialDepartment?: string;
   onCityChange?: (name: string) => void;
   onCityIdChange?: (id: string) => void;
@@ -51,7 +53,7 @@ const RZ_T = {
 } as const;
 
 export default function RzDeliverySelect({
-  weightKg, lang = 'uk', initialCity = '', initialDepartment = '',
+  weightKg, lang = 'uk', initialCity = '', initialCityId = '', initialDepartment = '',
   onCityChange, onCityIdChange, onDepartmentChange, onDepartmentIdChange,
 }: Props) {
   const tr = RZ_T[lang];
@@ -82,6 +84,15 @@ export default function RzDeliverySelect({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Відновлюємо вибране місто після повторного монтування — далі ефект нижче
+  // сам підтягне список точок для нього (і збереже вибрану, якщо вона в списку).
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current || !initialCityId || !initialCity) return;
+    restored.current = true;
+    setCity({ id: initialCityId, name: initialCity, region_name: '' });
+  }, [initialCityId, initialCity]);
+
   const loadDepartments = useCallback((cityId: string) => {
     setDepLoading(true);
     fetch(`/api/rz-delivery/departments?city=${encodeURIComponent(cityId)}&weight=${weightKg}`)
@@ -99,6 +110,15 @@ export default function RzDeliverySelect({
   useEffect(() => {
     if (city) loadDepartments(city.id);
   }, [city, loadDepartments]);
+
+  // Точка, вибрана до згортання чернетки: знаходимо її в щойно завантаженому
+  // списку й підставляємо назад, інакше поле лишалось порожнім.
+  useEffect(() => {
+    if (selectedDep || !initialDepartment || !departments.length) return;
+    const dep = departments.find(d => d.label === initialDepartment);
+    if (dep) setSelectedDep(dep);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [departments]);
 
   useEffect(() => {
     if (selectedDep && departments.length && !departments.some(d => d.id === selectedDep.id)) {

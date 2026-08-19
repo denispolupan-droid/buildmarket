@@ -1180,6 +1180,8 @@ export default function NewOrderModal({
                   <NovaPoshtaSelect
                     mode={novaSubtype}
                     initialCity={novaCityName}
+                    initialCityRef={novaCityRef}
+                    initialWarehouseRef={novaWarehouseRef}
                     initialAddress={novaSubtype === 'courier' ? address : ''}
                     onCityChange={setNovaCityName}
                     onCityRefChange={setNovaCityRef}
@@ -1212,6 +1214,7 @@ export default function NewOrderModal({
                 <RzDeliverySelect
                   weightKg={weightKg}
                   initialCity={novaCityName}
+                  initialCityId={novaCityRef}
                   initialDepartment={address}
                   onCityChange={setNovaCityName}
                   onCityIdChange={setNovaCityRef}
