@@ -342,7 +342,7 @@ export default async function AdminPage({
                   display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
                   justifyContent: 'flex-start', gap: '5px', padding: '9px 12px', borderRadius: '12px',
                   textDecoration: 'none', flex: '1 1 0', minWidth: '112px', height: '62px', boxSizing: 'border-box',
-                  background: isActive ? '#EAF1F8' : 'var(--bg-card)',
+                  background: isActive ? '#D8E6F5' : 'var(--bg-card)',
                   border: isActive ? '1.5px solid #1E3A5F' : '1px solid var(--border-light)',
                   boxShadow: isActive ? '0 2px 8px rgba(30,58,95,0.12)' : '0 1px 2px rgba(15,23,42,0.05)',
                   transition: 'all 0.15s', textAlign: 'center',
