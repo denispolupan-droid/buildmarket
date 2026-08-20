@@ -4069,12 +4069,37 @@ export default function AdminOrders({
                               <ExternalLink size={13} />
                             </a>
                           )}
-                          {/* Прапорці — біля імені й без підписів: це стан замовлення,
-                              який зчитується кольором, а не читається словом. Повна
-                              назва лишилась у підказці. Група притиснута до правого
-                              краю — так вона стоїть рівно над іконками рядка телефону,
-                              незалежно від довжини ПІБ. */}
-                          <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '6px', flexShrink: 0 }}>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <a href={`tel:${order.phone}`} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13.5px', color: 'var(--brand-blue)', fontWeight: 700, textDecoration: 'none', fontVariantNumeric: 'tabular-nums' }}>
+                            <Phone size={13} />{formatPhone(order.phone)}
+                          </a>
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(order.phone); showToast('Телефон скопійовано'); }}
+                            title="Копіювати номер"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1, display: 'inline-flex' }}>
+                            <Copy size={13} />
+                          </button>
+                          {/* Стан замовлення — трьома іконками одразу після номера:
+                              дзвінок, «терміново», «проблемний». Колір каже все, повна
+                              назва лишається в підказці. Кнопки чату кабінету тут немає
+                              навмисно: маркетплейс не дає писати першими, тож вона лише
+                              обіцяла б дію, якої не буде. */}
+                          <span style={{ display: 'inline-flex', gap: '6px', flexShrink: 0, marginLeft: '2px' }}>
+                          {!isDropship && (noCallback ? (
+                            <span title="Клієнт просив не дзвонити"
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', flexShrink: 0, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
+                              <PhoneOff size={12} />
+                            </span>
+                          ) : (
+                            <button onClick={() => toggleFlag(order.id, 'callback_done', !callbackDone)}
+                              className="oc-flag-btn" aria-pressed={callbackDone}
+                              title={callbackDone ? 'Зателефонували — натисніть, щоб зняти позначку' : 'Потрібен дзвінок — натисніть, коли зателефонували клієнту'}
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', cursor: 'pointer', flexShrink: 0,
+                                background: callbackDone ? '#DCFCE7' : '#FEF3C7', color: callbackDone ? '#15803D' : '#B45309', border: `1px solid ${callbackDone ? '#86EFAC' : '#FCD34D'}` }}>
+                              <Phone size={12} />
+                            </button>
+                          ))}
                           {([
                             { key: 'urgent',  label: 'Терміново',  onBg: '#FEE2E2', onC: '#B91C1C', onB: '#FCA5A5', Icon: Zap },
                             { key: 'problem', label: 'Проблемний', onBg: '#FEF3C7', onC: '#B45309', onB: '#FCD34D', Icon: AlertTriangle },
@@ -4090,48 +4115,6 @@ export default function AdminOrders({
                               </button>
                             );
                           })}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <a href={`tel:${order.phone}`} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13.5px', color: 'var(--brand-blue)', fontWeight: 700, textDecoration: 'none', fontVariantNumeric: 'tabular-nums' }}>
-                            <Phone size={13} />{formatPhone(order.phone)}
-                          </a>
-                          <button
-                            onClick={() => { navigator.clipboard.writeText(order.phone); showToast('Телефон скопійовано'); }}
-                            title="Копіювати номер"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1, display: 'inline-flex' }}>
-                            <Copy size={13} />
-                          </button>
-                          {/* Дзвінок і чат — така сама пара іконок, як прапорці вище, і
-                              так само притиснута до правого краю: телефон стає під
-                              «Терміново», чат — під «Проблемним». Коли чату немає
-                              (замовлення не з маркетплейсу), його місце лишається
-                              порожнім, щоб телефон не з'їхав під сусідню іконку. */}
-                          <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '6px', flexShrink: 0 }}>
-                          {!isDropship && (noCallback ? (
-                            <span title="Клієнт просив не дзвонити"
-                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', flexShrink: 0, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
-                              <PhoneOff size={12} />
-                            </span>
-                          ) : (
-                            <button onClick={() => toggleFlag(order.id, 'callback_done', !callbackDone)}
-                              className="oc-flag-btn" aria-pressed={callbackDone}
-                              title={callbackDone ? 'Зателефонували — натисніть, щоб зняти позначку' : 'Потрібен дзвінок — натисніть, коли зателефонували клієнту'}
-                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', cursor: 'pointer', flexShrink: 0,
-                                background: callbackDone ? '#DCFCE7' : '#FEF3C7', color: callbackDone ? '#15803D' : '#B45309', border: `1px solid ${callbackDone ? '#86EFAC' : '#FCD34D'}` }}>
-                              <Phone size={12} />
-                            </button>
-                          ))}
-                          {(order.channel_code === 'rozetka' || order.channel_code === 'prom') ? (
-                            <a href={`/admin/chat?order=${order.id}`} target="_blank" rel="noopener noreferrer"
-                              title={`Чат ${order.channel_code === 'prom' ? 'Prom' : 'Rozetka'} — переписка з покупцем у кабінеті маркетплейсу`}
-                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', flexShrink: 0,
-                                color: '#4338CA', background: '#EEF2FF', border: '1px solid #C7D2FE' }}>
-                              <MessageSquare size={12} />
-                            </a>
-                          ) : (
-                            <span aria-hidden="true" style={{ width: '22px', flexShrink: 0 }} />
-                          )}
                           </span>
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
