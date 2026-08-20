@@ -3934,7 +3934,7 @@ export default function AdminOrders({
                       {/* Оплата — за шириною вмісту, без розтягування: порожнє місце
                           праворуч від чіпа заповнює коментар */}
                       <div style={{ flex: '0 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Оплата</div>
+                      <div className="oc-sub-lbl">Оплата</div>
                       {/* Чим саме платив покупець на площадці. Наш payment_type знає лише
                           грубий тип (cod / prepaid), а «Пром-оплата» чи «Оплата під час
                           отримання» лежать у сирому payload маркетплейсу. */}
@@ -4151,7 +4151,7 @@ export default function AdminOrders({
                         const displayComment = order.comment?.split('\n').filter(line => !line.includes('Не передзвонювати')).join('\n').trim();
                         return displayComment ? (
                           <div style={{ flex: '1 1 160px', minWidth: '140px', borderLeft: '1px solid var(--border-light)', paddingLeft: '14px' }}>
-                            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Коментар</div>
+                            <div className="oc-sub-lbl" style={{ marginBottom: '2px' }}>Коментар</div>
                             <ClampedComment text={displayComment} />
                           </div>
                         ) : null;
@@ -4248,7 +4248,7 @@ export default function AdminOrders({
                       <div className="oc-card-footer">
                       {/* Для точок видачі Rozetka накладну виписує Rozetka («RMP-…»),
                           Нова Пошта до неї стосунку не має — заголовок мусить це знати */}
-                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <div className="oc-sub-lbl">
                         {isRzPickup ? 'Накладна Rozetka'
                           : order.delivery_type === RZ_DELIVERY_TYPE ? 'ЕН ROZETKA Доставки'
                           : 'ТТН Нової Пошти'}
@@ -4562,7 +4562,7 @@ export default function AdminOrders({
                                   </button>
                                 )}
                                 {/* Другорядні інструменти — друк, месенджери, ЗП; відділені від дій зі статусом */}
-                                <div style={{ marginTop: '6px', paddingTop: '8px', borderTop: '1px dashed var(--border-light)', fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                <div className="oc-sub-lbl" style={{ marginTop: '6px', paddingTop: '8px', borderTop: '1px solid var(--border-light)' }}>
                                   Інструменти
                                 </div>
                                 {isAdmin && ['shipped', 'delivered'].includes(order.status) && (
@@ -4614,7 +4614,7 @@ export default function AdminOrders({
                                   if (!rnDocs.length && !retDocs.length) return null;
                                   return (
                                     <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '3px', borderTop: '1px dashed var(--border)', paddingTop: '6px' }}>
-                                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                      <div className="oc-sub-lbl">
                                         Документи
                                       </div>
                                       {rnDocs.map(doc => (
