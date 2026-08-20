@@ -4060,14 +4060,24 @@ export default function AdminOrders({
                             <Building2 size={12} color="#64748B" />{order.company}
                           </div>
                         )}
-                        <div className="oc-name-main" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)' }}>
-                          {order.contact}
+                        <div className="oc-name-main" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)', minWidth: 0 }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.contact}</span>
                           {order.customer_id && (
                             <a href={`/admin/partners?open=${order.customer_id}`} target="_blank" rel="noopener noreferrer"
                               title="Відкрити картку контрагента"
                               style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', lineHeight: 1 }}>
                               <ExternalLink size={13} />
                             </a>
+                          )}
+                          {/* Скільки клієнт у нас купував — у рядку з ПІБ і коротко:
+                              значок, кількість і сума. Слово «замовлень» з'їдало рядок,
+                              а сам факт постійного клієнта важливо бачити біля імені. */}
+                          {custStats[order.id] && custStats[order.id].count > 1 && (
+                            <span title={`${custStats[order.id].count} замовлень цього клієнта на ${custStats[order.id].total.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴ (разом із цим)`}
+                              style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '5px', flexShrink: 0, fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                              <ShoppingCart size={13} color="#64748B" />
+                              {custStats[order.id].count} · {custStats[order.id].total.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
+                            </span>
                           )}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -4119,15 +4129,6 @@ export default function AdminOrders({
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
                         </div>
-                      </div>
-                      {/* Статистика клієнта + швидкі прапорці */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {custStats[order.id] && custStats[order.id].count > 1 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                            <ShoppingCart size={13} color="#64748B" />
-                            <span>{custStats[order.id].count} замовлень · <strong style={{ color: 'var(--text-primary)' }}>{custStats[order.id].total.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴</strong></span>
-                          </div>
-                        )}
                       </div>
                       </div>{/* /oc-card-body */}
                       {/* Оплата — притиснута до низу картки; спільна висота з блоком ТТН (.oc-card-footer) тримає розділювачі обох карток на одній лінії */}
