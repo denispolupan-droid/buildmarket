@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare, UserPlus, Zap, AlertTriangle, Settings, ExternalLink, RotateCcw } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare, UserPlus, Zap, AlertTriangle, Settings, ExternalLink, RotateCcw, PhoneOff } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -4071,7 +4071,10 @@ export default function AdminOrders({
                           )}
                           {/* Прапорці — біля імені й без підписів: це стан замовлення,
                               який зчитується кольором, а не читається словом. Повна
-                              назва лишилась у підказці. */}
+                              назва лишилась у підказці. Група притиснута до правого
+                              краю — так вона стоїть рівно над іконками рядка телефону,
+                              незалежно від довжини ПІБ. */}
+                          <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '6px', flexShrink: 0 }}>
                           {([
                             { key: 'urgent',  label: 'Терміново',  onBg: '#FEE2E2', onC: '#B91C1C', onB: '#FCA5A5', Icon: Zap },
                             { key: 'problem', label: 'Проблемний', onBg: '#FEF3C7', onC: '#B45309', onB: '#FCD34D', Icon: AlertTriangle },
@@ -4087,8 +4090,9 @@ export default function AdminOrders({
                               </button>
                             );
                           })}
+                          </span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <a href={`tel:${order.phone}`} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13.5px', color: 'var(--brand-blue)', fontWeight: 700, textDecoration: 'none', fontVariantNumeric: 'tabular-nums' }}>
                             <Phone size={13} />{formatPhone(order.phone)}
                           </a>
@@ -4098,26 +4102,37 @@ export default function AdminOrders({
                             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1, display: 'inline-flex' }}>
                             <Copy size={13} />
                           </button>
+                          {/* Дзвінок і чат — така сама пара іконок, як прапорці вище, і
+                              так само притиснута до правого краю: телефон стає під
+                              «Терміново», чат — під «Проблемним». Коли чату немає
+                              (замовлення не з маркетплейсу), його місце лишається
+                              порожнім, щоб телефон не з'їхав під сусідню іконку. */}
+                          <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '6px', flexShrink: 0 }}>
                           {!isDropship && (noCallback ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', whiteSpace: 'nowrap' }}>
-                              <Check size={11} /> Без дзвінка
+                            <span title="Клієнт просив не дзвонити"
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', flexShrink: 0, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
+                              <PhoneOff size={12} />
                             </span>
                           ) : (
                             <button onClick={() => toggleFlag(order.id, 'callback_done', !callbackDone)}
-                              title={callbackDone ? 'Натисніть, щоб зняти позначку «зателефонували»' : 'Натисніть, коли зателефонували клієнту'}
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', background: callbackDone ? '#DCFCE7' : '#FEF3C7', color: callbackDone ? '#15803D' : '#B45309', border: `1px solid ${callbackDone ? '#86EFAC' : '#FCD34D'}` }}>
-                              {callbackDone ? <><Check size={11} /> Зателефонували</> : <><Phone size={11} /> Потрібен дзвінок</>}
+                              className="oc-flag-btn" aria-pressed={callbackDone}
+                              title={callbackDone ? 'Зателефонували — натисніть, щоб зняти позначку' : 'Потрібен дзвінок — натисніть, коли зателефонували клієнту'}
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', cursor: 'pointer', flexShrink: 0,
+                                background: callbackDone ? '#DCFCE7' : '#FEF3C7', color: callbackDone ? '#15803D' : '#B45309', border: `1px solid ${callbackDone ? '#86EFAC' : '#FCD34D'}` }}>
+                              <Phone size={12} />
                             </button>
                           ))}
-                          {/* Чат кабінету МП — там само, де решта способів зв'язку */}
-                          {(order.channel_code === 'rozetka' || order.channel_code === 'prom') && (
+                          {(order.channel_code === 'rozetka' || order.channel_code === 'prom') ? (
                             <a href={`/admin/chat?order=${order.id}`} target="_blank" rel="noopener noreferrer"
                               title={`Чат ${order.channel_code === 'prom' ? 'Prom' : 'Rozetka'} — переписка з покупцем у кабінеті маркетплейсу`}
                               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', flexShrink: 0,
                                 color: '#4338CA', background: '#EEF2FF', border: '1px solid #C7D2FE' }}>
                               <MessageSquare size={12} />
                             </a>
+                          ) : (
+                            <span aria-hidden="true" style={{ width: '22px', flexShrink: 0 }} />
                           )}
+                          </span>
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
                         </div>
@@ -4230,7 +4245,7 @@ export default function AdminOrders({
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             {/* Badge */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '6px', fontSize: '11.5px', fontWeight: 600,
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '32px', padding: '0 10px', borderRadius: '7px', fontSize: '11.5px', fontWeight: 600, boxSizing: 'border-box',
                                 background: paymentConfirmed ? '#DCFCE7' : isPartial ? '#FFF7ED' : order.payment_type === 'cash' ? '#F0FDF4' : '#FEF3C7',
                                 color:      paymentConfirmed ? '#15803D'  : isPartial ? '#C2410C' : order.payment_type === 'cash' ? '#166534' : '#B45309',
                                 border: `1px solid ${paymentConfirmed ? '#86EFAC' : isPartial ? '#FDBA74' : order.payment_type === 'cash' ? '#86EFAC' : '#FCD34D'}`,
@@ -4573,7 +4588,7 @@ export default function AdminOrders({
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                               <div style={{ flexShrink: 0 }}>ТТН: <strong>{order.tracking_number}</strong></div>
                               <button onClick={() => printLabel(order.id, 'rozetka-delivery-ttn')} disabled={rzLabelBusy === order.id}
-                                style={{ marginLeft: 'auto', height: '30px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
+                                style={{ marginLeft: 'auto', height: '32px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
                                 {rzLabelBusy === order.id ? '…' : 'Етикетка PDF'}
                               </button>
                             </div>
@@ -4602,20 +4617,20 @@ export default function AdminOrders({
                               <div style={{ flexShrink: 0 }}>ЕН: <strong>{order.tracking_number}</strong></div>
                               <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto', flexWrap: 'wrap' }}>
                                 <button onClick={() => printLabel(order.id, 'rz-ttn')} disabled={rzLabelBusy === order.id}
-                                  style={{ height: '28px', padding: '0 10px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
+                                  style={{ height: '32px', padding: '0 10px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
                                   {rzLabelBusy === order.id ? '…' : 'Етикетка PDF'}
                                 </button>
                                 {!order.carrier_accepted_at && (
                                   <button onClick={() => addRzToReception(order.id)} disabled={rzRegBusy === order.id}
                                     title="Додати ЕН у сьогоднішній реєстр здачі"
-                                    style={{ height: '28px', padding: '0 10px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: rzRegBusy === order.id ? 'wait' : 'pointer' }}>
+                                    style={{ height: '32px', padding: '0 10px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: rzRegBusy === order.id ? 'wait' : 'pointer' }}>
                                     {rzRegBusy === order.id ? '…' : 'У реєстр'}
                                   </button>
                                 )}
                                 {rzReception != null && (
                                   <button onClick={() => printRzReception(rzReception)}
                                     title="Друкована форма реєстру"
-                                    style={{ height: '32px', padding: '0 10px', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+                                    style={{ height: '32px', padding: '0 10px', borderRadius: '7px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
                                     Реєстр №{rzReception}
                                   </button>
                                 )}
