@@ -1002,7 +1002,7 @@ input, select { font-family: inherit; }
   flex-direction: row !important;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 10px !important;
+  gap: 10px !important;
 }
 /* Опис способу оплати не переносить чіп на другий поверх: довгі назви
    маркетплейсів («Оплата під час отримання товару») стискаються з трьома
@@ -1014,6 +1014,13 @@ input, select { font-family: inherit; }
   white-space: nowrap;
 }
 .order-expand-grid .oc-pay-col > .oc-sub-lbl { flex-basis: 100%; }
+/* Рядок оплати заввишки як поле ТТН навпроти: підписи над ними вже стоять на
+   одній лінії, а самі рядки розходились — чіп 26px проти поля 32px. */
+.order-expand-grid .oc-pay-col > *:not(.oc-sub-lbl) {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+}
 /* Форма зміни способу оплати — на власний рядок: у ній селект і дві кнопки */
 .order-expand-grid .oc-pay-col > div:has(select) { flex-basis: 100%; }
 .order-expand-grid .oc-pay-col > div[style*="margin-top: -4px"] { margin-top: 0 !important; }
