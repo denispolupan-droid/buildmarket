@@ -830,12 +830,34 @@ input, select { font-family: inherit; }
 }
 .admin-layout .order-expand-grid .order-col-card,
 .admin-layout .order-expand-grid .oc-acc {
+  position: relative;
   background: transparent;
   border: 0;
-  border-left: 3px solid var(--oc-accent, var(--border));
   border-radius: 0;
   box-shadow: none;
   padding: 2px 0 2px 15px !important;
+}
+/* «Нитка» — той самий прийом, що в сайдбарі каталогу (.cat-branch): не суцільна
+   риска, а тонкий градієнт, який тане з обох кінців. Суцільна лінія обривається
+   різко й починає читатись як рамка; нитка позначає межу теми, нічого не
+   обводячи. Псевдоелементом, а не border-left: градієнт по висоті рамкою не
+   намалюєш. */
+.admin-layout .order-expand-grid .oc-acc::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  z-index: 1;
+  pointer-events: none;
+  /* фолбек без color-mix — проста лінія в кольорі блоку */
+  background: var(--oc-accent, var(--border));
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--oc-accent, var(--border)) 60%, transparent) 18%,
+    color-mix(in srgb, var(--oc-accent, var(--border)) 60%, transparent) 82%,
+    transparent
+  );
 }
 /* Блоки з даними — темніша нейтраль; службові (дії, нотатка, історія) ледь
    помітні: вони не несуть стану, і лінія їм потрібна лише як межа. */
