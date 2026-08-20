@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare, UserPlus, Zap, AlertTriangle, Settings, ExternalLink } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare, UserPlus, Zap, AlertTriangle, Settings, ExternalLink, RotateCcw } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -4636,6 +4636,27 @@ export default function AdminOrders({
                       ) : (
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Доставка не Нова Пошта</div>
                       )}
+                      {/* Відкликати посилку — дія над накладною, тож стоїть під нею, а не
+                          серед інструментів замовлення: клієнт не забирає, і посилку треба
+                          завернути, поки НП не почала рахувати зберігання. Для точок видачі
+                          Rozetka накладна не в НП — там своя кнопка «Повернення» вище. */}
+                      {isAdmin && order.tracking_number && !isRozetkaPoint && ['shipped', 'cancelled'].includes(order.status) && (
+                        <button onClick={() => setNpReturnFor({ id: order.id, number: order.order_number })}
+                          title={order.np_return_ref
+                            ? 'Заявку на повернення вже створено — відкрити її'
+                            : 'Створити заявку на повернення в кабінеті Нової Пошти: посилка поїде назад на наше відділення'}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', width: '100%', height: '32px', padding: '0 10px', boxSizing: 'border-box', fontSize: '12.5px', fontWeight: 600, borderRadius: '8px', cursor: 'pointer',
+                            border: `1px solid ${order.np_return_ref ? '#BBF7D0' : '#FDE68A'}`,
+                            background: order.np_return_ref ? '#F6FEF9' : '#FFFBEB',
+                            color: order.np_return_ref ? '#15803D' : '#B45309' }}>
+                          <RotateCcw size={14} style={{ flexShrink: 0 }} />
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {order.np_return_ref
+                              ? `Повернення НП ${order.np_return_number ?? ''}`.trim()
+                              : 'Повернути посилку'}
+                          </span>
+                        </button>
+                      )}
                       {/* Дві однакові кнопки в один рядок: Надіслати постачальнику + Створити ЗП */}
                       <div style={{ display: 'flex', gap: '8px' }}>
                         {['new', 'confirmed', 'awaiting_stock', 'picking', 'shipped', 'delivered'].includes(order.status)
@@ -4789,31 +4810,20 @@ export default function AdminOrders({
                                     <MapPin size={13} /> Підтвердити доставку
                                   </button>
                                 )}
+                                {/* Повернення від покупця — така сама дія зі станом замовлення,
+                                    як підтвердження доставки, тільки у зворотний бік. Тому стоїть
+                                    поруч і в такій самій рамці, лише бурштиновій. */}
+                                {isAdmin && ['shipped', 'delivered'].includes(order.status) && (
+                                  <button onClick={() => setReturnFor({ id: order.id, number: order.order_number })}
+                                    title="Фінансове повернення: сторнує виручку, COGS і комісію, оприбутковує товар"
+                                    style={{ ...btn, border: '1px solid #FDE68A', background: '#FFFBEB', color: '#B45309', fontWeight: 600 }}>
+                                    <RotateCcw size={13} /> Повернення
+                                  </button>
+                                )}
                                 {/* Другорядні інструменти — друк, месенджери, ЗП; відділені від дій зі статусом */}
                                 <div className="oc-sub-lbl" style={{ marginTop: '6px', paddingTop: '8px', borderTop: '1px solid var(--border-light)' }}>
                                   Інструменти
                                 </div>
-                                {isAdmin && ['shipped', 'delivered'].includes(order.status) && (
-                                  <button onClick={() => setReturnFor({ id: order.id, number: order.order_number })}
-                                    title="Фінансове повернення: сторнує виручку, COGS і комісію, оприбутковує товар"
-                                    style={{ ...btnMuted, color: '#B45309' }}>
-                                    ↩ Повернення
-                                  </button>
-                                )}
-                                {/* Повернення посилки НП — окрема, суто логістична дія: клієнт не
-                                    забирає, і посилку треба відкликати з відділення, поки НП не
-                                    почала рахувати зберігання. Для ОБОХ доставок у точки видачі
-                                    Rozetka накладна не в НП — заявку створювати нікуди, там своя
-                                    кнопка «Повернення» в блоці накладної. */}
-                                {isAdmin && order.tracking_number && !isRozetkaPoint && ['shipped', 'cancelled'].includes(order.status) && (
-                                  <button onClick={() => setNpReturnFor({ id: order.id, number: order.order_number })}
-                                    title="Створити заявку на повернення в кабінеті Нової Пошти — посилка поїде назад на наше відділення"
-                                    style={{ ...btnMuted, color: order.np_return_ref ? '#15803D' : '#B45309' }}>
-                                    {order.np_return_ref
-                                      ? `↩ Повернення НП ${order.np_return_number ?? ''}`.trim()
-                                      : '↩ Повернути посилку (НП)'}
-                                  </button>
-                                )}
                                 <div style={{ display: 'flex', gap: '4px' }}>
                                   <a href={`/invoice/${order.id}`} target="_blank" rel="noopener noreferrer"
                                     style={{ ...btnMuted, flex: 1 }}>
