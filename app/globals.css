@@ -919,11 +919,17 @@ input, select { font-family: inherit; }
    і згортають. На ховері повертається, щоб було видно, що це те саме
    замовлення, а не декорація. */
 .order-compact-row.is-open {
-  filter: saturate(.12);
-  opacity: .5;
+  /* Заливка — накладенням, а не заміною: тон рядка (проблемний, обраний)
+     лишається під нею й далі читається. */
+  background-image: linear-gradient(0deg, rgba(15, 23, 42, .1), rgba(15, 23, 42, .1)) !important;
+}
+/* Гасне вміст, не сама смуга: інакше приглушилась би й заливка. */
+.order-compact-row.is-open > * {
+  filter: saturate(.1);
+  opacity: .55;
   transition: opacity .18s, filter .18s;
 }
-.order-compact-row.is-open:hover { opacity: .82; filter: saturate(.5); }
+.order-compact-row.is-open:hover > * { opacity: .85; filter: saturate(.5); }
 
 /* Коли дій не видно, права колонка звужується до кнопки, і 250px забирають
    блоки, які читають. Шапку не чіпаємо: статус тримається правого краю в обох
