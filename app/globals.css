@@ -894,10 +894,10 @@ input, select { font-family: inherit; }
    вертикалі з підписом «КЛІЄНТ». */
 .oc-expand-header {
   background: transparent !important;
-  /* Шов між ручкою (згорнутий рядок) і аркушем картки. Лінія тонша за
-     попередню й без тіні: сіра заливка рядка вже тримає межу, лінії лишилось
-     тільки її окреслити. */
-  border-top: 1px solid #C3CCD8 !important;
+  /* Шов між ручкою (згорнутий рядок) і аркушем картки: темніша лінія плюс
+     тінь, яку рядок нібито кидає на аркуш. */
+  border-top: 1px solid #94A3B8 !important;
+  box-shadow: inset 0 8px 8px -8px rgba(16, 24, 40, .3);
   border-bottom: 1px solid var(--border-light);
   padding: 11px 18px 8px !important;
   align-items: center !important;

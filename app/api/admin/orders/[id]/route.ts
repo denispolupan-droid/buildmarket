@@ -133,9 +133,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   // Контрагент замовлення. Міняють, коли замовлення оформили не на того клієнта
-  // (частий випадок — той самий покупець платить від ФОП). Проведені документи
-  // не чіпаємо: там контрагент зафіксований проводками. Чернетку РН переносимо —
-  // вона ще не проведена, і саме її буде видно в друку й у боргах.
+  // або клієнт просить відправити взагалі іншій людині. Разом із прив'язкою
+  // переносимо контакт, телефон і компанію з картки контрагента: інакше в
+  // замовленні лишився б старий отримувач, і посилка поїхала б не туди.
+  // Порожні поля картки не затирають наявні (телефон у довіднику може бути
+  // не заповнений); адресу доставки не чіпаємо — вона правиться окремо.
+  // Проведені документи лишаються на старому контрагенті: там уже проводки.
+  // Чернетку РН переносимо — вона ще не проведена, і саме її буде видно в друку.
   if (customer_id !== undefined) {
     if (customer_id === null) {
       update.customer_id = null;
@@ -144,9 +148,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         return NextResponse.json({ error: 'Invalid customer_id' }, { status: 400 });
       }
       const { data: cust } = await db
-        .from('customers').select('id').eq('id', customer_id).maybeSingle();
+        .from('customers').select('id, name, company, phone').eq('id', customer_id).maybeSingle();
       if (!cust) return NextResponse.json({ error: 'Контрагента не знайдено' }, { status: 400 });
       update.customer_id = cust.id;
+      if (cust.name)  update.contact = cust.name;
+      if (cust.phone) update.phone   = cust.phone;
+      update.company = cust.company ?? null;
     }
     await db.from('acc_documents')
       .update({ customer_id: update.customer_id })
@@ -539,5 +546,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  return NextResponse.json({ ok: true, ...(computedDueDate ? { payment_due_date: computedDueDate } : {}) });
+  return NextResponse.json({
+    ok: true,
+    ...(computedDueDate ? { payment_due_date: computedDueDate } : {}),
+    // Щоб журнал одразу показав нового отримувача, не перезавантажуючи список
+    ...(customer_id !== undefined
+      ? { customer: { id: update.customer_id ?? null, contact: update.contact ?? null, phone: update.phone ?? null, company: update.company ?? null } }
+      : {}),
+  });
 }

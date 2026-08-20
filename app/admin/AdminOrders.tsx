@@ -213,10 +213,10 @@ function ClampedComment({ text }: { text: string }) {
 type CounterpartyOption = { id: string; name: string; company: string | null; phone: string | null; city: string | null; type: string | null };
 
 /**
- * Контрагент замовлення — кого ми виставляємо в документах. Це не завжди той,
- * хто отримує посилку: той самий покупець сьогодні бере як фізособа, а завтра
- * просить рахунок на свій ФОП. Тому прив'язку можна переставити, не чіпаючи
- * контакт і адресу доставки.
+ * Контрагент замовлення. Міняють у двох випадках: замовлення оформили не на
+ * того клієнта, або клієнт просить відправити взагалі іншій людині. Тому разом
+ * із прив'язкою підставляються контакт, телефон і компанія з картки —
+ * лишається поправити хіба що адресу доставки.
  *
  * Проведені документи лишаються на старому контрагенті — там уже проводки;
  * чернетку РН серверна частина переносить на нового.
@@ -224,7 +224,7 @@ type CounterpartyOption = { id: string; name: string; company: string | null; ph
 function CounterpartyPicker({ orderId, customerId, onPicked }: {
   orderId: string;
   customerId: string | null;
-  onPicked: (id: string | null) => void;
+  onPicked: (patch: { customer_id: string | null; contact?: string; phone?: string; company?: string | null }) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState<CounterpartyOption | null>(null);
@@ -274,7 +274,17 @@ function CounterpartyPicker({ orderId, customerId, onPicked }: {
       body: JSON.stringify({ customer_id: id }),
     });
     setSaving(false);
-    if (res.ok) { onPicked(id); setOpen(false); setQuery(''); }
+    if (!res.ok) return;
+    const data = await res.json().catch(() => ({}));
+    const c = data.customer as { contact?: string | null; phone?: string | null; company?: string | null } | undefined;
+    onPicked({
+      customer_id: id,
+      ...(c?.contact ? { contact: c.contact } : {}),
+      ...(c?.phone ? { phone: c.phone } : {}),
+      ...(c ? { company: c.company ?? null } : {}),
+    });
+    setOpen(false);
+    setQuery('');
   }
 
   return (
@@ -293,7 +303,10 @@ function CounterpartyPicker({ orderId, customerId, onPicked }: {
       </button>
       {open && (
         <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 60, width: '320px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', boxShadow: '0 12px 32px rgba(16,24,40,0.18)', padding: '8px' }}>
-          <div className="oc-sub-lbl" style={{ marginBottom: '6px' }}>Контрагент замовлення</div>
+          <div className="oc-sub-lbl" style={{ marginBottom: '2px' }}>Контрагент замовлення</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.35, marginBottom: '6px' }}>
+            Контакт, телефон і компанія підставляться з картки. Адреса доставки лишиться колишня.
+          </div>
           <input autoFocus value={query} onChange={e => setQuery(e.target.value)}
             placeholder="Ім'я, компанія, телефон…"
             style={{ width: '100%', height: '30px', padding: '0 8px', boxSizing: 'border-box', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none' }} />
@@ -3610,7 +3623,7 @@ export default function AdminOrders({
                             <CounterpartyPicker
                               orderId={order.id}
                               customerId={order.customer_id}
-                              onPicked={id => setOrders(prev => prev.map(o => o.id === order.id ? { ...o, customer_id: id } : o))}
+                              onPicked={patch => setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...patch } : o))}
                             />
                           )}
                         </div>
