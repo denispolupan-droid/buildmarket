@@ -40,7 +40,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     items: bodyItems, total_price: bodyTotalPrice,
     delivery_type, delivery_subtype, delivery_city_name, delivery_address,
     payment_type, payment_due_date, shipping_supplier_id,
-    internal_note, flags,
+    internal_note, flags, customer_id,
     // Причина скасування для Rozetka (id статусу групи 3) — обирає менеджер
     // при скасуванні rozetka-замовлення; без неї скасування в кабінет не пушиться
     rozetka_cancel_reason,
@@ -130,6 +130,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Invalid shipping_supplier_id' }, { status: 400 });
     }
     update.shipping_supplier_id = shipping_supplier_id;
+  }
+
+  // Контрагент замовлення. Міняють, коли замовлення оформили не на того клієнта
+  // (частий випадок — той самий покупець платить від ФОП). Проведені документи
+  // не чіпаємо: там контрагент зафіксований проводками. Чернетку РН переносимо —
+  // вона ще не проведена, і саме її буде видно в друку й у боргах.
+  if (customer_id !== undefined) {
+    if (customer_id === null) {
+      update.customer_id = null;
+    } else {
+      if (typeof customer_id !== 'string') {
+        return NextResponse.json({ error: 'Invalid customer_id' }, { status: 400 });
+      }
+      const { data: cust } = await db
+        .from('customers').select('id').eq('id', customer_id).maybeSingle();
+      if (!cust) return NextResponse.json({ error: 'Контрагента не знайдено' }, { status: 400 });
+      update.customer_id = cust.id;
+    }
+    await db.from('acc_documents')
+      .update({ customer_id: update.customer_id })
+      .eq('order_id', id)
+      .eq('status', 'draft');
   }
 
   const { error } = await db.from('orders').update(update).eq('id', id);

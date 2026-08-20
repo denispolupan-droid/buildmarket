@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare, UserPlus } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -205,6 +205,122 @@ function ClampedComment({ text }: { text: string }) {
           style={{ marginTop: '3px', padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: 600, color: 'var(--brand-blue)' }}>
           {open ? 'Згорнути' : 'Показати весь'}
         </button>
+      )}
+    </div>
+  );
+}
+
+type CounterpartyOption = { id: string; name: string; company: string | null; phone: string | null; city: string | null; type: string | null };
+
+/**
+ * Контрагент замовлення — кого ми виставляємо в документах. Це не завжди той,
+ * хто отримує посилку: той самий покупець сьогодні бере як фізособа, а завтра
+ * просить рахунок на свій ФОП. Тому прив'язку можна переставити, не чіпаючи
+ * контакт і адресу доставки.
+ *
+ * Проведені документи лишаються на старому контрагенті — там уже проводки;
+ * чернетку РН серверна частина переносить на нового.
+ */
+function CounterpartyPicker({ orderId, customerId, onPicked }: {
+  orderId: string;
+  customerId: string | null;
+  onPicked: (id: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState<CounterpartyOption | null>(null);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<CounterpartyOption[]>([]);
+  const [saving, setSaving] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  // Ім'я прив'язаного контрагента: у замовленні лежить лише id
+  useEffect(() => {
+    if (!customerId) { setCurrent(null); return; }
+    let alive = true;
+    fetch(`/api/admin/customers/search?id=${customerId}`)
+      .then(r => r.ok ? r.json() : [])
+      .then((rows: CounterpartyOption[]) => { if (alive) setCurrent(rows[0] ?? null); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [customerId]);
+
+  // Список: спершу останні клієнти, далі — пошук із паузою на набір
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      const q = query.trim();
+      fetch(`/api/admin/customers/search?q=${encodeURIComponent(q.length >= 2 ? q : '')}&limit=30`)
+        .then(r => r.ok ? r.json() : [])
+        .then((rows: CounterpartyOption[]) => setResults(rows))
+        .catch(() => setResults([]));
+    }, query ? 250 : 0);
+    return () => clearTimeout(t);
+  }, [open, query]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  async function pick(id: string | null) {
+    setSaving(true);
+    const res = await fetch(`/api/admin/orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_id: id }),
+    });
+    setSaving(false);
+    if (res.ok) { onPicked(id); setOpen(false); setQuery(''); }
+  }
+
+  return (
+    <div ref={boxRef} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+      {customerId && (
+        <a href={`/admin/partners?open=${customerId}`} target="_blank" rel="noopener noreferrer"
+          title={current ? `Контрагент: ${[current.name, current.company].filter(Boolean).join(' · ')}` : 'Відкрити картку контрагента'}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: 'var(--brand-blue)', textDecoration: 'none', background: '#EAF1F8', border: '1px solid #D6E3F0', borderRadius: '5px', padding: '1px 6px' }}>
+          Картка ↗
+        </a>
+      )}
+      <button type="button" onClick={() => setOpen(o => !o)}
+        title={customerId ? 'Змінити контрагента замовлення' : 'Прив\'язати контрагента'}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: open ? 'var(--brand-blue)' : 'var(--text-muted)', lineHeight: 1, display: 'inline-flex' }}>
+        {customerId ? <Pencil size={12} /> : <UserPlus size={13} />}
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 60, width: '320px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', boxShadow: '0 12px 32px rgba(16,24,40,0.18)', padding: '8px' }}>
+          <div className="oc-sub-lbl" style={{ marginBottom: '6px' }}>Контрагент замовлення</div>
+          <input autoFocus value={query} onChange={e => setQuery(e.target.value)}
+            placeholder="Ім'я, компанія, телефон…"
+            style={{ width: '100%', height: '30px', padding: '0 8px', boxSizing: 'border-box', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none' }} />
+          <div style={{ maxHeight: '210px', overflowY: 'auto', marginTop: '6px' }}>
+            {results.length === 0 && (
+              <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', padding: '8px 4px' }}>Нічого не знайшлось</div>
+            )}
+            {results.map(c => (
+              <button key={c.id} type="button" disabled={saving} onClick={() => pick(c.id)}
+                style={{ width: '100%', textAlign: 'left', padding: '6px 6px', border: 'none', borderRadius: '7px', cursor: saving ? 'wait' : 'pointer',
+                  background: c.id === customerId ? '#EAF1F8' : 'transparent', display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {c.name}{c.company ? ` · ${c.company}` : ''}
+                </span>
+                {(c.phone || c.city) && (
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{[c.phone, c.city].filter(Boolean).join(' · ')}</span>
+                )}
+              </button>
+            ))}
+          </div>
+          {customerId && (
+            <button type="button" disabled={saving} onClick={() => pick(null)}
+              style={{ marginTop: '6px', width: '100%', height: '28px', border: '1px solid var(--border)', borderRadius: '7px', background: 'var(--bg-soft)', cursor: 'pointer', fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              {`Відв'язати контрагента`}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -3490,12 +3606,12 @@ export default function AdminOrders({
                         )}
                         <div className="oc-name-main" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)' }}>
                           {order.contact}
-                          {order.customer_id && (
-                            <a href={`/admin/partners?open=${order.customer_id}`} target="_blank" rel="noopener noreferrer"
-                              title="Відкрити картку контрагента"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: 'var(--brand-blue)', textDecoration: 'none', background: '#EAF1F8', border: '1px solid #D6E3F0', borderRadius: '5px', padding: '1px 6px' }}>
-                              Картка ↗
-                            </a>
+                          {isAdmin && (
+                            <CounterpartyPicker
+                              orderId={order.id}
+                              customerId={order.customer_id}
+                              onPicked={id => setOrders(prev => prev.map(o => o.id === order.id ? { ...o, customer_id: id } : o))}
+                            />
                           )}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
@@ -3876,6 +3992,9 @@ export default function AdminOrders({
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                             <Truck size={13} color="#64748B" /> {delivery}
                           </span>
+                          {/* SMART / «дешева доставка» — умови саме цієї доставки, тож
+                              стоять біля перевізника, а не десь у мітках замовлення. */}
+                          {deliveryBadges}
                           <span style={{ color: 'var(--text-secondary)', marginTop: '1px' }}>{subtype.replace(/^ — /, '')}{order.delivery_city_name && <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{subtype ? ' · ' : ''}{order.delivery_city_name}</strong>}{order.delivery_address && ` · ${order.delivery_address}`}</span>
                         </div>
                       )}
