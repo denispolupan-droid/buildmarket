@@ -966,6 +966,11 @@ input, select { font-family: inherit; }
 .oc-flag-btn[aria-pressed="true"]:hover { filter: brightness(.95); }
 .oc-flag-btn:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
 
+/* Одна позиція — шапка стовпців зайва: «АРТИКУЛ / К-СТЬ / ЦІНА / СУМА»
+   важили стільки ж, скільки сам товар, і пояснювали те, що й так видно.
+   Від двох позицій шапка повертається — там уже є що зіставляти. */
+.order-expand-grid .oc-items-single thead { display: none; }
+
 /* Одна шкала на всю картку. Було дев'ять кеглів (16 / 15 / 14 / 13 / 12.5 /
    12 / 11.5 / 11 / 10) — око спотикалось на кожному блоці, і жоден розмір
    нічого не означав. Лишилось чотири щаблі: мітка 10.5, дрібне 11.5,

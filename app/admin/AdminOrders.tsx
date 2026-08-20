@@ -31,6 +31,7 @@ import { showConfirm } from '../../lib/confirm';
 import { showToast } from '../../lib/toast';
 import SmartDateInput from '../components/SmartDateInput';
 import InvoiceMessengerButtons from '../components/InvoiceMessengerButtons';
+import { statusAge } from '../../lib/orders/status-age';
 import InvoiceOptionsModal from '../components/admin/InvoiceOptionsModal';
 import ReturnOrderModal from '../components/admin/ReturnOrderModal';
 import NpReturnModal from '../components/admin/NpReturnModal';
@@ -3218,6 +3219,21 @@ export default function AdminOrders({
                         <span style={{ display: 'inline-flex', alignItems: 'center', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-card)', border: '1px solid var(--border-light)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
                           {date}
                         </span>
+                        {(() => {
+                          const age = statusAge(order);
+                          if (!age) return null;
+                          return (
+                            <span title={age.stale
+                              ? `Замовлення стоїть у статусі «${status.label}» ${age.label} — довше за звичайне для цього статусу`
+                              : `У статусі «${status.label}» ${age.label}`}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: age.stale ? 700 : 600, whiteSpace: 'nowrap',
+                                color: age.stale ? '#B45309' : 'var(--text-muted)',
+                                background: age.stale ? '#FEF3C7' : 'transparent',
+                                border: age.stale ? 'none' : '1px solid transparent' }}>
+                              {age.stale && '⏳ '}у статусі {age.label}
+                            </span>
+                          );
+                        })()}
                         {order.promo_code && (
                           <span title="Знижку вже враховано в сумі замовлення"
                             style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', whiteSpace: 'nowrap' }}>
@@ -3417,7 +3433,15 @@ export default function AdminOrders({
                           <div style={{ display: 'flex', flexDirection: 'column' }}>
                             {/* Items table */}
                             <div className="oc-items-scroll" style={{ padding: '2px 0 0' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                            <table className={order.items.length === 1 ? 'oc-items-single' : undefined} style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                              <colgroup>
+                                <col />
+                                <col className="oc-col-sku" style={{ width: '104px' }} />
+                                <col style={{ width: '44px' }} />
+                                <col style={{ width: '62px' }} />
+                                <col style={{ width: '70px' }} />
+                                <col className="oc-col-src" style={{ width: '90px' }} />
+                              </colgroup>
                               <thead>
                                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                   <th style={{ textAlign: 'left', padding: '2px 0 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Назва</th>
@@ -3568,6 +3592,30 @@ export default function AdminOrders({
                                       <td style={{ padding: '10px 0 0' }} />
                                     </tr>
                                   );
+                                  // Гроші: скільки вже прийшло і скільки ще винні. Показуємо
+                                  // тільки коли є розрив — часткова оплата або виставлений
+                                  // рахунок без грошей. Накладений платіж сюди не потрапляє:
+                                  // там уся сума за визначенням прийде при врученні, і рядок
+                                  // «До сплати» на кожному COD-замовленні був би шумом.
+                                  (() => {
+                                    const totalSum = Number(order.total_price);
+                                    const paid = Number(order.amount_paid ?? 0);
+                                    const left = Math.max(0, totalSum - paid);
+                                    const partial = paid > 0 && left > 0;
+                                    const unpaidInvoice = !isCod && !paymentConfirmed && paid === 0 && left > 0;
+                                    if (!partial && !unpaidInvoice) return;
+                                    const line = (key: string, label: string, value: number, color: string) => rows.push(
+                                      <tr className="oc-total-row" key={key}>
+                                        <td colSpan={4} style={{ padding: '2px 0 0', textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)' }}>{label}</td>
+                                        <td style={{ padding: '2px 0 0', textAlign: 'right', fontSize: '12.5px', fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>
+                                          {value.toFixed(0)} ₴
+                                        </td>
+                                        <td style={{ padding: '2px 0 0' }} />
+                                      </tr>
+                                    );
+                                    if (partial) line('__paid', 'Оплачено', paid, '#15803D');
+                                    line('__left', 'До сплати', left, '#B45309');
+                                  })();
                                   return rows;
                                 })()}
                               </tbody>
@@ -3650,9 +3698,6 @@ export default function AdminOrders({
                       <span className="oc-lbl">Клієнт</span>
                       {/* Contact info */}
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                        <div style={{ width: '44px', height: '44px', borderRadius: '999px', flexShrink: 0, background: '#EEF2FF', color: 'var(--brand-blue)', fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {order.contact.trim().split(/\s+/).slice(0, 2).map(w => w[0] ?? '').join('').toUpperCase() || '—'}
-                        </div>
                         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         {order.company && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 }}>
@@ -4304,13 +4349,13 @@ export default function AdminOrders({
                             // головна одна, решта — інструменти. Рамку лишили тільки їй.
                             const btn = {
                               display: 'flex' as const, alignItems: 'center' as const, gap: '8px',
-                              padding: '7px 8px', borderRadius: '7px', fontSize: '12.5px', fontWeight: 500,
+                              height: '30px', padding: '0 8px', borderRadius: '7px', fontSize: '12.5px', fontWeight: 500,
                               cursor: 'pointer', textDecoration: 'none', border: '1px solid transparent',
                               background: 'transparent', color: 'var(--text-primary)', width: '100%',
                               boxSizing: 'border-box' as const, justifyContent: 'flex-start' as const,
                             };
                             const btnPrimary = { ...btn, border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#1E3A5F', fontWeight: 600 };
-                            const btnMuted   = { ...btn, padding: '6px 8px', fontWeight: 500, color: 'var(--text-secondary)' };
+                            const btnMuted   = { ...btn, fontWeight: 500, color: 'var(--text-secondary)' };
                             return (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
                                 {/* Копія замовлення — повтор того самого складу для того самого
