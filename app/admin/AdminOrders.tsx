@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare, UserPlus, Zap, AlertTriangle, Settings, ExternalLink, RotateCcw, PhoneOff, Clock } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -31,6 +31,7 @@ import { showConfirm } from '../../lib/confirm';
 import { showToast } from '../../lib/toast';
 import SmartDateInput from '../components/SmartDateInput';
 import InvoiceMessengerButtons from '../components/InvoiceMessengerButtons';
+import { stripCityPrefix } from '../../lib/orders/delivery-line';
 import InvoiceOptionsModal from '../components/admin/InvoiceOptionsModal';
 import ReturnOrderModal from '../components/admin/ReturnOrderModal';
 import NpReturnModal from '../components/admin/NpReturnModal';
@@ -87,6 +88,8 @@ type Order = {
   carrier_accepted_at: string | null;
   carrier_status_text: string | null;
   carrier_status_synced_at: string | null;
+  /** Час видачі за даними перевізника; null — перевізник часу не дав */
+  carrier_delivered_at:   string | null;
   payment_confirmed:  boolean;
   amount_paid:        number;
   callback_done:      boolean;
@@ -205,6 +208,130 @@ function ClampedComment({ text }: { text: string }) {
           style={{ marginTop: '3px', padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: 600, color: 'var(--brand-blue)' }}>
           {open ? 'Згорнути' : 'Показати весь'}
         </button>
+      )}
+    </div>
+  );
+}
+
+type CounterpartyOption = { id: string; name: string; company: string | null; phone: string | null; city: string | null; type: string | null };
+
+/**
+ * Контрагент замовлення. Міняють у двох випадках: замовлення оформили не на
+ * того клієнта, або клієнт просить відправити взагалі іншій людині. Тому разом
+ * із прив'язкою підставляються контакт, телефон і компанія з картки —
+ * лишається поправити хіба що адресу доставки.
+ *
+ * Проведені документи лишаються на старому контрагенті — там уже проводки;
+ * чернетку РН серверна частина переносить на нового.
+ */
+function CounterpartyPicker({ orderId, customerId, onPicked }: {
+  orderId: string;
+  customerId: string | null;
+  onPicked: (patch: { customer_id: string | null; contact?: string; phone?: string; company?: string | null }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState<CounterpartyOption | null>(null);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<CounterpartyOption[]>([]);
+  const [saving, setSaving] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  // Ім'я прив'язаного контрагента: у замовленні лежить лише id
+  useEffect(() => {
+    if (!customerId) { setCurrent(null); return; }
+    let alive = true;
+    fetch(`/api/admin/customers/search?id=${customerId}`)
+      .then(r => r.ok ? r.json() : [])
+      .then((rows: CounterpartyOption[]) => { if (alive) setCurrent(rows[0] ?? null); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [customerId]);
+
+  // Список: спершу останні клієнти, далі — пошук із паузою на набір
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      const q = query.trim();
+      fetch(`/api/admin/customers/search?q=${encodeURIComponent(q.length >= 2 ? q : '')}&limit=30`)
+        .then(r => r.ok ? r.json() : [])
+        .then((rows: CounterpartyOption[]) => setResults(rows))
+        .catch(() => setResults([]));
+    }, query ? 250 : 0);
+    return () => clearTimeout(t);
+  }, [open, query]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  async function pick(id: string | null) {
+    setSaving(true);
+    const res = await fetch(`/api/admin/orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_id: id }),
+    });
+    setSaving(false);
+    if (!res.ok) return;
+    const data = await res.json().catch(() => ({}));
+    const c = data.customer as { contact?: string | null; phone?: string | null; company?: string | null } | undefined;
+    onPicked({
+      customer_id: id,
+      ...(c?.contact ? { contact: c.contact } : {}),
+      ...(c?.phone ? { phone: c.phone } : {}),
+      ...(c ? { company: c.company ?? null } : {}),
+    });
+    setOpen(false);
+    setQuery('');
+  }
+
+  return (
+    <div ref={boxRef} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        title={customerId
+          ? `Контрагент: ${current ? [current.name, current.company].filter(Boolean).join(' · ') : '…'} — натисніть, щоб змінити`
+          : 'Прив\'язати контрагента'}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: open ? 'var(--brand-blue)' : 'var(--text-muted)', lineHeight: 1, display: 'inline-flex' }}>
+        {customerId ? <Pencil size={12} /> : <UserPlus size={13} />}
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 60, width: '320px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', boxShadow: '0 12px 32px rgba(16,24,40,0.18)', padding: '8px' }}>
+          <div className="oc-sub-lbl" style={{ marginBottom: '2px' }}>Контрагент замовлення</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.35, marginBottom: '6px' }}>
+            Контакт, телефон і компанія підставляться з картки. Адреса доставки лишиться колишня.
+          </div>
+          <input autoFocus value={query} onChange={e => setQuery(e.target.value)}
+            placeholder="Ім'я, компанія, телефон…"
+            style={{ width: '100%', height: '30px', padding: '0 8px', boxSizing: 'border-box', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none' }} />
+          <div style={{ maxHeight: '210px', overflowY: 'auto', marginTop: '6px' }}>
+            {results.length === 0 && (
+              <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', padding: '8px 4px' }}>Нічого не знайшлось</div>
+            )}
+            {results.map(c => (
+              <button key={c.id} type="button" disabled={saving} onClick={() => pick(c.id)}
+                style={{ width: '100%', textAlign: 'left', padding: '6px 6px', border: 'none', borderRadius: '7px', cursor: saving ? 'wait' : 'pointer',
+                  background: c.id === customerId ? '#EAF1F8' : 'transparent', display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {c.name}{c.company ? ` · ${c.company}` : ''}
+                </span>
+                {(c.phone || c.city) && (
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{[c.phone, c.city].filter(Boolean).join(' · ')}</span>
+                )}
+              </button>
+            ))}
+          </div>
+          {customerId && (
+            <button type="button" disabled={saving} onClick={() => pick(null)}
+              style={{ marginTop: '6px', width: '100%', height: '28px', border: '1px solid var(--border)', borderRadius: '7px', background: 'var(--bg-soft)', cursor: 'pointer', fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              {`Відв'язати контрагента`}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -599,6 +726,15 @@ export default function AdminOrders({
   const [discInput,        setDiscInput]        = useState<Record<string, string>>({});
   const [discMode,         setDiscMode]         = useState<Record<string, 'pct' | 'amount'>>({});
   const [priceBlockOpen,   setPriceBlockOpen]   = useState<Record<string, boolean>>({});
+  /** Історія замовлення згорнута за замовчуванням: до неї звертаються зрідка,
+   *  а висоти вона додає більше за будь-який інший блок картки. */
+  const [historyOpen, setHistoryOpen] = useState<Record<string, boolean>>({});
+  /** Колонка «Дії» відкрита за замовчуванням; чевронц біля підпису згортає її
+   *  в вузьку кнопку, і тоді 250px забирають блоки, які читають. */
+  const [actionsOpen, setActionsOpen] = useState<Record<string, boolean>>({});
+  /** Нотатку пишуть в одному замовленні з двадцяти, тож поле відкривається за
+   *  вимогою: постійно порожній інпут на всю ширину читався як «заповни мене». */
+  const [noteEditing, setNoteEditing] = useState<Record<string, boolean>>({});
   const [finLogOpen,       setFinLogOpen]       = useState<Record<string, boolean>>({});
   const [statusEditOpen,   setStatusEditOpen]   = useState<Record<string, boolean>>({});
   const [itemsExpanded,    setItemsExpanded]    = useState<Record<string, boolean>>({});
@@ -2235,7 +2371,7 @@ export default function AdminOrders({
         <div style={{ position: 'relative' }}>
           <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           <input
-            placeholder="№ замовлення, ФІО, компанія, телефон, ТТН — по всій базі"
+            placeholder="№ замовлення або МП, ФІО, компанія, телефон, ТТН — по всій базі"
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             onFocus={e => { e.currentTarget.style.borderColor = 'var(--brand-teal)'; }}
@@ -2615,17 +2751,19 @@ export default function AdminOrders({
             return (
               <div key={order.id} id={`order-${order.id}`} style={{
                 background: isFlashing ? '#F0FDF4' : isPicked ? 'var(--brand-teal-light)' : rowTone?.bg ?? 'var(--bg-card)',
-                border: `1px solid ${isFlashing ? '#86EFAC' : isPicked ? 'var(--brand-teal)' : isExpanded ? 'var(--brand-blue)' : rowTone?.edge ?? 'var(--border-light)'}`,
+                // Відкрита картка виділяється висотою, а не кольором: синій контур
+                // читався як «виділено мишею», хоча це просто розгорнутий запис.
+                border: `1px solid ${isFlashing ? '#86EFAC' : isPicked ? 'var(--brand-teal)' : isExpanded ? '#D8DEE7' : rowTone?.edge ?? 'var(--border-light)'}`,
                 borderLeft: isPicked ? '4px solid var(--brand-teal)' : rowTone ? `4px solid ${rowTone.bar}` : undefined,
                 borderRadius: '14px', overflow: 'hidden',
-                boxShadow: isExpanded ? '0 6px 20px rgba(16,24,40,0.12)' : isFlashing ? '0 0 0 3px #BBF7D0' : isPicked ? '0 2px 10px rgba(61,191,184,0.25)' : '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06)',
+                boxShadow: isExpanded ? '0 2px 4px rgba(16,24,40,0.04), 0 24px 48px -16px rgba(16,24,40,0.28)' : isFlashing ? '0 0 0 3px #BBF7D0' : isPicked ? '0 2px 10px rgba(61,191,184,0.25)' : '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06)',
                 opacity: expandedId && !isExpanded ? 0.35 : 1,
                 transition: 'box-shadow 0.3s, border-color 0.3s, opacity 0.15s, background 0.3s',
               }}>
 
                 {/* ── Compact row ── */}
                 <div
-                  className="order-compact-row"
+                  className={`order-compact-row${isExpanded ? ' is-open' : ''}`}
                   onClick={() => { const next = isExpanded ? null : order.id; setExpandedId(next); if (next) { loadFulfillment(next); loadLinkedPOs(next); loadPayments(next); } }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '10px',
@@ -3046,16 +3184,18 @@ export default function AdminOrders({
                     </div>
                   )}
                   {/* Шапка розгорнутого замовлення — новий дизайн */}
-                  <div className="oc-expand-header" style={{ borderTop: '1px solid var(--border-light)', background: 'var(--bg-soft)', padding: '16px 14px 14px', display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                  <div className={`oc-expand-header${(actionsOpen[order.id] ?? true) ? '' : ' oc-actions-off'}`} style={{ borderTop: '1px solid var(--border-light)', background: 'var(--bg-soft)', padding: '16px 14px 14px', display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
                     {/* main-part — дзеркалить основну область сітки (Клієнт | Оплата) */}
                     <div className="oc-main-part" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Замовлення #{order.order_number}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '9px', flexWrap: 'wrap' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
-                          color: paymentConfirmed ? '#15803D' : '#B45309', background: paymentConfirmed ? '#DCFCE7' : '#FEF3C7' }}>
-                          <CreditCard size={12} />{paymentConfirmed ? 'Оплачено' : isCod ? 'Накладений платіж' : 'Очікує оплату'}
-                        </span>
+                    <div className="oc-hdr-title" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: '17px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>Замовлення #{order.order_number}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
+                        {!paymentConfirmed && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
+                            color: '#B45309', background: '#FEF3C7' }}>
+                            <CreditCard size={12} />{isCod ? 'Накладений платіж' : 'Очікує оплату'}
+                          </span>
+                        )}
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, color: channel.color, background: channel.bg, whiteSpace: 'nowrap' }}>
                           <ShoppingCart size={12} />{channel.label}
                         </span>
@@ -3076,28 +3216,26 @@ export default function AdminOrders({
                         <span style={{ display: 'inline-flex', alignItems: 'center', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-card)', border: '1px solid var(--border-light)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
                           {date}
                         </span>
+                        {order.promo_code && (
+                          <span title="Знижку вже враховано в сумі замовлення"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', whiteSpace: 'nowrap' }}>
+                            <Tag size={12} /> {order.promo_code} · −{Number(order.promo_discount ?? 0).toFixed(2)} ₴
+                          </span>
+                        )}
                       </div>
                     </div>
-                    {/* Права половина: сума (ліворуч, по межі блоку «Оплата») + «Підтвердити» поруч */}
-                    <div className="oc-pay-part" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                    <div style={{ flexShrink: 0, minWidth: '120px' }}>
-                      <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{Number(order.total_price).toFixed(0)} ₴</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Сума замовлення</div>
-                      {order.promo_code && (
-                        <div title="Знижку вже враховано в сумі замовлення"
-                          style={{ marginTop: '4px', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', borderRadius: '6px', padding: '2px 8px', whiteSpace: 'nowrap' }}>
-                          <Tag size={11} /> {order.promo_code} · −{Number(order.promo_discount ?? 0).toFixed(2)} ₴
-                        </div>
-                      )}
-                    </div>
+                    {/* Права половина шапки — тільки «Підтвердити». Суму звідси прибрано:
+                        вона є в підсумку таблиці товарів і в згорнутому рядку журналу,
+                        а тут лише розганяла шапку на два поверхи. */}
+                    <div className="oc-pay-part" style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
                     <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                     {order.status === 'new' && (() => {
                       const busy = confirming === order.id;
                       const confirmErr = confirmErrors[order.id];
                       return (
-                        <div className="oc-confirm-block" style={{ width: '250px', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '6px' }}>
+                        <div className="oc-confirm-block" style={{ width: '230px', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '6px' }}>
                           <button onClick={() => confirmOrder(order.id)} disabled={busy}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', height: '44px', padding: '0 22px', borderRadius: '12px', border: 'none', background: busy ? '#94A3B8' : '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer', boxShadow: '0 1px 2px rgba(30,58,95,0.35)', whiteSpace: 'nowrap' }}>
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', height: '34px', padding: '0 18px', borderRadius: '9px', border: 'none', background: busy ? '#94A3B8' : '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer', boxShadow: '0 1px 2px rgba(30,58,95,0.35)', whiteSpace: 'nowrap' }}>
                             {busy ? 'Обробка…' : <><Check size={17} /> Підтвердити замовлення</>}
                           </button>
                           {confirmErr && (
@@ -3121,36 +3259,40 @@ export default function AdminOrders({
                     </div>{/* /Оплата-part */}
                     </div>{/* /main-part */}
                     {/* Статус — над правою панеллю (250px), «...» = ручна зміна */}
-                    <div className="oc-status-panel" style={{ width: '250px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', borderRadius: '10px', color: status.color, background: status.bg, border: `1.5px solid ${status.color}` }}>
-                        <span style={{ fontSize: '14px', fontWeight: 700, whiteSpace: 'nowrap' }}>{status.label}</span>
-                        <button onClick={() => setStatusEditOpen(p => ({ ...p, [order.id]: !p[order.id] }))}
-                          title="Змінити статус вручну"
-                          style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: (statusEditOpen[order.id] ?? false) ? 'rgba(0,0,0,0.12)' : 'none', border: 'none', cursor: 'pointer', color: status.color, padding: '3px', borderRadius: '6px', display: 'inline-flex' }}>
-                          <MoreHorizontal size={18} />
-                        </button>
-                      </div>
+                    <div className="oc-status-panel" style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+                      {/* Стан перевізника — ліворуч від плашки, а не під нею: це уточнення
+                          до статусу, і в один рядок воно не додає шапці поверху. */}
+                      <div className="oc-status-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
                       {(() => {
                         // Що зараз у кабінеті Rozetka. Показуємо, лише коли кабінет
-                        // попереду нас: коли статуси збігаються, зайвий рядок під
-                        // плашкою нічого не додає й тільки шумить.
+                        // попереду нас: коли статуси збігаються, зайвий рядок біля
+                        // плашки нічого не додає й тільки шумить.
                         const cab = rozetkaCabinet(order);
                         if (!cab?.ahead) return null;
                         return (
                           <div title={cab.at ? `Зчитано з кабінету: ${new Date(cab.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
-                            style={{ fontSize: '11px', fontWeight: 600, textAlign: 'center', lineHeight: 1.3, color: '#15803D' }}>
+                            style={{ fontSize: '11px', fontWeight: 600, textAlign: 'right', lineHeight: 1.3, color: '#15803D' }}>
                             ↳ у кабінеті: {cab.label}
                           </div>
                         );
                       })()}
                       {order.status === 'shipped' && order.tracking_number && (
                         <div title={order.carrier_status_synced_at ? `Оновлено: ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
-                          style={{ fontSize: '11px', fontWeight: 600, textAlign: 'center', lineHeight: 1.3, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
+                          style={{ fontSize: '11px', fontWeight: 600, textAlign: 'right', lineHeight: 1.3, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
                           {order.carrier_accepted_at ? '✓' : '⏳'} {order.carrier_status_text ?? `${order.carrier_accepted_at ? 'Прийнято' : 'Очікує приймання'} ${isRozetkaPoint ? 'Rozetka' : 'НП'}`}
                         </div>
                       )}
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '186px', flexShrink: 0, height: '32px', borderRadius: '8px', color: status.color, background: status.bg, border: `1.5px solid ${status.color}` }}>
+                        <span style={{ fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap' }}>{status.label}</span>
+                        <button onClick={() => setStatusEditOpen(p => ({ ...p, [order.id]: !p[order.id] }))}
+                          title="Змінити статус вручну"
+                          style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', background: (statusEditOpen[order.id] ?? false) ? 'rgba(0,0,0,0.12)' : 'none', border: 'none', cursor: 'pointer', color: status.color, padding: '2px', borderRadius: '6px', display: 'inline-flex' }}>
+                          <MoreHorizontal size={15} />
+                        </button>
+                      </div>
+                      </div>
                       {(statusEditOpen[order.id] ?? false) && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <div style={{ width: '186px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                           <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                             Змінити вручну{!isAdmin && <span style={{ marginLeft: '4px', color: '#F59E0B' }}>🔒</span>}
                           </div>
@@ -3173,7 +3315,7 @@ export default function AdminOrders({
                       )}
                     </div>
                   </div>
-                  <div className="order-expand-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 250px', gap: '14px', padding: '14px', background: 'var(--bg-soft)', alignItems: 'stretch' }}>
+                  <div className={`order-expand-grid${(actionsOpen[order.id] ?? true) ? '' : ' oc-actions-off'}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 250px', gap: '14px', padding: '14px', background: 'var(--bg-soft)', alignItems: 'stretch' }}>
 
                     {/* MAIN column (Товари + Контакт/Доставка) */}
                     <div className="order-main-col" style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
@@ -3183,23 +3325,19 @@ export default function AdminOrders({
                         колонки. Було flex:1 + justify-content:center — замовлення з
                         однією позицією розтягувалось на всю висоту правого сайдбара
                         і рядок висів посеред порожнечі. */}
-                    <div className="order-col-card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column' }}>
+                    <div className="order-col-card oc-acc oc-acc-items" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            Товари · {order.items.length}
-                          </span>
+                          <span className="oc-lbl">Товари</span>
                           <button
                             onClick={() => editingId === order.id ? setEditingId(null) : startEdit(order)}
+                            title={editingId === order.id ? 'Скасувати редагування складу' : 'Змінити склад замовлення'}
                             style={{
-                              height: '24px', padding: '0 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-                              border: `1.5px solid ${editingId === order.id ? '#EF4444' : 'var(--border)'}`,
-                              background: editingId === order.id ? '#FEF2F2' : 'var(--bg-card)',
-                              color: editingId === order.id ? '#EF4444' : 'var(--text-secondary)',
-                              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px',
+                              flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1,
+                              display: 'inline-flex', color: editingId === order.id ? '#EF4444' : 'var(--text-muted)',
                             }}
                           >
-                            {editingId === order.id ? <><X size={10} /> Скасувати</> : <><Pencil size={10} /> Редагувати</>}
+                            {editingId === order.id ? <X size={13} /> : <Pencil size={12} />}
                           </button>
                         </div>
 
@@ -3274,6 +3412,14 @@ export default function AdminOrders({
                             {/* Items table */}
                             <div className="oc-items-scroll" style={{ padding: '2px 0 0' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                              <colgroup>
+                                <col />
+                                <col className="oc-col-sku" style={{ width: '104px' }} />
+                                <col style={{ width: '44px' }} />
+                                <col style={{ width: '62px' }} />
+                                <col style={{ width: '70px' }} />
+                                <col className="oc-col-src" style={{ width: '90px' }} />
+                              </colgroup>
                               <thead>
                                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                   <th style={{ textAlign: 'left', padding: '2px 0 8px', color: 'var(--text-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Назва</th>
@@ -3292,8 +3438,10 @@ export default function AdminOrders({
                                     return sourceOverrides[order.id]?.[item.sku] ?? planSrc?.fulfillment_type;
                                   }).filter(Boolean);
                                   const isMixed = new Set(sources).size > 1;
-                                  const expanded = itemsExpanded[order.id] ?? false;
-                                  const shown = expanded ? order.items : order.items.slice(0, 1);
+                                  // Весь список одразу: приховані позиції змушували
+                                  // клікати, щоб побачити, що саме в замовленні — а це
+                                  // перше питання до розгорнутої картки.
+                                  const shown = order.items;
 
                                   const rows = shown.map(item => {
                                     const planSrc = planItems.find(s => s.sku === item.sku);
@@ -3410,32 +3558,42 @@ export default function AdminOrders({
                                       </tr>
                                     );
                                   });
-                                  if (order.items.length > 1) {
-                                    rows.push(
-                                      <tr key="__more">
-                                        <td colSpan={6} style={{ padding: '8px 0 2px' }}>
-                                          <button type="button" onClick={() => setItemsExpanded(p => ({ ...p, [order.id]: !expanded }))}
-                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '12px', fontWeight: 600, color: 'var(--brand-blue)' }}>
-                                            {expanded
-                                              ? <><ChevronUp size={14} /> Згорнути список</>
-                                              : <><ChevronDown size={14} /> Показати ще {order.items.length - 1} {order.items.length - 1 === 1 ? 'товар' : order.items.length - 1 < 5 ? 'товари' : 'товарів'}</>}
-                                          </button>
+                                  // Підсумок — у самій таблиці, під позиціями: сума в шапці
+                                  // відповідає на «скільки це коштує загалом», а тут вона
+                                  // закриває стовпчик «Сума» й показує, що рядки зійшлися.
+                                  rows.push(
+                                    <tr className="oc-total-row" key="__total">
+                                      <td colSpan={4} style={{ padding: '10px 0 0', textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)' }}>Разом</td>
+                                      <td style={{ padding: '10px 0 0', textAlign: 'right', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                                        {Number(order.total_price).toFixed(0)} ₴
+                                      </td>
+                                      <td style={{ padding: '10px 0 0' }} />
+                                    </tr>
+                                  );
+                                  // Гроші: скільки вже прийшло і скільки ще винні. Показуємо
+                                  // тільки коли є розрив — часткова оплата або виставлений
+                                  // рахунок без грошей. Накладений платіж сюди не потрапляє:
+                                  // там уся сума за визначенням прийде при врученні, і рядок
+                                  // «До сплати» на кожному COD-замовленні був би шумом.
+                                  (() => {
+                                    const totalSum = Number(order.total_price);
+                                    const paid = Number(order.amount_paid ?? 0);
+                                    const left = Math.max(0, totalSum - paid);
+                                    const partial = paid > 0 && left > 0;
+                                    const unpaidInvoice = !isCod && !paymentConfirmed && paid === 0 && left > 0;
+                                    if (!partial && !unpaidInvoice) return;
+                                    const line = (key: string, label: string, value: number, color: string) => rows.push(
+                                      <tr className="oc-total-row" key={key}>
+                                        <td colSpan={4} style={{ padding: '2px 0 0', textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)' }}>{label}</td>
+                                        <td style={{ padding: '2px 0 0', textAlign: 'right', fontSize: '12.5px', fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>
+                                          {value.toFixed(0)} ₴
                                         </td>
+                                        <td style={{ padding: '2px 0 0' }} />
                                       </tr>
                                     );
-                                    // Підсумок замовлення — лише на мобілці (десктоп: сума в шапці).
-                                    // display:none inline ховає на десктопі; мобільне .oc-items-scroll tr{display:flex} перебиває.
-                                    rows.push(
-                                      <tr className="oc-total-row" key="__total" style={{ display: 'none' }}>
-                                        <td colSpan={6} style={{ padding: '10px 0 0' }}>
-                                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
-                                            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)' }}>Разом</span>
-                                            <span style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{Number(order.total_price).toFixed(0)} ₴</span>
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    );
-                                  }
+                                    if (partial) line('__paid', 'Оплачено', paid, '#15803D');
+                                    line('__left', 'До сплати', left, '#B45309');
+                                  })();
                                   return rows;
                                 })()}
                               </tbody>
@@ -3444,16 +3602,83 @@ export default function AdminOrders({
 
                             {/* «Тип цін + знижка» перенесено в картку «Логістика» нижче */}
 
-                            {/* Ряд Фінанси | Логістика — під таблицею, згортається (за замовчуванням згорнуто) */}
-                            <button type="button" onClick={() => setFinLogOpen(p => ({ ...p, [order.id]: !(p[order.id] ?? false) }))}
-                              style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '11px', fontWeight: 700, color: (finLogOpen[order.id] ?? false) ? 'var(--brand-blue)' : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                              {(finLogOpen[order.id] ?? false) ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                              Фінанси та логістика
+
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Внутрішня нотатка — одним рядком під товарами. Це коментар до
+                        самого замовлення, тож поруч із його складом він доречніший, ніж
+                        окремою карткою в колонці дій, де з'їдав її висоту. */}
+                    <div className="order-col-card oc-acc oc-acc-note" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      {(() => {
+                        const note = order.internal_note ?? '';
+                        const editing = noteEditing[order.id] ?? false;
+                        // Немає нотатки і ніхто її не пише — тиха кнопка замість поля
+                        if (!editing && !note) {
+                          return (
+                            <button type="button" onClick={() => setNoteEditing(p => ({ ...p, [order.id]: true }))}
+                              title="Додати внутрішню нотатку до замовлення"
+                              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                              <Plus size={12} /> Нотатка
                             </button>
+                          );
+                        }
+                        // Нотатка є — показуємо текст; клік відкриває редагування
+                        if (!editing) {
+                          return (
+                            <>
+                              <span className="oc-sub-lbl" style={{ flexShrink: 0 }}>Нотатка</span>
+                              <button type="button" onClick={() => setNoteEditing(p => ({ ...p, [order.id]: true }))}
+                                title="Змінити нотатку"
+                                style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'text', fontSize: '12.5px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {note}
+                              </button>
+                            </>
+                          );
+                        }
+                        return (
+                          <>
+                            <span className="oc-sub-lbl" style={{ flexShrink: 0 }}>Нотатка</span>
+                            <input
+                              autoFocus
+                              key={`note-${order.id}-${note}`}
+                              defaultValue={note}
+                              onBlur={e => {
+                                const v = e.target.value.trim();
+                                if (v !== note) saveInternalNote(order.id, v);
+                                setNoteEditing(p => ({ ...p, [order.id]: false }));
+                              }}
+                              onKeyDown={e => { if (e.key === 'Escape') { e.currentTarget.value = note; e.currentTarget.blur(); } }}
+                              placeholder="Напр. клієнт думає, чекаємо оплату…"
+                              style={{ flex: 1, minWidth: 0, height: '30px', padding: '0 10px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12.5px', color: 'var(--text-primary)', fontFamily: 'inherit', boxSizing: 'border-box', background: 'var(--bg-card)', outline: 'none' }} />
+                          </>
+                        );
+                      })()}
+                      {noteSaving === order.id && <span style={{ fontSize: '10.5px', color: 'var(--text-muted)', flexShrink: 0 }}>Збереження…</span>}
+                      {/* Другорядні розділи — три однакові «плюси» в один ряд:
+                          нотатка, економіка і історія. Кожен із них потрібен зрідка,
+                          тож за замовчуванням вони згорнуті й важать один рядок. */}
+                      <span style={{ width: '1px', height: '14px', background: 'var(--border-light)', flexShrink: 0 }} />
+                      <button type="button" onClick={() => setFinLogOpen(p => ({ ...p, [order.id]: !(p[order.id] ?? false) }))}
+                        title="Собівартість, прибуток, тип цін і відвантаження постачальником"
+                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', fontWeight: 600, flexShrink: 0,
+                          color: (finLogOpen[order.id] ?? false) ? 'var(--brand-blue)' : 'var(--text-muted)' }}>
+                        {(finLogOpen[order.id] ?? false) ? <ChevronUp size={12} /> : <Plus size={12} />} Фінанси та логістика
+                      </button>
+                      <button type="button" onClick={() => setHistoryOpen(p => ({ ...p, [order.id]: !(p[order.id] ?? false) }))}
+                        title="Хронологія замовлення: статуси, накладна, повернення"
+                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', fontWeight: 600, flexShrink: 0,
+                          color: (historyOpen[order.id] ?? false) ? 'var(--brand-blue)' : 'var(--text-muted)' }}>
+                        {(historyOpen[order.id] ?? false) ? <ChevronUp size={12} /> : <Plus size={12} />} Історія замовлення
+                      </button>
+                    </div>
+                        <div className="oc-fin-side">
                             {(finLogOpen[order.id] ?? false) && (<>
                             <div className="oc-finlog-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: '10px', alignItems: 'stretch' }}>
                             <div className="order-col-card" style={{ minWidth: 0, padding: '14px', display: 'flex', flexDirection: 'column' }}>
-                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Фінанси</div>
+                            <div className="oc-lbl">Фінанси</div>
                             {/* Економіка замовлення. Після проведення РН показуємо ФАКТ із проводок
                                 (FIFO-собівартість, комісія з усіма зборами, сторно повернень); до того —
                                 попередню оцінку (собівартість = поточна закупівля, комісія = збережена
@@ -3561,7 +3786,7 @@ export default function AdminOrders({
 
                             </div>
                             <div className="order-col-card" style={{ minWidth: 0, padding: '14px', display: 'flex', flexDirection: 'column' }}>
-                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Логістика</div>
+                            <div className="oc-lbl">Логістика</div>
                             {/* Тип цін + ручна знижка */}
                             {(() => {
                               const editable = ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status)
@@ -3803,25 +4028,7 @@ export default function AdminOrders({
                               );
                             })()}
                             </>)}
-
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Внутрішня нотатка — одним рядком під товарами. Це коментар до
-                        самого замовлення, тож поруч із його складом він доречніший, ніж
-                        окремою карткою в колонці дій, де з'їдав її висоту. */}
-                    <div className="order-col-card" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0 }}>Нотатка</span>
-                      <input
-                        key={`note-${order.id}-${order.internal_note ?? ''}`}
-                        defaultValue={order.internal_note ?? ''}
-                        onBlur={e => { const v = e.target.value.trim(); if (v !== (order.internal_note ?? '')) saveInternalNote(order.id, v); }}
-                        placeholder="Напр. клієнт думає, чекаємо оплату…"
-                        style={{ flex: 1, minWidth: 0, height: '30px', padding: '0 10px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12.5px', color: 'var(--text-primary)', fontFamily: 'inherit', boxSizing: 'border-box', background: 'var(--bg-card)', outline: 'none' }} />
-                      {noteSaving === order.id && <span style={{ fontSize: '10.5px', color: 'var(--text-muted)', flexShrink: 0 }}>Збереження…</span>}
-                    </div>
+                        </div>
 
                     {/* Col 2: Contact + Delivery + payment + callback + TTN */}
                     <div className="oc-info-wrap" style={{ order: -1, position: 'relative' }}>
@@ -3835,31 +4042,47 @@ export default function AdminOrders({
                       }}
                       style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', alignItems: 'stretch' }}>
                     {/* Клієнт card */}
-                    <div className="order-col-card oc-split" style={{ padding: '16px' }}>
+                    <div className="order-col-card oc-split oc-acc oc-acc-client" style={{ padding: '16px' }}>
                       <div className="oc-card-body">
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Клієнт</span>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <div className="oc-lbl">Клієнт</div>
+                        {isAdmin && (
+                          <CounterpartyPicker
+                            orderId={order.id}
+                            customerId={order.customer_id}
+                            onPicked={patch => setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...patch } : o))}
+                          />
+                        )}
+                      </div>
                       {/* Contact info */}
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                        <div style={{ width: '44px', height: '44px', borderRadius: '999px', flexShrink: 0, background: '#EEF2FF', color: 'var(--brand-blue)', fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {order.contact.trim().split(/\s+/).slice(0, 2).map(w => w[0] ?? '').join('').toUpperCase() || '—'}
-                        </div>
                         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         {order.company && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 }}>
                             <Building2 size={12} color="#64748B" />{order.company}
                           </div>
                         )}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                          {order.contact}
+                        <div className="oc-name-main" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)', minWidth: 0 }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.contact}</span>
                           {order.customer_id && (
                             <a href={`/admin/partners?open=${order.customer_id}`} target="_blank" rel="noopener noreferrer"
                               title="Відкрити картку контрагента"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: 'var(--brand-blue)', textDecoration: 'none', background: '#EAF1F8', border: '1px solid #D6E3F0', borderRadius: '5px', padding: '1px 6px' }}>
-                              Картка ↗
+                              style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', lineHeight: 1 }}>
+                              <ExternalLink size={13} />
                             </a>
                           )}
+                          {/* Скільки клієнт у нас купував — у рядку з ПІБ і коротко:
+                              значок, кількість і сума. Слово «замовлень» з'їдало рядок,
+                              а сам факт постійного клієнта важливо бачити біля імені. */}
+                          {custStats[order.id] && custStats[order.id].count > 1 && (
+                            <span title={`${custStats[order.id].count} замовлень цього клієнта на ${custStats[order.id].total.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴ (разом із цим)`}
+                              style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '5px', flexShrink: 0, fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                              <ShoppingCart size={13} color="#64748B" />
+                              {custStats[order.id].count} · {custStats[order.id].total.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
+                            </span>
+                          )}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <a href={`tel:${order.phone}`} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13.5px', color: 'var(--brand-blue)', fontWeight: 700, textDecoration: 'none', fontVariantNumeric: 'tabular-nums' }}>
                             <Phone size={13} />{formatPhone(order.phone)}
                           </a>
@@ -3869,55 +4092,44 @@ export default function AdminOrders({
                             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1, display: 'inline-flex' }}>
                             <Copy size={13} />
                           </button>
+                          {/* Стан замовлення — трьома іконками одразу після номера:
+                              дзвінок, «терміново», «проблемний». Колір каже все, повна
+                              назва лишається в підказці. Кнопки чату кабінету тут немає
+                              навмисно: маркетплейс не дає писати першими, тож вона лише
+                              обіцяла б дію, якої не буде. */}
+                          <span style={{ display: 'inline-flex', gap: '6px', flexShrink: 0, marginLeft: '2px' }}>
                           {!isDropship && (noCallback ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', whiteSpace: 'nowrap' }}>
-                              <Check size={11} /> Без дзвінка
+                            <span title="Клієнт просив не дзвонити"
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', flexShrink: 0, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
+                              <PhoneOff size={12} />
                             </span>
                           ) : (
                             <button onClick={() => toggleFlag(order.id, 'callback_done', !callbackDone)}
-                              title={callbackDone ? 'Натисніть, щоб зняти позначку «зателефонували»' : 'Натисніть, коли зателефонували клієнту'}
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', background: callbackDone ? '#DCFCE7' : '#FEF3C7', color: callbackDone ? '#15803D' : '#B45309', border: `1px solid ${callbackDone ? '#86EFAC' : '#FCD34D'}` }}>
-                              {callbackDone ? <><Check size={11} /> Зателефонували</> : <><Phone size={11} /> Потрібен дзвінок</>}
+                              className="oc-flag-btn" aria-pressed={callbackDone}
+                              title={callbackDone ? 'Зателефонували — натисніть, щоб зняти позначку' : 'Потрібен дзвінок — натисніть, коли зателефонували клієнту'}
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', cursor: 'pointer', flexShrink: 0,
+                                background: callbackDone ? '#DCFCE7' : '#FEF3C7', color: callbackDone ? '#15803D' : '#B45309', border: `1px solid ${callbackDone ? '#86EFAC' : '#FCD34D'}` }}>
+                              <Phone size={12} />
                             </button>
                           ))}
-                        </div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
-                        </div>
-                      </div>
-                      {/* Статистика клієнта + швидкі прапорці */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {custStats[order.id] && custStats[order.id].count > 1 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                            <ShoppingCart size={13} color="#64748B" />
-                            <span>{custStats[order.id].count} замовлень · <strong style={{ color: 'var(--text-primary)' }}>{custStats[order.id].total.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴</strong></span>
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                           {([
-                            { key: 'urgent',  label: 'Терміново',  onBg: '#FEE2E2', onC: '#B91C1C', onB: '#FCA5A5', icon: '⚡' },
-                            { key: 'problem', label: 'Проблемний', onBg: '#FEF3C7', onC: '#B45309', onB: '#FCD34D', icon: '⚠' },
+                            { key: 'urgent',  label: 'Терміново',  onBg: '#FEE2E2', onC: '#B91C1C', onB: '#FCA5A5', Icon: Zap },
+                            { key: 'problem', label: 'Проблемний', onBg: '#FEF3C7', onC: '#B45309', onB: '#FCD34D', Icon: AlertTriangle },
                           ] as const).map(f => {
                             const active = (order.flags ?? []).includes(f.key);
                             return (
                               <button key={f.key} onClick={() => toggleOrderFlag(order.id, f.key)}
+                                className="oc-flag-btn" aria-pressed={active}
                                 title={active ? `Зняти прапорець «${f.label}»` : `Позначити «${f.label}»`}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
-                                  background: active ? f.onBg : 'var(--bg-soft)', color: active ? f.onC : 'var(--text-muted)', border: `1px solid ${active ? f.onB : 'var(--border)'}` }}>
-                                {f.icon} {f.label}
+                                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', cursor: 'pointer', flexShrink: 0,
+                                  background: active ? f.onBg : 'transparent', color: active ? f.onC : 'var(--text-muted)', border: `1px solid ${active ? f.onB : 'var(--border-light)'}` }}>
+                                <f.Icon size={12} />
                               </button>
                             );
                           })}
-                          {/* Чат кабінету МП — у тому ж ряду, що й прапорці: це теж
-                              статус-рівень картки клієнта, а не інструмент друку. */}
-                          {(order.channel_code === 'rozetka' || order.channel_code === 'prom') && (
-                            <a href={`/admin/chat?order=${order.id}`} target="_blank" rel="noopener noreferrer"
-                              title="Відкрити чат із покупцем у кабінеті маркетплейсу"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 9px', borderRadius: '999px',
-                                fontSize: '11px', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap',
-                                color: '#4338CA', background: '#EEF2FF', border: '1px solid #C7D2FE' }}>
-                              <MessageSquare size={11} /> Чат {order.channel_code === 'prom' ? 'Prom' : 'Rozetka'}
-                            </a>
-                          )}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
                         </div>
                       </div>
                       </div>{/* /oc-card-body */}
@@ -3930,8 +4142,8 @@ export default function AdminOrders({
                       <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                       {/* Оплата — за шириною вмісту, без розтягування: порожнє місце
                           праворуч від чіпа заповнює коментар */}
-                      <div style={{ flex: '0 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Оплата</div>
+                      <div className="oc-pay-col" style={{ flex: '0 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div className="oc-sub-lbl">Оплата</div>
                       {/* Чим саме платив покупець на площадці. Наш payment_type знає лише
                           грубий тип (cod / prepaid), а «Пром-оплата» чи «Оплата під час
                           отримання» лежать у сирому payload маркетплейсу. */}
@@ -3939,7 +4151,8 @@ export default function AdminOrders({
                         const method = marketplacePaymentMethod(order);
                         if (!method) return null;
                         return (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '-4px', fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                          <div title={[method.label, method.detail].filter(Boolean).join(' · ')}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '-4px', fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                             <Wallet size={12} style={{ flexShrink: 0, color: 'var(--text-muted)' }} />
                             <span>
                               <span style={{ fontWeight: 600 }}>{method.label}</span>
@@ -4018,7 +4231,7 @@ export default function AdminOrders({
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             {/* Badge */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '32px', padding: '0 10px', borderRadius: '7px', fontSize: '11.5px', fontWeight: 600, boxSizing: 'border-box',
                                 background: paymentConfirmed ? '#DCFCE7' : isPartial ? '#FFF7ED' : order.payment_type === 'cash' ? '#F0FDF4' : '#FEF3C7',
                                 color:      paymentConfirmed ? '#15803D'  : isPartial ? '#C2410C' : order.payment_type === 'cash' ? '#166534' : '#B45309',
                                 border: `1px solid ${paymentConfirmed ? '#86EFAC' : isPartial ? '#FDBA74' : order.payment_type === 'cash' ? '#86EFAC' : '#FCD34D'}`,
@@ -4148,7 +4361,7 @@ export default function AdminOrders({
                         const displayComment = order.comment?.split('\n').filter(line => !line.includes('Не передзвонювати')).join('\n').trim();
                         return displayComment ? (
                           <div style={{ flex: '1 1 160px', minWidth: '140px', borderLeft: '1px solid var(--border-light)', paddingLeft: '14px' }}>
-                            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Коментар</div>
+                            <div className="oc-sub-lbl" style={{ marginBottom: '2px' }}>Коментар</div>
                             <ClampedComment text={displayComment} />
                           </div>
                         ) : null;
@@ -4157,10 +4370,10 @@ export default function AdminOrders({
                       </div>
                     </div>
                     {/* Доставка / ТТН card */}
-                    <div className="order-col-card oc-split" style={{ padding: '16px' }}>
+                    <div className="order-col-card oc-split oc-acc oc-acc-delivery" style={{ padding: '16px' }}>
                       <div className="oc-card-body">
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                        <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Доставка</div>
+                        <div className="oc-lbl">Доставка</div>
                         {editDeliveryId !== order.id && (
                           <button onClick={() => openEditDelivery(order)} title="Змінити доставку" style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1, display: 'inline-flex' }}>
                             <Pencil size={12} />
@@ -4236,7 +4449,30 @@ export default function AdminOrders({
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                             <Truck size={13} color="#64748B" /> {delivery}
                           </span>
-                          <span style={{ color: 'var(--text-secondary)', marginTop: '1px' }}>{subtype.replace(/^ — /, '')}{order.delivery_city_name && <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{subtype ? ' · ' : ''}{order.delivery_city_name}</strong>}{order.delivery_address && ` · ${order.delivery_address}`}</span>
+                          {/* SMART / «дешева доставка» — умови саме цієї доставки, тож
+                              стоять біля перевізника, а не десь у мітках замовлення. */}
+                          {deliveryBadges}
+                          {/* Коли посилку забрали. Показуємо час перевізника, а якщо його
+                              немає (Rozetka його не віддає) — свій, і чесно кажемо про це
+                              в підказці: різниця між ними — інтервал крона. */}
+                          {order.status === 'delivered' && (order.carrier_delivered_at || order.delivered_at) && (() => {
+                            const byCarrier = !!order.carrier_delivered_at;
+                            const at = new Date((order.carrier_delivered_at ?? order.delivered_at) as string);
+                            return (
+                              <span title={byCarrier
+                                ? `Час видачі за даними перевізника: ${at.toLocaleString('uk-UA')}`
+                                : `Перевізник часу видачі не дав — це наш час, коли доставку зафіксовано: ${at.toLocaleString('uk-UA')}`}
+                                style={{ flexBasis: '100%', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: '#15803D' }}>
+                                <Check size={12} />
+                                Отримано {at.toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                {!byCarrier && <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>· за нашими даними</span>}
+                              </span>
+                            );
+                          })()}
+                          {/* Адреса — завжди з нового рядка: у Нової Пошти вона довга й
+                              переносилась сама, у Rozetka коротка й лишалась в одному рядку з
+                              перевізником. Два різні вигляди для однієї й тієї ж думки. */}
+                          <span style={{ color: 'var(--text-secondary)', marginTop: '1px', flexBasis: '100%' }}>{subtype.replace(/^ — /, '')}{order.delivery_city_name && <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{subtype ? ' · ' : ''}{order.delivery_city_name}</strong>}{(() => { const rest = stripCityPrefix(order.delivery_address, order.delivery_city_name); return rest ? ` · ${rest}` : ''; })()}</span>
                         </div>
                       )}
 
@@ -4245,7 +4481,7 @@ export default function AdminOrders({
                       <div className="oc-card-footer">
                       {/* Для точок видачі Rozetka накладну виписує Rozetka («RMP-…»),
                           Нова Пошта до неї стосунку не має — заголовок мусить це знати */}
-                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <div className="oc-sub-lbl">
                         {isRzPickup ? 'Накладна Rozetka'
                           : order.delivery_type === RZ_DELIVERY_TYPE ? 'ЕН ROZETKA Доставки'
                           : 'ТТН Нової Пошти'}
@@ -4271,8 +4507,8 @@ export default function AdminOrders({
                             return (
                               <button onClick={() => (isReplace ? replaceTTN(order.id) : saveTTN(order.id))} disabled={disabled}
                                 title={isReplace ? 'Замінити ТТН на нову' : 'Зберегти ТТН'} className="oc-ttn-save"
-                                style={{ height: '32px', padding: '0 12px', borderRadius: '7px', background: isReplace ? '#B45309' : '#1E3A5F', color: '#fff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', flexShrink: 0 }}>
-                                {busy ? '...' : <><Save size={14} className="oc-only-m" /><span className="oc-hide-m">{isReplace ? 'Замінити' : 'Зберегти'}</span></>}
+                                style={{ height: '32px', width: '32px', borderRadius: '7px', background: isReplace ? '#B45309' : '#1E3A5F', color: '#fff', border: 'none', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                {busy ? '…' : <Save size={14} />}
                               </button>
                             );
                           })()}
@@ -4319,6 +4555,22 @@ export default function AdminOrders({
                               {rzLabelBusy === order.id ? '…' : <Printer size={14} />}
                             </button>
                           )}
+                          {/* Відкликати посилку: клієнт не забирає, і її треба завернути,
+                              поки НП не почала рахувати зберігання. Зелена — заявку вже
+                              створено, у підказці її номер. */}
+                          {isAdmin && order.tracking_number && !isRozetkaPoint && ['shipped', 'cancelled'].includes(order.status) && (
+                            <button onClick={() => setNpReturnFor({ id: order.id, number: order.order_number })}
+                              title={order.np_return_ref
+                                ? `Заявка на повернення НП ${order.np_return_number ?? ''} — відкрити`.replace('  ', ' ')
+                                : 'Повернути посилку: заявка в кабінеті НП, посилка поїде назад на наше відділення'}
+                              style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
+                                background: order.np_return_ref ? '#F0FDF4' : '#FFFBEB',
+                                color: order.np_return_ref ? '#15803D' : '#B45309',
+                                border: `1.5px solid ${order.np_return_ref ? '#86EFAC' : '#FDE68A'}`,
+                                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <RotateCcw size={14} />
+                            </button>
+                          )}
                           {order.tracking_number && (
                             <button onClick={() => deleteTTN(order.id)} disabled={ttnDeleting === order.id}
                               title="Видалити ТТН з бази та з НП"
@@ -4331,19 +4583,21 @@ export default function AdminOrders({
                         // Накладну для точки видачі виписує сама Rozetka своїм API
                         // (розділ Octopus), номер має вигляд «RMP-…». ТТН Нової Пошти
                         // тут не підходить — точка видачі таку посилку не прийме.
-                        <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--text-secondary)', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '9px', padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 700, color: '#15803D' }}>Точка видачі Rozetka</div>
+                        // Без заливки: пояснення не має важити більше за єдину дію
+                        // в блоці — кнопку створення накладної.
+                        <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
                           {order.tracking_number ? (
-                            // Кнопка праворуч від номера — рядок один, місце дозволяє
-                            <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            // Номер і кнопка — одним рядком: місце дозволяє
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                               <div style={{ flexShrink: 0 }}>ТТН: <strong>{order.tracking_number}</strong></div>
                               <button onClick={() => printLabel(order.id, 'rozetka-delivery-ttn')} disabled={rzLabelBusy === order.id}
-                                style={{ marginLeft: 'auto', height: '30px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
+                                style={{ marginLeft: 'auto', height: '32px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
                                 {rzLabelBusy === order.id ? '…' : 'Етикетка PDF'}
                               </button>
                             </div>
                           ) : (
                             <>
+                              <div style={{ fontWeight: 600, color: 'var(--text-muted)', fontSize: '11px' }}>Точка видачі Rozetka</div>
                               <div style={{ marginTop: '3px' }}>Адресу отримувача Rozetka візьме із замовлення — потрібні лише габарити.</div>
                               <button onClick={() => setRzTtnModal(order)}
                                 style={{ marginTop: '8px', height: '34px', padding: '0 14px', borderRadius: '9px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>
@@ -4356,8 +4610,9 @@ export default function AdminOrders({
                         // Власний договір із rz-delivery: точку видачі покупець обрав
                         // у чекауті, від нас — лише габарити. Етикетку друкує сама
                         // Rozetka (PDF), ТТН Нової Пошти тут не існує в принципі.
-                        <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--text-secondary)', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '9px', padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 700, color: '#15803D' }}>ROZETKA Доставка</div>
+                        // Без заливки й рамки: зелений прямокутник кричав гучніше за
+                        // саму дію — а це лише довідка про номер, не заклик до дії.
+                        <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
                           {order.tracking_number ? (
                             <>
                               {/* ЕН і кнопки — одним рядком: кнопки праворуч, місце дозволяє */}
@@ -4365,20 +4620,20 @@ export default function AdminOrders({
                               <div style={{ flexShrink: 0 }}>ЕН: <strong>{order.tracking_number}</strong></div>
                               <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto', flexWrap: 'wrap' }}>
                                 <button onClick={() => printLabel(order.id, 'rz-ttn')} disabled={rzLabelBusy === order.id}
-                                  style={{ height: '32px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
+                                  style={{ height: '32px', padding: '0 10px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
                                   {rzLabelBusy === order.id ? '…' : 'Етикетка PDF'}
                                 </button>
                                 {!order.carrier_accepted_at && (
                                   <button onClick={() => addRzToReception(order.id)} disabled={rzRegBusy === order.id}
                                     title="Додати ЕН у сьогоднішній реєстр здачі"
-                                    style={{ height: '32px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzRegBusy === order.id ? 'wait' : 'pointer' }}>
+                                    style={{ height: '32px', padding: '0 10px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: rzRegBusy === order.id ? 'wait' : 'pointer' }}>
                                     {rzRegBusy === order.id ? '…' : 'У реєстр'}
                                   </button>
                                 )}
                                 {rzReception != null && (
                                   <button onClick={() => printRzReception(rzReception)}
                                     title="Друкована форма реєстру"
-                                    style={{ height: '32px', padding: '0 10px', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+                                    style={{ height: '32px', padding: '0 10px', borderRadius: '7px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
                                     Реєстр №{rzReception}
                                   </button>
                                 )}
@@ -4387,7 +4642,7 @@ export default function AdminOrders({
                                 {!order.carrier_accepted_at && (
                                   <button onClick={() => deleteRzTtn(order.id)} disabled={ttnDeleting === order.id}
                                     title="Видалити ЕН у Rozetka і прибрати номер із замовлення"
-                                    style={{ height: '32px', width: '32px', borderRadius: '9px', flexShrink: 0, background: '#FEF2F2', color: '#DC2626', border: '1.5px solid #FECACA', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: ttnDeleting === order.id ? 0.5 : 1 }}>
+                                    style={{ height: '28px', width: '28px', borderRadius: '7px', flexShrink: 0, background: 'transparent', color: '#DC2626', border: '1px solid var(--border-light)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: ttnDeleting === order.id ? 0.5 : 1 }}>
                                     {ttnDeleting === order.id ? '…' : <Trash2 size={14} />}
                                   </button>
                                 )}
@@ -4417,28 +4672,6 @@ export default function AdminOrders({
                       ) : (
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Доставка не Нова Пошта</div>
                       )}
-                      {/* Дві однакові кнопки в один рядок: Надіслати постачальнику + Створити ЗП */}
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        {['new', 'confirmed', 'awaiting_stock', 'picking', 'shipped', 'delivered'].includes(order.status)
-                          && (['supplier', 'mixed'].includes(order.fulfillment_mode ?? 'supplier') || !!order.supplier_sent_at) && (
-                          <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
-                            title={order.supplier_sent_at ? `Надіслано ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · натисніть щоб надіслати ще раз` : 'Надіслати замовлення постачальнику'}
-                            style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '40px', padding: '0 10px', boxSizing: 'border-box', fontSize: '12.5px', fontWeight: 600, cursor: supplierQueueLoading ? 'wait' : 'pointer', borderRadius: '9px',
-                              border: order.supplier_sent_at ? '1.5px solid #86EFAC' : '1.5px solid #93C5FD',
-                              background: order.supplier_sent_at ? '#F0FDF4' : '#EFF6FF',
-                              color: order.supplier_sent_at ? '#15803D' : '#1E3A5F',
-                              opacity: supplierQueueLoading ? 0.6 : 1 }}>
-                            <Mail size={15} style={{ flexShrink: 0 }} />
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.supplier_sent_at ? 'Надіслано' : 'Постачальнику'}</span>
-                          </button>
-                        )}
-                        <button onClick={() => openSupplierPO(order)} disabled={creatingPo === order.id}
-                          title="Створити замовлення постачальнику (ЗП)"
-                          style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '40px', padding: '0 10px', boxSizing: 'border-box', fontSize: '12.5px', fontWeight: 600, borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: creatingPo === order.id ? 'wait' : 'pointer', opacity: creatingPo === order.id ? 0.6 : 1 }}>
-                          <ShoppingCart size={15} style={{ flexShrink: 0 }} />
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{creatingPo === order.id ? '...' : 'Створити ЗП'}</span>
-                        </button>
-                      </div>
                       </div>
 
                       {/* Коментар покупця перенесено в блок «Оплата» лівої картки */}
@@ -4455,26 +4688,44 @@ export default function AdminOrders({
 
                     {/* Col 3: Status dropdown + context actions */}
                     {(() => {
+                      const actOpen = actionsOpen[order.id] ?? true;
                       return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
-                        {/* Дії card */}
-                        <div className="order-col-card" style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div className="oc-actions-col" style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
+                        {/* Дії card — згортається у вузьку кнопку; «Фінанси» під нею
+                            лишаються видимими в обох станах */}
+                        {!actOpen ? (
+                          <div className="oc-actions-collapsed">
+                            <button type="button" title="Показати дії із замовленням"
+                              aria-expanded={false}
+                              onClick={() => setActionsOpen(prev => ({ ...prev, [order.id]: true }))}>
+                              <MoreHorizontal size={15} />
+                              <span>Дії</span>
+                            </button>
+                          </div>
+                        ) : (
+                        <div className="order-col-card oc-acc oc-acc-actions" style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                           {/* Статус замовлення + ручна зміна винесені у правий верхній кут шапки */}
                           {/* «Відвантажує пост.» перенесено до блоку способу виконання (ліва колонка) */}
 
                           {/* Context action buttons */}
-                          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>Дії</div>
+                          <button type="button" className="oc-lbl oc-lbl-btn" title="Згорнути дії"
+                            aria-expanded onClick={() => setActionsOpen(prev => ({ ...prev, [order.id]: false }))}>
+                            Дії <ChevronUp size={12} />
+                          </button>
                           {(() => {
                             // Unified button styles
+                            // Дії — рядки, а не плитки. П'ять обведених прямокутників
+                            // підряд читались як п'ять однаково важливих кнопок; насправді
+                            // головна одна, решта — інструменти. Рамку лишили тільки їй.
                             const btn = {
-                              display: 'flex' as const, alignItems: 'center' as const, gap: '6px',
-                              padding: '7px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
-                              cursor: 'pointer', textDecoration: 'none', border: '1.5px solid #CBD5E1',
-                              background: 'var(--bg-card)', color: 'var(--text-primary)', width: '100%',
+                              display: 'flex' as const, alignItems: 'center' as const, gap: '8px',
+                              height: '30px', padding: '0 8px', borderRadius: '7px', fontSize: '12.5px', fontWeight: 500,
+                              cursor: 'pointer', textDecoration: 'none', border: '1px solid transparent',
+                              background: 'transparent', color: 'var(--text-primary)', width: '100%',
                               boxSizing: 'border-box' as const, justifyContent: 'flex-start' as const,
                             };
-                            const btnPrimary = { ...btn, border: '1.5px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F' };
-                            const btnMuted   = { ...btn, border: '1px solid var(--border-light)', padding: '6px 10px', fontWeight: 500, color: 'var(--text-secondary)' };
+                            const btnPrimary = { ...btn, border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#1E3A5F', fontWeight: 600 };
+                            const btnMuted   = { ...btn, fontWeight: 500, color: 'var(--text-secondary)' };
                             return (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
                                 {/* Копія замовлення — повтор того самого складу для того самого
@@ -4482,12 +4733,28 @@ export default function AdminOrders({
                                     скасованих замовлень МП доводиться заводити наново вручну).
                                     Ціни підставляються поточні, тому кнопка не «дублює рахунок»,
                                     а готує нову чернетку, яку ще можна виправити перед збереженням. */}
+                                {/* Робота з постачальником — лист і ЗП — стоїть тут, поруч із
+                                    рештою дій над замовленням; у блоці доставки їй було місце,
+                                    поки там жила ТТН, але це не про накладну. */}
+                                {['new', 'confirmed', 'awaiting_stock', 'picking', 'shipped', 'delivered'].includes(order.status)
+                                  && (['supplier', 'mixed'].includes(order.fulfillment_mode ?? 'supplier') || !!order.supplier_sent_at) && (
+                                  <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
+                                    title={order.supplier_sent_at ? `Надіслано ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · натисніть щоб надіслати ще раз` : 'Надіслати замовлення постачальнику'}
+                                    style={{ ...btn, color: order.supplier_sent_at ? '#15803D' : 'var(--text-primary)', cursor: supplierQueueLoading ? 'wait' : 'pointer', opacity: supplierQueueLoading ? 0.6 : 1 }}>
+                                    <Mail size={13} /> {order.supplier_sent_at ? 'Надіслано постачальнику' : 'Надіслати постачальнику'}
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => copyOrder(order)}
                                   disabled={copying === order.id}
                                   title="Створити нове замовлення з тим самим клієнтом, доставкою і складом. Ціни підставляться поточні; ТТН, оплати й дані кабінету МП не копіюються."
                                   style={{ ...btn, opacity: copying === order.id ? 0.6 : 1 }}>
                                   <Copy size={13} /> {copying === order.id ? 'Копіювання...' : 'Копіювати замовлення'}
+                                </button>
+                                <button onClick={() => openSupplierPO(order)} disabled={creatingPo === order.id}
+                                  title="Створити замовлення постачальнику (ЗП)"
+                                  style={{ ...btn, cursor: creatingPo === order.id ? 'wait' : 'pointer', opacity: creatingPo === order.id ? 0.6 : 1 }}>
+                                  <ShoppingCart size={13} /> {creatingPo === order.id ? '...' : 'Створити ЗП'}
                                 </button>
                                 {/* Primary CTA for new orders — confirm + optional send-to-supplier */}
                                 {/* «Підтвердити» → блок способу виконання; «Надіслати постачальнику» → під ТТН */}
@@ -4545,52 +4812,26 @@ export default function AdminOrders({
                                     </>
                                   );
                                 })()}
-                                {order.status === 'shipped' && (
-                                  <button onClick={() => changeStatus(order.id, 'delivered')} disabled={!!loading}
-                                    title="Позначити, що клієнт отримав товар — проведе продаж і комісію, замовлення стане «Доставлено»"
-                                    style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
-                                    <MapPin size={13} /> Підтвердити доставку
-                                  </button>
-                                )}
                                 {/* Другорядні інструменти — друк, месенджери, ЗП; відділені від дій зі статусом */}
-                                <div style={{ marginTop: '6px', paddingTop: '8px', borderTop: '1px dashed var(--border-light)', fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                <div className="oc-sub-lbl" style={{ marginTop: '6px', paddingTop: '8px', borderTop: '1px solid var(--border-light)' }}>
                                   Інструменти
                                 </div>
-                                {isAdmin && ['shipped', 'delivered'].includes(order.status) && (
-                                  <button onClick={() => setReturnFor({ id: order.id, number: order.order_number })}
-                                    title="Фінансове повернення: сторнує виручку, COGS і комісію, оприбутковує товар"
-                                    style={{ ...btnMuted, color: '#B45309' }}>
-                                    ↩ Повернення
-                                  </button>
-                                )}
-                                {/* Повернення посилки НП — окрема, суто логістична дія: клієнт не
-                                    забирає, і посилку треба відкликати з відділення, поки НП не
-                                    почала рахувати зберігання. Для ОБОХ доставок у точки видачі
-                                    Rozetka накладна не в НП — заявку створювати нікуди, там своя
-                                    кнопка «Повернення» в блоці накладної. */}
-                                {isAdmin && order.tracking_number && !isRozetkaPoint && ['shipped', 'cancelled'].includes(order.status) && (
-                                  <button onClick={() => setNpReturnFor({ id: order.id, number: order.order_number })}
-                                    title="Створити заявку на повернення в кабінеті Нової Пошти — посилка поїде назад на наше відділення"
-                                    style={{ ...btnMuted, color: order.np_return_ref ? '#15803D' : '#B45309' }}>
-                                    {order.np_return_ref
-                                      ? `↩ Повернення НП ${order.np_return_number ?? ''}`.trim()
-                                      : '↩ Повернути посилку (НП)'}
-                                  </button>
-                                )}
                                 <div style={{ display: 'flex', gap: '4px' }}>
                                   <a href={`/invoice/${order.id}`} target="_blank" rel="noopener noreferrer"
                                     style={{ ...btnMuted, flex: 1 }}>
                                     <Printer size={13} /> Друк / Рахунок
                                   </a>
                                   <button onClick={() => setInvoiceCfg(order)} title="Налаштування рахунку — що показувати у рахунку"
-                                    style={{ ...btnMuted, width: 'auto', flexShrink: 0, justifyContent: 'center', padding: '6px 11px' }}>
-                                    <span style={{ fontSize: '15px', lineHeight: 1 }}>⚙</span>
+                                    style={{ ...btnMuted, width: 'auto', flexShrink: 0, justifyContent: 'center', padding: '0 11px' }}>
+                                    <Settings size={14} />
                                   </button>
                                 </div>
                                 {/* Кнопка чату МП живе в блоці «Клієнт», поруч із телефоном —
                                     це контакт, а не інструмент друку. */}
+                                {/* Без підпису чотири іконки читались як випадковий ряд:
+                                    незрозуміло, що вони надсилають і кому. */}
+                                <div className="oc-sub-lbl" style={{ marginTop: '2px' }}>Надіслати рахунок:</div>
                                 <InvoiceMessengerButtons
-                                  variant="stacked"
                                   phone={order.phone} contact={order.contact}
                                   orderNumber={order.order_number} orderId={order.id}
                                   total={order.total_price} channel={order.channel_code}
@@ -4606,17 +4847,22 @@ export default function AdminOrders({
                                   if (!rnDocs.length && !retDocs.length) return null;
                                   return (
                                     <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '3px', borderTop: '1px dashed var(--border)', paddingTop: '6px' }}>
-                                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                      <div className="oc-sub-lbl">
                                         Документи
                                       </div>
                                       {rnDocs.map(doc => (
                                         <a key={doc.id} href={`/vidatkova/${doc.id}`} target="_blank" rel="noopener noreferrer"
                                           title={doc.status === 'draft'
-                                            ? 'Видаткова накладна (чернетка — проведеться при доставці; номер і дата вже фінальні, можна друкувати)'
-                                            : 'Видаткова накладна — відкрити та роздрукувати'}
+                                            ? `Видаткова накладна ${doc.number} — чернетка. Номер і дата вже фінальні, можна друкувати; виручка, собівартість і комісія проведуться при підтвердженні доставки.`
+                                            : `Видаткова накладна ${doc.number} — проведена: виручка, собівартість і комісія враховані в обліку.`}
                                           style={{ fontSize: '11.5px', color: '#1E3A5F', fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                           <Printer size={11} /> {doc.number}
-                                          {doc.status === 'draft' && <span style={{ fontSize: '10px', fontWeight: 500, color: 'var(--text-muted)' }}>· до проведення</span>}
+                                          {/* Стан документа — значком: галочка «проведена», годинник
+                                              «чернетка». Слова «до проведення» займали пів рядка й
+                                              однаково потребували пояснення — воно тепер у підказці. */}
+                                          {doc.status === 'draft'
+                                            ? <Clock size={11} color="#B45309" aria-label="Чернетка" />
+                                            : <Check size={11} color="#15803D" aria-label="Проведена" />}
                                         </a>
                                       ))}
                                       {retDocs.map(doc => (
@@ -4629,10 +4875,43 @@ export default function AdminOrders({
                                     </div>
                                   );
                                 })()}
+                                {/* Доставлено / повернення — дії, що закривають замовлення
+                                    документами, тож стоять під самими документами. */}
+                                {order.status === 'shipped' && (
+                                  <button
+                                    onClick={() => {
+                                      // Проведення РН — незворотна дія: виручка, собівартість,
+                                      // комісія і зняття резерву лягають в облік. Скасувати це
+                                      // можна тільки окремим поверненням, тож питаємо.
+                                      const ok = confirm(
+                                        `Підтвердити доставку замовлення №${order.order_number}?\n\n`
+                                        + `Буде проведено видаткову накладну: виручка ${Number(order.total_price).toFixed(0)} ₴, `
+                                        + 'собівартість, комісія маркетплейсу і зняття резерву потраплять в облік.\n\n'
+                                        + 'Скасувати проведення можна буде тільки оформленням повернення.'
+                                      );
+                                      if (ok) changeStatus(order.id, 'delivered');
+                                    }}
+                                    disabled={!!loading}
+                                    title="Позначити, що клієнт отримав товар — проведе продаж і комісію, замовлення стане «Доставлено»"
+                                    style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
+                                    <MapPin size={13} /> Підтвердити доставку
+                                  </button>
+                                )}
+                                {/* Повернення від покупця — така сама дія зі станом замовлення,
+                                    як підтвердження доставки, тільки у зворотний бік. Тому стоїть
+                                    поруч і в такій самій рамці, лише бурштиновій. */}
+                                {isAdmin && ['shipped', 'delivered'].includes(order.status) && (
+                                  <button onClick={() => setReturnFor({ id: order.id, number: order.order_number })}
+                                    title="Фінансове повернення: сторнує виручку, COGS і комісію, оприбутковує товар"
+                                    style={{ ...btn, border: '1px solid #FDE68A', background: '#FFFBEB', color: '#B45309', fontWeight: 600 }}>
+                                    <RotateCcw size={13} /> Повернення
+                                  </button>
+                                )}
                               </div>
                             );
                           })()}
                         </div>
+                        )}
                         </div>
                       );
                     })()}
@@ -4718,37 +4997,37 @@ export default function AdminOrders({
                     }
 
                     if (evs.length <= 1) return null;
+                    if (!(historyOpen[order.id] ?? false)) return null;
                     return (
                       <div style={{ background: 'var(--bg-soft)', padding: '0 14px 14px' }}>
-                        <div className="order-col-card" style={{ padding: '16px 18px' }}>
-                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '18px' }}>
-                            Історія замовлення
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: '4px' }}>
+                        <div className="order-col-card oc-acc oc-acc-history" style={{ padding: '0' }}>
+                          {(historyOpen[order.id] ?? false) && (
+                          <div className="oc-tl-rail">
                             {evs.map((ev, i) => {
-                              const color = ev.backward ? '#B45309' : ev.href ? '#0369A1' : '#1E3A5F';
+                              const isLast = i === evs.length - 1;
+                              const tone = ev.backward ? 'back' : isLast ? 'now' : 'done';
                               const content = (
-                                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', width: '100%' }}>
-                                  {i < evs.length - 1 && (
-                                    <div style={{ position: 'absolute', top: '15px', left: '50%', width: '100%', height: '2px', background: ev.backward ? '#FDE68A' : 'var(--border)' }} />
-                                  )}
-                                  <div style={{ position: 'relative', zIndex: 1, width: '32px', height: '32px', borderRadius: '999px', background: 'var(--bg-card)', border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px' }}>
-                                    {ev.icon}
-                                  </div>
-                                  <div style={{ marginTop: '9px', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.25, padding: '0 4px' }}>{ev.label}</div>
-                                  <div style={{ marginTop: '3px', fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                                <div className={`oc-tl-step ${tone}`}>
+                                  {/* Рейка малюється смугами ліворуч і праворуч від крапки,
+                                      а не однією лінією під усім рядом: інакше вона стирчала
+                                      за крайні кроки. */}
+                                  <span className="oc-tl-line left" aria-hidden="true" />
+                                  <span className="oc-tl-line right" aria-hidden="true" />
+                                  <span className="oc-tl-dot" aria-hidden="true" />
+                                  <span className="oc-tl-label">{ev.label}</span>
+                                  <span className="oc-tl-at">
                                     {new Date(ev.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                  </div>
-                                  {ev.sub && <div style={{ marginTop: '2px', fontSize: '10px', color: 'var(--text-muted)', maxWidth: '96px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.sub}</div>}
-                                  {ev.by && ev.by !== 'system' && <div style={{ marginTop: '2px', fontSize: '10px', color: 'var(--text-muted)', maxWidth: '96px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.by.split('@')[0]}</div>}
+                                  </span>
+                                  {ev.sub && <span className="oc-tl-sub">{ev.sub}</span>}
+                                  {ev.by && ev.by !== 'system' && <span className="oc-tl-sub">{ev.by.split('@')[0]}</span>}
                                 </div>
                               );
-                              const wrapStyle: React.CSSProperties = { flex: '1 0 96px', minWidth: '96px', textDecoration: 'none' };
                               return ev.href
-                                ? <a key={i} href={ev.href} style={wrapStyle} onClick={e => e.stopPropagation()}>{content}</a>
-                                : <div key={i} style={wrapStyle}>{content}</div>;
+                                ? <a key={i} href={ev.href} className="oc-tl-cell" onClick={e => e.stopPropagation()}>{content}</a>
+                                : <div key={i} className="oc-tl-cell">{content}</div>;
                             })}
                           </div>
+                          )}
                         </div>
                       </div>
                     );

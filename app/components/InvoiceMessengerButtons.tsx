@@ -151,22 +151,25 @@ export default function InvoiceMessengerButtons({
     );
   }
 
+  // Тихий ряд: месенджери — це «як зв'язатися», а не головна дія картки. Три
+  // кольорові смуги на всю ширину перетягували увагу з підтвердження замовлення
+  // й накладної. Колір лишився в іконці, підпис — у підказці.
   const small = {
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
-    padding: '7px 0', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
-    cursor: 'pointer', border: '1.5px solid #CBD5E1', background: 'var(--bg-card)',
-    flex: 1, boxSizing: 'border-box',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    height: '30px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
+    cursor: 'pointer', border: '1px solid var(--border-light)', background: 'transparent',
+    flex: 1, boxSizing: 'border-box', textDecoration: 'none',
   } as const;
 
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px' }}>
         <button onClick={openTelegram} title={normPhone ? `Рахунок у Telegram: скопіювати текст і відкрити чат +${normPhone}` : 'Номер телефону не розпізнано — текст буде скопійовано'}
-          style={{ ...small, color: '#2AABEE', borderColor: '#BEE3F8' }}>
+          style={{ ...small, color: '#2AABEE' }}>
           {done === 'tg' ? <Check size={14} color="#15803D" /> : <Send size={14} />}
         </button>
         <button onClick={openViber} title={normPhone ? `Рахунок у Viber: скопіювати текст і відкрити чат +${normPhone}` : 'Номер телефону не розпізнано — текст буде скопійовано'}
-          style={{ ...small, color: '#7360F2', borderColor: '#DDD6FE' }}>
+          style={{ ...small, color: '#7360F2' }}>
           {done === 'viber' ? <Check size={14} color="#15803D" /> : <Phone size={14} />}
         </button>
         <button onClick={copyOnly} title="Скопіювати текст із посиланням на рахунок"

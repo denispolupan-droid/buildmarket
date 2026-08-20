@@ -5,7 +5,6 @@
 // саме. Обидві площадки віддають це в сирому payload, просто в різних місцях:
 //   Prom    — payment_option.name («Пром-оплата») + payment_data.type («evopay»)
 //   Rozetka — payment.payment_method_name («Оплата під час отримання товару»)
-//             + payment.payment_type_title («Готівкова»)
 
 /**
  * Форма оплати одним кодом. Значення рахує БД — generated-колонка
@@ -96,12 +95,14 @@ function promMethod(promData: Record<string, unknown>): PaymentMethodInfo | null
   return { label, ...(detail ? { detail } : {}), ...(paidAt ? { paidAt } : {}) };
 }
 
+// payment_type_title («Готівкова») не показуємо: Rozetka ставить його за
+// способом доставки, а не за тим, чим покупець насправді розрахувався —
+// у точці видачі так само платять карткою. Назви способу (payment_method_name)
+// досить, і вона не бреше.
 function rozetkaMethod(rozetkaData: Record<string, unknown>): PaymentMethodInfo | null {
-  const payment = rozetkaData.payment as { payment_method_name?: unknown; payment_type_title?: unknown } | null | undefined;
-  const label  = str(payment?.payment_method_name);
-  const detail = str(payment?.payment_type_title);
-  if (!label) return detail ? { label: detail } : null;
-  return detail && detail.toLowerCase() !== label.toLowerCase() ? { label, detail } : { label };
+  const payment = rozetkaData.payment as { payment_method_name?: unknown } | null | undefined;
+  const label = str(payment?.payment_method_name);
+  return label ? { label } : null;
 }
 
 /** Спосіб оплати з payload маркетплейсу; null — якщо площадка нічого не дала. */

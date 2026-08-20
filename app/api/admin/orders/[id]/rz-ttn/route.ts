@@ -12,9 +12,11 @@ import { getRzSender, getRzBox, rzCreateTrack, rzLabel, rzDeleteTrack, RzError }
  * Seller API, тут — наш власний договір партнера. Номери, баланс і облік різні,
  * тому обидва роути навмисно відмовляють чужому delivery_type.
  *
- * Гроші: доставку платить отримувач (delivery_payer='receiver'), а `cost` — це
- * сума післяплати до стягнення. Для передоплаченого замовлення вона нуль, інакше
- * Rozetka візьме з покупця гроші вдруге.
+ * Гроші. `cost` — сума післяплати до стягнення; для передоплаченого замовлення
+ * вона нуль, інакше Rozetka візьме з покупця гроші вдруге. Платника доставки
+ * обирає менеджер у вікні створення (за замовчуванням отримувач) — від цього
+ * залежить не лише каса на точці, а й проводки: варіант «платить продавець»
+ * веде shipping_cost у витрати при доставці (lib/delivery-sync.ts).
  */
 
 async function requireAdmin() {
@@ -63,8 +65,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const body = await req.json().catch(() => ({})) as {
     weight?: number; length?: number; width?: number; height?: number;
-    places?: number; description?: string;
+    places?: number; description?: string; deliveryPayer?: string;
   };
+
+  // Платник доставки. Значення звіряємо зі списком, а не передаємо як є:
+  // API приймає рівно 'sender' | 'receiver', а будь-яке інше слово тут — це
+  // мовчазна відмова Rozetka вже на створенні накладної. За замовчуванням
+  // отримувач: так працювало до появи вибору, і мовчки перекласти доставку
+  // на себе через порожнє поле не можна — це гроші.
+  const deliveryPayer: 'sender' | 'receiver' = body.deliveryPayer === 'sender' ? 'sender' : 'receiver';
 
   const box = await getRzBox();
   const weight = Number(body.weight);
@@ -129,7 +138,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       description,
       type:           RZ_TRACK_TYPE_DEPT,
       places:         Number(body.places) > 0 ? Number(body.places) : 1,
-      delivery_payer: 'receiver',
+      delivery_payer: deliveryPayer,
       cost:           isCod ? total : 0,
       insurance_cost: total,
       params:         { weight, length, width, height },
@@ -156,7 +165,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       tracking_number:   track.track_id,
       rz_delivery_cost:  track.shipping_cost ?? null,
       rz_payment_fee:    track.payment_fee ?? null,
-      rz_delivery_payer: 'receiver',
+      rz_delivery_payer: deliveryPayer,
     }).eq('id', order.id);
     // Той самий номер — на непроведені РН, інакше синк доставки їх не знайде
     await syncDraftShipmentTracking(order.id, track.track_id);

@@ -811,6 +811,367 @@ input, select { font-family: inherit; }
 }
 
 /* Mobile: same 40×40, right:16px, stacked above the chat button (bottom:24, 56px tall) */
+
+/* ── Розгорнуте замовлення: аркуш замість плиток ──────────────────────────────
+   Було: чотири білі плитки з рамкою, тінню й заокругленням — на сірій підкладці,
+   яка сама лежить у білій картці. Три рівні поверхонь, і жоден нічого не означає.
+   Рамка навколо блоку не несе інформації: вона лише повторює те, що й так видно
+   з відступів.
+
+   Стало: один білий аркуш і тонка вертикальна лінія ліворуч від кожного блоку —
+   рівно стільки, щоб око бачило межу теми. Колір лінії кодує СТАН, а не тему:
+   сірий — просто дані, зелений — усе гаразд (оплачено, накладна є), бурштиновий —
+   потребує уваги. Так колір лишається сигналом, а не оздобленням. */
+.order-expand-grid {
+  background: var(--bg-card) !important;
+  padding: 4px 18px 18px !important;
+  gap: 10px 26px !important;
+  align-items: start !important;
+}
+.admin-layout .order-expand-grid .order-col-card,
+.admin-layout .order-expand-grid .oc-acc {
+  position: relative;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 2px 0 2px 15px !important;
+}
+/* «Нитка» — той самий прийом, що в сайдбарі каталогу (.cat-branch): не суцільна
+   риска, а тонкий градієнт, який тане з обох кінців. Суцільна лінія обривається
+   різко й починає читатись як рамка; нитка позначає межу теми, нічого не
+   обводячи. Псевдоелементом, а не border-left: градієнт по висоті рамкою не
+   намалюєш. */
+.admin-layout .order-expand-grid .oc-acc::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  z-index: 1;
+  pointer-events: none;
+  /* фолбек без color-mix — проста лінія в кольорі блоку */
+  background: var(--oc-accent, var(--border));
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--oc-accent, var(--border)) 60%, transparent) 18%,
+    color-mix(in srgb, var(--oc-accent, var(--border)) 60%, transparent) 82%,
+    transparent
+  );
+}
+/* Блоки з даними — темніша нейтраль; службові (дії, нотатка, історія) ледь
+   помітні: вони не несуть стану, і лінія їм потрібна лише як межа. */
+.oc-acc { --oc-accent: #64748B; }
+/* Нитки в усіх блоків однакові. Колір за станом (зелена — накладна є,
+   бурштинова — потребує уваги) читався не як сигнал, а як різнобій: сусідні
+   рівноцінні блоки виглядали різними за важливістю. Стан і без того сказано
+   словами й чіпами всередині блоку. */
+
+/* Підпис блоку — тихий, як у референсі: не кричить, а лише називає колонку.
+   Значення всередині блоку більші за підпис, і саме вони ведуть погляд. */
+.order-expand-grid .oc-lbl {
+  display: block;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+  /* Назва блоку — найтемніше з дрібного тексту: вона відкриває блок, і око
+     має чіплятись за неї, а не за сусідні підписи. Вкладені підписи лишились
+     світлими — так між двома рівнями знову з'явилась різниця. */
+  color: #64748B !important;
+  margin-bottom: 7px;
+}
+/* ── Шапка розгорнутого замовлення ───────────────────────────────────────────
+   Сіра підкладка лишилась із часів, коли нижче йшли білі плитки на сірому тлі:
+   вона відділяла шапку від них. Плиток більше немає — тіло картки біле, і сіра
+   смуга просто розрізає картку навпіл. Прибираємо тло, лишаємо волосяну лінію
+   під шапкою: цього досить, щоб відділити «що це за замовлення» від «що в ньому».
+   Відступи ті самі, що в блоків нижче, — щоб № замовлення стояв на одній
+   вертикалі з підписом «КЛІЄНТ». */
+.oc-expand-header {
+  background: transparent !important;
+  /* Шов між ручкою (згорнутий рядок) і аркушем картки — тією ж ниткою, що й
+     розділювачі всередині: гасне на кінцях, не ріже картку впоперек.
+     Сама лінія малюється в ::before, щоб її можна було звузити відступами. */
+  border-top: 0 !important;
+  position: relative;
+  border-bottom: 1px solid var(--border-light);
+  padding: 11px 18px 8px !important;
+  align-items: center !important;
+}
+/* Мітки в шапці — на зріст самої смуги: вони називають замовлення, а не
+   змагаються з його номером. */
+.oc-expand-header .oc-hdr-title > div:last-child > * {
+  height: 22px !important;
+  font-size: 11.5px !important;
+}
+
+/* Права колонка — іншої природи: не дані про замовлення, а дії з ним. Нитка
+   в неї того самого крою, що й у решти, лише насиченіша (--oc-accent вище):
+   цього досить, щоб читалась межа між «що це» і «що з ним робити». */
+/* Розгорнута картка повторює те, що вже є в рядку журналу: номер, дата,
+   статус, стан перевізника. Щоб не читалось як дубль, сам рядок при
+   розгортанні гасне: з даних він стає ручкою — за неї картку відкрили, нею ж
+   і згортають. На ховері повертається, щоб було видно, що це те саме
+   замовлення, а не декорація. */
+.order-compact-row.is-open {
+  /* Заливка — накладенням, а не заміною: тон рядка (проблемний, обраний)
+     лишається під нею й далі читається. */
+  background-image: linear-gradient(0deg, rgba(15, 23, 42, .1), rgba(15, 23, 42, .1)) !important;
+}
+/* Гасне вміст, не сама смуга: інакше приглушилась би й заливка. */
+.order-compact-row.is-open > * {
+  filter: saturate(.1);
+  opacity: .55;
+  transition: opacity .18s, filter .18s;
+}
+.order-compact-row.is-open:hover > * { opacity: .85; filter: saturate(.5); }
+
+/* Коли дій не видно, права колонка звужується до кнопки, і 250px забирають
+   блоки, які читають. Шапку не чіпаємо: статус тримається правого краю в обох
+   станах — інакше він стрибав би по горизонталі від кліку до кліку. */
+.order-expand-grid.oc-actions-off { grid-template-columns: minmax(0, 1fr) auto !important; }
+
+/* Згорнута колонка дій — вузька смужка з кнопкою. Сама колонка зникає, і
+   блоки, які читають (клієнт, доставка, товари), забирають її 250px собі. */
+.oc-actions-collapsed { display: flex; justify-content: flex-end; padding: 8px 0 0; }
+.oc-actions-collapsed button {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 28px; padding: 0 10px; border-radius: 8px;
+  border: 1px solid var(--border-light); background: transparent;
+  font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--text-muted); cursor: pointer;
+}
+.oc-actions-collapsed button:hover { color: var(--text-secondary); border-color: var(--border); }
+.oc-actions-collapsed button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+/* Заголовок «Дії» у розгорнутому стані — теж перемикач */
+.order-expand-grid .oc-lbl-btn {
+  display: inline-flex !important; align-items: center; gap: 5px;
+  background: none; border: none; padding: 0; cursor: pointer;
+}
+
+.oc-expand-header::before {
+  content: '';
+  position: absolute;
+  left: 18px; right: 18px; top: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent,
+    color-mix(in srgb, #64748B 45%, transparent) 6%,
+    color-mix(in srgb, #64748B 45%, transparent) 94%,
+    transparent);
+}
+
+.admin-layout .order-expand-grid .oc-acc-note::before { display: none; }
+
+/* Прапорці «Терміново» / «Проблемний» — перемикачі, а не мітки. Ховер це
+   показує: вимкнений світлішає до кольору свого стану, увімкнений трохи
+   темнішає. Без цього кнопка нічим не відрізнялась від напису поруч. */
+.oc-flag-btn { transition: filter .15s, border-color .15s, color .15s; }
+.oc-flag-btn:hover { filter: brightness(.97); border-color: var(--text-muted) !important; }
+.oc-flag-btn[aria-pressed="true"]:hover { filter: brightness(.95); }
+.oc-flag-btn:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+
+/* Одна шкала на всю картку. Було дев'ять кеглів (16 / 15 / 14 / 13 / 12.5 /
+   12 / 11.5 / 11 / 10) — око спотикалось на кожному блоці, і жоден розмір
+   нічого не означав. Лишилось чотири щаблі: мітка 10.5, дрібне 11.5,
+   основний текст 13, підсумок 14. Заголовки стовпців таблиці — така сама
+   мітка, як «КЛІЄНТ» чи «ОПЛАТА»: це підписи, а не дані. */
+.admin-layout .order-expand-grid thead th {
+  font-size: 9.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: .07em !important;
+}
+.order-expand-grid .oc-col-name a,
+.order-expand-grid .oc-col-qty,
+.order-expand-grid .oc-col-price,
+.order-expand-grid .oc-col-sum span,
+.order-expand-grid .oc-addr-main { font-size: 13px !important; }
+.order-expand-grid .oc-col-sku span { font-size: 11.5px !important; }
+.order-expand-grid .oc-total-row td { font-size: 11.5px !important; }
+.order-expand-grid .oc-total-row td:nth-last-child(2) { font-size: 14px !important; }
+
+/* Рядок товару. 10px згори й знизу плюс мініатюра 40px давали 60px на позицію —
+   на трьох товарах це вже екран. 7px і 36px тримають ту саму читабельність. */
+.order-expand-grid tbody td { padding-top: 7px !important; padding-bottom: 7px !important; }
+.order-expand-grid .oc-col-name a[href^="/admin/products/"] { width: 36px !important; height: 36px !important; }
+
+/* Спосіб оплати і його стан — в один рядок. Стояли одне під одним
+   («Google Pay», нижче чіп «✓ Оплачено 465,00 ₴»), хоча це одна думка:
+   чим платили і чи заплатили. Два рядки на неї — зайвий поверх. */
+.order-expand-grid .oc-pay-col {
+  flex-direction: row !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px !important;
+}
+/* Опис способу оплати не переносить чіп на другий поверх: довгі назви
+   маркетплейсів («Оплата під час отримання товару») стискаються з трьома
+   крапками, повна назва лишається в title. */
+.order-expand-grid .oc-pay-col > div:has(> span) { flex: 1 1 auto; min-width: 0; }
+.order-expand-grid .oc-pay-col > div:has(> span) > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.order-expand-grid .oc-pay-col > .oc-sub-lbl { flex-basis: 100%; }
+/* Рядок оплати заввишки як поле ТТН навпроти: підписи над ними вже стоять на
+   одній лінії, а самі рядки розходились — чіп 26px проти поля 32px. */
+.order-expand-grid .oc-pay-col > *:not(.oc-sub-lbl) {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+}
+/* Форма зміни способу оплати — на власний рядок: у ній селект і дві кнопки */
+.order-expand-grid .oc-pay-col > div:has(select) { flex-basis: 100%; }
+.order-expand-grid .oc-pay-col > div[style*="margin-top: -4px"] { margin-top: 0 !important; }
+
+/* Повітря між блоками. 14px по вертикалі лишились із часів плиток — там зазор
+   відділяв картку від картки. Тепер блоки на одному аркуші, і межу тримає
+   нитка, а не порожнеча. */
+.order-expand-grid .order-main-col { gap: 10px !important; }
+.order-expand-grid .oc-info-cards { gap: 10px 26px !important; }
+
+/* Два рівні підписів. Раніше вкладені («Оплата», «Коментар», «ТТН Нової
+   Пошти», «Інструменти») виглядали точно як заголовки блоків — той самий
+   розмір, вага й колір, бо глобальне правило адмінки підтягує будь-який
+   10px-uppercase до 11px. Через це ієрархії не було взагалі: сім однакових
+   підписів на картці, і жоден не головніший.
+
+   Тепер заголовок блоку лишається як був, а вкладений — дрібніший і світліший.
+   Пунктирний роздільник над «Інструментами» замінено на суцільну волосяну
+   лінію: пунктир на плоскому аркуші читається як шов. */
+.admin-layout .order-expand-grid .oc-sub-lbl {
+  font-size: 10.5px !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: color-mix(in srgb, var(--text-muted) 78%, white) !important;
+}
+
+/* Цифри — моноширинні. У картці їх багато (суми, ТТН, артикули, кількості),
+   і пропорційні знаки змушували колонки «танцювати» від рядка до рядка. */
+.order-expand-grid { font-variant-numeric: tabular-nums; }
+
+/* Ім'я клієнта — головне значення свого блоку, тож помітно більше за підпис.
+   У референсі саме контраст розмірів веде погляд, а не рамка навколо блоку. */
+.order-expand-grid .oc-name-main { font-size: 16.5px !important; font-weight: 650 !important; letter-spacing: -.01em; }
+
+/* Внутрішні роздільники — волосяні й нейтральні. Кольорові лінії всередині
+   блоку сперечалися з лінією збоку: два акценти на один блок. */
+.order-expand-grid .oc-card-footer { border-top-color: var(--border-light) !important; }
+
+/* Повітря. Картки «Клієнт» і «Доставка» тягнулись до висоти вищої з них, а низ
+   був притиснутий до дна — між вмістом і низом зяяло 60–90px. */
+.oc-info-cards { align-items: stretch !important; grid-template-rows: auto auto !important; gap: 26px !important; }
+.oc-split {
+  display: grid !important;
+  grid-template-rows: subgrid !important;
+  grid-row: span 2 !important;
+  gap: 12px;
+}
+.oc-split .oc-card-body { display: flex; flex-direction: column; }
+.oc-split .oc-card-footer { margin-top: 0; }
+
+/* ── Історія замовлення: рейка замість кружечків ─────────────────────────────
+   Було: ряд кружечків 32px з емодзі — вони важили як кнопки, хоча нічого не
+   роблять, і займали смугу на всю ширину картки. Стало: тонка рейка з крапками,
+   згорнута за замовчуванням. У згорнутому рядку видно, де замовлення зараз. */
+.oc-tl-head {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  padding: 12px 18px; background: none; border: none; cursor: pointer;
+  text-align: left; font: inherit; color: var(--oc-accent);
+}
+.oc-tl-head:focus-visible { outline: 2px solid var(--oc-accent); outline-offset: -2px; border-radius: 12px; }
+.oc-tl-title {
+  font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--oc-accent); flex-shrink: 0;
+}
+.oc-tl-chev { flex-shrink: 0; transform: rotate(-90deg); transition: transform .15s ease; }
+.oc-tl-chev.open { transform: none; }
+.oc-tl-summary {
+  display: inline-flex; align-items: center; gap: 7px; min-width: 0;
+  font-size: 12.5px; font-weight: 600; color: var(--text-primary);
+}
+.oc-tl-sum-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  background: var(--oc-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--oc-accent) 18%, transparent);
+}
+.oc-tl-sum-at { font-size: 11.5px; font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.oc-tl-sum-count { font-size: 11px; font-weight: 500; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
+
+.oc-tl-rail {
+  display: flex; align-items: flex-start; overflow-x: auto;
+  padding: 4px 18px 16px;
+}
+.oc-tl-cell { flex: 1 0 104px; min-width: 104px; text-decoration: none; }
+.oc-tl-step {
+  --tl: var(--border);
+  position: relative; display: flex; flex-direction: column; align-items: center;
+  text-align: center; padding-top: 12px;
+}
+.oc-tl-step.done { --tl: #3DBFB8; }
+.oc-tl-step.now  { --tl: #4880B8; }
+.oc-tl-step.back { --tl: #F59E0B; }
+.oc-tl-line {
+  position: absolute; top: 15px; height: 2px; background: var(--border); border-radius: 2px;
+}
+.oc-tl-line.left  { left: 0;  width: 50%; }
+.oc-tl-line.right { right: 0; width: 50%; }
+.oc-tl-cell:first-child  .oc-tl-line.left  { display: none; }
+.oc-tl-cell:last-child   .oc-tl-line.right { display: none; }
+/* Пройдений шлях підсвічений, майбутній лишається сірим */
+.oc-tl-step.done .oc-tl-line, .oc-tl-step.now .oc-tl-line.left { background: var(--tl); }
+.oc-tl-step.back .oc-tl-line.left { background: #FCD34D; }
+.oc-tl-dot {
+  position: relative; z-index: 1; width: 11px; height: 11px; border-radius: 50%;
+  background: var(--tl); box-shadow: 0 0 0 4px var(--bg-card);
+}
+.oc-tl-step.now .oc-tl-dot { box-shadow: 0 0 0 4px var(--bg-card), 0 0 0 7px color-mix(in srgb, var(--tl) 22%, transparent); }
+.oc-tl-label {
+  margin-top: 11px; font-size: 12px; font-weight: 600; color: var(--text-secondary); line-height: 1.25;
+}
+.oc-tl-step.now .oc-tl-label { color: var(--text-primary); font-weight: 700; }
+.oc-tl-at {
+  margin-top: 3px; font-size: 10.5px; color: var(--text-muted);
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.oc-tl-sub {
+  margin-top: 2px; font-size: 10.5px; color: var(--text-muted); max-width: 100px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) { .oc-tl-chev { transition: none; } }
+
+
+/* Розділювачі всередині картки — того ж кольору, але ледь помітні: лінія має
+   вести око, а не ділити картку навпіл. */
+.oc-acc .oc-card-footer {
+  border-top: 0 !important;
+  position: relative;
+}
+.oc-acc .oc-card-footer::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent,
+    color-mix(in srgb, var(--oc-accent) 45%, transparent) 12%,
+    color-mix(in srgb, var(--oc-accent) 45%, transparent) 88%,
+    transparent);
+}
+
+/* Повітря. Картки «Клієнт» і «Доставка» стояли поруч і тягнулись до висоти
+   вищої з них, а низ (оплата / накладна) був притиснутий до дна — між вмістом
+   і низом зяяла порожнеча на 60–90px. Тепер кожна картка заввишки як її вміст. */
+.oc-info-cards { align-items: stretch !important; grid-template-rows: auto auto !important; }
+.oc-split {
+  display: grid !important;
+  grid-template-rows: subgrid !important;
+  grid-row: span 2 !important;
+  gap: 12px;
+}
+.oc-split .oc-card-body { display: flex; flex-direction: column; }
+.oc-split .oc-card-footer { margin-top: 0; }
+
 @media (max-width: 768px) {
   .theme-toggle-btn { bottom: 80px; right: 16px; width: 40px; height: 40px; }
   .scroll-to-top-btn {
@@ -2041,7 +2402,8 @@ input, select { font-family: inherit; }
   .oc-info-cards > * { flex: 0 0 95%; scroll-snap-align: start; min-width: 0; }
   /* На телефоні картки гортаються по одній (flex-стрічка), спільної сітки між
      ними немає — підсітка тут не має сенсу, тож звичайний стовпчик. */
-  .oc-split { display: flex !important; flex-direction: column; }
+  .oc-split { display: flex !important; flex-direction: column; grid-row: auto !important; grid-template-rows: none !important; }
+  .oc-split .oc-card-footer { margin-top: 12px; }
   /* Анімовані стрілки-підказки: › (гортай праворуч) на початку, ‹ (назад) після свайпу. */
   .oc-swipe-hint {
     display: flex; position: absolute; top: 50%;
@@ -2064,6 +2426,8 @@ input, select { font-family: inherit; }
      тиснув кнопку вправо по контенту — прибираємо, щоб вона була на всю ширину. */
   .oc-pay-part > * { margin-left: 0 !important; }
   .oc-status-panel, .oc-confirm-block { width: 100% !important; }
+  .oc-status-panel .oc-status-row { width: 100%; }
+  .oc-status-panel .oc-status-row > div:last-child { flex: 1 1 auto; width: auto !important; }
 
   /* Тулбар дій (Excel / Реєстр НП / Синхронізувати НП): на всю ширину рядка і
      переноситься ВСЕРЕДИНІ екрана, а не тисне сторінку вбік (був flex-shrink:0). */

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { parseNpDateTime } from './np-datetime';
 import { notifyCustomerStatus } from './telegram';
 import { setRozetkaOrderStatus, getRozetkaOrderStatusInfo } from './rozetka-api';
 import { ROZETKA_DELIVERY_TYPE } from './rozetka-delivery';
@@ -141,12 +142,19 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
       const npPayer = doc.PayerType ? String(doc.PayerType) : null;
       if (npCost != null && npPayer) deliveryByTtn.set(String(doc.Number), { cost: npCost, payer: npPayer });
 
+      // Час ВРУЧЕННЯ, а не «коли крон побачив». Саме RecipientDateTime — коли
+      // одержувач забрав; ActualDeliveryDate — коли посилка приїхала у відділення,
+      // і на поштоматах різниця буває в пів дня (11:53 привезли — 20:36 забрали).
+      // Обидва поля НП віддає київським рядком без зони (див. lib/np-datetime).
+      const handedAt = parseNpDateTime(doc.RecipientDateTime) ?? parseNpDateTime(doc.ActualDeliveryDate);
+
       if (doc.Status) {
         statusTextUpdates.push(
           serviceClient
             .from('orders')
             .update({
               carrier_status_text: doc.Status, carrier_status_synced_at: now,
+              ...(handedAt ? { carrier_delivered_at: handedAt } : {}),
               ...(npCost != null ? { np_delivery_cost: npCost } : {}),
               ...(npPayer ? { np_delivery_payer: npPayer } : {}),
             })
