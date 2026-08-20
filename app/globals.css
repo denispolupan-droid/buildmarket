@@ -865,7 +865,6 @@ input, select { font-family: inherit; }
 .oc-acc-delivery { --oc-accent: #94A3B8; }
 .oc-acc-items    { --oc-accent: #94A3B8; }
 .oc-acc-actions  { --oc-accent: #475569; }
-.oc-acc-fin      { --oc-accent: #475569; }
 .oc-acc-note     { --oc-accent: #E2E8F0; }
 .oc-acc-history  { --oc-accent: #E2E8F0; }
 /* Стан переважає нейтраль: якщо блоку є що сказати, він каже це кольором лінії.
@@ -953,11 +952,6 @@ input, select { font-family: inherit; }
   background: none; border: none; padding: 0; cursor: pointer;
 }
 
-/* «Фінанси та логістика» переїхали під «Дії»: це не опис замовлення, а його
-   економіка — те саме сімейство, що й службові дії. У колонці 250px дві
-   картки поруч не стають, тож ставимо їх одна під одну. */
-.order-expand-grid .oc-fin-side .oc-finlog-grid { grid-template-columns: 1fr !important; }
-
 /* Прапорці «Терміново» / «Проблемний» — перемикачі, а не мітки. Ховер це
    показує: вимкнений світлішає до кольору свого стану, увімкнений трохи
    темнішає. Без цього кнопка нічим не відрізнялась від напису поруч. */
@@ -966,18 +960,13 @@ input, select { font-family: inherit; }
 .oc-flag-btn[aria-pressed="true"]:hover { filter: brightness(.95); }
 .oc-flag-btn:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
 
-/* Одна позиція — шапка стовпців зайва: «АРТИКУЛ / К-СТЬ / ЦІНА / СУМА»
-   важили стільки ж, скільки сам товар, і пояснювали те, що й так видно.
-   Від двох позицій шапка повертається — там уже є що зіставляти. */
-.order-expand-grid .oc-items-single thead { display: none; }
-
 /* Одна шкала на всю картку. Було дев'ять кеглів (16 / 15 / 14 / 13 / 12.5 /
    12 / 11.5 / 11 / 10) — око спотикалось на кожному блоці, і жоден розмір
    нічого не означав. Лишилось чотири щаблі: мітка 10.5, дрібне 11.5,
    основний текст 13, підсумок 14. Заголовки стовпців таблиці — така сама
    мітка, як «КЛІЄНТ» чи «ОПЛАТА»: це підписи, а не дані. */
 .admin-layout .order-expand-grid thead th {
-  font-size: 10.5px !important;
+  font-size: 9.5px !important;
   font-weight: 700 !important;
   letter-spacing: .07em !important;
 }

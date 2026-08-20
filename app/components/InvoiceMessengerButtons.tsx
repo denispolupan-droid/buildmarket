@@ -172,12 +172,6 @@ export default function InvoiceMessengerButtons({
           style={{ ...small, color: '#7360F2' }}>
           {done === 'viber' ? <Check size={14} color="#15803D" /> : <Phone size={14} />}
         </button>
-        {waHref && (
-          <a href={waHref} target="_blank" rel="noopener noreferrer" title={`Відкрити чат +${normPhone} у WhatsApp з готовим текстом`}
-            style={{ ...small, color: '#25D366' }}>
-            <MessageCircle size={14} />
-          </a>
-        )}
         <button onClick={copyOnly} title="Скопіювати текст із посиланням на рахунок"
           style={{ ...small, color: 'var(--text-secondary)' }}>
           {done === 'copy' ? <Check size={14} color="#15803D" /> : <Copy size={14} />}
