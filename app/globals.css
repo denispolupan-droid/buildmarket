@@ -861,7 +861,7 @@ input, select { font-family: inherit; }
 }
 /* Блоки з даними — темніша нейтраль; службові (дії, нотатка, історія) ледь
    помітні: вони не несуть стану, і лінія їм потрібна лише як межа. */
-.oc-acc { --oc-accent: #94A3B8; }
+.oc-acc { --oc-accent: #64748B; }
 /* Нитки в усіх блоків однакові. Колір за станом (зелена — накладна є,
    бурштинова — потребує уваги) читався не як сигнал, а як різнобій: сусідні
    рівноцінні блоки виглядали різними за важливістю. Стан і без того сказано
@@ -878,7 +878,7 @@ input, select { font-family: inherit; }
   /* Назва блоку — найтемніше з дрібного тексту: вона відкриває блок, і око
      має чіплятись за неї, а не за сусідні підписи. Вкладені підписи лишились
      світлими — так між двома рівнями знову з'явилась різниця. */
-  color: var(--text-secondary) !important;
+  color: #64748B !important;
   margin-bottom: 7px;
 }
 /* ── Шапка розгорнутого замовлення ───────────────────────────────────────────
@@ -890,10 +890,11 @@ input, select { font-family: inherit; }
    вертикалі з підписом «КЛІЄНТ». */
 .oc-expand-header {
   background: transparent !important;
-  /* Шов між ручкою (згорнутий рядок) і аркушем картки: темніша лінія плюс
-     тінь, яку рядок нібито кидає на аркуш. */
-  border-top: 1px solid #94A3B8 !important;
-  box-shadow: inset 0 8px 8px -8px rgba(16, 24, 40, .3);
+  /* Шов між ручкою (згорнутий рядок) і аркушем картки — тією ж ниткою, що й
+     розділювачі всередині: гасне на кінцях, не ріже картку впоперек.
+     Сама лінія малюється в ::before, щоб її можна було звузити відступами. */
+  border-top: 0 !important;
+  position: relative;
   border-bottom: 1px solid var(--border-light);
   padding: 11px 18px 8px !important;
   align-items: center !important;
@@ -947,6 +948,17 @@ input, select { font-family: inherit; }
 .order-expand-grid .oc-lbl-btn {
   display: inline-flex !important; align-items: center; gap: 5px;
   background: none; border: none; padding: 0; cursor: pointer;
+}
+
+.oc-expand-header::before {
+  content: '';
+  position: absolute;
+  left: 18px; right: 18px; top: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent,
+    color-mix(in srgb, #64748B 45%, transparent) 6%,
+    color-mix(in srgb, #64748B 45%, transparent) 94%,
+    transparent);
 }
 
 /* Прапорці «Терміново» / «Проблемний» — перемикачі, а не мітки. Ховер це
