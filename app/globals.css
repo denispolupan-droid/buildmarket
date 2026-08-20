@@ -894,8 +894,13 @@ input, select { font-family: inherit; }
    вертикалі з підписом «КЛІЄНТ». */
 .oc-expand-header {
   background: transparent !important;
+  /* Шов між ручкою (згорнутий рядок) і аркушем картки. Волосяна лінія на
+     ньому губилась — тепер темніша лінія плюс тінь, яку рядок нібито кидає
+     на аркуш: видно, де закінчується журнал і починається сама картка. */
+  border-top: 1px solid #94A3B8 !important;
+  box-shadow: inset 0 8px 8px -8px rgba(16, 24, 40, .3);
   border-bottom: 1px solid var(--border-light);
-  padding: 9px 18px 8px !important;
+  padding: 11px 18px 8px !important;
   align-items: center !important;
 }
 /* Мітки в шапці — на зріст самої смуги: вони називають замовлення, а не
