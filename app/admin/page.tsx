@@ -342,9 +342,9 @@ export default async function AdminPage({
                   display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
                   justifyContent: 'flex-start', gap: '5px', padding: '9px 12px', borderRadius: '12px',
                   textDecoration: 'none', flex: '1 1 0', minWidth: '112px', height: '62px', boxSizing: 'border-box',
-                  background: isActive ? '#EAF1F8' : 'var(--bg-card)',
-                  border: isActive ? '1.5px solid #1E3A5F' : '1px solid var(--border-light)',
-                  boxShadow: isActive ? '0 2px 8px rgba(30,58,95,0.12)' : '0 1px 2px rgba(15,23,42,0.05)',
+                  background: isActive ? '#3DBFB8' : 'var(--bg-card)',
+                  border: isActive ? '1.5px solid #35ACA6' : '1px solid var(--border-light)',
+                  boxShadow: isActive ? '0 2px 10px rgba(61,191,184,0.35)' : '0 1px 2px rgba(15,23,42,0.05)',
                   transition: 'all 0.15s', textAlign: 'center',
                 }}
               >
@@ -364,8 +364,8 @@ export default async function AdminPage({
                       flexShrink: 0,
                       fontSize: '10px', fontWeight: 700, lineHeight: '15px',
                       padding: '0 5px', borderRadius: '7px',
-                      background: isNew ? '#EF4444' : isActive ? '#D5E4F4' : '#E0ECF8',
-                      color: isNew ? '#fff' : isActive ? '#1E3A5F' : '#3B6EA5',
+                      background: isNew ? '#EF4444' : isActive ? 'rgba(255,255,255,0.28)' : '#E0ECF8',
+                      color: isNew ? '#fff' : isActive ? '#fff' : '#3B6EA5',
                     }}>{cnt}</span>
                   );
                   // Невирішені відмови (посилки їдуть назад — треба забрати з пошти
@@ -392,7 +392,7 @@ export default async function AdminPage({
                         <span className="oc-tab-label" style={{
                           display: 'inline-flex', alignItems: 'center', gap: '4px',
                           fontSize: '11.5px', fontWeight: 600, lineHeight: 1.15, letterSpacing: '0px', whiteSpace: 'nowrap',
-                          color: isActive ? '#1E3A5F' : 'var(--text-muted)',
+                          color: isActive ? 'rgba(255,255,255,0.95)' : 'var(--text-muted)',
                         }}>
                           {tab.label}
                           {countChip}
@@ -403,7 +403,7 @@ export default async function AdminPage({
                       {hasAmount ? (
                         <span style={{
                           fontSize: '15px', fontWeight: 800, lineHeight: 1,
-                          color: '#15803D',
+                          color: isActive ? '#fff' : '#15803D',
                           whiteSpace: 'nowrap', letterSpacing: '-0.2px',
                         }}>
                           {amount.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
