@@ -28,6 +28,10 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
   const [width,  setWidth]  = useState('');
   const [height, setHeight] = useState('');
   const [places, setPlaces] = useState('1');
+  // Платник доставки. Значення за замовчуванням — отримувач: так працювала
+  // кожна створена досі накладна, і мовчазна зміна умов на вже налагодженому
+  // потоці коштувала б грошей на кожній посилці, поки хтось помітить.
+  const [payer, setPayer] = useState<'receiver' | 'sender'>('receiver');
   const [sender, setSender] = useState<Sender | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -70,6 +74,7 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
           weight: parseFloat(weight), length: parseFloat(length),
           width: parseFloat(width), height: parseFloat(height),
           places: parseInt(places) || 1,
+          deliveryPayer: payer,
         }),
       });
       const d = await res.json();
@@ -127,6 +132,43 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
             {num(length, setLength, 'Довжина', 'см')}
             {num(width, setWidth, 'Ширина', 'см')}
             {num(height, setHeight, 'Висота', 'см')}
+          </div>
+
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '5px' }}>
+              Доставку оплачує
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {([
+                { key: 'receiver', label: 'Отримувач', hint: 'Покупець платить доставку на точці — звичайні умови' },
+                { key: 'sender',   label: 'Ми',        hint: 'Доставку платимо ми: піде у витрати при доставці' },
+              ] as const).map(o => (
+                <button key={o.key} type="button" onClick={() => setPayer(o.key)} title={o.hint}
+                  style={{
+                    flex: 1, height: '38px', borderRadius: '9px', cursor: 'pointer', fontSize: '13px',
+                    fontWeight: payer === o.key ? 700 : 600,
+                    border: `1.5px solid ${payer === o.key ? '#15803D' : 'var(--border)'}`,
+                    background: payer === o.key ? 'rgba(21,128,61,0.08)' : 'var(--bg-card)',
+                    color: payer === o.key ? '#15803D' : 'var(--text-secondary)',
+                  }}>
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '5px', lineHeight: 1.45 }}>
+              {payer === 'sender'
+                ? 'Вартість доставки спишеться з нашого логістичного балансу і проведеться у витрати. Комісію за переказ післяплати ми платимо в будь-якому разі.'
+                : 'Покупець оплачує доставку на точці видачі.'}
+              {' '}
+              {/* Перевірено живими викликами 2026-08-20: PATCH /api/track/{id} наш
+                  перевізник відхиляє і до здачі («Неможливо змінити дані посилки»),
+                  і в дорозі («Для даного перевізника недоступна зміна даних
+                  посилки»). Тобто це справді останній момент, коли вибір можливий —
+                  і менеджер має знати про це ДО натискання, а не після. */}
+              <strong style={{ color: 'var(--text-secondary)' }}>
+                Після створення накладної це вже не змінити — ані в нас, ані в кабінеті Rozetka.
+              </strong>
+            </div>
           </div>
 
           {overLimit && (
