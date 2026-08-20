@@ -4566,10 +4566,9 @@ export default function AdminOrders({
                         // Без заливки: пояснення не має важити більше за єдину дію
                         // в блоці — кнопку створення накладної.
                         <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
-                          <div style={{ fontWeight: 600, color: 'var(--text-muted)', fontSize: '11px' }}>Точка видачі Rozetka</div>
                           {order.tracking_number ? (
-                            // Кнопка праворуч від номера — рядок один, місце дозволяє
-                            <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            // Номер і кнопка — одним рядком: місце дозволяє
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                               <div style={{ flexShrink: 0 }}>ТТН: <strong>{order.tracking_number}</strong></div>
                               <button onClick={() => printLabel(order.id, 'rozetka-delivery-ttn')} disabled={rzLabelBusy === order.id}
                                 style={{ marginLeft: 'auto', height: '30px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
@@ -4578,6 +4577,7 @@ export default function AdminOrders({
                             </div>
                           ) : (
                             <>
+                              <div style={{ fontWeight: 600, color: 'var(--text-muted)', fontSize: '11px' }}>Точка видачі Rozetka</div>
                               <div style={{ marginTop: '3px' }}>Адресу отримувача Rozetka візьме із замовлення — потрібні лише габарити.</div>
                               <button onClick={() => setRzTtnModal(order)}
                                 style={{ marginTop: '8px', height: '34px', padding: '0 14px', borderRadius: '9px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>
