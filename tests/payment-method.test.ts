@@ -38,7 +38,7 @@ describe('marketplacePaymentMethod — Prom', () => {
 });
 
 describe('marketplacePaymentMethod — Rozetka', () => {
-  it('назва способу + тип оплати', () => {
+  it('бере назву способу оплати', () => {
     expect(marketplacePaymentMethod({
       channel_code: 'rozetka',
       rozetka_data: {
@@ -48,14 +48,14 @@ describe('marketplacePaymentMethod — Rozetka', () => {
           payment_type: 'cash',
         },
       },
-    })).toEqual({ label: 'Оплата під час отримання товару', detail: 'Готівкова' });
+    })).toEqual({ label: 'Оплата під час отримання товару' });
   });
 
-  it('не дублює, коли назва і тип збігаються', () => {
+  it('payment_type_title ігнорує — він про доставку, а не про розрахунок', () => {
     expect(marketplacePaymentMethod({
       channel_code: 'rozetka',
-      rozetka_data: { payment: { payment_method_name: 'Картка', payment_type_title: 'картка' } },
-    })).toEqual({ label: 'Картка' });
+      rozetka_data: { payment: { payment_type_title: 'Готівкова' } },
+    })).toBeNull();
   });
 });
 

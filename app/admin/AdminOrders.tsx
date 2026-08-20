@@ -2621,10 +2621,12 @@ export default function AdminOrders({
             return (
               <div key={order.id} id={`order-${order.id}`} style={{
                 background: isFlashing ? '#F0FDF4' : isPicked ? 'var(--brand-teal-light)' : rowTone?.bg ?? 'var(--bg-card)',
-                border: `1px solid ${isFlashing ? '#86EFAC' : isPicked ? 'var(--brand-teal)' : isExpanded ? 'var(--brand-blue)' : rowTone?.edge ?? 'var(--border-light)'}`,
+                // Відкрита картка виділяється висотою, а не кольором: синій контур
+                // читався як «виділено мишею», хоча це просто розгорнутий запис.
+                border: `1px solid ${isFlashing ? '#86EFAC' : isPicked ? 'var(--brand-teal)' : isExpanded ? '#D8DEE7' : rowTone?.edge ?? 'var(--border-light)'}`,
                 borderLeft: isPicked ? '4px solid var(--brand-teal)' : rowTone ? `4px solid ${rowTone.bar}` : undefined,
                 borderRadius: '14px', overflow: 'hidden',
-                boxShadow: isExpanded ? '0 6px 20px rgba(16,24,40,0.12)' : isFlashing ? '0 0 0 3px #BBF7D0' : isPicked ? '0 2px 10px rgba(61,191,184,0.25)' : '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06)',
+                boxShadow: isExpanded ? '0 2px 4px rgba(16,24,40,0.04), 0 24px 48px -16px rgba(16,24,40,0.28)' : isFlashing ? '0 0 0 3px #BBF7D0' : isPicked ? '0 2px 10px rgba(61,191,184,0.25)' : '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06)',
                 opacity: expandedId && !isExpanded ? 0.35 : 1,
                 transition: 'box-shadow 0.3s, border-color 0.3s, opacity 0.15s, background 0.3s',
               }}>
@@ -3576,7 +3578,8 @@ export default function AdminOrders({
                         const method = marketplacePaymentMethod(order);
                         if (!method) return null;
                         return (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '-4px', fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                          <div title={[method.label, method.detail].filter(Boolean).join(' · ')}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '-4px', fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                             <Wallet size={12} style={{ flexShrink: 0, color: 'var(--text-muted)' }} />
                             <span>
                               <span style={{ fontWeight: 600 }}>{method.label}</span>
