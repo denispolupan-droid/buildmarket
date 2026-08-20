@@ -599,6 +599,9 @@ export default function AdminOrders({
   const [discInput,        setDiscInput]        = useState<Record<string, string>>({});
   const [discMode,         setDiscMode]         = useState<Record<string, 'pct' | 'amount'>>({});
   const [priceBlockOpen,   setPriceBlockOpen]   = useState<Record<string, boolean>>({});
+  /** Історія замовлення згорнута за замовчуванням: до неї звертаються зрідка,
+   *  а висоти вона додає більше за будь-який інший блок картки. */
+  const [historyOpen, setHistoryOpen] = useState<Record<string, boolean>>({});
   const [finLogOpen,       setFinLogOpen]       = useState<Record<string, boolean>>({});
   const [statusEditOpen,   setStatusEditOpen]   = useState<Record<string, boolean>>({});
   const [itemsExpanded,    setItemsExpanded]    = useState<Record<string, boolean>>({});
@@ -3183,10 +3186,10 @@ export default function AdminOrders({
                         колонки. Було flex:1 + justify-content:center — замовлення з
                         однією позицією розтягувалось на всю висоту правого сайдбара
                         і рядок висів посеред порожнечі. */}
-                    <div className="order-col-card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column' }}>
+                    <div className="order-col-card oc-acc oc-acc-items" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          <span className="oc-lbl">
                             Товари · {order.items.length}
                           </span>
                           <button
@@ -3812,7 +3815,7 @@ export default function AdminOrders({
                     {/* Внутрішня нотатка — одним рядком під товарами. Це коментар до
                         самого замовлення, тож поруч із його складом він доречніший, ніж
                         окремою карткою в колонці дій, де з'їдав її висоту. */}
-                    <div className="order-col-card" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className="order-col-card oc-acc oc-acc-note" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0 }}>Нотатка</span>
                       <input
                         key={`note-${order.id}-${order.internal_note ?? ''}`}
@@ -3835,9 +3838,9 @@ export default function AdminOrders({
                       }}
                       style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', alignItems: 'stretch' }}>
                     {/* Клієнт card */}
-                    <div className="order-col-card oc-split" style={{ padding: '16px' }}>
+                    <div className={`order-col-card oc-split oc-acc oc-acc-client${(order.flags ?? []).some(f => f === 'urgent' || f === 'problem') ? ' is-warn' : ''}`} style={{ padding: '16px' }}>
                       <div className="oc-card-body">
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Клієнт</span>
+                      <span className="oc-lbl">Клієнт</span>
                       {/* Contact info */}
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
                         <div style={{ width: '44px', height: '44px', borderRadius: '999px', flexShrink: 0, background: '#EEF2FF', color: 'var(--brand-blue)', fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -3849,7 +3852,7 @@ export default function AdminOrders({
                             <Building2 size={12} color="#64748B" />{order.company}
                           </div>
                         )}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        <div className="oc-name-main" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)' }}>
                           {order.contact}
                           {order.customer_id && (
                             <a href={`/admin/partners?open=${order.customer_id}`} target="_blank" rel="noopener noreferrer"
@@ -4157,10 +4160,10 @@ export default function AdminOrders({
                       </div>
                     </div>
                     {/* Доставка / ТТН card */}
-                    <div className="order-col-card oc-split" style={{ padding: '16px' }}>
+                    <div className={`order-col-card oc-split oc-acc oc-acc-delivery ${order.tracking_number ? 'is-ok' : 'is-warn'}`} style={{ padding: '16px' }}>
                       <div className="oc-card-body">
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                        <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Доставка</div>
+                        <div className="oc-lbl">Доставка</div>
                         {editDeliveryId !== order.id && (
                           <button onClick={() => openEditDelivery(order)} title="Змінити доставку" style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1, display: 'inline-flex' }}>
                             <Pencil size={12} />
@@ -4331,8 +4334,10 @@ export default function AdminOrders({
                         // Накладну для точки видачі виписує сама Rozetka своїм API
                         // (розділ Octopus), номер має вигляд «RMP-…». ТТН Нової Пошти
                         // тут не підходить — точка видачі таку посилку не прийме.
-                        <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--text-secondary)', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '9px', padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 700, color: '#15803D' }}>Точка видачі Rozetka</div>
+                        // Без заливки: пояснення не має важити більше за єдину дію
+                        // в блоці — кнопку створення накладної.
+                        <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--text-muted)', fontSize: '11px' }}>Точка видачі Rozetka</div>
                           {order.tracking_number ? (
                             // Кнопка праворуч від номера — рядок один, місце дозволяє
                             <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -4356,8 +4361,9 @@ export default function AdminOrders({
                         // Власний договір із rz-delivery: точку видачі покупець обрав
                         // у чекауті, від нас — лише габарити. Етикетку друкує сама
                         // Rozetka (PDF), ТТН Нової Пошти тут не існує в принципі.
-                        <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--text-secondary)', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '9px', padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 700, color: '#15803D' }}>ROZETKA Доставка</div>
+                        // Без заливки й рамки: зелений прямокутник кричав гучніше за
+                        // саму дію — а це лише довідка про номер, не заклик до дії.
+                        <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
                           {order.tracking_number ? (
                             <>
                               {/* ЕН і кнопки — одним рядком: кнопки праворуч, місце дозволяє */}
@@ -4365,13 +4371,13 @@ export default function AdminOrders({
                               <div style={{ flexShrink: 0 }}>ЕН: <strong>{order.tracking_number}</strong></div>
                               <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto', flexWrap: 'wrap' }}>
                                 <button onClick={() => printLabel(order.id, 'rz-ttn')} disabled={rzLabelBusy === order.id}
-                                  style={{ height: '32px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
+                                  style={{ height: '28px', padding: '0 10px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
                                   {rzLabelBusy === order.id ? '…' : 'Етикетка PDF'}
                                 </button>
                                 {!order.carrier_accepted_at && (
                                   <button onClick={() => addRzToReception(order.id)} disabled={rzRegBusy === order.id}
                                     title="Додати ЕН у сьогоднішній реєстр здачі"
-                                    style={{ height: '32px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzRegBusy === order.id ? 'wait' : 'pointer' }}>
+                                    style={{ height: '28px', padding: '0 10px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: rzRegBusy === order.id ? 'wait' : 'pointer' }}>
                                     {rzRegBusy === order.id ? '…' : 'У реєстр'}
                                   </button>
                                 )}
@@ -4387,7 +4393,7 @@ export default function AdminOrders({
                                 {!order.carrier_accepted_at && (
                                   <button onClick={() => deleteRzTtn(order.id)} disabled={ttnDeleting === order.id}
                                     title="Видалити ЕН у Rozetka і прибрати номер із замовлення"
-                                    style={{ height: '32px', width: '32px', borderRadius: '9px', flexShrink: 0, background: '#FEF2F2', color: '#DC2626', border: '1.5px solid #FECACA', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: ttnDeleting === order.id ? 0.5 : 1 }}>
+                                    style={{ height: '28px', width: '28px', borderRadius: '7px', flexShrink: 0, background: 'transparent', color: '#DC2626', border: '1px solid var(--border-light)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: ttnDeleting === order.id ? 0.5 : 1 }}>
                                     {ttnDeleting === order.id ? '…' : <Trash2 size={14} />}
                                   </button>
                                 )}
@@ -4423,9 +4429,9 @@ export default function AdminOrders({
                           && (['supplier', 'mixed'].includes(order.fulfillment_mode ?? 'supplier') || !!order.supplier_sent_at) && (
                           <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
                             title={order.supplier_sent_at ? `Надіслано ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · натисніть щоб надіслати ще раз` : 'Надіслати замовлення постачальнику'}
-                            style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '40px', padding: '0 10px', boxSizing: 'border-box', fontSize: '12.5px', fontWeight: 600, cursor: supplierQueueLoading ? 'wait' : 'pointer', borderRadius: '9px',
-                              border: order.supplier_sent_at ? '1.5px solid #86EFAC' : '1.5px solid #93C5FD',
-                              background: order.supplier_sent_at ? '#F0FDF4' : '#EFF6FF',
+                            style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '32px', padding: '0 10px', boxSizing: 'border-box', fontSize: '12.5px', fontWeight: 600, cursor: supplierQueueLoading ? 'wait' : 'pointer', borderRadius: '8px',
+                              border: order.supplier_sent_at ? '1px solid #BBF7D0' : '1px solid #BFDBFE',
+                              background: order.supplier_sent_at ? '#F6FEF9' : '#F5F9FF',
                               color: order.supplier_sent_at ? '#15803D' : '#1E3A5F',
                               opacity: supplierQueueLoading ? 0.6 : 1 }}>
                             <Mail size={15} style={{ flexShrink: 0 }} />
@@ -4434,7 +4440,7 @@ export default function AdminOrders({
                         )}
                         <button onClick={() => openSupplierPO(order)} disabled={creatingPo === order.id}
                           title="Створити замовлення постачальнику (ЗП)"
-                          style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '40px', padding: '0 10px', boxSizing: 'border-box', fontSize: '12.5px', fontWeight: 600, borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: creatingPo === order.id ? 'wait' : 'pointer', opacity: creatingPo === order.id ? 0.6 : 1 }}>
+                          style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '32px', padding: '0 10px', boxSizing: 'border-box', fontSize: '12.5px', fontWeight: 600, borderRadius: '8px', border: '1px solid var(--border-light)', background: 'transparent', color: 'var(--text-secondary)', cursor: creatingPo === order.id ? 'wait' : 'pointer', opacity: creatingPo === order.id ? 0.6 : 1 }}>
                           <ShoppingCart size={15} style={{ flexShrink: 0 }} />
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{creatingPo === order.id ? '...' : 'Створити ЗП'}</span>
                         </button>
@@ -4458,23 +4464,26 @@ export default function AdminOrders({
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
                         {/* Дії card */}
-                        <div className="order-col-card" style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div className="order-col-card oc-acc oc-acc-actions" style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                           {/* Статус замовлення + ручна зміна винесені у правий верхній кут шапки */}
                           {/* «Відвантажує пост.» перенесено до блоку способу виконання (ліва колонка) */}
 
                           {/* Context action buttons */}
-                          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>Дії</div>
+                          <div className="oc-lbl">Дії</div>
                           {(() => {
                             // Unified button styles
+                            // Дії — рядки, а не плитки. П'ять обведених прямокутників
+                            // підряд читались як п'ять однаково важливих кнопок; насправді
+                            // головна одна, решта — інструменти. Рамку лишили тільки їй.
                             const btn = {
-                              display: 'flex' as const, alignItems: 'center' as const, gap: '6px',
-                              padding: '7px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
-                              cursor: 'pointer', textDecoration: 'none', border: '1.5px solid #CBD5E1',
-                              background: 'var(--bg-card)', color: 'var(--text-primary)', width: '100%',
+                              display: 'flex' as const, alignItems: 'center' as const, gap: '8px',
+                              padding: '7px 8px', borderRadius: '7px', fontSize: '12.5px', fontWeight: 500,
+                              cursor: 'pointer', textDecoration: 'none', border: '1px solid transparent',
+                              background: 'transparent', color: 'var(--text-primary)', width: '100%',
                               boxSizing: 'border-box' as const, justifyContent: 'flex-start' as const,
                             };
-                            const btnPrimary = { ...btn, border: '1.5px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F' };
-                            const btnMuted   = { ...btn, border: '1px solid var(--border-light)', padding: '6px 10px', fontWeight: 500, color: 'var(--text-secondary)' };
+                            const btnPrimary = { ...btn, border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#1E3A5F', fontWeight: 600 };
+                            const btnMuted   = { ...btn, padding: '6px 8px', fontWeight: 500, color: 'var(--text-secondary)' };
                             return (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
                                 {/* Копія замовлення — повтор того самого складу для того самого
@@ -4590,7 +4599,6 @@ export default function AdminOrders({
                                 {/* Кнопка чату МП живе в блоці «Клієнт», поруч із телефоном —
                                     це контакт, а не інструмент друку. */}
                                 <InvoiceMessengerButtons
-                                  variant="stacked"
                                   phone={order.phone} contact={order.contact}
                                   orderNumber={order.order_number} orderId={order.id}
                                   total={order.total_price} channel={order.channel_code}
@@ -4720,35 +4728,56 @@ export default function AdminOrders({
                     if (evs.length <= 1) return null;
                     return (
                       <div style={{ background: 'var(--bg-soft)', padding: '0 14px 14px' }}>
-                        <div className="order-col-card" style={{ padding: '16px 18px' }}>
-                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '18px' }}>
-                            Історія замовлення
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: '4px' }}>
+                        <div className="order-col-card oc-acc oc-acc-history" style={{ padding: '0' }}>
+                          {/* Заголовок-перемикач. Згорнутий рядок не порожній: у ньому
+                              видно, де замовлення зараз і коли туди потрапило — заради
+                              цього історію й відкривали найчастіше. */}
+                          <button type="button" className="oc-tl-head"
+                            aria-expanded={historyOpen[order.id] ?? false}
+                            onClick={() => setHistoryOpen(prev => ({ ...prev, [order.id]: !(prev[order.id] ?? false) }))}>
+                            <ChevronDown size={13} className={`oc-tl-chev${(historyOpen[order.id] ?? false) ? ' open' : ''}`} />
+                            <span className="oc-tl-title">Історія замовлення</span>
+                            {!(historyOpen[order.id] ?? false) && (() => {
+                              const last = evs[evs.length - 1];
+                              return (
+                                <span className="oc-tl-summary">
+                                  <span className="oc-tl-sum-dot" />
+                                  {last.label}
+                                  <span className="oc-tl-sum-at">
+                                    {new Date(last.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                  <span className="oc-tl-sum-count">{evs.length} подій</span>
+                                </span>
+                              );
+                            })()}
+                          </button>
+                          {(historyOpen[order.id] ?? false) && (
+                          <div className="oc-tl-rail">
                             {evs.map((ev, i) => {
-                              const color = ev.backward ? '#B45309' : ev.href ? '#0369A1' : '#1E3A5F';
+                              const isLast = i === evs.length - 1;
+                              const tone = ev.backward ? 'back' : isLast ? 'now' : 'done';
                               const content = (
-                                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', width: '100%' }}>
-                                  {i < evs.length - 1 && (
-                                    <div style={{ position: 'absolute', top: '15px', left: '50%', width: '100%', height: '2px', background: ev.backward ? '#FDE68A' : 'var(--border)' }} />
-                                  )}
-                                  <div style={{ position: 'relative', zIndex: 1, width: '32px', height: '32px', borderRadius: '999px', background: 'var(--bg-card)', border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px' }}>
-                                    {ev.icon}
-                                  </div>
-                                  <div style={{ marginTop: '9px', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.25, padding: '0 4px' }}>{ev.label}</div>
-                                  <div style={{ marginTop: '3px', fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                                <div className={`oc-tl-step ${tone}`}>
+                                  {/* Рейка малюється смугами ліворуч і праворуч від крапки,
+                                      а не однією лінією під усім рядом: інакше вона стирчала
+                                      за крайні кроки. */}
+                                  <span className="oc-tl-line left" aria-hidden="true" />
+                                  <span className="oc-tl-line right" aria-hidden="true" />
+                                  <span className="oc-tl-dot" aria-hidden="true" />
+                                  <span className="oc-tl-label">{ev.label}</span>
+                                  <span className="oc-tl-at">
                                     {new Date(ev.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                  </div>
-                                  {ev.sub && <div style={{ marginTop: '2px', fontSize: '10px', color: 'var(--text-muted)', maxWidth: '96px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.sub}</div>}
-                                  {ev.by && ev.by !== 'system' && <div style={{ marginTop: '2px', fontSize: '10px', color: 'var(--text-muted)', maxWidth: '96px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.by.split('@')[0]}</div>}
+                                  </span>
+                                  {ev.sub && <span className="oc-tl-sub">{ev.sub}</span>}
+                                  {ev.by && ev.by !== 'system' && <span className="oc-tl-sub">{ev.by.split('@')[0]}</span>}
                                 </div>
                               );
-                              const wrapStyle: React.CSSProperties = { flex: '1 0 96px', minWidth: '96px', textDecoration: 'none' };
                               return ev.href
-                                ? <a key={i} href={ev.href} style={wrapStyle} onClick={e => e.stopPropagation()}>{content}</a>
-                                : <div key={i} style={wrapStyle}>{content}</div>;
+                                ? <a key={i} href={ev.href} className="oc-tl-cell" onClick={e => e.stopPropagation()}>{content}</a>
+                                : <div key={i} className="oc-tl-cell">{content}</div>;
                             })}
                           </div>
+                          )}
                         </div>
                       </div>
                     );
