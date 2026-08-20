@@ -864,7 +864,8 @@ input, select { font-family: inherit; }
 .oc-acc-client   { --oc-accent: #94A3B8; }
 .oc-acc-delivery { --oc-accent: #94A3B8; }
 .oc-acc-items    { --oc-accent: #94A3B8; }
-.oc-acc-actions  { --oc-accent: #E2E8F0; }
+.oc-acc-actions  { --oc-accent: #475569; }
+.oc-acc-fin      { --oc-accent: #475569; }
 .oc-acc-note     { --oc-accent: #E2E8F0; }
 .oc-acc-history  { --oc-accent: #E2E8F0; }
 /* Стан переважає нейтраль: якщо блоку є що сказати, він каже це кольором лінії.
@@ -877,12 +878,12 @@ input, select { font-family: inherit; }
    Значення всередині блоку більші за підпис, і саме вони ведуть погляд. */
 .order-expand-grid .oc-lbl {
   display: block;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  letter-spacing: .04em !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: .07em !important;
   text-transform: uppercase !important;
   color: var(--text-muted) !important;
-  margin-bottom: 7px;
+  margin-bottom: 6px;
 }
 /* ── Шапка розгорнутого замовлення ───────────────────────────────────────────
    Сіра підкладка лишилась із часів, коли нижче йшли білі плитки на сірому тлі:
@@ -897,6 +898,81 @@ input, select { font-family: inherit; }
   padding: 16px 18px 14px !important;
 }
 
+/* Права колонка — іншої природи: не дані про замовлення, а дії з ним. Нитка
+   в неї того самого крою, що й у решти, лише насиченіша (--oc-accent вище):
+   цього досить, щоб читалась межа між «що це» і «що з ним робити». */
+/* Коли дій не видно, права колонка звужується до кнопки, і 250px забирають
+   блоки, які читають. Шапку не чіпаємо: статус тримається правого краю в обох
+   станах — інакше він стрибав би по горизонталі від кліку до кліку. */
+.order-expand-grid.oc-actions-off { grid-template-columns: minmax(0, 1fr) auto !important; }
+
+/* Згорнута колонка дій — вузька смужка з кнопкою. Сама колонка зникає, і
+   блоки, які читають (клієнт, доставка, товари), забирають її 250px собі. */
+.oc-actions-collapsed { display: flex; justify-content: flex-end; padding: 8px 0 0; }
+.oc-actions-collapsed button {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 28px; padding: 0 10px; border-radius: 8px;
+  border: 1px solid var(--border-light); background: transparent;
+  font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--text-muted); cursor: pointer;
+}
+.oc-actions-collapsed button:hover { color: var(--text-secondary); border-color: var(--border); }
+.oc-actions-collapsed button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+/* Заголовок «Дії» у розгорнутому стані — теж перемикач */
+.order-expand-grid .oc-lbl-btn {
+  display: inline-flex !important; align-items: center; gap: 5px;
+  background: none; border: none; padding: 0; cursor: pointer;
+}
+
+/* «Фінанси та логістика» переїхали під «Дії»: це не опис замовлення, а його
+   економіка — те саме сімейство, що й службові дії. У колонці 250px дві
+   картки поруч не стають, тож ставимо їх одна під одну. */
+.order-expand-grid .oc-fin-side .oc-finlog-grid { grid-template-columns: 1fr !important; }
+
+/* Одна шкала на всю картку. Було дев'ять кеглів (16 / 15 / 14 / 13 / 12.5 /
+   12 / 11.5 / 11 / 10) — око спотикалось на кожному блоці, і жоден розмір
+   нічого не означав. Лишилось чотири щаблі: мітка 10.5, дрібне 11.5,
+   основний текст 13, підсумок 14. Заголовки стовпців таблиці — така сама
+   мітка, як «КЛІЄНТ» чи «ОПЛАТА»: це підписи, а не дані. */
+.admin-layout .order-expand-grid thead th {
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: .07em !important;
+}
+.order-expand-grid .oc-col-name a,
+.order-expand-grid .oc-col-qty,
+.order-expand-grid .oc-col-price,
+.order-expand-grid .oc-col-sum span,
+.order-expand-grid .oc-addr-main { font-size: 13px !important; }
+.order-expand-grid .oc-col-sku span { font-size: 11.5px !important; }
+.order-expand-grid .oc-total-row td { font-size: 11.5px !important; }
+.order-expand-grid .oc-total-row td:nth-last-child(2) { font-size: 14px !important; }
+
+/* Рядок товару. 10px згори й знизу плюс мініатюра 40px давали 60px на позицію —
+   на трьох товарах це вже екран. 7px і 36px тримають ту саму читабельність. */
+.order-expand-grid tbody td { padding-top: 7px !important; padding-bottom: 7px !important; }
+.order-expand-grid .oc-col-name a[href^="/admin/products/"] { width: 36px !important; height: 36px !important; }
+
+/* Спосіб оплати і його стан — в один рядок. Стояли одне під одним
+   («Google Pay», нижче чіп «✓ Оплачено 465,00 ₴»), хоча це одна думка:
+   чим платили і чи заплатили. Два рядки на неї — зайвий поверх. */
+.order-expand-grid .oc-pay-col {
+  flex-direction: row !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px !important;
+}
+.order-expand-grid .oc-pay-col > .oc-sub-lbl { flex-basis: 100%; }
+/* Форма зміни способу оплати — на власний рядок: у ній селект і дві кнопки */
+.order-expand-grid .oc-pay-col > div:has(select) { flex-basis: 100%; }
+.order-expand-grid .oc-pay-col > div[style*="margin-top: -4px"] { margin-top: 0 !important; }
+
+/* Повітря між блоками. 14px по вертикалі лишились із часів плиток — там зазор
+   відділяв картку від картки. Тепер блоки на одному аркуші, і межу тримає
+   нитка, а не порожнеча. */
+.order-expand-grid .order-main-col { gap: 10px !important; }
+.order-expand-grid .oc-info-cards { gap: 10px 26px !important; }
+
 /* Два рівні підписів. Раніше вкладені («Оплата», «Коментар», «ТТН Нової
    Пошти», «Інструменти») виглядали точно як заголовки блоків — той самий
    розмір, вага й колір, бо глобальне правило адмінки підтягує будь-який
@@ -907,10 +983,10 @@ input, select { font-family: inherit; }
    Пунктирний роздільник над «Інструментами» замінено на суцільну волосяну
    лінію: пунктир на плоскому аркуші читається як шов. */
 .admin-layout .order-expand-grid .oc-sub-lbl {
-  font-size: 10px !important;
-  font-weight: 600;
+  font-size: 10.5px !important;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: .04em;
+  letter-spacing: .07em;
   color: color-mix(in srgb, var(--text-muted) 78%, white) !important;
 }
 
