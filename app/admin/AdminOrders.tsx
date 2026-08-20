@@ -88,6 +88,8 @@ type Order = {
   carrier_accepted_at: string | null;
   carrier_status_text: string | null;
   carrier_status_synced_at: string | null;
+  /** Час видачі за даними перевізника; null — перевізник часу не дав */
+  carrier_delivered_at:   string | null;
   payment_confirmed:  boolean;
   amount_paid:        number;
   callback_done:      boolean;
@@ -4450,6 +4452,23 @@ export default function AdminOrders({
                           {/* SMART / «дешева доставка» — умови саме цієї доставки, тож
                               стоять біля перевізника, а не десь у мітках замовлення. */}
                           {deliveryBadges}
+                          {/* Коли посилку забрали. Показуємо час перевізника, а якщо його
+                              немає (Rozetka його не віддає) — свій, і чесно кажемо про це
+                              в підказці: різниця між ними — інтервал крона. */}
+                          {order.status === 'delivered' && (order.carrier_delivered_at || order.delivered_at) && (() => {
+                            const byCarrier = !!order.carrier_delivered_at;
+                            const at = new Date((order.carrier_delivered_at ?? order.delivered_at) as string);
+                            return (
+                              <span title={byCarrier
+                                ? `Час видачі за даними перевізника: ${at.toLocaleString('uk-UA')}`
+                                : `Перевізник часу видачі не дав — це наш час, коли доставку зафіксовано: ${at.toLocaleString('uk-UA')}`}
+                                style={{ flexBasis: '100%', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: '#15803D' }}>
+                                <Check size={12} />
+                                Отримано {at.toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                {!byCarrier && <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>· за нашими даними</span>}
+                              </span>
+                            );
+                          })()}
                           {/* Адреса — завжди з нового рядка: у Нової Пошти вона довга й
                               переносилась сама, у Rozetka коротка й лишалась в одному рядку з
                               перевізником. Два різні вигляди для однієї й тієї ж думки. */}
