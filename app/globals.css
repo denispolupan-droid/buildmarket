@@ -1055,15 +1055,15 @@ input, select { font-family: inherit; }
 
 /* Повітря. Картки «Клієнт» і «Доставка» тягнулись до висоти вищої з них, а низ
    був притиснутий до дна — між вмістом і низом зяяло 60–90px. */
-.oc-info-cards { align-items: start !important; gap: 26px !important; }
+.oc-info-cards { align-items: stretch !important; grid-template-rows: auto auto !important; gap: 26px !important; }
 .oc-split {
-  display: flex !important;
-  flex-direction: column;
-  grid-row: auto !important;
-  grid-template-rows: none !important;
+  display: grid !important;
+  grid-template-rows: subgrid !important;
+  grid-row: span 2 !important;
+  gap: 12px;
 }
-.oc-split .oc-card-body { flex: 0 0 auto; }
-.oc-split .oc-card-footer { margin-top: 14px; }
+.oc-split .oc-card-body { display: flex; flex-direction: column; }
+.oc-split .oc-card-footer { margin-top: 0; }
 
 /* ── Історія замовлення: рейка замість кружечків ─────────────────────────────
    Було: ряд кружечків 32px з емодзі — вони важили як кнопки, хоча нічого не
@@ -1155,15 +1155,15 @@ input, select { font-family: inherit; }
 /* Повітря. Картки «Клієнт» і «Доставка» стояли поруч і тягнулись до висоти
    вищої з них, а низ (оплата / накладна) був притиснутий до дна — між вмістом
    і низом зяяла порожнеча на 60–90px. Тепер кожна картка заввишки як її вміст. */
-.oc-info-cards { align-items: start !important; }
+.oc-info-cards { align-items: stretch !important; grid-template-rows: auto auto !important; }
 .oc-split {
-  display: flex !important;
-  flex-direction: column;
-  grid-row: auto !important;
-  grid-template-rows: none !important;
+  display: grid !important;
+  grid-template-rows: subgrid !important;
+  grid-row: span 2 !important;
+  gap: 12px;
 }
-.oc-split .oc-card-body { flex: 0 0 auto; }
-.oc-split .oc-card-footer { margin-top: 14px; }
+.oc-split .oc-card-body { display: flex; flex-direction: column; }
+.oc-split .oc-card-footer { margin-top: 0; }
 
 @media (max-width: 768px) {
   .theme-toggle-btn { bottom: 80px; right: 16px; width: 40px; height: 40px; }
@@ -2395,7 +2395,8 @@ input, select { font-family: inherit; }
   .oc-info-cards > * { flex: 0 0 95%; scroll-snap-align: start; min-width: 0; }
   /* На телефоні картки гортаються по одній (flex-стрічка), спільної сітки між
      ними немає — підсітка тут не має сенсу, тож звичайний стовпчик. */
-  .oc-split { display: flex !important; flex-direction: column; }
+  .oc-split { display: flex !important; flex-direction: column; grid-row: auto !important; grid-template-rows: none !important; }
+  .oc-split .oc-card-footer { margin-top: 12px; }
   /* Анімовані стрілки-підказки: › (гортай праворуч) на початку, ‹ (назад) після свайпу. */
   .oc-swipe-hint {
     display: flex; position: absolute; top: 50%;
