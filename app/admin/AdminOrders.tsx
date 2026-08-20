@@ -4069,6 +4069,24 @@ export default function AdminOrders({
                               <ExternalLink size={13} />
                             </a>
                           )}
+                          {/* Прапорці — біля імені й без підписів: це стан замовлення,
+                              який зчитується кольором, а не читається словом. Повна
+                              назва лишилась у підказці. */}
+                          {([
+                            { key: 'urgent',  label: 'Терміново',  onBg: '#FEE2E2', onC: '#B91C1C', onB: '#FCA5A5', Icon: Zap },
+                            { key: 'problem', label: 'Проблемний', onBg: '#FEF3C7', onC: '#B45309', onB: '#FCD34D', Icon: AlertTriangle },
+                          ] as const).map(f => {
+                            const active = (order.flags ?? []).includes(f.key);
+                            return (
+                              <button key={f.key} onClick={() => toggleOrderFlag(order.id, f.key)}
+                                className="oc-flag-btn" aria-pressed={active}
+                                title={active ? `Зняти прапорець «${f.label}»` : `Позначити «${f.label}»`}
+                                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', cursor: 'pointer', flexShrink: 0,
+                                  background: active ? f.onBg : 'transparent', color: active ? f.onC : 'var(--text-muted)', border: `1px solid ${active ? f.onB : 'var(--border-light)'}` }}>
+                                <f.Icon size={12} />
+                              </button>
+                            );
+                          })}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <a href={`tel:${order.phone}`} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13.5px', color: 'var(--brand-blue)', fontWeight: 700, textDecoration: 'none', fontVariantNumeric: 'tabular-nums' }}>
@@ -4091,6 +4109,15 @@ export default function AdminOrders({
                               {callbackDone ? <><Check size={11} /> Зателефонували</> : <><Phone size={11} /> Потрібен дзвінок</>}
                             </button>
                           ))}
+                          {/* Чат кабінету МП — там само, де решта способів зв'язку */}
+                          {(order.channel_code === 'rozetka' || order.channel_code === 'prom') && (
+                            <a href={`/admin/chat?order=${order.id}`} target="_blank" rel="noopener noreferrer"
+                              title={`Чат ${order.channel_code === 'prom' ? 'Prom' : 'Rozetka'} — переписка з покупцем у кабінеті маркетплейсу`}
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', flexShrink: 0,
+                                color: '#4338CA', background: '#EEF2FF', border: '1px solid #C7D2FE' }}>
+                              <MessageSquare size={12} />
+                            </a>
+                          )}
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
                         </div>
@@ -4103,34 +4130,6 @@ export default function AdminOrders({
                             <span>{custStats[order.id].count} замовлень · <strong style={{ color: 'var(--text-primary)' }}>{custStats[order.id].total.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴</strong></span>
                           </div>
                         )}
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                          {([
-                            { key: 'urgent',  label: 'Терміново',  onBg: '#FEE2E2', onC: '#B91C1C', onB: '#FCA5A5', Icon: Zap },
-                            { key: 'problem', label: 'Проблемний', onBg: '#FEF3C7', onC: '#B45309', onB: '#FCD34D', Icon: AlertTriangle },
-                          ] as const).map(f => {
-                            const active = (order.flags ?? []).includes(f.key);
-                            return (
-                              <button key={f.key} onClick={() => toggleOrderFlag(order.id, f.key)}
-                                className="oc-flag-btn" aria-pressed={active}
-                                title={active ? `Зняти прапорець «${f.label}»` : `Позначити «${f.label}»`}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
-                                  background: active ? f.onBg : 'var(--bg-soft)', color: active ? f.onC : 'var(--text-muted)', border: `1px solid ${active ? f.onB : 'var(--border)'}` }}>
-                                <f.Icon size={11} /> {f.label}
-                              </button>
-                            );
-                          })}
-                          {/* Чат кабінету МП — у тому ж ряду, що й прапорці: це теж
-                              статус-рівень картки клієнта, а не інструмент друку. */}
-                          {(order.channel_code === 'rozetka' || order.channel_code === 'prom') && (
-                            <a href={`/admin/chat?order=${order.id}`} target="_blank" rel="noopener noreferrer"
-                              title="Відкрити чат із покупцем у кабінеті маркетплейсу"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 9px', borderRadius: '999px',
-                                fontSize: '11px', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap',
-                                color: '#4338CA', background: '#EEF2FF', border: '1px solid #C7D2FE' }}>
-                              <MessageSquare size={11} /> Чат {order.channel_code === 'prom' ? 'Prom' : 'Rozetka'}
-                            </a>
-                          )}
-                        </div>
                       </div>
                       </div>{/* /oc-card-body */}
                       {/* Оплата — притиснута до низу картки; спільна висота з блоком ТТН (.oc-card-footer) тримає розділювачі обох карток на одній лінії */}
