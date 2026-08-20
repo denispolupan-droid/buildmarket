@@ -4452,7 +4452,10 @@ export default function AdminOrders({
                           {/* SMART / «дешева доставка» — умови саме цієї доставки, тож
                               стоять біля перевізника, а не десь у мітках замовлення. */}
                           {deliveryBadges}
-                          <span style={{ color: 'var(--text-secondary)', marginTop: '1px' }}>{subtype.replace(/^ — /, '')}{order.delivery_city_name && <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{subtype ? ' · ' : ''}{order.delivery_city_name}</strong>}{(() => { const rest = stripCityPrefix(order.delivery_address, order.delivery_city_name); return rest ? ` · ${rest}` : ''; })()}</span>
+                          {/* Адреса — завжди з нового рядка: у Нової Пошти вона довга й
+                              переносилась сама, у Rozetka коротка й лишалась в одному рядку з
+                              перевізником. Два різні вигляди для однієї й тієї ж думки. */}
+                          <span style={{ color: 'var(--text-secondary)', marginTop: '1px', flexBasis: '100%' }}>{subtype.replace(/^ — /, '')}{order.delivery_city_name && <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{subtype ? ' · ' : ''}{order.delivery_city_name}</strong>}{(() => { const rest = stripCityPrefix(order.delivery_address, order.delivery_city_name); return rest ? ` · ${rest}` : ''; })()}</span>
                         </div>
                       )}
 
