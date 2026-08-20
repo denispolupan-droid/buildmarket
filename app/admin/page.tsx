@@ -342,9 +342,9 @@ export default async function AdminPage({
                   display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
                   justifyContent: 'flex-start', gap: '5px', padding: '9px 12px', borderRadius: '12px',
                   textDecoration: 'none', flex: '1 1 0', minWidth: '112px', height: '62px', boxSizing: 'border-box',
-                  background: isActive ? '#1E3A5F' : 'var(--bg-card)',
-                  border: isActive ? '1px solid #1E3A5F' : '1px solid var(--border-light)',
-                  boxShadow: isActive ? '0 3px 10px rgba(30,58,95,0.28)' : '0 1px 2px rgba(15,23,42,0.05)',
+                  background: isActive ? '#EAF1F8' : 'var(--bg-card)',
+                  border: isActive ? '1.5px solid #1E3A5F' : '1px solid var(--border-light)',
+                  boxShadow: isActive ? '0 2px 8px rgba(30,58,95,0.12)' : '0 1px 2px rgba(15,23,42,0.05)',
                   transition: 'all 0.15s', textAlign: 'center',
                 }}
               >
@@ -364,8 +364,8 @@ export default async function AdminPage({
                       flexShrink: 0,
                       fontSize: '10px', fontWeight: 700, lineHeight: '15px',
                       padding: '0 5px', borderRadius: '7px',
-                      background: isActive ? 'rgba(255,255,255,0.22)' : isNew ? '#EF4444' : '#E0ECF8',
-                      color: isActive ? '#fff' : isNew ? '#fff' : '#3B6EA5',
+                      background: isNew ? '#EF4444' : isActive ? '#D5E4F4' : '#E0ECF8',
+                      color: isNew ? '#fff' : isActive ? '#1E3A5F' : '#3B6EA5',
                     }}>{cnt}</span>
                   );
                   // Невирішені відмови (посилки їдуть назад — треба забрати з пошти
@@ -376,8 +376,8 @@ export default async function AdminPage({
                       flexShrink: 0,
                       fontSize: '10px', fontWeight: 700, lineHeight: '15px',
                       padding: '0 5px', borderRadius: '7px',
-                      background: isActive ? 'rgba(255,165,0,0.35)' : '#FFEDD5',
-                      color: isActive ? '#FFD9A8' : '#C2410C',
+                      background: '#FFEDD5',
+                      color: '#C2410C',
                     }}>↩ {pendingReturns}</span>
                   );
                   return (
@@ -392,7 +392,7 @@ export default async function AdminPage({
                         <span className="oc-tab-label" style={{
                           display: 'inline-flex', alignItems: 'center', gap: '4px',
                           fontSize: '11.5px', fontWeight: 600, lineHeight: 1.15, letterSpacing: '0px', whiteSpace: 'nowrap',
-                          color: isActive ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)',
+                          color: isActive ? '#1E3A5F' : 'var(--text-muted)',
                         }}>
                           {tab.label}
                           {countChip}
@@ -403,7 +403,7 @@ export default async function AdminPage({
                       {hasAmount ? (
                         <span style={{
                           fontSize: '15px', fontWeight: 800, lineHeight: 1,
-                          color: isActive ? '#93C5FD' : '#15803D',
+                          color: '#15803D',
                           whiteSpace: 'nowrap', letterSpacing: '-0.2px',
                         }}>
                           {amount.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
