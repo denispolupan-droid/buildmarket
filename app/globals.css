@@ -861,17 +861,11 @@ input, select { font-family: inherit; }
 }
 /* Блоки з даними — темніша нейтраль; службові (дії, нотатка, історія) ледь
    помітні: вони не несуть стану, і лінія їм потрібна лише як межа. */
-.oc-acc-client   { --oc-accent: #94A3B8; }
-.oc-acc-delivery { --oc-accent: #94A3B8; }
-.oc-acc-items    { --oc-accent: #94A3B8; }
-.oc-acc-actions  { --oc-accent: #475569; }
-.oc-acc-note     { --oc-accent: #E2E8F0; }
-.oc-acc-history  { --oc-accent: #E2E8F0; }
-/* Стан переважає нейтраль: якщо блоку є що сказати, він каже це кольором лінії.
-   Зелений — усе на місці, бурштиновий — потребує уваги. Більше кольорів картці
-   не потрібно: колір має лишатись сигналом, а не оздобленням. */
-.oc-acc.is-ok   { --oc-accent: #16A34A; }
-.oc-acc.is-warn { --oc-accent: #F59E0B; }
+.oc-acc { --oc-accent: #94A3B8; }
+/* Нитки в усіх блоків однакові. Колір за станом (зелена — накладна є,
+   бурштинова — потребує уваги) читався не як сигнал, а як різнобій: сусідні
+   рівноцінні блоки виглядали різними за важливістю. Стан і без того сказано
+   словами й чіпами всередині блоку. */
 
 /* Підпис блоку — тихий, як у референсі: не кричить, а лише називає колонку.
    Значення всередині блоку більші за підпис, і саме вони ведуть погляд. */
@@ -1127,7 +1121,18 @@ input, select { font-family: inherit; }
 /* Розділювачі всередині картки — того ж кольору, але ледь помітні: лінія має
    вести око, а не ділити картку навпіл. */
 .oc-acc .oc-card-footer {
-  border-top-color: color-mix(in srgb, var(--oc-accent) 28%, transparent) !important;
+  border-top: 0 !important;
+  position: relative;
+}
+.oc-acc .oc-card-footer::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent,
+    color-mix(in srgb, var(--oc-accent) 45%, transparent) 12%,
+    color-mix(in srgb, var(--oc-accent) 45%, transparent) 88%,
+    transparent);
 }
 
 /* Повітря. Картки «Клієнт» і «Доставка» стояли поруч і тягнулись до висоти

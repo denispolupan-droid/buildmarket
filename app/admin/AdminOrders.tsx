@@ -290,13 +290,6 @@ function CounterpartyPicker({ orderId, customerId, onPicked }: {
 
   return (
     <div ref={boxRef} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-      {customerId && (
-        <a href={`/admin/partners?open=${customerId}`} target="_blank" rel="noopener noreferrer"
-          title={current ? `Відкрити картку контрагента: ${[current.name, current.company].filter(Boolean).join(' · ')}` : 'Відкрити картку контрагента'}
-          style={{ display: 'inline-flex', alignItems: 'center', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1 }}>
-          <ExternalLink size={12} />
-        </a>
-      )}
       <button type="button" onClick={() => setOpen(o => !o)}
         title={customerId ? 'Змінити контрагента замовлення' : 'Прив\'язати контрагента'}
         style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: open ? 'var(--brand-blue)' : 'var(--text-muted)', lineHeight: 1, display: 'inline-flex' }}>
@@ -3331,20 +3324,16 @@ export default function AdminOrders({
                     <div className="order-col-card oc-acc oc-acc-items" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span className="oc-lbl">
-                            Товари · {order.items.length}
-                          </span>
+                          <span className="oc-lbl">Товари</span>
                           <button
                             onClick={() => editingId === order.id ? setEditingId(null) : startEdit(order)}
+                            title={editingId === order.id ? 'Скасувати редагування складу' : 'Змінити склад замовлення'}
                             style={{
-                              height: '24px', padding: '0 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-                              border: `1.5px solid ${editingId === order.id ? '#EF4444' : 'var(--border)'}`,
-                              background: editingId === order.id ? '#FEF2F2' : 'var(--bg-card)',
-                              color: editingId === order.id ? '#EF4444' : 'var(--text-secondary)',
-                              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px',
+                              flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1,
+                              display: 'inline-flex', color: editingId === order.id ? '#EF4444' : 'var(--text-muted)',
                             }}
                           >
-                            {editingId === order.id ? <><X size={10} /> Скасувати</> : <><Pencil size={10} /> Редагувати</>}
+                            {editingId === order.id ? <X size={13} /> : <Pencil size={12} />}
                           </button>
                         </div>
 
@@ -4049,7 +4038,7 @@ export default function AdminOrders({
                       }}
                       style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', alignItems: 'stretch' }}>
                     {/* Клієнт card */}
-                    <div className={`order-col-card oc-split oc-acc oc-acc-client${(order.flags ?? []).some(f => f === 'urgent' || f === 'problem') ? ' is-warn' : ''}`} style={{ padding: '16px' }}>
+                    <div className="order-col-card oc-split oc-acc oc-acc-client" style={{ padding: '16px' }}>
                       <div className="oc-card-body">
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                         <div className="oc-lbl">Клієнт</div>
@@ -4071,6 +4060,13 @@ export default function AdminOrders({
                         )}
                         <div className="oc-name-main" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)' }}>
                           {order.contact}
+                          {order.customer_id && (
+                            <a href={`/admin/partners?open=${order.customer_id}`} target="_blank" rel="noopener noreferrer"
+                              title="Відкрити картку контрагента"
+                              style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', lineHeight: 1 }}>
+                              <ExternalLink size={13} />
+                            </a>
+                          )}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <a href={`tel:${order.phone}`} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13.5px', color: 'var(--brand-blue)', fontWeight: 700, textDecoration: 'none', fontVariantNumeric: 'tabular-nums' }}>
@@ -4372,7 +4368,7 @@ export default function AdminOrders({
                       </div>
                     </div>
                     {/* Доставка / ТТН card */}
-                    <div className={`order-col-card oc-split oc-acc oc-acc-delivery ${order.tracking_number ? 'is-ok' : 'is-warn'}`} style={{ padding: '16px' }}>
+                    <div className="order-col-card oc-split oc-acc oc-acc-delivery" style={{ padding: '16px' }}>
                       <div className="oc-card-body">
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                         <div className="oc-lbl">Доставка</div>
