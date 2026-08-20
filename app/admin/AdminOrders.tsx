@@ -2631,7 +2631,7 @@ export default function AdminOrders({
 
                 {/* ── Compact row ── */}
                 <div
-                  className="order-compact-row"
+                  className={`order-compact-row${isExpanded ? ' is-open' : ''}`}
                   onClick={() => { const next = isExpanded ? null : order.id; setExpandedId(next); if (next) { loadFulfillment(next); loadLinkedPOs(next); loadPayments(next); } }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '10px',
