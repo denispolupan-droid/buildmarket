@@ -895,7 +895,14 @@ input, select { font-family: inherit; }
 .oc-expand-header {
   background: transparent !important;
   border-bottom: 1px solid var(--border-light);
-  padding: 16px 18px 14px !important;
+  padding: 9px 18px 8px !important;
+  align-items: center !important;
+}
+/* Мітки в шапці — на зріст самої смуги: вони називають замовлення, а не
+   змагаються з його номером. */
+.oc-expand-header .oc-hdr-title > div:last-child > * {
+  height: 22px !important;
+  font-size: 11.5px !important;
 }
 
 /* Права колонка — іншої природи: не дані про замовлення, а дії з ним. Нитка
@@ -2356,6 +2363,8 @@ input, select { font-family: inherit; }
      тиснув кнопку вправо по контенту — прибираємо, щоб вона була на всю ширину. */
   .oc-pay-part > * { margin-left: 0 !important; }
   .oc-status-panel, .oc-confirm-block { width: 100% !important; }
+  .oc-status-panel .oc-status-row { width: 100%; }
+  .oc-status-panel .oc-status-row > div:last-child { flex: 1 1 auto; width: auto !important; }
 
   /* Тулбар дій (Excel / Реєстр НП / Синхронізувати НП): на всю ширину рядка і
      переноситься ВСЕРЕДИНІ екрана, а не тисне сторінку вбік (був flex-shrink:0). */

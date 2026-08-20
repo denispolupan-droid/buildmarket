@@ -3056,7 +3056,7 @@ export default function AdminOrders({
                     {/* main-part — дзеркалить основну область сітки (Клієнт | Оплата) */}
                     <div className="oc-main-part" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
                     <div className="oc-hdr-title" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                      <div style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>Замовлення #{order.order_number}</div>
+                      <div style={{ fontSize: '17px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>Замовлення #{order.order_number}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
                           color: paymentConfirmed ? '#15803D' : '#B45309', background: paymentConfirmed ? '#DCFCE7' : '#FEF3C7' }}>
@@ -3099,9 +3099,9 @@ export default function AdminOrders({
                       const busy = confirming === order.id;
                       const confirmErr = confirmErrors[order.id];
                       return (
-                        <div className="oc-confirm-block" style={{ width: '250px', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '6px' }}>
+                        <div className="oc-confirm-block" style={{ width: '230px', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '6px' }}>
                           <button onClick={() => confirmOrder(order.id)} disabled={busy}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', height: '44px', padding: '0 22px', borderRadius: '12px', border: 'none', background: busy ? '#94A3B8' : '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer', boxShadow: '0 1px 2px rgba(30,58,95,0.35)', whiteSpace: 'nowrap' }}>
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', height: '34px', padding: '0 18px', borderRadius: '9px', border: 'none', background: busy ? '#94A3B8' : '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer', boxShadow: '0 1px 2px rgba(30,58,95,0.35)', whiteSpace: 'nowrap' }}>
                             {busy ? 'Обробка…' : <><Check size={17} /> Підтвердити замовлення</>}
                           </button>
                           {confirmErr && (
@@ -3125,36 +3125,40 @@ export default function AdminOrders({
                     </div>{/* /Оплата-part */}
                     </div>{/* /main-part */}
                     {/* Статус — над правою панеллю (250px), «...» = ручна зміна */}
-                    <div className="oc-status-panel" style={{ width: '250px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', borderRadius: '10px', color: status.color, background: status.bg, border: `1.5px solid ${status.color}` }}>
-                        <span style={{ fontSize: '14px', fontWeight: 700, whiteSpace: 'nowrap' }}>{status.label}</span>
-                        <button onClick={() => setStatusEditOpen(p => ({ ...p, [order.id]: !p[order.id] }))}
-                          title="Змінити статус вручну"
-                          style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: (statusEditOpen[order.id] ?? false) ? 'rgba(0,0,0,0.12)' : 'none', border: 'none', cursor: 'pointer', color: status.color, padding: '3px', borderRadius: '6px', display: 'inline-flex' }}>
-                          <MoreHorizontal size={18} />
-                        </button>
-                      </div>
+                    <div className="oc-status-panel" style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+                      {/* Стан перевізника — ліворуч від плашки, а не під нею: це уточнення
+                          до статусу, і в один рядок воно не додає шапці поверху. */}
+                      <div className="oc-status-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
                       {(() => {
                         // Що зараз у кабінеті Rozetka. Показуємо, лише коли кабінет
-                        // попереду нас: коли статуси збігаються, зайвий рядок під
-                        // плашкою нічого не додає й тільки шумить.
+                        // попереду нас: коли статуси збігаються, зайвий рядок біля
+                        // плашки нічого не додає й тільки шумить.
                         const cab = rozetkaCabinet(order);
                         if (!cab?.ahead) return null;
                         return (
                           <div title={cab.at ? `Зчитано з кабінету: ${new Date(cab.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
-                            style={{ fontSize: '11px', fontWeight: 600, textAlign: 'center', lineHeight: 1.3, color: '#15803D' }}>
+                            style={{ fontSize: '11px', fontWeight: 600, textAlign: 'right', lineHeight: 1.3, color: '#15803D' }}>
                             ↳ у кабінеті: {cab.label}
                           </div>
                         );
                       })()}
                       {order.status === 'shipped' && order.tracking_number && (
                         <div title={order.carrier_status_synced_at ? `Оновлено: ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
-                          style={{ fontSize: '11px', fontWeight: 600, textAlign: 'center', lineHeight: 1.3, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
+                          style={{ fontSize: '11px', fontWeight: 600, textAlign: 'right', lineHeight: 1.3, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
                           {order.carrier_accepted_at ? '✓' : '⏳'} {order.carrier_status_text ?? `${order.carrier_accepted_at ? 'Прийнято' : 'Очікує приймання'} ${isRozetkaPoint ? 'Rozetka' : 'НП'}`}
                         </div>
                       )}
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '186px', flexShrink: 0, height: '32px', borderRadius: '8px', color: status.color, background: status.bg, border: `1.5px solid ${status.color}` }}>
+                        <span style={{ fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap' }}>{status.label}</span>
+                        <button onClick={() => setStatusEditOpen(p => ({ ...p, [order.id]: !p[order.id] }))}
+                          title="Змінити статус вручну"
+                          style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', background: (statusEditOpen[order.id] ?? false) ? 'rgba(0,0,0,0.12)' : 'none', border: 'none', cursor: 'pointer', color: status.color, padding: '2px', borderRadius: '6px', display: 'inline-flex' }}>
+                          <MoreHorizontal size={15} />
+                        </button>
+                      </div>
+                      </div>
                       {(statusEditOpen[order.id] ?? false) && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <div style={{ width: '186px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                           <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                             Змінити вручну{!isAdmin && <span style={{ marginLeft: '4px', color: '#F59E0B' }}>🔒</span>}
                           </div>
