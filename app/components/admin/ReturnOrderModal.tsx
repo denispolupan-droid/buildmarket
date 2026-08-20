@@ -48,6 +48,16 @@ export default function ReturnOrderModal({
 
   async function submit() {
     if (!selected.length) { showToast('Оберіть кількість до повернення', 'error'); return; }
+    // Повернення сторнує виручку, повертає собівартість і оприбутковує товар —
+    // усе це проводками, які просто так не відкотиш. Перепитуємо, показавши,
+    // що саме повертаємо і на яку суму.
+    const list = selected.map(i => `• ${i.name} — ${qty[i.sku]} шт`).join('\n');
+    const ok = confirm(
+      `Оформити повернення по замовленню №${orderNumber}?\n\n${list}\n\nНа суму ${total.toFixed(2)} ₴.\n\n`
+      + 'Буде створено документ повернення: виручка сторнується, товар повернеться на склад'
+      + (refund ? `, а повернення коштів (${refundMethod === 'cash' ? 'готівка' : 'банк'}) зафіксується в касі.` : '.')
+    );
+    if (!ok) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/admin/orders/${orderId}/return`, {
