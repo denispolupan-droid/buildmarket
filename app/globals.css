@@ -871,12 +871,15 @@ input, select { font-family: inherit; }
    Значення всередині блоку більші за підпис, і саме вони ведуть погляд. */
 .order-expand-grid .oc-lbl {
   display: block;
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
-  letter-spacing: .07em !important;
+  letter-spacing: .08em !important;
   text-transform: uppercase !important;
-  color: var(--text-muted) !important;
-  margin-bottom: 6px;
+  /* Назва блоку — найтемніше з дрібного тексту: вона відкриває блок, і око
+     має чіплятись за неї, а не за сусідні підписи. Вкладені підписи лишились
+     світлими — так між двома рівнями знову з'явилась різниця. */
+  color: var(--text-secondary) !important;
+  margin-bottom: 7px;
 }
 /* ── Шапка розгорнутого замовлення ───────────────────────────────────────────
    Сіра підкладка лишилась із часів, коли нижче йшли білі плитки на сірому тлі:

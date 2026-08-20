@@ -291,7 +291,9 @@ function CounterpartyPicker({ orderId, customerId, onPicked }: {
   return (
     <div ref={boxRef} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
       <button type="button" onClick={() => setOpen(o => !o)}
-        title={customerId ? 'Змінити контрагента замовлення' : 'Прив\'язати контрагента'}
+        title={customerId
+          ? `Контрагент: ${current ? [current.name, current.company].filter(Boolean).join(' · ') : '…'} — натисніть, щоб змінити`
+          : 'Прив\'язати контрагента'}
         style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: open ? 'var(--brand-blue)' : 'var(--text-muted)', lineHeight: 1, display: 'inline-flex' }}>
         {customerId ? <Pencil size={12} /> : <UserPlus size={13} />}
       </button>
