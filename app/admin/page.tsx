@@ -107,6 +107,13 @@ export default async function AdminPage({
       // запит помилкою «out of range for type integer». Тому порівнюємо з ним
       // лише те, що фізично може бути номером замовлення.
       if (/^\d{1,10}$/.test(term) && Number(term) <= 2147483647) ors.push(`order_number.eq.${term}`);
+      // Номер замовлення в кабінеті маркетплейсу — його називають і покупець, і
+      // підтримка Prom/Rozetka, а знайти замовлення по ньому досі було нічим.
+      // Обидві колонки BIGINT, тож тільки точний збіг і тільки для цифр.
+      if (/^\d{4,18}$/.test(digits)) {
+        ors.push(`prom_order_id.eq.${digits}`);
+        ors.push(`rozetka_order_id.eq.${digits}`);
+      }
       q = q.or(ors.join(','));
     }
     return q as T;

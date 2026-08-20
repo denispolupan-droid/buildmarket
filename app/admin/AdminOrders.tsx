@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare, UserPlus, Zap, AlertTriangle, Settings, ExternalLink, RotateCcw, PhoneOff } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare, UserPlus, Zap, AlertTriangle, Settings, ExternalLink, RotateCcw, PhoneOff, Clock } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -2369,7 +2369,7 @@ export default function AdminOrders({
         <div style={{ position: 'relative' }}>
           <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           <input
-            placeholder="№ замовлення, ФІО, компанія, телефон, ТТН — по всій базі"
+            placeholder="№ замовлення або МП, ФІО, компанія, телефон, ТТН — по всій базі"
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             onFocus={e => { e.currentTarget.style.borderColor = 'var(--brand-teal)'; }}
@@ -4834,11 +4834,16 @@ export default function AdminOrders({
                                       {rnDocs.map(doc => (
                                         <a key={doc.id} href={`/vidatkova/${doc.id}`} target="_blank" rel="noopener noreferrer"
                                           title={doc.status === 'draft'
-                                            ? 'Видаткова накладна (чернетка — проведеться при доставці; номер і дата вже фінальні, можна друкувати)'
-                                            : 'Видаткова накладна — відкрити та роздрукувати'}
+                                            ? `Видаткова накладна ${doc.number} — чернетка. Номер і дата вже фінальні, можна друкувати; виручка, собівартість і комісія проведуться при підтвердженні доставки.`
+                                            : `Видаткова накладна ${doc.number} — проведена: виручка, собівартість і комісія враховані в обліку.`}
                                           style={{ fontSize: '11.5px', color: '#1E3A5F', fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                           <Printer size={11} /> {doc.number}
-                                          {doc.status === 'draft' && <span style={{ fontSize: '10px', fontWeight: 500, color: 'var(--text-muted)' }}>· до проведення</span>}
+                                          {/* Стан документа — значком: галочка «проведена», годинник
+                                              «чернетка». Слова «до проведення» займали пів рядка й
+                                              однаково потребували пояснення — воно тепер у підказці. */}
+                                          {doc.status === 'draft'
+                                            ? <Clock size={11} color="#B45309" aria-label="Чернетка" />
+                                            : <Check size={11} color="#15803D" aria-label="Проведена" />}
                                         </a>
                                       ))}
                                       {retDocs.map(doc => (
