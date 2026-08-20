@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare, UserPlus } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare, UserPlus, Zap, AlertTriangle } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -734,6 +734,9 @@ export default function AdminOrders({
   /** Колонка «Дії» відкрита за замовчуванням; чевронц біля підпису згортає її
    *  в вузьку кнопку, і тоді 250px забирають блоки, які читають. */
   const [actionsOpen, setActionsOpen] = useState<Record<string, boolean>>({});
+  /** Нотатку пишуть в одному замовленні з двадцяти, тож поле відкривається за
+   *  вимогою: постійно порожній інпут на всю ширину читався як «заповни мене». */
+  const [noteEditing, setNoteEditing] = useState<Record<string, boolean>>({});
   const [finLogOpen,       setFinLogOpen]       = useState<Record<string, boolean>>({});
   const [statusEditOpen,   setStatusEditOpen]   = useState<Record<string, boolean>>({});
   const [itemsExpanded,    setItemsExpanded]    = useState<Record<string, boolean>>({});
@@ -3189,10 +3192,12 @@ export default function AdminOrders({
                     <div className="oc-hdr-title" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                       <div style={{ fontSize: '17px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>Замовлення #{order.order_number}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
-                          color: paymentConfirmed ? '#15803D' : '#B45309', background: paymentConfirmed ? '#DCFCE7' : '#FEF3C7' }}>
-                          <CreditCard size={12} />{paymentConfirmed ? 'Оплачено' : isCod ? 'Накладений платіж' : 'Очікує оплату'}
-                        </span>
+                        {!paymentConfirmed && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
+                            color: '#B45309', background: '#FEF3C7' }}>
+                            <CreditCard size={12} />{isCod ? 'Накладений платіж' : 'Очікує оплату'}
+                          </span>
+                        )}
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, color: channel.color, background: channel.bg, whiteSpace: 'nowrap' }}>
                           <ShoppingCart size={12} />{channel.label}
                         </span>
@@ -3581,13 +3586,50 @@ export default function AdminOrders({
                         самого замовлення, тож поруч із його складом він доречніший, ніж
                         окремою карткою в колонці дій, де з'їдав її висоту. */}
                     <div className="order-col-card oc-acc oc-acc-note" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0 }}>Нотатка</span>
-                      <input
-                        key={`note-${order.id}-${order.internal_note ?? ''}`}
-                        defaultValue={order.internal_note ?? ''}
-                        onBlur={e => { const v = e.target.value.trim(); if (v !== (order.internal_note ?? '')) saveInternalNote(order.id, v); }}
-                        placeholder="Напр. клієнт думає, чекаємо оплату…"
-                        style={{ flex: 1, minWidth: 0, height: '30px', padding: '0 10px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12.5px', color: 'var(--text-primary)', fontFamily: 'inherit', boxSizing: 'border-box', background: 'var(--bg-card)', outline: 'none' }} />
+                      {(() => {
+                        const note = order.internal_note ?? '';
+                        const editing = noteEditing[order.id] ?? false;
+                        // Немає нотатки і ніхто її не пише — тиха кнопка замість поля
+                        if (!editing && !note) {
+                          return (
+                            <button type="button" onClick={() => setNoteEditing(p => ({ ...p, [order.id]: true }))}
+                              title="Додати внутрішню нотатку до замовлення"
+                              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                              <Plus size={12} /> Нотатка
+                            </button>
+                          );
+                        }
+                        // Нотатка є — показуємо текст; клік відкриває редагування
+                        if (!editing) {
+                          return (
+                            <>
+                              <span className="oc-sub-lbl" style={{ flexShrink: 0 }}>Нотатка</span>
+                              <button type="button" onClick={() => setNoteEditing(p => ({ ...p, [order.id]: true }))}
+                                title="Змінити нотатку"
+                                style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'text', fontSize: '12.5px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {note}
+                              </button>
+                            </>
+                          );
+                        }
+                        return (
+                          <>
+                            <span className="oc-sub-lbl" style={{ flexShrink: 0 }}>Нотатка</span>
+                            <input
+                              autoFocus
+                              key={`note-${order.id}-${note}`}
+                              defaultValue={note}
+                              onBlur={e => {
+                                const v = e.target.value.trim();
+                                if (v !== note) saveInternalNote(order.id, v);
+                                setNoteEditing(p => ({ ...p, [order.id]: false }));
+                              }}
+                              onKeyDown={e => { if (e.key === 'Escape') { e.currentTarget.value = note; e.currentTarget.blur(); } }}
+                              placeholder="Напр. клієнт думає, чекаємо оплату…"
+                              style={{ flex: 1, minWidth: 0, height: '30px', padding: '0 10px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12.5px', color: 'var(--text-primary)', fontFamily: 'inherit', boxSizing: 'border-box', background: 'var(--bg-card)', outline: 'none' }} />
+                          </>
+                        );
+                      })()}
                       {noteSaving === order.id && <span style={{ fontSize: '10.5px', color: 'var(--text-muted)', flexShrink: 0 }}>Збереження…</span>}
                     </div>
 
@@ -3662,16 +3704,17 @@ export default function AdminOrders({
                         )}
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                           {([
-                            { key: 'urgent',  label: 'Терміново',  onBg: '#FEE2E2', onC: '#B91C1C', onB: '#FCA5A5', icon: '⚡' },
-                            { key: 'problem', label: 'Проблемний', onBg: '#FEF3C7', onC: '#B45309', onB: '#FCD34D', icon: '⚠' },
+                            { key: 'urgent',  label: 'Терміново',  onBg: '#FEE2E2', onC: '#B91C1C', onB: '#FCA5A5', Icon: Zap },
+                            { key: 'problem', label: 'Проблемний', onBg: '#FEF3C7', onC: '#B45309', onB: '#FCD34D', Icon: AlertTriangle },
                           ] as const).map(f => {
                             const active = (order.flags ?? []).includes(f.key);
                             return (
                               <button key={f.key} onClick={() => toggleOrderFlag(order.id, f.key)}
+                                className="oc-flag-btn" aria-pressed={active}
                                 title={active ? `Зняти прапорець «${f.label}»` : `Позначити «${f.label}»`}
                                 style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
                                   background: active ? f.onBg : 'var(--bg-soft)', color: active ? f.onC : 'var(--text-muted)', border: `1px solid ${active ? f.onB : 'var(--border)'}` }}>
-                                {f.icon} {f.label}
+                                <f.Icon size={11} /> {f.label}
                               </button>
                             );
                           })}
@@ -4232,7 +4275,7 @@ export default function AdminOrders({
                     {(() => {
                       const actOpen = actionsOpen[order.id] ?? true;
                       return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
+                        <div className="oc-actions-col" style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
                         {/* Дії card — згортається у вузьку кнопку; «Фінанси» під нею
                             лишаються видимими в обох станах */}
                         {!actOpen ? (
@@ -4382,6 +4425,9 @@ export default function AdminOrders({
                                 </div>
                                 {/* Кнопка чату МП живе в блоці «Клієнт», поруч із телефоном —
                                     це контакт, а не інструмент друку. */}
+                                {/* Без підпису чотири іконки читались як випадковий ряд:
+                                    незрозуміло, що вони надсилають і кому. */}
+                                <div className="oc-sub-lbl" style={{ marginTop: '2px' }}>Надіслати рахунок</div>
                                 <InvoiceMessengerButtons
                                   phone={order.phone} contact={order.contact}
                                   orderNumber={order.order_number} orderId={order.id}

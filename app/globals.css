@@ -825,7 +825,7 @@ input, select { font-family: inherit; }
 .order-expand-grid {
   background: var(--bg-card) !important;
   padding: 4px 18px 18px !important;
-  gap: 0 26px !important;
+  gap: 10px 26px !important;
   align-items: start !important;
 }
 .admin-layout .order-expand-grid .order-col-card,
@@ -957,6 +957,14 @@ input, select { font-family: inherit; }
    економіка — те саме сімейство, що й службові дії. У колонці 250px дві
    картки поруч не стають, тож ставимо їх одна під одну. */
 .order-expand-grid .oc-fin-side .oc-finlog-grid { grid-template-columns: 1fr !important; }
+
+/* Прапорці «Терміново» / «Проблемний» — перемикачі, а не мітки. Ховер це
+   показує: вимкнений світлішає до кольору свого стану, увімкнений трохи
+   темнішає. Без цього кнопка нічим не відрізнялась від напису поруч. */
+.oc-flag-btn { transition: filter .15s, border-color .15s, color .15s; }
+.oc-flag-btn:hover { filter: brightness(.97); border-color: var(--text-muted) !important; }
+.oc-flag-btn[aria-pressed="true"]:hover { filter: brightness(.95); }
+.oc-flag-btn:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
 
 /* Одна шкала на всю картку. Було дев'ять кеглів (16 / 15 / 14 / 13 / 12.5 /
    12 / 11.5 / 11 / 10) — око спотикалось на кожному блоці, і жоден розмір
