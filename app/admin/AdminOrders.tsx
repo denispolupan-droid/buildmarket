@@ -4487,8 +4487,8 @@ export default function AdminOrders({
                             return (
                               <button onClick={() => (isReplace ? replaceTTN(order.id) : saveTTN(order.id))} disabled={disabled}
                                 title={isReplace ? 'Замінити ТТН на нову' : 'Зберегти ТТН'} className="oc-ttn-save"
-                                style={{ height: '32px', padding: '0 12px', borderRadius: '7px', background: isReplace ? '#B45309' : '#1E3A5F', color: '#fff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', flexShrink: 0 }}>
-                                {busy ? '...' : <><Save size={14} className="oc-only-m" /><span className="oc-hide-m">{isReplace ? 'Замінити' : 'Зберегти'}</span></>}
+                                style={{ height: '32px', width: '32px', borderRadius: '7px', background: isReplace ? '#B45309' : '#1E3A5F', color: '#fff', border: 'none', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                {busy ? '…' : <Save size={14} />}
                               </button>
                             );
                           })()}
@@ -4533,6 +4533,22 @@ export default function AdminOrders({
                                 border: '1.5px solid #C7D7F5', cursor: rzLabelBusy === order.id ? 'wait' : 'pointer',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               {rzLabelBusy === order.id ? '…' : <Printer size={14} />}
+                            </button>
+                          )}
+                          {/* Відкликати посилку: клієнт не забирає, і її треба завернути,
+                              поки НП не почала рахувати зберігання. Зелена — заявку вже
+                              створено, у підказці її номер. */}
+                          {isAdmin && order.tracking_number && !isRozetkaPoint && ['shipped', 'cancelled'].includes(order.status) && (
+                            <button onClick={() => setNpReturnFor({ id: order.id, number: order.order_number })}
+                              title={order.np_return_ref
+                                ? `Заявка на повернення НП ${order.np_return_number ?? ''} — відкрити`.replace('  ', ' ')
+                                : 'Повернути посилку: заявка в кабінеті НП, посилка поїде назад на наше відділення'}
+                              style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
+                                background: order.np_return_ref ? '#F0FDF4' : '#FFFBEB',
+                                color: order.np_return_ref ? '#15803D' : '#B45309',
+                                border: `1.5px solid ${order.np_return_ref ? '#86EFAC' : '#FDE68A'}`,
+                                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <RotateCcw size={14} />
                             </button>
                           )}
                           {order.tracking_number && (
@@ -4636,49 +4652,6 @@ export default function AdminOrders({
                       ) : (
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Доставка не Нова Пошта</div>
                       )}
-                      {/* Відкликати посилку — дія над накладною, тож стоїть під нею, а не
-                          серед інструментів замовлення: клієнт не забирає, і посилку треба
-                          завернути, поки НП не почала рахувати зберігання. Для точок видачі
-                          Rozetka накладна не в НП — там своя кнопка «Повернення» вище. */}
-                      {isAdmin && order.tracking_number && !isRozetkaPoint && ['shipped', 'cancelled'].includes(order.status) && (
-                        <button onClick={() => setNpReturnFor({ id: order.id, number: order.order_number })}
-                          title={order.np_return_ref
-                            ? 'Заявку на повернення вже створено — відкрити її'
-                            : 'Створити заявку на повернення в кабінеті Нової Пошти: посилка поїде назад на наше відділення'}
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', width: '100%', height: '32px', padding: '0 10px', boxSizing: 'border-box', fontSize: '12.5px', fontWeight: 600, borderRadius: '8px', cursor: 'pointer',
-                            border: `1px solid ${order.np_return_ref ? '#BBF7D0' : '#FDE68A'}`,
-                            background: order.np_return_ref ? '#F6FEF9' : '#FFFBEB',
-                            color: order.np_return_ref ? '#15803D' : '#B45309' }}>
-                          <RotateCcw size={14} style={{ flexShrink: 0 }} />
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {order.np_return_ref
-                              ? `Повернення НП ${order.np_return_number ?? ''}`.trim()
-                              : 'Повернути посилку'}
-                          </span>
-                        </button>
-                      )}
-                      {/* Дві однакові кнопки в один рядок: Надіслати постачальнику + Створити ЗП */}
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        {['new', 'confirmed', 'awaiting_stock', 'picking', 'shipped', 'delivered'].includes(order.status)
-                          && (['supplier', 'mixed'].includes(order.fulfillment_mode ?? 'supplier') || !!order.supplier_sent_at) && (
-                          <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
-                            title={order.supplier_sent_at ? `Надіслано ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · натисніть щоб надіслати ще раз` : 'Надіслати замовлення постачальнику'}
-                            style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '32px', padding: '0 10px', boxSizing: 'border-box', fontSize: '12.5px', fontWeight: 600, cursor: supplierQueueLoading ? 'wait' : 'pointer', borderRadius: '8px',
-                              border: order.supplier_sent_at ? '1px solid #BBF7D0' : '1px solid #BFDBFE',
-                              background: order.supplier_sent_at ? '#F6FEF9' : '#F5F9FF',
-                              color: order.supplier_sent_at ? '#15803D' : '#1E3A5F',
-                              opacity: supplierQueueLoading ? 0.6 : 1 }}>
-                            <Mail size={15} style={{ flexShrink: 0 }} />
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.supplier_sent_at ? 'Надіслано' : 'Постачальнику'}</span>
-                          </button>
-                        )}
-                        <button onClick={() => openSupplierPO(order)} disabled={creatingPo === order.id}
-                          title="Створити замовлення постачальнику (ЗП)"
-                          style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '32px', padding: '0 10px', boxSizing: 'border-box', fontSize: '12.5px', fontWeight: 600, borderRadius: '8px', border: '1px solid var(--border-light)', background: 'transparent', color: 'var(--text-secondary)', cursor: creatingPo === order.id ? 'wait' : 'pointer', opacity: creatingPo === order.id ? 0.6 : 1 }}>
-                          <ShoppingCart size={15} style={{ flexShrink: 0 }} />
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{creatingPo === order.id ? '...' : 'Створити ЗП'}</span>
-                        </button>
-                      </div>
                       </div>
 
                       {/* Коментар покупця перенесено в блок «Оплата» лівої картки */}
@@ -4740,12 +4713,28 @@ export default function AdminOrders({
                                     скасованих замовлень МП доводиться заводити наново вручну).
                                     Ціни підставляються поточні, тому кнопка не «дублює рахунок»,
                                     а готує нову чернетку, яку ще можна виправити перед збереженням. */}
+                                {/* Робота з постачальником — лист і ЗП — стоїть тут, поруч із
+                                    рештою дій над замовленням; у блоці доставки їй було місце,
+                                    поки там жила ТТН, але це не про накладну. */}
+                                {['new', 'confirmed', 'awaiting_stock', 'picking', 'shipped', 'delivered'].includes(order.status)
+                                  && (['supplier', 'mixed'].includes(order.fulfillment_mode ?? 'supplier') || !!order.supplier_sent_at) && (
+                                  <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
+                                    title={order.supplier_sent_at ? `Надіслано ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · натисніть щоб надіслати ще раз` : 'Надіслати замовлення постачальнику'}
+                                    style={{ ...btn, color: order.supplier_sent_at ? '#15803D' : 'var(--text-primary)', cursor: supplierQueueLoading ? 'wait' : 'pointer', opacity: supplierQueueLoading ? 0.6 : 1 }}>
+                                    <Mail size={13} /> {order.supplier_sent_at ? 'Надіслано постачальнику' : 'Надіслати постачальнику'}
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => copyOrder(order)}
                                   disabled={copying === order.id}
                                   title="Створити нове замовлення з тим самим клієнтом, доставкою і складом. Ціни підставляться поточні; ТТН, оплати й дані кабінету МП не копіюються."
                                   style={{ ...btn, opacity: copying === order.id ? 0.6 : 1 }}>
                                   <Copy size={13} /> {copying === order.id ? 'Копіювання...' : 'Копіювати замовлення'}
+                                </button>
+                                <button onClick={() => openSupplierPO(order)} disabled={creatingPo === order.id}
+                                  title="Створити замовлення постачальнику (ЗП)"
+                                  style={{ ...btn, cursor: creatingPo === order.id ? 'wait' : 'pointer', opacity: creatingPo === order.id ? 0.6 : 1 }}>
+                                  <ShoppingCart size={13} /> {creatingPo === order.id ? '...' : 'Створити ЗП'}
                                 </button>
                                 {/* Primary CTA for new orders — confirm + optional send-to-supplier */}
                                 {/* «Підтвердити» → блок способу виконання; «Надіслати постачальнику» → під ТТН */}
@@ -4803,23 +4792,6 @@ export default function AdminOrders({
                                     </>
                                   );
                                 })()}
-                                {order.status === 'shipped' && (
-                                  <button onClick={() => changeStatus(order.id, 'delivered')} disabled={!!loading}
-                                    title="Позначити, що клієнт отримав товар — проведе продаж і комісію, замовлення стане «Доставлено»"
-                                    style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
-                                    <MapPin size={13} /> Підтвердити доставку
-                                  </button>
-                                )}
-                                {/* Повернення від покупця — така сама дія зі станом замовлення,
-                                    як підтвердження доставки, тільки у зворотний бік. Тому стоїть
-                                    поруч і в такій самій рамці, лише бурштиновій. */}
-                                {isAdmin && ['shipped', 'delivered'].includes(order.status) && (
-                                  <button onClick={() => setReturnFor({ id: order.id, number: order.order_number })}
-                                    title="Фінансове повернення: сторнує виручку, COGS і комісію, оприбутковує товар"
-                                    style={{ ...btn, border: '1px solid #FDE68A', background: '#FFFBEB', color: '#B45309', fontWeight: 600 }}>
-                                    <RotateCcw size={13} /> Повернення
-                                  </button>
-                                )}
                                 {/* Другорядні інструменти — друк, месенджери, ЗП; відділені від дій зі статусом */}
                                 <div className="oc-sub-lbl" style={{ marginTop: '6px', paddingTop: '8px', borderTop: '1px solid var(--border-light)' }}>
                                   Інструменти
@@ -4878,6 +4850,25 @@ export default function AdminOrders({
                                     </div>
                                   );
                                 })()}
+                                {/* Доставлено / повернення — дії, що закривають замовлення
+                                    документами, тож стоять під самими документами. */}
+                                {order.status === 'shipped' && (
+                                  <button onClick={() => changeStatus(order.id, 'delivered')} disabled={!!loading}
+                                    title="Позначити, що клієнт отримав товар — проведе продаж і комісію, замовлення стане «Доставлено»"
+                                    style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>
+                                    <MapPin size={13} /> Підтвердити доставку
+                                  </button>
+                                )}
+                                {/* Повернення від покупця — така сама дія зі станом замовлення,
+                                    як підтвердження доставки, тільки у зворотний бік. Тому стоїть
+                                    поруч і в такій самій рамці, лише бурштиновій. */}
+                                {isAdmin && ['shipped', 'delivered'].includes(order.status) && (
+                                  <button onClick={() => setReturnFor({ id: order.id, number: order.order_number })}
+                                    title="Фінансове повернення: сторнує виручку, COGS і комісію, оприбутковує товар"
+                                    style={{ ...btn, border: '1px solid #FDE68A', background: '#FFFBEB', color: '#B45309', fontWeight: 600 }}>
+                                    <RotateCcw size={13} /> Повернення
+                                  </button>
+                                )}
                               </div>
                             );
                           })()}
