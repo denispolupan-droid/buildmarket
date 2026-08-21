@@ -4106,7 +4106,7 @@ export default function AdminOrders({
                             <Phone size={13} />{formatPhone(order.phone)}
                           </a>
                           <button
-                            onClick={() => { navigator.clipboard.writeText(order.phone); showToast('Телефон скопійовано'); }}
+                            onClick={() => { copyPhone(order.phone); showToast('Телефон скопійовано'); }}
                             title="Копіювати номер"
                             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1, display: 'inline-flex' }}>
                             <Copy size={13} />

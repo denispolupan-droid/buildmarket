@@ -55,3 +55,20 @@ describe('phoneLocal / phoneLocalDigits', () => {
     expect(phoneLocal(null)).toBe('');
   });
 });
+
+describe('phoneLocalDigits — копіювання номера', () => {
+  it('віддає національний вигляд без 38 у будь-якому написанні', () => {
+    // Номери в базі лежать по-різному: '380…' з Rozetka, '+380…' з Prom,
+    // '+38 (066) …' із сайту — копіюватись має однаково.
+    expect(phoneLocalDigits('380661111111')).toBe('0661111111');
+    expect(phoneLocalDigits('+380661111111')).toBe('0661111111');
+    expect(phoneLocalDigits('+38 (066) 111-11-11')).toBe('0661111111');
+    expect(phoneLocalDigits('0661111111')).toBe('0661111111');
+  });
+
+  it('нерозпізнане віддає як є, а не вигадує', () => {
+    expect(phoneLocalDigits('')).toBe('');
+    expect(phoneLocalDigits(null)).toBe('');
+    expect(phoneLocalDigits('не телефон')).toBe('не телефон');
+  });
+});
