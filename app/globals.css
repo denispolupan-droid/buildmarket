@@ -2462,8 +2462,7 @@ input, select { font-family: inherit; }
      тиснув кнопку вправо по контенту — прибираємо, щоб вона була на всю ширину. */
   .oc-pay-part > * { margin-left: 0 !important; }
   .oc-status-panel, .oc-confirm-block { width: 100% !important; }
-  .oc-status-panel .oc-status-row { width: 100%; }
-  .oc-status-panel .oc-status-row > div:last-child { flex: 1 1 auto; width: auto !important; }
+  .oc-status-panel { width: auto !important; }
 
   /* Тулбар дій (Excel / Реєстр НП / Синхронізувати НП): на всю ширину рядка і
      переноситься ВСЕРЕДИНІ екрана, а не тисне сторінку вбік (був flex-shrink:0). */

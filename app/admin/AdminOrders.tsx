@@ -3198,7 +3198,7 @@ export default function AdminOrders({
                     {/* main-part — дзеркалить основну область сітки (Клієнт | Оплата) */}
                     <div className="oc-main-part" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
                     <div className="oc-hdr-title" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                      <div className="oc-hdr-num" style={{ fontSize: '17px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>Замовлення #{order.order_number}</div>
+                      <div className="oc-hdr-num" style={{ fontSize: '17px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}><span className="oc-hide-m">Замовлення </span>#{order.order_number}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
                         {!paymentConfirmed && (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
