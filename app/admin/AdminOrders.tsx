@@ -1684,7 +1684,9 @@ export default function AdminOrders({
   // фізично посилка їде назад у будь-якому разі. Раніше тут шукали слово «відмова»
   // в статусі НП — і кейс #26071023 (скасування прийшло з кабінету Rozetka, а текст
   // НП завмер на «Прибув у відділення») не підсвічувався взагалі.
-  const isReturnPending = (o: Order) => o.status === 'cancelled' && !!o.carrier_accepted_at;
+  const isReturnPending = (o: Order) =>
+    (o.status === 'cancelled' && !!o.carrier_accepted_at)
+    || !!o.np_return_ref || !!o.np_return_tracking;
   const returnState = (o: Order): 'received' | 'abandoned' | null =>
     (o.flags ?? []).includes('return_received') ? 'received'
     : (o.flags ?? []).includes('return_abandoned') ? 'abandoned'
@@ -3136,7 +3138,11 @@ export default function AdminOrders({
                     const rs = returnState(order);
                     return (
                       <div style={{ borderTop: '1px solid var(--border-light)', background: rs ? 'var(--bg-soft)' : '#FFF7ED', padding: '10px 16px', fontSize: '13px', color: rs ? 'var(--text-secondary)' : '#9A3412', lineHeight: 1.6 }}>
-                        <span style={{ fontWeight: 700 }}>↩ Замовлення скасоване, а посилка вже в дорозі назад</span>
+                        <span style={{ fontWeight: 700 }}>
+                          {order.status === 'cancelled'
+                            ? '↩ Замовлення скасоване, а посилка вже в дорозі назад'
+                            : '↩ Посилку не забрали — вона їде назад'}
+                        </span>
                         {order.tracking_number && <span> · ТТН {order.tracking_number}</span>}
                         {order.carrier_status_text && <span> · {isRozetkaPoint ? 'Rozetka' : 'НП'}: «{order.carrier_status_text}»</span>}
                         {/* Де посилка ЗАРАЗ. Статус вище стосується накладної «туди»,
