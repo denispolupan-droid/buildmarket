@@ -544,7 +544,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
 
               {/* Contact info */}
               <Section icon={User} title={tr.sectionContact}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
                   {!isRetail && (
                     <div id="field-company" style={{ gridColumn: '1 / -1' }}>
                       <label style={{ ...labelStyle, color: errors.has('company') ? '#EF4444' : undefined }}>{tr.company}</label>
