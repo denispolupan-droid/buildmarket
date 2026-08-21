@@ -90,6 +90,11 @@ type Order = {
   carrier_status_synced_at: string | null;
   /** Час видачі за даними перевізника; null — перевізник часу не дав */
   carrier_delivered_at:   string | null;
+  /** Звідки прийшов покупець: мітка з реклами або сайт-реферер */
+  utm_source:             string | null;
+  utm_medium:             string | null;
+  utm_campaign:           string | null;
+  referrer_url:           string | null;
   payment_confirmed:  boolean;
   amount_paid:        number;
   callback_done:      boolean;
@@ -4155,6 +4160,25 @@ export default function AdminOrders({
                           </span>
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{order.email}</div>
+                        {(() => {
+                          if (!order.utm_source && !order.referrer_url) return null;
+                          const host = (() => {
+                            if (!order.referrer_url) return null;
+                            try { return new URL(order.referrer_url).hostname.replace(/^www\./, ''); }
+                            catch { return order.referrer_url!.slice(0, 30); }
+                          })();
+                          const label = order.utm_source
+                            ? [order.utm_source, order.utm_medium, order.utm_campaign].filter(Boolean).join(' · ')
+                            : host!;
+                          return (
+                            <div title={order.utm_source
+                              ? `Прийшов за рекламною міткою${order.referrer_url ? `; реферер: ${host}` : ''}`
+                              : `Перейшов із ${host}`}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                              <TrendingUp size={11} /> {label}
+                            </div>
+                          );
+                        })()}
                         </div>
                       </div>
                       </div>{/* /oc-card-body */}

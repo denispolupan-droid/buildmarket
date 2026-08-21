@@ -14,6 +14,7 @@ type Group = { label: string; children: Leaf[] } | (Leaf & { children?: undefine
 const GROUPS: Group[] = [
   { href: '/admin/finance',           label: 'Огляд', exact: true },
   { href: '/admin/finance/analytics', label: 'Аналітика' },
+  { href: '/admin/finance/marketing', label: 'Реклама' },
   { label: 'Гроші', children: [
     { href: '/admin/finance/cashflow',      label: 'Рух коштів', exact: true },
     { href: '/admin/finance/cashflow/cash', label: 'Каса' },
