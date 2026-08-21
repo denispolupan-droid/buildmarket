@@ -2136,6 +2136,12 @@ input, select { font-family: inherit; }
   /* ── Замовлення (AdminOrders) ── */
   .oc-hide-m { display: none !important; }
   .oc-only-m { display: inline-flex !important; }
+  /* Згорнута кнопка «Дії» над карткою на телефоні не потрібна: її роль виконує
+     перемикач у ряду з нотаткою, історією та фінансами. */
+  .oc-actions-collapsed { display: none !important; }
+  /* Ряд перемикачів — без переносів і без горизонтального скролу: чотири підписи
+     вміщаються, бо на телефоні від них лишились перші слова. */
+  .oc-acc-note { flex-wrap: nowrap !important; gap: 8px !important; overflow: hidden; }
   /* «Зберегти» ТТН → компактна кнопка-дискета, щоб поле + Зберегти + «Створити ТТН»
      влізли в один рядок на телефоні. */
   .oc-ttn-save { padding: 0 !important; width: 34px !important; }
@@ -2380,7 +2386,17 @@ input, select { font-family: inherit; }
   .oc-items-scroll td.oc-col-sku, .oc-items-scroll td.oc-col-src { display: none !important; }
   .oc-col-name { flex: 1 1 100% !important; max-width: none !important; }
   .oc-col-name a { font-size: 13px !important; }
-  .oc-total-row td { flex: 1 1 100% !important; }
+  /* Підсумок — одним рядком: «Разом» ліворуч, сума праворуч. Через flex:100%
+     на кожній комірці вони ставали двома поверхами, і рядок товару розсипався
+     на три. Порожня третя комірка (стовпець «Джерело») тут ні до чого. */
+  /* Накладна: номер на весь рядок, іконки — рядом під ним. Разом вони не
+     вміщались у 390px і ламались навпіл: чотири іконки зверху, дві знизу.
+     Так само вигідніше й для набору номера — поле стає вдвічі ширшим. */
+  .oc-ttn-row > div:first-child { flex: 1 1 100% !important; }
+
+  .oc-items-scroll .oc-total-row { justify-content: space-between !important; padding: 8px 0 0 !important; }
+  .oc-items-scroll .oc-total-row td { flex: 0 0 auto !important; }
+  .oc-items-scroll .oc-total-row td:last-child { display: none !important; }
   /* Числовий рядок під назвою — формула «1 шт × 227 ₴ = 227 ₴» (сума жирна, вже в inline-стилі) */
   .oc-col-qty::after    { content: ' шт'; color: var(--text-muted); font-weight: 400; }
   .oc-col-price::before { content: '× '; color: var(--text-muted); font-weight: 400; }
@@ -2399,7 +2415,10 @@ input, select { font-family: inherit; }
   .oc-info-cards::-webkit-scrollbar { display: none; }
   /* Картка майже на всю ширину — про можливість гортати сигналить стрілка,
      тож другу картку лишаємо ледь помітною смужкою (не «випирає» краєм). */
-  .oc-info-cards > * { flex: 0 0 95%; scroll-snap-align: start; min-width: 0; }
+  /* Картка — рівно на ширину стрічки. При 95% друга картка, догорнута до кінця,
+     ставала на 5% правіше за блоки під нею, і нитки ліворуч не збігались.
+     Роль «визирни, що там праворуч» тепер грає клікабельна стрілка. */
+  .oc-info-cards > * { flex: 0 0 100%; scroll-snap-align: start; min-width: 0; }
   /* На телефоні картки гортаються по одній (flex-стрічка), спільної сітки між
      ними немає — підсітка тут не має сенсу, тож звичайний стовпчик. */
   .oc-split { display: flex !important; flex-direction: column; grid-row: auto !important; grid-template-rows: none !important; }
@@ -2408,20 +2427,37 @@ input, select { font-family: inherit; }
   .oc-swipe-hint {
     display: flex; position: absolute; top: 50%;
     transform: translateY(-50%);
-    width: 26px; height: 26px; align-items: center; justify-content: center;
-    border-radius: 999px; background: rgba(30,58,95,0.92); color: #fff;
-    font-size: 18px; font-weight: 700; line-height: 1;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.28); pointer-events: none; z-index: 5;
+    width: 28px; height: 44px; align-items: center; justify-content: center;
+    border: none; background: none; padding: 0;
+    color: rgba(30,58,95,0.42);
+    font-size: 24px; font-weight: 400; line-height: 1;
+    cursor: pointer; z-index: 5;
   }
+  .oc-swipe-hint:active { color: rgba(30,58,95,0.75); }
   .oc-swipe-right { right: 6px; animation: swipeHint     1.4s ease-in-out infinite; }
   .oc-swipe-left  { left: 6px;  animation: swipeHintLeft 1.4s ease-in-out infinite; }
 
   /* Шапка розгорнутого замовлення: на десктопі — горизонтальний ряд з фікс-блоками
      (сума, кнопка 250px, статус 250px). На мобілці — чистий стовпчик на всю ширину:
      сума → «Підтвердити» → статус, без «плаваючої» кнопки праворуч. */
-  .oc-expand-header, .oc-main-part, .oc-pay-part {
-    flex-direction: column !important; gap: 10px !important; align-items: stretch !important;
+  /* Статус — у рядок із номером: він перше, що читають, і тримати заради нього
+     окремий поверх на 390px марно. Проміжні обгортки розпускаємо (display:
+     contents), щоб номер, мітки, плашка й пояснення перевізника стали комірками
+     одного ряду, і розкладаємо порядком: номер і плашка зверху, решта — під. */
+  .oc-expand-header {
+    flex-direction: row !important; flex-wrap: wrap !important;
+    align-items: center !important; gap: 8px 10px !important;
   }
+  .oc-main-part, .oc-hdr-title, .oc-status-panel, .oc-status-row { display: contents !important; }
+  .oc-pay-part {
+    flex-direction: column !important; gap: 10px !important; align-items: stretch !important;
+    flex-basis: 100% !important; order: 4;
+  }
+  .oc-hdr-num { order: 0; flex: 1 1 auto; }
+  .oc-status-box { order: 1; width: auto !important; min-width: 118px; flex: 0 0 auto; padding: 0 26px 0 10px; }
+  .oc-hdr-title > div:last-child { order: 2; flex-basis: 100%; }
+  .oc-carrier-note { order: 3; flex-basis: 100%; text-align: left !important; }
+  .oc-status-panel > div:last-child { order: 5; flex-basis: 100%; }
   /* margin-left:auto на обгортці кнопки «Підтвердити» у стовпчику переважав stretch і
      тиснув кнопку вправо по контенту — прибираємо, щоб вона була на всю ширину. */
   .oc-pay-part > * { margin-left: 0 !important; }

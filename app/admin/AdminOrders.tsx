@@ -735,6 +735,16 @@ export default function AdminOrders({
   /** Нотатку пишуть в одному замовленні з двадцяти, тож поле відкривається за
    *  вимогою: постійно порожній інпут на всю ширину читався як «заповни мене». */
   const [noteEditing, setNoteEditing] = useState<Record<string, boolean>>({});
+  /** На телефоні колонка «Дії» займає цілий екран, тож там вона згорнута
+   *  за замовчуванням, а перемикач стоїть у ряду з нотаткою й історією. */
+  const [isNarrow, setIsNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const sync = () => setIsNarrow(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
   const [finLogOpen,       setFinLogOpen]       = useState<Record<string, boolean>>({});
   const [statusEditOpen,   setStatusEditOpen]   = useState<Record<string, boolean>>({});
   const [itemsExpanded,    setItemsExpanded]    = useState<Record<string, boolean>>({});
@@ -3188,7 +3198,7 @@ export default function AdminOrders({
                     {/* main-part — дзеркалить основну область сітки (Клієнт | Оплата) */}
                     <div className="oc-main-part" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
                     <div className="oc-hdr-title" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                      <div style={{ fontSize: '17px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>Замовлення #{order.order_number}</div>
+                      <div className="oc-hdr-num" style={{ fontSize: '17px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>Замовлення #{order.order_number}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
                         {!paymentConfirmed && (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
@@ -3270,19 +3280,19 @@ export default function AdminOrders({
                         const cab = rozetkaCabinet(order);
                         if (!cab?.ahead) return null;
                         return (
-                          <div title={cab.at ? `Зчитано з кабінету: ${new Date(cab.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
+                          <div className="oc-carrier-note" title={cab.at ? `Зчитано з кабінету: ${new Date(cab.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
                             style={{ fontSize: '11px', fontWeight: 600, textAlign: 'right', lineHeight: 1.3, color: '#15803D' }}>
                             ↳ у кабінеті: {cab.label}
                           </div>
                         );
                       })()}
                       {order.status === 'shipped' && order.tracking_number && (
-                        <div title={order.carrier_status_synced_at ? `Оновлено: ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
+                        <div className="oc-carrier-note" title={order.carrier_status_synced_at ? `Оновлено: ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
                           style={{ fontSize: '11px', fontWeight: 600, textAlign: 'right', lineHeight: 1.3, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
                           {order.carrier_accepted_at ? '✓' : '⏳'} {order.carrier_status_text ?? `${order.carrier_accepted_at ? 'Прийнято' : 'Очікує приймання'} ${isRozetkaPoint ? 'Rozetka' : 'НП'}`}
                         </div>
                       )}
-                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '186px', flexShrink: 0, height: '32px', borderRadius: '8px', color: status.color, background: status.bg, border: `1.5px solid ${status.color}` }}>
+                      <div className="oc-status-box" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '186px', flexShrink: 0, height: '32px', borderRadius: '8px', color: status.color, background: status.bg, border: `1.5px solid ${status.color}` }}>
                         <span style={{ fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap' }}>{status.label}</span>
                         <button onClick={() => setStatusEditOpen(p => ({ ...p, [order.id]: !p[order.id] }))}
                           title="Змінити статус вручну"
@@ -3657,6 +3667,15 @@ export default function AdminOrders({
                         );
                       })()}
                       {noteSaving === order.id && <span style={{ fontSize: '10.5px', color: 'var(--text-muted)', flexShrink: 0 }}>Збереження…</span>}
+                      {/* На телефоні «Дії» — четвертий перемикач цього ряду: окрема
+                          кнопка над карткою з'їдала верх екрана, де й так тісно. */}
+                      <button type="button" className="oc-only-m"
+                        onClick={() => setActionsOpen(p => ({ ...p, [order.id]: !(p[order.id] ?? !isNarrow) }))}
+                        title="Дії із замовленням"
+                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', alignItems: 'center', gap: '5px', fontSize: '11.5px', fontWeight: 600, flexShrink: 0, marginLeft: 'auto',
+                          color: (actionsOpen[order.id] ?? !isNarrow) ? 'var(--brand-blue)' : 'var(--text-muted)' }}>
+                        {(actionsOpen[order.id] ?? !isNarrow) ? <ChevronUp size={12} /> : <Plus size={12} />}&nbsp;Дії
+                      </button>
                       {/* Другорядні розділи — три однакові «плюси» в один ряд:
                           нотатка, економіка і історія. Кожен із них потрібен зрідка,
                           тож за замовчуванням вони згорнуті й важать один рядок. */}
@@ -3665,13 +3684,13 @@ export default function AdminOrders({
                         title="Собівартість, прибуток, тип цін і відвантаження постачальником"
                         style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', fontWeight: 600, flexShrink: 0,
                           color: (finLogOpen[order.id] ?? false) ? 'var(--brand-blue)' : 'var(--text-muted)' }}>
-                        {(finLogOpen[order.id] ?? false) ? <ChevronUp size={12} /> : <Plus size={12} />} Фінанси та логістика
+                        {(finLogOpen[order.id] ?? false) ? <ChevronUp size={12} /> : <Plus size={12} />}&nbsp;Фінанси<span className="oc-hide-m">&nbsp;та логістика</span>
                       </button>
                       <button type="button" onClick={() => setHistoryOpen(p => ({ ...p, [order.id]: !(p[order.id] ?? false) }))}
                         title="Хронологія замовлення: статуси, накладна, повернення"
                         style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', fontWeight: 600, flexShrink: 0,
                           color: (historyOpen[order.id] ?? false) ? 'var(--brand-blue)' : 'var(--text-muted)' }}>
-                        {(historyOpen[order.id] ?? false) ? <ChevronUp size={12} /> : <Plus size={12} />} Історія замовлення
+                        {(historyOpen[order.id] ?? false) ? <ChevronUp size={12} /> : <Plus size={12} />}&nbsp;Історія<span className="oc-hide-m">&nbsp;замовлення</span>
                       </button>
                     </div>
                         <div className="oc-fin-side">
@@ -4487,7 +4506,7 @@ export default function AdminOrders({
                           : 'ТТН Нової Пошти'}
                       </div>
                       {(order.delivery_type === 'nova' || order.delivery_type === 'nova_poshta') ? (
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        <div className="oc-ttn-row" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                           <div style={{ position: 'relative', flex: '1 1 140px', minWidth: 0 }}>
                             <Hash size={12} color="#94A3B8" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }} />
                             <input type="text" value={ttnValues[order.id] ?? ''} onChange={e => setTtnValues(prev => ({ ...prev, [order.id]: e.target.value }))}
@@ -4536,6 +4555,7 @@ export default function AdminOrders({
                               <button
                                 onClick={() => !inReg && addToRegistry(order.id, order.tracking_number!)}
                                 disabled={inReg || isAddingReg}
+                                className="oc-ttn-reg"
                                 title={inReg ? 'Вже в реєстрі НП' : 'Додати в реєстр НП'}
                                 style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
                                   background: inReg ? '#DCFCE7' : '#F0FDF4', color: '#15803D',
@@ -4547,6 +4567,7 @@ export default function AdminOrders({
                           })()}
                           {order.tracking_number && (
                             <button onClick={() => printLabel(order.id, 'ttn')} disabled={rzLabelBusy === order.id}
+                              className="oc-ttn-label"
                               title="Друк етикетки НП 100×100 (PDF)"
                               style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
                                 background: 'var(--brand-blue-light)', color: 'var(--brand-blue)',
@@ -4680,15 +4701,33 @@ export default function AdminOrders({
                     </div>
                     {/* /Доставка card + /grid Клієнт|Доставка */}
                     </div>
-                    {(cardSwipe[order.id] ?? 'start') !== 'end' && <span className="oc-swipe-hint oc-swipe-right" aria-hidden="true">›</span>}
-                    {(cardSwipe[order.id] ?? 'start') !== 'start' && <span className="oc-swipe-hint oc-swipe-left" aria-hidden="true">‹</span>}
+                    {(() => {
+                      const scrollTo = (e: React.MouseEvent<HTMLButtonElement>, dir: 'left' | 'right') => {
+                        const strip = e.currentTarget.parentElement?.querySelector('.oc-info-cards');
+                        strip?.scrollTo({ left: dir === 'right' ? strip.scrollWidth : 0, behavior: 'smooth' });
+                      };
+                      return (
+                        <>
+                          {(cardSwipe[order.id] ?? 'start') !== 'end' && (
+                            <button type="button" className="oc-swipe-hint oc-swipe-right"
+                              aria-label="Показати доставку" title="Показати доставку"
+                              onClick={e => scrollTo(e, 'right')}>›</button>
+                          )}
+                          {(cardSwipe[order.id] ?? 'start') !== 'start' && (
+                            <button type="button" className="oc-swipe-hint oc-swipe-left"
+                              aria-label="Показати клієнта" title="Показати клієнта"
+                              onClick={e => scrollTo(e, 'left')}>‹</button>
+                          )}
+                        </>
+                      );
+                    })()}
                     </div>{/* /oc-info-wrap */}
                     {/* /MAIN column */}
                     </div>
 
                     {/* Col 3: Status dropdown + context actions */}
                     {(() => {
-                      const actOpen = actionsOpen[order.id] ?? true;
+                      const actOpen = actionsOpen[order.id] ?? !isNarrow;
                       return (
                         <div className="oc-actions-col" style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
                         {/* Дії card — згортається у вузьку кнопку; «Фінанси» під нею
