@@ -10,6 +10,11 @@ const serviceClient = createClient(
 );
 
 const BASE_URL  = 'https://fixline.com.ua';
+// Мітка на посиланнях фіду. Без неї перехід із Shopping невідрізнити від будь-якого
+// іншого переходу з google.com, і звіт «Реклама» показував би рекламні замовлення
+// як органіку. На сторінку це не впливає: параметри читає лише клієнтський
+// lib/utm.ts, а canonical у метаданих сторінки лишається без параметрів.
+const FEED_UTM  = 'utm_source=google&amp;utm_medium=shopping&amp;utm_campaign=merchant';
 const SHOP_NAME = 'FIXLINE';
 
 function x(s: string | null | undefined): string {
@@ -131,7 +136,7 @@ export async function GET(request: NextRequest) {
       <g:id>${x(p.sku)}</g:id>
       <title>${x(title)}</title>
       <description>${x(description)}</description>
-      <link>${BASE_URL}${isRu ? '/ru' : ''}/product/${x(p.slug ?? p.sku)}</link>
+      <link>${BASE_URL}${isRu ? '/ru' : ''}/product/${x(p.slug ?? p.sku)}?${FEED_UTM}</link>
       <g:image_link>${x(img)}</g:image_link>
       <g:condition>new</g:condition>
       <g:availability>${available}</g:availability>

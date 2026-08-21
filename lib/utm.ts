@@ -15,11 +15,17 @@ export type UtmData = {
 export function captureUtm(): void {
   if (typeof window === 'undefined') return;
   const params = new URLSearchParams(window.location.search);
-  const hasUtm = UTM_PARAMS.some(k => params.has(k));
+  const hasUtm = UTM_PARAMS.some(k => params.has(k)) || params.has('gclid');
   if (!hasUtm && !document.referrer) return;
 
   const data: UtmData = {};
   UTM_PARAMS.forEach(k => { if (params.get(k)) data[k] = params.get(k)!; });
+  // Google Ads чіпляє до посилання свій gclid і не завжди лишає utm_*. Без цієї
+  // гілки платний клік осідав би у звіті як звичайний перехід з google.com.
+  if (!data.utm_source && params.get('gclid')) {
+    data.utm_source = 'google';
+    data.utm_medium = 'cpc';
+  }
   if (document.referrer && !document.referrer.includes(window.location.hostname)) {
     data.referrer_url = document.referrer;
   }
