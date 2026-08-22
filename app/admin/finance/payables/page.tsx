@@ -21,7 +21,7 @@ export default async function PayablesPage() {
   //    без range() PostgREST мовчки обрізав би на 1000 → неправильні баланси постачальників)
   const entries = await fetchAllRows((f, t) => db
     .from('money_entries')
-    .select('counterparty_id, doc_type, amount, business_date, description, doc_id, order_id')
+    .select('id, counterparty_id, doc_type, amount, business_date, description, doc_id, order_id')
     .eq('account_type', 'supplier')
     .not('counterparty_id', 'is', null)
     .order('business_date', { ascending: true })
@@ -42,6 +42,35 @@ export default async function PayablesPage() {
     ? await db.from('orders').select('id, order_number').in('id', orderIds)
     : { data: [] };
   const orderNumMap = new Map((ordersRes.data ?? []).map(o => [o.id as string, o.order_number as number]));
+
+  // 2c. Рознесення оплат: на які саме борги лягла кожна оплата. Без цього після
+  //     проведення оплати відповісти на «куди вона пішла» можна було лише
+  //     запитом до бази.
+  const entryIds = (entries ?? []).map(e => e.id as string);
+  const allocRows: { payment_entry_id: string; charge_entry_id: string; amount: number }[] = [];
+  for (let i = 0; i < entryIds.length; i += 500) {
+    const { data } = await db
+      .from('supplier_payment_allocations')
+      .select('payment_entry_id, charge_entry_id, amount')
+      .in('payment_entry_id', entryIds.slice(i, i + 500));
+    allocRows.push(...((data ?? []) as typeof allocRows));
+  }
+  const allocByPayment = new Map<string, { charge_entry_id: string; amount: number }[]>();
+  const closedByCharge = new Map<string, number>();
+  for (const a of allocRows) {
+    if (!allocByPayment.has(a.payment_entry_id)) allocByPayment.set(a.payment_entry_id, []);
+    allocByPayment.get(a.payment_entry_id)!.push({ charge_entry_id: a.charge_entry_id, amount: Number(a.amount) });
+    closedByCharge.set(a.charge_entry_id, (closedByCharge.get(a.charge_entry_id) ?? 0) + Number(a.amount));
+  }
+  // Довідник боргів: щоб у рознесенні показати номер накладної й замовлення
+  const chargeInfo = new Map((entries ?? [])
+    .filter(e => Number(e.amount) < 0)
+    .map(e => [e.id as string, {
+      date: e.business_date as string,
+      total: Math.abs(Number(e.amount)),
+      docNumber: e.doc_id ? (docMap.get(e.doc_id as string)?.number ?? null) : null,
+      orderNumber: e.order_id ? (orderNumMap.get(e.order_id as string) ?? null) : null,
+    }]));
 
   // 3. Назви постачальників
   const supplierIds = [...new Set(
@@ -85,6 +114,18 @@ export default async function PayablesPage() {
       doc_number:    docInfo?.number ?? null,
       acc_doc_type:  docInfo?.type  ?? null,
       order_number:  e.order_id ? (orderNumMap.get(e.order_id as string) ?? null) : null,
+      entry_id:      e.id as string,
+      // Для оплати — що закрила; для боргу — скільки з нього вже погашено
+      allocations:   amt > 0
+        ? (allocByPayment.get(e.id as string) ?? []).map(a => ({
+            amount:      a.amount,
+            date:        chargeInfo.get(a.charge_entry_id)?.date ?? '',
+            total:       chargeInfo.get(a.charge_entry_id)?.total ?? 0,
+            docNumber:   chargeInfo.get(a.charge_entry_id)?.docNumber ?? null,
+            orderNumber: chargeInfo.get(a.charge_entry_id)?.orderNumber ?? null,
+          }))
+        : [],
+      closed:        amt < 0 ? (closedByCharge.get(e.id as string) ?? 0) : 0,
     });
   }
 

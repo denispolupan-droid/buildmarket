@@ -16,6 +16,11 @@ export type SupplierTransaction = {
   acc_doc_type:  string | null;
   /** Замовлення, через яке виник борг (дропшип) — щоб було видно, за що саме */
   order_number:  number | null;
+  entry_id:      string;
+  /** Для оплати: які борги вона закрила */
+  allocations:   { amount: number; date: string; total: number; docNumber: string | null; orderNumber: number | null }[];
+  /** Для боргу: скільки з нього вже погашено */
+  closed:        number;
 };
 
 /** Непогашений борг: одна проводка (прихід або РН дропшипу) із залишком */
@@ -108,6 +113,8 @@ export default function PayablesClient({ balances: allBalances }: Props) {
   const [payFill,   setPayFill]   = useState<'oldest' | 'newest' | 'manual'>('oldest');
   const [charges,   setCharges]   = useState<OpenCharge[] | null>(null);
   const [manual,    setManual]    = useState<Record<string, string>>({});
+  /** Розгорнуті рознесення оплат: «на що пішла ця оплата» */
+  const [openAlloc, setOpenAlloc] = useState<Record<string, boolean>>({});
 
   function openPay(b: SupplierBalance) {
     setPayFor(b.supplier_id);
@@ -647,8 +654,11 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                         const isPayment = txn.amount > 0;
                         const link = docLink(txn);
 
+                        const allocOpen = openAlloc[txn.entry_id] ?? false;
+
                         return (
-                          <div key={idx} className="sup-txn-row" style={{
+                          <div key={idx}>
+                          <div className="sup-txn-row" style={{
                             display: 'grid', gridTemplateColumns: '100px 140px 1fr 140px',
                             padding: '9px 20px', gap: '8px', alignItems: 'center',
                             borderTop: idx > 0 ? '1px solid var(--border-light)' : 'none',
@@ -678,6 +688,23 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                                   #{txn.order_number}
                                 </Link>
                               )}
+                              {/* Куди пішла оплата: без цього після проведення
+                                  відповісти на «які накладні вона закрила» можна
+                                  було лише запитом до бази. */}
+                              {isPayment && txn.allocations.length > 0 && (
+                                <button type="button"
+                                  onClick={e => { e.stopPropagation(); setOpenAlloc(m => ({ ...m, [txn.entry_id]: !allocOpen })); }}
+                                  style={{ marginLeft: '8px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '11.5px', fontWeight: 600, color: 'var(--brand-blue)' }}>
+                                  {allocOpen ? '▾' : '▸'} закрила {txn.allocations.length} док.
+                                </button>
+                              )}
+                              {!isPayment && txn.closed > 0.005 && (
+                                <span style={{ marginLeft: '8px', fontSize: '11.5px', fontWeight: 600, color: Math.abs(txn.closed - Math.abs(txn.amount)) < 0.005 ? '#15803D' : '#B45309' }}>
+                                  {Math.abs(txn.closed - Math.abs(txn.amount)) < 0.005
+                                    ? '✓ оплачено'
+                                    : `частково: ${fmt(txn.closed)} із ${fmt(Math.abs(txn.amount))} ₴`}
+                                </span>
+                              )}
                             </span>
 
                             <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
@@ -688,6 +715,34 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                                 баланс: {running < 0 ? '−' : '+'}{fmt(running)} ₴
                               </div>
                             </div>
+                          </div>
+
+                          {isPayment && allocOpen && (
+                            <div style={{ background: 'var(--bg-soft)', padding: '6px 20px 10px 40px' }}>
+                              {txn.allocations.map((a, i) => (
+                                <div key={i} style={{ display: 'grid', gridTemplateColumns: '90px 130px 1fr 150px', gap: '8px', padding: '3px 0', fontSize: '12px', alignItems: 'center' }}>
+                                  <span style={{ color: 'var(--text-muted)' }}>
+                                    {a.date ? new Date(a.date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}
+                                  </span>
+                                  <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#B45309' }}>{a.docNumber ?? '—'}</span>
+                                  <span>
+                                    {a.orderNumber != null && (
+                                      <Link href={`/admin?status=&q=${a.orderNumber}`} onClick={e => e.stopPropagation()}
+                                        style={{ color: 'var(--brand-blue)', fontWeight: 700, textDecoration: 'none' }}>
+                                        #{a.orderNumber}
+                                      </Link>
+                                    )}
+                                  </span>
+                                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#15803D', fontWeight: 600 }}>
+                                    {fmt(a.amount)} ₴
+                                    {Math.abs(a.amount - a.total) > 0.005 && (
+                                      <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> із {fmt(a.total)}</span>
+                                    )}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                           </div>
                         );
                       });
